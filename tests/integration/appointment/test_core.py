@@ -170,14 +170,16 @@ async def test_list_appointments_filters_status_and_patient(client):
     assert match_resp.status_code == 200
     assert miss_resp.status_code == 200
 
-    patient_id = match_resp.json()["subject_id"]
+    # Patient linkage is only via participant.actor (Appointment.subject doesn't
+    # exist in FHIR) — the first participant in build_minimal_payload is the patient.
+    patient_id = match_resp.json()["participant"][0]["reference_id"]
     resp = await client.get(f"{BASE}/?status=booked&patient_id={patient_id}")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1
     for appointment in data["data"]:
         assert appointment["status"] == "booked"
-        assert appointment["subject_id"] == patient_id
+        assert appointment["participant"][0]["reference_id"] == patient_id
 
 
 async def test_list_appointments_filters_start_range(client):
@@ -224,83 +226,6 @@ async def test_list_appointments_empty(client):
     data = resp.json()
     assert data["total"] == 0
     assert data["data"] == []
-
-
-async def test_get_my_appointments_plain(client):
-    """`/me` should return only the current identity's appointments in plain JSON."""
-    await client.post(BASE + "/", json=await build_minimal_payload(client, user_id="u-test", org_id="org-test"))
-    await client.post(BASE + "/", json=await build_minimal_payload(client, user_id="u-other", org_id="org-other"))
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert_paginated(data, min_total=1)
-    for appointment in data["data"]:
-        assert appointment["user_id"] == "u-test"
-        assert appointment["org_id"] == "org-test"
-
-
-async def test_get_my_appointments_fhir_bundle(client):
-    """FHIR `/me` output should use a Bundle just like the list endpoint."""
-    await client.post(BASE + "/", json=await build_minimal_payload(client))
-    resp = await client.get(BASE + "/me", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert_fhir_bundle(data, min_total=1)
-    assert data["entry"][0]["resource"]["resourceType"] == "Appointment"
-
-
-async def test_get_my_appointments_filters_and_pagination(client):
-    """`/me` should apply the same status and pagination rules as the main list endpoint."""
-    for idx in range(4):
-        payload = await build_minimal_payload(client, user_id="u-test", org_id="org-test")
-        payload["status"] = "booked" if idx < 3 else "cancelled"
-        await client.post(BASE + "/", json=payload)
-
-    resp = await client.get(BASE + "/me?status=booked&limit=2&offset=0")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["limit"] == 2
-    assert data["offset"] == 0
-    assert len(data["data"]) == 2
-    for appointment in data["data"]:
-        assert appointment["status"] == "booked"
-
-
-async def test_get_my_appointments_org_isolation(client, other_client):
-    """`/me` is the one route that currently enforces identity scoping in runtime behavior."""
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=[
-            "appointment:create",
-            "appointment:read",
-            "appointment:update",
-            "appointment:delete",
-            "patient:create",
-            "patient:read",
-            "practitioner:create",
-            "practitioner:read",
-        ]
-    )
-    await client.post(BASE + "/", json=await build_minimal_payload(client, user_id="u-test", org_id="org-test"))
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other",
-        org_id="org-other",
-        permissions=[
-            "appointment:create",
-            "appointment:read",
-            "appointment:update",
-            "appointment:delete",
-            "patient:create",
-            "patient:read",
-            "practitioner:create",
-            "practitioner:read",
-        ],
-    )
-    try:
-        resp = await other_client.get(BASE + "/me")
-        assert resp.status_code == 200
-        assert resp.json()["total"] == 0
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user()
 
 
 async def test_create_appointment_no_permission(client):

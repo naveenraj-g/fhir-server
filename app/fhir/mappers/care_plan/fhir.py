@@ -365,7 +365,8 @@ def to_fhir_care_plan(model: "CarePlanModel") -> dict:
     if subj:
         result["subject"] = subj
 
-    enc = _ref(model.encounter_type, model.encounter_id, model.encounter_display)
+    encounter_public_id = model.encounter.encounter_id if model.encounter else model.encounter_id
+    enc = _ref(model.encounter_type, encounter_public_id, model.encounter_display)
     if enc:
         result["encounter"] = enc
 

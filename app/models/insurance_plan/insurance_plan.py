@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import OrganizationReferenceType
 from app.models.insurance_plan.enums import InsurancePlanStatus
 
 insurance_plan_id_seq = Sequence("insurance_plan_pub_seq", start=360000, increment=1, metadata=Base.metadata)
@@ -39,13 +40,27 @@ class InsurancePlanModel(Base):
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # ── ownedBy (0..1 Reference(Organization)) — public org sequence ID ──────
-    owned_by_id = Column(Integer, nullable=True)
+    # ── ownedBy (0..1 Reference(Organization)) — shared enum + FK ────────────
+    owned_by_type = Column(
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        nullable=True,
+    )
+    owned_by_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     owned_by_display = Column(String, nullable=True)
+    owned_by_organization = relationship(
+        "OrganizationModel", foreign_keys=[owned_by_id], lazy="selectin"
+    )
 
     # ── administeredBy (0..1 Reference(Organization)) ────────────────────────
-    administered_by_id = Column(Integer, nullable=True)
+    administered_by_type = Column(
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        nullable=True,
+    )
+    administered_by_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     administered_by_display = Column(String, nullable=True)
+    administered_by_organization = relationship(
+        "OrganizationModel", foreign_keys=[administered_by_id], lazy="selectin"
+    )
 
     # ── Audit ─────────────────────────────────────────────────────────────────
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -176,8 +191,15 @@ class InsurancePlanNetwork(Base):
     insurance_plan_id = Column(Integer, ForeignKey("insurance_plan.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    reference_id = Column(Integer, nullable=True)
+    reference_type = Column(
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        nullable=True,
+    )
+    reference_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    organization = relationship(
+        "OrganizationModel", foreign_keys=[reference_id], lazy="selectin"
+    )
 
     insurance_plan = relationship("InsurancePlanModel", back_populates="networks")
 
@@ -278,8 +300,15 @@ class InsurancePlanCoverageNetwork(Base):
     coverage_id = Column(Integer, ForeignKey("insurance_plan_coverage.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    reference_id = Column(Integer, nullable=True)
+    reference_type = Column(
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        nullable=True,
+    )
+    reference_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    organization = relationship(
+        "OrganizationModel", foreign_keys=[reference_id], lazy="selectin"
+    )
 
     coverage = relationship("InsurancePlanCoverage", back_populates="networks")
 
@@ -418,8 +447,15 @@ class InsurancePlanPlanNetwork(Base):
     plan_id = Column(Integer, ForeignKey("insurance_plan_plan.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    reference_id = Column(Integer, nullable=True)
+    reference_type = Column(
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        nullable=True,
+    )
+    reference_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    organization = relationship(
+        "OrganizationModel", foreign_keys=[reference_id], lazy="selectin"
+    )
 
     plan = relationship("InsurancePlanPlan", back_populates="plan_networks")
 

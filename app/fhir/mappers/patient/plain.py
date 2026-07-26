@@ -17,7 +17,9 @@ def plain_contact(c: "PatientContact") -> dict:
         "org_id": c.org_id,
         "relationship": [
             {"id": r.id, "org_id": r.org_id, "coding_system": r.coding_system,
-             "coding_code": r.coding_code, "coding_display": r.coding_display, "text": r.text}
+             "coding_version": r.coding_version, "coding_code": r.coding_code,
+             "coding_display": r.coding_display, "text": r.text,
+             "coding_user_selected": r.coding_user_selected}
             for r in c.relationships
         ] if c.relationships else None,
         "name_use": fhir_enum(c.name_use),
@@ -93,9 +95,11 @@ def _core_fields(patient: "PatientModel") -> dict:
         "deceased_boolean": patient.deceased_boolean,
         "deceased_datetime": patient.deceased_datetime.isoformat() if patient.deceased_datetime else None,
         "marital_status_system": patient.marital_status_system,
+        "marital_status_version": patient.marital_status_version,
         "marital_status_code": patient.marital_status_code,
         "marital_status_display": patient.marital_status_display,
         "marital_status_text": patient.marital_status_text,
+        "marital_status_user_selected": patient.marital_status_user_selected,
         "multiple_birth_boolean": patient.multiple_birth_boolean,
         "multiple_birth_integer": patient.multiple_birth_integer,
         "managing_organization_type": fhir_enum(patient.managing_organization_type) if patient.managing_organization_type else None,

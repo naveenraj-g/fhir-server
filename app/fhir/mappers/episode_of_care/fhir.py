@@ -73,7 +73,8 @@ def fhir_episode_of_care_type(t):
 
 def fhir_episode_of_care_diagnosis(d):
     out = {}
-    cond_ref = _ref(d.reference_type, d.reference_id, d.reference_display)
+    cond_public_id = d.reference.condition_id if d.reference else d.reference_id
+    cond_ref = _ref(d.reference_type, cond_public_id, d.reference_display)
     if cond_ref:
         out["condition"] = cond_ref
     role = _cc(d.role_system, d.role_code, d.role_display, d.role_text)
@@ -85,7 +86,8 @@ def fhir_episode_of_care_diagnosis(d):
 
 
 def fhir_episode_of_care_referral_request(r):
-    ref = _ref(r.reference_type, r.reference_id, r.reference_display)
+    ref_public_id = r.reference.service_request_id if r.reference else r.reference_id
+    ref = _ref(r.reference_type, ref_public_id, r.reference_display)
     return ref or {}
 
 
@@ -123,7 +125,8 @@ def to_fhir_episode_of_care(model) -> dict:
     if model.diagnoses:
         out["diagnosis"] = [fhir_episode_of_care_diagnosis(d) for d in model.diagnoses]
 
-    patient_ref = _ref(model.patient_type, model.patient_id, model.patient_display)
+    patient_public_id = model.patient.patient_id if model.patient else model.patient_id
+    patient_ref = _ref(model.patient_type, patient_public_id, model.patient_display)
     if patient_ref:
         out["patient"] = patient_ref
 
@@ -144,7 +147,13 @@ def to_fhir_episode_of_care(model) -> dict:
     if model.referral_requests:
         out["referralRequest"] = [fhir_episode_of_care_referral_request(r) for r in model.referral_requests]
 
-    care_mgr_ref = _ref(model.care_manager_type, model.care_manager_id, model.care_manager_display)
+    if model.care_manager_practitioner:
+        care_mgr_public_id = model.care_manager_practitioner.practitioner_id
+    elif model.care_manager_practitioner_role:
+        care_mgr_public_id = model.care_manager_practitioner_role.practitioner_role_id
+    else:
+        care_mgr_public_id = model.care_manager_id
+    care_mgr_ref = _ref(model.care_manager_type, care_mgr_public_id, model.care_manager_display)
     if care_mgr_ref:
         out["careManager"] = care_mgr_ref
 

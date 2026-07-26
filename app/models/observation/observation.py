@@ -72,7 +72,7 @@ class ObservationModel(Base):
 
     # encounter (0..1 Reference(Encounter))
     encounter_type = Column(
-        Enum(EncounterReferenceType, name="obs_encounter_ref_type", create_type=False),
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)

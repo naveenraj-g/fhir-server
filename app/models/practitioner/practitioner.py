@@ -46,8 +46,6 @@ class PractitionerModel(Base):
     active = Column(Boolean, nullable=True)
     gender = Column(Enum(AdministrativeGender, name="administrative_gender"), nullable=True)
     birth_date = Column(Date, nullable=True)
-    deceased_boolean = Column(Boolean, nullable=True)
-    deceased_datetime = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -229,6 +227,5 @@ class PractitionerCommunication(Base):
     language_code = Column(String, nullable=False)
     language_display = Column(String, nullable=True)
     language_text = Column(String, nullable=True)
-    preferred = Column(Boolean, nullable=True)
 
     practitioner = relationship("PractitionerModel", back_populates="communications")

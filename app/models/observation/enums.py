@@ -19,10 +19,6 @@ class ObservationSubjectReferenceType(str, Enum):
     Location = "Location"
 
 
-class ObservationEncounterReferenceType(str, Enum):
-    Encounter = "Encounter"
-
-
 class ObservationSpecimenReferenceType(str, Enum):
     Specimen = "Specimen"
 

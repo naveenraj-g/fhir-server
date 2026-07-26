@@ -38,8 +38,8 @@ def to_fhir_related_person(rp: "RelatedPersonModel") -> dict:
         "birthDate": rp.birth_date.isoformat() if rp.birth_date else None,
     }
 
-    if rp.patient_type and rp.patient_id is not None:
-        patient_ref: dict = {"reference": f"{fhir_enum(rp.patient_type)}/{rp.patient_id}"}
+    if rp.patient_type and rp.patient:
+        patient_ref: dict = {"reference": f"{fhir_enum(rp.patient_type)}/{rp.patient.patient_id}"}
         if rp.patient_display:
             patient_ref["display"] = rp.patient_display
         result["patient"] = patient_ref

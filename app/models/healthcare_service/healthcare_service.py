@@ -56,7 +56,7 @@ class HealthcareServiceModel(Base):
         Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
-    provided_by_id = Column(Integer, nullable=True)
+    provided_by_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     provided_by_display = Column(String, nullable=True)
 
     # ── name (0..1 string) ────────────────────────────────────────────────────
@@ -99,6 +99,8 @@ class HealthcareServiceModel(Base):
     updated_by = Column(String, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
+
+    provided_by = relationship("OrganizationModel", foreign_keys=[provided_by_id], lazy="selectin")
 
     identifiers = relationship(
         "HealthcareServiceIdentifier",
@@ -282,8 +284,10 @@ class HealthcareServiceLocation(Base):
         Enum(HealthcareServiceLocationReferenceType, name="hs_location_ref_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+
+    reference = relationship("LocationModel", foreign_keys=[reference_id], lazy="selectin")
 
     healthcare_service = relationship("HealthcareServiceModel", back_populates="locations")
 
@@ -324,8 +328,10 @@ class HealthcareServiceCoverageArea(Base):
         Enum(HealthcareServiceCoverageAreaReferenceType, name="hs_coverage_area_ref_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+
+    reference = relationship("LocationModel", foreign_keys=[reference_id], lazy="selectin")
 
     healthcare_service = relationship("HealthcareServiceModel", back_populates="coverage_areas")
 

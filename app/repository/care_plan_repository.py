@@ -26,6 +26,7 @@ from app.models.care_plan.enums import (
     CarePlanStatus,
     CarePlanSubjectReferenceType,
 )
+from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType
 from app.models.care_plan.care_plan import (
     CarePlanActivity,
@@ -72,7 +73,25 @@ def _with_relationships(stmt):
         selectinload(CarePlanModel.activities).selectinload(CarePlanActivity.detail_reason_references),
         selectinload(CarePlanModel.activities).selectinload(CarePlanActivity.detail_goals),
         selectinload(CarePlanModel.activities).selectinload(CarePlanActivity.detail_performers),
+        selectinload(CarePlanModel.encounter),
     )
+
+
+async def _resolve_encounter_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Encounter/<public_id>' to the internal encounter.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref_closed(ref, EncounterReferenceType, "encounter")
+    result = await session.execute(
+        select(EncounterModel.id).where(EncounterModel.encounter_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Encounter/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 def _parse_ref_closed(ref: str, enum_cls, field: str):
@@ -417,10 +436,10 @@ class CarePlanRepository:
         created_by: str,
     ) -> CarePlanModel:
         subject_type, subject_id = _parse_ref_closed_opt(payload.subject, CarePlanSubjectReferenceType, "subject")
-        encounter_type, encounter_id = _parse_ref_closed_opt(payload.encounter, EncounterReferenceType, "encounter")
         author_type, author_id = _parse_ref_closed_opt(payload.author, CarePlanAuthorReferenceType, "author")
 
         async with self.session_factory() as session:
+            encounter_type, encounter_id = await _resolve_encounter_pk(session, payload.encounter)
             care_plan = CarePlanModel(
                 user_id=user_id,
                 org_id=org_id,
@@ -490,7 +509,7 @@ class CarePlanRepository:
                 care_plan.subject_type = st
                 care_plan.subject_id = si
             if "encounter" in data and data["encounter"]:
-                et, ei = _parse_ref_closed(data["encounter"], EncounterReferenceType, "encounter")
+                et, ei = await _resolve_encounter_pk(session, data["encounter"])
                 care_plan.encounter_type = et
                 care_plan.encounter_id = ei
             if "author" in data and data["author"]:

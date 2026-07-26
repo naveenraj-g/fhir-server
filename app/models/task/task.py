@@ -122,7 +122,7 @@ class TaskModel(Base):
         Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, nullable=True)
+    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
 
     # ── executionPeriod (0..1 Period) ─────────────────────────────────────────
@@ -156,7 +156,7 @@ class TaskModel(Base):
         Enum(TaskLocationReferenceType, name="task_location_reference_type"),
         nullable=True,
     )
-    location_id = Column(Integer, nullable=True)
+    location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     location_display = Column(String, nullable=True)
 
     # ── reasonCode (0..1 CodeableConcept) ────────────────────────────────────
@@ -182,6 +182,9 @@ class TaskModel(Base):
     updated_by = Column(String, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
+    location = relationship("LocationModel", foreign_keys=[location_id], lazy="selectin")
+
     identifiers = relationship(
         "TaskIdentifier",
         back_populates="task",

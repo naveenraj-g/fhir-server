@@ -14,6 +14,8 @@
 
 FHIR R4-compliant REST API server built with FastAPI + PostgreSQL. Every endpoint supports dual-format responses: full FHIR R4 JSON (`application/fhir+json`) and simplified snake_case JSON (`application/json`), selected via the `Accept` header.
 
+This is a pure CRUD core with no authentication of its own — it is never exposed directly to clients. A GraphQL gateway sits in front of it as the only externally-facing surface; the gateway validates JWTs and forwards `user_id`/`org_id`/`created_by`/`updated_by` explicitly as request fields. See "Multi-Tenancy & Ownership" below.
+
 ---
 
 ## Tech Stack
@@ -23,7 +25,7 @@ FHIR R4-compliant REST API server built with FastAPI + PostgreSQL. Every endpoin
 | Web framework | FastAPI + Uvicorn |
 | Database | PostgreSQL 15 (async via asyncpg) |
 | ORM | SQLAlchemy 2.0+ (async) |
-| Auth | PyJWT + PyJWKClient (JWKS endpoint) |
+| Auth | None in this service — handled upstream by a GraphQL gateway (see Multi-Tenancy & Ownership) |
 | Sessions | Redis 7 (server-side) |
 | DI container | dependency-injector |
 | Config | pydantic-settings (.env) |
@@ -37,7 +39,7 @@ FHIR R4-compliant REST API server built with FastAPI + PostgreSQL. Every endpoin
 ```
 app/
 ├── core/           # config, database, logging, redis, content_negotiation, schema_utils
-├── auth/           # get_current_user, require_permission, resolve_<resource>
+├── deps/           # resolve_<resource>() — load-by-public-ID-or-404, used as Depends(resolve_<resource>)
 ├── di/             # container.py, modules/<resource>.py, dependencies/<resource>.py
 ├── models/         # SQLAlchemy ORM — one package per resource + shared enums.py
 ├── fhir/mappers/   # per-resource packages: fhir.py (camelCase) + plain.py (snake_case) + __init__.py
@@ -57,7 +59,7 @@ app/
 Router → Service → Repository → ORM Model
 ```
 
-- **Router**: validates body (Pydantic), extracts JWT claims, calls service, calls `format_response()`
+- **Router**: validates body (Pydantic), reads `user_id`/`org_id`/`created_by` straight off the validated payload, calls service, calls `format_response()`
 - **Service**: thin orchestration, hosts `_to_fhir()` / `_to_plain()` wrappers
 - **Repository**: all DB I/O, session-per-operation, `_with_relationships()`, `_apply_list_filters()`
 - **Model**: declarative async SQLAlchemy, internal `id` PK + public sequence-based `<resource>_id`
@@ -109,20 +111,20 @@ Router → Service → Repository → ORM Model
 | Immunization | 330000 |
 | AuditEvent | 340000 |
 | EpisodeOfCare | 350000 |
+| InsurancePlan | 360000 |
 
-**Next available block: 360000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 370000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
 ## Multi-Tenancy & Ownership
 
-Every row stores `user_id` (JWT `sub`) and `org_id` (JWT `activeOrganizationId`). Auth deps (`app/auth/<resource>_deps.py`) resolve the resource by public ID and raise 404 if not found — `resolve_<resource>()`. Used as `Depends(resolve_<resource>)` in route signatures.
+**This server has no authentication of its own.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. The gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase decodes a token, checks a JWKS endpoint, or reads `request.state.user` — there is no such state to read.
 
----
-
-## JWT Authentication
-
-All routes protected by `get_current_user` (JWKS-validated), mounted globally in `main.py`. Claims read via `request.state.user.get("sub")` and `request.state.user.get("activeOrganizationId")`. FHIR resources use `require_permission("<resource>", "create|read|update|delete")`; Vitals uses `resolve_vitals` instead.
+- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token.
+- `created_by`/`updated_by` are the same: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
+- `resolve_<resource>()` deps (`app/deps/<resource>_deps.py`) only load the resource by public ID and raise 404 if missing — they do **not** enforce ownership. Tenant/ownership scoping happens entirely via `user_id`/`org_id` `WHERE` clauses in the repository's `list()`/`get_me()` queries. Used as `Depends(resolve_<resource>)` in route signatures.
+- Keeping `user_id`/`org_id` on every resource (not just Patient/Practitioner) is deliberate: it gives the GraphQL gateway one uniform scoping contract across all ~35 resource types, with no joins, and it's the only mechanism that works for resources with no patient/subject link at all (Organization, Location, HealthcareService, Appointment — whose `participant` list is polymorphic 0..* and may contain zero patients — etc.).
 
 ---
 
@@ -235,8 +237,8 @@ Rules:
 ## Standard Columns
 
 Every resource row: `id` (PK), `<resource>_id` (sequence), `user_id`, `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`.
-- `created_by` / `updated_by` — always set from `request.state.user.get("sub")`
-- `org_id` / `user_id` are **tenant/auth fields from JWT**, not FHIR Organization references
+- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase
+- `org_id` / `user_id` are **tenant/ownership fields forwarded by the gateway**, not FHIR Organization references
 
 ---
 
@@ -281,9 +283,9 @@ Pattern per resource: `di/modules/<resource>.py` (Factory for repo + service) �
 ```
 FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
 REDIS_URL=redis://localhost:6379
-IAM_ISSUER=https://your-iam-provider/issuer
-IAM_JWKS_URL=https://your-iam-provider/.well-known/jwks.json
 ```
+
+No IAM/JWT env vars — this service doesn't authenticate; the upstream GraphQL gateway owns that.
 
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 

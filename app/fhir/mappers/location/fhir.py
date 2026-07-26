@@ -190,14 +190,16 @@ def to_fhir_location(model: "LocationModel") -> dict:
 
     if model.managing_organization_type and model.managing_organization_id:
         org_type = model.managing_organization_type.value if hasattr(model.managing_organization_type, "value") else model.managing_organization_type
-        org_ref: dict = {"reference": f"{org_type}/{model.managing_organization_id}"}
+        org_public_id = model.managing_organization.organization_id if model.managing_organization else model.managing_organization_id
+        org_ref: dict = {"reference": f"{org_type}/{org_public_id}"}
         if model.managing_organization_display:
             org_ref["display"] = model.managing_organization_display
         result["managingOrganization"] = org_ref
 
     if model.part_of_type and model.part_of_id:
         po_type = model.part_of_type.value if hasattr(model.part_of_type, "value") else model.part_of_type
-        po_ref: dict = {"reference": f"{po_type}/{model.part_of_id}"}
+        po_public_id = model.part_of.location_id if model.part_of else model.part_of_id
+        po_ref: dict = {"reference": f"{po_type}/{po_public_id}"}
         if model.part_of_display:
             po_ref["display"] = model.part_of_display
         result["partOf"] = po_ref

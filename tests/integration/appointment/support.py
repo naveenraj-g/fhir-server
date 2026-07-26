@@ -15,8 +15,6 @@ async def build_minimal_payload(client, *, user_id: str = "u-test", org_id: str 
         "user_id": user_id,
         "org_id": org_id,
         "status": "booked",
-        "subject": f"Patient/{patient_id}",
-        "subject_display": "Patient Primary",
         "start": "2026-06-01T09:00:00Z",
         "end": "2026-06-01T09:30:00Z",
         "minutes_duration": 30,
@@ -25,7 +23,7 @@ async def build_minimal_payload(client, *, user_id: str = "u-test", org_id: str 
             {
                 "reference": f"Patient/{patient_id}",
                 "reference_display": "Patient Primary",
-                "required": True,
+                "required": "required",
                 "status": "accepted",
             },
             {
@@ -37,7 +35,7 @@ async def build_minimal_payload(client, *, user_id: str = "u-test", org_id: str 
                         "coding_display": "attender",
                     }
                 ],
-                "required": True,
+                "required": "required",
                 "status": "accepted",
             },
         ],
@@ -57,18 +55,11 @@ async def build_full_payload(client, *, user_id: str = "u-test", org_id: str = "
             "appointment_type_code": "FOLLOWUP",
             "appointment_type_display": "Follow-up",
             "appointment_type_text": "Follow-up visit",
-            "priority_system": "http://terminology.hl7.org/CodeSystem/processpriority",
-            "priority_code": "urgent",
-            "priority_display": "Urgent",
-            "priority_text": "Urgent visit",
-            "previous_appointment_id": 40001,
-            "previous_appointment_display": "Prior booking",
-            "originating_appointment_id": 40002,
-            "originating_appointment_display": "Series parent",
+            "priority": 5,
             "created": "2026-05-01T08:00:00Z",
             "description": "Telehealth follow-up for ongoing symptoms",
-            "recurrence_id": 2,
-            "occurrence_changed": True,
+            "comment": "Patient prefers video visits.",
+            "patient_instruction": "Log in 10 minutes early",
             "identifier": [
                 {
                     "use": "official",
@@ -81,14 +72,6 @@ async def build_full_payload(client, *, user_id: str = "u-test", org_id: str = "
                     "period_start": "2026-06-01T09:00:00Z",
                     "period_end": "2026-06-30T09:30:00Z",
                     "assigner": "Scheduling Desk",
-                }
-            ],
-            "class": [
-                {
-                    "coding_system": "http://example.org/class",
-                    "coding_code": "AMB",
-                    "coding_display": "Ambulatory",
-                    "text": "Ambulatory visit",
                 }
             ],
             "service_category": [
@@ -105,8 +88,6 @@ async def build_full_payload(client, *, user_id: str = "u-test", org_id: str = "
                     "coding_code": "tele",
                     "coding_display": "Telehealth",
                     "text": "Video consult",
-                    "reference": "HealthcareService/501",
-                    "reference_display": "Virtual Care",
                 }
             ],
             "specialty": [
@@ -117,12 +98,16 @@ async def build_full_payload(client, *, user_id: str = "u-test", org_id: str = "
                     "text": "General practice",
                 }
             ],
-            "reason": [
+            "reason_code": [
                 {
                     "coding_system": "http://snomed.info/sct",
                     "coding_code": "386661006",
                     "coding_display": "Fever",
                     "text": "Fever follow-up",
+                }
+            ],
+            "reason_reference": [
+                {
                     "reference": "Condition/12345",
                     "reference_display": "Fever condition",
                 }
@@ -143,49 +128,6 @@ async def build_full_payload(client, *, user_id: str = "u-test", org_id: str = "
                 {
                     "reference": "ServiceRequest/80001",
                     "reference_display": "Referral request",
-                }
-            ],
-            "replaces": [
-                {
-                    "reference": "Appointment/40001",
-                    "reference_display": "Superseded booking",
-                }
-            ],
-            "virtual_service": [
-                {
-                    "channel_type_system": "http://example.org/meeting-platform",
-                    "channel_type_code": "zoom",
-                    "channel_type_display": "Zoom",
-                    "address_url": "https://tele.example.com/room/alpha",
-                    "additional_info": [
-                        "https://tele.example.com/help",
-                        "https://tele.example.com/check-audio",
-                    ],
-                    "max_participants": 3,
-                    "session_key": "join-key",
-                }
-            ],
-            "account": [
-                {
-                    "reference": "Account/601",
-                    "reference_display": "Billing account",
-                }
-            ],
-            "note": [
-                {
-                    "author_string": "Scheduler",
-                    "time": "2026-05-01T08:05:00Z",
-                    "text": "Patient prefers video visits.",
-                }
-            ],
-            "patient_instruction": [
-                {
-                    "coding_system": "http://example.org/instructions",
-                    "coding_code": "prep",
-                    "coding_display": "Preparation",
-                    "text": "Log in 10 minutes early",
-                    "reference": "DocumentReference/789",
-                    "reference_display": "Prep sheet",
                 }
             ],
             "requested_period": [

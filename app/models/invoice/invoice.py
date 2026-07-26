@@ -88,7 +88,7 @@ class InvoiceModel(Base):
         Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
-    issuer_id = Column(Integer, nullable=True)
+    issuer_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     issuer_display = Column(String, nullable=True)
 
     # account (0..1) Reference(Account)
@@ -111,6 +111,8 @@ class InvoiceModel(Base):
     payment_terms = Column(Text, nullable=True)
 
     # Relationships
+    issuer = relationship("OrganizationModel", foreign_keys=[issuer_id], lazy="selectin")
+
     identifiers = relationship(
         "InvoiceIdentifier", back_populates="invoice", cascade="all, delete-orphan"
     )

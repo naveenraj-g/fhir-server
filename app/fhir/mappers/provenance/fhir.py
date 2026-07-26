@@ -155,7 +155,8 @@ def to_fhir_provenance(model: "ProvenanceModel") -> dict:
         result["policy"] = [p.uri for p in model.policies]
 
     # location
-    loc = _ref(model.location_type, model.location_id, model.location_display)
+    location_public_id = model.location.location_id if model.location else model.location_id
+    loc = _ref(model.location_type, location_public_id, model.location_display)
     if loc:
         result["location"] = loc
 

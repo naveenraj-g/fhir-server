@@ -73,7 +73,7 @@ def plain_insurance_plan_coverage(cov: "InsurancePlanCoverage") -> dict:
         "type_display": cov.type_display,
         "type_text": cov.type_text,
         "networks": [
-            {k: v for k, v in {"id": n.id, "reference_id": n.reference_id, "reference_display": n.reference_display}.items() if v is not None}
+            {k: v for k, v in {"id": n.id, "reference_id": n.organization.organization_id if n.organization else None, "reference_display": n.reference_display}.items() if v is not None}
             for n in cov.networks
         ] if cov.networks else None,
         "benefits": [
@@ -119,7 +119,7 @@ def plain_insurance_plan_plan(plan: "InsurancePlanPlan") -> dict:
             for ca in plan.plan_coverage_areas
         ] if plan.plan_coverage_areas else None,
         "plan_networks": [
-            {k: v for k, v in {"id": n.id, "reference_id": n.reference_id, "reference_display": n.reference_display}.items() if v is not None}
+            {k: v for k, v in {"id": n.id, "reference_id": n.organization.organization_id if n.organization else None, "reference_display": n.reference_display}.items() if v is not None}
             for n in plan.plan_networks
         ] if plan.plan_networks else None,
         "general_costs": [
@@ -187,9 +187,9 @@ def to_plain_insurance_plan(model: "InsurancePlanModel") -> dict:
         "name": model.name,
         "period_start": _dt(model.period_start),
         "period_end": _dt(model.period_end),
-        "owned_by_id": model.owned_by_id,
+        "owned_by_id": model.owned_by_organization.organization_id if model.owned_by_organization else None,
         "owned_by_display": model.owned_by_display,
-        "administered_by_id": model.administered_by_id,
+        "administered_by_id": model.administered_by_organization.organization_id if model.administered_by_organization else None,
         "administered_by_display": model.administered_by_display,
         "user_id": model.user_id,
         "org_id": model.org_id,
@@ -215,7 +215,7 @@ def to_plain_insurance_plan(model: "InsurancePlanModel") -> dict:
             for e in model.endpoints
         ] if model.endpoints else None,
         "networks": [
-            {k: v for k, v in {"id": n.id, "reference_id": n.reference_id, "reference_display": n.reference_display}.items() if v is not None}
+            {k: v for k, v in {"id": n.id, "reference_id": n.organization.organization_id if n.organization else None, "reference_display": n.reference_display}.items() if v is not None}
             for n in model.networks
         ] if model.networks else None,
         "contacts": [plain_insurance_plan_contact(c) for c in model.contacts] if model.contacts else None,

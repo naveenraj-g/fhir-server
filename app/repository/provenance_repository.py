@@ -11,6 +11,7 @@ from app.models.provenance.enums import (
     ProvenanceEntityRole,
     ProvenanceLocationReferenceType,
 )
+from app.models.location.location import LocationModel
 from app.models.provenance.provenance import (
     ProvenanceAgent,
     ProvenanceAgentRole,
@@ -37,7 +38,25 @@ def _with_relationships(stmt):
         selectinload(ProvenanceModel.agents).selectinload(ProvenanceAgent.roles),
         selectinload(ProvenanceModel.entities).selectinload(ProvenanceEntity.entity_agents),
         selectinload(ProvenanceModel.signatures).selectinload(ProvenanceSignature.signature_types),
+        selectinload(ProvenanceModel.location),
     )
+
+
+async def _resolve_location_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Location/<public_id>' to the internal location.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref_closed(ref, ProvenanceLocationReferenceType, "location")
+    result = await session.execute(
+        select(LocationModel.id).where(LocationModel.location_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Location/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 def _parse_ref_closed(ref: str, enum_cls, field: str):
@@ -259,9 +278,7 @@ class ProvenanceRepository:
         created_by: Optional[str],
     ) -> ProvenanceModel:
         async with self.session_factory() as session:
-            loc_type, loc_id = _parse_ref_closed_optional(
-                payload.location, ProvenanceLocationReferenceType, "location"
-            )
+            loc_type, loc_id = await _resolve_location_pk(session, payload.location)
 
             prov = ProvenanceModel(
                 user_id=user_id,
@@ -348,9 +365,7 @@ class ProvenanceRepository:
                 if field in scalar_fields:
                     setattr(prov, field, value)
                 elif field == "location" and value is not None:
-                    loc_type, loc_id = _parse_ref_closed(
-                        value, ProvenanceLocationReferenceType, "location"
-                    )
+                    loc_type, loc_id = await _resolve_location_pk(session, value)
                     prov.location_type = loc_type
                     prov.location_id = loc_id
                 elif field == "targets" and value is not None:

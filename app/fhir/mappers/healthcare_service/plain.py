@@ -41,7 +41,7 @@ def plain_hs_location(loc) -> dict:
     return {
         "id": loc.id,
         "reference_type": fhir_enum(loc.reference_type),
-        "reference_id": loc.reference_id,
+        "reference_id": loc.reference.location_id if loc.reference else loc.reference_id,
         "reference_display": loc.reference_display,
     }
 
@@ -54,7 +54,7 @@ def plain_hs_coverage_area(ca) -> dict:
     return {
         "id": ca.id,
         "reference_type": fhir_enum(ca.reference_type),
-        "reference_id": ca.reference_id,
+        "reference_id": ca.reference.location_id if ca.reference else ca.reference_id,
         "reference_display": ca.reference_display,
     }
 
@@ -153,7 +153,7 @@ def to_plain_healthcare_service(hs) -> dict:
         "id": hs.healthcare_service_id,
         "active": hs.active,
         "provided_by_type": fhir_enum(hs.provided_by_type),
-        "provided_by_id": hs.provided_by_id,
+        "provided_by_id": hs.provided_by.organization_id if hs.provided_by else hs.provided_by_id,
         "provided_by_display": hs.provided_by_display,
         "name": hs.name,
         "comment": hs.comment,

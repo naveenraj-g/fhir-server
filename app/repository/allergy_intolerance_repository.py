@@ -23,7 +23,9 @@ from app.models.allergy_intolerance.allergy_intolerance import (
     AllergyIntoleranceReactionManifestation,
     AllergyIntoleranceReactionNote,
 )
+from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType
+from app.models.patient.patient import PatientModel
 from app.schemas.allergy_intolerance.input import (
     AllergyIntoleranceCreateSchema,
     AllergyIntolerancePatchSchema,
@@ -41,7 +43,41 @@ def _with_relationships(stmt):
         selectinload(AllergyIntoleranceModel.reactions).selectinload(
             AllergyIntoleranceReaction.reaction_notes
         ),
+        selectinload(AllergyIntoleranceModel.patient),
+        selectinload(AllergyIntoleranceModel.encounter),
     )
+
+
+async def _resolve_patient_pk(session: AsyncSession, ref: str):
+    """Resolve 'Patient/<public_id>' to the internal patient.id PK."""
+    ref_type, public_id = _parse_ref(ref, AllergyIntolerancePatientReferenceType, "patient")
+    result = await session.execute(
+        select(PatientModel.id).where(PatientModel.patient_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Patient/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_encounter_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Encounter/<public_id>' to the internal encounter.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref(ref, EncounterReferenceType, "encounter")
+    result = await session.execute(
+        select(EncounterModel.id).where(EncounterModel.encounter_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Encounter/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 def _parse_ref(ref: str, enum_cls, field: str):
@@ -226,12 +262,8 @@ class AllergyIntoleranceRepository:
         created_by: Optional[str],
     ) -> AllergyIntoleranceModel:
         async with self.session_factory() as session:
-            patient_type, patient_id = _parse_ref(
-                payload.patient, AllergyIntolerancePatientReferenceType, "patient"
-            )
-            encounter_type, encounter_id = _parse_ref_optional(
-                payload.encounter, EncounterReferenceType, "encounter"
-            )
+            patient_type, patient_id = await _resolve_patient_pk(session, payload.patient)
+            encounter_type, encounter_id = await _resolve_encounter_pk(session, payload.encounter)
             recorder_type, recorder_id = _parse_ref_optional(
                 payload.recorder, AllergyIntoleranceParticipantReferenceType, "recorder"
             )
@@ -385,9 +417,13 @@ class AllergyIntoleranceRepository:
                             detail=f"Invalid criticality '{value}'.",
                         )
                 elif field == "encounter" and value is not None:
-                    enc_type, enc_id = _parse_ref(value, EncounterReferenceType, "encounter")
+                    enc_type, enc_id = await _resolve_encounter_pk(session, value)
                     ai.encounter_type = enc_type
                     ai.encounter_id = enc_id
+                elif field == "patient" and value is not None:
+                    pt_type, pt_id = await _resolve_patient_pk(session, value)
+                    ai.patient_type = pt_type
+                    ai.patient_id = pt_id
                 elif field == "recorder" and value is not None:
                     rec_type, rec_id = _parse_ref(value, AllergyIntoleranceParticipantReferenceType, "recorder")
                     ai.recorder_type = rec_type
@@ -475,7 +511,7 @@ class AllergyIntoleranceRepository:
                         for r in value
                     ]
                     self._build_reactions(session, ai, ai.org_id, reaction_inputs)
-                elif field not in ("encounter", "recorder", "asserter", "categories", "identifiers", "notes", "reactions"):
+                elif field not in ("encounter", "patient", "recorder", "asserter", "categories", "identifiers", "notes", "reactions"):
                     setattr(ai, field, value)
 
             ai.updated_by = updated_by

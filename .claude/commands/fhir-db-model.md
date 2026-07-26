@@ -21,10 +21,10 @@ Never put a `0..*` field in a single column. Exceptions (comma-separated Text): 
 → Single flat column with matching SQLAlchemy type.
 
 ### CodeableConcept (0..1)
-→ Four flat columns: `<field>_system`, `<field>_code`, `<field>_display`, `<field>_text`.
+→ Six flat columns covering the single coding this project stores per concept, plus the concept's own text: `<field>_system`, `<field>_version`, `<field>_code`, `<field>_display`, `<field>_text`, `<field>_user_selected`. (`version` and `user_selected` are `Coding` elements per R4 — https://www.hl7.org/fhir/R4/datatypes.html#Coding — don't drop them.)
 
 ### CodeableConcept[] (0..*)
-→ Child table with: `coding_system`, `coding_code`, `coding_display`, `text`.
+→ Child table with: `coding_system`, `coding_version`, `coding_code`, `coding_display`, `text`, `coding_user_selected`.
 
 ### Reference (0..1) — closed allowed types
 → Three flat columns: `<field>_type` (Enum), `<field>_id` (Integer), `<field>_display` (String).
@@ -45,10 +45,12 @@ Even when only **one resource type** is allowed, still use a single-value Enum (
 Both concept and reference halves in the same row:
 ```python
 # concept half (CodeableConcept)
-coding_system  = Column(String, nullable=True)
-coding_code    = Column(String, nullable=True)
-coding_display = Column(String, nullable=True)
-text           = Column(String, nullable=True)
+coding_system       = Column(String, nullable=True)
+coding_version      = Column(String, nullable=True)
+coding_code         = Column(String, nullable=True)
+coding_display      = Column(String, nullable=True)
+text                = Column(String, nullable=True)
+coding_user_selected = Column(Boolean, nullable=True)
 # reference half
 reference_type    = Column(Enum(MyReferenceType, name="pg_type_name"), nullable=True)  # or String if open
 reference_id      = Column(Integer, nullable=True)
@@ -59,7 +61,7 @@ reference_display = Column(String, nullable=True)
 → Child table with: `text` (Text, NOT NULL), `time` (DateTime), `author_string` (String), `author_reference_type` (Enum or String), `author_reference_id` (Integer), `author_reference_display` (String).
 
 ### Identifier (0..*)
-→ Child table with: `use`, `type_system`, `type_code`, `type_display`, `type_text`, `system`, `value`, `period_start`, `period_end`, `assigner`.
+→ Child table with: `use`, `type_system`, `type_version`, `type_code`, `type_display`, `type_text`, `type_user_selected`, `system`, `value`, `period_start`, `period_end`, `assigner`. (`type` is a CodeableConcept — same six-column shape as the CodeableConcept rule above.)
 
 ### Period (0..1)
 → Two flat columns: `<field>_start` (DateTime), `<field>_end` (DateTime).

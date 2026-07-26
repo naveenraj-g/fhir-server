@@ -35,9 +35,10 @@ def fhir_hs_specialty(sp) -> dict:
 
 def fhir_hs_location(loc) -> dict:
     ref_type = fhir_enum(loc.reference_type)
+    public_id = loc.reference.location_id if loc.reference else loc.reference_id
     entry: dict = {}
-    if ref_type and loc.reference_id is not None:
-        entry["reference"] = f"{ref_type}/{loc.reference_id}"
+    if ref_type and public_id is not None:
+        entry["reference"] = f"{ref_type}/{public_id}"
     if loc.reference_display:
         entry["display"] = loc.reference_display
     return entry
@@ -49,9 +50,10 @@ def fhir_hs_telecom(t) -> dict:
 
 def fhir_hs_coverage_area(ca) -> dict:
     ref_type = fhir_enum(ca.reference_type)
+    public_id = ca.reference.location_id if ca.reference else ca.reference_id
     entry: dict = {}
-    if ref_type and ca.reference_id is not None:
-        entry["reference"] = f"{ref_type}/{ca.reference_id}"
+    if ref_type and public_id is not None:
+        entry["reference"] = f"{ref_type}/{public_id}"
     if ca.reference_display:
         entry["display"] = ca.reference_display
     return entry
@@ -137,8 +139,9 @@ def to_fhir_healthcare_service(hs) -> dict:
         result["active"] = hs.active
 
     pb_type = fhir_enum(hs.provided_by_type)
-    if pb_type and hs.provided_by_id is not None:
-        pb_ref: dict = {"reference": f"{pb_type}/{hs.provided_by_id}"}
+    pb_public_id = hs.provided_by.organization_id if hs.provided_by else hs.provided_by_id
+    if pb_type and pb_public_id is not None:
+        pb_ref: dict = {"reference": f"{pb_type}/{pb_public_id}"}
         if hs.provided_by_display:
             pb_ref["display"] = hs.provided_by_display
         result["providedBy"] = pb_ref

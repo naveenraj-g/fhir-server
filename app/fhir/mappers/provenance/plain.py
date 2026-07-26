@@ -141,7 +141,7 @@ def to_plain_provenance(model: "ProvenanceModel") -> dict:
         "occurred_period_end": model.occurred_period_end.isoformat() if model.occurred_period_end else None,
         "occurred_date_time": model.occurred_date_time.isoformat() if model.occurred_date_time else None,
         "location_type": _ev(model.location_type),
-        "location_id": model.location_id,
+        "location_id": model.location.location_id if model.location else model.location_id,
         "location_display": model.location_display,
         "activity_system": model.activity_system,
         "activity_code": model.activity_code,

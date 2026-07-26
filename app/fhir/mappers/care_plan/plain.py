@@ -127,7 +127,7 @@ def to_plain_care_plan(model: "CarePlanModel") -> dict:
         "subject_id": model.subject_id,
         "subject_display": model.subject_display,
         "encounter_type": _ev(model.encounter_type),
-        "encounter_id": model.encounter_id,
+        "encounter_id": model.encounter.encounter_id if model.encounter else model.encounter_id,
         "encounter_display": model.encounter_display,
         "period_start": _dt(model.period_start),
         "period_end": _dt(model.period_end),

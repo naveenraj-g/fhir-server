@@ -221,7 +221,8 @@ def to_fhir_task(model: "TaskModel") -> dict:
         result["for"] = for_ref
 
     # encounter
-    enc = _ref(model.encounter_type, model.encounter_id, model.encounter_display)
+    encounter_public_id = model.encounter.encounter_id if model.encounter else model.encounter_id
+    enc = _ref(model.encounter_type, encounter_public_id, model.encounter_display)
     if enc:
         result["encounter"] = enc
 
@@ -260,7 +261,8 @@ def to_fhir_task(model: "TaskModel") -> dict:
         result["owner"] = own
 
     # location
-    loc = _ref(model.location_type, model.location_id, model.location_display)
+    location_public_id = model.location.location_id if model.location else model.location_id
+    loc = _ref(model.location_type, location_public_id, model.location_display)
     if loc:
         result["location"] = loc
 

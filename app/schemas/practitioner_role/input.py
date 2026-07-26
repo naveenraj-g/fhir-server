@@ -46,72 +46,15 @@ class PractitionerRoleHealthcareServiceInput(BaseModel):
     reference_display: Optional[str] = None
 
 
-class PractitionerRoleCharacteristicInput(BaseModel):
+class PractitionerRoleTelecomInput(BaseModel):
+    """telecom[] (0..*) ContactPoint — required R4 element."""
     model_config = ConfigDict(extra="forbid")
-    coding_system: Optional[str] = None
-    coding_code: Optional[str] = None
-    coding_display: Optional[str] = None
-    text: Optional[str] = None
-
-
-class PractitionerRoleCommunicationInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    coding_system: Optional[str] = None
-    coding_code: Optional[str] = None
-    coding_display: Optional[str] = None
-    text: Optional[str] = None
-
-
-class PractitionerRoleContactNameInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    use: Optional[str] = None
-    text: Optional[str] = None
-    family: Optional[str] = None
-    given: Optional[List[str]] = None
-    prefix: Optional[List[str]] = None
-    suffix: Optional[List[str]] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-
-
-class PractitionerRoleContactTelecomInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    system: Optional[str] = None
+    system: Optional[str] = Field(None, description="phone|fax|email|pager|url|sms|other")
     value: Optional[str] = None
-    use: Optional[str] = None
+    use: Optional[str] = Field(None, description="home|work|temp|old|mobile")
     rank: Optional[int] = None
     period_start: Optional[datetime] = None
     period_end: Optional[datetime] = None
-
-
-class PractitionerRoleContactInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    # purpose (CodeableConcept)
-    purpose_system: Optional[str] = None
-    purpose_code: Optional[str] = None
-    purpose_display: Optional[str] = None
-    purpose_text: Optional[str] = None
-    # address (flat columns)
-    address_use: Optional[str] = None
-    address_type: Optional[str] = None
-    address_text: Optional[str] = None
-    address_line: Optional[List[str]] = Field(None, description="Street lines; stored comma-separated.")
-    address_city: Optional[str] = None
-    address_district: Optional[str] = None
-    address_state: Optional[str] = None
-    address_postal_code: Optional[str] = None
-    address_country: Optional[str] = None
-    address_period_start: Optional[datetime] = None
-    address_period_end: Optional[datetime] = None
-    # organization reference
-    organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/190001'.")
-    organization_display: Optional[str] = None
-    # period
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-    # nested children
-    names: Optional[List[PractitionerRoleContactNameInput]] = None
-    telecoms: Optional[List[PractitionerRoleContactTelecomInput]] = None
 
 
 class PractitionerRoleAvailableTimeInput(BaseModel):
@@ -127,12 +70,6 @@ class PractitionerRoleNotAvailableTimeInput(BaseModel):
     description: Optional[str] = None
     during_start: Optional[datetime] = None
     during_end: Optional[datetime] = None
-
-
-class PractitionerRoleAvailabilityInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    available_times: Optional[List[PractitionerRoleAvailableTimeInput]] = None
-    not_available_times: Optional[List[PractitionerRoleNotAvailableTimeInput]] = None
 
 
 class PractitionerRoleEndpointInput(BaseModel):
@@ -173,21 +110,17 @@ class PractitionerRoleCreateSchema(BaseModel):
                 "location": [{"reference": "Location/1", "reference_display": "Main Clinic"}],
                 "identifier": [],
                 "healthcare_service": [],
-                "characteristic": [],
-                "communication": [],
-                "contact": [],
-                "availability": [
+                "telecom": [
+                    {"system": "phone", "value": "+1-555-0100", "use": "work"}
+                ],
+                "available_time": [
                     {
-                        "available_times": [
-                            {
-                                "days_of_week": ["mon", "tue", "wed", "thu", "fri"],
-                                "available_start_time": "09:00:00",
-                                "available_end_time": "17:00:00",
-                            }
-                        ],
-                        "not_available_times": [],
+                        "days_of_week": ["mon", "tue", "wed", "thu", "fri"],
+                        "available_start_time": "09:00:00",
+                        "available_end_time": "17:00:00",
                     }
                 ],
+                "not_available": [],
                 "endpoint": [],
             }
         },
@@ -212,10 +145,9 @@ class PractitionerRoleCreateSchema(BaseModel):
     specialty: Optional[List[PractitionerRoleSpecialtyInput]] = None
     location: Optional[List[PractitionerRoleLocationInput]] = None
     healthcare_service: Optional[List[PractitionerRoleHealthcareServiceInput]] = None
-    characteristic: Optional[List[PractitionerRoleCharacteristicInput]] = None
-    communication: Optional[List[PractitionerRoleCommunicationInput]] = None
-    contact: Optional[List[PractitionerRoleContactInput]] = None
-    availability: Optional[List[PractitionerRoleAvailabilityInput]] = None
+    telecom: Optional[List[PractitionerRoleTelecomInput]] = None
+    available_time: Optional[List[PractitionerRoleAvailableTimeInput]] = None
+    not_available: Optional[List[PractitionerRoleNotAvailableTimeInput]] = None
     endpoint: Optional[List[PractitionerRoleEndpointInput]] = None
 
 

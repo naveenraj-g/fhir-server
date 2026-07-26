@@ -14,13 +14,13 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import OrganizationReferenceType
 from app.models.patient.enums import (
     PatientGender,
     PatientGeneralPractitionerType,
     PatientLinkOtherType,
     PatientLinkType,
 )
-from app.models.enums import OrganizationReferenceType
 from app.schemas.enums import (
     AddressType,
     AddressUse,
@@ -30,7 +30,9 @@ from app.schemas.enums import (
     IdentifierUse,
 )
 
-patient_id_seq = Sequence("patient_pub_seq", start=10000, increment=1, metadata=Base.metadata)
+patient_id_seq = Sequence(
+    "patient_pub_seq", start=10000, increment=1, metadata=Base.metadata
+)
 
 
 class PatientModel(Base):
@@ -59,9 +61,11 @@ class PatientModel(Base):
 
     # maritalStatus (0..1 CodeableConcept) — flattened
     marital_status_system = Column(String, nullable=True)
+    marital_status_version = Column(String, nullable=True)
     marital_status_code = Column(String, nullable=True)
     marital_status_display = Column(String, nullable=True)
     marital_status_text = Column(String, nullable=True)
+    marital_status_user_selected = Column(Boolean, nullable=True)
 
     # multipleBirth[x] — boolean | integer choice type
     multiple_birth_boolean = Column(Boolean, nullable=True)
@@ -69,7 +73,11 @@ class PatientModel(Base):
 
     # managingOrganization (0..1 Reference(Organization)) — flattened
     managing_organization_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type"),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     managing_organization_id = Column(Integer, nullable=True)
@@ -81,31 +89,49 @@ class PatientModel(Base):
     updated_by = Column(String, nullable=True)
 
     identifiers = relationship(
-        "PatientIdentifier", back_populates="patient", cascade="all, delete-orphan",
+        "PatientIdentifier",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     names = relationship(
-        "PatientName", back_populates="patient", cascade="all, delete-orphan",
+        "PatientName",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     telecoms = relationship(
-        "PatientTelecom", back_populates="patient", cascade="all, delete-orphan",
+        "PatientTelecom",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     addresses = relationship(
-        "PatientAddress", back_populates="patient", cascade="all, delete-orphan",
+        "PatientAddress",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     photos = relationship(
-        "PatientPhoto", back_populates="patient", cascade="all, delete-orphan",
+        "PatientPhoto",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     contacts = relationship(
-        "PatientContact", back_populates="patient", cascade="all, delete-orphan",
+        "PatientContact",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     communications = relationship(
-        "PatientCommunication", back_populates="patient", cascade="all, delete-orphan",
+        "PatientCommunication",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     general_practitioners = relationship(
-        "PatientGeneralPractitioner", back_populates="patient", cascade="all, delete-orphan",
+        "PatientGeneralPractitioner",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
     links = relationship(
-        "PatientLink", back_populates="patient", cascade="all, delete-orphan",
+        "PatientLink",
+        back_populates="patient",
+        cascade="all, delete-orphan",
     )
 
 
@@ -124,9 +150,11 @@ class PatientIdentifier(Base):
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
     # Identifier.type is a CodeableConcept — single coding flattened + text
     type_system = Column(String, nullable=True)
+    type_version = Column(String, nullable=True)
     type_code = Column(String, nullable=True)
     type_display = Column(String, nullable=True)
     type_text = Column(String, nullable=True)
+    type_user_selected = Column(Boolean, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
@@ -151,9 +179,9 @@ class PatientName(Base):
     use = Column(Enum(HumanNameUse, name="human_name_use"), nullable=True)
     text = Column(String, nullable=True)
     family = Column(String, nullable=True)
-    given = Column(Text, nullable=True)    # comma-separated given names
-    prefix = Column(Text, nullable=True)   # comma-separated prefixes
-    suffix = Column(Text, nullable=True)   # comma-separated suffixes
+    given = Column(Text, nullable=True)  # comma-separated given names
+    prefix = Column(Text, nullable=True)  # comma-separated prefixes
+    suffix = Column(Text, nullable=True)  # comma-separated suffixes
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
@@ -169,7 +197,9 @@ class PatientTelecom(Base):
     patient_id = Column(Integer, ForeignKey("patient.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    system = Column(Enum(ContactPointSystem, name="contact_point_system"), nullable=True)
+    system = Column(
+        Enum(ContactPointSystem, name="contact_point_system"), nullable=True
+    )
     value = Column(String, nullable=True)
     use = Column(Enum(ContactPointUse, name="contact_point_use"), nullable=True)
     rank = Column(Integer, nullable=True)
@@ -194,7 +224,7 @@ class PatientAddress(Base):
     use = Column(Enum(AddressUse, name="address_use"), nullable=True)
     type = Column(Enum(AddressType, name="address_type"), nullable=True)
     text = Column(String, nullable=True)
-    line = Column(Text, nullable=True)     # comma-separated address lines
+    line = Column(Text, nullable=True)  # comma-separated address lines
     city = Column(String, nullable=True)
     district = Column(String, nullable=True)
     state = Column(String, nullable=True)
@@ -246,9 +276,9 @@ class PatientContact(Base):
     name_use = Column(Enum(HumanNameUse, name="human_name_use"), nullable=True)
     name_text = Column(String, nullable=True)
     name_family = Column(String, nullable=True)
-    name_given = Column(Text, nullable=True)    # comma-separated
-    name_prefix = Column(Text, nullable=True)   # comma-separated
-    name_suffix = Column(Text, nullable=True)   # comma-separated
+    name_given = Column(Text, nullable=True)  # comma-separated
+    name_prefix = Column(Text, nullable=True)  # comma-separated
+    name_suffix = Column(Text, nullable=True)  # comma-separated
 
     # address (0..1 Address) — flattened
     address_use = Column(Enum(AddressUse, name="address_use"), nullable=True)
@@ -267,7 +297,11 @@ class PatientContact(Base):
 
     # organization (0..1 Reference(Organization)) — flattened
     organization_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     organization_id = Column(Integer, nullable=True)
@@ -279,10 +313,14 @@ class PatientContact(Base):
 
     patient = relationship("PatientModel", back_populates="contacts")
     relationships = relationship(
-        "PatientContactRelationship", back_populates="contact", cascade="all, delete-orphan",
+        "PatientContactRelationship",
+        back_populates="contact",
+        cascade="all, delete-orphan",
     )
     telecoms = relationship(
-        "PatientContactTelecom", back_populates="contact", cascade="all, delete-orphan",
+        "PatientContactTelecom",
+        back_populates="contact",
+        cascade="all, delete-orphan",
     )
 
 
@@ -292,13 +330,17 @@ class PatientContactRelationship(Base):
     __tablename__ = "patient_contact_relationship"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("patient_contact.id"), nullable=False, index=True)
+    contact_id = Column(
+        Integer, ForeignKey("patient_contact.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     coding_system = Column(String, nullable=True)
+    coding_version = Column(String, nullable=True)
     coding_code = Column(String, nullable=True)
     coding_display = Column(String, nullable=True)
     text = Column(String, nullable=True)
+    coding_user_selected = Column(Boolean, nullable=True)
 
     contact = relationship("PatientContact", back_populates="relationships")
 
@@ -309,10 +351,14 @@ class PatientContactTelecom(Base):
     __tablename__ = "patient_contact_telecom"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("patient_contact.id"), nullable=False, index=True)
+    contact_id = Column(
+        Integer, ForeignKey("patient_contact.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
-    system = Column(Enum(ContactPointSystem, name="contact_point_system"), nullable=True)
+    system = Column(
+        Enum(ContactPointSystem, name="contact_point_system"), nullable=True
+    )
     value = Column(String, nullable=True)
     use = Column(Enum(ContactPointUse, name="contact_point_use"), nullable=True)
     rank = Column(Integer, nullable=True)
@@ -335,9 +381,11 @@ class PatientCommunication(Base):
     org_id = Column(String, nullable=True)
 
     language_system = Column(String, nullable=True)
+    language_version = Column(String, nullable=True)
     language_code = Column(String, nullable=True)
     language_display = Column(String, nullable=True)
     language_text = Column(String, nullable=True)
+    language_user_selected = Column(Boolean, nullable=True)
     preferred = Column(Boolean, nullable=True)
 
     patient = relationship("PatientModel", back_populates="communications")
@@ -353,7 +401,8 @@ class PatientGeneralPractitioner(Base):
     org_id = Column(String, nullable=True)
 
     reference_type = Column(
-        Enum(PatientGeneralPractitionerType, name="patient_gp_type"), nullable=True,
+        Enum(PatientGeneralPractitionerType, name="patient_gp_type"),
+        nullable=True,
     )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
@@ -374,12 +423,14 @@ class PatientLink(Base):
     org_id = Column(String, nullable=True)
 
     other_type = Column(
-        Enum(PatientLinkOtherType, name="patient_link_other_type"), nullable=True,
+        Enum(PatientLinkOtherType, name="patient_link_other_type"),
+        nullable=True,
     )
     other_id = Column(Integer, nullable=True)
     other_display = Column(String, nullable=True)
     type = Column(
-        Enum(PatientLinkType, name="patient_link_type"), nullable=False,
+        Enum(PatientLinkType, name="patient_link_type"),
+        nullable=False,
     )
 
     patient = relationship("PatientModel", back_populates="links")

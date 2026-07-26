@@ -46,9 +46,11 @@ def fhir_identifier(i) -> dict:
         if i.type_system or i.type_code:
             type_cc["coding"] = [{k: v for k, v in {
                 "system": i.type_system,
+                "version": getattr(i, "type_version", None),
                 "code": i.type_code,
                 "display": i.type_display,
-            }.items() if v}]
+                "userSelected": getattr(i, "type_user_selected", None),
+            }.items() if v is not None}]
         if i.type_text:
             type_cc["text"] = i.type_text
         entry["type"] = type_cc
@@ -129,9 +131,11 @@ def fhir_photo(p) -> dict:
 def fhir_communication(cm) -> dict:
     coding = {k: v for k, v in {
         "system": cm.language_system,
+        "version": getattr(cm, "language_version", None),
         "code": cm.language_code,
         "display": cm.language_display,
-    }.items() if v}
+        "userSelected": getattr(cm, "language_user_selected", None),
+    }.items() if v is not None}
     language_cc: dict = {}
     if coding:
         language_cc["coding"] = [coding]
@@ -169,9 +173,11 @@ def plain_identifier(i) -> dict:
         "org_id": i.org_id,
         "use": fhir_enum(i.use),
         "type_system": i.type_system,
+        "type_version": getattr(i, "type_version", None),
         "type_code": i.type_code,
         "type_display": i.type_display,
         "type_text": i.type_text,
+        "type_user_selected": getattr(i, "type_user_selected", None),
         "system": i.system,
         "value": i.value,
         "period_start": i.period_start.isoformat() if i.period_start else None,
@@ -231,8 +237,10 @@ def plain_communication(cm) -> dict:
         "id": cm.id,
         "org_id": cm.org_id,
         "language_system": cm.language_system,
+        "language_version": getattr(cm, "language_version", None),
         "language_code": cm.language_code,
         "language_display": cm.language_display,
         "language_text": cm.language_text,
+        "language_user_selected": getattr(cm, "language_user_selected", None),
         "preferred": cm.preferred,
     }

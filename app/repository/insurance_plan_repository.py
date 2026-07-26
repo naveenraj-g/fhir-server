@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
+from app.models.enums import OrganizationReferenceType
 from app.models.insurance_plan.enums import InsurancePlanStatus
 from app.models.insurance_plan.insurance_plan import (
     InsurancePlanAlias,
@@ -30,6 +31,7 @@ from app.models.insurance_plan.insurance_plan import (
     InsurancePlanPlanSpecificCost,
     InsurancePlanType,
 )
+from app.models.organization.organization import OrganizationModel
 from app.schemas.insurance_plan.input import (
     InsurancePlanCreateSchema,
     InsurancePlanPatchSchema,
@@ -53,7 +55,7 @@ def _cast_status(v: Optional[str]) -> Optional[InsurancePlanStatus]:
         )
 
 
-def _parse_org_ref(ref: Optional[str], field: str) -> Optional[int]:
+async def _resolve_org_pk(session: AsyncSession, ref: Optional[str], field: str) -> Optional[int]:
     if not ref:
         return None
     parts = ref.split("/", 1)
@@ -63,12 +65,22 @@ def _parse_org_ref(ref: Optional[str], field: str) -> Optional[int]:
             detail=f"'{field}' must be 'Organization/<id>', got '{ref}'.",
         )
     try:
-        return int(parts[1])
+        org_public_id = int(parts[1])
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"'{field}' id must be an integer, got '{parts[1]}'.",
         )
+    result = await session.execute(
+        select(OrganizationModel.id).where(OrganizationModel.organization_id == org_public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Organization/{org_public_id} not found.",
+        )
+    return pk
 
 
 def _parse_loc_ref(ref: str, field: str) -> int:
@@ -77,22 +89,6 @@ def _parse_loc_ref(ref: str, field: str) -> int:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"'{field}' items must be 'Location/<id>', got '{ref}'.",
-        )
-    try:
-        return int(parts[1])
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"'{field}' id must be an integer, got '{parts[1]}'.",
-        )
-
-
-def _parse_org_ref_item(ref: str, field: str) -> int:
-    parts = ref.split("/", 1)
-    if len(parts) != 2 or parts[0] != "Organization":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"'{field}' items must be 'Organization/<id>', got '{ref}'.",
         )
     try:
         return int(parts[1])
@@ -126,15 +122,17 @@ def _with_relationships(stmt):
         selectinload(InsurancePlanModel.aliases),
         selectinload(InsurancePlanModel.coverage_areas),
         selectinload(InsurancePlanModel.endpoints),
-        selectinload(InsurancePlanModel.networks),
+        selectinload(InsurancePlanModel.networks).selectinload(InsurancePlanNetwork.organization),
         selectinload(InsurancePlanModel.contacts).selectinload(InsurancePlanContact.telecoms),
-        selectinload(InsurancePlanModel.coverages).selectinload(InsurancePlanCoverage.networks),
+        selectinload(InsurancePlanModel.coverages).selectinload(InsurancePlanCoverage.networks).selectinload(InsurancePlanCoverageNetwork.organization),
         selectinload(InsurancePlanModel.coverages).selectinload(InsurancePlanCoverage.benefits).selectinload(InsurancePlanCoverageBenefit.limits),
         selectinload(InsurancePlanModel.plans).selectinload(InsurancePlanPlan.plan_identifiers),
         selectinload(InsurancePlanModel.plans).selectinload(InsurancePlanPlan.plan_coverage_areas),
-        selectinload(InsurancePlanModel.plans).selectinload(InsurancePlanPlan.plan_networks),
+        selectinload(InsurancePlanModel.plans).selectinload(InsurancePlanPlan.plan_networks).selectinload(InsurancePlanPlanNetwork.organization),
         selectinload(InsurancePlanModel.plans).selectinload(InsurancePlanPlan.general_costs),
         selectinload(InsurancePlanModel.plans).selectinload(InsurancePlanPlan.specific_costs).selectinload(InsurancePlanPlanSpecificCost.sc_benefits).selectinload(InsurancePlanPlanSCBenefit.costs),
+        selectinload(InsurancePlanModel.owned_by_organization),
+        selectinload(InsurancePlanModel.administered_by_organization),
     )
 
 
@@ -155,12 +153,13 @@ def _build_contact(session, contact: InsurancePlanContact, org_id: str, item):
         ))
 
 
-def _build_coverage(session, coverage: InsurancePlanCoverage, org_id: str, item):
+async def _build_coverage(session, coverage: InsurancePlanCoverage, org_id: str, item):
     for net_ref in (item.networks or []):
-        ref_id = _parse_org_ref_item(net_ref, "coverages.networks")
+        ref_id = await _resolve_org_pk(session, net_ref, "coverages.networks")
         session.add(InsurancePlanCoverageNetwork(
             coverage=coverage,
             org_id=org_id,
+            reference_type=OrganizationReferenceType.Organization,
             reference_id=ref_id,
         ))
     for ben in (item.benefits or []):
@@ -190,7 +189,7 @@ def _build_coverage(session, coverage: InsurancePlanCoverage, org_id: str, item)
             ))
 
 
-def _build_plan(session, plan: InsurancePlanPlan, org_id: str, item):
+async def _build_plan(session, plan: InsurancePlanPlan, org_id: str, item):
     for pi in (item.plan_identifiers or []):
         session.add(InsurancePlanPlanIdentifier(
             plan=plan,
@@ -214,10 +213,11 @@ def _build_plan(session, plan: InsurancePlanPlan, org_id: str, item):
             reference_id=loc_id,
         ))
     for net_ref in (item.plan_networks or []):
-        ref_id = _parse_org_ref_item(net_ref, "plans.plan_networks")
+        ref_id = await _resolve_org_pk(session, net_ref, "plans.plan_networks")
         session.add(InsurancePlanPlanNetwork(
             plan=plan,
             org_id=org_id,
+            reference_type=OrganizationReferenceType.Organization,
             reference_id=ref_id,
         ))
     for gc in (item.general_costs or []):
@@ -280,7 +280,7 @@ def _build_plan(session, plan: InsurancePlanPlan, org_id: str, item):
                 ))
 
 
-def _build_children(session, ip: InsurancePlanModel, org_id: str, payload):
+async def _build_children(session, ip: InsurancePlanModel, org_id: str, payload):
     for ident in (payload.identifiers or []):
         session.add(InsurancePlanIdentifier(
             insurance_plan=ip,
@@ -314,8 +314,13 @@ def _build_children(session, ip: InsurancePlanModel, org_id: str, payload):
         ep_id = _parse_endpoint_ref(ep_ref, "endpoints")
         session.add(InsurancePlanEndpoint(insurance_plan=ip, org_id=org_id, reference_id=ep_id))
     for net_ref in (payload.networks or []):
-        ref_id = _parse_org_ref_item(net_ref, "networks")
-        session.add(InsurancePlanNetwork(insurance_plan=ip, org_id=org_id, reference_id=ref_id))
+        ref_id = await _resolve_org_pk(session, net_ref, "networks")
+        session.add(InsurancePlanNetwork(
+            insurance_plan=ip,
+            org_id=org_id,
+            reference_type=OrganizationReferenceType.Organization,
+            reference_id=ref_id,
+        ))
     for cont in (payload.contacts or []):
         contact = InsurancePlanContact(
             insurance_plan=ip,
@@ -352,7 +357,7 @@ def _build_children(session, ip: InsurancePlanModel, org_id: str, payload):
             type_text=cov_item.type_text,
         )
         session.add(coverage)
-        _build_coverage(session, coverage, org_id, cov_item)
+        await _build_coverage(session, coverage, org_id, cov_item)
     for plan_item in (payload.plans or []):
         plan = InsurancePlanPlan(
             insurance_plan=ip,
@@ -363,7 +368,7 @@ def _build_children(session, ip: InsurancePlanModel, org_id: str, payload):
             type_text=plan_item.type_text,
         )
         session.add(plan)
-        _build_plan(session, plan, org_id, plan_item)
+        await _build_plan(session, plan, org_id, plan_item)
 
 
 # ---------------------------------------------------------------------------
@@ -423,10 +428,10 @@ class InsurancePlanRepository:
         org_id: str,
         created_by: Optional[str],
     ) -> InsurancePlanModel:
-        owned_by_id = _parse_org_ref(payload.owned_by, "owned_by")
-        administered_by_id = _parse_org_ref(payload.administered_by, "administered_by")
-
         async with self.session_factory() as session:
+            owned_by_id = await _resolve_org_pk(session, payload.owned_by, "owned_by")
+            administered_by_id = await _resolve_org_pk(session, payload.administered_by, "administered_by")
+
             ip = InsurancePlanModel(
                 user_id=user_id,
                 org_id=org_id,
@@ -434,15 +439,17 @@ class InsurancePlanRepository:
                 name=payload.name,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                owned_by_type=OrganizationReferenceType.Organization if owned_by_id else None,
                 owned_by_id=owned_by_id,
                 owned_by_display=payload.owned_by_display,
+                administered_by_type=OrganizationReferenceType.Organization if administered_by_id else None,
                 administered_by_id=administered_by_id,
                 administered_by_display=payload.administered_by_display,
                 created_by=created_by,
             )
             session.add(ip)
             await session.flush()
-            _build_children(session, ip, org_id, payload)
+            await _build_children(session, ip, org_id, payload)
             await session.commit()
             await session.refresh(ip)
 
@@ -474,11 +481,15 @@ class InsurancePlanRepository:
             if "period_end" in data:
                 ip.period_end = data["period_end"]
             if "owned_by" in data:
-                ip.owned_by_id = _parse_org_ref(data["owned_by"], "owned_by")
+                owned_by_id = await _resolve_org_pk(session, data["owned_by"], "owned_by")
+                ip.owned_by_id = owned_by_id
+                ip.owned_by_type = OrganizationReferenceType.Organization if owned_by_id else None
             if "owned_by_display" in data:
                 ip.owned_by_display = data["owned_by_display"]
             if "administered_by" in data:
-                ip.administered_by_id = _parse_org_ref(data["administered_by"], "administered_by")
+                administered_by_id = await _resolve_org_pk(session, data["administered_by"], "administered_by")
+                ip.administered_by_id = administered_by_id
+                ip.administered_by_type = OrganizationReferenceType.Organization if administered_by_id else None
             if "administered_by_display" in data:
                 ip.administered_by_display = data["administered_by_display"]
 
@@ -493,7 +504,7 @@ class InsurancePlanRepository:
             await session.flush()
 
             if any(f in data for f in child_fields):
-                _build_children(session, ip, ip.org_id, payload)
+                await _build_children(session, ip, ip.org_id, payload)
 
             await session.commit()
 

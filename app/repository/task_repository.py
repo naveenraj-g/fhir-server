@@ -18,7 +18,9 @@ from app.models.task.enums import (
     TaskStatus,
     TaskIntent,
 )
+from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType
+from app.models.location.location import LocationModel
 from app.models.task.task import (
     TaskBasedOn,
     TaskIdentifier,
@@ -47,7 +49,43 @@ def _with_relationships(stmt):
         selectinload(TaskModel.restriction_recipients),
         selectinload(TaskModel.inputs),
         selectinload(TaskModel.outputs),
+        selectinload(TaskModel.encounter),
+        selectinload(TaskModel.location),
     )
+
+
+async def _resolve_encounter_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Encounter/<public_id>' to the internal encounter.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref_closed(ref, EncounterReferenceType, "encounter")
+    result = await session.execute(
+        select(EncounterModel.id).where(EncounterModel.encounter_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Encounter/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_location_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Location/<public_id>' to the internal location.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref_closed(ref, TaskLocationReferenceType, "location")
+    result = await session.execute(
+        select(LocationModel.id).where(LocationModel.location_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Location/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 def _parse_ref_closed(ref: str, enum_cls, field: str):
@@ -337,18 +375,14 @@ class TaskRepository:
             focus_type, focus_id = _parse_ref_open_optional(payload.focus, "focus")
             for_ref = payload.model_dump(by_alias=True).get("for") or payload.model_dump().get("for_reference")
             for_type, for_id = _parse_ref_open_optional(for_ref, "for")
-            encounter_type, encounter_id = _parse_ref_closed_optional(
-                payload.encounter, EncounterReferenceType, "encounter"
-            )
+            encounter_type, encounter_id = await _resolve_encounter_pk(session, payload.encounter)
             requester_type, requester_id = _parse_ref_closed_optional(
                 payload.requester, TaskRequesterReferenceType, "requester"
             )
             owner_type, owner_id = _parse_ref_closed_optional(
                 payload.owner, TaskOwnerReferenceType, "owner"
             )
-            location_type, location_id = _parse_ref_closed_optional(
-                payload.location, TaskLocationReferenceType, "location"
-            )
+            location_type, location_id = await _resolve_location_pk(session, payload.location)
             reason_ref_type, reason_ref_id = _parse_ref_open_optional(
                 payload.reason_reference, "reason_reference"
             )
@@ -481,7 +515,7 @@ class TaskRepository:
                     task.for_type = t
                     task.for_id = i
                 elif field == "encounter" and value is not None:
-                    t, i = _parse_ref_closed(value, EncounterReferenceType, "encounter")
+                    t, i = await _resolve_encounter_pk(session, value)
                     task.encounter_type = t
                     task.encounter_id = i
                 elif field == "requester" and value is not None:
@@ -493,7 +527,7 @@ class TaskRepository:
                     task.owner_type = t
                     task.owner_id = i
                 elif field == "location" and value is not None:
-                    t, i = _parse_ref_closed(value, TaskLocationReferenceType, "location")
+                    t, i = await _resolve_location_pk(session, value)
                     task.location_type = t
                     task.location_id = i
                 elif field == "reason_reference" and value is not None:

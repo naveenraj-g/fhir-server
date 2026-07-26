@@ -134,9 +134,11 @@ class PlainPatientIdentifier(BaseModel):
     org_id: Optional[str] = None
     use: Optional[str] = None
     type_system: Optional[str] = None
+    type_version: Optional[str] = None
     type_code: Optional[str] = None
     type_display: Optional[str] = None
     type_text: Optional[str] = None
+    type_user_selected: Optional[bool] = None
     system: Optional[str] = None
     value: Optional[str] = None
     period_start: Optional[str] = None
@@ -188,9 +190,11 @@ class PlainContactRelationship(BaseModel):
     id: int = Field(..., description="Internal row ID.")
     org_id: Optional[str] = None
     coding_system: Optional[str] = None
+    coding_version: Optional[str] = None
     coding_code: Optional[str] = None
     coding_display: Optional[str] = None
     text: Optional[str] = None
+    coding_user_selected: Optional[bool] = None
 
 
 class PlainContactTelecom(BaseModel):
@@ -238,9 +242,11 @@ class PlainPatientCommunication(BaseModel):
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
     org_id: Optional[str] = None
     language_system: Optional[str] = None
+    language_version: Optional[str] = None
     language_code: Optional[str] = None
     language_display: Optional[str] = None
     language_text: Optional[str] = None
+    language_user_selected: Optional[bool] = None
     preferred: Optional[bool] = None
 
 
@@ -274,9 +280,11 @@ class PlainPatientResponse(BaseModel):
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[str] = Field(None, description="ISO 8601 datetime.")
     marital_status_system: Optional[str] = None
+    marital_status_version: Optional[str] = None
     marital_status_code: Optional[str] = None
     marital_status_display: Optional[str] = None
     marital_status_text: Optional[str] = None
+    marital_status_user_selected: Optional[bool] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
     managing_organization_type: Optional[str] = None
@@ -319,9 +327,11 @@ class PlainPatientCoreResponse(BaseModel):
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[str] = Field(None, description="ISO 8601 datetime.")
     marital_status_system: Optional[str] = None
+    marital_status_version: Optional[str] = None
     marital_status_code: Optional[str] = None
     marital_status_display: Optional[str] = None
     marital_status_text: Optional[str] = None
+    marital_status_user_selected: Optional[bool] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
     managing_organization_type: Optional[str] = None

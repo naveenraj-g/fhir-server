@@ -174,8 +174,6 @@ class PractitionerRepository:
                 active=payload.active,
                 gender=payload.gender,
                 birth_date=payload.birth_date,
-                deceased_boolean=payload.deceased_boolean,
-                deceased_datetime=payload.deceased_datetime,
                 created_by=created_by,
             )
             try:
@@ -201,8 +199,6 @@ class PractitionerRepository:
                 active=payload.active,
                 gender=payload.gender,
                 birth_date=payload.birth_date,
-                deceased_boolean=payload.deceased_boolean,
-                deceased_datetime=payload.deceased_datetime,
                 created_by=created_by,
             )
             session.add(practitioner)
@@ -334,7 +330,6 @@ class PractitionerRepository:
                         language_code=cm.language_code,
                         language_display=cm.language_display,
                         language_text=cm.language_text,
-                        preferred=cm.preferred,
                     ))
 
             try:
@@ -504,7 +499,6 @@ class PractitionerRepository:
                         practitioner_id=practitioner.id, org_id=practitioner.org_id,
                         language_system=cm.language_system, language_code=cm.language_code,
                         language_display=cm.language_display, language_text=cm.language_text,
-                        preferred=cm.preferred,
                     ))
 
             try:
@@ -741,7 +735,6 @@ class PractitionerRepository:
                 language_code=payload.language_code,
                 language_display=payload.language_display,
                 language_text=payload.language_text,
-                preferred=payload.preferred,
             )
             try:
                 session.add(row)

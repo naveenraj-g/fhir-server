@@ -17,9 +17,11 @@ def fhir_contact(c: "PatientContact") -> dict:
         entry["relationship"] = [{k: v for k, v in {
             "coding": [{k2: v2 for k2, v2 in {
                 "system": r.coding_system,
+                "version": r.coding_version,
                 "code": r.coding_code,
                 "display": r.coding_display,
-            }.items() if v2}],
+                "userSelected": r.coding_user_selected,
+            }.items() if v2 is not None}],
             "text": r.text,
         }.items() if v} for r in c.relationships]
     name_entry: dict = {}
@@ -129,9 +131,11 @@ def _core_fields(patient: "PatientModel") -> dict:
         if patient.marital_status_system or patient.marital_status_code:
             cc["coding"] = [{k: v for k, v in {
                 "system": patient.marital_status_system,
+                "version": patient.marital_status_version,
                 "code": patient.marital_status_code,
                 "display": patient.marital_status_display,
-            }.items() if v}]
+                "userSelected": patient.marital_status_user_selected,
+            }.items() if v is not None}]
         if patient.marital_status_text:
             cc["text"] = patient.marital_status_text
         result["maritalStatus"] = cc

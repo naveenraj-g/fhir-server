@@ -335,9 +335,11 @@ class PatientRepository(BaseRepository):
                 deceased_boolean=payload.deceased_boolean,
                 deceased_datetime=payload.deceased_datetime,
                 marital_status_system=payload.marital_status_system,
+                marital_status_version=payload.marital_status_version,
                 marital_status_code=payload.marital_status_code,
                 marital_status_display=payload.marital_status_display,
                 marital_status_text=payload.marital_status_text,
+                marital_status_user_selected=payload.marital_status_user_selected,
                 multiple_birth_boolean=payload.multiple_birth_boolean,
                 multiple_birth_integer=payload.multiple_birth_integer,
                 managing_organization_type=(
@@ -378,9 +380,11 @@ class PatientRepository(BaseRepository):
                 deceased_boolean=payload.deceased_boolean,
                 deceased_datetime=payload.deceased_datetime,
                 marital_status_system=payload.marital_status_system,
+                marital_status_version=payload.marital_status_version,
                 marital_status_code=payload.marital_status_code,
                 marital_status_display=payload.marital_status_display,
                 marital_status_text=payload.marital_status_text,
+                marital_status_user_selected=payload.marital_status_user_selected,
                 multiple_birth_boolean=payload.multiple_birth_boolean,
                 multiple_birth_integer=payload.multiple_birth_integer,
                 managing_organization_type=(
@@ -419,9 +423,11 @@ class PatientRepository(BaseRepository):
                         org_id=org_id,
                         use=i.use,
                         type_system=i.type_system,
+                        type_version=i.type_version,
                         type_code=i.type_code,
                         type_display=i.type_display,
                         type_text=i.type_text,
+                        type_user_selected=i.type_user_selected,
                         system=i.system,
                         value=i.value,
                         period_start=i.period_start,
@@ -519,9 +525,11 @@ class PatientRepository(BaseRepository):
                                 contact_id=contact.id,
                                 org_id=org_id,
                                 coding_system=r.coding_system,
+                                coding_version=r.coding_version,
                                 coding_code=r.coding_code,
                                 coding_display=r.coding_display,
                                 text=r.text,
+                                coding_user_selected=r.coding_user_selected,
                             ))
 
                     if c.telecom:
@@ -543,9 +551,11 @@ class PatientRepository(BaseRepository):
                         patient_id=patient.id,
                         org_id=org_id,
                         language_system=cm.language_system,
+                        language_version=cm.language_version,
                         language_code=cm.language_code,
                         language_display=cm.language_display,
                         language_text=cm.language_text,
+                        language_user_selected=cm.language_user_selected,
                         preferred=cm.preferred,
                     ))
 
@@ -663,8 +673,10 @@ class PatientRepository(BaseRepository):
                 for i in payload.identifiers:
                     session.add(PatientIdentifier(
                         patient_id=patient.id, org_id=patient.org_id,
-                        use=i.use, type_system=i.type_system, type_code=i.type_code,
+                        use=i.use, type_system=i.type_system, type_version=i.type_version,
+                        type_code=i.type_code,
                         type_display=i.type_display, type_text=i.type_text,
+                        type_user_selected=i.type_user_selected,
                         system=i.system, value=i.value,
                         period_start=i.period_start, period_end=i.period_end, assigner=i.assigner,
                     ))
@@ -740,8 +752,10 @@ class PatientRepository(BaseRepository):
                         for r in c.relationship:
                             session.add(PatientContactRelationship(
                                 contact_id=contact.id, org_id=patient.org_id,
-                                coding_system=r.coding_system, coding_code=r.coding_code,
+                                coding_system=r.coding_system, coding_version=r.coding_version,
+                                coding_code=r.coding_code,
                                 coding_display=r.coding_display, text=r.text,
+                                coding_user_selected=r.coding_user_selected,
                             ))
                     if c.telecom:
                         for t in c.telecom:
@@ -756,8 +770,10 @@ class PatientRepository(BaseRepository):
                 for cm in payload.communications:
                     session.add(PatientCommunication(
                         patient_id=patient.id, org_id=patient.org_id,
-                        language_system=cm.language_system, language_code=cm.language_code,
+                        language_system=cm.language_system, language_version=cm.language_version,
+                        language_code=cm.language_code,
                         language_display=cm.language_display, language_text=cm.language_text,
+                        language_user_selected=cm.language_user_selected,
                         preferred=cm.preferred,
                     ))
 
@@ -853,9 +869,11 @@ class PatientRepository(BaseRepository):
                 org_id=patient.org_id,
                 use=payload.use,
                 type_system=payload.type_system,
+                type_version=payload.type_version,
                 type_code=payload.type_code,
                 type_display=payload.type_display,
                 type_text=payload.type_text,
+                type_user_selected=payload.type_user_selected,
                 system=payload.system,
                 value=payload.value,
                 period_start=payload.period_start,
@@ -1001,9 +1019,11 @@ class PatientRepository(BaseRepository):
                         contact_id=contact.id,
                         org_id=patient.org_id,
                         coding_system=r.coding_system,
+                        coding_version=r.coding_version,
                         coding_code=r.coding_code,
                         coding_display=r.coding_display,
                         text=r.text,
+                        coding_user_selected=r.coding_user_selected,
                     ))
 
             if payload.telecom:
@@ -1039,9 +1059,11 @@ class PatientRepository(BaseRepository):
                 patient_id=patient.id,
                 org_id=patient.org_id,
                 language_system=payload.language_system,
+                language_version=payload.language_version,
                 language_code=payload.language_code,
                 language_display=payload.language_display,
                 language_text=payload.language_text,
+                language_user_selected=payload.language_user_selected,
                 preferred=payload.preferred,
             )
             try:

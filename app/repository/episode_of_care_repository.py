@@ -26,7 +26,12 @@ from app.models.episode_of_care.episode_of_care import (
     EpisodeOfCareTeam,
     EpisodeOfCareType,
 )
+from app.models.condition.condition import ConditionModel
 from app.models.organization.organization import OrganizationModel
+from app.models.patient.patient import PatientModel
+from app.models.practitioner.practitioner import PractitionerModel
+from app.models.practitioner_role.practitioner_role import PractitionerRoleModel
+from app.models.service_request.service_request import ServiceRequestModel
 from app.schemas.episode_of_care.input import (
     EpisodeOfCareCreateSchema,
     EpisodeOfCarePatchSchema,
@@ -71,11 +76,14 @@ def _with_relationships(stmt):
         selectinload(EpisodeOfCareModel.identifiers),
         selectinload(EpisodeOfCareModel.status_history),
         selectinload(EpisodeOfCareModel.types),
-        selectinload(EpisodeOfCareModel.diagnoses),
-        selectinload(EpisodeOfCareModel.referral_requests),
+        selectinload(EpisodeOfCareModel.diagnoses).selectinload(EpisodeOfCareDiagnosis.reference),
+        selectinload(EpisodeOfCareModel.referral_requests).selectinload(EpisodeOfCareReferralRequest.reference),
         selectinload(EpisodeOfCareModel.team),
         selectinload(EpisodeOfCareModel.accounts),
         selectinload(EpisodeOfCareModel.managing_organization),
+        selectinload(EpisodeOfCareModel.patient),
+        selectinload(EpisodeOfCareModel.care_manager_practitioner),
+        selectinload(EpisodeOfCareModel.care_manager_practitioner_role),
     )
 
 
@@ -122,7 +130,89 @@ async def _resolve_managing_org_pk(session: AsyncSession, ref: str) -> int:
     return pk
 
 
-def _build_children(data, org_id: Optional[str]) -> dict:
+async def _resolve_patient_pk(session: AsyncSession, ref: str):
+    """Resolve 'Patient/<public_id>' to the internal patient.id PK."""
+    ref_type, public_id = _parse_ref(ref, EpisodeOfCarePatientReferenceType, "patient")
+    result = await session.execute(
+        select(PatientModel.id).where(PatientModel.patient_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Patient/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_patient_filter_pk(session: AsyncSession, patient_id: Optional[int]) -> Optional[int]:
+    """Resolve a public Patient id used as a list filter to its internal PK.
+
+    Returns -1 (an impossible PK) when no matching patient exists, so the
+    filter yields zero rows instead of raising on a legitimate "no results" case.
+    """
+    if patient_id is None:
+        return None
+    result = await session.execute(
+        select(PatientModel.id).where(PatientModel.patient_id == patient_id)
+    )
+    pk = result.scalar_one_or_none()
+    return pk if pk is not None else -1
+
+
+async def _resolve_care_manager_pk(session: AsyncSession, ref: str):
+    """Resolve 'Practitioner/<id>' or 'PractitionerRole/<id>' to the matching internal PK."""
+    ref_type, public_id = _parse_ref(ref, EpisodeOfCareCareManagerReferenceType, "careManager")
+    if ref_type == EpisodeOfCareCareManagerReferenceType.Practitioner:
+        result = await session.execute(
+            select(PractitionerModel.id).where(PractitionerModel.practitioner_id == public_id)
+        )
+        not_found_label = "Practitioner"
+    else:
+        result = await session.execute(
+            select(PractitionerRoleModel.id).where(PractitionerRoleModel.practitioner_role_id == public_id)
+        )
+        not_found_label = "PractitionerRole"
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{not_found_label}/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_diagnosis_condition_pk(session: AsyncSession, ref: str):
+    """Resolve 'Condition/<public_id>' to the internal condition.id PK."""
+    ref_type, public_id = _parse_ref(ref, EpisodeOfCareDiagnosisReferenceType, "diagnosis.condition")
+    result = await session.execute(
+        select(ConditionModel.id).where(ConditionModel.condition_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Condition/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_referral_request_pk(session: AsyncSession, ref: str):
+    """Resolve 'ServiceRequest/<public_id>' to the internal service_request.id PK."""
+    ref_type, public_id = _parse_ref(ref, EpisodeOfCareReferralRequestReferenceType, "referralRequest")
+    result = await session.execute(
+        select(ServiceRequestModel.id).where(ServiceRequestModel.service_request_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"ServiceRequest/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _build_children(session: AsyncSession, data, org_id: Optional[str]) -> dict:
     children: dict = {}
 
     if data.identifiers is not None:
@@ -171,7 +261,7 @@ def _build_children(data, org_id: Optional[str]) -> dict:
         for d in data.diagnoses:
             ref_type, ref_id = None, None
             if d.condition:
-                ref_type, ref_id = _parse_ref(d.condition, EpisodeOfCareDiagnosisReferenceType, "diagnosis.condition")
+                ref_type, ref_id = await _resolve_diagnosis_condition_pk(session, d.condition)
             diags.append(EpisodeOfCareDiagnosis(
                 org_id=org_id,
                 reference_type=ref_type,
@@ -190,7 +280,7 @@ def _build_children(data, org_id: Optional[str]) -> dict:
         for r in data.referral_requests:
             ref_type, ref_id = None, None
             if r.reference:
-                ref_type, ref_id = _parse_ref(r.reference, EpisodeOfCareReferralRequestReferenceType, "referralRequest")
+                ref_type, ref_id = await _resolve_referral_request_pk(session, r.reference)
             rrs.append(EpisodeOfCareReferralRequest(
                 org_id=org_id,
                 reference_type=ref_type,
@@ -238,13 +328,11 @@ class EpisodeOfCareRepository:
         async with self.session_factory() as session:
             patient_type, patient_id = None, None
             if data.patient:
-                patient_type, patient_id = _parse_ref(data.patient, EpisodeOfCarePatientReferenceType, "patient")
+                patient_type, patient_id = await _resolve_patient_pk(session, data.patient)
 
             care_manager_type, care_manager_id = None, None
             if data.care_manager:
-                care_manager_type, care_manager_id = _parse_ref(
-                    data.care_manager, EpisodeOfCareCareManagerReferenceType, "careManager"
-                )
+                care_manager_type, care_manager_id = await _resolve_care_manager_pk(session, data.care_manager)
 
             managing_org_pk = None
             managing_org_type = None
@@ -252,7 +340,7 @@ class EpisodeOfCareRepository:
                 managing_org_pk = await _resolve_managing_org_pk(session, data.managing_organization)
                 managing_org_type = OrganizationReferenceType.Organization
 
-            children = _build_children(data, data.org_id)
+            children = await _build_children(session, data, data.org_id)
 
             model = EpisodeOfCareModel(
                 user_id=data.user_id,
@@ -302,8 +390,9 @@ class EpisodeOfCareRepository:
         offset: int = 0,
     ) -> Tuple[int, List[EpisodeOfCareModel]]:
         async with self.session_factory() as session:
+            resolved_patient_pk = await _resolve_patient_filter_pk(session, patient_id)
             base = select(EpisodeOfCareModel)
-            base = _apply_list_filters(base, user_id, org_id, episode_status, patient_id)
+            base = _apply_list_filters(base, user_id, org_id, episode_status, resolved_patient_pk)
 
             count_stmt = select(func.count()).select_from(base.subquery())
             total = (await session.execute(count_stmt)).scalar_one()
@@ -327,7 +416,7 @@ class EpisodeOfCareRepository:
             for field, value in updates.items():
                 if field == "patient":
                     if value is not None:
-                        pt, pid = _parse_ref(value, EpisodeOfCarePatientReferenceType, "patient")
+                        pt, pid = await _resolve_patient_pk(session, value)
                         db_model.patient_type = pt
                         db_model.patient_id = pid
                     else:
@@ -347,7 +436,7 @@ class EpisodeOfCareRepository:
                     db_model.managing_organization_display = value
                 elif field == "care_manager":
                     if value is not None:
-                        cmt, cmid = _parse_ref(value, EpisodeOfCareCareManagerReferenceType, "careManager")
+                        cmt, cmid = await _resolve_care_manager_pk(session, value)
                         db_model.care_manager_type = cmt
                         db_model.care_manager_id = cmid
                     else:
@@ -361,7 +450,7 @@ class EpisodeOfCareRepository:
                     "identifiers", "status_history", "types", "diagnoses",
                     "referral_requests", "team", "accounts",
                 ):
-                    children = _build_children(data, db_model.org_id)
+                    children = await _build_children(session, data, db_model.org_id)
                     if field in children:
                         setattr(db_model, field, children[field])
                 else:

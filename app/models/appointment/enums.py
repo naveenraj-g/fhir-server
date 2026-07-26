@@ -21,7 +21,17 @@ class AppointmentParticipantStatus(str, Enum):
     needs_action = "needs-action"
 
 
+class AppointmentParticipantRequired(str, Enum):
+    """FHIR R4 Appointment.participant.required value set."""
+
+    required = "required"
+    optional = "optional"
+    information_only = "information-only"
+
+
 class AppointmentParticipantActorType(str, Enum):
+    """FHIR R4 reference types for Appointment.participant.actor."""
+
     Patient = "Patient"
     Practitioner = "Practitioner"
     PractitionerRole = "PractitionerRole"
@@ -29,42 +39,15 @@ class AppointmentParticipantActorType(str, Enum):
     Device = "Device"
     HealthcareService = "HealthcareService"
     Location = "Location"
-    Group = "Group"
-    CareTeam = "CareTeam"
 
 
 class AppointmentReasonReferenceType(str, Enum):
-    """Allowed reference types for Appointment.reason.reference (CodeableReference)."""
+    """Allowed reference types for Appointment.reasonReference."""
 
     Condition = "Condition"
     Procedure = "Procedure"
     Observation = "Observation"
     ImmunizationRecommendation = "ImmunizationRecommendation"
-    DiagnosticReport = "DiagnosticReport"
-
-
-class AppointmentNoteAuthorReferenceType(str, Enum):
-    """Allowed reference types for Appointment.note.author[x] (Annotation.authorReference)."""
-
-    Practitioner = "Practitioner"
-    PractitionerRole = "PractitionerRole"
-    Patient = "Patient"
-    RelatedPerson = "RelatedPerson"
-    Organization = "Organization"
-
-
-class AppointmentPatientInstructionReferenceType(str, Enum):
-    """Allowed reference types for Appointment.patientInstruction.reference (CodeableReference)."""
-
-    DocumentReference = "DocumentReference"
-    Binary = "Binary"
-    Communication = "Communication"
-
-
-class AppointmentReplacesReferenceType(str, Enum):
-    """Allowed reference types for Appointment.replaces[]."""
-
-    Appointment = "Appointment"
 
 
 class AppointmentSlotReferenceType(str, Enum):
@@ -73,25 +56,7 @@ class AppointmentSlotReferenceType(str, Enum):
     Slot = "Slot"
 
 
-class AppointmentAccountReferenceType(str, Enum):
-    """Allowed reference types for Appointment.account[]."""
-
-    Account = "Account"
-
-
-class AppointmentServiceTypeReferenceType(str, Enum):
-    """Allowed reference types for Appointment.serviceType.reference (CodeableReference)."""
-
-    HealthcareService = "HealthcareService"
-
-
 class AppointmentBasedOnReferenceType(str, Enum):
-    """Allowed reference types for Appointment.basedOn (Reference)."""
+    """Allowed reference types for Appointment.basedOn (Reference(ServiceRequest))."""
 
-    CarePlan = "CarePlan"
-    DeviceRequest = "DeviceRequest"
-    MedicationRequest = "MedicationRequest"
     ServiceRequest = "ServiceRequest"
-    RequestOrchestration = "RequestOrchestration"
-    NutritionOrder = "NutritionOrder"
-    VisionPrescription = "VisionPrescription"

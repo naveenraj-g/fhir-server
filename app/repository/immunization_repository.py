@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F40
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType, OrganizationReferenceType
+from app.models.location.location import LocationModel
+from app.models.patient.patient import PatientModel
 from app.models.immunization.enums import (
     ImmunizationLocationReferenceType,
     ImmunizationPatientReferenceType,
@@ -75,6 +78,12 @@ def _with_relationships(stmt):
             ImmunizationProtocolApplied.target_diseases
         ),
         selectinload(ImmunizationModel.manufacturer),
+        selectinload(ImmunizationModel.patient),
+        selectinload(ImmunizationModel.encounter),
+        selectinload(ImmunizationModel.location),
+        selectinload(ImmunizationModel.protocol_applied).selectinload(
+            ImmunizationProtocolApplied.authority
+        ),
     )
 
 
@@ -117,7 +126,52 @@ async def _resolve_manufacturer_pk(session: AsyncSession, ref: str, field: str) 
     return pk
 
 
-def _build_children(data, org_id: Optional[str]) -> dict:
+async def _resolve_patient_pk(session: AsyncSession, ref: str):
+    """Resolve 'Patient/<public_id>' to the internal patient.id PK."""
+    ref_type, public_id = _parse_ref(ref, ImmunizationPatientReferenceType, "patient")
+    result = await session.execute(
+        select(PatientModel.id).where(PatientModel.patient_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Patient/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_encounter_pk(session: AsyncSession, ref: str):
+    """Resolve 'Encounter/<public_id>' to the internal encounter.id PK."""
+    ref_type, public_id = _parse_ref(ref, EncounterReferenceType, "encounter")
+    result = await session.execute(
+        select(EncounterModel.id).where(EncounterModel.encounter_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Encounter/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_location_pk(session: AsyncSession, ref: str):
+    """Resolve 'Location/<public_id>' to the internal location.id PK."""
+    ref_type, public_id = _parse_ref(ref, ImmunizationLocationReferenceType, "location")
+    result = await session.execute(
+        select(LocationModel.id).where(LocationModel.location_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Location/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _build_children(session: AsyncSession, data, org_id: Optional[str]) -> dict:
     children: dict = {}
 
     if data.identifiers is not None:
@@ -258,7 +312,8 @@ def _build_children(data, org_id: Optional[str]) -> dict:
         for pa in data.protocol_applied:
             auth_type, auth_id = None, None
             if pa.authority:
-                auth_type, auth_id = _parse_ref(pa.authority, OrganizationReferenceType, "protocolApplied.authority")
+                auth_id = await _resolve_manufacturer_pk(session, pa.authority, "protocolApplied.authority")
+                auth_type = OrganizationReferenceType.Organization
             target_diseases = []
             if pa.target_diseases:
                 target_diseases = [
@@ -296,22 +351,22 @@ class ImmunizationRepository:
         async with self.session_factory() as session:
             patient_type, patient_id = None, None
             if data.patient:
-                patient_type, patient_id = _parse_ref(data.patient, ImmunizationPatientReferenceType, "patient")
+                patient_type, patient_id = await _resolve_patient_pk(session, data.patient)
 
             encounter_type, encounter_id = None, None
             if data.encounter:
-                encounter_type, encounter_id = _parse_ref(data.encounter, EncounterReferenceType, "encounter")
+                encounter_type, encounter_id = await _resolve_encounter_pk(session, data.encounter)
 
             location_type, location_id = None, None
             if data.location:
-                location_type, location_id = _parse_ref(data.location, ImmunizationLocationReferenceType, "location")
+                location_type, location_id = await _resolve_location_pk(session, data.location)
 
             manufacturer_pk, manufacturer_type = None, None
             if data.manufacturer:
                 manufacturer_pk = await _resolve_manufacturer_pk(session, data.manufacturer, "manufacturer")
                 manufacturer_type = OrganizationReferenceType.Organization
 
-            children = _build_children(data, data.org_id)
+            children = await _build_children(session, data, data.org_id)
 
             model = ImmunizationModel(
                 user_id=data.user_id,
@@ -418,7 +473,7 @@ class ImmunizationRepository:
             if "patient" in updates:
                 ref = updates.pop("patient")
                 if ref:
-                    pt, pid = _parse_ref(ref, ImmunizationPatientReferenceType, "patient")
+                    pt, pid = await _resolve_patient_pk(session, ref)
                     db_model.patient_type = pt
                     db_model.patient_id = pid
                 else:
@@ -428,7 +483,7 @@ class ImmunizationRepository:
             if "encounter" in updates:
                 ref = updates.pop("encounter")
                 if ref:
-                    et, eid = _parse_ref(ref, EncounterReferenceType, "encounter")
+                    et, eid = await _resolve_encounter_pk(session, ref)
                     db_model.encounter_type = et
                     db_model.encounter_id = eid
                 else:
@@ -438,7 +493,7 @@ class ImmunizationRepository:
             if "location" in updates:
                 ref = updates.pop("location")
                 if ref:
-                    lt, lid = _parse_ref(ref, ImmunizationLocationReferenceType, "location")
+                    lt, lid = await _resolve_location_pk(session, ref)
                     db_model.location_type = lt
                     db_model.location_id = lid
                 else:
@@ -467,7 +522,7 @@ class ImmunizationRepository:
 
             if child_data_map:
                 patch_schema_partial = ImmunizationPatchSchema(**{k: v for k, v in child_data_map.items()})
-                new_children = _build_children(patch_schema_partial, db_model.org_id)
+                new_children = await _build_children(session, patch_schema_partial, db_model.org_id)
                 for key, new_list in new_children.items():
                     setattr(db_model, key, new_list)
 

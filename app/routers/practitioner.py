@@ -214,7 +214,7 @@ async def get_practitioner(
     summary="Partially update a Practitioner resource",
     description=(
         "Only supplied fields are written; omitted fields are left unchanged. "
-        "Patchable fields: active, gender, birth_date, deceased_boolean, deceased_datetime. "
+        "Patchable fields: active, gender, birth_date. "
         "To modify names, identifiers, telecom, addresses, photos, qualifications, or communications, "
         "use the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
@@ -553,7 +553,6 @@ async def add_qualification(
     description=(
         "Records a language the Practitioner can use in patient communication. "
         "`language_code` is an ISO-639-1 code (e.g. `en`, `fr`, `de`). "
-        "Set `preferred: true` to mark this as the practitioner's preferred language. "
         "Returns the full updated Practitioner resource. "
         + _CONTENT_NEG
     ),

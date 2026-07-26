@@ -162,8 +162,8 @@ async def list_encounters(
     enc_status: Optional[str] = Query(None, alias="status"),
     patient_id: Optional[int] = Query(None, description="Filter by public patient_id."),
     appointment_id: Optional[int] = Query(None, description="Filter by public appointment_id — returns encounters linked to that appointment via Encounter.appointment[]."),
-    actual_period_start_from: Optional[datetime] = Query(None),
-    actual_period_start_to: Optional[datetime] = Query(None),
+    period_start_from: Optional[datetime] = Query(None),
+    period_start_to: Optional[datetime] = Query(None),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -173,8 +173,8 @@ async def list_encounters(
     encounters, total = await encounter_service.list_encounters(
         user_id=user_id, org_id=org_id, status=enc_status, patient_id=patient_id,
         appointment_id=appointment_id,
-        actual_period_start_from=actual_period_start_from,
-        actual_period_start_to=actual_period_start_to,
+        period_start_from=period_start_from,
+        period_start_to=period_start_to,
         limit=limit, offset=offset,
     )
     return format_paginated_response(

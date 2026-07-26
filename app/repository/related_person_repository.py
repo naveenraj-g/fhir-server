@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F40
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from app.models.patient.patient import PatientModel
 from app.models.related_person.enums import RelatedPersonPatientReferenceType
 from app.models.related_person.related_person import (
     RelatedPersonAddress,
@@ -29,10 +30,12 @@ def _with_relationships(stmt):
         selectinload(RelatedPersonModel.addresses),
         selectinload(RelatedPersonModel.photos),
         selectinload(RelatedPersonModel.communications),
+        selectinload(RelatedPersonModel.patient),
     )
 
 
-def _parse_patient_ref(ref: str):
+async def _resolve_patient_pk(session: AsyncSession, ref: str):
+    """Resolve 'Patient/<public_id>' to the internal patient.id PK."""
     parts = ref.split("/", 1)
     if len(parts) != 2:
         raise HTTPException(
@@ -40,7 +43,7 @@ def _parse_patient_ref(ref: str):
             detail=f"Invalid reference format: '{ref}'. Expected 'Patient/<id>'.",
         )
     try:
-        ref_id = int(parts[1])
+        patient_public_id = int(parts[1])
     except ValueError:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -53,7 +56,16 @@ def _parse_patient_ref(ref: str):
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid reference type '{parts[0]}'. Only 'Patient' is allowed.",
         )
-    return ref_type, ref_id
+    result = await session.execute(
+        select(PatientModel.id).where(PatientModel.patient_id == patient_public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Patient/{patient_public_id} not found.",
+        )
+    return ref_type, pk
 
 
 class RelatedPersonRepository:
@@ -191,11 +203,11 @@ class RelatedPersonRepository:
         org_id: Optional[str],
         created_by: Optional[str],
     ) -> RelatedPersonModel:
-        patient_type, patient_id = (None, None)
-        if payload.patient:
-            patient_type, patient_id = _parse_patient_ref(payload.patient)
-
         async with self.session_factory() as session:
+            patient_type, patient_id = (None, None)
+            if payload.patient:
+                patient_type, patient_id = await _resolve_patient_pk(session, payload.patient)
+
             rp = RelatedPersonModel(
                 user_id=user_id,
                 org_id=org_id,
@@ -242,7 +254,7 @@ class RelatedPersonRepository:
                     setattr(rp, field, data[field])
 
             if "patient" in data and data["patient"]:
-                pt, pi = _parse_patient_ref(data["patient"])
+                pt, pi = await _resolve_patient_pk(session, data["patient"])
                 rp.patient_type = pt
                 rp.patient_id = pi
 

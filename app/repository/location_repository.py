@@ -7,6 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
+from app.models.organization.organization import OrganizationModel
 from app.models.location.enums import (
     LocationEndpointReferenceType,
     LocationMode,
@@ -34,6 +35,8 @@ def _with_relationships(stmt):
         selectinload(LocationModel.telecoms),
         selectinload(LocationModel.hours_of_operation),
         selectinload(LocationModel.endpoints),
+        selectinload(LocationModel.managing_organization),
+        selectinload(LocationModel.part_of),
     )
 
 
@@ -66,6 +69,40 @@ def _parse_ref_optional(ref: Optional[str], enum_cls, field: str):
     if not ref:
         return None, None
     return _parse_ref(ref, enum_cls, field)
+
+
+async def _resolve_managing_organization_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Organization/<public_id>' to the internal organization.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref(ref, OrganizationReferenceType, "managingOrganization")
+    result = await session.execute(
+        select(OrganizationModel.id).where(OrganizationModel.organization_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Organization/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_part_of_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Location/<public_id>' to the internal location.id PK (self-referential)."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref(ref, LocationPartOfReferenceType, "partOf")
+    result = await session.execute(
+        select(LocationModel.id).where(LocationModel.location_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Location/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 def _cast_contact_point_system(value: Optional[str]) -> Optional[ContactPointSystem]:
@@ -164,12 +201,8 @@ class LocationRepository:
         created_by: Optional[str],
     ) -> LocationModel:
         async with self.session_factory() as session:
-            org_type, org_id_val = _parse_ref_optional(
-                payload.managing_organization, OrganizationReferenceType, "managingOrganization"
-            )
-            po_type, po_id = _parse_ref_optional(
-                payload.part_of, LocationPartOfReferenceType, "partOf"
-            )
+            org_type, org_id_val = await _resolve_managing_organization_pk(session, payload.managing_organization)
+            po_type, po_id = await _resolve_part_of_pk(session, payload.part_of)
 
             status_enum = None
             if payload.status:
@@ -321,11 +354,11 @@ class LocationRepository:
                             detail=f"Invalid mode '{value}'.",
                         )
                 elif field == "managing_organization" and value is not None:
-                    org_type, org_id_val = _parse_ref(value, OrganizationReferenceType, "managingOrganization")
+                    org_type, org_id_val = await _resolve_managing_organization_pk(session, value)
                     location.managing_organization_type = org_type
                     location.managing_organization_id = org_id_val
                 elif field == "part_of" and value is not None:
-                    po_type, po_id = _parse_ref(value, LocationPartOfReferenceType, "partOf")
+                    po_type, po_id = await _resolve_part_of_pk(session, value)
                     location.part_of_type = po_type
                     location.part_of_id = po_id
                 elif field == "address_line" and value is not None:

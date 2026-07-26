@@ -121,8 +121,8 @@ async def get_appointment(
     operation_id="patch_appointment",
     summary="Partially update an Appointment resource",
     description=(
-        "Patchable fields: `status`, `start`, `end`, `minutes_duration`, `description`, "
-        "`cancellation_date`, `priority_code/display/system/text`, `recurrence_id`, `occurrence_changed`. "
+        "Patchable fields: `status`, `start`, `end`, `minutes_duration`, `description`, `comment`, "
+        "`patient_instruction`, `priority`, `cancelation_reason_*`. "
         "Participants and service fields (service type, specialty, reason) cannot be changed after creation — "
         "delete and re-create the Appointment to correct those. "
         + _CONTENT_NEG

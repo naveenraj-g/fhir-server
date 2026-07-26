@@ -11,17 +11,18 @@ MINIMAL = {
     "user_id": "u-test",
     "org_id": "org-test",
     "status": "in-progress",
+    "class_code": "AMB",
 }
 
 FULL = {
     "user_id": "u-test",
     "org_id": "org-test",
-    "status": "completed",
-    "actual_period_start": "2024-01-15T09:00:00Z",
-    "actual_period_end": "2024-01-15T10:00:00Z",
-    "class": [
-        {"coding_system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "coding_code": "AMB", "coding_display": "ambulatory"}
-    ],
+    "status": "finished",
+    "class_system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+    "class_code": "AMB",
+    "class_display": "ambulatory",
+    "period_start": "2024-01-15T09:00:00Z",
+    "period_end": "2024-01-15T10:00:00Z",
     "type": [
         {"coding_system": "http://snomed.info/sct", "coding_code": "185349003", "coding_display": "Encounter for check up", "text": "Check up"}
     ],
@@ -30,6 +31,12 @@ FULL = {
     ],
     "participant": [
         {"reference": "Practitioner/30001", "reference_display": "Dr. Smith", "period_start": "2024-01-15T09:00:00Z"}
+    ],
+    "diagnosis": [
+        {"condition": "Condition/120001", "condition_display": "Flu", "rank": 1}
+    ],
+    "reason_code": [
+        {"coding_code": "R51", "text": "Headache"}
     ],
 }
 
@@ -47,18 +54,20 @@ async def test_create_minimal(client):
     data = await _create(client)
     assert isinstance(data["id"], int)
     assert data["status"] == "in-progress"
+    assert data["class_code"] == "AMB"
 
 
 async def test_create_full(client):
     r = await client.post(BASE + "/", json=FULL)
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data["status"] == "completed"
-    assert len(data["class"]) == 1
-    assert data["class"][0]["coding_code"] == "AMB"
+    assert data["status"] == "finished"
+    assert data["class_code"] == "AMB"
     assert len(data["type"]) == 1
     assert len(data["status_history"]) == 1
     assert len(data["participant"]) == 1
+    assert len(data["diagnosis"]) == 1
+    assert len(data["reason_code"]) == 1
 
 
 async def test_create_fhir_format(client):
@@ -67,8 +76,9 @@ async def test_create_fhir_format(client):
     data = r.json()
     assert data["resourceType"] == "Encounter"
     assert isinstance(data["id"], str)
-    assert data["status"] == "completed"
-    assert data["class"][0]["coding"][0]["code"] == "AMB"
+    assert data["status"] == "finished"
+    assert data["class"]["code"] == "AMB"
+    assert data["diagnosis"][0]["condition"]["reference"] == "Condition/120001"
 
 
 # ── Get ───────────────────────────────────────────────────────────────────────
@@ -117,30 +127,14 @@ async def test_list_pagination(client):
     assert len(r.json()["data"]) <= 2
 
 
-# ── /me ───────────────────────────────────────────────────────────────────────
-
-
-async def test_me_filters_by_user(client):
-    await client.post(BASE + "/", json={**MINIMAL, "user_id": "user-a", "org_id": "org-a"})
-    await client.post(BASE + "/", json={**MINIMAL, "user_id": "user-b", "org_id": "org-b"})
-
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="user-a", org_id="org-a", permissions=["encounter:read"]
-    )
-    r = await client.get(f"{BASE}/me")
-    assert r.status_code == 200
-    for item in r.json()["data"]:
-        assert item["user_id"] == "user-a"
-
-
 # ── Patch ─────────────────────────────────────────────────────────────────────
 
 
 async def test_patch_status(client):
     data = await _create(client)
-    r = await client.patch(f"{BASE}/{data['id']}", json={"status": "completed"})
+    r = await client.patch(f"{BASE}/{data['id']}", json={"status": "finished"})
     assert r.status_code == 200
-    assert r.json()["status"] == "completed"
+    assert r.json()["status"] == "finished"
 
 
 async def test_patch_not_found(client):

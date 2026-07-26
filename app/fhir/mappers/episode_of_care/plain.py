@@ -55,7 +55,7 @@ def plain_episode_of_care_diagnosis(d):
     return {
         "id": d.id,
         "reference_type": _ev(d.reference_type),
-        "reference_id": d.reference_id,
+        "reference_id": d.reference.condition_id if d.reference else d.reference_id,
         "reference_display": d.reference_display,
         "role_system": d.role_system,
         "role_code": d.role_code,
@@ -69,7 +69,7 @@ def plain_episode_of_care_referral_request(r):
     return {
         "id": r.id,
         "reference_type": _ev(r.reference_type),
-        "reference_id": r.reference_id,
+        "reference_id": r.reference.service_request_id if r.reference else r.reference_id,
         "reference_display": r.reference_display,
     }
 
@@ -108,7 +108,7 @@ def to_plain_episode_of_care(model) -> dict:
         "org_id": model.org_id,
         "status": _ev(model.status),
         "patient_type": _ev(model.patient_type),
-        "patient_id": model.patient_id,
+        "patient_id": model.patient.patient_id if model.patient else model.patient_id,
         "patient_display": model.patient_display,
         "managing_organization_type": _ev(model.managing_organization_type),
         "managing_organization_id": mo_id,
@@ -116,7 +116,11 @@ def to_plain_episode_of_care(model) -> dict:
         "period_start": _dt(model.period_start),
         "period_end": _dt(model.period_end),
         "care_manager_type": _ev(model.care_manager_type),
-        "care_manager_id": model.care_manager_id,
+        "care_manager_id": (
+            model.care_manager_practitioner.practitioner_id if model.care_manager_practitioner
+            else model.care_manager_practitioner_role.practitioner_role_id if model.care_manager_practitioner_role
+            else model.care_manager_id
+        ),
         "care_manager_display": model.care_manager_display,
         "created_at": _dt(model.created_at),
         "updated_at": _dt(model.updated_at),

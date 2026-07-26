@@ -2,15 +2,15 @@ from enum import Enum
 
 
 class EncounterStatus(str, Enum):
-    """FHIR R5 Encounter status value set."""
+    """FHIR R4 Encounter status value set (required binding)."""
 
     planned = "planned"
+    arrived = "arrived"
+    triaged = "triaged"
     in_progress = "in-progress"
-    on_hold = "on-hold"
-    discharged = "discharged"
-    completed = "completed"
+    onleave = "onleave"
+    finished = "finished"
     cancelled = "cancelled"
-    discontinued = "discontinued"
     entered_in_error = "entered-in-error"
     unknown = "unknown"
 
@@ -25,60 +25,39 @@ class EncounterLocationStatus(str, Enum):
 
 
 class EncounterParticipantReferenceType(str, Enum):
-    """FHIR R5 reference types for Encounter.participant.actor."""
+    """FHIR R4 reference types for Encounter.participant.individual."""
 
-    Patient = "Patient"
-    Group = "Group"
-    RelatedPerson = "RelatedPerson"
     Practitioner = "Practitioner"
     PractitionerRole = "PractitionerRole"
-    Device = "Device"
-    HealthcareService = "HealthcareService"
+    RelatedPerson = "RelatedPerson"
 
 
 class EncounterBasedOnReferenceType(str, Enum):
-    """FHIR R5 reference types for Encounter.basedOn."""
+    """FHIR R4 reference types for Encounter.basedOn."""
 
-    CarePlan = "CarePlan"
-    DeviceRequest = "DeviceRequest"
-    MedicationRequest = "MedicationRequest"
     ServiceRequest = "ServiceRequest"
-    RequestOrchestration = "RequestOrchestration"
-    NutritionOrder = "NutritionOrder"
-    VisionPrescription = "VisionPrescription"
 
 
 class EncounterDiagnosisConditionType(str, Enum):
-    """FHIR R5 reference types for Encounter.diagnosis.condition (CodeableReference)."""
+    """FHIR R4 reference types for Encounter.diagnosis.condition."""
 
     Condition = "Condition"
-
-
-class EncounterServiceTypeReferenceType(str, Enum):
-    """FHIR R5 reference types for Encounter.serviceType.reference (CodeableReference)."""
-
-    HealthcareService = "HealthcareService"
-
-
-class EncounterReasonValueReferenceType(str, Enum):
-    """FHIR R5 reference types for Encounter.reason.value.reference (CodeableReference)."""
-
-    Condition = "Condition"
-    DiagnosticReport = "DiagnosticReport"
-    Observation = "Observation"
     Procedure = "Procedure"
+
+
+class EncounterReasonReferenceType(str, Enum):
+    """FHIR R4 reference types for Encounter.reasonReference."""
+
+    Condition = "Condition"
+    Procedure = "Procedure"
+    Observation = "Observation"
+    ImmunizationRecommendation = "ImmunizationRecommendation"
 
 
 class EncounterEpisodeOfCareReferenceType(str, Enum):
     """Allowed reference types for Encounter.episodeOfCare[]."""
 
     EpisodeOfCare = "EpisodeOfCare"
-
-
-class EncounterCareTeamReferenceType(str, Enum):
-    """Allowed reference types for Encounter.careTeam[] — R5 new."""
-
-    CareTeam = "CareTeam"
 
 
 class EncounterAppointmentReferenceType(str, Enum):

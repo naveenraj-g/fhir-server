@@ -94,7 +94,7 @@ class AllergyIntoleranceModel(Base):
         Enum(AllergyIntolerancePatientReferenceType, name="allergy_intolerance_patient_reference_type"),
         nullable=False,
     )
-    patient_id = Column(Integer, nullable=False)
+    patient_id = Column(Integer, ForeignKey("patient.id"), nullable=False, index=True)
     patient_display = Column(String, nullable=True)
 
     # ── encounter (0..1 Reference(Encounter)) ─────────────────────────────────
@@ -103,7 +103,7 @@ class AllergyIntoleranceModel(Base):
         Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, nullable=True)
+    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
 
     # ── onset[x] (0..1 choice type) ──────────────────────────────────────────
@@ -176,6 +176,9 @@ class AllergyIntoleranceModel(Base):
     updated_by = Column(String, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
+
+    patient = relationship("PatientModel", foreign_keys=[patient_id], lazy="selectin")
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "AllergyIntoleranceIdentifier",

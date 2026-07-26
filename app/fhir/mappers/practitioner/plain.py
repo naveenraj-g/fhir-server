@@ -4,11 +4,25 @@ from typing import TYPE_CHECKING
 
 from app.fhir.datatypes import (
     fhir_enum, fhir_split, plain_name, plain_identifier, plain_telecom,
-    plain_address, plain_photo, plain_communication,
+    plain_address, plain_photo,
 )
 
 if TYPE_CHECKING:
-    from app.models.practitioner.practitioner import PractitionerModel, PractitionerQualification
+    from app.models.practitioner.practitioner import (
+        PractitionerModel, PractitionerQualification, PractitionerCommunication,
+    )
+
+
+def plain_practitioner_communication(cm: "PractitionerCommunication") -> dict:
+    """communication[] (0..*) CodeableConcept — R4 Practitioner has no `.preferred` (Patient/RelatedPerson-only)."""
+    return {
+        "id": cm.id,
+        "org_id": cm.org_id,
+        "language_system": cm.language_system,
+        "language_code": cm.language_code,
+        "language_display": cm.language_display,
+        "language_text": cm.language_text,
+    }
 
 
 def plain_qualification(q: "PractitionerQualification") -> dict:
@@ -40,8 +54,6 @@ def to_plain_practitioner(practitioner: "PractitionerModel") -> dict:
         "active": practitioner.active,
         "gender": fhir_enum(practitioner.gender) if practitioner.gender else None,
         "birth_date": practitioner.birth_date.isoformat() if practitioner.birth_date else None,
-        "deceased_boolean": practitioner.deceased_boolean,
-        "deceased_datetime": practitioner.deceased_datetime.isoformat() if practitioner.deceased_datetime else None,
         "created_at": practitioner.created_at.isoformat() if practitioner.created_at else None,
         "updated_at": practitioner.updated_at.isoformat() if practitioner.updated_at else None,
         "created_by": practitioner.created_by,
@@ -61,6 +73,6 @@ def to_plain_practitioner(practitioner: "PractitionerModel") -> dict:
     if practitioner.qualifications:
         result["qualification"] = [plain_qualification(q) for q in practitioner.qualifications]
     if practitioner.communications:
-        result["communication"] = [plain_communication(c) for c in practitioner.communications]
+        result["communication"] = [plain_practitioner_communication(c) for c in practitioner.communications]
 
     return {k: v for k, v in result.items() if v is not None}

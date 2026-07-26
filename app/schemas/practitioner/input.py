@@ -117,7 +117,6 @@ class PractitionerCommunicationCreate(BaseModel):
     language_code: str = Field(..., description="ISO-639-1 language code (e.g. en, fr, de).")
     language_display: Optional[str] = None
     language_text: Optional[str] = None
-    preferred: Optional[bool] = Field(None, description="True if this is the practitioner's preferred language.")
 
 
 # ── Sub-resource patch schemas ────────────────────────────────────────────────
@@ -223,7 +222,6 @@ class PractitionerCommunicationPatch(BaseModel):
     language_code: Optional[str] = None
     language_display: Optional[str] = None
     language_text: Optional[str] = None
-    preferred: Optional[bool] = None
 
 
 # ── Practitioner create / patch ────────────────────────────────────────────────
@@ -249,8 +247,6 @@ class PractitionerCreateSchema(BaseModel):
     active: Optional[bool] = True
     gender: Optional[AdministrativeGender] = None
     birth_date: Optional[date] = None
-    deceased_boolean: Optional[bool] = None
-    deceased_datetime: Optional[datetime] = None
 
 
 class PractitionerPatchSchema(BaseModel):
@@ -259,8 +255,6 @@ class PractitionerPatchSchema(BaseModel):
     active: Optional[bool] = None
     gender: Optional[AdministrativeGender] = None
     birth_date: Optional[date] = None
-    deceased_boolean: Optional[bool] = None
-    deceased_datetime: Optional[datetime] = None
     updated_by: Optional[str] = None
 
 
@@ -278,7 +272,7 @@ class PractitionerFullCreateSchema(PractitionerCreateSchema):
                 "identifiers": [{"value": "1234567890", "system": "http://hl7.org/fhir/sid/us-npi"}],
                 "telecom": [{"system": "email", "value": "jane.smith@hospital.org", "use": "work"}],
                 "qualifications": [{"code_code": "MD", "code_display": "Doctor of Medicine", "period_start": "2005-06-01"}],
-                "communications": [{"language_code": "en", "preferred": True}],
+                "communications": [{"language_code": "en"}],
             }
         },
     )
@@ -301,7 +295,7 @@ class PractitionerFullPatchSchema(PractitionerPatchSchema):
                 "names": [{"use": "official", "family": "Smith", "given": ["Jane"]}],
                 "telecom": [{"system": "email", "value": "jane.smith@hospital.org", "use": "work"}],
                 "qualifications": [{"code_code": "MD", "code_display": "Doctor of Medicine"}],
-                "communications": [{"language_code": "en", "preferred": True}],
+                "communications": [{"language_code": "en"}],
             }
         },
     )

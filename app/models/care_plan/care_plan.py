@@ -86,7 +86,7 @@ class CarePlanModel(Base):
         Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, nullable=True)
+    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
 
     # ── period (0..1 Period) ─────────────────────────────────────────────────
@@ -115,6 +115,8 @@ class CarePlanModel(Base):
     updated_by = Column(String, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
+
     identifiers = relationship("CarePlanIdentifier", back_populates="care_plan", cascade="all, delete-orphan")
     based_on = relationship("CarePlanBasedOn", back_populates="care_plan", cascade="all, delete-orphan")
     replaces = relationship("CarePlanReplaces", back_populates="care_plan", cascade="all, delete-orphan")

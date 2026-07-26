@@ -37,7 +37,6 @@ class FHIRQualification(BaseModel):
 
 class FHIRCommunication(BaseModel):
     language: Optional[FHIRCodeableConcept] = Field(None, description="Language as CodeableConcept (BCP-47).")
-    preferred: Optional[bool] = Field(None, description="True if this is the preferred communication language.")
 
 
 class FHIRPractitionerSchema(BaseModel):
@@ -46,8 +45,6 @@ class FHIRPractitionerSchema(BaseModel):
     active: Optional[bool] = Field(None, description="Whether this practitioner record is active.")
     gender: Optional[str] = Field(None, description="male | female | other | unknown")
     birthDate: Optional[str] = Field(None, description="ISO 8601 date string.")
-    deceasedBoolean: Optional[bool] = None
-    deceasedDateTime: Optional[str] = Field(None, description="ISO 8601 dateTime string.")
     identifier: Optional[List[FHIRIdentifier]] = Field(None, description="Business identifiers (NPI, license, DEA, etc.).")
     name: Optional[List[FHIRHumanName]] = Field(None, description="Name(s) associated with the practitioner.")
     telecom: Optional[List[FHIRContactPoint]] = Field(None, description="Contact details applying to all roles.")
@@ -179,7 +176,6 @@ class PlainPractitionerCommunication(BaseModel):
     language_code: Optional[str] = Field(None, description="ISO-639-1 language code (e.g. en, fr, de).")
     language_display: Optional[str] = None
     language_text: Optional[str] = None
-    preferred: Optional[bool] = Field(None, description="True if this is the preferred language.")
 
 
 # ── Plain Practitioner response ───────────────────────────────────────────────
@@ -192,8 +188,6 @@ class PlainPractitionerResponse(BaseModel):
     active: Optional[bool] = None
     gender: Optional[str] = Field(None, description="male | female | other | unknown")
     birth_date: Optional[str] = Field(None, description="ISO 8601 date string.")
-    deceased_boolean: Optional[bool] = None
-    deceased_datetime: Optional[str] = Field(None, description="ISO 8601 datetime string.")
     name: Optional[List[PlainPractitionerName]] = None
     identifier: Optional[List[PlainPractitionerIdentifier]] = None
     telecom: Optional[List[PlainPractitionerTelecom]] = None

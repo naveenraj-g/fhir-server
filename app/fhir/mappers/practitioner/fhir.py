@@ -4,11 +4,28 @@ from typing import TYPE_CHECKING
 
 from app.fhir.datatypes import (
     fhir_enum, fhir_split, fhir_human_name, fhir_identifier, fhir_telecom,
-    fhir_address, fhir_photo, fhir_communication,
+    fhir_address, fhir_photo,
 )
 
 if TYPE_CHECKING:
-    from app.models.practitioner.practitioner import PractitionerModel, PractitionerQualification
+    from app.models.practitioner.practitioner import (
+        PractitionerModel, PractitionerQualification, PractitionerCommunication,
+    )
+
+
+def fhir_practitioner_communication(cm: "PractitionerCommunication") -> dict:
+    """communication[] (0..*) CodeableConcept — R4 Practitioner has no `.preferred` (Patient/RelatedPerson-only)."""
+    coding = {k: v for k, v in {
+        "system": cm.language_system,
+        "code": cm.language_code,
+        "display": cm.language_display,
+    }.items() if v}
+    entry: dict = {}
+    if coding:
+        entry["coding"] = [coding]
+    if cm.language_text:
+        entry["text"] = cm.language_text
+    return entry
 
 
 def fhir_qualification(q: "PractitionerQualification") -> dict:
@@ -57,8 +74,6 @@ def to_fhir_practitioner(practitioner: "PractitionerModel") -> dict:
         "active": practitioner.active,
         "gender": fhir_enum(practitioner.gender) if practitioner.gender else None,
         "birthDate": practitioner.birth_date.isoformat() if practitioner.birth_date else None,
-        "deceasedBoolean": practitioner.deceased_boolean,
-        "deceasedDateTime": practitioner.deceased_datetime.isoformat() if practitioner.deceased_datetime else None,
     }
 
     if practitioner.names:
@@ -74,6 +89,8 @@ def to_fhir_practitioner(practitioner: "PractitionerModel") -> dict:
     if practitioner.qualifications:
         result["qualification"] = [fhir_qualification(q) for q in practitioner.qualifications]
     if practitioner.communications:
-        result["communication"] = [fhir_communication(c) for c in practitioner.communications]
+        result["communication"] = [
+            cc for c in practitioner.communications if (cc := fhir_practitioner_communication(c))
+        ]
 
     return {k: v for k, v in result.items() if v is not None}

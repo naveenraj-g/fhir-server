@@ -71,7 +71,7 @@ class ImmunizationModel(Base):
         Enum(ImmunizationPatientReferenceType, name="immunization_patient_reference_type"),
         nullable=True,
     )
-    patient_id = Column(Integer, nullable=True)
+    patient_id = Column(Integer, ForeignKey("patient.id"), nullable=True, index=True)
     patient_display = Column(String, nullable=True)
 
     # encounter (0..1 Reference(Encounter)) — shared enum
@@ -79,7 +79,7 @@ class ImmunizationModel(Base):
         Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, nullable=True)
+    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
 
     # occurrence[x] (1..1 dateTime | string)
@@ -103,7 +103,7 @@ class ImmunizationModel(Base):
         Enum(ImmunizationLocationReferenceType, name="immunization_location_reference_type"),
         nullable=True,
     )
-    location_id = Column(Integer, nullable=True)
+    location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     location_display = Column(String, nullable=True)
 
     # manufacturer (0..1 Reference(Organization)) — shared enum + FK
@@ -155,6 +155,10 @@ class ImmunizationModel(Base):
     updated_by = Column(String, nullable=True)
 
     # Relationships
+    patient = relationship("PatientModel", foreign_keys=[patient_id], lazy="selectin")
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
+    location = relationship("LocationModel", foreign_keys=[location_id], lazy="selectin")
+
     identifiers = relationship("ImmunizationIdentifier", back_populates="immunization", cascade="all, delete-orphan")
     performers = relationship("ImmunizationPerformer", back_populates="immunization", cascade="all, delete-orphan")
     notes = relationship("ImmunizationNote", back_populates="immunization", cascade="all, delete-orphan")
@@ -392,7 +396,7 @@ class ImmunizationProtocolApplied(Base):
         Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
-    authority_id = Column(Integer, nullable=True)
+    authority_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     authority_display = Column(String, nullable=True)
 
     # doseNumber[x] (1..1 positiveInt | string)
@@ -402,6 +406,8 @@ class ImmunizationProtocolApplied(Base):
     # seriesDoses[x] (0..1 positiveInt | string)
     series_doses_positive_int = Column(Integer, nullable=True)
     series_doses_string = Column(String, nullable=True)
+
+    authority = relationship("OrganizationModel", foreign_keys=[authority_id], lazy="selectin")
 
     immunization = relationship("ImmunizationModel", back_populates="protocol_applied")
     target_diseases = relationship(

@@ -7,24 +7,22 @@ from sqlalchemy import (
     Integer,
     Sequence,
     String,
-    Text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import OrganizationReferenceType
 from app.models.practitioner_role.enums import (
+    DayOfWeek,
     PractitionerRoleEndpointReferenceType,
     PractitionerRoleHealthcareServiceReferenceType,
     PractitionerRoleLocationReferenceType,
 )
 from app.schemas.enums import (
-    AddressType,
-    AddressUse,
     ContactPointSystem,
     ContactPointUse,
-    HumanNameUse,
     IdentifierUse,
 )
 
@@ -55,9 +53,8 @@ class PractitionerRoleModel(Base):
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # practitioner (0..1 Reference(Practitioner))
-    practitioner_fk_id = Column(Integer, ForeignKey("practitioner.id"), nullable=True, index=True)
-    practitioner_ref_id = Column(Integer, nullable=True)   # public practitioner_id for FHIR ref
+    # practitioner (0..1 Reference(Practitioner)) — internal PK, matches repo convention
+    practitioner_id = Column(Integer, ForeignKey("practitioner.id"), nullable=True, index=True)
     practitioner_display = Column(String, nullable=True)
 
     # organization (0..1 Reference(Organization))
@@ -65,7 +62,7 @@ class PractitionerRoleModel(Base):
         Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
-    organization_id = Column(Integer, nullable=True)
+    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     organization_display = Column(String, nullable=True)
 
     # availabilityExceptions (0..1 string) — narrative exceptions to availability
@@ -77,7 +74,12 @@ class PractitionerRoleModel(Base):
     updated_by = Column(String, nullable=True)
 
     # parent relationship
-    practitioner = relationship("PractitionerModel")
+    practitioner = relationship(
+        "PractitionerModel", foreign_keys=[practitioner_id], lazy="selectin"
+    )
+    organization = relationship(
+        "OrganizationModel", foreign_keys=[organization_id], lazy="selectin"
+    )
 
     # child relationships
     identifiers = relationship(
@@ -95,17 +97,14 @@ class PractitionerRoleModel(Base):
     healthcare_services = relationship(
         "PractitionerRoleHealthcareService", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
-    characteristics = relationship(
-        "PractitionerRoleCharacteristic", back_populates="practitioner_role", cascade="all, delete-orphan"
+    telecoms = relationship(
+        "PractitionerRoleTelecom", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
-    communications = relationship(
-        "PractitionerRoleCommunication", back_populates="practitioner_role", cascade="all, delete-orphan"
+    available_times = relationship(
+        "PractitionerRoleAvailabilityTime", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
-    contacts = relationship(
-        "PractitionerRoleContact", back_populates="practitioner_role", cascade="all, delete-orphan"
-    )
-    availabilities = relationship(
-        "PractitionerRoleAvailability", back_populates="practitioner_role", cascade="all, delete-orphan"
+    not_available_times = relationship(
+        "PractitionerRoleNotAvailableTime", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
     endpoints = relationship(
         "PractitionerRoleEndpoint", back_populates="practitioner_role", cascade="all, delete-orphan"
@@ -190,8 +189,10 @@ class PractitionerRoleLocation(Base):
         Enum(PractitionerRoleLocationReferenceType, name="pr_location_ref_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+
+    reference = relationship("LocationModel", foreign_keys=[reference_id], lazy="selectin")
 
     practitioner_role = relationship("PractitionerRoleModel", back_populates="locations")
 
@@ -211,202 +212,71 @@ class PractitionerRoleHealthcareService(Base):
         Enum(PractitionerRoleHealthcareServiceReferenceType, name="pr_healthcare_service_ref_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("healthcare_service.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+
+    reference = relationship("HealthcareServiceModel", foreign_keys=[reference_id], lazy="selectin")
 
     practitioner_role = relationship("PractitionerRoleModel", back_populates="healthcare_services")
 
 
 # ---------------------------------------------------------------------------
-# characteristic[] — 0..*  (CodeableConcept)  [R5 extension, intentional]
+# telecom[] — 0..*  (ContactPoint)  — required R4 element
 # ---------------------------------------------------------------------------
 
-class PractitionerRoleCharacteristic(Base):
-    __tablename__ = "practitioner_role_characteristic"
+class PractitionerRoleTelecom(Base):
+    __tablename__ = "practitioner_role_telecom"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    practitioner_role = relationship("PractitionerRoleModel", back_populates="characteristics")
-
-
-# ---------------------------------------------------------------------------
-# communication[] — 0..*  (CodeableConcept)  [R5 extension, intentional]
-# ---------------------------------------------------------------------------
-
-class PractitionerRoleCommunication(Base):
-    __tablename__ = "practitioner_role_communication"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    practitioner_role = relationship("PractitionerRoleModel", back_populates="communications")
-
-
-# ---------------------------------------------------------------------------
-# contact[] — 0..*  (ExtendedContactDetail)  [R5 extension, intentional]
-#
-# Structure:
-#   practitioner_role
-#     └── practitioner_role_contact          (one row per contact entry)
-#           ├── practitioner_role_contact_name[]     (HumanName)
-#           └── practitioner_role_contact_telecom[]  (ContactPoint)
-# ---------------------------------------------------------------------------
-
-class PractitionerRoleContact(Base):
-    __tablename__ = "practitioner_role_contact"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    # purpose (0..1 CodeableConcept — flattened)
-    purpose_system = Column(String, nullable=True)
-    purpose_code = Column(String, nullable=True)
-    purpose_display = Column(String, nullable=True)
-    purpose_text = Column(String, nullable=True)
-
-    # address (0..1 Address — flattened)
-    address_use = Column(Enum(AddressUse, name="address_use"), nullable=True)
-    address_type = Column(Enum(AddressType, name="address_type"), nullable=True)
-    address_text = Column(String, nullable=True)
-    address_line = Column(Text, nullable=True)        # comma-separated street lines
-    address_city = Column(String, nullable=True)
-    address_district = Column(String, nullable=True)
-    address_state = Column(String, nullable=True)
-    address_postal_code = Column(String, nullable=True)
-    address_country = Column(String, nullable=True)
-    address_period_start = Column(DateTime(timezone=True), nullable=True)
-    address_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # organization (0..1 Reference(Organization) — flattened)
-    organization_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
-        nullable=True,
-    )
-    organization_id = Column(Integer, nullable=True)
-    organization_display = Column(String, nullable=True)
-
-    # period (0..1 — flattened)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    practitioner_role = relationship("PractitionerRoleModel", back_populates="contacts")
-    names = relationship(
-        "PractitionerRoleContactName", back_populates="contact", cascade="all, delete-orphan"
-    )
-    telecoms = relationship(
-        "PractitionerRoleContactTelecom", back_populates="contact", cascade="all, delete-orphan"
-    )
-
-
-class PractitionerRoleContactName(Base):
-    """HumanName entries for a single ExtendedContactDetail (contact.name — 0..*)."""
-    __tablename__ = "practitioner_role_contact_name"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("practitioner_role_contact.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    use = Column(Enum(HumanNameUse, name="human_name_use"), nullable=True)
-    text = Column(String, nullable=True)
-    family = Column(String, nullable=True)
-    given = Column(Text, nullable=True)        # comma-separated
-    prefix = Column(Text, nullable=True)       # comma-separated
-    suffix = Column(Text, nullable=True)       # comma-separated
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    contact = relationship("PractitionerRoleContact", back_populates="names")
-
-
-class PractitionerRoleContactTelecom(Base):
-    """ContactPoint entries for a single ExtendedContactDetail (contact.telecom — 0..*)."""
-    __tablename__ = "practitioner_role_contact_telecom"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("practitioner_role_contact.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    system = Column(Enum(ContactPointSystem, name="contact_point_system"), nullable=True)
+    system = Column(Enum(ContactPointSystem, name="contact_point_system", create_type=False), nullable=True)
     value = Column(String, nullable=True)
-    use = Column(Enum(ContactPointUse, name="contact_point_use"), nullable=True)
+    use = Column(Enum(ContactPointUse, name="contact_point_use", create_type=False), nullable=True)
     rank = Column(Integer, nullable=True)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
-    contact = relationship("PractitionerRoleContact", back_populates="telecoms")
+    practitioner_role = relationship("PractitionerRoleModel", back_populates="telecoms")
 
 
 # ---------------------------------------------------------------------------
-# availability[] — 0..*  (Availability)  [R5 extension, intentional]
-#
-# Structure:
-#   practitioner_role
-#     └── practitioner_role_availability          (one row per Availability grouping)
-#           ├── practitioner_role_availability_time[]      (availableTime)
-#           └── practitioner_role_not_available_time[]     (notAvailableTime)
+# availableTime[] / notAvailable[] — 0..* each, flat top-level per R4
+# (R5 wraps these in a single `availability` object — not used here)
 # ---------------------------------------------------------------------------
-
-class PractitionerRoleAvailability(Base):
-    __tablename__ = "practitioner_role_availability"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    practitioner_role = relationship("PractitionerRoleModel", back_populates="availabilities")
-    available_times = relationship(
-        "PractitionerRoleAvailabilityTime", back_populates="availability", cascade="all, delete-orphan"
-    )
-    not_available_times = relationship(
-        "PractitionerRoleNotAvailableTime", back_populates="availability", cascade="all, delete-orphan"
-    )
-
 
 class PractitionerRoleAvailabilityTime(Base):
     """availableTime BackboneElement — times the role is available."""
     __tablename__ = "practitioner_role_availability_time"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    availability_id = Column(Integer, ForeignKey("practitioner_role_availability.id"), nullable=False, index=True)
+    practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    # daysOfWeek is 0..* code — stored comma-separated (mon,tue,wed…); never individually filtered
-    days_of_week = Column(Text, nullable=True)
+    # daysOfWeek (0..* code)
+    days_of_week = Column(ARRAY(Enum(DayOfWeek, name="day_of_week")), nullable=True)
     all_day = Column(Boolean, nullable=True)
     # FHIR time type is HH:mm:ss — stored as String
     available_start_time = Column(String, nullable=True)
     available_end_time = Column(String, nullable=True)
 
-    availability = relationship("PractitionerRoleAvailability", back_populates="available_times")
+    practitioner_role = relationship("PractitionerRoleModel", back_populates="available_times")
 
 
 class PractitionerRoleNotAvailableTime(Base):
-    """notAvailableTime BackboneElement — times the role is not available."""
+    """notAvailable BackboneElement — times the role is not available."""
     __tablename__ = "practitioner_role_not_available_time"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    availability_id = Column(Integer, ForeignKey("practitioner_role_availability.id"), nullable=False, index=True)
+    practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
     description = Column(String, nullable=True)
     during_start = Column(DateTime(timezone=True), nullable=True)
     during_end = Column(DateTime(timezone=True), nullable=True)
 
-    availability = relationship("PractitionerRoleAvailability", back_populates="not_available_times")
+    practitioner_role = relationship("PractitionerRoleModel", back_populates="not_available_times")
 
 
 # ---------------------------------------------------------------------------

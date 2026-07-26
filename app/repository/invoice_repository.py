@@ -24,6 +24,7 @@ from app.models.invoice.enums import (
     InvoiceLineItemChargeItemReferenceType,
 )
 from app.models.enums import OrganizationReferenceType
+from app.models.organization.organization import OrganizationModel
 from app.schemas.invoice.input import InvoiceCreateSchema, InvoicePatchSchema
 
 
@@ -34,7 +35,25 @@ def _with_relationships(stmt):
         selectinload(InvoiceModel.line_items).selectinload(InvoiceLineItem.price_components),
         selectinload(InvoiceModel.total_price_components),
         selectinload(InvoiceModel.notes),
+        selectinload(InvoiceModel.issuer),
     )
+
+
+async def _resolve_issuer_pk(session: AsyncSession, ref: Optional[str]):
+    """Resolve 'Organization/<public_id>' to the internal organization.id PK."""
+    if not ref:
+        return None, None
+    ref_type, public_id = _parse_ref(ref, OrganizationReferenceType, "issuer")
+    result = await session.execute(
+        select(OrganizationModel.id).where(OrganizationModel.organization_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Organization/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 def _parse_ref(ref: str, enum_cls, field: str):
@@ -148,7 +167,7 @@ class InvoiceRepository:
         async with self.session_factory() as session:
             subj_type, subj_id = _parse_ref_optional(payload.subject, InvoiceSubjectReferenceType, "subject")
             rec_type, rec_id = _parse_ref_optional(payload.recipient, InvoiceRecipientReferenceType, "recipient")
-            iss_type, iss_id = _parse_ref_optional(payload.issuer, OrganizationReferenceType, "issuer")
+            iss_type, iss_id = await _resolve_issuer_pk(session, payload.issuer)
             acc_type, acc_id = _parse_ref_optional(payload.account, InvoiceAccountReferenceType, "account")
 
             try:

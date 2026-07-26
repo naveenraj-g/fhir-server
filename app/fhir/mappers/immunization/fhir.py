@@ -168,7 +168,8 @@ def fhir_immunization_protocol_applied(pa: "ImmunizationProtocolApplied") -> dic
     entry: dict = {}
     if pa.series:
         entry["series"] = pa.series
-    authority = _ref(pa.authority_type, pa.authority_id, pa.authority_display)
+    authority_public_id = pa.authority.organization_id if pa.authority else pa.authority_id
+    authority = _ref(pa.authority_type, authority_public_id, pa.authority_display)
     if authority:
         entry["authority"] = authority
     if pa.target_diseases:
@@ -200,11 +201,13 @@ def to_fhir_immunization(model: "ImmunizationModel") -> dict:
     if vc:
         out["vaccineCode"] = vc
 
-    patient = _ref(model.patient_type, model.patient_id, model.patient_display)
+    patient_public_id = model.patient.patient_id if model.patient else model.patient_id
+    patient = _ref(model.patient_type, patient_public_id, model.patient_display)
     if patient:
         out["patient"] = patient
 
-    encounter = _ref(model.encounter_type, model.encounter_id, model.encounter_display)
+    encounter_public_id = model.encounter.encounter_id if model.encounter else model.encounter_id
+    encounter = _ref(model.encounter_type, encounter_public_id, model.encounter_display)
     if encounter:
         out["encounter"] = encounter
 
@@ -218,7 +221,8 @@ def to_fhir_immunization(model: "ImmunizationModel") -> dict:
     if ro:
         out["reportOrigin"] = ro
 
-    location = _ref(model.location_type, model.location_id, model.location_display)
+    location_public_id = model.location.location_id if model.location else model.location_id
+    location = _ref(model.location_type, location_public_id, model.location_display)
     if location:
         out["location"] = location
 

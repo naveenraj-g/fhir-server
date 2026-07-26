@@ -68,8 +68,8 @@ _BOOKING_LIST_200 = {
     description=(
         "A specific set of roles/specialties/services a practitioner may perform at an organization. "
         "Optionally link to a `practitioner` (e.g. `'Practitioner/30001'`) and/or `organization`. "
-        "Supply `code`, `specialty`, `location`, `healthcareService`, `contact`, `availability`, "
-        "`endpoint`, `characteristic`, `communication`, and `identifier` arrays as needed. "
+        "Supply `code`, `specialty`, `location`, `healthcareService`, `telecom`, `availableTime`, "
+        "`notAvailable`, `endpoint`, and `identifier` arrays as needed. "
         + _CONTENT_NEG
     ),
     response_description="The newly created PractitionerRole resource",
@@ -175,8 +175,8 @@ async def get_practitioner_role(
     summary="Partially update a PractitionerRole resource",
     description=(
         "Patchable fields: `active`, `period_start`, `period_end`, `availability_exceptions`. "
-        "Child arrays (identifier, code, specialty, location, healthcareService, characteristic, "
-        "communication, contact, availability, endpoint) and the `practitioner`/`organization` "
+        "Child arrays (identifier, code, specialty, location, healthcareService, telecom, "
+        "availableTime, notAvailable, endpoint) and the `practitioner`/`organization` "
         "references cannot be changed via PATCH — delete and re-create to correct those. "
         + _CONTENT_NEG
     ),

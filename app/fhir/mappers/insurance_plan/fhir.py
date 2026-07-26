@@ -194,7 +194,7 @@ def fhir_insurance_plan_coverage(cov: "InsurancePlanCoverage") -> dict:
         entry["type"] = type_cc
     if cov.networks:
         entry["network"] = [
-            {k: v for k, v in {"reference": f"Organization/{n.reference_id}" if n.reference_id else None, "display": n.reference_display}.items() if v}
+            {k: v for k, v in {"reference": f"Organization/{n.organization.organization_id}" if n.organization else None, "display": n.reference_display}.items() if v}
             for n in cov.networks
         ]
     if cov.benefits:
@@ -279,7 +279,7 @@ def fhir_insurance_plan_plan(plan: "InsurancePlanPlan") -> dict:
         ]
     if plan.plan_networks:
         entry["network"] = [
-            {k: v for k, v in {"reference": f"Organization/{n.reference_id}" if n.reference_id else None, "display": n.reference_display}.items() if v}
+            {k: v for k, v in {"reference": f"Organization/{n.organization.organization_id}" if n.organization else None, "display": n.reference_display}.items() if v}
             for n in plan.plan_networks
         ]
     if plan.general_costs:
@@ -325,14 +325,14 @@ def to_fhir_insurance_plan(model: "InsurancePlanModel") -> dict:
     if period:
         result["period"] = period
 
-    if model.owned_by_id:
-        ref: dict = {"reference": f"Organization/{model.owned_by_id}"}
+    if model.owned_by_organization:
+        ref: dict = {"reference": f"Organization/{model.owned_by_organization.organization_id}"}
         if model.owned_by_display:
             ref["display"] = model.owned_by_display
         result["ownedBy"] = ref
 
-    if model.administered_by_id:
-        ref2: dict = {"reference": f"Organization/{model.administered_by_id}"}
+    if model.administered_by_organization:
+        ref2: dict = {"reference": f"Organization/{model.administered_by_organization.organization_id}"}
         if model.administered_by_display:
             ref2["display"] = model.administered_by_display
         result["administeredBy"] = ref2
@@ -354,7 +354,7 @@ def to_fhir_insurance_plan(model: "InsurancePlanModel") -> dict:
 
     if model.networks:
         result["network"] = [
-            {k: v for k, v in {"reference": f"Organization/{n.reference_id}" if n.reference_id else None, "display": n.reference_display}.items() if v}
+            {k: v for k, v in {"reference": f"Organization/{n.organization.organization_id}" if n.organization else None, "display": n.reference_display}.items() if v}
             for n in model.networks
         ]
 

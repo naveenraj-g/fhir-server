@@ -158,7 +158,8 @@ def to_fhir_invoice(model: "InvoiceModel") -> dict:
 
     if model.issuer_type and model.issuer_id:
         iss_type = model.issuer_type.value if hasattr(model.issuer_type, "value") else model.issuer_type
-        iss: dict = {"reference": f"{iss_type}/{model.issuer_id}"}
+        issuer_public_id = model.issuer.organization_id if model.issuer else model.issuer_id
+        iss: dict = {"reference": f"{iss_type}/{issuer_public_id}"}
         if model.issuer_display:
             iss["display"] = model.issuer_display
         result["issuer"] = iss

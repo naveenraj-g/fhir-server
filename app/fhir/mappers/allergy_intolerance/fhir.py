@@ -153,11 +153,13 @@ def to_fhir_allergy_intolerance(model: "AllergyIntoleranceModel") -> dict:
         result["code"] = code
 
     patient_type = model.patient_type.value if hasattr(model.patient_type, "value") else model.patient_type
-    result["patient"] = {"reference": f"{patient_type}/{model.patient_id}"}
+    patient_public_id = model.patient.patient_id if model.patient else model.patient_id
+    result["patient"] = {"reference": f"{patient_type}/{patient_public_id}"}
     if model.patient_display:
         result["patient"]["display"] = model.patient_display
 
-    encounter = _ref(model.encounter_type, model.encounter_id, model.encounter_display)
+    encounter_public_id = model.encounter.encounter_id if model.encounter else model.encounter_id
+    encounter = _ref(model.encounter_type, encounter_public_id, model.encounter_display)
     if encounter:
         result["encounter"] = encounter
 

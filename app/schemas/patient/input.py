@@ -38,9 +38,11 @@ class IdentifierCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     use: Optional[IdentifierUse] = Field(None, description="usual|official|temp|secondary|old")
     type_system: Optional[str] = Field(None, description="Coding system for identifier type.")
+    type_version: Optional[str] = Field(None, description="Version of the coding system for identifier type.")
     type_code: Optional[str] = Field(None, description="Code for identifier type (e.g. MR, SS).")
     type_display: Optional[str] = Field(None, description="Display for identifier type.")
     type_text: Optional[str] = Field(None, description="Text of the CodeableConcept for identifier type.")
+    type_user_selected: Optional[bool] = Field(None, description="Whether this coding was chosen directly by the user.")
     system: Optional[str] = Field(None, description="URI namespace of the identifier.")
     value: str = Field(..., description="Identifier value within the given system.")
     period_start: Optional[datetime] = Field(None, description="Start of identifier validity period.")
@@ -88,9 +90,11 @@ class PhotoCreate(BaseModel):
 class ContactRelationshipCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     coding_system: Optional[str] = None
+    coding_version: Optional[str] = None
     coding_code: Optional[str] = None
     coding_display: Optional[str] = None
     text: Optional[str] = None
+    coding_user_selected: Optional[bool] = None
 
 
 class ContactTelecomCreate(BaseModel):
@@ -139,9 +143,11 @@ class ContactCreate(BaseModel):
 class CommunicationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     language_system: Optional[str] = Field(None, description="URI of the language code system.")
+    language_version: Optional[str] = Field(None, description="Version of the language code system.")
     language_code: str = Field(..., description="ISO-639-1 language code (e.g. en, fr, de).")
     language_display: Optional[str] = None
     language_text: Optional[str] = None
+    language_user_selected: Optional[bool] = Field(None, description="Whether this coding was chosen directly by the user.")
     preferred: Optional[bool] = Field(None, description="True if this is the patient's preferred language.")
 
 
@@ -181,9 +187,11 @@ class IdentifierPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     use: Optional[IdentifierUse] = None
     type_system: Optional[str] = None
+    type_version: Optional[str] = None
     type_code: Optional[str] = None
     type_display: Optional[str] = None
     type_text: Optional[str] = None
+    type_user_selected: Optional[bool] = None
     system: Optional[str] = None
     value: Optional[str] = None
     period_start: Optional[datetime] = None
@@ -259,9 +267,11 @@ class ContactPatch(BaseModel):
 class CommunicationPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     language_system: Optional[str] = None
+    language_version: Optional[str] = None
     language_code: Optional[str] = None
     language_display: Optional[str] = None
     language_text: Optional[str] = None
+    language_user_selected: Optional[bool] = None
     preferred: Optional[bool] = None
 
 
@@ -310,9 +320,11 @@ class PatientCreateSchema(BaseModel):
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[datetime] = None
     marital_status_system: Optional[str] = None
+    marital_status_version: Optional[str] = None
     marital_status_code: Optional[str] = None
     marital_status_display: Optional[str] = None
     marital_status_text: Optional[str] = None
+    marital_status_user_selected: Optional[bool] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
     managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
@@ -328,9 +340,11 @@ class PatientPatchSchema(BaseModel):
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[datetime] = None
     marital_status_system: Optional[str] = None
+    marital_status_version: Optional[str] = None
     marital_status_code: Optional[str] = None
     marital_status_display: Optional[str] = None
     marital_status_text: Optional[str] = None
+    marital_status_user_selected: Optional[bool] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
     managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")

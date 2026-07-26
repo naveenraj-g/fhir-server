@@ -111,7 +111,7 @@ def to_plain_invoice(model: "InvoiceModel") -> dict:
         "recipient_display": model.recipient_display,
         "date": model.date.isoformat() if model.date else None,
         "issuer_type": iss_type,
-        "issuer_id": model.issuer_id,
+        "issuer_id": model.issuer.organization_id if model.issuer else model.issuer_id,
         "issuer_display": model.issuer_display,
         "account_type": acc_type,
         "account_id": model.account_id,

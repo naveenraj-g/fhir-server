@@ -7,6 +7,8 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
+from app.models.location.location import LocationModel
+from app.models.organization.organization import OrganizationModel
 from app.models.healthcare_service.enums import (
     HealthcareServiceCoverageAreaReferenceType,
     HealthcareServiceEndpointReferenceType,
@@ -44,9 +46,10 @@ def _with_relationships(stmt):
         selectinload(HealthcareServiceModel.categories),
         selectinload(HealthcareServiceModel.types),
         selectinload(HealthcareServiceModel.specialties),
-        selectinload(HealthcareServiceModel.locations),
+        selectinload(HealthcareServiceModel.locations).selectinload(HealthcareServiceLocation.reference),
         selectinload(HealthcareServiceModel.telecoms),
-        selectinload(HealthcareServiceModel.coverage_areas),
+        selectinload(HealthcareServiceModel.coverage_areas).selectinload(HealthcareServiceCoverageArea.reference),
+        selectinload(HealthcareServiceModel.provided_by),
         selectinload(HealthcareServiceModel.service_provision_codes),
         selectinload(HealthcareServiceModel.eligibilities),
         selectinload(HealthcareServiceModel.programs),
@@ -82,6 +85,36 @@ def _parse_ref(ref: str, enum_cls, field: str):
             detail=f"Invalid reference type '{parts[0]}' for {field}. Allowed: {allowed}.",
         )
     return ref_type, ref_id
+
+
+async def _resolve_provided_by_pk(session: AsyncSession, ref: str):
+    """Resolve 'Organization/<public_id>' to the internal organization.id PK."""
+    ref_type, public_id = _parse_ref(ref, OrganizationReferenceType, "provided_by")
+    result = await session.execute(
+        select(OrganizationModel.id).where(OrganizationModel.organization_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Organization/{public_id} not found.",
+        )
+    return ref_type, pk
+
+
+async def _resolve_location_pk(session: AsyncSession, ref: str, enum_cls, field: str):
+    """Resolve 'Location/<public_id>' to the internal location.id PK."""
+    ref_type, public_id = _parse_ref(ref, enum_cls, field)
+    result = await session.execute(
+        select(LocationModel.id).where(LocationModel.location_id == public_id)
+    )
+    pk = result.scalar_one_or_none()
+    if pk is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Location/{public_id} not found.",
+        )
+    return ref_type, pk
 
 
 class HealthcareServiceRepository:
@@ -175,9 +208,7 @@ class HealthcareServiceRepository:
         async with self.session_factory() as session:
             pb_type, pb_id = None, None
             if payload.provided_by:
-                pb_type, pb_id = _parse_ref(
-                    payload.provided_by, OrganizationReferenceType, "provided_by"
-                )
+                pb_type, pb_id = await _resolve_provided_by_pk(session, payload.provided_by)
 
             hs = HealthcareServiceModel(
                 user_id=user_id,
@@ -236,8 +267,8 @@ class HealthcareServiceRepository:
                 ))
 
             for item in (payload.location or []):
-                loc_type, loc_id = _parse_ref(
-                    item.reference, HealthcareServiceLocationReferenceType, "location"
+                loc_type, loc_id = await _resolve_location_pk(
+                    session, item.reference, HealthcareServiceLocationReferenceType, "location"
                 )
                 session.add(HealthcareServiceLocation(
                     healthcare_service=hs, org_id=org_id,
@@ -257,8 +288,8 @@ class HealthcareServiceRepository:
                 ))
 
             for item in (payload.coverage_area or []):
-                ca_type, ca_id = _parse_ref(
-                    item.reference, HealthcareServiceCoverageAreaReferenceType, "coverage_area"
+                ca_type, ca_id = await _resolve_location_pk(
+                    session, item.reference, HealthcareServiceCoverageAreaReferenceType, "coverage_area"
                 )
                 session.add(HealthcareServiceCoverageArea(
                     healthcare_service=hs, org_id=org_id,

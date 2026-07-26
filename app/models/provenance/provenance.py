@@ -61,7 +61,7 @@ class ProvenanceModel(Base):
         Enum(ProvenanceLocationReferenceType, name="provenance_location_reference_type"),
         nullable=True,
     )
-    location_id = Column(Integer, nullable=True)
+    location_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     location_display = Column(String, nullable=True)
 
     # ── activity (0..1 CodeableConcept) ──────────────────────────────────────
@@ -79,6 +79,8 @@ class ProvenanceModel(Base):
     updated_by = Column(String, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
+
+    location = relationship("LocationModel", foreign_keys=[location_id], lazy="selectin")
 
     targets = relationship(
         "ProvenanceTarget",

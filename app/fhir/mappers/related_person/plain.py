@@ -34,7 +34,7 @@ def to_plain_related_person(rp: "RelatedPersonModel") -> dict:
         "org_id": rp.org_id,
         "active": rp.active,
         "patient_type": fhir_enum(rp.patient_type) if rp.patient_type else None,
-        "patient_id": rp.patient_id,
+        "patient_id": rp.patient.patient_id if rp.patient else None,
         "patient_display": rp.patient_display,
         "gender": fhir_enum(rp.gender) if rp.gender else None,
         "birth_date": rp.birth_date.isoformat() if rp.birth_date else None,

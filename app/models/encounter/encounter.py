@@ -7,29 +7,28 @@ from sqlalchemy import (
     Integer,
     Sequence,
     String,
-    Text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.encounter.enums import (
-    EncounterStatus,
-    EncounterLocationStatus,
-    EncounterParticipantReferenceType,
+    EncounterAccountReferenceType,
+    EncounterAppointmentReferenceType,
     EncounterBasedOnReferenceType,
     EncounterDiagnosisConditionType,
-    EncounterServiceTypeReferenceType,
-    EncounterReasonValueReferenceType,
     EncounterEpisodeOfCareReferenceType,
-    EncounterCareTeamReferenceType,
-    EncounterAppointmentReferenceType,
-    EncounterAccountReferenceType,
     EncounterLocationReferenceType,
+    EncounterLocationStatus,
+    EncounterParticipantReferenceType,
+    EncounterReasonReferenceType,
+    EncounterStatus,
 )
-from app.models.enums import SubjectReferenceType, OrganizationReferenceType
+from app.models.enums import OrganizationReferenceType, SubjectReferenceType
 
-encounter_id_seq = Sequence("encounter_pub_seq", start=20000, increment=1, metadata=Base.metadata)
+encounter_id_seq = Sequence(
+    "encounter_pub_seq", start=20000, increment=1, metadata=Base.metadata
+)
 
 
 class EncounterModel(Base):
@@ -48,10 +47,21 @@ class EncounterModel(Base):
     user_id = Column(String, nullable=True, index=True)
     org_id = Column(String, nullable=True, index=True)
 
-    # status (1..1) — R5 value set
+    # status (1..1 code)
     status = Column(Enum(EncounterStatus, name="encounter_status"), nullable=True)
 
-    # priority (0..1 CodeableConcept) — flat columns
+    # class (1..1 Coding) — flattened
+    class_system = Column(String, nullable=True)
+    class_code = Column(String, nullable=True)
+    class_display = Column(String, nullable=True)
+
+    # serviceType (0..1 CodeableConcept) — flattened
+    service_type_system = Column(String, nullable=True)
+    service_type_code = Column(String, nullable=True)
+    service_type_display = Column(String, nullable=True)
+    service_type_text = Column(String, nullable=True)
+
+    # priority (0..1 CodeableConcept) — flattened
     priority_system = Column(String, nullable=True)
     priority_code = Column(String, nullable=True)
     priority_display = Column(String, nullable=True)
@@ -65,65 +75,65 @@ class EncounterModel(Base):
     subject_id = Column(Integer, nullable=True)
     subject_display = Column(String, nullable=True)
 
-    # subjectStatus (0..1 CodeableConcept) — R5 new
-    subject_status_system = Column(String, nullable=True)
-    subject_status_code = Column(String, nullable=True)
-    subject_status_display = Column(String, nullable=True)
-    subject_status_text = Column(String, nullable=True)
+    # period (0..1 Period)
+    period_start = Column(DateTime(timezone=True), nullable=True)
+    period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # actualPeriod (0..1 Period) — R5 renamed from period
-    actual_period_start = Column(DateTime(timezone=True), nullable=True)
-    actual_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # plannedStartDate / plannedEndDate (0..1 dateTime) — R5 new
-    planned_start_date = Column(DateTime(timezone=True), nullable=True)
-    planned_end_date = Column(DateTime(timezone=True), nullable=True)
-
-    # length (0..1 Duration) — flat columns
+    # length (0..1 Duration) — flattened
     length_value = Column(Float, nullable=True)
     length_comparator = Column(String, nullable=True)
     length_unit = Column(String, nullable=True)
     length_system = Column(String, nullable=True)
     length_code = Column(String, nullable=True)
 
-    # serviceProvider (0..1 Reference(Organization))
+    # serviceProvider (0..1 Reference(Organization)) — shared enum + FK
     service_provider_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
-    service_provider_id = Column(Integer, nullable=True)
+    service_provider_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     service_provider_display = Column(String, nullable=True)
+    service_provider = relationship(
+        "OrganizationModel", foreign_keys=[service_provider_id], lazy="selectin"
+    )
 
-    # partOf (0..1 Reference(Encounter)) — store the public encounter_id
-    part_of_id = Column(Integer, nullable=True)
+    # partOf (0..1 Reference(Encounter)) — self-referential FK to internal PK
+    part_of_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    part_of = relationship(
+        "EncounterModel", remote_side=[id], foreign_keys=[part_of_id], lazy="selectin"
+    )
 
-    # admission (0..1 BackboneElement) — R5 renamed from hospitalization
+    # hospitalization (0..1 BackboneElement) — flattened
     # preAdmissionIdentifier (0..1 Identifier)
-    admission_pre_admission_identifier_system = Column(String, nullable=True)
-    admission_pre_admission_identifier_value = Column(String, nullable=True)
+    hospitalization_pre_admission_identifier_system = Column(String, nullable=True)
+    hospitalization_pre_admission_identifier_value = Column(String, nullable=True)
     # origin (0..1 Reference(Location|Organization))
-    admission_origin_type = Column(String, nullable=True)
-    admission_origin_id = Column(Integer, nullable=True)
-    admission_origin_display = Column(String, nullable=True)
+    hospitalization_origin_type = Column(String, nullable=True)
+    hospitalization_origin_id = Column(Integer, nullable=True)
+    hospitalization_origin_display = Column(String, nullable=True)
     # admitSource (0..1 CodeableConcept)
-    admission_admit_source_system = Column(String, nullable=True)
-    admission_admit_source_code = Column(String, nullable=True)
-    admission_admit_source_display = Column(String, nullable=True)
-    admission_admit_source_text = Column(String, nullable=True)
+    hospitalization_admit_source_system = Column(String, nullable=True)
+    hospitalization_admit_source_code = Column(String, nullable=True)
+    hospitalization_admit_source_display = Column(String, nullable=True)
+    hospitalization_admit_source_text = Column(String, nullable=True)
     # reAdmission (0..1 CodeableConcept)
-    admission_re_admission_system = Column(String, nullable=True)
-    admission_re_admission_code = Column(String, nullable=True)
-    admission_re_admission_display = Column(String, nullable=True)
-    admission_re_admission_text = Column(String, nullable=True)
+    hospitalization_re_admission_system = Column(String, nullable=True)
+    hospitalization_re_admission_code = Column(String, nullable=True)
+    hospitalization_re_admission_display = Column(String, nullable=True)
+    hospitalization_re_admission_text = Column(String, nullable=True)
     # destination (0..1 Reference(Location|Organization))
-    admission_destination_type = Column(String, nullable=True)
-    admission_destination_id = Column(Integer, nullable=True)
-    admission_destination_display = Column(String, nullable=True)
+    hospitalization_destination_type = Column(String, nullable=True)
+    hospitalization_destination_id = Column(Integer, nullable=True)
+    hospitalization_destination_display = Column(String, nullable=True)
     # dischargeDisposition (0..1 CodeableConcept)
-    admission_discharge_disposition_system = Column(String, nullable=True)
-    admission_discharge_disposition_code = Column(String, nullable=True)
-    admission_discharge_disposition_display = Column(String, nullable=True)
-    admission_discharge_disposition_text = Column(String, nullable=True)
+    hospitalization_discharge_disposition_system = Column(String, nullable=True)
+    hospitalization_discharge_disposition_code = Column(String, nullable=True)
+    hospitalization_discharge_disposition_display = Column(String, nullable=True)
+    hospitalization_discharge_disposition_text = Column(String, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -135,44 +145,39 @@ class EncounterModel(Base):
         "EncounterIdentifier", back_populates="encounter", cascade="all, delete-orphan"
     )
     status_history = relationship(
-        "EncounterStatusHistory", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterStatusHistory",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
-    # classHistory kept for R4 backward compat — R5 removed this element
     class_history = relationship(
-        "EncounterClassHistory", back_populates="encounter", cascade="all, delete-orphan"
-    )
-    classes = relationship(
-        "EncounterClass", back_populates="encounter", cascade="all, delete-orphan"
-    )
-    service_types = relationship(
-        "EncounterServiceType", back_populates="encounter", cascade="all, delete-orphan"
-    )
-    business_statuses = relationship(
-        "EncounterBusinessStatus", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterClassHistory",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
     types = relationship(
         "EncounterType", back_populates="encounter", cascade="all, delete-orphan"
     )
     episode_of_cares = relationship(
-        "EncounterEpisodeOfCare", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterEpisodeOfCare",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
     based_ons = relationship(
         "EncounterBasedOn", back_populates="encounter", cascade="all, delete-orphan"
-    )
-    care_teams = relationship(
-        "EncounterCareTeam", back_populates="encounter", cascade="all, delete-orphan"
     )
     participants = relationship(
         "EncounterParticipant", back_populates="encounter", cascade="all, delete-orphan"
     )
     appointment_refs = relationship(
-        "EncounterAppointmentRef", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterAppointmentRef",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
-    virtual_services = relationship(
-        "EncounterVirtualService", back_populates="encounter", cascade="all, delete-orphan"
+    reason_codes = relationship(
+        "EncounterReasonCode", back_populates="encounter", cascade="all, delete-orphan"
     )
-    reasons = relationship(
-        "EncounterReason", back_populates="encounter", cascade="all, delete-orphan"
+    reason_references = relationship(
+        "EncounterReasonReference", back_populates="encounter", cascade="all, delete-orphan"
     )
     diagnoses = relationship(
         "EncounterDiagnosis", back_populates="encounter", cascade="all, delete-orphan"
@@ -180,15 +185,20 @@ class EncounterModel(Base):
     accounts = relationship(
         "EncounterAccount", back_populates="encounter", cascade="all, delete-orphan"
     )
-    # dietPreference / specialArrangement / specialCourtesy moved to top-level in R5
     diet_preferences = relationship(
-        "EncounterDietPreference", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterDietPreference",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
     special_arrangements = relationship(
-        "EncounterSpecialArrangement", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterSpecialArrangement",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
     special_courtesies = relationship(
-        "EncounterSpecialCourtesy", back_populates="encounter", cascade="all, delete-orphan"
+        "EncounterSpecialCourtesy",
+        back_populates="encounter",
+        cascade="all, delete-orphan",
     )
     locations = relationship(
         "EncounterLocation", back_populates="encounter", cascade="all, delete-orphan"
@@ -202,7 +212,9 @@ class EncounterIdentifier(Base):
     __tablename__ = "encounter_identifier"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     use = Column(String, nullable=True)
@@ -220,15 +232,17 @@ class EncounterIdentifier(Base):
 
 
 class EncounterStatusHistory(Base):
-    """statusHistory[] — R4 field kept for backward compat; removed in R5."""
+    """statusHistory[] (0..* BackboneElement)."""
 
     __tablename__ = "encounter_status_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
-    status = Column(String, nullable=False)
+    status = Column(Enum(EncounterStatus, name="encounter_status", create_type=False), nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
@@ -236,12 +250,14 @@ class EncounterStatusHistory(Base):
 
 
 class EncounterClassHistory(Base):
-    """classHistory[] — R4 field kept for backward compat; removed in R5."""
+    """classHistory[] (0..* BackboneElement)."""
 
     __tablename__ = "encounter_class_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     class_system = Column(String, nullable=True)
@@ -254,82 +270,15 @@ class EncounterClassHistory(Base):
     encounter = relationship("EncounterModel", back_populates="class_history")
 
 
-class EncounterClass(Base):
-    """class[] (0..*) CodeableConcept — R5 changed from 0..1 Coding to 0..* CodeableConcept."""
-
-    __tablename__ = "encounter_class"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="classes")
-
-
-class EncounterBusinessStatus(Base):
-    """businessStatus[] (0..*) BackboneElement — R5 new workflow status tracking."""
-
-    __tablename__ = "encounter_business_status"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    # code (1..1 CodeableConcept)
-    code_system = Column(String, nullable=True)
-    code_code = Column(String, nullable=False)
-    code_display = Column(String, nullable=True)
-    code_text = Column(String, nullable=True)
-
-    # type (0..1 Coding)
-    type_system = Column(String, nullable=True)
-    type_code = Column(String, nullable=True)
-    type_display = Column(String, nullable=True)
-
-    # effectiveDate (0..1 dateTime)
-    effective_date = Column(DateTime(timezone=True), nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="business_statuses")
-
-
-class EncounterServiceType(Base):
-    """serviceType[] (0..*) CodeableReference(HealthcareService) — R5 changed from 0..1 CodeableConcept."""
-
-    __tablename__ = "encounter_service_type"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    # concept (CodeableConcept)
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    # reference (Reference(HealthcareService))
-    reference_type = Column(
-        Enum(EncounterServiceTypeReferenceType, name="encounter_service_type_reference_type"),
-        nullable=True,
-    )
-    reference_id = Column(Integer, nullable=True)
-    reference_display = Column(String, nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="service_types")
-
-
 class EncounterType(Base):
     """type[] (0..*) CodeableConcept."""
 
     __tablename__ = "encounter_type"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     coding_system = Column(String, nullable=True)
@@ -346,11 +295,16 @@ class EncounterEpisodeOfCare(Base):
     __tablename__ = "encounter_episode_of_care"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     reference_type = Column(
-        Enum(EncounterEpisodeOfCareReferenceType, name="encounter_episode_of_care_reference_type"),
+        Enum(
+            EncounterEpisodeOfCareReferenceType,
+            name="encounter_episode_of_care_reference_type",
+        ),
         nullable=True,
     )
     reference_id = Column(Integer, nullable=True)
@@ -360,12 +314,14 @@ class EncounterEpisodeOfCare(Base):
 
 
 class EncounterBasedOn(Base):
-    """basedOn[] (0..*) Reference(CarePlan|DeviceRequest|MedicationRequest|ServiceRequest|RequestOrchestration|NutritionOrder|VisionPrescription)."""
+    """basedOn[] (0..*) Reference(ServiceRequest)."""
 
     __tablename__ = "encounter_based_on"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     reference_type = Column(
@@ -378,35 +334,23 @@ class EncounterBasedOn(Base):
     encounter = relationship("EncounterModel", back_populates="based_ons")
 
 
-class EncounterCareTeam(Base):
-    """careTeam[] (0..*) Reference(CareTeam) — R5 new."""
-
-    __tablename__ = "encounter_care_team"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    reference_type = Column(
-        Enum(EncounterCareTeamReferenceType, name="encounter_care_team_reference_type"),
-        nullable=True,
-    )
-    reference_id = Column(Integer, nullable=True)
-    reference_display = Column(String, nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="care_teams")
-
-
 class EncounterParticipant(Base):
+    """participant[] (0..*) BackboneElement — individual (0..1 Reference(Practitioner|PractitionerRole|RelatedPerson))."""
+
     __tablename__ = "encounter_participant"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
-    # actor (0..1 Reference) — R5 renamed from individual; expanded allowed types
+    # individual (0..1 Reference)
     reference_type = Column(
-        Enum(EncounterParticipantReferenceType, name="encounter_participant_reference_type"),
+        Enum(
+            EncounterParticipantReferenceType,
+            name="encounter_participant_reference_type",
+        ),
         nullable=True,
     )
     reference_id = Column(Integer, nullable=True)
@@ -417,7 +361,9 @@ class EncounterParticipant(Base):
 
     encounter = relationship("EncounterModel", back_populates="participants")
     types = relationship(
-        "EncounterParticipantType", back_populates="participant", cascade="all, delete-orphan"
+        "EncounterParticipantType",
+        back_populates="participant",
+        cascade="all, delete-orphan",
     )
 
 
@@ -446,11 +392,16 @@ class EncounterAppointmentRef(Base):
     __tablename__ = "encounter_appointment_ref"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     reference_type = Column(
-        Enum(EncounterAppointmentReferenceType, name="encounter_appointment_ref_reference_type"),
+        Enum(
+            EncounterAppointmentReferenceType,
+            name="encounter_appointment_ref_reference_type",
+        ),
         nullable=True,
     )
     reference_id = Column(Integer, nullable=True)
@@ -459,51 +410,15 @@ class EncounterAppointmentRef(Base):
     encounter = relationship("EncounterModel", back_populates="appointment_refs")
 
 
-class EncounterVirtualService(Base):
-    """virtualService[] (0..*) VirtualServiceDetail — R5 new."""
+class EncounterReasonCode(Base):
+    """reasonCode[] (0..*) CodeableConcept."""
 
-    __tablename__ = "encounter_virtual_service"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    channel_type_system = Column(String, nullable=True)
-    channel_type_code = Column(String, nullable=True)
-    channel_type_display = Column(String, nullable=True)
-    address_url = Column(String, nullable=True)
-    additional_info = Column(Text, nullable=True)  # comma-separated URLs
-    max_participants = Column(Integer, nullable=True)
-    session_key = Column(String, nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="virtual_services")
-
-
-class EncounterReason(Base):
-    """reason[] (0..*) BackboneElement — R5 consolidates reasonCode + reasonReference."""
-
-    __tablename__ = "encounter_reason"
+    __tablename__ = "encounter_reason_code"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="reasons")
-    uses = relationship(
-        "EncounterReasonUse", back_populates="reason", cascade="all, delete-orphan"
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
     )
-    values = relationship(
-        "EncounterReasonValue", back_populates="reason", cascade="all, delete-orphan"
-    )
-
-
-class EncounterReasonUse(Base):
-    """reason[].use[] (0..*) CodeableConcept — reason categorization."""
-
-    __tablename__ = "encounter_reason_use"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    reason_id = Column(Integer, ForeignKey("encounter_reason.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
     coding_system = Column(String, nullable=True)
@@ -511,98 +426,59 @@ class EncounterReasonUse(Base):
     coding_display = Column(String, nullable=True)
     text = Column(String, nullable=True)
 
-    reason = relationship("EncounterReason", back_populates="uses")
+    encounter = relationship("EncounterModel", back_populates="reason_codes")
 
 
-class EncounterReasonValue(Base):
-    """reason[].value[] (0..*) CodeableReference(Condition|DiagnosticReport|Observation|Procedure)."""
+class EncounterReasonReference(Base):
+    """reasonReference[] (0..*) Reference(Condition|Procedure|Observation|ImmunizationRecommendation)."""
 
-    __tablename__ = "encounter_reason_value"
+    __tablename__ = "encounter_reason_reference"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    reason_id = Column(Integer, ForeignKey("encounter_reason.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
-    # concept (CodeableConcept)
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    # reference
     reference_type = Column(
-        Enum(EncounterReasonValueReferenceType, name="encounter_reason_value_reference_type"),
+        Enum(EncounterReasonReferenceType, name="encounter_reason_reference_type"),
         nullable=True,
     )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
-    reason = relationship("EncounterReason", back_populates="values")
+    encounter = relationship("EncounterModel", back_populates="reason_references")
 
 
 class EncounterDiagnosis(Base):
-    """diagnosis[] (0..*) BackboneElement."""
+    """diagnosis[] (0..*) BackboneElement — condition (1..1 Reference(Condition|Procedure)), use (0..1 CodeableConcept), rank (0..1 positiveInt)."""
 
     __tablename__ = "encounter_diagnosis"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    encounter = relationship("EncounterModel", back_populates="diagnoses")
-    conditions = relationship(
-        "EncounterDiagnosisCondition", back_populates="diagnosis", cascade="all, delete-orphan"
-    )
-    uses = relationship(
-        "EncounterDiagnosisUse", back_populates="diagnosis", cascade="all, delete-orphan"
-    )
-
-
-class EncounterDiagnosisCondition(Base):
-    """diagnosis[].condition[] (0..*) CodeableReference(Condition) — R5 changed from 0..1 Reference."""
-
-    __tablename__ = "encounter_diagnosis_condition"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    diagnosis_id = Column(
-        Integer, ForeignKey("encounter_diagnosis.id"), nullable=False, index=True
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=True)
 
-    # concept (CodeableConcept)
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    # reference (Reference(Condition))
-    reference_type = Column(
+    # condition (1..1 Reference(Condition|Procedure))
+    condition_type = Column(
         Enum(EncounterDiagnosisConditionType, name="encounter_diagnosis_condition_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
-    reference_display = Column(String, nullable=True)
+    condition_id = Column(Integer, nullable=True)
+    condition_display = Column(String, nullable=True)
 
-    diagnosis = relationship("EncounterDiagnosis", back_populates="conditions")
+    # use (0..1 CodeableConcept)
+    use_system = Column(String, nullable=True)
+    use_code = Column(String, nullable=True)
+    use_display = Column(String, nullable=True)
+    use_text = Column(String, nullable=True)
 
+    # rank (0..1 positiveInt)
+    rank = Column(Integer, nullable=True)
 
-class EncounterDiagnosisUse(Base):
-    """diagnosis[].use[] (0..*) CodeableConcept — R5 changed from 0..1 to 0..*."""
-
-    __tablename__ = "encounter_diagnosis_use"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    diagnosis_id = Column(
-        Integer, ForeignKey("encounter_diagnosis.id"), nullable=False, index=True
-    )
-    org_id = Column(String, nullable=True)
-
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    diagnosis = relationship("EncounterDiagnosis", back_populates="uses")
+    encounter = relationship("EncounterModel", back_populates="diagnoses")
 
 
 class EncounterAccount(Base):
@@ -611,7 +487,9 @@ class EncounterAccount(Base):
     __tablename__ = "encounter_account"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     reference_type = Column(
@@ -625,12 +503,14 @@ class EncounterAccount(Base):
 
 
 class EncounterDietPreference(Base):
-    """dietPreference[] (0..*) CodeableConcept — R5 moved to top-level from hospitalization."""
+    """hospitalization.dietPreference[] (0..*) CodeableConcept."""
 
     __tablename__ = "encounter_diet_preference"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     coding_system = Column(String, nullable=True)
@@ -642,12 +522,14 @@ class EncounterDietPreference(Base):
 
 
 class EncounterSpecialArrangement(Base):
-    """specialArrangement[] (0..*) CodeableConcept — R5 moved to top-level from hospitalization."""
+    """hospitalization.specialArrangement[] (0..*) CodeableConcept."""
 
     __tablename__ = "encounter_special_arrangement"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     coding_system = Column(String, nullable=True)
@@ -659,12 +541,14 @@ class EncounterSpecialArrangement(Base):
 
 
 class EncounterSpecialCourtesy(Base):
-    """specialCourtesy[] (0..*) CodeableConcept — R5 moved to top-level from hospitalization."""
+    """hospitalization.specialCourtesy[] (0..*) CodeableConcept."""
 
     __tablename__ = "encounter_special_courtesy"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     coding_system = Column(String, nullable=True)
@@ -681,7 +565,9 @@ class EncounterLocation(Base):
     __tablename__ = "encounter_location"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_id = Column(
+        Integer, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=True)
 
     # location (1..1 Reference(Location))
@@ -697,11 +583,11 @@ class EncounterLocation(Base):
         nullable=True,
     )
 
-    # form (0..1 CodeableConcept) — R5 renamed from physicalType
-    form_system = Column(String, nullable=True)
-    form_code = Column(String, nullable=True)
-    form_display = Column(String, nullable=True)
-    form_text = Column(String, nullable=True)
+    # physicalType (0..1 CodeableConcept)
+    physical_type_system = Column(String, nullable=True)
+    physical_type_code = Column(String, nullable=True)
+    physical_type_display = Column(String, nullable=True)
+    physical_type_text = Column(String, nullable=True)
 
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)

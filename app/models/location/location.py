@@ -99,7 +99,7 @@ class LocationModel(Base):
         Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
-    managing_organization_id = Column(Integer, nullable=True)
+    managing_organization_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
     managing_organization_display = Column(String, nullable=True)
 
     # ── partOf (0..1 Reference(Location)) ────────────────────────────────────
@@ -108,7 +108,7 @@ class LocationModel(Base):
         Enum(LocationPartOfReferenceType, name="location_part_of_reference_type"),
         nullable=True,
     )
-    part_of_id = Column(Integer, nullable=True)
+    part_of_id = Column(Integer, ForeignKey("location.id"), nullable=True, index=True)
     part_of_display = Column(String, nullable=True)
 
     # ── availabilityExceptions (0..1 string) ─────────────────────────────────
@@ -129,6 +129,13 @@ class LocationModel(Base):
     updated_by = Column(String, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
+
+    managing_organization = relationship(
+        "OrganizationModel", foreign_keys=[managing_organization_id], lazy="selectin"
+    )
+    part_of = relationship(
+        "LocationModel", foreign_keys=[part_of_id], remote_side=[id], lazy="selectin"
+    )
 
     identifiers = relationship(
         "LocationIdentifier",

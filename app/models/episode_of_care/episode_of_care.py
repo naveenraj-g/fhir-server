@@ -57,7 +57,7 @@ class EpisodeOfCareModel(Base):
         Enum(EpisodeOfCarePatientReferenceType, name="episode_of_care_patient_reference_type"),
         nullable=True,
     )
-    patient_id = Column(Integer, nullable=True)
+    patient_id = Column(Integer, ForeignKey("patient.id"), nullable=True, index=True)
     patient_display = Column(String, nullable=True)
 
     # managingOrganization (0..1 Reference(Organization)) — shared enum + FK
@@ -80,7 +80,9 @@ class EpisodeOfCareModel(Base):
         Enum(EpisodeOfCareCareManagerReferenceType, name="episode_of_care_care_manager_reference_type"),
         nullable=True,
     )
-    care_manager_id = Column(Integer, nullable=True)
+    # Polymorphic (Practitioner|PractitionerRole) — no single-table FK possible;
+    # resolved to whichever table's internal PK matches care_manager_type.
+    care_manager_id = Column(Integer, nullable=True, index=True)
     care_manager_display = Column(String, nullable=True)
 
     # Audit
@@ -90,6 +92,26 @@ class EpisodeOfCareModel(Base):
     updated_by = Column(String, nullable=True)
 
     # Relationships
+    patient = relationship("PatientModel", foreign_keys=[patient_id], lazy="selectin")
+    care_manager_practitioner = relationship(
+        "PractitionerModel",
+        primaryjoin=(
+            "and_(EpisodeOfCareModel.care_manager_type=='Practitioner', "
+            "foreign(EpisodeOfCareModel.care_manager_id)==PractitionerModel.id)"
+        ),
+        viewonly=True,
+        lazy="selectin",
+    )
+    care_manager_practitioner_role = relationship(
+        "PractitionerRoleModel",
+        primaryjoin=(
+            "and_(EpisodeOfCareModel.care_manager_type=='PractitionerRole', "
+            "foreign(EpisodeOfCareModel.care_manager_id)==PractitionerRoleModel.id)"
+        ),
+        viewonly=True,
+        lazy="selectin",
+    )
+
     identifiers = relationship(
         "EpisodeOfCareIdentifier", back_populates="episode_of_care", cascade="all, delete-orphan"
     )
@@ -198,8 +220,10 @@ class EpisodeOfCareDiagnosis(Base):
         Enum(EpisodeOfCareDiagnosisReferenceType, name="episode_of_care_diagnosis_reference_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("condition.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+
+    reference = relationship("ConditionModel", foreign_keys=[reference_id], lazy="selectin")
 
     # role (0..1 CodeableConcept)
     role_system = Column(String, nullable=True)
@@ -229,8 +253,10 @@ class EpisodeOfCareReferralRequest(Base):
         Enum(EpisodeOfCareReferralRequestReferenceType, name="episode_of_care_referral_request_reference_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("service_request.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+
+    reference = relationship("ServiceRequestModel", foreign_keys=[reference_id], lazy="selectin")
 
     episode_of_care = relationship("EpisodeOfCareModel", back_populates="referral_requests")
 
