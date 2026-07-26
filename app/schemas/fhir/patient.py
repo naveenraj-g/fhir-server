@@ -1,0 +1,31 @@
+from app.schemas.patient.response import (
+    FHIRPatientSchema,
+    FHIRPatientCoreSchema,
+    FHIRPatientBundle,
+    FHIRPatientBundleEntry,
+    FHIRPatientContact,
+    FHIRPatientCommunication,
+    FHIRPatientLink,
+    FHIRAttachment,
+    PaginatedPatientResponse,
+    PlainPatientResponse,
+    PlainPatientCoreResponse,
+    PlainPatientName,
+    PlainPatientIdentifier,
+    PlainPatientTelecom,
+    PlainPatientAddress,
+    PlainPatientPhoto,
+    PlainPatientContact,
+    PlainPatientCommunication,
+    PlainPatientGeneralPractitioner,
+    PlainPatientLink,
+)
+
+__all__ = [
+    "FHIRPatientSchema", "FHIRPatientCoreSchema", "FHIRPatientBundle", "FHIRPatientBundleEntry",
+    "FHIRPatientContact", "FHIRPatientCommunication", "FHIRPatientLink", "FHIRAttachment",
+    "PaginatedPatientResponse", "PlainPatientResponse", "PlainPatientCoreResponse",
+    "PlainPatientName", "PlainPatientIdentifier", "PlainPatientTelecom", "PlainPatientAddress",
+    "PlainPatientPhoto", "PlainPatientContact", "PlainPatientCommunication",
+    "PlainPatientGeneralPractitioner", "PlainPatientLink",
+]
