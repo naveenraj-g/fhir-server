@@ -8,4 +8,6 @@ from app.di.container import Container
 def get_patient_service(
     service: PatientService = Depends(Provide[Container.patient.patient_service]),
 ) -> PatientService:
+    """FastAPI dependency that resolves a PatientService from the DI
+    container — this is what every route in app/routers/patient.py depends on."""
     return service

@@ -14,20 +14,17 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType
+from app.models.enums import IdentifierUse, OrganizationReferenceType
 from app.models.patient.enums import (
-    PatientGender,
-    PatientGeneralPractitionerType,
-    PatientLinkOtherType,
-    PatientLinkType,
-)
-from app.schemas.enums import (
     AddressType,
     AddressUse,
     ContactPointSystem,
     ContactPointUse,
     HumanNameUse,
-    IdentifierUse,
+    PatientGender,
+    PatientGeneralPractitionerType,
+    PatientLinkOtherType,
+    PatientLinkType,
 )
 
 patient_id_seq = Sequence(
@@ -36,6 +33,13 @@ patient_id_seq = Sequence(
 
 
 class PatientModel(Base):
+    """FHIR R4 Patient — demographics and administrative information about an
+    individual receiving care. Owns the scalar fields (gender, birthDate,
+    deceased[x], maritalStatus, multipleBirth[x], managingOrganization) plus
+    the 9 sub-resource relationships defined further down this file
+    (identifiers, names, telecoms, addresses, photos, contacts,
+    communications, general_practitioners, links)."""
+
     __tablename__ = "patient"
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
@@ -279,6 +283,8 @@ class PatientContact(Base):
     name_given = Column(Text, nullable=True)  # comma-separated
     name_prefix = Column(Text, nullable=True)  # comma-separated
     name_suffix = Column(Text, nullable=True)  # comma-separated
+    name_period_start = Column(DateTime(timezone=True), nullable=True)
+    name_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # address (0..1 Address) — flattened
     address_use = Column(Enum(AddressUse, name="address_use"), nullable=True)

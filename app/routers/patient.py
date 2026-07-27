@@ -1,74 +1,90 @@
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.deps.patient_deps import resolve_patient, resolve_patient_core
-from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
+from app.core.content_negotiation import (
+    format_paginated_response,
+    format_response,
+    wants_fhir,
+)
 from app.core.pagination import ListParams
 from app.core.schema_utils import inline_schema
+from app.deps.patient_deps import resolve_patient, resolve_patient_core
 from app.di.dependencies.patient import get_patient_service
+from app.fhir.datatypes import (
+    fhir_address,
+    fhir_communication,
+    fhir_human_name,
+    fhir_identifier,
+    fhir_photo,
+    fhir_telecom,
+    plain_address,
+    plain_communication,
+    plain_identifier,
+    plain_name,
+    plain_photo,
+    plain_telecom,
+)
+from app.fhir.mappers.patient import (
+    fhir_contact,
+    fhir_general_practitioner,
+    fhir_link,
+    plain_contact,
+    plain_general_practitioner,
+    plain_link,
+)
 from app.models.patient.enums import PatientGender, PatientGeneralPractitionerType
 from app.models.patient.patient import PatientModel
 from app.schemas.fhir import (
-    FHIRPatientBundle,
-    FHIRPatientSchema,
-    FHIRPatientCoreSchema,
-    PaginatedPatientResponse,
-    PlainPatientResponse,
-    PlainPatientCoreResponse,
-    PatientNamesListResponse,
-    PatientIdentifiersListResponse,
-    PatientTelecomListResponse,
-    PatientAddressesListResponse,
-    PatientPhotosListResponse,
-    PatientContactsListResponse,
-    PatientCommunicationsListResponse,
-    PatientGeneralPractitionersListResponse,
-    PatientLinksListResponse,
-    FHIRPatientNamesListResponse,
-    FHIRPatientIdentifiersListResponse,
-    FHIRPatientTelecomListResponse,
     FHIRPatientAddressesListResponse,
-    FHIRPatientPhotosListResponse,
-    FHIRPatientContactsListResponse,
+    FHIRPatientBundle,
     FHIRPatientCommunicationsListResponse,
+    FHIRPatientContactsListResponse,
+    FHIRPatientCoreSchema,
     FHIRPatientGeneralPractitionersListResponse,
+    FHIRPatientIdentifiersListResponse,
     FHIRPatientLinksListResponse,
+    FHIRPatientNamesListResponse,
+    FHIRPatientPhotosListResponse,
+    FHIRPatientSchema,
+    FHIRPatientTelecomListResponse,
+    PaginatedPatientResponse,
+    PatientAddressesListResponse,
+    PatientCommunicationsListResponse,
+    PatientContactsListResponse,
+    PatientGeneralPractitionersListResponse,
+    PatientIdentifiersListResponse,
+    PatientLinksListResponse,
+    PatientNamesListResponse,
+    PatientPhotosListResponse,
+    PatientTelecomListResponse,
+    PlainPatientCoreResponse,
+    PlainPatientResponse,
 )
-from app.schemas.resources import (
-    PatientCreateSchema,
-    PatientFullCreateSchema,
-    PatientPatchSchema,
-    PatientFullPatchSchema,
-    NameCreate,
-    NamePatch,
-    IdentifierCreate,
-    IdentifierPatch,
-    TelecomCreate,
-    TelecomPatch,
+from app.schemas.patient import (
     AddressCreate,
     AddressPatch,
-    PhotoCreate,
-    PhotoPatch,
-    ContactCreate,
-    ContactPatch,
     CommunicationCreate,
     CommunicationPatch,
+    ContactCreate,
+    ContactPatch,
     GeneralPractitionerCreate,
     GeneralPractitionerPatch,
+    IdentifierCreate,
+    IdentifierPatch,
     LinkCreate,
     LinkPatch,
-)
-from app.fhir.datatypes import (
-    fhir_human_name, fhir_identifier, fhir_telecom, fhir_address,
-    fhir_photo, fhir_communication, plain_name, plain_identifier, plain_telecom,
-    plain_address, plain_photo, plain_communication,
-)
-from app.fhir.mappers.patient import (
-    fhir_contact, fhir_general_practitioner, fhir_link,
-    plain_contact, plain_general_practitioner, plain_link,
+    NameCreate,
+    NamePatch,
+    PatientCreateSchema,
+    PatientFullCreateSchema,
+    PatientFullPatchSchema,
+    PatientPatchSchema,
+    PhotoCreate,
+    PhotoPatch,
+    TelecomCreate,
+    TelecomPatch,
 )
 from app.services.patient_service import PatientService
 
@@ -81,13 +97,19 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "Patient not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainPatientResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRPatientSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainPatientResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRPatientSchema.model_json_schema())
+            },
         }
     }
 }
@@ -96,8 +118,12 @@ _SINGLE_CORE_200 = {
     200: {
         "description": "Patient core fields retrieved successfully — no sub-resource arrays",
         "content": {
-            "application/json": {"schema": inline_schema(PlainPatientCoreResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRPatientCoreSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainPatientCoreResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRPatientCoreSchema.model_json_schema())
+            },
         },
     }
 }
@@ -105,48 +131,159 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of patients",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedPatientResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRPatientBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PaginatedPatientResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRPatientBundle.model_json_schema())
+            },
         },
     }
 }
 
-_SUBRES_NAMES_200 = {200: {"description": "List of HumanName entries", "content": {
-    "application/json": {"schema": inline_schema(PatientNamesListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientNamesListResponse.model_json_schema())},
-}}}
-_SUBRES_IDENTIFIERS_200 = {200: {"description": "List of business identifiers", "content": {
-    "application/json": {"schema": inline_schema(PatientIdentifiersListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientIdentifiersListResponse.model_json_schema())},
-}}}
-_SUBRES_TELECOM_200 = {200: {"description": "List of contact points", "content": {
-    "application/json": {"schema": inline_schema(PatientTelecomListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientTelecomListResponse.model_json_schema())},
-}}}
-_SUBRES_ADDRESSES_200 = {200: {"description": "List of addresses", "content": {
-    "application/json": {"schema": inline_schema(PatientAddressesListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientAddressesListResponse.model_json_schema())},
-}}}
-_SUBRES_PHOTOS_200 = {200: {"description": "List of photo attachments", "content": {
-    "application/json": {"schema": inline_schema(PatientPhotosListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientPhotosListResponse.model_json_schema())},
-}}}
-_SUBRES_CONTACTS_200 = {200: {"description": "List of contacts (next-of-kin / guardian)", "content": {
-    "application/json": {"schema": inline_schema(PatientContactsListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientContactsListResponse.model_json_schema())},
-}}}
-_SUBRES_COMMUNICATIONS_200 = {200: {"description": "List of communication language entries", "content": {
-    "application/json": {"schema": inline_schema(PatientCommunicationsListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientCommunicationsListResponse.model_json_schema())},
-}}}
-_SUBRES_GPS_200 = {200: {"description": "List of general practitioner references", "content": {
-    "application/json": {"schema": inline_schema(PatientGeneralPractitionersListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientGeneralPractitionersListResponse.model_json_schema())},
-}}}
-_SUBRES_LINKS_200 = {200: {"description": "List of patient link entries", "content": {
-    "application/json": {"schema": inline_schema(PatientLinksListResponse.model_json_schema())},
-    "application/fhir+json": {"schema": inline_schema(FHIRPatientLinksListResponse.model_json_schema())},
-}}}
+_SUBRES_NAMES_200 = {
+    200: {
+        "description": "List of HumanName entries",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PatientNamesListResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientNamesListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_IDENTIFIERS_200 = {
+    200: {
+        "description": "List of business identifiers",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(
+                    PatientIdentifiersListResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientIdentifiersListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_TELECOM_200 = {
+    200: {
+        "description": "List of contact points",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PatientTelecomListResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientTelecomListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_ADDRESSES_200 = {
+    200: {
+        "description": "List of addresses",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(
+                    PatientAddressesListResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientAddressesListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_PHOTOS_200 = {
+    200: {
+        "description": "List of photo attachments",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PatientPhotosListResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientPhotosListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_CONTACTS_200 = {
+    200: {
+        "description": "List of contacts (next-of-kin / guardian)",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PatientContactsListResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientContactsListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_COMMUNICATIONS_200 = {
+    200: {
+        "description": "List of communication language entries",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(
+                    PatientCommunicationsListResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientCommunicationsListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_GPS_200 = {
+    200: {
+        "description": "List of general practitioner references",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(
+                    PatientGeneralPractitionersListResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientGeneralPractitionersListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
+_SUBRES_LINKS_200 = {
+    200: {
+        "description": "List of patient link entries",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PatientLinksListResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRPatientLinksListResponse.model_json_schema()
+                )
+            },
+        },
+    }
+}
 
 
 # ── Create ─────────────────────────────────────────────────────────────────────
@@ -171,9 +308,15 @@ async def create_patient(
     request: Request,
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Create a Patient from core scalar fields only; user_id/org_id/created_by
+    come straight off the validated payload, never from a token."""
     created_by = payload.created_by
-    patient = await patient_service.create_patient(payload, payload.user_id, payload.org_id, created_by)
-    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
+    patient = await patient_service.create_patient(
+        payload, payload.user_id, payload.org_id, created_by
+    )
+    return format_response(
+        patient_service._to_fhir(patient), patient_service._to_plain(patient), request
+    )
 
 
 @router.post(
@@ -195,11 +338,13 @@ async def create_patient_full(
     request: Request,
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Create a Patient plus any supplied sub-resource lists, atomically."""
     patient = await patient_service.create_patient_full(
         payload, payload.user_id, payload.org_id, payload.created_by
     )
-    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
-
+    return format_response(
+        patient_service._to_fhir(patient), patient_service._to_plain(patient), request
+    )
 
 
 @router.get(
@@ -213,7 +358,10 @@ async def get_patient(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
+    """resolve_patient() already loaded (or 404'd) the patient; this just formats it."""
+    return format_response(
+        patient_service._to_fhir(patient), patient_service._to_plain(patient), request
+    )
 
 
 @router.get(
@@ -235,7 +383,12 @@ async def get_patient_core(
     patient: PatientModel = Depends(resolve_patient_core),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    return format_response(patient_service._to_fhir_core(patient), patient_service._to_plain_core(patient), request)
+    """resolve_patient_core() already loaded (scalars only, or 404'd); this just formats it."""
+    return format_response(
+        patient_service._to_fhir_core(patient),
+        patient_service._to_plain_core(patient),
+        request,
+    )
 
 
 # ── Patch ──────────────────────────────────────────────────────────────────────
@@ -260,11 +413,16 @@ async def patch_patient(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Partial update of core scalar fields only — sub-resources untouched."""
     updated_by = payload.updated_by
-    updated = await patient_service.patch_patient(patient.patient_id, payload, updated_by)
+    updated = await patient_service.patch_patient(
+        patient.patient_id, payload, updated_by
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -287,10 +445,15 @@ async def patch_patient_full(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_patient_full(patient.patient_id, payload, payload.updated_by)
+    """Partial update of core scalar fields plus atomic replacement of any supplied sub-resource lists."""
+    updated = await patient_service.patch_patient_full(
+        patient.patient_id, payload, payload.updated_by
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── List ───────────────────────────────────────────────────────────────────────
@@ -309,55 +472,94 @@ async def patch_patient_full(
         "`general_practitioner_type`/`general_practitioner_id`, `organization_id` "
         "(managingOrganization), `user_id`, or `org_id`. "
         "Sort with `sort` (e.g. `-birth_date`); set `total_mode=none` to skip the COUNT(*) "
-        "on large result sets. "
-        + _CONTENT_NEG
+        "on large result sets. " + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
 async def list_patients(
     request: Request,
-    family_name: Optional[str] = Query(None, description="Filter by family (last) name — partial match."),
-    given_name: Optional[str] = Query(None, description="Filter by given name — partial match."),
-    gender: Optional[PatientGender] = Query(None, description="male|female|other|unknown"),
-    active: Optional[bool] = Query(None),
-    user_id: Optional[str] = Query(None),
-    org_id: Optional[str] = Query(None),
-    identifier: Optional[str] = Query(None, description="Exact match on a business identifier value (MRN, SSN, etc.)."),
-    birth_date_from: Optional[date] = Query(None, description="Inclusive lower bound on birth_date."),
-    birth_date_to: Optional[date] = Query(None, description="Inclusive upper bound on birth_date."),
-    address_city: Optional[str] = Query(None, description="Filter by address city — partial match."),
-    address_state: Optional[str] = Query(None, description="Filter by address state — partial match."),
-    address_postal_code: Optional[str] = Query(None, description="Filter by address postal code — exact match."),
-    email: Optional[str] = Query(None, description="Filter by telecom email — partial match, system=email only."),
-    phone: Optional[str] = Query(None, description="Filter by telecom phone — partial match, system=phone only."),
-    deceased: Optional[bool] = Query(None, description="Filter by deceased_boolean."),
-    general_practitioner_type: Optional[PatientGeneralPractitionerType] = Query(
-        None, description="Reference type for generalPractitioner — narrows general_practitioner_id."
+    family_name: str | None = Query(
+        None, description="Filter by family (last) name — partial match."
     ),
-    general_practitioner_id: Optional[int] = Query(
-        None, description="Public id of a referenced Organization/Practitioner/PractitionerRole."
+    given_name: str | None = Query(
+        None, description="Filter by given name — partial match."
     ),
-    organization_id: Optional[int] = Query(None, description="Public id of the managingOrganization."),
+    gender: PatientGender | None = Query(None, description="male|female|other|unknown"),
+    active: bool | None = Query(None),
+    user_id: str | None = Query(None),
+    org_id: str | None = Query(None),
+    identifier: str | None = Query(
+        None, description="Exact match on a business identifier value (MRN, SSN, etc.)."
+    ),
+    birth_date_from: date | None = Query(
+        None, description="Inclusive lower bound on birth_date."
+    ),
+    birth_date_to: date | None = Query(
+        None, description="Inclusive upper bound on birth_date."
+    ),
+    address_city: str | None = Query(
+        None, description="Filter by address city — partial match."
+    ),
+    address_state: str | None = Query(
+        None, description="Filter by address state — partial match."
+    ),
+    address_postal_code: str | None = Query(
+        None, description="Filter by address postal code — exact match."
+    ),
+    email: str | None = Query(
+        None, description="Filter by telecom email — partial match, system=email only."
+    ),
+    phone: str | None = Query(
+        None, description="Filter by telecom phone — partial match, system=phone only."
+    ),
+    deceased: bool | None = Query(None, description="Filter by deceased_boolean."),
+    general_practitioner_type: PatientGeneralPractitionerType | None = Query(
+        None,
+        description="Reference type for generalPractitioner — narrows general_practitioner_id.",
+    ),
+    general_practitioner_id: int | None = Query(
+        None,
+        description="Public id of a referenced Organization/Practitioner/PractitionerRole.",
+    ),
+    organization_id: int | None = Query(
+        None, description="Public id of the managingOrganization."
+    ),
     params: ListParams = Depends(),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Every filter param is forwarded straight through to the repository's
+    list() — see the route description for the full filter set."""
     patients, total = await patient_service.list_patients(
-        user_id=user_id, org_id=org_id, family_name=family_name,
-        given_name=given_name, gender=gender, active=active,
+        user_id=user_id,
+        org_id=org_id,
+        family_name=family_name,
+        given_name=given_name,
+        gender=gender,
+        active=active,
         identifier=identifier,
-        birth_date_from=birth_date_from, birth_date_to=birth_date_to,
-        address_city=address_city, address_state=address_state,
+        birth_date_from=birth_date_from,
+        birth_date_to=birth_date_to,
+        address_city=address_city,
+        address_state=address_state,
         address_postal_code=address_postal_code,
-        email=email, phone=phone, deceased=deceased,
+        email=email,
+        phone=phone,
+        deceased=deceased,
         general_practitioner_type=general_practitioner_type,
         general_practitioner_id=general_practitioner_id,
         organization_id=organization_id,
-        limit=params.limit, offset=params.offset, sort=params.sort, total_mode=params.total_mode,
+        limit=params.limit,
+        offset=params.offset,
+        sort=params.sort,
+        total_mode=params.total_mode,
     )
     return format_paginated_response(
         [patient_service._to_fhir(p) for p in patients],
         [patient_service._to_plain(p) for p in patients],
-        total, params.limit, params.offset, request,
+        total,
+        params.limit,
+        params.offset,
+        request,
     )
 
 
@@ -376,8 +578,8 @@ async def delete_patient(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """resolve_patient() already 404'd if missing; delete cascades to every sub-resource row."""
     await patient_service.delete_patient(patient.patient_id)
-    return None
 
 
 # ── Sub-resource: Names ────────────────────────────────────────────────────────
@@ -391,8 +593,7 @@ async def delete_patient(
     description=(
         "Appends a HumanName record to the Patient. "
         "`use` values: usual|official|temp|nickname|anonymous|old|maiden. "
-        "`given`, `prefix`, `suffix` accept lists of strings. "
-        + _CONTENT_NEG
+        "`given`, `prefix`, `suffix` accept lists of strings. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -402,10 +603,13 @@ async def add_name(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one HumanName row, then return the full updated Patient."""
     updated = await patient_service.add_name(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Identifiers ──────────────────────────────────────────────────
@@ -429,10 +633,13 @@ async def add_identifier(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one identifier row, then return the full updated Patient."""
     updated = await patient_service.add_identifier(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Telecom ──────────────────────────────────────────────────────
@@ -456,10 +663,13 @@ async def add_telecom(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one contact-point row, then return the full updated Patient."""
     updated = await patient_service.add_telecom(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Addresses ────────────────────────────────────────────────────
@@ -472,8 +682,7 @@ async def add_telecom(
     summary="Add an address to a Patient",
     description=(
         "Appends an address. `use`: home|work|temp|old|billing. `type`: postal|physical|both. "
-        "`line` accepts a list of address lines. "
-        + _CONTENT_NEG
+        "`line` accepts a list of address lines. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -483,10 +692,13 @@ async def add_address(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one address row, then return the full updated Patient."""
     updated = await patient_service.add_address(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Photos ───────────────────────────────────────────────────────
@@ -510,10 +722,13 @@ async def add_photo(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one photo attachment row, then return the full updated Patient."""
     updated = await patient_service.add_photo(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Contacts ─────────────────────────────────────────────────────
@@ -526,8 +741,7 @@ async def add_photo(
     summary="Add a contact (next-of-kin / guardian) to a Patient",
     description=(
         "Appends a contact BackboneElement. Accepts flattened name and address fields, "
-        "plus nested `relationship[]` and `telecom[]` arrays. "
-        + _CONTENT_NEG
+        "plus nested `relationship[]` and `telecom[]` arrays. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -537,10 +751,13 @@ async def add_contact(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one contact row (plus its relationship[]/telecom[] grandchildren), then return the full updated Patient."""
     updated = await patient_service.add_contact(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Communications ──────────────────────────────────────────────
@@ -564,10 +781,13 @@ async def add_communication(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one communication-language row, then return the full updated Patient."""
     updated = await patient_service.add_communication(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: General Practitioners ───────────────────────────────────────
@@ -580,8 +800,7 @@ async def add_communication(
     summary="Add a general practitioner reference to a Patient",
     description=(
         "Appends a reference to the patient's nominated primary care provider. "
-        "`reference_type`: Organization|Practitioner|PractitionerRole. "
-        + _CONTENT_NEG
+        "`reference_type`: Organization|Practitioner|PractitionerRole. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -591,10 +810,15 @@ async def add_general_practitioner(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.add_general_practitioner(patient.patient_id, payload)
+    """Append one general-practitioner reference row, then return the full updated Patient."""
+    updated = await patient_service.add_general_practitioner(
+        patient.patient_id, payload
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Links ────────────────────────────────────────────────────────
@@ -607,8 +831,7 @@ async def add_general_practitioner(
     summary="Add a link to a related Patient or RelatedPerson",
     description=(
         "`other_type`: Patient|RelatedPerson. "
-        "`type`: replaced-by|replaces|refer|seealso. "
-        + _CONTENT_NEG
+        "`type`: replaced-by|replaces|refer|seealso. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -618,10 +841,13 @@ async def add_link(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Append one patient-link row, then return the full updated Patient."""
     updated = await patient_service.add_link(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 # ── Sub-resource: Names — GET + DELETE ────────────────────────────────────────
@@ -643,11 +869,15 @@ async def list_names(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the shared fhir_human_name()/plain_name() mappers directly — bypasses
+    the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
     items = await patient_service.get_names(patient.patient_id)
     plain = [plain_name(n) for n in items]
     if wants_fhir(request):
         fhir = [{"id": n.id, **fhir_human_name(n)} for n in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -668,10 +898,10 @@ async def delete_name(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """resolve_patient() already 404'd if the Patient is missing; this 404s again if the name_id doesn't belong to it."""
     deleted = await patient_service.delete_name(patient.patient_id, name_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Name not found on this Patient")
-    return None
 
 
 # ── Sub-resource: Identifiers — GET + DELETE ──────────────────────────────────
@@ -693,11 +923,15 @@ async def list_identifiers(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the shared fhir_identifier()/plain_identifier() mappers directly — bypasses
+    the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
     items = await patient_service.get_identifiers(patient.patient_id)
     plain = [plain_identifier(i) for i in items]
     if wants_fhir(request):
         fhir = [{"id": i.id, **fhir_identifier(i)} for i in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -718,10 +952,12 @@ async def delete_identifier(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if identifier_id doesn't exist or belongs to a different Patient."""
     deleted = await patient_service.delete_identifier(patient.patient_id, identifier_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Identifier not found on this Patient")
-    return None
+        raise HTTPException(
+            status_code=404, detail="Identifier not found on this Patient"
+        )
 
 
 # ── Sub-resource: Telecom — GET + DELETE ──────────────────────────────────────
@@ -743,11 +979,14 @@ async def list_telecom(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the shared fhir_telecom()/plain_telecom() mappers directly."""
     items = await patient_service.get_telecoms(patient.patient_id)
     plain = [plain_telecom(t) for t in items]
     if wants_fhir(request):
         fhir = [{"id": t.id, **fhir_telecom(t)} for t in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -768,10 +1007,10 @@ async def delete_telecom(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if telecom_id doesn't exist or belongs to a different Patient."""
     deleted = await patient_service.delete_telecom(patient.patient_id, telecom_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Telecom not found on this Patient")
-    return None
 
 
 # ── Sub-resource: Addresses — GET + DELETE ────────────────────────────────────
@@ -793,11 +1032,14 @@ async def list_addresses(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the shared fhir_address()/plain_address() mappers directly."""
     items = await patient_service.get_addresses(patient.patient_id)
     plain = [plain_address(a) for a in items]
     if wants_fhir(request):
         fhir = [{"id": a.id, **fhir_address(a)} for a in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -818,10 +1060,10 @@ async def delete_address(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if address_id doesn't exist or belongs to a different Patient."""
     deleted = await patient_service.delete_address(patient.patient_id, address_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Address not found on this Patient")
-    return None
 
 
 # ── Sub-resource: Photos — GET + DELETE ───────────────────────────────────────
@@ -843,11 +1085,14 @@ async def list_photos(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the shared fhir_photo()/plain_photo() mappers directly."""
     items = await patient_service.get_photos(patient.patient_id)
     plain = [plain_photo(p) for p in items]
     if wants_fhir(request):
         fhir = [{"id": p.id, **fhir_photo(p)} for p in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -868,10 +1113,10 @@ async def delete_photo(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if photo_id doesn't exist or belongs to a different Patient."""
     deleted = await patient_service.delete_photo(patient.patient_id, photo_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Photo not found on this Patient")
-    return None
 
 
 # ── Sub-resource: Contacts — GET + DELETE ─────────────────────────────────────
@@ -893,11 +1138,14 @@ async def list_contacts(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the Patient-specific fhir_contact()/plain_contact() mappers directly (not the shared datatypes.py helpers)."""
     items = await patient_service.get_contacts(patient.patient_id)
     plain = [plain_contact(c) for c in items]
     if wants_fhir(request):
         fhir = [{"id": c.id, **fhir_contact(c)} for c in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -919,10 +1167,10 @@ async def delete_contact(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if contact_id doesn't exist or belongs to a different Patient; cascades to its grandchildren."""
     deleted = await patient_service.delete_contact(patient.patient_id, contact_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Contact not found on this Patient")
-    return None
 
 
 # ── Sub-resource: Communications — GET + DELETE ───────────────────────────────
@@ -944,11 +1192,14 @@ async def list_communications(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the shared fhir_communication()/plain_communication() mappers directly."""
     items = await patient_service.get_communications(patient.patient_id)
     plain = [plain_communication(cm) for cm in items]
     if wants_fhir(request):
         fhir = [{"id": cm.id, **fhir_communication(cm)} for cm in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -969,10 +1220,12 @@ async def delete_communication(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if comm_id doesn't exist or belongs to a different Patient."""
     deleted = await patient_service.delete_communication(patient.patient_id, comm_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Communication not found on this Patient")
-    return None
+        raise HTTPException(
+            status_code=404, detail="Communication not found on this Patient"
+        )
 
 
 # ── Sub-resource: General Practitioners — GET + DELETE ────────────────────────
@@ -995,11 +1248,14 @@ async def list_general_practitioners(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the Patient-specific fhir_general_practitioner()/plain_general_practitioner() mappers directly."""
     items = await patient_service.get_general_practitioners(patient.patient_id)
     plain = [plain_general_practitioner(gp) for gp in items]
     if wants_fhir(request):
         fhir = [{"id": gp.id, **fhir_general_practitioner(gp)} for gp in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -1020,10 +1276,14 @@ async def delete_general_practitioner(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    deleted = await patient_service.delete_general_practitioner(patient.patient_id, gp_id)
+    """404s if gp_id doesn't exist or belongs to a different Patient."""
+    deleted = await patient_service.delete_general_practitioner(
+        patient.patient_id, gp_id
+    )
     if not deleted:
-        raise HTTPException(status_code=404, detail="General practitioner not found on this Patient")
-    return None
+        raise HTTPException(
+            status_code=404, detail="General practitioner not found on this Patient"
+        )
 
 
 # ── Sub-resource: Links — GET + DELETE ────────────────────────────────────────
@@ -1046,11 +1306,14 @@ async def list_links(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Calls the Patient-specific fhir_link()/plain_link() mappers directly."""
     items = await patient_service.get_links(patient.patient_id)
     plain = [plain_link(lk) for lk in items]
     if wants_fhir(request):
         fhir = [{"id": lk.id, **fhir_link(lk)} for lk in items]
-        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+        return JSONResponse(
+            {"data": fhir, "total": len(fhir)}, media_type="application/fhir+json"
+        )
     return JSONResponse({"data": plain, "total": len(plain)})
 
 
@@ -1071,10 +1334,10 @@ async def delete_link(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """404s if link_id doesn't exist or belongs to a different Patient."""
     deleted = await patient_service.delete_link(patient.patient_id, link_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Link not found on this Patient")
-    return None
 
 
 # ── Sub-resource PATCH routes ──────────────────────────────────────────────────
@@ -1098,10 +1361,13 @@ async def patch_name(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Partial update of one HumanName row, then return the full updated Patient."""
     updated = await patient_service.patch_name(patient.patient_id, name_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Name not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1122,10 +1388,17 @@ async def patch_identifier(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_identifier(patient.patient_id, identifier_id, payload)
+    """Partial update of one identifier row, then return the full updated Patient."""
+    updated = await patient_service.patch_identifier(
+        patient.patient_id, identifier_id, payload
+    )
     if not updated:
-        raise HTTPException(status_code=404, detail="Identifier not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+        raise HTTPException(
+            status_code=404, detail="Identifier not found on this Patient"
+        )
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1146,10 +1419,15 @@ async def patch_telecom(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_telecom(patient.patient_id, telecom_id, payload)
+    """Partial update of one contact-point row, then return the full updated Patient."""
+    updated = await patient_service.patch_telecom(
+        patient.patient_id, telecom_id, payload
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Telecom not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1170,10 +1448,15 @@ async def patch_address(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_address(patient.patient_id, address_id, payload)
+    """Partial update of one address row, then return the full updated Patient."""
+    updated = await patient_service.patch_address(
+        patient.patient_id, address_id, payload
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Address not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1194,10 +1477,13 @@ async def patch_photo(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Partial update of one photo attachment row, then return the full updated Patient."""
     updated = await patient_service.patch_photo(patient.patient_id, photo_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Photo not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1220,10 +1506,16 @@ async def patch_contact(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_contact(patient.patient_id, contact_id, payload)
+    """Partial update of one contact row — replaces relationship[]/telecom[]
+    wholesale if supplied, then return the full updated Patient."""
+    updated = await patient_service.patch_contact(
+        patient.patient_id, contact_id, payload
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Contact not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1244,10 +1536,17 @@ async def patch_communication(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_communication(patient.patient_id, comm_id, payload)
+    """Partial update of one communication-language row, then return the full updated Patient."""
+    updated = await patient_service.patch_communication(
+        patient.patient_id, comm_id, payload
+    )
     if not updated:
-        raise HTTPException(status_code=404, detail="Communication not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+        raise HTTPException(
+            status_code=404, detail="Communication not found on this Patient"
+        )
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1268,10 +1567,17 @@ async def patch_general_practitioner(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_general_practitioner(patient.patient_id, gp_id, payload)
+    """Partial update of one general-practitioner reference row, then return the full updated Patient."""
+    updated = await patient_service.patch_general_practitioner(
+        patient.patient_id, gp_id, payload
+    )
     if not updated:
-        raise HTTPException(status_code=404, detail="General practitioner not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+        raise HTTPException(
+            status_code=404, detail="General practitioner not found on this Patient"
+        )
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )
 
 
 @router.patch(
@@ -1292,7 +1598,10 @@ async def patch_link(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
+    """Partial update of one patient-link row, then return the full updated Patient."""
     updated = await patient_service.patch_link(patient.patient_id, link_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Link not found on this Patient")
-    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+    return format_response(
+        patient_service._to_fhir(updated), patient_service._to_plain(updated), request
+    )

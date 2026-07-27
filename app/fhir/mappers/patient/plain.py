@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
 
 def plain_contact(c: "PatientContact") -> dict:
+    """Patient.contact BackboneElement → plain snake_case dict, including the
+    relationship[] and telecom[] grandchildren inline."""
     return {
         "id": c.id,
         "org_id": c.org_id,
@@ -28,6 +30,8 @@ def plain_contact(c: "PatientContact") -> dict:
         "name_given": fhir_split(c.name_given),
         "name_prefix": fhir_split(c.name_prefix),
         "name_suffix": fhir_split(c.name_suffix),
+        "name_period_start": c.name_period_start.isoformat() if c.name_period_start else None,
+        "name_period_end": c.name_period_end.isoformat() if c.name_period_end else None,
         "telecom": [
             {"id": t.id, "org_id": t.org_id, "system": fhir_enum(t.system), "value": t.value,
              "use": fhir_enum(t.use), "rank": t.rank,
@@ -56,6 +60,7 @@ def plain_contact(c: "PatientContact") -> dict:
 
 
 def plain_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
+    """Patient.generalPractitioner (Reference) → plain snake_case dict."""
     return {
         "id": gp.id,
         "org_id": gp.org_id,
@@ -66,6 +71,7 @@ def plain_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
 
 
 def plain_link(lk: "PatientLink") -> dict:
+    """Patient.link BackboneElement → plain snake_case dict."""
     return {
         "id": lk.id,
         "org_id": lk.org_id,
@@ -118,6 +124,9 @@ def to_plain_patient_core(patient: "PatientModel") -> dict:
 
 
 def to_plain_patient(patient: "PatientModel") -> dict:
+    """Full plain snake_case Patient representation, including every
+    populated sub-resource array. Backs GET /{patient_id} and the
+    create/patch routes."""
     result: dict = _core_fields(patient)
 
     if patient.names:

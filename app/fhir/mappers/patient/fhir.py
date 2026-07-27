@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
 
 def fhir_contact(c: "PatientContact") -> dict:
+    """Patient.contact BackboneElement → FHIR camelCase dict. Builds
+    relationship/name/address/organization/period sub-structures, each
+    included only if at least one of its fields is set."""
     entry: dict = {}
     if c.relationships:
         entry["relationship"] = [{k: v for k, v in {
@@ -40,6 +43,11 @@ def fhir_contact(c: "PatientContact") -> dict:
     suffix = fhir_split(c.name_suffix)
     if suffix:
         name_entry["suffix"] = suffix
+    if c.name_period_start or c.name_period_end:
+        name_entry["period"] = {k: v for k, v in {
+            "start": c.name_period_start.isoformat() if c.name_period_start else None,
+            "end": c.name_period_end.isoformat() if c.name_period_end else None,
+        }.items() if v}
     if name_entry:
         entry["name"] = name_entry
     if c.telecoms:
@@ -87,6 +95,7 @@ def fhir_contact(c: "PatientContact") -> dict:
 
 
 def fhir_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
+    """Patient.generalPractitioner (Reference) → FHIR camelCase dict."""
     entry: dict = {}
     if gp.reference_type and gp.reference_id:
         entry["reference"] = f"{fhir_enum(gp.reference_type)}/{gp.reference_id}"
@@ -96,6 +105,7 @@ def fhir_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
 
 
 def fhir_link(lk: "PatientLink") -> dict:
+    """Patient.link BackboneElement → FHIR camelCase dict."""
     other: dict = {}
     if lk.other_type and lk.other_id:
         other["reference"] = f"{fhir_enum(lk.other_type)}/{lk.other_id}"
@@ -160,6 +170,8 @@ def to_fhir_patient_core(patient: "PatientModel") -> dict:
 
 
 def to_fhir_patient(patient: "PatientModel") -> dict:
+    """Full FHIR R4 Patient representation, including every populated
+    sub-resource array. Backs GET /{patient_id} and the create/patch routes."""
     result: dict = _core_fields(patient)
 
     if patient.names:
