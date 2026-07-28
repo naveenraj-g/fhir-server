@@ -146,6 +146,18 @@ class PatientRepository(BaseRepository):
             result = await session.execute(stmt)
             return result.scalars().first()
 
+    async def patient_belongs_to_org(self, patient_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the patient exists AND belongs to
+        org_id."""
+        async with self.session_factory() as session:
+            stmt = select(PatientModel.id).where(
+                PatientModel.patient_id == patient_id,
+                PatientModel.org_id == org_id,
+            )
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none() is not None
+
     async def get_by_user_id(self, user_id: str) -> PatientModel | None:
         """Lookup by the gateway-forwarded user_id — used to find "my own" patient profile."""
         async with self.session_factory() as session:

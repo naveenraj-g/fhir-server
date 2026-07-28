@@ -763,10 +763,6 @@ class PatientCreateSchema(BaseModel):
         ...,
         description="Tenant/ownership field forwarded by the GraphQL gateway — the active organization's id.",
     )
-    created_by: str | None = Field(
-        None,
-        description="Acting-user value forwarded by the GraphQL gateway; recorded as the creator of this record.",
-    )
     active: bool | None = Field(
         True, description="Whether this patient's record is in active use."
     )
@@ -881,10 +877,6 @@ class PatientPatchSchema(BaseModel):
     )
     managing_organization_display: str | None = Field(
         None, description="Display text for the managing organization."
-    )
-    updated_by: str | None = Field(
-        None,
-        description="Acting-user value forwarded by the GraphQL gateway; recorded as the last updater of this record.",
     )
 
 

@@ -1,3 +1,4 @@
+from app.auth.tenant import assert_org_match
 from app.fhir.mappers.patient import (
     to_fhir_patient,
     to_fhir_patient_core,
@@ -155,8 +156,18 @@ class PatientService:
         user_id: str | None,
         org_id: str,
         created_by: str | None = None,
+        actor_org_id: str | None = None,
     ) -> PatientModel:
-        """Create a Patient from core scalar fields only — no sub-resources."""
+        """Create a Patient from core scalar fields only — no sub-resources.
+        If actor_org_id is set (a normal, org-scoped token), org_id must
+        match it — a caller can't create a patient under a different org
+        than their own token. A None actor_org_id (super-admin/org-less
+        token) skips the check and trusts payload.org_id as-is."""
+        assert_org_match(
+            org_id,
+            actor_org_id,
+            "Cannot create a Patient for a different organization than your token's org_id",
+        )
         return await self.repository.create(payload, user_id, org_id, created_by)
 
     async def create_patient_full(
@@ -165,8 +176,15 @@ class PatientService:
         user_id: str | None,
         org_id: str,
         created_by: str | None = None,
+        actor_org_id: str | None = None,
     ) -> PatientModel:
-        """Create a Patient plus any supplied sub-resource lists, atomically."""
+        """Create a Patient plus any supplied sub-resource lists, atomically.
+        Same actor_org_id consistency check as create_patient."""
+        assert_org_match(
+            org_id,
+            actor_org_id,
+            "Cannot create a Patient for a different organization than your token's org_id",
+        )
         return await self.repository.create_full(payload, user_id, org_id, created_by)
 
     async def patch_patient(
@@ -174,8 +192,15 @@ class PatientService:
         patient_id: int,
         payload: PatientPatchSchema,
         updated_by: str | None = None,
+        org_id: str | None = None,
     ) -> PatientModel | None:
-        """Partial update of core scalar fields only."""
+        """Partial update of core scalar fields only. If org_id is supplied
+        (skipped for org-less/super-admin tokens), the patient must belong to
+        that org or None is returned — the router turns that into a 404."""
+        if org_id and not await self.repository.patient_belongs_to_org(
+            patient_id, org_id
+        ):
+            return None
         return await self.repository.patch(patient_id, payload, updated_by)
 
     async def patch_patient_full(
@@ -183,12 +208,26 @@ class PatientService:
         patient_id: int,
         payload: PatientFullPatchSchema,
         updated_by: str | None = None,
+        org_id: str | None = None,
     ) -> PatientModel | None:
-        """Partial update of core scalar fields plus atomic replacement of any supplied sub-resource lists."""
+        """Partial update of core scalar fields plus atomic replacement of any
+        supplied sub-resource lists. Same org_id ownership gate as patch_patient."""
+        if org_id and not await self.repository.patient_belongs_to_org(
+            patient_id, org_id
+        ):
+            return None
         return await self.repository.patch_full(patient_id, payload, updated_by)
 
-    async def delete_patient(self, patient_id: int) -> bool:
-        """Permanently delete the Patient and all its sub-resources (cascade)."""
+    async def delete_patient(
+        self, patient_id: int, org_id: str | None = None
+    ) -> bool:
+        """Permanently delete the Patient and all its sub-resources (cascade).
+        Same org_id ownership gate as patch_patient — returns False on
+        mismatch instead of deleting."""
+        if org_id and not await self.repository.patient_belongs_to_org(
+            patient_id, org_id
+        ):
+            return False
         return await self.repository.delete(patient_id)
 
     # ── Sub-resources ─────────────────────────────────────────────────────────

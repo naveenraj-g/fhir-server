@@ -3,6 +3,8 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
+from app.auth.models import AuthUser
+from app.auth.rbac import require_permission
 from app.core.content_negotiation import (
     format_paginated_response,
     format_response,
@@ -306,13 +308,16 @@ _SUBRES_LINKS_200 = {
 async def create_patient(
     payload: PatientCreateSchema,
     request: Request,
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Create a Patient from core scalar fields only; user_id/org_id/created_by
-    come straight off the validated payload, never from a token."""
-    created_by = payload.created_by
+    """Create a Patient from core scalar fields; user_id/org_id come straight
+    off the validated payload, but created_by comes from the verified JWT
+    (actor.sub), never the client body. actor.org_id must match payload.org_id
+    for org-scoped tokens (403 otherwise) — org-less/super-admin tokens skip
+    this check."""
     patient = await patient_service.create_patient(
-        payload, payload.user_id, payload.org_id, created_by
+        payload, payload.user_id, payload.org_id, actor.sub, actor.org_id
     )
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
@@ -336,11 +341,13 @@ async def create_patient(
 async def create_patient_full(
     payload: PatientFullCreateSchema,
     request: Request,
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Create a Patient plus any supplied sub-resource lists, atomically."""
+    """Create a Patient plus any supplied sub-resource lists, atomically.
+    Same actor.sub/actor.org_id handling as create_patient."""
     patient = await patient_service.create_patient_full(
-        payload, payload.user_id, payload.org_id, payload.created_by
+        payload, payload.user_id, payload.org_id, actor.sub, actor.org_id
     )
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
@@ -352,6 +359,7 @@ async def create_patient_full(
     operation_id="get_patient_by_id",
     summary="Retrieve a Patient resource by public patient_id",
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def get_patient(
     request: Request,
@@ -377,6 +385,7 @@ async def get_patient(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_CORE_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def get_patient_core(
     request: Request,
@@ -411,12 +420,15 @@ async def patch_patient(
     payload: PatientPatchSchema,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of core scalar fields only — sub-resources untouched."""
-    updated_by = payload.updated_by
+    """Partial update of core scalar fields only — sub-resources untouched.
+    updated_by comes from the verified JWT (actor.sub); actor.org_id gates
+    the update to the caller's own org (404 on mismatch, not 403 — avoids
+    leaking that a patient with this id exists in another org)."""
     updated = await patient_service.patch_patient(
-        patient.patient_id, payload, updated_by
+        patient.patient_id, payload, actor.sub, actor.org_id
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -443,11 +455,14 @@ async def patch_patient_full(
     payload: PatientFullPatchSchema,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of core scalar fields plus atomic replacement of any supplied sub-resource lists."""
+    """Partial update of core scalar fields plus atomic replacement of any
+    supplied sub-resource lists. Same actor-derived updated_by and org_id
+    ownership gate as patch_patient."""
     updated = await patient_service.patch_patient_full(
-        patient.patient_id, payload, payload.updated_by
+        patient.patient_id, payload, actor.sub, actor.org_id
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -475,6 +490,7 @@ async def patch_patient_full(
         "on large result sets. " + _CONTENT_NEG
     ),
     responses={**_LIST_200},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_patients(
     request: Request,
@@ -576,10 +592,15 @@ async def list_patients(
 )
 async def delete_patient(
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """resolve_patient() already 404'd if missing; delete cascades to every sub-resource row."""
-    await patient_service.delete_patient(patient.patient_id)
+    """resolve_patient() already 404'd if the id doesn't exist at all; the
+    org_id ownership gate (actor.org_id) then 404s again if it exists but
+    belongs to a different org. Delete cascades to every sub-resource row."""
+    deleted = await patient_service.delete_patient(patient.patient_id, actor.org_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Patient not found")
 
 
 # ── Sub-resource: Names ────────────────────────────────────────────────────────
@@ -596,6 +617,7 @@ async def delete_patient(
         "`given`, `prefix`, `suffix` accept lists of strings. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_name(
     payload: NameCreate,
@@ -626,6 +648,7 @@ async def add_name(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_identifier(
     payload: IdentifierCreate,
@@ -656,6 +679,7 @@ async def add_identifier(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_telecom(
     payload: TelecomCreate,
@@ -685,6 +709,7 @@ async def add_telecom(
         "`line` accepts a list of address lines. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_address(
     payload: AddressCreate,
@@ -715,6 +740,7 @@ async def add_address(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_photo(
     payload: PhotoCreate,
@@ -744,6 +770,7 @@ async def add_photo(
         "plus nested `relationship[]` and `telecom[]` arrays. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_contact(
     payload: ContactCreate,
@@ -774,6 +801,7 @@ async def add_contact(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_communication(
     payload: CommunicationCreate,
@@ -803,6 +831,7 @@ async def add_communication(
         "`reference_type`: Organization|Practitioner|PractitionerRole. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_general_practitioner(
     payload: GeneralPractitionerCreate,
@@ -834,6 +863,7 @@ async def add_general_practitioner(
         "`type`: replaced-by|replaces|refer|seealso. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_link(
     payload: LinkCreate,
@@ -863,6 +893,7 @@ async def add_link(
         "`DELETE /{patient_id}/names/{name_id}`."
     ),
     responses={**_SUBRES_NAMES_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_names(
     request: Request,
@@ -892,6 +923,7 @@ async def list_names(
         "Returns 404 if the name does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_name(
     name_id: int,
@@ -917,6 +949,7 @@ async def delete_name(
         "`DELETE /{patient_id}/identifiers/{identifier_id}`."
     ),
     responses={**_SUBRES_IDENTIFIERS_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_identifiers(
     request: Request,
@@ -946,6 +979,7 @@ async def list_identifiers(
         "Returns 404 if the identifier does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_identifier(
     identifier_id: int,
@@ -973,6 +1007,7 @@ async def delete_identifier(
         "`DELETE /{patient_id}/telecom/{telecom_id}`."
     ),
     responses={**_SUBRES_TELECOM_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_telecom(
     request: Request,
@@ -1001,6 +1036,7 @@ async def list_telecom(
         "Returns 404 if the contact point does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_telecom(
     telecom_id: int,
@@ -1026,6 +1062,7 @@ async def delete_telecom(
         "`DELETE /{patient_id}/addresses/{address_id}`."
     ),
     responses={**_SUBRES_ADDRESSES_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_addresses(
     request: Request,
@@ -1054,6 +1091,7 @@ async def list_addresses(
         "Returns 404 if the address does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_address(
     address_id: int,
@@ -1079,6 +1117,7 @@ async def delete_address(
         "`DELETE /{patient_id}/photos/{photo_id}`."
     ),
     responses={**_SUBRES_PHOTOS_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_photos(
     request: Request,
@@ -1107,6 +1146,7 @@ async def list_photos(
         "Returns 404 if the photo does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_photo(
     photo_id: int,
@@ -1132,6 +1172,7 @@ async def delete_photo(
         "`DELETE /{patient_id}/contacts/{contact_id}`."
     ),
     responses={**_SUBRES_CONTACTS_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_contacts(
     request: Request,
@@ -1161,6 +1202,7 @@ async def list_contacts(
         "Returns 404 if the contact does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_contact(
     contact_id: int,
@@ -1186,6 +1228,7 @@ async def delete_contact(
         "`DELETE /{patient_id}/communications/{comm_id}`."
     ),
     responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_communications(
     request: Request,
@@ -1214,6 +1257,7 @@ async def list_communications(
         "Returns 404 if the entry does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_communication(
     comm_id: int,
@@ -1242,6 +1286,7 @@ async def delete_communication(
         "`DELETE /{patient_id}/general-practitioners/{gp_id}`."
     ),
     responses={**_SUBRES_GPS_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_general_practitioners(
     request: Request,
@@ -1270,6 +1315,7 @@ async def list_general_practitioners(
         "Returns 404 if the reference does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_general_practitioner(
     gp_id: int,
@@ -1300,6 +1346,7 @@ async def delete_general_practitioner(
         "`DELETE /{patient_id}/links/{link_id}`."
     ),
     responses={**_SUBRES_LINKS_200, **_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_links(
     request: Request,
@@ -1328,6 +1375,7 @@ async def list_links(
         "Returns 404 if the link does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
+    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_link(
     link_id: int,
@@ -1353,6 +1401,7 @@ async def delete_link(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_name(
     name_id: int,
@@ -1380,6 +1429,7 @@ async def patch_name(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_identifier(
     identifier_id: int,
@@ -1411,6 +1461,7 @@ async def patch_identifier(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_telecom(
     telecom_id: int,
@@ -1440,6 +1491,7 @@ async def patch_telecom(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_address(
     address_id: int,
@@ -1469,6 +1521,7 @@ async def patch_address(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_photo(
     photo_id: int,
@@ -1498,6 +1551,7 @@ async def patch_photo(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_contact(
     contact_id: int,
@@ -1528,6 +1582,7 @@ async def patch_contact(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_communication(
     comm_id: int,
@@ -1559,6 +1614,7 @@ async def patch_communication(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_general_practitioner(
     gp_id: int,
@@ -1590,6 +1646,7 @@ async def patch_general_practitioner(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_link(
     link_id: int,

@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from typing import Any, cast
-from fastapi import FastAPI, HTTPException, Request
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
-from app.routers.vitals import router as vitals_router
-from app.routers.terminology import router as terminology_router
+from app.auth.dependencies import get_current_user
 from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
 from app.core.openapi_tags import OPENAPI_TAGS
@@ -25,6 +26,8 @@ from app.middleware import (
     RateLimitMiddleware,
 )
 from app.routers import api_router
+from app.routers.terminology import router as terminology_router
+from app.routers.vitals import router as vitals_router
 
 setup_logging()
 logger = get_logger(__name__)
@@ -77,24 +80,60 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 
 app.container = container
 
-# app.add_middleware(RateLimitMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.middleware("http")(request_context_middleware)
 
+# get_current_user runs once for every route in each group below — decodes
+# the JWT and sets request.state.user. Individual routes add
+# require_permission(...) on top for fine-grained access control (currently
+# wired for Patient only — see app/routers/patient.py).
 app.include_router(
-    api_router, prefix="/api/fhir/v1"
+    api_router, prefix="/api/fhir/v1", dependencies=[Depends(get_current_user)]
 )
 
 app.include_router(
     vitals_router,
     prefix="/api/v1/vitals",
     tags=["Vitals"],
+    dependencies=[Depends(get_current_user)],
 )
 
 app.include_router(
     terminology_router,
     prefix="/api/v1/terminology",
     tags=["Terminology"],
+    dependencies=[Depends(get_current_user)],
 )
+
+
+# ── OpenAPI schema override ────────────────────────────────────────────────────
+# FastAPI has no constructor param for top-level `security`/`securitySchemes` —
+# override app.openapi() to inject them so Swagger UI shows the Authorize
+# button. Cached on app.openapi_schema after the first call.
+def _custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags,
+    )
+    schema.setdefault("components", {})["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your JWT access token (without the 'Bearer ' prefix).",
+        }
+    }
+    schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 
 @app.get(

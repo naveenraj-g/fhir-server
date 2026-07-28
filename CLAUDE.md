@@ -25,7 +25,7 @@ This is a pure CRUD core with no authentication of its own — it is never expos
 | Web framework | FastAPI + Uvicorn |
 | Database | PostgreSQL 15 (async via asyncpg) |
 | ORM | SQLAlchemy 2.0+ (async) |
-| Auth | None in this service — handled upstream by a GraphQL gateway (see Multi-Tenancy & Ownership) |
+| Auth | None for ~34 resources — handled upstream by a GraphQL gateway. **Patient is the exception**: `app/auth/` validates JWTs directly via `pyjwt` + JWKS, with flat RBAC scopes (see Multi-Tenancy & Ownership) |
 | Sessions | Redis 7 (server-side) |
 | DI container | dependency-injector |
 | Config | pydantic-settings (.env) |
@@ -119,10 +119,12 @@ Router → Service → Repository → ORM Model
 
 ## Multi-Tenancy & Ownership
 
-**This server has no authentication of its own.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. The gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase decodes a token, checks a JWKS endpoint, or reads `request.state.user` — there is no such state to read.
+**This server has no authentication of its own — with one exception, see below.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. For every resource except Patient, the gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase (outside `app/auth/`) decodes a token, checks a JWKS endpoint, or reads `request.state.user`.
 
-- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token.
-- `created_by`/`updated_by` are the same: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
+**Auth rollout status (in progress, Patient-first):** Patient now validates JWTs directly — see `app/auth/` (JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) and every route in `app/routers/patient.py`, gated with `require_permission("patient", <action>)`. For Patient specifically: `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`), **not** the request body — `PatientCreateSchema`/`PatientPatchSchema` no longer accept these as input fields at all. `patch`/`patch_full`/`delete` also check the verified `actor.org_id` against the target patient's stored `org_id` (404 on mismatch, skipped for org-less/super-admin tokens). `user_id`/`org_id` themselves are unchanged — still plain, gateway-forwarded input fields on create, same as every other resource. **All other ~34 resources are unaffected and follow the description below exactly as written.**
+
+- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token. (Patient's `user_id`/`org_id` still follow this; its `created_by`/`updated_by` do not — see rollout status above.)
+- `created_by`/`updated_by` are the same for every resource except Patient: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
 - `resolve_<resource>()` deps (`app/deps/<resource>_deps.py`) only load the resource by public ID and raise 404 if missing — they do **not** enforce ownership. Tenant/ownership scoping happens entirely via `user_id`/`org_id` `WHERE` clauses in the repository's `list()`/`get_me()` queries. Used as `Depends(resolve_<resource>)` in route signatures.
 - Keeping `user_id`/`org_id` on every resource (not just Patient/Practitioner) is deliberate: it gives the GraphQL gateway one uniform scoping contract across all ~35 resource types, with no joins, and it's the only mechanism that works for resources with no patient/subject link at all (Organization, Location, HealthcareService, Appointment — whose `participant` list is polymorphic 0..* and may contain zero patients — etc.).
 
@@ -237,7 +239,7 @@ Rules:
 ## Standard Columns
 
 Every resource row: `id` (PK), `<resource>_id` (sequence), `user_id`, `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`.
-- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase
+- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase, **except Patient**, where both come from the verified JWT's `sub` (see Multi-Tenancy & Ownership's "Auth rollout status")
 - `org_id` / `user_id` are **tenant/ownership fields forwarded by the gateway**, not FHIR Organization references
 
 ---
@@ -283,9 +285,13 @@ Pattern per resource: `di/modules/<resource>.py` (Factory for repo + service) �
 ```
 FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
 REDIS_URL=redis://localhost:6379
+
+# BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient only, so far)
+IAM_JWKS_URL=http://localhost:5001/api/auth/jwks
+IAM_ISSUER=http://localhost:5001
 ```
 
-No IAM/JWT env vars — this service doesn't authenticate; the upstream GraphQL gateway owns that.
+`IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient now validates JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~34 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
 
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 
