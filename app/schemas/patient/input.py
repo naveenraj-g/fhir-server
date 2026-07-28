@@ -92,8 +92,8 @@ class IdentifierCreate(BaseModel):
         None,
         description="Identifier.type.coding.userSelected — whether this identifier-type coding was chosen directly by the user.",
     )
-    system: str | None = Field(
-        None,
+    system: str = Field(
+        ...,
         description="The namespace (a URI) that identifies the scope this identifier's value is unique within.",
     )
     value: str = Field(
@@ -759,8 +759,8 @@ class PatientCreateSchema(BaseModel):
         None,
         description="Tenant/ownership field forwarded by the GraphQL gateway — the acting user's id.",
     )
-    org_id: str | None = Field(
-        None,
+    org_id: str = Field(
+        ...,
         description="Tenant/ownership field forwarded by the GraphQL gateway — the active organization's id.",
     )
     created_by: str | None = Field(

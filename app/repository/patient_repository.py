@@ -378,7 +378,7 @@ class PatientRepository(BaseRepository):
         self,
         payload: PatientCreateSchema,
         user_id: str | None,
-        org_id: str | None = None,
+        org_id: str,
         created_by: str | None = None,
     ) -> PatientModel:
         """Create a Patient from its core scalar fields only — no sub-resources.
@@ -427,7 +427,7 @@ class PatientRepository(BaseRepository):
         self,
         payload: PatientFullCreateSchema,
         user_id: str | None,
-        org_id: str | None = None,
+        org_id: str,
         created_by: str | None = None,
     ) -> PatientModel:
         """Create a Patient plus any combination of its 9 sub-resource lists,

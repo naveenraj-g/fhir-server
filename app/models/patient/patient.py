@@ -9,6 +9,7 @@ from sqlalchemy import (
     Sequence,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -53,7 +54,7 @@ class PatientModel(Base):
     )
 
     user_id = Column(String, nullable=True, index=True)
-    org_id = Column(String, nullable=True, index=True)
+    org_id = Column(String, nullable=False, index=True)
 
     active = Column(Boolean, nullable=True, default=True)
     gender = Column(Enum(PatientGender, name="patient_gender"), nullable=True)
@@ -146,6 +147,7 @@ class PatientIdentifier(Base):
     """identifier[] — Identifier — business identifiers for this patient."""
 
     __tablename__ = "patient_identifier"
+    __table_args__ = (UniqueConstraint("system", "value"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     patient_id = Column(Integer, ForeignKey("patient.id"), nullable=False, index=True)
@@ -159,7 +161,7 @@ class PatientIdentifier(Base):
     type_display = Column(String, nullable=True)
     type_text = Column(String, nullable=True)
     type_user_selected = Column(Boolean, nullable=True)
-    system = Column(String, nullable=True)
+    system = Column(String, nullable=False)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
@@ -388,7 +390,7 @@ class PatientCommunication(Base):
 
     language_system = Column(String, nullable=True)
     language_version = Column(String, nullable=True)
-    language_code = Column(String, nullable=True)
+    language_code = Column(String, nullable=False)
     language_display = Column(String, nullable=True)
     language_text = Column(String, nullable=True)
     language_user_selected = Column(Boolean, nullable=True)
@@ -430,9 +432,9 @@ class PatientLink(Base):
 
     other_type = Column(
         Enum(PatientLinkOtherType, name="patient_link_other_type"),
-        nullable=True,
+        nullable=False,
     )
-    other_id = Column(Integer, nullable=True)
+    other_id = Column(Integer, nullable=False)
     other_display = Column(String, nullable=True)
     type = Column(
         Enum(PatientLinkType, name="patient_link_type"),
