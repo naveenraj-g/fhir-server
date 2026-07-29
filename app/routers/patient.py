@@ -1,7 +1,8 @@
-from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import StringConstraints
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
@@ -12,31 +13,31 @@ from app.core.content_negotiation import (
 )
 from app.core.pagination import ListParams
 from app.core.schema_utils import inline_schema
-from app.deps.patient_deps import resolve_patient, resolve_patient_core
+from app.deps.patient_deps import resolve_patient
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import (
     fhir_address,
     fhir_communication,
     fhir_human_name,
-    fhir_identifier,
     fhir_photo,
     fhir_telecom,
-    plain_address,
-    plain_communication,
-    plain_identifier,
-    plain_name,
-    plain_photo,
-    plain_telecom,
 )
 from app.fhir.mappers.patient import (
     fhir_contact,
     fhir_general_practitioner,
+    fhir_identifier,
     fhir_link,
+    plain_address,
+    plain_communication,
     plain_contact,
     plain_general_practitioner,
+    plain_identifier,
     plain_link,
+    plain_name,
+    plain_photo,
+    plain_telecom,
 )
-from app.models.patient.enums import PatientGender, PatientGeneralPractitionerType
+from app.models.patient.enums import AddressUse, PatientGender
 from app.models.patient.patient import PatientModel
 from app.schemas.fhir import (
     FHIRPatientAddressesListResponse,
@@ -97,6 +98,24 @@ _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
+
+# FHIR comparator-prefixed date, e.g. "ge2024-01-01" or "2024-01-01T12:00:00Z" —
+# see app.core.filters.apply_fhir_date_filter, which does the actual parsing;
+# this pattern just rejects an obviously malformed value at parameter-binding
+# time instead of letting it reach that helper's manual HTTPException.
+# birthdate/death-date are repeatable (list[str]) query params — Query()'s own
+# `pattern=` kwarg only constrains scalar params, not list items, so each item
+# needs its own StringConstraints via Annotated instead.
+_FHIR_DATE_PATTERN = (
+    r"^(eq|ne|gt|lt|ge|le)?\d{4}-\d{2}-\d{2}"
+    r"(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$"
+)
+_FhirDateItem = Annotated[str, StringConstraints(pattern=_FHIR_DATE_PATTERN)]
+
+# FHIR reference string, e.g. "Organization/190001" — see
+# app.core.filters.parse_reference, which validates the resource-type half
+# against the caller-supplied enum; this pattern only rejects the gross shape.
+_FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/\d+$"
 
 _ERR_NOT_FOUND = {404: {"description": "Patient not found"}}
 _ERR_VALIDATION = {
@@ -311,13 +330,12 @@ async def create_patient(
     actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Create a Patient from core scalar fields; user_id/org_id come straight
-    off the validated payload, but created_by comes from the verified JWT
-    (actor.sub), never the client body. actor.org_id must match payload.org_id
-    for org-scoped tokens (403 otherwise) — org-less/super-admin tokens skip
-    this check."""
+    """Create a Patient from core scalar fields; user_id comes straight off
+    the validated payload, but org_id and created_by both come from the
+    verified JWT (actor.org_id / actor.sub) — org_id is no longer a request
+    body field at all, and an org-less token is rejected outright (403)."""
     patient = await patient_service.create_patient(
-        payload, payload.user_id, payload.org_id, actor.sub, actor.org_id
+        payload, payload.user_id, actor.org_id, actor.sub
     )
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
@@ -345,10 +363,38 @@ async def create_patient_full(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Create a Patient plus any supplied sub-resource lists, atomically.
-    Same actor.sub/actor.org_id handling as create_patient."""
+    Same org_id/created_by handling as create_patient."""
     patient = await patient_service.create_patient_full(
-        payload, payload.user_id, payload.org_id, actor.sub, actor.org_id
+        payload, payload.user_id, actor.org_id, actor.sub
     )
+    return format_response(
+        patient_service._to_fhir(patient), patient_service._to_plain(patient), request
+    )
+
+
+# ── /me — declared before /{patient_id} so FastAPI doesn't match "me" as a
+# patient_id path param ──────────────────────────────────────────────────────
+
+
+@router.get(
+    "/me",
+    operation_id="get_my_patient_record",
+    summary="Retrieve the authenticated caller's own Patient resource",
+    description=(
+        "Scoped to the verified JWT's sub + activeOrganizationId — never a client-"
+        "suppliable value. Returns the one Patient record whose user_id/org_id match "
+        "the caller's own token. " + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
+)
+async def get_my_patient(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("patient", "read")),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    """get_me() raises PermissionDeniedError (403) for an org-less token, or
+    NotFoundError (404) if no patient matches the caller's own user_id/org_id."""
+    patient = await patient_service.get_me(actor.sub, actor.org_id)
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
     )
@@ -359,14 +405,18 @@ async def create_patient_full(
     operation_id="get_patient_by_id",
     summary="Retrieve a Patient resource by public patient_id",
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def get_patient(
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """resolve_patient() already loaded (or 404'd) the patient; this just formats it."""
+    """Fetches the patient scoped to the caller's org — get_patient_scoped()
+    raises PermissionDeniedError (403) outright for an org-less token, or
+    NotFoundError (404, never 403) if it belongs to a different org, so
+    existence isn't leaked."""
+    patient = await patient_service.get_patient_scoped(patient_id, actor.org_id)
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
     )
@@ -385,14 +435,19 @@ async def get_patient(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_CORE_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def get_patient_core(
     request: Request,
-    patient: PatientModel = Depends(resolve_patient_core),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """resolve_patient_core() already loaded (scalars only, or 404'd); this just formats it."""
+    """Fetches the patient (scalars only) scoped to the caller's org —
+    get_patient_scoped() raises PermissionDeniedError (403) outright for an
+    org-less token, or NotFoundError (404) if it belongs to a different org."""
+    patient = await patient_service.get_patient_scoped(
+        patient_id, actor.org_id, core=True
+    )
     return format_response(
         patient_service._to_fhir_core(patient),
         patient_service._to_plain_core(patient),
@@ -424,14 +479,12 @@ async def patch_patient(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Partial update of core scalar fields only — sub-resources untouched.
-    updated_by comes from the verified JWT (actor.sub); actor.org_id gates
-    the update to the caller's own org (404 on mismatch, not 403 — avoids
-    leaking that a patient with this id exists in another org)."""
+    updated_by comes from the verified JWT (actor.sub); patch_patient()
+    raises NotFoundError (404, not 403 — avoids leaking that a patient with
+    this id exists in another org) if actor.org_id doesn't match."""
     updated = await patient_service.patch_patient(
         patient.patient_id, payload, actor.sub, actor.org_id
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -460,12 +513,11 @@ async def patch_patient_full(
 ):
     """Partial update of core scalar fields plus atomic replacement of any
     supplied sub-resource lists. Same actor-derived updated_by and org_id
-    ownership gate as patch_patient."""
+    ownership gate as patch_patient — patch_patient_full() raises
+    NotFoundError (404) on mismatch."""
     updated = await patient_service.patch_patient_full(
         patient.patient_id, payload, actor.sub, actor.org_id
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -479,48 +531,92 @@ async def patch_patient_full(
     operation_id="list_patients",
     summary="List all Patient resources",
     description=(
-        "Returns a paginated list of Patient resources. "
-        "Filter by `family_name`/`given_name` (partial match against patient_name), "
-        "`identifier` (exact business-identifier value), `gender`, `active`, `deceased`, "
-        "`birth_date_from`/`birth_date_to` (inclusive range), "
-        "`address_city`/`address_state`/`address_postal_code`, `email`/`phone` (telecom), "
-        "`general_practitioner_type`/`general_practitioner_id`, `organization_id` "
-        "(managingOrganization), `user_id`, or `org_id`. "
+        "Returns a paginated list of Patient resources, matching the FHIR R4 Patient "
+        "search parameter set. "
+        "Filter by `family`/`given` (partial match on one HumanName sub-field) or `name` "
+        "(partial match across family/given/prefix/suffix/text combined), `identifier` "
+        "(exact business-identifier value), `gender`, `active`, `deceased` (true = "
+        "deceased[x] is populated at all, boolean or date), "
+        "`birthdate`/`death-date` (FHIR comparator-prefixed date, e.g. `ge2020-01-01`; "
+        "repeat the param for a range), "
+        "`address` (partial match across every Address sub-field) or "
+        "`address-city`/`address-state`/`address-postalcode`/`address-country`/`address-use` "
+        "(one specific sub-field), `telecom` (any system) or `email`/`phone` (one system), "
+        "`language` (Patient.communication.language code), "
+        "`general-practitioner`/`organization`/`link` (FHIR reference string, e.g. "
+        "`Organization/190001`), or `user_id`. "
+        "Always scoped to the caller's own org (from the verified token) — `org_id` is "
+        "not a client-suppliable filter. "
         "Sort with `sort` (e.g. `-birth_date`); set `total_mode=none` to skip the COUNT(*) "
         "on large result sets. " + _CONTENT_NEG
     ),
     responses={**_LIST_200},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_patients(
     request: Request,
-    family_name: str | None = Query(
+    actor: AuthUser = Depends(require_permission("patient", "read")),
+    family: str | None = Query(
         None, description="Filter by family (last) name — partial match."
     ),
-    given_name: str | None = Query(
+    given: str | None = Query(
         None, description="Filter by given name — partial match."
+    ),
+    name: str | None = Query(
+        None,
+        description="Partial match against any HumanName sub-field (family, given, prefix, suffix, text).",
     ),
     gender: PatientGender | None = Query(None, description="male|female|other|unknown"),
     active: bool | None = Query(None),
     user_id: str | None = Query(None),
-    org_id: str | None = Query(None),
     identifier: str | None = Query(
         None, description="Exact match on a business identifier value (MRN, SSN, etc.)."
     ),
-    birth_date_from: date | None = Query(
-        None, description="Inclusive lower bound on birth_date."
+    birthdate: list[_FhirDateItem] | None = Query(
+        None,
+        description=(
+            "FHIR comparator-prefixed date (eq/ne/gt/lt/ge/le), e.g. `ge2020-01-01`. "
+            "Repeat the param for a range, e.g. `birthdate=ge2020-01-01&birthdate=le2020-12-31`."
+        ),
     ),
-    birth_date_to: date | None = Query(
-        None, description="Inclusive upper bound on birth_date."
+    death_date: list[_FhirDateItem] | None = Query(
+        None,
+        alias="death-date",
+        description="Same comparator-prefixed format as birthdate, filtering on the deceased dateTime.",
+    ),
+    deceased: bool | None = Query(
+        None,
+        description="true = deceased[x] is populated at all (boolean true or a death date present).",
+    ),
+    address: str | None = Query(
+        None,
+        description="Partial match against any Address sub-field (line, city, district, state, country, postalCode, text).",
     ),
     address_city: str | None = Query(
-        None, description="Filter by address city — partial match."
+        None,
+        alias="address-city",
+        description="Filter by address city — partial match.",
     ),
     address_state: str | None = Query(
-        None, description="Filter by address state — partial match."
+        None,
+        alias="address-state",
+        description="Filter by address state — partial match.",
     ),
     address_postal_code: str | None = Query(
-        None, description="Filter by address postal code — exact match."
+        None,
+        alias="address-postalcode",
+        description="Filter by address postal code — exact match.",
+    ),
+    address_country: str | None = Query(
+        None,
+        alias="address-country",
+        description="Filter by address country — partial match.",
+    ),
+    address_use: AddressUse | None = Query(
+        None, alias="address-use", description="home|work|temp|old|billing."
+    ),
+    telecom: str | None = Query(
+        None,
+        description="Filter by any telecom value, regardless of system — partial match.",
     ),
     email: str | None = Query(
         None, description="Filter by telecom email — partial match, system=email only."
@@ -528,42 +624,59 @@ async def list_patients(
     phone: str | None = Query(
         None, description="Filter by telecom phone — partial match, system=phone only."
     ),
-    deceased: bool | None = Query(None, description="Filter by deceased_boolean."),
-    general_practitioner_type: PatientGeneralPractitionerType | None = Query(
+    language: str | None = Query(
         None,
-        description="Reference type for generalPractitioner — narrows general_practitioner_id.",
+        description="Exact match on Patient.communication.language code (e.g. en, fr).",
     ),
-    general_practitioner_id: int | None = Query(
+    general_practitioner: str | None = Query(
         None,
-        description="Public id of a referenced Organization/Practitioner/PractitionerRole.",
+        alias="general-practitioner",
+        pattern=_FHIR_REFERENCE_PATTERN,
+        description="FHIR reference string, e.g. `Practitioner/30001`.",
     ),
-    organization_id: int | None = Query(
-        None, description="Public id of the managingOrganization."
+    organization: str | None = Query(
+        None,
+        pattern=_FHIR_REFERENCE_PATTERN,
+        description="managingOrganization as a FHIR reference string, e.g. `Organization/190001`.",
+    ),
+    link: str | None = Query(
+        None,
+        pattern=_FHIR_REFERENCE_PATTERN,
+        description="FHIR reference string, e.g. `Patient/10002` or `RelatedPerson/300001`.",
     ),
     params: ListParams = Depends(),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Every filter param is forwarded straight through to the repository's
-    list() — see the route description for the full filter set."""
+    list() — see the route description for the full filter set. org_id is
+    always the caller's own (actor.org_id), never client-suppliable;
+    list_patients() raises PermissionDeniedError (403) outright for an
+    org-less token."""
     patients, total = await patient_service.list_patients(
         user_id=user_id,
-        org_id=org_id,
-        family_name=family_name,
-        given_name=given_name,
+        org_id=actor.org_id,
+        family=family,
+        given=given,
+        name=name,
         gender=gender,
         active=active,
         identifier=identifier,
-        birth_date_from=birth_date_from,
-        birth_date_to=birth_date_to,
+        birthdate=birthdate,
+        death_date=death_date,
+        deceased=deceased,
+        address=address,
         address_city=address_city,
         address_state=address_state,
         address_postal_code=address_postal_code,
+        address_country=address_country,
+        address_use=address_use,
+        telecom=telecom,
         email=email,
         phone=phone,
-        deceased=deceased,
-        general_practitioner_type=general_practitioner_type,
-        general_practitioner_id=general_practitioner_id,
-        organization_id=organization_id,
+        language=language,
+        general_practitioner=general_practitioner,
+        organization=organization,
+        link=link,
         limit=params.limit,
         offset=params.offset,
         sort=params.sort,
@@ -595,12 +708,10 @@ async def delete_patient(
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """resolve_patient() already 404'd if the id doesn't exist at all; the
-    org_id ownership gate (actor.org_id) then 404s again if it exists but
+    """resolve_patient() already 404'd if the id doesn't exist at all;
+    delete_patient() raises NotFoundError (404) again if it exists but
     belongs to a different org. Delete cascades to every sub-resource row."""
-    deleted = await patient_service.delete_patient(patient.patient_id, actor.org_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    await patient_service.delete_patient(patient.patient_id, actor.org_id)
 
 
 # ── Sub-resource: Names ────────────────────────────────────────────────────────
@@ -617,18 +728,20 @@ async def delete_patient(
         "`given`, `prefix`, `suffix` accept lists of strings. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_name(
     payload: NameCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Append one HumanName row, then return the full updated Patient."""
-    updated = await patient_service.add_name(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    """Append one HumanName row, then return the full updated Patient.
+    add_name() raises NotFoundError (404) if the patient belongs to a
+    different org."""
+    updated = await patient_service.add_name(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -648,18 +761,18 @@ async def add_name(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_identifier(
     payload: IdentifierCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one identifier row, then return the full updated Patient."""
-    updated = await patient_service.add_identifier(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_identifier(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -679,18 +792,18 @@ async def add_identifier(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_telecom(
     payload: TelecomCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one contact-point row, then return the full updated Patient."""
-    updated = await patient_service.add_telecom(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_telecom(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -709,18 +822,18 @@ async def add_telecom(
         "`line` accepts a list of address lines. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_address(
     payload: AddressCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one address row, then return the full updated Patient."""
-    updated = await patient_service.add_address(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_address(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -740,18 +853,18 @@ async def add_address(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_photo(
     payload: PhotoCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one photo attachment row, then return the full updated Patient."""
-    updated = await patient_service.add_photo(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_photo(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -770,18 +883,18 @@ async def add_photo(
         "plus nested `relationship[]` and `telecom[]` arrays. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_contact(
     payload: ContactCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one contact row (plus its relationship[]/telecom[] grandchildren), then return the full updated Patient."""
-    updated = await patient_service.add_contact(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_contact(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -801,18 +914,18 @@ async def add_contact(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_communication(
     payload: CommunicationCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one communication-language row, then return the full updated Patient."""
-    updated = await patient_service.add_communication(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_communication(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -831,20 +944,18 @@ async def add_communication(
         "`reference_type`: Organization|Practitioner|PractitionerRole. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_general_practitioner(
     payload: GeneralPractitionerCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one general-practitioner reference row, then return the full updated Patient."""
     updated = await patient_service.add_general_practitioner(
-        patient.patient_id, payload
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -863,18 +974,18 @@ async def add_general_practitioner(
         "`type`: replaced-by|replaces|refer|seealso. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "create"))],
 )
 async def add_link(
     payload: LinkCreate,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one patient-link row, then return the full updated Patient."""
-    updated = await patient_service.add_link(patient.patient_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    updated = await patient_service.add_link(
+        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -893,16 +1004,16 @@ async def add_link(
         "`DELETE /{patient_id}/names/{name_id}`."
     ),
     responses={**_SUBRES_NAMES_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_names(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_human_name()/plain_name() mappers directly — bypasses
     the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
-    items = await patient_service.get_names(patient.patient_id)
+    items = await patient_service.get_names(patient.patient_id, org_id=actor.org_id)
     plain = [plain_name(n) for n in items]
     if wants_fhir(request):
         fhir = [{"id": n.id, **fhir_human_name(n)} for n in items]
@@ -923,17 +1034,16 @@ async def list_names(
         "Returns 404 if the name does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_name(
     name_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """resolve_patient() already 404'd if the Patient is missing; this 404s again if the name_id doesn't belong to it."""
-    deleted = await patient_service.delete_name(patient.patient_id, name_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Name not found on this Patient")
+    """delete_name() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or if name_id doesn't belong to it."""
+    await patient_service.delete_name(patient.patient_id, name_id, org_id=actor.org_id)
 
 
 # ── Sub-resource: Identifiers — GET + DELETE ──────────────────────────────────
@@ -949,16 +1059,18 @@ async def delete_name(
         "`DELETE /{patient_id}/identifiers/{identifier_id}`."
     ),
     responses={**_SUBRES_IDENTIFIERS_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_identifiers(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_identifier()/plain_identifier() mappers directly — bypasses
     the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
-    items = await patient_service.get_identifiers(patient.patient_id)
+    items = await patient_service.get_identifiers(
+        patient.patient_id, org_id=actor.org_id
+    )
     plain = [plain_identifier(i) for i in items]
     if wants_fhir(request):
         fhir = [{"id": i.id, **fhir_identifier(i)} for i in items]
@@ -979,19 +1091,18 @@ async def list_identifiers(
         "Returns 404 if the identifier does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_identifier(
     identifier_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if identifier_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_identifier(patient.patient_id, identifier_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=404, detail="Identifier not found on this Patient"
-        )
+    """delete_identifier() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or identifier_id doesn't belong to it."""
+    await patient_service.delete_identifier(
+        patient.patient_id, identifier_id, org_id=actor.org_id
+    )
 
 
 # ── Sub-resource: Telecom — GET + DELETE ──────────────────────────────────────
@@ -1007,15 +1118,15 @@ async def delete_identifier(
         "`DELETE /{patient_id}/telecom/{telecom_id}`."
     ),
     responses={**_SUBRES_TELECOM_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_telecom(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_telecom()/plain_telecom() mappers directly."""
-    items = await patient_service.get_telecoms(patient.patient_id)
+    items = await patient_service.get_telecoms(patient.patient_id, org_id=actor.org_id)
     plain = [plain_telecom(t) for t in items]
     if wants_fhir(request):
         fhir = [{"id": t.id, **fhir_telecom(t)} for t in items]
@@ -1036,17 +1147,18 @@ async def list_telecom(
         "Returns 404 if the contact point does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_telecom(
     telecom_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if telecom_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_telecom(patient.patient_id, telecom_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Telecom not found on this Patient")
+    """delete_telecom() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or telecom_id doesn't belong to it."""
+    await patient_service.delete_telecom(
+        patient.patient_id, telecom_id, org_id=actor.org_id
+    )
 
 
 # ── Sub-resource: Addresses — GET + DELETE ────────────────────────────────────
@@ -1062,15 +1174,15 @@ async def delete_telecom(
         "`DELETE /{patient_id}/addresses/{address_id}`."
     ),
     responses={**_SUBRES_ADDRESSES_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_addresses(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_address()/plain_address() mappers directly."""
-    items = await patient_service.get_addresses(patient.patient_id)
+    items = await patient_service.get_addresses(patient.patient_id, org_id=actor.org_id)
     plain = [plain_address(a) for a in items]
     if wants_fhir(request):
         fhir = [{"id": a.id, **fhir_address(a)} for a in items]
@@ -1091,17 +1203,18 @@ async def list_addresses(
         "Returns 404 if the address does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_address(
     address_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if address_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_address(patient.patient_id, address_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Address not found on this Patient")
+    """delete_address() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or address_id doesn't belong to it."""
+    await patient_service.delete_address(
+        patient.patient_id, address_id, org_id=actor.org_id
+    )
 
 
 # ── Sub-resource: Photos — GET + DELETE ───────────────────────────────────────
@@ -1117,15 +1230,15 @@ async def delete_address(
         "`DELETE /{patient_id}/photos/{photo_id}`."
     ),
     responses={**_SUBRES_PHOTOS_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_photos(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_photo()/plain_photo() mappers directly."""
-    items = await patient_service.get_photos(patient.patient_id)
+    items = await patient_service.get_photos(patient.patient_id, org_id=actor.org_id)
     plain = [plain_photo(p) for p in items]
     if wants_fhir(request):
         fhir = [{"id": p.id, **fhir_photo(p)} for p in items]
@@ -1146,17 +1259,18 @@ async def list_photos(
         "Returns 404 if the photo does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_photo(
     photo_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if photo_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_photo(patient.patient_id, photo_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Photo not found on this Patient")
+    """delete_photo() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or photo_id doesn't belong to it."""
+    await patient_service.delete_photo(
+        patient.patient_id, photo_id, org_id=actor.org_id
+    )
 
 
 # ── Sub-resource: Contacts — GET + DELETE ─────────────────────────────────────
@@ -1172,15 +1286,15 @@ async def delete_photo(
         "`DELETE /{patient_id}/contacts/{contact_id}`."
     ),
     responses={**_SUBRES_CONTACTS_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_contacts(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_contact()/plain_contact() mappers directly (not the shared datatypes.py helpers)."""
-    items = await patient_service.get_contacts(patient.patient_id)
+    items = await patient_service.get_contacts(patient.patient_id, org_id=actor.org_id)
     plain = [plain_contact(c) for c in items]
     if wants_fhir(request):
         fhir = [{"id": c.id, **fhir_contact(c)} for c in items]
@@ -1202,17 +1316,19 @@ async def list_contacts(
         "Returns 404 if the contact does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_contact(
     contact_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if contact_id doesn't exist or belongs to a different Patient; cascades to its grandchildren."""
-    deleted = await patient_service.delete_contact(patient.patient_id, contact_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Contact not found on this Patient")
+    """delete_contact() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or contact_id doesn't belong to it; cascades
+    to its grandchildren."""
+    await patient_service.delete_contact(
+        patient.patient_id, contact_id, org_id=actor.org_id
+    )
 
 
 # ── Sub-resource: Communications — GET + DELETE ───────────────────────────────
@@ -1228,15 +1344,17 @@ async def delete_contact(
         "`DELETE /{patient_id}/communications/{comm_id}`."
     ),
     responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_communications(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_communication()/plain_communication() mappers directly."""
-    items = await patient_service.get_communications(patient.patient_id)
+    items = await patient_service.get_communications(
+        patient.patient_id, org_id=actor.org_id
+    )
     plain = [plain_communication(cm) for cm in items]
     if wants_fhir(request):
         fhir = [{"id": cm.id, **fhir_communication(cm)} for cm in items]
@@ -1257,19 +1375,18 @@ async def list_communications(
         "Returns 404 if the entry does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_communication(
     comm_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if comm_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_communication(patient.patient_id, comm_id)
-    if not deleted:
-        raise HTTPException(
-            status_code=404, detail="Communication not found on this Patient"
-        )
+    """delete_communication() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or comm_id doesn't belong to it."""
+    await patient_service.delete_communication(
+        patient.patient_id, comm_id, org_id=actor.org_id
+    )
 
 
 # ── Sub-resource: General Practitioners — GET + DELETE ────────────────────────
@@ -1286,15 +1403,17 @@ async def delete_communication(
         "`DELETE /{patient_id}/general-practitioners/{gp_id}`."
     ),
     responses={**_SUBRES_GPS_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_general_practitioners(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_general_practitioner()/plain_general_practitioner() mappers directly."""
-    items = await patient_service.get_general_practitioners(patient.patient_id)
+    items = await patient_service.get_general_practitioners(
+        patient.patient_id, org_id=actor.org_id
+    )
     plain = [plain_general_practitioner(gp) for gp in items]
     if wants_fhir(request):
         fhir = [{"id": gp.id, **fhir_general_practitioner(gp)} for gp in items]
@@ -1315,21 +1434,19 @@ async def list_general_practitioners(
         "Returns 404 if the reference does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_general_practitioner(
     gp_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if gp_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_general_practitioner(
-        patient.patient_id, gp_id
+    """delete_general_practitioner() raises NotFoundError (404) if the
+    Patient is missing, belongs to a different org, or gp_id doesn't belong
+    to it."""
+    await patient_service.delete_general_practitioner(
+        patient.patient_id, gp_id, org_id=actor.org_id
     )
-    if not deleted:
-        raise HTTPException(
-            status_code=404, detail="General practitioner not found on this Patient"
-        )
 
 
 # ── Sub-resource: Links — GET + DELETE ────────────────────────────────────────
@@ -1346,15 +1463,15 @@ async def delete_general_practitioner(
         "`DELETE /{patient_id}/links/{link_id}`."
     ),
     responses={**_SUBRES_LINKS_200, **_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "read"))],
 )
 async def list_links(
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_link()/plain_link() mappers directly."""
-    items = await patient_service.get_links(patient.patient_id)
+    items = await patient_service.get_links(patient.patient_id, org_id=actor.org_id)
     plain = [plain_link(lk) for lk in items]
     if wants_fhir(request):
         fhir = [{"id": lk.id, **fhir_link(lk)} for lk in items]
@@ -1375,17 +1492,16 @@ async def list_links(
         "Returns 404 if the link does not exist or belongs to a different Patient."
     ),
     responses={**_ERR_NOT_FOUND},
-    dependencies=[Depends(require_permission("patient", "delete"))],
 )
 async def delete_link(
     link_id: int,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """404s if link_id doesn't exist or belongs to a different Patient."""
-    deleted = await patient_service.delete_link(patient.patient_id, link_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Link not found on this Patient")
+    """delete_link() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or link_id doesn't belong to it."""
+    await patient_service.delete_link(patient.patient_id, link_id, org_id=actor.org_id)
 
 
 # ── Sub-resource PATCH routes ──────────────────────────────────────────────────
@@ -1401,19 +1517,21 @@ async def delete_link(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_name(
     name_id: int,
     payload: NamePatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one HumanName row, then return the full updated Patient."""
-    updated = await patient_service.patch_name(patient.patient_id, name_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Name not found on this Patient")
+    """Partial update of one HumanName row, then return the full updated
+    Patient. patch_name() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or name_id doesn't belong to it."""
+    updated = await patient_service.patch_name(
+        patient.patient_id, name_id, payload, org_id=actor.org_id, updated_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1429,23 +1547,21 @@ async def patch_name(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_identifier(
     identifier_id: int,
     payload: IdentifierPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one identifier row, then return the full updated Patient."""
+    """Partial update of one identifier row, then return the full updated
+    Patient. patch_identifier() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or identifier_id doesn't belong to it."""
     updated = await patient_service.patch_identifier(
-        patient.patient_id, identifier_id, payload
+        patient.patient_id, identifier_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(
-            status_code=404, detail="Identifier not found on this Patient"
-        )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1461,21 +1577,21 @@ async def patch_identifier(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_telecom(
     telecom_id: int,
     payload: TelecomPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one contact-point row, then return the full updated Patient."""
+    """Partial update of one contact-point row, then return the full updated
+    Patient. patch_telecom() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or telecom_id doesn't belong to it."""
     updated = await patient_service.patch_telecom(
-        patient.patient_id, telecom_id, payload
+        patient.patient_id, telecom_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Telecom not found on this Patient")
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1491,21 +1607,21 @@ async def patch_telecom(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_address(
     address_id: int,
     payload: AddressPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one address row, then return the full updated Patient."""
+    """Partial update of one address row, then return the full updated
+    Patient. patch_address() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or address_id doesn't belong to it."""
     updated = await patient_service.patch_address(
-        patient.patient_id, address_id, payload
+        patient.patient_id, address_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Address not found on this Patient")
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1521,19 +1637,21 @@ async def patch_address(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_photo(
     photo_id: int,
     payload: PhotoPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one photo attachment row, then return the full updated Patient."""
-    updated = await patient_service.patch_photo(patient.patient_id, photo_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Photo not found on this Patient")
+    """Partial update of one photo attachment row, then return the full
+    updated Patient. patch_photo() raises NotFoundError (404) if the Patient
+    is missing, belongs to a different org, or photo_id doesn't belong to it."""
+    updated = await patient_service.patch_photo(
+        patient.patient_id, photo_id, payload, org_id=actor.org_id, updated_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1551,22 +1669,22 @@ async def patch_photo(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_contact(
     contact_id: int,
     payload: ContactPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Partial update of one contact row — replaces relationship[]/telecom[]
-    wholesale if supplied, then return the full updated Patient."""
+    wholesale if supplied, then return the full updated Patient.
+    patch_contact() raises NotFoundError (404) if the Patient is missing,
+    belongs to a different org, or contact_id doesn't belong to it."""
     updated = await patient_service.patch_contact(
-        patient.patient_id, contact_id, payload
+        patient.patient_id, contact_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Contact not found on this Patient")
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1582,23 +1700,22 @@ async def patch_contact(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_communication(
     comm_id: int,
     payload: CommunicationPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one communication-language row, then return the full updated Patient."""
+    """Partial update of one communication-language row, then return the
+    full updated Patient. patch_communication() raises NotFoundError (404)
+    if the Patient is missing, belongs to a different org, or comm_id
+    doesn't belong to it."""
     updated = await patient_service.patch_communication(
-        patient.patient_id, comm_id, payload
+        patient.patient_id, comm_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(
-            status_code=404, detail="Communication not found on this Patient"
-        )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1614,23 +1731,22 @@ async def patch_communication(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_general_practitioner(
     gp_id: int,
     payload: GeneralPractitionerPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one general-practitioner reference row, then return the full updated Patient."""
+    """Partial update of one general-practitioner reference row, then return
+    the full updated Patient. patch_general_practitioner() raises
+    NotFoundError (404) if the Patient is missing, belongs to a different
+    org, or gp_id doesn't belong to it."""
     updated = await patient_service.patch_general_practitioner(
-        patient.patient_id, gp_id, payload
+        patient.patient_id, gp_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
-    if not updated:
-        raise HTTPException(
-            status_code=404, detail="General practitioner not found on this Patient"
-        )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )
@@ -1646,19 +1762,21 @@ async def patch_general_practitioner(
         + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
-    dependencies=[Depends(require_permission("patient", "update"))],
 )
 async def patch_link(
     link_id: int,
     payload: LinkPatch,
     request: Request,
     patient: PatientModel = Depends(resolve_patient),
+    actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """Partial update of one patient-link row, then return the full updated Patient."""
-    updated = await patient_service.patch_link(patient.patient_id, link_id, payload)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Link not found on this Patient")
+    """Partial update of one patient-link row, then return the full updated
+    Patient. patch_link() raises NotFoundError (404) if the Patient is
+    missing, belongs to a different org, or link_id doesn't belong to it."""
+    updated = await patient_service.patch_link(
+        patient.patient_id, link_id, payload, org_id=actor.org_id, updated_by=actor.sub
+    )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
     )

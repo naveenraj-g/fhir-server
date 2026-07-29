@@ -36,7 +36,8 @@ class FHIRPatientContact(BaseModel):
         None,
         description=(
             "Organization on behalf of which the contact is acting or for which the "
-            "contact is associated. Required if no contact name/relationship is given."
+            "contact is associated. Per pat-1, required if none of name, telecom, "
+            "or address is given."
         ),
     )
     period: FHIRPeriod | None = Field(
@@ -264,6 +265,18 @@ class PlainPatientName(BaseModel):
     period_end: str | None = Field(
         None, description="ISO 8601 datetime this name stopped being valid."
     )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
+    )
 
 
 class PlainPatientIdentifier(BaseModel):
@@ -298,8 +311,62 @@ class PlainPatientIdentifier(BaseModel):
     period_end: str | None = Field(
         None, description="ISO 8601 datetime this identifier stopped being valid."
     )
-    assigner: str | None = Field(
-        None, description="Display name of the issuing organization."
+    assigner_type: str | None = Field(
+        None, description="Reference type for the assigning organization."
+    )
+    assigner_id: int | None = Field(
+        None, description="Public id of the assigning Organization."
+    )
+    assigner_display: str | None = Field(
+        None, description="Display text for the assigning organization."
+    )
+    assigner_identifier_use: str | None = Field(
+        None,
+        description="Fallback identifier (used when the assigning organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    assigner_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    assigner_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    assigner_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it became valid."
+    )
+    assigner_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+    )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
     )
 
 
@@ -321,6 +388,18 @@ class PlainPatientTelecom(BaseModel):
     )
     period_end: str | None = Field(
         None, description="ISO 8601 datetime this contact point stopped being valid."
+    )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
     )
 
 
@@ -348,6 +427,18 @@ class PlainPatientAddress(BaseModel):
     period_end: str | None = Field(
         None, description="ISO 8601 datetime this address stopped being valid."
     )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
+    )
 
 
 class PlainPatientPhoto(BaseModel):
@@ -366,6 +457,18 @@ class PlainPatientPhoto(BaseModel):
     title: str | None = Field(None, description="Label or display title.")
     creation: str | None = Field(
         None, description="ISO 8601 datetime the image was created."
+    )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
     )
 
 
@@ -393,6 +496,18 @@ class PlainContactRelationship(BaseModel):
     coding_user_selected: bool | None = Field(
         None, description="Whether this coding was chosen directly by the user."
     )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
+    )
 
 
 class PlainContactTelecom(BaseModel):
@@ -413,6 +528,18 @@ class PlainContactTelecom(BaseModel):
     )
     period_end: str | None = Field(
         None, description="ISO 8601 datetime this contact point stopped being valid."
+    )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
     )
 
 
@@ -493,6 +620,42 @@ class PlainPatientContact(BaseModel):
     organization_display: str | None = Field(
         None, description="Display text for the associated organization."
     )
+    organization_identifier_use: str | None = Field(
+        None,
+        description="Fallback identifier (used when the associated organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    organization_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it became valid."
+    )
+    organization_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+    )
     period_start: str | None = Field(
         None,
         description="ISO 8601 datetime this contact became valid to be contacted regarding the patient.",
@@ -500,6 +663,18 @@ class PlainPatientContact(BaseModel):
     period_end: str | None = Field(
         None,
         description="ISO 8601 datetime this contact stopped being valid to be contacted regarding the patient.",
+    )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
     )
 
 
@@ -530,6 +705,18 @@ class PlainPatientCommunication(BaseModel):
     preferred: bool | None = Field(
         None, description="True if this is the patient's preferred language."
     )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
+    )
 
 
 class PlainPatientGeneralPractitioner(BaseModel):
@@ -548,6 +735,54 @@ class PlainPatientGeneralPractitioner(BaseModel):
     reference_display: str | None = Field(
         None, description="Display text for the referenced resource."
     )
+    reference_identifier_use: str | None = Field(
+        None,
+        description="Fallback identifier (used when the referenced resource isn't "
+        "in this system) — usual|official|temp|secondary|old.",
+    )
+    reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    reference_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    reference_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it became valid."
+    )
+    reference_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+    )
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
+    )
 
 
 class PlainPatientLink(BaseModel):
@@ -563,7 +798,55 @@ class PlainPatientLink(BaseModel):
     other_display: str | None = Field(
         None, description="Display text for the linked resource."
     )
+    other_identifier_use: str | None = Field(
+        None,
+        description="Fallback identifier (used when the linked resource isn't "
+        "in this system) — usual|official|temp|secondary|old.",
+    )
+    other_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    other_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    other_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    other_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    other_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    other_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    other_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    other_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    other_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it became valid."
+    )
+    other_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+    )
     type: str | None = Field(None, description="replaced-by|replaces|refer|seealso")
+    created_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was created."
+    )
+    updated_at: str | None = Field(
+        None, description="ISO 8601 datetime when this row was last updated."
+    )
+    created_by: str | None = Field(
+        None, description="Acting-user value recorded as the creator of this row."
+    )
+    updated_by: str | None = Field(
+        None, description="Acting-user value recorded as the last updater of this row."
+    )
 
 
 # ── Plain Patient response ─────────────────────────────────────────────────────
@@ -623,6 +906,42 @@ class PlainPatientResponse(BaseModel):
     )
     managing_organization_display: str | None = Field(
         None, description="Display text for the managing organization."
+    )
+    managing_organization_identifier_use: str | None = Field(
+        None,
+        description="Fallback identifier (used when the managing organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    managing_organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    managing_organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    managing_organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    managing_organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    managing_organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    managing_organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    managing_organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    managing_organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    managing_organization_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it became valid."
+    )
+    managing_organization_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
     )
     created_at: str | None = Field(
         None, description="ISO 8601 datetime when record was created."
@@ -734,6 +1053,42 @@ class PlainPatientCoreResponse(BaseModel):
     )
     managing_organization_display: str | None = Field(
         None, description="Display text for the managing organization."
+    )
+    managing_organization_identifier_use: str | None = Field(
+        None,
+        description="Fallback identifier (used when the managing organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    managing_organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    managing_organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    managing_organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    managing_organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    managing_organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    managing_organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    managing_organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    managing_organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    managing_organization_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it became valid."
+    )
+    managing_organization_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
     )
     created_at: str | None = Field(
         None, description="ISO 8601 datetime when record was created."

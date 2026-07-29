@@ -1,0 +1,8 @@
+{
+  "use": "official",
+  "text": "John Michael Doe",
+  "family": "Doe",
+  "given": ["John", "Michael"],
+  "prefix": ["Mr."],
+  "period_start": "2020-01-01T00:00:00Z"
+}

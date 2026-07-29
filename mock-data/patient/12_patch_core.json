@@ -1,0 +1,6 @@
+{
+  "active": true,
+  "marital_status_system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+  "marital_status_code": "D",
+  "marital_status_display": "Divorced"
+}

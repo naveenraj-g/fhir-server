@@ -20,3 +20,17 @@ class ResourceConflictError(ApplicationError):
             status_code=409,
             code="RESOURCE_CONFLICT",
         )
+
+
+class NotFoundError(ApplicationError):
+    """Raised by service methods when a requested resource doesn't exist (or,
+    for tenant-scoped lookups, doesn't match the caller's org/user) — lets the
+    service raise directly instead of returning None for the router to check."""
+
+    def __init__(self, message: str = "Resource not found"):
+        super().__init__(
+            name="NotFoundError",
+            message=message,
+            status_code=404,
+            code="NOT_FOUND",
+        )

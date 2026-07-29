@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import IdentifierUse
 from app.models.patient.enums import (
@@ -109,7 +109,49 @@ class IdentifierCreate(BaseModel):
     )
     assigner: str | None = Field(
         None,
-        description="Identifier.assigner — display name of the organization that issued this identifier.",
+        description=(
+            "Identifier.assigner — Reference(Organization) that issued this "
+            "identifier, as a FHIR reference string (e.g. 'Organization/100')."
+        ),
+    )
+    assigner_display: str | None = Field(
+        None, description="Display text for the assigning organization."
+    )
+    assigner_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the assigning organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    assigner_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    assigner_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    assigner_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    assigner_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
     )
 
 
@@ -274,7 +316,8 @@ class ContactTelecomCreate(BaseModel):
 
 class ContactCreate(BaseModel):
     """FHIR R4 Patient.contact BackboneElement — a contact party (guardian, partner,
-    friend, etc.) for the patient. SHALL have contact details or an organization reference."""
+    friend, etc.) for the patient. Per pat-1, SHALL have at least one of name,
+    telecom, address, or an organization reference."""
 
     model_config = ConfigDict(extra="forbid")
     # relationship (0..*) CodeableConcept → grandchild table
@@ -365,11 +408,48 @@ class ContactCreate(BaseModel):
         None,
         description=(
             "Reference(Organization) associated with the contact, as a FHIR reference "
-            "string (e.g. 'Organization/100'). Required if no contact name/relationship is given."
+            "string (e.g. 'Organization/100'). Per pat-1, required if none of name, "
+            "telecom, or address is given."
         ),
     )
     organization_display: str | None = Field(
         None, description="Display text for the referenced organization."
+    )
+    organization_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the associated organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    organization_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    organization_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
     )
     period_start: datetime | None = Field(
         None,
@@ -423,17 +503,68 @@ class GeneralPractitionerCreate(BaseModel):
     primary care provider."""
 
     model_config = ConfigDict(extra="forbid")
-    reference_type: PatientGeneralPractitionerType = Field(
-        ...,
-        description="Resource type of the referenced practitioner. Organization|Practitioner|PractitionerRole.",
+    reference_type: PatientGeneralPractitionerType | None = Field(
+        None,
+        description="Resource type of the referenced practitioner. Organization|Practitioner|PractitionerRole. "
+        "Required together with reference_id unless reference_identifier_system/_value is given instead.",
     )
-    reference_id: int = Field(
-        ...,
+    reference_id: int | None = Field(
+        None,
         description="Public id of the referenced Organization/Practitioner/PractitionerRole.",
     )
     reference_display: str | None = Field(
         None, description="Display text for the referenced resource."
     )
+    reference_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the referenced resource isn't "
+        "in this system) — usual|official|temp|secondary|old.",
+    )
+    reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    reference_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    reference_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    reference_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
+    )
+
+    @model_validator(mode="after")
+    def _require_reference_or_identifier(self):
+        has_reference = self.reference_type is not None and self.reference_id is not None
+        has_identifier = (
+            self.reference_identifier_system is not None
+            and self.reference_identifier_value is not None
+        )
+        if not has_reference and not has_identifier:
+            raise ValueError(
+                "Provide either reference_type+reference_id or "
+                "reference_identifier_system+reference_identifier_value."
+            )
+        return self
 
 
 class LinkCreate(BaseModel):
@@ -441,14 +572,52 @@ class LinkCreate(BaseModel):
     that concerns the same actual person."""
 
     model_config = ConfigDict(extra="forbid")
-    other_type: PatientLinkOtherType = Field(
-        ..., description="Resource type of the linked resource. Patient|RelatedPerson."
+    other_type: PatientLinkOtherType | None = Field(
+        None,
+        description="Resource type of the linked resource. Patient|RelatedPerson. "
+        "Required together with other_id unless other_identifier_system/_value is given instead.",
     )
-    other_id: int = Field(
-        ..., description="Public id of the linked Patient/RelatedPerson resource."
+    other_id: int | None = Field(
+        None, description="Public id of the linked Patient/RelatedPerson resource."
     )
     other_display: str | None = Field(
         None, description="Display text for the linked resource."
+    )
+    other_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the linked resource isn't "
+        "in this system) — usual|official|temp|secondary|old.",
+    )
+    other_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    other_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    other_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    other_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    other_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    other_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    other_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    other_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    other_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    other_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
     )
     type: PatientLinkType = Field(
         ...,
@@ -457,6 +626,20 @@ class LinkCreate(BaseModel):
             "replaced-by|replaces|refer|seealso."
         ),
     )
+
+    @model_validator(mode="after")
+    def _require_reference_or_identifier(self):
+        has_reference = self.other_type is not None and self.other_id is not None
+        has_identifier = (
+            self.other_identifier_system is not None
+            and self.other_identifier_value is not None
+        )
+        if not has_reference and not has_identifier:
+            raise ValueError(
+                "Provide either other_type+other_id or "
+                "other_identifier_system+other_identifier_value."
+            )
+        return self
 
 
 # ── Sub-resource patch schemas ────────────────────────────────────────────────
@@ -520,7 +703,48 @@ class IdentifierPatch(BaseModel):
         None, description="End of identifier validity period."
     )
     assigner: str | None = Field(
-        None, description="Display name of the issuing organization."
+        None,
+        description="Reference(Organization) that issued this identifier, as a "
+        "FHIR reference string (e.g. 'Organization/100').",
+    )
+    assigner_display: str | None = Field(
+        None, description="Display text for the assigning organization."
+    )
+    assigner_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the assigning organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    assigner_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    assigner_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    assigner_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    assigner_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
     )
 
 
@@ -662,6 +886,42 @@ class ContactPatch(BaseModel):
     organization_display: str | None = Field(
         None, description="Display text for the referenced organization."
     )
+    organization_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the associated organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    organization_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    organization_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
+    )
     period_start: datetime | None = Field(
         None,
         description="Start of the period during which this contact is valid to be contacted.",
@@ -712,6 +972,42 @@ class GeneralPractitionerPatch(BaseModel):
     reference_display: str | None = Field(
         None, description="Display text for the referenced resource."
     )
+    reference_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the referenced resource isn't "
+        "in this system) — usual|official|temp|secondary|old.",
+    )
+    reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    reference_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    reference_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    reference_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
+    )
 
 
 class LinkPatch(BaseModel):
@@ -724,6 +1020,42 @@ class LinkPatch(BaseModel):
     other_id: int | None = Field(None, description="Public id of the linked resource.")
     other_display: str | None = Field(
         None, description="Display text for the linked resource."
+    )
+    other_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the linked resource isn't "
+        "in this system) — usual|official|temp|secondary|old.",
+    )
+    other_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    other_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    other_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    other_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    other_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    other_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    other_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    other_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    other_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    other_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
     )
     type: PatientLinkType | None = Field(
         None, description="replaced-by|replaces|refer|seealso."
@@ -743,7 +1075,6 @@ class PatientCreateSchema(BaseModel):
         json_schema_extra={
             "example": {
                 "user_id": "user-uuid-123",
-                "org_id": "org-uuid-456",
                 "active": True,
                 "gender": "male",
                 "birth_date": "1985-04-12",
@@ -757,11 +1088,7 @@ class PatientCreateSchema(BaseModel):
 
     user_id: str | None = Field(
         None,
-        description="Tenant/ownership field forwarded by the GraphQL gateway — the acting user's id.",
-    )
-    org_id: str = Field(
-        ...,
-        description="Tenant/ownership field forwarded by the GraphQL gateway — the active organization's id.",
+        description="Tenant/ownership field — the acting user's id.",
     )
     active: bool | None = Field(
         True, description="Whether this patient's record is in active use."
@@ -823,6 +1150,42 @@ class PatientCreateSchema(BaseModel):
         None,
         description="managingOrganization.display — display text for the managing organization.",
     )
+    managing_organization_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the managing organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    managing_organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    managing_organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    managing_organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    managing_organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    managing_organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    managing_organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    managing_organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    managing_organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    managing_organization_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    managing_organization_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
+    )
 
 
 class PatientPatchSchema(BaseModel):
@@ -878,6 +1241,42 @@ class PatientPatchSchema(BaseModel):
     managing_organization_display: str | None = Field(
         None, description="Display text for the managing organization."
     )
+    managing_organization_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the managing organization "
+        "isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    managing_organization_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    managing_organization_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    managing_organization_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type (e.g. MR, SS)."
+    )
+    managing_organization_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    managing_organization_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    managing_organization_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    managing_organization_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    managing_organization_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    managing_organization_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — when it became valid."
+    )
+    managing_organization_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — when it stopped being valid."
+    )
 
 
 class PatientFullCreateSchema(PatientCreateSchema):
@@ -889,7 +1288,6 @@ class PatientFullCreateSchema(PatientCreateSchema):
         json_schema_extra={
             "example": {
                 "user_id": "user-uuid-123",
-                "org_id": "org-uuid-456",
                 "active": True,
                 "gender": "male",
                 "birth_date": "1985-04-12",

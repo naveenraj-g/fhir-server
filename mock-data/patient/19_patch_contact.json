@@ -1,0 +1,7 @@
+{
+  "name_family": "Doe",
+  "name_given": ["Jane", "Elizabeth"],
+  "telecom": [
+    { "system": "phone", "value": "+1-555-222-3333", "use": "mobile" }
+  ]
+}

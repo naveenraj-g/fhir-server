@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from enum import Enum
-from typing import Optional, Type, TypeVar
+from typing import TypeVar
 
 from fastapi import HTTPException, status
 from sqlalchemy import exists
@@ -45,7 +45,9 @@ from sqlalchemy.sql import Select
 EnumT = TypeVar("EnumT", bound=Enum)
 
 
-def apply_string_filter(stmt: Select, column, value: Optional[str], *, exact: bool = False) -> Select:
+def apply_string_filter(
+    stmt: Select, column, value: str | None, *, exact: bool = False
+) -> Select:
     """
     Apply a case-insensitive string filter to a directly-owned column.
 
@@ -78,8 +80,8 @@ def apply_token_filter(stmt: Select, column, value) -> Select:
 def apply_date_range_filter(
     stmt: Select,
     column,
-    date_from: Optional[date | datetime] = None,
-    date_to: Optional[date | datetime] = None,
+    date_from: date | datetime | None = None,
+    date_to: date | datetime | None = None,
 ) -> Select:
     """
     Apply an inclusive [date_from, date_to] range filter to a date/datetime
@@ -98,6 +100,49 @@ def apply_date_range_filter(
         stmt = stmt.where(column >= date_from)
     if date_to is not None:
         stmt = stmt.where(column <= date_to)
+    return stmt
+
+
+_DATE_PREFIX_OPS = {
+    "eq": lambda column, value: column == value,
+    "ne": lambda column, value: column != value,
+    "gt": lambda column, value: column > value,
+    "lt": lambda column, value: column < value,
+    "ge": lambda column, value: column >= value,
+    "le": lambda column, value: column <= value,
+}
+
+
+def apply_fhir_date_filter(stmt: Select, column, values: list[str] | None) -> Select:
+    """
+    Apply one or more FHIR-style comparator-prefixed date filters to a column.
+
+    Each entry in `values` is either a bare ISO date/datetime ("2024-01-01",
+    implicit "eq") or one prefixed with a two-letter comparator
+    ("ge2024-01-01"). Multiple entries AND together — this is how a single
+    FHIR search parameter expresses a range via repeated query params
+    (`birthdate=ge2024-01-01&birthdate=le2024-12-31`). No-ops when values is
+    None/empty. Raises HTTPException(422) on an unrecognized comparator or an
+    unparseable date.
+    """
+    if not values:
+        return stmt
+    for raw in values:
+        prefix, date_str = raw[:2], raw[2:]
+        if prefix not in _DATE_PREFIX_OPS:
+            prefix, date_str = "eq", raw
+        try:
+            parsed = (
+                date.fromisoformat(date_str)
+                if len(date_str) == 10
+                else datetime.fromisoformat(date_str)
+            )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid date value: '{raw}'. Expected ISO-8601, optionally prefixed with eq/ne/gt/lt/ge/le.",
+            )
+        stmt = stmt.where(_DATE_PREFIX_OPS[prefix](column, parsed))
     return stmt
 
 
@@ -120,7 +165,9 @@ def apply_child_exists_filter(stmt: Select, child_select: Select) -> Select:
     return stmt.where(exists(child_select))
 
 
-def parse_reference(ref: str, ref_type_enum: Type[EnumT]) -> tuple[EnumT, int]:
+def parse_reference[EnumT: Enum](
+    ref: str, ref_type_enum: type[EnumT]
+) -> tuple[EnumT, int]:
     """
     Parse a FHIR-style reference string ("Organization/123") into its
     (type, public_id) parts, validating the type against the given Enum.

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -38,6 +38,13 @@ class FHIRReference(BaseModel):
     )
     display: Optional[str] = Field(
         None, description="Plain-text display alternative for the referenced resource."
+    )
+    identifier: Optional["FHIRIdentifier"] = Field(
+        None,
+        description=(
+            "Logical reference via a business identifier, used instead of (or "
+            "alongside) `reference` when the target isn't a resource in this system."
+        ),
     )
 
 
@@ -90,9 +97,12 @@ class FHIRIdentifier(BaseModel):
     period: Optional[FHIRPeriod] = Field(
         None, description="The period during which this identifier is/was valid for use."
     )
-    assigner: Optional[Dict[str, str]] = Field(
+    assigner: Optional[FHIRReference] = Field(
         None, description="Reference(Organization) — the organization that issued this identifier."
     )
+
+
+FHIRReference.model_rebuild()
 
 
 class FHIRContactPoint(BaseModel):

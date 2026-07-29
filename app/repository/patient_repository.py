@@ -1,18 +1,20 @@
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import (
     apply_child_exists_filter,
-    apply_date_range_filter,
+    apply_fhir_date_filter,
     apply_token_filter,
     parse_reference,
 )
 from app.core.pagination import resolve_sort
 from app.models.enums import OrganizationReferenceType
 from app.models.patient.enums import (
+    AddressUse,
     PatientGender,
     PatientGeneralPractitionerType,
+    PatientLinkOtherType,
 )
 from app.models.patient.patient import (
     PatientAddress,
@@ -68,6 +70,48 @@ def _parse_org_ref(ref: str) -> tuple:
     return parse_reference(ref, OrganizationReferenceType)
 
 
+_IDENTIFIER_FALLBACK_SUFFIXES = (
+    "identifier_use",
+    "identifier_type_system",
+    "identifier_type_version",
+    "identifier_type_code",
+    "identifier_type_display",
+    "identifier_type_text",
+    "identifier_type_user_selected",
+    "identifier_system",
+    "identifier_value",
+    "identifier_period_start",
+    "identifier_period_end",
+)
+
+
+def _reference_kwargs(prefix: str, payload) -> dict:
+    """Build `{prefix}_identifier_*` ORM constructor kwargs from a payload's
+    matching fields — the logical-reference fallback used alongside every
+    flattened `{prefix}_type`/`{prefix}_id`/`{prefix}_display` Reference field
+    (managingOrganization, contact.organization, generalPractitioner,
+    link.other, identifier.assigner) for when the target isn't a resource in
+    this system."""
+    return {
+        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}")
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
+
+
+def _org_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
+    """Build `{prefix}_type`/`{prefix}_id`/`{prefix}_display` ORM constructor
+    kwargs from a FHIR reference string (e.g. 'Organization/100') — used for
+    the two Reference(Organization) fields still expressed as a single string
+    field on the payload (managingOrganization, contact.organization,
+    identifier.assigner) rather than separate type+id fields."""
+    ref_type, ref_id = _parse_org_ref(ref) if ref else (None, None)
+    return {
+        f"{prefix}_type": ref_type,
+        f"{prefix}_id": ref_id,
+        f"{prefix}_display": display,
+    }
+
+
 # Sortable fields exposed via the `sort` list-query param (see
 # app.core.pagination.resolve_sort) — only first-class PatientModel columns
 # are sortable for now; sorting by a child-table field (e.g. family name)
@@ -106,15 +150,34 @@ class PatientRepository(BaseRepository):
 
     # ── Read ──────────────────────────────────────────────────────────────────
 
-    async def get_by_patient_id(self, patient_id: int) -> PatientModel | None:
-        """Full lookup by public patient_id, eager-loading every sub-resource
-        relationship via _with_relationships(). Backs GET /{patient_id}."""
+    async def _fetch_by_patient_id(
+        self,
+        patient_id: int,
+        *,
+        user_id: str | None = None,
+        org_id: str | None = None,
+        core: bool = False,
+    ) -> PatientModel | None:
+        """Shared query-builder behind every by-ID lookup variant below.
+        core=True skips the 9 selectinload relationships (scalars only);
+        user_id/org_id, when supplied, each add their own WHERE filter
+        (tenant/ownership scoping) — omitted, no filter on that dimension.
+        Both may be combined (AND) when both are supplied."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(PatientModel).where(PatientModel.patient_id == patient_id)
-            )
+            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
+            if user_id is not None:
+                stmt = stmt.where(PatientModel.user_id == user_id)
+            if org_id is not None:
+                stmt = stmt.where(PatientModel.org_id == org_id)
+            if not core:
+                stmt = _with_relationships(stmt)
             result = await session.execute(stmt)
             return result.scalars().first()
+
+    async def get_by_patient_id(self, patient_id: int) -> PatientModel | None:
+        """Full lookup by public patient_id, eager-loading every sub-resource
+        relationship. Backs GET /{patient_id}."""
+        return await self._fetch_by_patient_id(patient_id)
 
     async def get_core_by_patient_id(self, patient_id: int) -> PatientModel | None:
         """
@@ -126,25 +189,27 @@ class PatientRepository(BaseRepository):
         (never to_plain_patient()/to_fhir_patient()) to format the result —
         those touch the relationship attributes this query leaves unloaded.
         """
-        async with self.session_factory() as session:
-            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
-            result = await session.execute(stmt)
-            return result.scalars().first()
+        return await self._fetch_by_patient_id(patient_id, core=True)
 
     async def get_by_patient_id_in_org(
-        self, patient_id: int, user_id: str, org_id: str
+        self, patient_id: int, user_id: str | None, org_id: str | None
     ) -> PatientModel | None:
-        """Full lookup scoped to a specific org — returns None if the patient
-        exists but belongs to a different org_id."""
-        async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(PatientModel).where(
-                    PatientModel.patient_id == patient_id,
-                    PatientModel.org_id == org_id,
-                )
-            )
-            result = await session.execute(stmt)
-            return result.scalars().first()
+        """Full lookup scoped to whichever of user_id/org_id are supplied
+        (AND together when both are) — returns None unless every supplied
+        filter matches."""
+        return await self._fetch_by_patient_id(
+            patient_id, user_id=user_id, org_id=org_id
+        )
+
+    async def get_core_by_patient_id_in_org(
+        self, patient_id: int, org_id: str | None = None, user_id: str | None = None
+    ) -> PatientModel | None:
+        """Same as get_by_patient_id_in_org() but scalars only (no
+        selectinload) — the org-scoped counterpart to get_core_by_patient_id().
+        Backs GET /{patient_id}/core when org-scoped."""
+        return await self._fetch_by_patient_id(
+            patient_id, user_id=user_id, org_id=org_id, core=True
+        )
 
     async def patient_belongs_to_org(self, patient_id: int, org_id: str) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
@@ -184,41 +249,65 @@ class PatientRepository(BaseRepository):
         stmt,
         user_id,
         org_id,
-        family_name,
-        given_name,
+        family: str | None = None,
+        given: str | None = None,
+        name: str | None = None,
         gender: PatientGender | None = None,
         active=None,
         identifier: str | None = None,
-        birth_date_from=None,
-        birth_date_to=None,
+        birthdate: list[str] | None = None,
+        death_date: list[str] | None = None,
+        deceased: bool | None = None,
+        address: str | None = None,
         address_city: str | None = None,
         address_state: str | None = None,
         address_postal_code: str | None = None,
+        address_country: str | None = None,
+        address_use: AddressUse | None = None,
+        telecom: str | None = None,
         email: str | None = None,
         phone: str | None = None,
-        deceased: bool | None = None,
-        general_practitioner_type: PatientGeneralPractitionerType | None = None,
-        general_practitioner_id: int | None = None,
-        organization_id: int | None = None,
+        language: str | None = None,
+        general_practitioner: str | None = None,
+        organization: str | None = None,
+        link: str | None = None,
     ):
         if user_id:
             stmt = stmt.where(PatientModel.user_id == user_id)
         if org_id:
             stmt = stmt.where(PatientModel.org_id == org_id)
-        if family_name:
+        if family:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(PatientName.id).where(
                     PatientName.patient_id == PatientModel.id,
-                    PatientName.family.ilike(f"%{family_name}%"),
+                    PatientName.family.ilike(f"%{family}%"),
                 ),
             )
-        if given_name:
+        if given:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(PatientName.id).where(
                     PatientName.patient_id == PatientModel.id,
-                    PatientName.given.ilike(f"%{given_name}%"),
+                    PatientName.given.ilike(f"%{given}%"),
+                ),
+            )
+        if name:
+            # FHIR "name" — a single term matched against any HumanName
+            # sub-field (family, given, prefix, suffix, text), unlike
+            # family/given above which each target one specific sub-field.
+            pattern = f"%{name}%"
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientName.id).where(
+                    PatientName.patient_id == PatientModel.id,
+                    or_(
+                        PatientName.family.ilike(pattern),
+                        PatientName.given.ilike(pattern),
+                        PatientName.prefix.ilike(pattern),
+                        PatientName.suffix.ilike(pattern),
+                        PatientName.text.ilike(pattern),
+                    ),
                 ),
             )
         stmt = apply_token_filter(stmt, PatientModel.gender, gender)
@@ -236,9 +325,44 @@ class PatientRepository(BaseRepository):
                     PatientIdentifier.value == identifier,
                 ),
             )
-        stmt = apply_date_range_filter(
-            stmt, PatientModel.birth_date, birth_date_from, birth_date_to
-        )
+        stmt = apply_fhir_date_filter(stmt, PatientModel.birth_date, birthdate)
+        stmt = apply_fhir_date_filter(stmt, PatientModel.deceased_datetime, death_date)
+        if deceased is not None:
+            # FHIR semantics: "deceased" means deceased[x] is populated at all
+            # (boolean true OR a death date present) — not a literal equality
+            # check on deceased_boolean alone.
+            if deceased:
+                stmt = stmt.where(
+                    or_(
+                        PatientModel.deceased_boolean.is_(True),
+                        PatientModel.deceased_datetime.isnot(None),
+                    )
+                )
+            else:
+                stmt = stmt.where(
+                    PatientModel.deceased_boolean.isnot(True),
+                    PatientModel.deceased_datetime.is_(None),
+                )
+        if address:
+            # Composite string search across every Address sub-field, per the
+            # FHIR "address" search parameter (as opposed to address-city
+            # etc. below, which each target one specific sub-field).
+            pattern = f"%{address}%"
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientAddress.id).where(
+                    PatientAddress.patient_id == PatientModel.id,
+                    or_(
+                        PatientAddress.line.ilike(pattern),
+                        PatientAddress.city.ilike(pattern),
+                        PatientAddress.district.ilike(pattern),
+                        PatientAddress.state.ilike(pattern),
+                        PatientAddress.country.ilike(pattern),
+                        PatientAddress.postal_code.ilike(pattern),
+                        PatientAddress.text.ilike(pattern),
+                    ),
+                ),
+            )
         if address_city:
             stmt = apply_child_exists_filter(
                 stmt,
@@ -263,6 +387,32 @@ class PatientRepository(BaseRepository):
                     PatientAddress.postal_code == address_postal_code,
                 ),
             )
+        if address_country:
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientAddress.id).where(
+                    PatientAddress.patient_id == PatientModel.id,
+                    PatientAddress.country.ilike(f"%{address_country}%"),
+                ),
+            )
+        if address_use is not None:
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientAddress.id).where(
+                    PatientAddress.patient_id == PatientModel.id,
+                    PatientAddress.use == address_use,
+                ),
+            )
+        if telecom:
+            # Any telecom system — unlike email/phone below, which are each
+            # scoped to one specific system.
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientTelecom.id).where(
+                    PatientTelecom.patient_id == PatientModel.id,
+                    PatientTelecom.value.ilike(f"%{telecom}%"),
+                ),
+            )
         if email:
             # system-scoped EXISTS — matches only telecom rows whose system is
             # specifically "email", so an email filter can never accidentally
@@ -284,27 +434,45 @@ class PatientRepository(BaseRepository):
                     PatientTelecom.value.ilike(f"%{phone}%"),
                 ),
             )
-        stmt = apply_token_filter(stmt, PatientModel.deceased_boolean, deceased)
-        if general_practitioner_id is not None:
-            gp_predicates = [
-                PatientGeneralPractitioner.patient_id == PatientModel.id,
-                PatientGeneralPractitioner.reference_id == general_practitioner_id,
-            ]
-            if general_practitioner_type is not None:
-                gp_predicates.append(
-                    PatientGeneralPractitioner.reference_type
-                    == general_practitioner_type
-                )
+        if language:
             stmt = apply_child_exists_filter(
-                stmt, select(PatientGeneralPractitioner.id).where(*gp_predicates)
+                stmt,
+                select(PatientCommunication.id).where(
+                    PatientCommunication.patient_id == PatientModel.id,
+                    PatientCommunication.language_code == language,
+                ),
             )
-        # managingOrganization is a direct column (0..1 reference), not a child
-        # table, so it's a plain equality filter rather than an EXISTS —
-        # organization_id is already the referenced Organization's PUBLIC id,
-        # exactly as stored by _parse_org_ref/parse_reference at write time.
-        stmt = apply_token_filter(
-            stmt, PatientModel.managing_organization_id, organization_id
-        )
+        if general_practitioner:
+            gp_type, gp_id = parse_reference(
+                general_practitioner, PatientGeneralPractitionerType
+            )
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientGeneralPractitioner.id).where(
+                    PatientGeneralPractitioner.patient_id == PatientModel.id,
+                    PatientGeneralPractitioner.reference_type == gp_type,
+                    PatientGeneralPractitioner.reference_id == gp_id,
+                ),
+            )
+        if organization:
+            # managingOrganization is a direct column (0..1 reference), not a
+            # child table, so it's a plain equality filter rather than an
+            # EXISTS — the parsed id is the referenced Organization's PUBLIC
+            # id, exactly as stored by parse_reference at write time.
+            _, org_ref_id = parse_reference(organization, OrganizationReferenceType)
+            stmt = apply_token_filter(
+                stmt, PatientModel.managing_organization_id, org_ref_id
+            )
+        if link:
+            other_type, other_id = parse_reference(link, PatientLinkOtherType)
+            stmt = apply_child_exists_filter(
+                stmt,
+                select(PatientLink.id).where(
+                    PatientLink.patient_id == PatientModel.id,
+                    PatientLink.other_type == other_type,
+                    PatientLink.other_id == other_id,
+                ),
+            )
 
         return stmt
 
@@ -312,22 +480,28 @@ class PatientRepository(BaseRepository):
         self,
         user_id: str | None = None,
         org_id: str | None = None,
-        family_name: str | None = None,
-        given_name: str | None = None,
+        family: str | None = None,
+        given: str | None = None,
+        name: str | None = None,
         gender: PatientGender | None = None,
         active: bool | None = None,
         identifier: str | None = None,
-        birth_date_from=None,
-        birth_date_to=None,
+        birthdate: list[str] | None = None,
+        death_date: list[str] | None = None,
+        deceased: bool | None = None,
+        address: str | None = None,
         address_city: str | None = None,
         address_state: str | None = None,
         address_postal_code: str | None = None,
+        address_country: str | None = None,
+        address_use: AddressUse | None = None,
+        telecom: str | None = None,
         email: str | None = None,
         phone: str | None = None,
-        deceased: bool | None = None,
-        general_practitioner_type: PatientGeneralPractitionerType | None = None,
-        general_practitioner_id: int | None = None,
-        organization_id: int | None = None,
+        language: str | None = None,
+        general_practitioner: str | None = None,
+        organization: str | None = None,
+        link: str | None = None,
         limit: int = 50,
         offset: int = 0,
         sort: str | None = None,
@@ -343,22 +517,28 @@ class PatientRepository(BaseRepository):
             filter_kwargs = {
                 "user_id": user_id,
                 "org_id": org_id,
-                "family_name": family_name,
-                "given_name": given_name,
+                "family": family,
+                "given": given,
+                "name": name,
                 "gender": gender,
                 "active": active,
                 "identifier": identifier,
-                "birth_date_from": birth_date_from,
-                "birth_date_to": birth_date_to,
+                "birthdate": birthdate,
+                "death_date": death_date,
+                "deceased": deceased,
+                "address": address,
                 "address_city": address_city,
                 "address_state": address_state,
                 "address_postal_code": address_postal_code,
+                "address_country": address_country,
+                "address_use": address_use,
+                "telecom": telecom,
                 "email": email,
                 "phone": phone,
-                "deceased": deceased,
-                "general_practitioner_type": general_practitioner_type,
-                "general_practitioner_id": general_practitioner_id,
-                "organization_id": organization_id,
+                "language": language,
+                "general_practitioner": general_practitioner,
+                "organization": organization,
+                "link": link,
             }
             base = self._apply_list_filters(
                 _with_relationships(select(PatientModel)), **filter_kwargs
@@ -412,17 +592,12 @@ class PatientRepository(BaseRepository):
                 marital_status_user_selected=payload.marital_status_user_selected,
                 multiple_birth_boolean=payload.multiple_birth_boolean,
                 multiple_birth_integer=payload.multiple_birth_integer,
-                managing_organization_type=(
-                    _parse_org_ref(payload.managing_organization)[0]
-                    if payload.managing_organization
-                    else None
+                **_org_ref_kwargs(
+                    "managing_organization",
+                    payload.managing_organization,
+                    payload.managing_organization_display,
                 ),
-                managing_organization_id=(
-                    _parse_org_ref(payload.managing_organization)[1]
-                    if payload.managing_organization
-                    else None
-                ),
-                managing_organization_display=payload.managing_organization_display,
+                **_reference_kwargs("managing_organization", payload),
                 created_by=created_by,
             )
             try:
@@ -463,17 +638,12 @@ class PatientRepository(BaseRepository):
                 marital_status_user_selected=payload.marital_status_user_selected,
                 multiple_birth_boolean=payload.multiple_birth_boolean,
                 multiple_birth_integer=payload.multiple_birth_integer,
-                managing_organization_type=(
-                    _parse_org_ref(payload.managing_organization)[0]
-                    if payload.managing_organization
-                    else None
+                **_org_ref_kwargs(
+                    "managing_organization",
+                    payload.managing_organization,
+                    payload.managing_organization_display,
                 ),
-                managing_organization_id=(
-                    _parse_org_ref(payload.managing_organization)[1]
-                    if payload.managing_organization
-                    else None
-                ),
-                managing_organization_display=payload.managing_organization_display,
+                **_reference_kwargs("managing_organization", payload),
                 created_by=created_by,
             )
             session.add(patient)
@@ -493,6 +663,7 @@ class PatientRepository(BaseRepository):
                             suffix=", ".join(n.suffix) if n.suffix else None,
                             period_start=n.period_start,
                             period_end=n.period_end,
+                            created_by=created_by,
                         )
                     )
 
@@ -513,7 +684,9 @@ class PatientRepository(BaseRepository):
                             value=i.value,
                             period_start=i.period_start,
                             period_end=i.period_end,
-                            assigner=i.assigner,
+                            **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
+                            **_reference_kwargs("assigner", i),
+                            created_by=created_by,
                         )
                     )
 
@@ -529,6 +702,7 @@ class PatientRepository(BaseRepository):
                             rank=t.rank,
                             period_start=t.period_start,
                             period_end=t.period_end,
+                            created_by=created_by,
                         )
                     )
 
@@ -549,6 +723,7 @@ class PatientRepository(BaseRepository):
                             country=a.country,
                             period_start=a.period_start,
                             period_end=a.period_end,
+                            created_by=created_by,
                         )
                     )
 
@@ -566,6 +741,7 @@ class PatientRepository(BaseRepository):
                             hash=p.hash,
                             title=p.title,
                             creation=p.creation,
+                            created_by=created_by,
                         )
                     )
 
@@ -596,19 +772,13 @@ class PatientRepository(BaseRepository):
                         address_period_start=c.address_period_start,
                         address_period_end=c.address_period_end,
                         gender=c.gender,
-                        organization_type=(
-                            _parse_org_ref(c.organization)[0]
-                            if c.organization
-                            else None
+                        **_org_ref_kwargs(
+                            "organization", c.organization, c.organization_display
                         ),
-                        organization_id=(
-                            _parse_org_ref(c.organization)[1]
-                            if c.organization
-                            else None
-                        ),
-                        organization_display=c.organization_display,
+                        **_reference_kwargs("organization", c),
                         period_start=c.period_start,
                         period_end=c.period_end,
+                        created_by=created_by,
                     )
                     session.add(contact)
                     await session.flush()
@@ -625,6 +795,7 @@ class PatientRepository(BaseRepository):
                                     coding_display=r.coding_display,
                                     text=r.text,
                                     coding_user_selected=r.coding_user_selected,
+                                    created_by=created_by,
                                 )
                             )
 
@@ -640,6 +811,7 @@ class PatientRepository(BaseRepository):
                                     rank=t.rank,
                                     period_start=t.period_start,
                                     period_end=t.period_end,
+                                    created_by=created_by,
                                 )
                             )
 
@@ -656,6 +828,7 @@ class PatientRepository(BaseRepository):
                             language_text=cm.language_text,
                             language_user_selected=cm.language_user_selected,
                             preferred=cm.preferred,
+                            created_by=created_by,
                         )
                     )
 
@@ -668,6 +841,8 @@ class PatientRepository(BaseRepository):
                             reference_type=gp.reference_type,
                             reference_id=gp.reference_id,
                             reference_display=gp.reference_display,
+                            **_reference_kwargs("reference", gp),
+                            created_by=created_by,
                         )
                     )
 
@@ -680,7 +855,9 @@ class PatientRepository(BaseRepository):
                             other_type=lk.other_type,
                             other_id=lk.other_id,
                             other_display=lk.other_display,
+                            **_reference_kwargs("other", lk),
                             type=lk.type,
+                            created_by=created_by,
                         )
                     )
 
@@ -794,6 +971,7 @@ class PatientRepository(BaseRepository):
                             suffix=", ".join(n.suffix) if n.suffix else None,
                             period_start=n.period_start,
                             period_end=n.period_end,
+                            created_by=updated_by,
                         )
                     )
 
@@ -819,7 +997,9 @@ class PatientRepository(BaseRepository):
                             value=i.value,
                             period_start=i.period_start,
                             period_end=i.period_end,
-                            assigner=i.assigner,
+                            **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
+                            **_reference_kwargs("assigner", i),
+                            created_by=updated_by,
                         )
                     )
 
@@ -840,6 +1020,7 @@ class PatientRepository(BaseRepository):
                             rank=t.rank,
                             period_start=t.period_start,
                             period_end=t.period_end,
+                            created_by=updated_by,
                         )
                     )
 
@@ -865,6 +1046,7 @@ class PatientRepository(BaseRepository):
                             country=a.country,
                             period_start=a.period_start,
                             period_end=a.period_end,
+                            created_by=updated_by,
                         )
                     )
 
@@ -885,6 +1067,7 @@ class PatientRepository(BaseRepository):
                             hash=p.hash,
                             title=p.title,
                             creation=p.creation,
+                            created_by=updated_by,
                         )
                     )
 
@@ -940,19 +1123,13 @@ class PatientRepository(BaseRepository):
                         address_period_start=c.address_period_start,
                         address_period_end=c.address_period_end,
                         gender=c.gender,
-                        organization_type=(
-                            _parse_org_ref(c.organization)[0]
-                            if c.organization
-                            else None
+                        **_org_ref_kwargs(
+                            "organization", c.organization, c.organization_display
                         ),
-                        organization_id=(
-                            _parse_org_ref(c.organization)[1]
-                            if c.organization
-                            else None
-                        ),
-                        organization_display=c.organization_display,
+                        **_reference_kwargs("organization", c),
                         period_start=c.period_start,
                         period_end=c.period_end,
+                        created_by=updated_by,
                     )
                     session.add(contact)
                     await session.flush()
@@ -968,6 +1145,7 @@ class PatientRepository(BaseRepository):
                                     coding_display=r.coding_display,
                                     text=r.text,
                                     coding_user_selected=r.coding_user_selected,
+                                    created_by=updated_by,
                                 )
                             )
                     if c.telecom:
@@ -982,6 +1160,7 @@ class PatientRepository(BaseRepository):
                                     rank=t.rank,
                                     period_start=t.period_start,
                                     period_end=t.period_end,
+                                    created_by=updated_by,
                                 )
                             )
 
@@ -1003,6 +1182,7 @@ class PatientRepository(BaseRepository):
                             language_text=cm.language_text,
                             language_user_selected=cm.language_user_selected,
                             preferred=cm.preferred,
+                            created_by=updated_by,
                         )
                     )
 
@@ -1020,6 +1200,8 @@ class PatientRepository(BaseRepository):
                             reference_type=gp.reference_type,
                             reference_id=gp.reference_id,
                             reference_display=gp.reference_display,
+                            **_reference_kwargs("reference", gp),
+                            created_by=updated_by,
                         )
                     )
 
@@ -1035,7 +1217,9 @@ class PatientRepository(BaseRepository):
                             other_type=lk.other_type,
                             other_id=lk.other_id,
                             other_display=lk.other_display,
+                            **_reference_kwargs("other", lk),
                             type=lk.type,
+                            created_by=updated_by,
                         )
                     )
 
@@ -1076,7 +1260,7 @@ class PatientRepository(BaseRepository):
         return result.scalars().first()
 
     async def add_name(
-        self, patient_id: int, payload: NameCreate
+        self, patient_id: int, payload: NameCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one HumanName row to this patient."""
         async with self.session_factory() as session:
@@ -1095,6 +1279,7 @@ class PatientRepository(BaseRepository):
                 suffix=", ".join(payload.suffix) if payload.suffix else None,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                created_by=created_by,
             )
             try:
                 session.add(name)
@@ -1106,7 +1291,7 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_identifier(
-        self, patient_id: int, payload: IdentifierCreate
+        self, patient_id: int, payload: IdentifierCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one business identifier row to this patient."""
         async with self.session_factory() as session:
@@ -1128,7 +1313,11 @@ class PatientRepository(BaseRepository):
                 value=payload.value,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
-                assigner=payload.assigner,
+                **_org_ref_kwargs(
+                    "assigner", payload.assigner, payload.assigner_display
+                ),
+                **_reference_kwargs("assigner", payload),
+                created_by=created_by,
             )
             try:
                 session.add(ident)
@@ -1140,7 +1329,7 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_telecom(
-        self, patient_id: int, payload: TelecomCreate
+        self, patient_id: int, payload: TelecomCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one contact-point row to this patient."""
         async with self.session_factory() as session:
@@ -1157,6 +1346,7 @@ class PatientRepository(BaseRepository):
                 rank=payload.rank,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                created_by=created_by,
             )
             try:
                 session.add(telecom)
@@ -1168,7 +1358,7 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_address(
-        self, patient_id: int, payload: AddressCreate
+        self, patient_id: int, payload: AddressCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one address row to this patient."""
         async with self.session_factory() as session:
@@ -1190,6 +1380,7 @@ class PatientRepository(BaseRepository):
                 country=payload.country,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                created_by=created_by,
             )
             try:
                 session.add(address)
@@ -1201,7 +1392,7 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_photo(
-        self, patient_id: int, payload: PhotoCreate
+        self, patient_id: int, payload: PhotoCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one photo attachment row to this patient."""
         async with self.session_factory() as session:
@@ -1220,6 +1411,7 @@ class PatientRepository(BaseRepository):
                 hash=payload.hash,
                 title=payload.title,
                 creation=payload.creation,
+                created_by=created_by,
             )
             try:
                 session.add(photo)
@@ -1231,7 +1423,7 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_contact(
-        self, patient_id: int, payload: ContactCreate
+        self, patient_id: int, payload: ContactCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one contact row (plus its relationship[]/telecom[] grandchildren) to this patient."""
         async with self.session_factory() as session:
@@ -1270,19 +1462,13 @@ class PatientRepository(BaseRepository):
                 address_period_start=payload.address_period_start,
                 address_period_end=payload.address_period_end,
                 gender=payload.gender,
-                organization_type=(
-                    _parse_org_ref(payload.organization)[0]
-                    if payload.organization
-                    else None
+                **_org_ref_kwargs(
+                    "organization", payload.organization, payload.organization_display
                 ),
-                organization_id=(
-                    _parse_org_ref(payload.organization)[1]
-                    if payload.organization
-                    else None
-                ),
-                organization_display=payload.organization_display,
+                **_reference_kwargs("organization", payload),
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                created_by=created_by,
             )
             session.add(contact)
             await session.flush()  # get contact.id before adding grandchildren
@@ -1299,6 +1485,7 @@ class PatientRepository(BaseRepository):
                             coding_display=r.coding_display,
                             text=r.text,
                             coding_user_selected=r.coding_user_selected,
+                            created_by=created_by,
                         )
                     )
 
@@ -1314,6 +1501,7 @@ class PatientRepository(BaseRepository):
                             rank=t.rank,
                             period_start=t.period_start,
                             period_end=t.period_end,
+                            created_by=created_by,
                         )
                     )
 
@@ -1326,7 +1514,10 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_communication(
-        self, patient_id: int, payload: CommunicationCreate
+        self,
+        patient_id: int,
+        payload: CommunicationCreate,
+        created_by: str | None = None,
     ) -> PatientModel | None:
         """Append one communication-language row to this patient."""
         async with self.session_factory() as session:
@@ -1344,6 +1535,7 @@ class PatientRepository(BaseRepository):
                 language_text=payload.language_text,
                 language_user_selected=payload.language_user_selected,
                 preferred=payload.preferred,
+                created_by=created_by,
             )
             try:
                 session.add(comm)
@@ -1355,7 +1547,10 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_general_practitioner(
-        self, patient_id: int, payload: GeneralPractitionerCreate
+        self,
+        patient_id: int,
+        payload: GeneralPractitionerCreate,
+        created_by: str | None = None,
     ) -> PatientModel | None:
         """Append one general-practitioner reference row to this patient."""
         async with self.session_factory() as session:
@@ -1369,6 +1564,8 @@ class PatientRepository(BaseRepository):
                 reference_type=payload.reference_type,
                 reference_id=payload.reference_id,
                 reference_display=payload.reference_display,
+                **_reference_kwargs("reference", payload),
+                created_by=created_by,
             )
             try:
                 session.add(gp)
@@ -1380,7 +1577,7 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def add_link(
-        self, patient_id: int, payload: LinkCreate
+        self, patient_id: int, payload: LinkCreate, created_by: str | None = None
     ) -> PatientModel | None:
         """Append one patient-link row to this patient."""
         async with self.session_factory() as session:
@@ -1394,7 +1591,9 @@ class PatientRepository(BaseRepository):
                 other_type=payload.other_type,
                 other_id=payload.other_id,
                 other_display=payload.other_display,
+                **_reference_kwargs("other", payload),
                 type=payload.type,
+                created_by=created_by,
             )
             try:
                 session.add(link)
@@ -1642,7 +1841,11 @@ class PatientRepository(BaseRepository):
         return result.scalars().first()
 
     async def patch_name(
-        self, patient_id: int, name_id: int, payload: NamePatch
+        self,
+        patient_id: int,
+        name_id: int,
+        payload: NamePatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one HumanName row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1658,6 +1861,8 @@ class PatientRepository(BaseRepository):
                     data[field] = ", ".join(data[field]) if data[field] else None
             for field, value in data.items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1666,7 +1871,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_identifier(
-        self, patient_id: int, identifier_id: int, payload: IdentifierPatch
+        self,
+        patient_id: int,
+        identifier_id: int,
+        payload: IdentifierPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one identifier row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1678,8 +1887,18 @@ class PatientRepository(BaseRepository):
             )
             if not row:
                 return None
-            for field, value in payload.model_dump(exclude_unset=True).items():
+            data = payload.model_dump(exclude_unset=True)
+            if "assigner" in data:
+                ref = data.pop("assigner")
+                if ref:
+                    row.assigner_type, row.assigner_id = _parse_org_ref(ref)
+                else:
+                    row.assigner_type = None
+                    row.assigner_id = None
+            for field, value in data.items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1688,7 +1907,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_telecom(
-        self, patient_id: int, telecom_id: int, payload: TelecomPatch
+        self,
+        patient_id: int,
+        telecom_id: int,
+        payload: TelecomPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one contact-point row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1702,6 +1925,8 @@ class PatientRepository(BaseRepository):
                 return None
             for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1710,7 +1935,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_address(
-        self, patient_id: int, address_id: int, payload: AddressPatch
+        self,
+        patient_id: int,
+        address_id: int,
+        payload: AddressPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one address row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1727,6 +1956,8 @@ class PatientRepository(BaseRepository):
                 data["line"] = ", ".join(data["line"]) if data["line"] else None
             for field, value in data.items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1735,7 +1966,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_photo(
-        self, patient_id: int, photo_id: int, payload: PhotoPatch
+        self,
+        patient_id: int,
+        photo_id: int,
+        payload: PhotoPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one photo attachment row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1747,6 +1982,8 @@ class PatientRepository(BaseRepository):
                 return None
             for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1755,7 +1992,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_contact(
-        self, patient_id: int, contact_id: int, payload: ContactPatch
+        self,
+        patient_id: int,
+        contact_id: int,
+        payload: ContactPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one contact row. If `relationship` or `telecom`
         is supplied, the corresponding grandchild rows are entirely replaced;
@@ -1789,6 +2030,7 @@ class PatientRepository(BaseRepository):
                         PatientContactRelationship(
                             contact_id=contact.id,
                             org_id=patient.org_id,
+                            created_by=updated_by,
                             **r,
                         )
                     )
@@ -1803,6 +2045,7 @@ class PatientRepository(BaseRepository):
                         PatientContactTelecom(
                             contact_id=contact.id,
                             org_id=patient.org_id,
+                            created_by=updated_by,
                             **t,
                         )
                     )
@@ -1829,6 +2072,8 @@ class PatientRepository(BaseRepository):
 
             for field, value in data.items():
                 setattr(contact, field, value)
+            if updated_by is not None:
+                contact.updated_by = updated_by
 
             try:
                 await session.commit()
@@ -1838,7 +2083,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_communication(
-        self, patient_id: int, comm_id: int, payload: CommunicationPatch
+        self,
+        patient_id: int,
+        comm_id: int,
+        payload: CommunicationPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one communication-language row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1852,6 +2101,8 @@ class PatientRepository(BaseRepository):
                 return None
             for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1860,7 +2111,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_general_practitioner(
-        self, patient_id: int, gp_id: int, payload: GeneralPractitionerPatch
+        self,
+        patient_id: int,
+        gp_id: int,
+        payload: GeneralPractitionerPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one general-practitioner reference row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1874,6 +2129,8 @@ class PatientRepository(BaseRepository):
                 return None
             for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:
@@ -1882,7 +2139,11 @@ class PatientRepository(BaseRepository):
         return await self.get_by_patient_id(patient_id)
 
     async def patch_link(
-        self, patient_id: int, link_id: int, payload: LinkPatch
+        self,
+        patient_id: int,
+        link_id: int,
+        payload: LinkPatch,
+        updated_by: str | None = None,
     ) -> PatientModel | None:
         """Partial update of one patient-link row via generic setattr from model_dump(exclude_unset=True)."""
         async with self.session_factory() as session:
@@ -1894,6 +2155,8 @@ class PatientRepository(BaseRepository):
                 return None
             for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(row, field, value)
+            if updated_by is not None:
+                row.updated_by = updated_by
             try:
                 await session.commit()
             except Exception:

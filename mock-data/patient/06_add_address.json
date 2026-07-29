@@ -1,0 +1,10 @@
+{
+  "use": "home",
+  "type": "both",
+  "text": "45 Elm Street, Boston, MA 02115, US",
+  "line": ["45 Elm Street"],
+  "city": "Boston",
+  "state": "MA",
+  "postal_code": "02115",
+  "country": "US"
+}

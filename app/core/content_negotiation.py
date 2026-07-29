@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -43,8 +41,8 @@ def format_list_response(
 
 
 def format_paginated_response(
-    fhir_list: List[dict],
-    plain_list: List[dict],
+    fhir_list: list[dict],
+    plain_list: list[dict],
     total: int,
     limit: int,
     offset: int,
@@ -67,9 +65,13 @@ def format_paginated_response(
             content=jsonable_encoder(bundle),
             media_type=FHIR_MEDIA_TYPE,
         )
-    return JSONResponse(content=jsonable_encoder({
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "data": plain_list,
-    }))
+    return JSONResponse(
+        content=jsonable_encoder(
+            {
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "data": plain_list,
+            }
+        )
+    )

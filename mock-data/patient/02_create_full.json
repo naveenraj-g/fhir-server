@@ -1,0 +1,86 @@
+{
+  "user_id": "REPLACE_USER_ID",
+  "active": true,
+  "gender": "female",
+  "birth_date": "1990-07-22",
+  "deceased_boolean": false,
+  "marital_status_system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+  "marital_status_code": "S",
+  "marital_status_display": "Never Married",
+  "managing_organization": "Organization/190001",
+  "managing_organization_display": "Sunrise Medical Center",
+  "names": [
+    {
+      "use": "official",
+      "family": "Carter",
+      "given": ["Emily", "Rose"]
+    }
+  ],
+  "identifiers": [
+    {
+      "use": "official",
+      "type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "type_code": "MR",
+      "type_display": "Medical record number",
+      "system": "http://hospital.example.com/mrn",
+      "value": "MRN-200456"
+    }
+  ],
+  "telecom": [
+    { "system": "phone", "value": "+1-555-321-7890", "use": "mobile", "rank": 1 },
+    { "system": "email", "value": "emily.carter@example.com", "use": "home", "rank": 2 }
+  ],
+  "addresses": [
+    {
+      "use": "home",
+      "type": "both",
+      "line": ["12 Birch Lane"],
+      "city": "Cambridge",
+      "state": "MA",
+      "postal_code": "02139",
+      "country": "US"
+    }
+  ],
+  "photos": [
+    {
+      "content_type": "image/jpeg",
+      "url": "https://example.com/patients/photos/emily-carter.jpg",
+      "title": "Profile photo"
+    }
+  ],
+  "contacts": [
+    {
+      "relationship": [
+        {
+          "coding_system": "http://terminology.hl7.org/CodeSystem/v2-0131",
+          "coding_code": "N",
+          "coding_display": "Next-of-Kin"
+        }
+      ],
+      "name_family": "Carter",
+      "name_given": ["Michael"],
+      "telecom": [
+        { "system": "phone", "value": "+1-555-654-3210", "use": "mobile" }
+      ],
+      "gender": "male"
+    }
+  ],
+  "communications": [
+    { "language_system": "urn:ietf:bcp:47", "language_code": "en", "preferred": true }
+  ],
+  "general_practitioners": [
+    {
+      "reference_type": "Practitioner",
+      "reference_id": 30001,
+      "reference_display": "Dr. Priya R. Sharma"
+    }
+  ],
+  "links": [
+    {
+      "other_type": "RelatedPerson",
+      "other_id": 300001,
+      "other_display": "Michael Carter (spouse)",
+      "type": "seealso"
+    }
+  ]
+}

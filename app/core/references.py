@@ -6,8 +6,8 @@ Usage:
     subject_display = await resolve_subject(subject_type, subject_id, patient_service=patient_service)
 """
 
-from typing import Optional, Type, TypeVar
 from enum import Enum
+from typing import TypeVar
 
 from fastapi import HTTPException, status
 
@@ -16,7 +16,7 @@ from app.models.enums import SubjectReferenceType
 E = TypeVar("E", bound=Enum)
 
 
-def parse_reference(ref: str, enum_class: Type[E]) -> tuple[E, int]:
+def parse_reference[E: Enum](ref: str, enum_class: type[E]) -> tuple[E, int]:
     """
     Parse a FHIR reference string and validate the resource type against an enum.
 
@@ -56,7 +56,7 @@ async def resolve_subject(
     user_id: str,
     org_id: str,
     patient_service=None,
-) -> Optional[str]:
+) -> str | None:
     """
     Look up the subject by type, public id, user_id, and org_id, returning a display name.
 
@@ -69,12 +69,11 @@ async def resolve_subject(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="patient_service is required to resolve a Patient subject.",
             )
-        patient = await patient_service.get_patient_in_org(subject_id, user_id, org_id)
-        if not patient:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Patient/{subject_id} not found.",
-            )
+        # get_patient() raises NotFoundError (404) if missing or if it
+        # doesn't match user_id/org_id — no separate None-check needed here.
+        patient = await patient_service.get_patient(
+            subject_id, user_id=user_id, org_id=org_id
+        )
         name = patient.names[0] if patient.names else None
         given = (name.given or "") if name else ""
         family = (name.family or "") if name else ""

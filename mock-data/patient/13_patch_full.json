@@ -1,0 +1,9 @@
+{
+  "active": true,
+  "names": [
+    { "use": "official", "family": "Doe", "given": ["John", "Michael"] }
+  ],
+  "telecom": [
+    { "system": "email", "value": "john.doe@example.com", "use": "home" }
+  ]
+}
