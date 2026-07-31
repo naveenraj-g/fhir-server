@@ -9,6 +9,7 @@ from app.core.filters import (
     parse_reference,
 )
 from app.core.pagination import resolve_sort
+from app.core.reference_resolver import ensure_resource_exists
 from app.models.enums import OrganizationReferenceType
 from app.models.patient.enums import (
     AddressUse,
@@ -110,6 +111,17 @@ def _org_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
         f"{prefix}_id": ref_id,
         f"{prefix}_display": display,
     }
+
+
+async def _validate_reference(session, org_id, ref_type, ref_id, field_name: str) -> None:
+    """Confirms a resolved `type`+`id` reference actually exists, scoped to
+    the acting patient's own org_id — the identifier fallback is the intended
+    path for anything cross-org/external, so a resolved reference can safely
+    assume same-tenant. No-op when either half is absent (nothing to check)."""
+    if ref_type and ref_id:
+        await ensure_resource_exists(
+            session, ref_type, ref_id, org_id=org_id, field_name=field_name
+        )
 
 
 # Sortable fields exposed via the `sort` list-query param (see
@@ -575,7 +587,13 @@ class PatientRepository(BaseRepository):
     ) -> PatientModel:
         """Create a Patient from its core scalar fields only — no sub-resources.
         Use create_full() to create sub-resources in the same request."""
+        mo_type, mo_id = (
+            _parse_org_ref(payload.managing_organization)
+            if payload.managing_organization
+            else (None, None)
+        )
         async with self.session_factory() as session:
+            await _validate_reference(session, org_id, mo_type, mo_id, "managingOrganization")
             patient = PatientModel(
                 user_id=user_id,
                 org_id=org_id,
@@ -621,7 +639,13 @@ class PatientRepository(BaseRepository):
         atomically in one DB transaction (one commit at the end — if any
         insert fails, everything rolls back). Every list on the payload is
         optional; only the ones supplied get inserted."""
+        mo_type, mo_id = (
+            _parse_org_ref(payload.managing_organization)
+            if payload.managing_organization
+            else (None, None)
+        )
         async with self.session_factory() as session:
+            await _validate_reference(session, org_id, mo_type, mo_id, "managingOrganization")
             patient = PatientModel(
                 user_id=user_id,
                 org_id=org_id,
@@ -669,6 +693,10 @@ class PatientRepository(BaseRepository):
 
             if payload.identifiers:
                 for i in payload.identifiers:
+                    a_type, a_id = (
+                        _parse_org_ref(i.assigner) if i.assigner else (None, None)
+                    )
+                    await _validate_reference(session, org_id, a_type, a_id, "identifier.assigner")
                     session.add(
                         PatientIdentifier(
                             patient_id=patient.id,
@@ -747,6 +775,12 @@ class PatientRepository(BaseRepository):
 
             if payload.contacts:
                 for c in payload.contacts:
+                    co_type, co_id = (
+                        _parse_org_ref(c.organization) if c.organization else (None, None)
+                    )
+                    await _validate_reference(
+                        session, org_id, co_type, co_id, "contact.organization"
+                    )
                     contact = PatientContact(
                         patient_id=patient.id,
                         org_id=org_id,
@@ -834,6 +868,9 @@ class PatientRepository(BaseRepository):
 
             if payload.general_practitioners:
                 for gp in payload.general_practitioners:
+                    await _validate_reference(
+                        session, org_id, gp.reference_type, gp.reference_id, "generalPractitioner"
+                    )
                     session.add(
                         PatientGeneralPractitioner(
                             patient_id=patient.id,
@@ -848,6 +885,9 @@ class PatientRepository(BaseRepository):
 
             if payload.links:
                 for lk in payload.links:
+                    await _validate_reference(
+                        session, org_id, lk.other_type, lk.other_id, "link.other"
+                    )
                     session.add(
                         PatientLink(
                             patient_id=patient.id,
@@ -891,6 +931,9 @@ class PatientRepository(BaseRepository):
                 if field == "managing_organization":
                     if value is not None:
                         ref_type, ref_id = _parse_org_ref(value)
+                        await _validate_reference(
+                            session, patient.org_id, ref_type, ref_id, "managingOrganization"
+                        )
                         patient.managing_organization_type = ref_type
                         patient.managing_organization_id = ref_id
                     else:
@@ -942,10 +985,12 @@ class PatientRepository(BaseRepository):
                     continue
                 if field == "managing_organization":
                     if value is not None:
-                        (
-                            patient.managing_organization_type,
-                            patient.managing_organization_id,
-                        ) = _parse_org_ref(value)
+                        mo_type, mo_id = _parse_org_ref(value)
+                        await _validate_reference(
+                            session, patient.org_id, mo_type, mo_id, "managingOrganization"
+                        )
+                        patient.managing_organization_type = mo_type
+                        patient.managing_organization_id = mo_id
                     else:
                         patient.managing_organization_type = None
                         patient.managing_organization_id = None
@@ -982,6 +1027,12 @@ class PatientRepository(BaseRepository):
                     )
                 )
                 for i in payload.identifiers:
+                    a_type, a_id = (
+                        _parse_org_ref(i.assigner) if i.assigner else (None, None)
+                    )
+                    await _validate_reference(
+                        session, patient.org_id, a_type, a_id, "identifier.assigner"
+                    )
                     session.add(
                         PatientIdentifier(
                             patient_id=patient.id,
@@ -1100,6 +1151,12 @@ class PatientRepository(BaseRepository):
                     )
                 )
                 for c in payload.contacts:
+                    co_type, co_id = (
+                        _parse_org_ref(c.organization) if c.organization else (None, None)
+                    )
+                    await _validate_reference(
+                        session, patient.org_id, co_type, co_id, "contact.organization"
+                    )
                     contact = PatientContact(
                         patient_id=patient.id,
                         org_id=patient.org_id,
@@ -1193,6 +1250,13 @@ class PatientRepository(BaseRepository):
                     )
                 )
                 for gp in payload.general_practitioners:
+                    await _validate_reference(
+                        session,
+                        patient.org_id,
+                        gp.reference_type,
+                        gp.reference_id,
+                        "generalPractitioner",
+                    )
                     session.add(
                         PatientGeneralPractitioner(
                             patient_id=patient.id,
@@ -1210,6 +1274,9 @@ class PatientRepository(BaseRepository):
                     delete(PatientLink).where(PatientLink.patient_id == patient.id)
                 )
                 for lk in payload.links:
+                    await _validate_reference(
+                        session, patient.org_id, lk.other_type, lk.other_id, "link.other"
+                    )
                     session.add(
                         PatientLink(
                             patient_id=patient.id,
@@ -1299,6 +1366,12 @@ class PatientRepository(BaseRepository):
             if not patient:
                 return None
 
+            a_type, a_id = (
+                _parse_org_ref(payload.assigner) if payload.assigner else (None, None)
+            )
+            await _validate_reference(
+                session, patient.org_id, a_type, a_id, "identifier.assigner"
+            )
             ident = PatientIdentifier(
                 patient_id=patient.id,
                 org_id=patient.org_id,
@@ -1431,6 +1504,12 @@ class PatientRepository(BaseRepository):
             if not patient:
                 return None
 
+            co_type, co_id = (
+                _parse_org_ref(payload.organization) if payload.organization else (None, None)
+            )
+            await _validate_reference(
+                session, patient.org_id, co_type, co_id, "contact.organization"
+            )
             contact = PatientContact(
                 patient_id=patient.id,
                 org_id=patient.org_id,
@@ -1558,6 +1637,13 @@ class PatientRepository(BaseRepository):
             if not patient:
                 return None
 
+            await _validate_reference(
+                session,
+                patient.org_id,
+                payload.reference_type,
+                payload.reference_id,
+                "generalPractitioner",
+            )
             gp = PatientGeneralPractitioner(
                 patient_id=patient.id,
                 org_id=patient.org_id,
@@ -1585,6 +1671,9 @@ class PatientRepository(BaseRepository):
             if not patient:
                 return None
 
+            await _validate_reference(
+                session, patient.org_id, payload.other_type, payload.other_id, "link.other"
+            )
             link = PatientLink(
                 patient_id=patient.id,
                 org_id=patient.org_id,
@@ -1891,7 +1980,12 @@ class PatientRepository(BaseRepository):
             if "assigner" in data:
                 ref = data.pop("assigner")
                 if ref:
-                    row.assigner_type, row.assigner_id = _parse_org_ref(ref)
+                    a_type, a_id = _parse_org_ref(ref)
+                    await _validate_reference(
+                        session, patient.org_id, a_type, a_id, "identifier.assigner"
+                    )
+                    row.assigner_type = a_type
+                    row.assigner_id = a_id
                 else:
                     row.assigner_type = None
                     row.assigner_id = None
@@ -2055,9 +2149,12 @@ class PatientRepository(BaseRepository):
             if "organization" in data:
                 org = data.pop("organization")
                 if org:
-                    contact.organization_type, contact.organization_id = _parse_org_ref(
-                        org
+                    co_type, co_id = _parse_org_ref(org)
+                    await _validate_reference(
+                        session, patient.org_id, co_type, co_id, "contact.organization"
                     )
+                    contact.organization_type = co_type
+                    contact.organization_id = co_id
                 else:
                     contact.organization_type = None
                     contact.organization_id = None
@@ -2127,8 +2224,17 @@ class PatientRepository(BaseRepository):
             )
             if not row:
                 return None
-            for field, value in payload.model_dump(exclude_unset=True).items():
+            data = payload.model_dump(exclude_unset=True)
+            for field, value in data.items():
                 setattr(row, field, value)
+            if "reference_type" in data or "reference_id" in data:
+                await _validate_reference(
+                    session,
+                    patient.org_id,
+                    row.reference_type,
+                    row.reference_id,
+                    "generalPractitioner",
+                )
             if updated_by is not None:
                 row.updated_by = updated_by
             try:
@@ -2153,8 +2259,13 @@ class PatientRepository(BaseRepository):
             row = await self._fetch_child(session, PatientLink, link_id, patient.id)
             if not row:
                 return None
-            for field, value in payload.model_dump(exclude_unset=True).items():
+            data = payload.model_dump(exclude_unset=True)
+            for field, value in data.items():
                 setattr(row, field, value)
+            if "other_type" in data or "other_id" in data:
+                await _validate_reference(
+                    session, patient.org_id, row.other_type, row.other_id, "link.other"
+                )
             if updated_by is not None:
                 row.updated_by = updated_by
             try:
