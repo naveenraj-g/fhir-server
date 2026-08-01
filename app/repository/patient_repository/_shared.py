@@ -1,75 +1,22 @@
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.core.reference_resolver import ensure_resource_exists
-from app.models.enums import OrganizationReferenceType
 from app.models.patient.patient import PatientContact, PatientModel
-
-
-def _parse_org_ref(ref: str) -> tuple:
-    """
-    Parse 'Organization/123' → (OrganizationReferenceType.Organization, 123).
-
-    Delegates to the shared app.core.filters.parse_reference — kept as a thin,
-    name-stable wrapper here so every existing call site in this package
-    (create/create_full/patch/patch_full, and the Contact sub-resource
-    mutations) needed zero changes when the parsing logic was generalized.
-    """
-    return parse_reference(ref, OrganizationReferenceType)
-
-
-_IDENTIFIER_FALLBACK_SUFFIXES = (
-    "identifier_use",
-    "identifier_type_system",
-    "identifier_type_version",
-    "identifier_type_code",
-    "identifier_type_display",
-    "identifier_type_text",
-    "identifier_type_user_selected",
-    "identifier_system",
-    "identifier_value",
-    "identifier_period_start",
-    "identifier_period_end",
+from app.repository._reference_shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _org_ref_kwargs,
+    _parse_org_ref,
+    _reference_kwargs,
+    _validate_reference,
 )
 
-
-def _reference_kwargs(prefix: str, payload) -> dict:
-    """Build `{prefix}_identifier_*` ORM constructor kwargs from a payload's
-    matching fields — the logical-reference fallback used alongside every
-    flattened `{prefix}_type`/`{prefix}_id`/`{prefix}_display` Reference field
-    (managingOrganization, contact.organization, generalPractitioner,
-    link.other, identifier.assigner) for when the target isn't a resource in
-    this system."""
-    return {
-        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}")
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
-
-
-def _org_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
-    """Build `{prefix}_type`/`{prefix}_id`/`{prefix}_display` ORM constructor
-    kwargs from a FHIR reference string (e.g. 'Organization/100') — used for
-    the two Reference(Organization) fields still expressed as a single string
-    field on the payload (managingOrganization, contact.organization,
-    identifier.assigner) rather than separate type+id fields."""
-    ref_type, ref_id = _parse_org_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
-
-
-async def _validate_reference(session, org_id, ref_type, ref_id, field_name: str) -> None:
-    """Confirms a resolved `type`+`id` reference actually exists, scoped to
-    the acting patient's own org_id — the identifier fallback is the intended
-    path for anything cross-org/external, so a resolved reference can safely
-    assume same-tenant. No-op when either half is absent (nothing to check)."""
-    if ref_type and ref_id:
-        await ensure_resource_exists(
-            session, ref_type, ref_id, org_id=org_id, field_name=field_name
-        )
+__all__ = [
+    "_IDENTIFIER_FALLBACK_SUFFIXES",
+    "_org_ref_kwargs",
+    "_parse_org_ref",
+    "_reference_kwargs",
+    "_validate_reference",
+]
 
 
 # Sortable fields exposed via the `sort` list-query param (see

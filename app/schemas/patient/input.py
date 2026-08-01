@@ -554,7 +554,9 @@ class GeneralPractitionerCreate(BaseModel):
 
     @model_validator(mode="after")
     def _require_reference_or_identifier(self):
-        has_reference = self.reference_type is not None and self.reference_id is not None
+        has_reference = (
+            self.reference_type is not None and self.reference_id is not None
+        )
         has_identifier = (
             self.reference_identifier_system is not None
             and self.reference_identifier_value is not None
@@ -1088,7 +1090,7 @@ class PatientCreateSchema(BaseModel):
 
     user_id: str | None = Field(
         None,
-        description="Tenant/ownership field — the acting user's id.",
+        description="Gateway-forwarded ID of the user who owns this record (JWT sub). Describes who this Patient record belongs to — not a field of the FHIR Patient resource's own clinical content.",
     )
     active: bool | None = Field(
         True, description="Whether this patient's record is in active use."

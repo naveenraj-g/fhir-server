@@ -246,7 +246,10 @@ class PlainPatientName(BaseModel):
     """Plain-JSON HumanName — a name associated with the patient."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     use: str | None = Field(
         None, description="usual|official|temp|nickname|anonymous|old|maiden"
     )
@@ -283,7 +286,10 @@ class PlainPatientIdentifier(BaseModel):
     """Plain-JSON Identifier — a business identifier for this patient."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     use: str | None = Field(None, description="usual|official|temp|secondary|old")
     type_system: str | None = Field(
         None, description="Coding system for identifier type."
@@ -354,7 +360,8 @@ class PlainPatientIdentifier(BaseModel):
         None, description="Fallback identifier — ISO 8601 datetime it became valid."
     )
     assigner_identifier_period_end: str | None = Field(
-        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+        None,
+        description="Fallback identifier — ISO 8601 datetime it stopped being valid.",
     )
     created_at: str | None = Field(
         None, description="ISO 8601 datetime when this row was created."
@@ -374,7 +381,10 @@ class PlainPatientTelecom(BaseModel):
     """Plain-JSON ContactPoint — a contact detail for the patient."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     system: str | None = Field(None, description="phone|fax|email|pager|url|sms|other")
     value: str | None = Field(
         None, description="Contact point details (phone number, email address, etc.)."
@@ -407,7 +417,10 @@ class PlainPatientAddress(BaseModel):
     """Plain-JSON Address — a postal or physical address for the patient."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     use: str | None = Field(None, description="home|work|temp|old|billing")
     type: str | None = Field(None, description="postal|physical|both")
     text: str | None = Field(None, description="Full address as a display string.")
@@ -445,7 +458,10 @@ class PlainPatientPhoto(BaseModel):
     """Plain-JSON Attachment — an image of the patient."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     content_type: str | None = Field(None, description="MIME type (e.g. image/png).")
     language: str | None = Field(None, description="BCP-47 language code.")
     data: str | None = Field(None, description="Base64-encoded image data.")
@@ -476,7 +492,10 @@ class PlainContactRelationship(BaseModel):
     """Plain-JSON CodeableConcept — the kind of relationship a Patient.contact has to the patient."""
 
     id: int = Field(..., description="Internal row ID.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     coding_system: str | None = Field(
         None, description="Coding system that defines this relationship code."
     )
@@ -514,7 +533,10 @@ class PlainContactTelecom(BaseModel):
     """Plain-JSON ContactPoint — a contact detail for the patient's contact person."""
 
     id: int = Field(..., description="Internal row ID.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     system: str | None = Field(None, description="phone|fax|email|pager|url|sms|other")
     value: str | None = Field(
         None, description="Contact point details (phone number, email address, etc.)."
@@ -548,7 +570,10 @@ class PlainPatientContact(BaseModel):
     next-of-kin, emergency contact) for the patient."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     relationship: list[PlainContactRelationship] | None = Field(
         None, description="The kind(s) of relationship this contact has to the patient."
     )
@@ -654,7 +679,8 @@ class PlainPatientContact(BaseModel):
         None, description="Fallback identifier — ISO 8601 datetime it became valid."
     )
     organization_identifier_period_end: str | None = Field(
-        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+        None,
+        description="Fallback identifier — ISO 8601 datetime it stopped being valid.",
     )
     period_start: str | None = Field(
         None,
@@ -683,7 +709,10 @@ class PlainPatientCommunication(BaseModel):
     can use for healthcare-related communication."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     language_system: str | None = Field(
         None, description="URI of the language code system."
     )
@@ -724,7 +753,10 @@ class PlainPatientGeneralPractitioner(BaseModel):
     nominated primary care provider."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     reference_type: str | None = Field(
         None, description="Organization|Practitioner|PractitionerRole"
     )
@@ -769,7 +801,8 @@ class PlainPatientGeneralPractitioner(BaseModel):
         None, description="Fallback identifier — ISO 8601 datetime it became valid."
     )
     reference_identifier_period_end: str | None = Field(
-        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+        None,
+        description="Fallback identifier — ISO 8601 datetime it stopped being valid.",
     )
     created_at: str | None = Field(
         None, description="ISO 8601 datetime when this row was created."
@@ -790,7 +823,10 @@ class PlainPatientLink(BaseModel):
     resource that concerns the same actual person."""
 
     id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
-    org_id: str | None = Field(None, description="Tenant/ownership organization id.")
+    org_id: str | None = Field(
+        None,
+        description="Gateway-forwarded tenant/account ID this row is scoped to (multi-tenancy) — not a FHIR concept.",
+    )
     other_type: str | None = Field(None, description="Patient|RelatedPerson")
     other_id: int | None = Field(
         None, description="Public id of the linked Patient/RelatedPerson resource."
@@ -832,7 +868,8 @@ class PlainPatientLink(BaseModel):
         None, description="Fallback identifier — ISO 8601 datetime it became valid."
     )
     other_identifier_period_end: str | None = Field(
-        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+        None,
+        description="Fallback identifier — ISO 8601 datetime it stopped being valid.",
     )
     type: str | None = Field(None, description="replaced-by|replaces|refer|seealso")
     created_at: str | None = Field(
@@ -941,7 +978,8 @@ class PlainPatientResponse(BaseModel):
         None, description="Fallback identifier — ISO 8601 datetime it became valid."
     )
     managing_organization_identifier_period_end: str | None = Field(
-        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+        None,
+        description="Fallback identifier — ISO 8601 datetime it stopped being valid.",
     )
     created_at: str | None = Field(
         None, description="ISO 8601 datetime when record was created."
@@ -1088,7 +1126,8 @@ class PlainPatientCoreResponse(BaseModel):
         None, description="Fallback identifier — ISO 8601 datetime it became valid."
     )
     managing_organization_identifier_period_end: str | None = Field(
-        None, description="Fallback identifier — ISO 8601 datetime it stopped being valid."
+        None,
+        description="Fallback identifier — ISO 8601 datetime it stopped being valid.",
     )
     created_at: str | None = Field(
         None, description="ISO 8601 datetime when record was created."

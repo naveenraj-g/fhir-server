@@ -39,9 +39,9 @@ api_router = APIRouter()
 
 api_router.include_router(patient_router, prefix="/patients", tags=["Patients"])
 
-# api_router.include_router(
-#     practitioner_router, prefix="/practitioners", tags=["Practitioners"]
-# )
+api_router.include_router(
+    practitioner_router, prefix="/practitioners", tags=["Practitioners"]
+)
 
 # api_router.include_router(encounter_router, prefix="/encounters", tags=["Encounters"])
 
@@ -79,9 +79,9 @@ api_router.include_router(patient_router, prefix="/patients", tags=["Patients"])
 #     observation_router, prefix="/observations", tags=["Observations"]
 # )
 
-# api_router.include_router(
-#     organization_router, prefix="/organizations", tags=["Organizations"]
-# )
+api_router.include_router(
+    organization_router, prefix="/organizations", tags=["Organizations"]
+)
 
 # api_router.include_router(procedure_router, prefix="/procedures", tags=["Procedures"])
 

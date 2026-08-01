@@ -25,7 +25,7 @@ This is a pure CRUD core with no authentication of its own — it is never expos
 | Web framework | FastAPI + Uvicorn |
 | Database | PostgreSQL 15 (async via asyncpg) |
 | ORM | SQLAlchemy 2.0+ (async) |
-| Auth | None for ~34 resources — handled upstream by a GraphQL gateway. **Patient is the exception**: `app/auth/` validates JWTs directly via `pyjwt` + JWKS, with flat RBAC scopes (see Multi-Tenancy & Ownership) |
+| Auth | None for ~32 resources — handled upstream by a GraphQL gateway. **Patient, Practitioner, and Organization are the exceptions**: `app/auth/` validates JWTs directly via `pyjwt` + JWKS, with flat RBAC scopes (see Multi-Tenancy & Ownership) |
 | Sessions | Redis 7 (server-side) |
 | DI container | dependency-injector |
 | Config | pydantic-settings (.env) |
@@ -119,14 +119,14 @@ Router → Service → Repository → ORM Model
 
 ## Multi-Tenancy & Ownership
 
-**This server has no authentication of its own — with one exception, see below.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. For every resource except Patient, the gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase (outside `app/auth/`) decodes a token, checks a JWKS endpoint, or reads `request.state.user`.
+**This server has no authentication of its own — with three exceptions, see below.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. For every resource except Patient, Practitioner, and Organization, the gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase (outside `app/auth/`) decodes a token, checks a JWKS endpoint, or reads `request.state.user`.
 
-**Auth rollout status (in progress, Patient-first):** Patient now validates JWTs directly — see `app/auth/` (JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) and every route in `app/routers/patient.py`, gated with `require_permission("patient", <action>)`. For Patient specifically: `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`); `org_id` comes from the verified JWT's `activeOrganizationId` (`actor.org_id`) — **neither is a request body field anymore**, `PatientCreateSchema`/`PatientPatchSchema` don't accept them at all. There is **no org-less/super-admin bypass**: a token with no `activeOrganizationId` claim is rejected outright (403) rather than being allowed through — every Patient operation requires an org-scoped actor. `create`/`create_full` reject a missing `actor.org_id`; `patch`/`patch_full`/`delete` 404 if the caller's org doesn't match the target patient's stored `org_id` (also 404, never 403, to avoid leaking whether the patient exists in another org). `user_id` alone is unchanged — still a plain, gateway-forwarded input field on create, same as every other resource. **All other ~34 resources are unaffected and follow the description below exactly as written.**
+**Auth rollout status (in progress, Patient, Practitioner, and Organization so far):** All three validate JWTs directly — see `app/auth/` (JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) and every route in `app/routers/patient/`, `app/routers/practitioner/`, and `app/routers/organization/`, gated with `require_permission("patient", <action>)` / `require_permission("practitioner", <action>)` / `require_permission("organization", <action>)` respectively. For all three resources: `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`); `org_id` comes from the verified JWT's `activeOrganizationId` (`actor.org_id`) — **neither is a request body field anymore**, `PatientCreateSchema`/`PatientPatchSchema`, `PractitionerCreateSchema`/`PractitionerPatchSchema`, and `OrganizationCreateSchema`/`OrganizationPatchSchema` (plus every one of Patient's and Practitioner's sub-resource Create/Patch schemas — Organization has none, see its own Standard Columns note) don't accept them at all. There is **no org-less/super-admin bypass**: a token with no `activeOrganizationId` claim is rejected outright (403) rather than being allowed through — every Patient/Practitioner/Organization operation requires an org-scoped actor. `create`/`create_full` reject a missing `actor.org_id`; `patch`/`patch_full`/`delete`/every sub-resource method 404 if the caller's org doesn't match the target resource's stored `org_id` (also 404, never 403, to avoid leaking whether the resource exists in another org) — enforced via a shared `get_<resource>_scoped()` helper on each service's core mixin plus a `<resource>_belongs_to_org()` repository check. `user_id` alone is unchanged for all three — still a plain, gateway-forwarded input field on create, same as every other resource. **All other ~32 resources are unaffected and follow the description below exactly as written.**
 
-- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token. (Patient is the one exception: `user_id` still follows this, but `org_id`, like `created_by`/`updated_by`, comes from the verified token instead — see rollout status above.)
-- `created_by`/`updated_by` are the same for every resource except Patient: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
+- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token. (Patient, Practitioner, and Organization are the exceptions: `user_id` still follows this, but `org_id`, like `created_by`/`updated_by`, comes from the verified token instead — see rollout status above.)
+- `created_by`/`updated_by` are the same for every resource except Patient, Practitioner, and Organization: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
 - `resolve_<resource>()` deps (`app/deps/<resource>_deps.py`) only load the resource by public ID and raise 404 if missing — they do **not** enforce ownership. Tenant/ownership scoping happens entirely via `user_id`/`org_id` `WHERE` clauses in the repository's `list()`/`get_me()` queries. Used as `Depends(resolve_<resource>)` in route signatures.
-- Keeping `user_id`/`org_id` on every resource (not just Patient/Practitioner) is deliberate: it gives the GraphQL gateway one uniform scoping contract across all ~35 resource types, with no joins, and it's the only mechanism that works for resources with no patient/subject link at all (Organization, Location, HealthcareService, Appointment — whose `participant` list is polymorphic 0..* and may contain zero patients — etc.).
+- Keeping `user_id`/`org_id` on every resource (not just Patient/Practitioner/Organization) is deliberate: it gives the GraphQL gateway one uniform scoping contract across all ~35 resource types, with no joins, and it's the only mechanism that works for resources with no patient/subject link at all (Location, HealthcareService, Appointment — whose `participant` list is polymorphic 0..* and may contain zero patients — etc.).
 
 ---
 
@@ -239,8 +239,8 @@ Rules:
 ## Standard Columns
 
 Every resource row: `id` (PK), `<resource>_id` (sequence), `user_id`, `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`.
-- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase, **except Patient**, where both come from the verified JWT's `sub` (see Multi-Tenancy & Ownership's "Auth rollout status")
-- `org_id` / `user_id` are **tenant/ownership fields forwarded by the gateway**, not FHIR Organization references — **except Patient's `org_id`**, which comes from the verified JWT's `activeOrganizationId` instead (see Multi-Tenancy & Ownership's "Auth rollout status"); Patient's `user_id` is unaffected
+- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase, **except Patient, Practitioner, and Organization**, where all three come from the verified JWT's `sub` (see Multi-Tenancy & Ownership's "Auth rollout status")
+- `org_id` / `user_id` are **tenant/ownership fields forwarded by the gateway**, not a reference to the FHIR Organization resource — **except Patient's, Practitioner's, and Organization's own `org_id`**, which comes from the verified JWT's `activeOrganizationId` instead (see Multi-Tenancy & Ownership's "Auth rollout status"); their `user_id` is unaffected. (Note: on the Organization resource itself, this `org_id` tenant-scoping column is a distinct concept from the Organization *entity* being represented by the row — see `OrganizationCreateSchema`'s docstring.)
 
 ---
 
@@ -286,12 +286,12 @@ Pattern per resource: `di/modules/<resource>.py` (Factory for repo + service) �
 FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
 REDIS_URL=redis://localhost:6379
 
-# BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient only, so far)
+# BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient, Practitioner, and Organization only, so far)
 IAM_JWKS_URL=http://localhost:5001/api/auth/jwks
 IAM_ISSUER=http://localhost:5001
 ```
 
-`IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient now validates JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~34 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
+`IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, and Organization now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~32 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
 
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 

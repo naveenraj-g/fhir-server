@@ -1,13 +1,13 @@
 from datetime import date, datetime
-from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.enums import (
+    AddressType,
+    AddressUse,
     AdministrativeGender,
     ContactPointSystem,
     ContactPointUse,
-    AddressUse,
-    AddressType,
     HumanNameUse,
     IdentifierUse,
 )
@@ -17,106 +17,347 @@ from app.schemas.enums import (
 
 class PractitionerNameCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[HumanNameUse] = Field(None, description="usual|official|temp|nickname|anonymous|old|maiden")
-    text: Optional[str] = Field(None, description="Full name as a display string.")
-    family: Optional[str] = Field(None, description="Family (last) name.")
-    given: Optional[List[str]] = Field(None, description="Given (first/middle) names.")
-    prefix: Optional[List[str]] = Field(None, description="Name prefixes (Mr., Dr., etc.).")
-    suffix: Optional[List[str]] = Field(None, description="Name suffixes (Jr., MD, etc.).")
-    period_start: Optional[datetime] = Field(None, description="Start of period when this name was valid.")
-    period_end: Optional[datetime] = Field(None, description="End of period when this name was valid.")
+    use: HumanNameUse | None = Field(
+        None,
+        description="Identifies the purpose for this name. usual|official|temp|nickname|anonymous|old|maiden.",
+    )
+    text: str | None = Field(None, description="Full name as a display string.")
+    family: str | None = Field(None, description="Family (last) name.")
+    given: list[str] | None = Field(None, description="Given (first/middle) names.")
+    prefix: list[str] | None = Field(
+        None, description="Name prefixes (Mr., Dr., etc.)."
+    )
+    suffix: list[str] | None = Field(None, description="Name suffixes (Jr., MD, etc.).")
+    period_start: datetime | None = Field(
+        None, description="Start of the period during which this name was valid."
+    )
+    period_end: datetime | None = Field(
+        None, description="End of the period during which this name was valid."
+    )
 
 
 class PractitionerIdentifierCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[IdentifierUse] = Field(None, description="usual|official|temp|secondary|old")
-    type_system: Optional[str] = Field(None, description="Coding system for identifier type.")
-    type_code: Optional[str] = Field(None, description="Code for identifier type (e.g. NPI, DEA, license).")
-    type_display: Optional[str] = Field(None, description="Display for identifier type.")
-    type_text: Optional[str] = Field(None, description="Plain-text description of identifier type.")
-    system: Optional[str] = Field(None, description="URI of the identifier namespace (e.g. NPI system).")
-    value: str = Field(..., description="Identifier value (e.g. NPI number, license number).")
-    period_start: Optional[datetime] = Field(None, description="Start of identifier validity period.")
-    period_end: Optional[datetime] = Field(None, description="End of identifier validity period.")
-    assigner: Optional[str] = Field(None, description="Display name of the organization that issued the identifier.")
+    use: IdentifierUse | None = Field(
+        None,
+        description="Identifies the purpose for this identifier, if known. usual|official|temp|secondary|old.",
+    )
+    type_system: str | None = Field(
+        None, description="Coding system for identifier type."
+    )
+    type_version: str | None = Field(
+        None, description="Version of the coding system for identifier type."
+    )
+    type_code: str | None = Field(
+        None, description="Code for identifier type (e.g. NPI, DEA, license)."
+    )
+    type_display: str | None = Field(None, description="Display for identifier type.")
+    type_text: str | None = Field(
+        None, description="Plain-text description of identifier type."
+    )
+    type_user_selected: bool | None = Field(
+        None,
+        description="Whether this identifier-type coding was chosen directly by the user.",
+    )
+    system: str = Field(
+        ...,
+        description="Establishes the namespace for the value (e.g. NPI system) — that is, a URL that describes a set of unique values.",
+    )
+    value: str = Field(
+        ..., description="Identifier value (e.g. NPI number, license number)."
+    )
+    period_start: datetime | None = Field(
+        None,
+        description="Start of the period during which this identifier is/was valid for use.",
+    )
+    period_end: datetime | None = Field(
+        None,
+        description="End of the period during which this identifier is/was valid for use.",
+    )
+    assigner: str | None = Field(
+        None,
+        description="Reference(Organization) that issued this identifier, as a FHIR reference string (e.g. 'Organization/100').",
+    )
+    assigner_display: str | None = Field(
+        None, description="Display name of the organization that issued the identifier."
+    )
+    assigner_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the assigning organization isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    assigner_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    assigner_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    assigner_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    assigner_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
 
 class PractitionerTelecomCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    system: ContactPointSystem = Field(..., description="phone|fax|email|pager|url|sms|other")
-    value: str = Field(..., description="Contact value (phone number, email address, etc.).")
-    use: Optional[ContactPointUse] = Field(None, description="home|work|temp|old|mobile")
-    rank: Optional[int] = Field(None, ge=1, description="Preferred contact order (1 = most preferred).")
-    period_start: Optional[datetime] = Field(None, description="Start of period when this contact was valid.")
-    period_end: Optional[datetime] = Field(None, description="End of period when this contact was valid.")
+    system: ContactPointSystem = Field(
+        ...,
+        description="Telecommunications form for this contact point — what communications system is required to make use of it. phone|fax|email|pager|url|sms|other.",
+    )
+    value: str = Field(
+        ..., description="Contact value (phone number, email address, etc.)."
+    )
+    use: ContactPointUse | None = Field(
+        None,
+        description="Identifies the purpose for the contact point. home|work|temp|old|mobile.",
+    )
+    rank: int | None = Field(
+        None,
+        ge=1,
+        description="Specifies a preferred order in which to use a set of contacts. Lower values are more preferred than higher values.",
+    )
+    period_start: datetime | None = Field(
+        None,
+        description="Start of the period during which this contact point was/is in use.",
+    )
+    period_end: datetime | None = Field(
+        None,
+        description="End of the period during which this contact point was/is in use.",
+    )
 
 
 class PractitionerAddressCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[AddressUse] = Field(None, description="home|work|temp|old|billing")
-    type: Optional[AddressType] = Field(None, description="postal|physical|both")
-    text: Optional[str] = Field(None, description="Full address as plain text.")
-    line: Optional[List[str]] = Field(None, description="Street address lines.")
-    city: Optional[str] = None
-    district: Optional[str] = None
-    state: Optional[str] = None
-    postal_code: Optional[str] = None
-    country: Optional[str] = None
-    period_start: Optional[datetime] = Field(None, description="Start of period when this address was valid.")
-    period_end: Optional[datetime] = Field(None, description="End of period when this address was valid.")
+    use: AddressUse | None = Field(
+        None, description="The purpose of this address. home|work|temp|old|billing."
+    )
+    type: AddressType = Field(
+        ...,
+        description="Distinguishes between physical addresses (those you can visit) and mailing addresses. postal|physical|both.",
+    )
+    text: str | None = Field(None, description="Full address as plain text.")
+    line: list[str] | None = Field(None, description="Street address lines.")
+    city: str = Field(..., description="City, town, or suburb.")
+    district: str | None = Field(
+        None, description="The name of the administrative area (county)."
+    )
+    state: str = Field(..., description="State, province, or region.")
+    postal_code: str = Field(..., description="Postal or ZIP code.")
+    country: str = Field(..., description="Country.")
+    period_start: datetime | None = Field(
+        None, description="Start of the period during which this address was/is in use."
+    )
+    period_end: datetime | None = Field(
+        None, description="End of the period during which this address was/is in use."
+    )
 
 
 class PractitionerPhotoCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    content_type: Optional[str] = Field(None, description="MIME type (e.g. image/png).")
-    language: Optional[str] = Field(None, description="BCP-47 language code.")
-    data: Optional[str] = Field(None, description="Base64-encoded image data.")
-    url: Optional[str] = Field(None, description="URL where the image can be retrieved.")
-    size: Optional[int] = Field(None, description="Size in bytes before base64 encoding.")
-    hash: Optional[str] = Field(None, description="Base64-encoded SHA-1 hash of the data.")
-    title: Optional[str] = Field(None, description="Label or display title.")
-    creation: Optional[datetime] = Field(None, description="When the image was created.")
+    content_type: str | None = Field(None, description="MIME type (e.g. image/png).")
+    language: str | None = Field(None, description="BCP-47 language code.")
+    data: str | None = Field(None, description="Base64-encoded image data.")
+    url: str = Field(..., description="URL where the image can be retrieved.")
+    size: int | None = Field(None, description="Size in bytes before base64 encoding.")
+    hash: str | None = Field(None, description="Base64-encoded SHA-1 hash of the data.")
+    title: str | None = Field(None, description="Label or display title.")
+    creation: datetime | None = Field(None, description="When the image was created.")
 
 
 class QualificationIdentifierCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[IdentifierUse] = Field(None, description="usual|official|temp|secondary|old")
-    type_system: Optional[str] = Field(None, description="Coding system for identifier type.")
-    type_code: Optional[str] = Field(None, description="Code for identifier type.")
-    type_display: Optional[str] = Field(None, description="Display for identifier type.")
-    type_text: Optional[str] = Field(None, description="Plain-text description of identifier type.")
-    system: Optional[str] = Field(None, description="Namespace URI for the qualification identifier.")
+    use: IdentifierUse | None = Field(
+        None,
+        description="Identifies the purpose for this identifier, if known. usual|official|temp|secondary|old.",
+    )
+    type_system: str | None = Field(
+        None, description="Coding system for identifier type."
+    )
+    type_version: str | None = Field(
+        None, description="Version of the coding system for identifier type."
+    )
+    type_code: str | None = Field(None, description="Code for identifier type.")
+    type_display: str | None = Field(None, description="Display for identifier type.")
+    type_text: str | None = Field(
+        None, description="Plain-text description of identifier type."
+    )
+    type_user_selected: bool | None = Field(
+        None,
+        description="Whether this identifier-type coding was chosen directly by the user.",
+    )
+    system: str = Field(
+        ..., description="Namespace URI for the qualification identifier."
+    )
     value: str = Field(..., description="Qualification or license number.")
-    period_start: Optional[datetime] = Field(None, description="Start of identifier validity period.")
-    period_end: Optional[datetime] = Field(None, description="End of identifier validity period.")
-    assigner: Optional[str] = Field(None, description="Display name of the issuing organization.")
+    period_start: datetime | None = Field(
+        None,
+        description="Start of the period during which this identifier is/was valid for use.",
+    )
+    period_end: datetime | None = Field(
+        None,
+        description="End of the period during which this identifier is/was valid for use.",
+    )
+    assigner: str | None = Field(
+        None,
+        description="Reference(Organization) that issued this identifier, as a FHIR reference string (e.g. 'Organization/100').",
+    )
+    assigner_display: str | None = Field(
+        None, description="Display name of the issuing organization."
+    )
+    assigner_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the assigning organization isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    assigner_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    assigner_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    assigner_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    assigner_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
 
 class PractitionerQualificationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    identifier: Optional[List[QualificationIdentifierCreate]] = Field(
+    identifier: list[QualificationIdentifierCreate] | None = Field(
         None, description="Identifiers for this qualification (e.g. license numbers)."
     )
-    code_system: Optional[str] = Field(None, description="Coding system for the qualification type (e.g. http://snomed.info/sct).")
-    code_code: Optional[str] = Field(None, description="Coded qualification type (e.g. '394814009').")
-    code_display: Optional[str] = Field(None, description="Display for the qualification code.")
-    code_text: Optional[str] = Field(None, description="Human-readable qualification type, e.g. 'MD - Doctor of Medicine'.")
-    status_system: Optional[str] = Field(None, description="Coding system for qualification status.")
-    status_code: Optional[str] = Field(None, description="Status code (e.g. active, inactive, pending).")
-    status_display: Optional[str] = Field(None, description="Display for the status code.")
-    status_text: Optional[str] = Field(None, description="Human-readable qualification status.")
-    period_start: Optional[datetime] = Field(None, description="Start of qualification validity period.")
-    period_end: Optional[datetime] = Field(None, description="End of qualification validity period (expiry).")
-    issuer: Optional[str] = Field(None, description="FHIR reference to the issuing organization, e.g. 'Organization/100'.")
-    issuer_display: Optional[str] = Field(None, description="Display name of the issuing organization.")
+    code_system: str | None = Field(
+        None,
+        description="Coding system for the qualification type (e.g. http://snomed.info/sct).",
+    )
+    code_code: str | None = Field(
+        None, description="Coded qualification type (e.g. '394814009')."
+    )
+    code_display: str | None = Field(
+        None, description="Display for the qualification code."
+    )
+    code_text: str | None = Field(
+        None,
+        description="Human-readable qualification type, e.g. 'MD - Doctor of Medicine'.",
+    )
+    status_system: str | None = Field(
+        None, description="Coding system for qualification status."
+    )
+    status_code: str | None = Field(
+        None, description="Status code (e.g. active, inactive, pending)."
+    )
+    status_display: str | None = Field(None, description="Display for the status code.")
+    status_text: str | None = Field(
+        None, description="Human-readable qualification status."
+    )
+    period_start: datetime | None = Field(
+        None, description="Start of the period during which the qualification is valid."
+    )
+    period_end: datetime | None = Field(
+        None,
+        description="End of the period during which the qualification is valid (expiry).",
+    )
+    issuer: str | None = Field(
+        None,
+        description="FHIR reference to the issuing organization, e.g. 'Organization/100'.",
+    )
+    issuer_display: str | None = Field(
+        None, description="Display name of the issuing organization."
+    )
+    issuer_identifier_use: IdentifierUse | None = Field(
+        None,
+        description="Fallback identifier (used when the issuing organization isn't a resource in this system) — usual|official|temp|secondary|old.",
+    )
+    issuer_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — coding system for its type."
+    )
+    issuer_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type coding system."
+    )
+    issuer_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code for its type."
+    )
+    issuer_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    issuer_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — plain-text rendering of its type."
+    )
+    issuer_identifier_type_user_selected: bool | None = Field(
+        None,
+        description="Fallback identifier — whether its type coding was user-selected.",
+    )
+    issuer_identifier_system: str | None = Field(
+        None, description="Fallback identifier — URI namespace."
+    )
+    issuer_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    issuer_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    issuer_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
 
 class PractitionerCommunicationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    language_system: Optional[str] = Field(None, description="URI of the language code system.")
-    language_code: str = Field(..., description="ISO-639-1 language code (e.g. en, fr, de).")
-    language_display: Optional[str] = None
-    language_text: Optional[str] = None
+    language_system: str = Field(..., description="URI of the language code system.")
+    language_version: str | None = Field(
+        None, description="Version of the language code system."
+    )
+    language_code: str = Field(
+        ..., description="ISO-639-1 language code (e.g. en, fr, de)."
+    )
+    language_display: str = Field(
+        ..., description="Human-readable display for the language."
+    )
+    language_text: str | None = None
+    language_user_selected: bool | None = Field(
+        None,
+        description="Whether this language coding was chosen directly by the user.",
+    )
 
 
 # ── Sub-resource patch schemas ────────────────────────────────────────────────
@@ -124,104 +365,149 @@ class PractitionerCommunicationCreate(BaseModel):
 
 class PractitionerNamePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[HumanNameUse] = None
-    text: Optional[str] = None
-    family: Optional[str] = None
-    given: Optional[List[str]] = None
-    prefix: Optional[List[str]] = None
-    suffix: Optional[List[str]] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
+    use: HumanNameUse | None = None
+    text: str | None = None
+    family: str | None = None
+    given: list[str] | None = None
+    prefix: list[str] | None = None
+    suffix: list[str] | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
 
 
 class PractitionerIdentifierPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[IdentifierUse] = None
-    type_system: Optional[str] = None
-    type_code: Optional[str] = None
-    type_display: Optional[str] = None
-    type_text: Optional[str] = None
-    system: Optional[str] = None
-    value: Optional[str] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-    assigner: Optional[str] = None
+    use: IdentifierUse | None = None
+    type_system: str | None = None
+    type_version: str | None = None
+    type_code: str | None = None
+    type_display: str | None = None
+    type_text: str | None = None
+    type_user_selected: bool | None = None
+    system: str | None = None
+    value: str | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    assigner: str | None = None
+    assigner_display: str | None = None
+    assigner_identifier_use: IdentifierUse | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_text: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_system: str | None = None
+    assigner_identifier_value: str | None = None
+    assigner_identifier_period_start: datetime | None = None
+    assigner_identifier_period_end: datetime | None = None
 
 
 class PractitionerTelecomPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    system: Optional[ContactPointSystem] = None
-    value: Optional[str] = None
-    use: Optional[ContactPointUse] = None
-    rank: Optional[int] = Field(None, ge=1)
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
+    system: ContactPointSystem | None = None
+    value: str | None = None
+    use: ContactPointUse | None = None
+    rank: int | None = Field(None, ge=1)
+    period_start: datetime | None = None
+    period_end: datetime | None = None
 
 
 class PractitionerAddressPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[AddressUse] = None
-    type: Optional[AddressType] = None
-    text: Optional[str] = None
-    line: Optional[List[str]] = None
-    city: Optional[str] = None
-    district: Optional[str] = None
-    state: Optional[str] = None
-    postal_code: Optional[str] = None
-    country: Optional[str] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
+    use: AddressUse | None = None
+    type: AddressType | None = None
+    text: str | None = None
+    line: list[str] | None = None
+    city: str | None = None
+    district: str | None = Field(
+        None, description="The name of the administrative area (county)."
+    )
+    state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
 
 
 class PractitionerPhotoPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    content_type: Optional[str] = None
-    language: Optional[str] = None
-    data: Optional[str] = None
-    url: Optional[str] = None
-    size: Optional[int] = None
-    hash: Optional[str] = None
-    title: Optional[str] = None
-    creation: Optional[datetime] = None
+    content_type: str | None = None
+    language: str | None = None
+    data: str | None = None
+    url: str | None = None
+    size: int | None = None
+    hash: str | None = None
+    title: str | None = None
+    creation: datetime | None = None
 
 
 class QualificationIdentifierPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[IdentifierUse] = None
-    type_system: Optional[str] = None
-    type_code: Optional[str] = None
-    type_display: Optional[str] = None
-    type_text: Optional[str] = None
-    system: Optional[str] = None
-    value: Optional[str] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-    assigner: Optional[str] = None
+    use: IdentifierUse | None = None
+    type_system: str | None = None
+    type_version: str | None = None
+    type_code: str | None = None
+    type_display: str | None = None
+    type_text: str | None = None
+    type_user_selected: bool | None = None
+    system: str | None = None
+    value: str | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    assigner: str | None = None
+    assigner_display: str | None = None
+    assigner_identifier_use: IdentifierUse | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_text: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_system: str | None = None
+    assigner_identifier_value: str | None = None
+    assigner_identifier_period_start: datetime | None = None
+    assigner_identifier_period_end: datetime | None = None
 
 
 class PractitionerQualificationPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    identifier: Optional[List[QualificationIdentifierPatch]] = None
-    code_system: Optional[str] = None
-    code_code: Optional[str] = None
-    code_display: Optional[str] = None
-    code_text: Optional[str] = None
-    status_system: Optional[str] = None
-    status_code: Optional[str] = None
-    status_display: Optional[str] = None
-    status_text: Optional[str] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-    issuer: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
-    issuer_display: Optional[str] = None
+    identifier: list[QualificationIdentifierPatch] | None = None
+    code_system: str | None = None
+    code_code: str | None = None
+    code_display: str | None = None
+    code_text: str | None = None
+    status_system: str | None = None
+    status_code: str | None = None
+    status_display: str | None = None
+    status_text: str | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    issuer: str | None = Field(
+        None, description="FHIR reference, e.g. 'Organization/100'."
+    )
+    issuer_display: str | None = None
+    issuer_identifier_use: IdentifierUse | None = None
+    issuer_identifier_type_system: str | None = None
+    issuer_identifier_type_version: str | None = None
+    issuer_identifier_type_code: str | None = None
+    issuer_identifier_type_display: str | None = None
+    issuer_identifier_type_text: str | None = None
+    issuer_identifier_type_user_selected: bool | None = None
+    issuer_identifier_system: str | None = None
+    issuer_identifier_value: str | None = None
+    issuer_identifier_period_start: datetime | None = None
+    issuer_identifier_period_end: datetime | None = None
 
 
 class PractitionerCommunicationPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    language_system: Optional[str] = None
-    language_code: Optional[str] = None
-    language_display: Optional[str] = None
-    language_text: Optional[str] = None
+    language_system: str | None = None
+    language_version: str | None = None
+    language_code: str | None = None
+    language_display: str | None = None
+    language_text: str | None = None
+    language_user_selected: bool | None = None
 
 
 # ── Practitioner create / patch ────────────────────────────────────────────────
@@ -233,7 +519,6 @@ class PractitionerCreateSchema(BaseModel):
         json_schema_extra={
             "example": {
                 "user_id": "user-uuid-123",
-                "org_id": "org-uuid-456",
                 "active": True,
                 "gender": "female",
                 "birth_date": "1978-03-15",
@@ -241,21 +526,33 @@ class PractitionerCreateSchema(BaseModel):
         },
     )
 
-    user_id: Optional[str] = None
-    org_id: Optional[str] = None
-    created_by: Optional[str] = None
-    active: Optional[bool] = True
-    gender: Optional[AdministrativeGender] = None
-    birth_date: Optional[date] = None
+    user_id: str | None = Field(
+        None,
+        description="Gateway-forwarded ID of the user who owns this record (JWT sub). Describes who this Practitioner record belongs to — not a field of the FHIR Practitioner resource's own clinical content.",
+    )
+    active: bool | None = Field(
+        True, description="Whether this practitioner's record is in active use."
+    )
+    gender: AdministrativeGender = Field(
+        ...,
+        description="Administrative Gender — the gender that the person is considered to have for administration and record keeping purposes. male|female|other|unknown.",
+    )
+    birth_date: date = Field(..., description="The date of birth for the practitioner.")
 
 
 class PractitionerPatchSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    active: Optional[bool] = None
-    gender: Optional[AdministrativeGender] = None
-    birth_date: Optional[date] = None
-    updated_by: Optional[str] = None
+    active: bool | None = Field(
+        None, description="Whether this practitioner's record is in active use."
+    )
+    gender: AdministrativeGender | None = Field(
+        None,
+        description="Administrative Gender — the gender that the person is considered to have for administration and record keeping purposes. male|female|other|unknown.",
+    )
+    birth_date: date | None = Field(
+        None, description="The date of birth for the practitioner."
+    )
 
 
 class PractitionerFullCreateSchema(PractitionerCreateSchema):
@@ -264,25 +561,44 @@ class PractitionerFullCreateSchema(PractitionerCreateSchema):
         json_schema_extra={
             "example": {
                 "user_id": "user-uuid-123",
-                "org_id": "org-uuid-456",
                 "active": True,
                 "gender": "female",
                 "birth_date": "1978-03-15",
                 "names": [{"use": "official", "family": "Smith", "given": ["Jane"]}],
-                "identifiers": [{"value": "1234567890", "system": "http://hl7.org/fhir/sid/us-npi"}],
-                "telecom": [{"system": "email", "value": "jane.smith@hospital.org", "use": "work"}],
-                "qualifications": [{"code_code": "MD", "code_display": "Doctor of Medicine", "period_start": "2005-06-01"}],
-                "communications": [{"language_code": "en"}],
+                "identifiers": [
+                    {"system": "http://hl7.org/fhir/sid/us-npi", "value": "1234567890"}
+                ],
+                "telecom": [
+                    {
+                        "system": "email",
+                        "value": "jane.smith@hospital.org",
+                        "use": "work",
+                    }
+                ],
+                "qualifications": [
+                    {
+                        "code_code": "MD",
+                        "code_display": "Doctor of Medicine",
+                        "period_start": "2005-06-01",
+                    }
+                ],
+                "communications": [
+                    {
+                        "language_system": "urn:ietf:bcp:47",
+                        "language_code": "en",
+                        "language_display": "English",
+                    }
+                ],
             }
         },
     )
-    names: Optional[List[PractitionerNameCreate]] = None
-    identifiers: Optional[List[PractitionerIdentifierCreate]] = None
-    telecom: Optional[List[PractitionerTelecomCreate]] = None
-    addresses: Optional[List[PractitionerAddressCreate]] = None
-    photos: Optional[List[PractitionerPhotoCreate]] = None
-    qualifications: Optional[List[PractitionerQualificationCreate]] = None
-    communications: Optional[List[PractitionerCommunicationCreate]] = None
+    names: list[PractitionerNameCreate] | None = None
+    identifiers: list[PractitionerIdentifierCreate] | None = None
+    telecom: list[PractitionerTelecomCreate] | None = None
+    addresses: list[PractitionerAddressCreate] | None = None
+    photos: list[PractitionerPhotoCreate] | None = None
+    qualifications: list[PractitionerQualificationCreate] | None = None
+    communications: list[PractitionerCommunicationCreate] | None = None
 
 
 class PractitionerFullPatchSchema(PractitionerPatchSchema):
@@ -293,16 +609,30 @@ class PractitionerFullPatchSchema(PractitionerPatchSchema):
                 "active": True,
                 "gender": "female",
                 "names": [{"use": "official", "family": "Smith", "given": ["Jane"]}],
-                "telecom": [{"system": "email", "value": "jane.smith@hospital.org", "use": "work"}],
-                "qualifications": [{"code_code": "MD", "code_display": "Doctor of Medicine"}],
-                "communications": [{"language_code": "en"}],
+                "telecom": [
+                    {
+                        "system": "email",
+                        "value": "jane.smith@hospital.org",
+                        "use": "work",
+                    }
+                ],
+                "qualifications": [
+                    {"code_code": "MD", "code_display": "Doctor of Medicine"}
+                ],
+                "communications": [
+                    {
+                        "language_system": "urn:ietf:bcp:47",
+                        "language_code": "en",
+                        "language_display": "English",
+                    }
+                ],
             }
         },
     )
-    names: Optional[List[PractitionerNameCreate]] = None
-    identifiers: Optional[List[PractitionerIdentifierCreate]] = None
-    telecom: Optional[List[PractitionerTelecomCreate]] = None
-    addresses: Optional[List[PractitionerAddressCreate]] = None
-    photos: Optional[List[PractitionerPhotoCreate]] = None
-    qualifications: Optional[List[PractitionerQualificationCreate]] = None
-    communications: Optional[List[PractitionerCommunicationCreate]] = None
+    names: list[PractitionerNameCreate] | None = None
+    identifiers: list[PractitionerIdentifierCreate] | None = None
+    telecom: list[PractitionerTelecomCreate] | None = None
+    addresses: list[PractitionerAddressCreate] | None = None
+    photos: list[PractitionerPhotoCreate] | None = None
+    qualifications: list[PractitionerQualificationCreate] | None = None
+    communications: list[PractitionerCommunicationCreate] | None = None

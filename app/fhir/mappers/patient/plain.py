@@ -76,7 +76,7 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
     }
 
 
-def plain_name(n: "PatientName") -> dict:
+def plain_name(n: PatientName) -> dict:
     """Patient.name (HumanName) → plain snake_case dict. Resource-specific
     (not the shared app.fhir.datatypes.plain_name) because PatientName now
     carries an audit trail that other resources' equivalent tables don't."""
@@ -95,7 +95,7 @@ def plain_name(n: "PatientName") -> dict:
     }
 
 
-def plain_identifier(i: "PatientIdentifier") -> dict:
+def plain_identifier(i: PatientIdentifier) -> dict:
     """Patient.identifier (Identifier) → plain snake_case dict. Resource-specific
     (not the shared app.fhir.datatypes.plain_identifier) because Patient's
     assigner is a resolved Reference(Organization) with an identifier fallback,
@@ -120,7 +120,7 @@ def plain_identifier(i: "PatientIdentifier") -> dict:
     }
 
 
-def plain_telecom(t: "PatientTelecom") -> dict:
+def plain_telecom(t: PatientTelecom) -> dict:
     """Patient.telecom (ContactPoint) → plain snake_case dict. Resource-specific
     because PatientTelecom now carries an audit trail."""
     return {
@@ -136,7 +136,7 @@ def plain_telecom(t: "PatientTelecom") -> dict:
     }
 
 
-def plain_address(a: "PatientAddress") -> dict:
+def plain_address(a: PatientAddress) -> dict:
     """Patient.address (Address) → plain snake_case dict. Resource-specific
     because PatientAddress now carries an audit trail."""
     return {
@@ -157,7 +157,7 @@ def plain_address(a: "PatientAddress") -> dict:
     }
 
 
-def plain_photo(p: "PatientPhoto") -> dict:
+def plain_photo(p: PatientPhoto) -> dict:
     """Patient.photo (Attachment) → plain snake_case dict. Resource-specific
     because PatientPhoto now carries an audit trail."""
     return {
@@ -175,7 +175,7 @@ def plain_photo(p: "PatientPhoto") -> dict:
     }
 
 
-def plain_communication(cm: "PatientCommunication") -> dict:
+def plain_communication(cm: PatientCommunication) -> dict:
     """Patient.communication BackboneElement → plain snake_case dict.
     Resource-specific because PatientCommunication now carries an audit trail."""
     return {
@@ -192,7 +192,7 @@ def plain_communication(cm: "PatientCommunication") -> dict:
     }
 
 
-def plain_contact(c: "PatientContact") -> dict:
+def plain_contact(c: PatientContact) -> dict:
     """Patient.contact BackboneElement → plain snake_case dict, including the
     relationship[] and telecom[] grandchildren inline."""
     return {
@@ -223,9 +223,7 @@ def plain_contact(c: "PatientContact") -> dict:
         "name_period_start": c.name_period_start.isoformat()
         if c.name_period_start
         else None,
-        "name_period_end": c.name_period_end.isoformat()
-        if c.name_period_end
-        else None,
+        "name_period_end": c.name_period_end.isoformat() if c.name_period_end else None,
         "telecom": [
             {
                 "id": t.id,
@@ -265,7 +263,7 @@ def plain_contact(c: "PatientContact") -> dict:
     }
 
 
-def plain_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
+def plain_general_practitioner(gp: PatientGeneralPractitioner) -> dict:
     """Patient.generalPractitioner (Reference) → plain snake_case dict."""
     return {
         "id": gp.id,
@@ -275,7 +273,7 @@ def plain_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
     }
 
 
-def plain_link(lk: "PatientLink") -> dict:
+def plain_link(lk: PatientLink) -> dict:
     """Patient.link BackboneElement → plain snake_case dict."""
     return {
         "id": lk.id,
@@ -286,7 +284,7 @@ def plain_link(lk: "PatientLink") -> dict:
     }
 
 
-def _core_fields(patient: "PatientModel") -> dict:
+def _core_fields(patient: PatientModel) -> dict:
     """
     Scalar-column-only fields shared by to_plain_patient() and
     to_plain_patient_core() — deliberately never touches a relationship
@@ -322,12 +320,12 @@ def _core_fields(patient: "PatientModel") -> dict:
     }
 
 
-def to_plain_patient_core(patient: "PatientModel") -> dict:
+def to_plain_patient_core(patient: PatientModel) -> dict:
     """Patient table scalars only — no sub-resource arrays. Backs GET /{patient_id}/core."""
     return {k: v for k, v in _core_fields(patient).items() if v is not None}
 
 
-def to_plain_patient(patient: "PatientModel") -> dict:
+def to_plain_patient(patient: PatientModel) -> dict:
     """Full plain snake_case Patient representation, including every
     populated sub-resource array. Backs GET /{patient_id} and the
     create/patch routes."""
