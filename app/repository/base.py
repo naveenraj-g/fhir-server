@@ -13,7 +13,7 @@ the reusable pieces of THAT) and hand the resulting statements to
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
@@ -29,14 +29,14 @@ class BaseRepository:
         self,
         session: AsyncSession,
         base_stmt: Select,
-        count_stmt: Optional[Select],
+        count_stmt: Select | None,
         *,
         sort_column,
         sort_desc: bool,
         limit: int,
         offset: int,
         total_mode: str = "accurate",
-    ) -> Tuple[Sequence, Optional[int]]:
+    ) -> tuple[Sequence, int | None]:
         """
         Run a filtered-but-unsorted-and-unpaginated `base_stmt` (rows) and its
         matching `count_stmt` (COUNT(*), same filters, no sort/limit/offset —
@@ -48,10 +48,14 @@ class BaseRepository:
         table when it only needs the current page (see
         app.core.pagination.ListParams).
         """
-        ordered = base_stmt.order_by(sort_column.desc() if sort_desc else sort_column.asc())
-        rows = list((await session.execute(ordered.offset(offset).limit(limit))).scalars().all())
+        ordered = base_stmt.order_by(
+            sort_column.desc() if sort_desc else sort_column.asc()
+        )
+        rows = list(
+            (await session.execute(ordered.offset(offset).limit(limit))).scalars().all()
+        )
 
-        total: Optional[int] = None
+        total: int | None = None
         if total_mode != "none" and count_stmt is not None:
             total = (await session.execute(count_stmt)).scalar_one()
 
