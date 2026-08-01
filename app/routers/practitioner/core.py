@@ -4,9 +4,7 @@ from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.pagination import ListParams
-from app.deps.practitioner_deps import resolve_practitioner
 from app.di.dependencies.practitioner import get_practitioner_service
-from app.models.practitioner import PractitionerModel
 from app.schemas.enums import AddressUse, AdministrativeGender
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
@@ -148,7 +146,7 @@ async def get_practitioner(
 async def patch_practitioner(
     payload: PractitionerPatchSchema,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
@@ -156,7 +154,7 @@ async def patch_practitioner(
     raises NotFoundError (404, not 403 — avoids leaking that a practitioner
     with this id exists in another org) if actor.org_id doesn't match."""
     updated = await practitioner_service.patch_practitioner(
-        practitioner.practitioner_id, payload, actor.sub, actor.org_id
+        practitioner_id, payload, actor.sub, actor.org_id
     )
     return format_response(
         practitioner_service._to_fhir(updated),
@@ -182,14 +180,14 @@ async def patch_practitioner(
 async def patch_practitioner_full(
     payload: PractitionerFullPatchSchema,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     """Same actor-derived updated_by and org_id ownership gate as
     patch_practitioner — patch_practitioner_full() raises NotFoundError (404) on mismatch."""
     updated = await practitioner_service.patch_practitioner_full(
-        practitioner.practitioner_id, payload, actor.sub, actor.org_id
+        practitioner_id, payload, actor.sub, actor.org_id
     )
     return format_response(
         practitioner_service._to_fhir(updated),
@@ -350,13 +348,13 @@ async def list_practitioners(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_practitioner(
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
-    """resolve_practitioner() already 404'd if the id doesn't exist at all;
-    delete_practitioner() raises NotFoundError (404) again if it exists but
-    belongs to a different org. Delete cascades to every sub-resource row."""
+    """delete_practitioner() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org. Delete
+    cascades to every sub-resource row."""
     await practitioner_service.delete_practitioner(
-        practitioner.practitioner_id, actor.org_id
+        practitioner_id, actor.org_id
     )

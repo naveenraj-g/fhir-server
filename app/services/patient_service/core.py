@@ -89,12 +89,7 @@ class _CoreMixin:
         single enforcement point for Patient's "no org-less bypass" invariant:
         every read/write path that must be tenant-scoped (get_patient_by_id,
         get_patient_core, list_patients, and all 36 sub-resource methods)
-        goes through here instead of repeating the check per call site.
-
-        Deliberately NOT used by resolve_patient() (app/deps/patient_deps.py),
-        which calls get_patient() directly with no org_id at all — that's an
-        intentional existence-only 404 check before the caller's org is even
-        known, per the "resolve deps don't enforce ownership" convention."""
+        goes through here instead of repeating the check per call site."""
         if not org_id:
             raise PermissionDeniedError("Patient operation requires an org-scoped token")
         return await self.get_patient(patient_id, org_id=org_id, core=core)

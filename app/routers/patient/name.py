@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.patient_deps import resolve_patient
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_human_name
 from app.fhir.mappers.patient import plain_name
-from app.models.patient.patient import PatientModel
 from app.schemas.patient import NameCreate, NamePatch
 from app.services.patient_service import PatientService
 
@@ -39,7 +37,7 @@ router = APIRouter()
 async def add_name(
     payload: NameCreate,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -47,7 +45,7 @@ async def add_name(
     add_name() raises NotFoundError (404) if the patient belongs to a
     different org."""
     updated = await patient_service.add_name(
-        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+        patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
@@ -67,13 +65,13 @@ async def add_name(
 )
 async def list_names(
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_human_name()/plain_name() mappers directly — bypasses
     the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
-    items = await patient_service.get_names(patient.patient_id, org_id=actor.org_id)
+    items = await patient_service.get_names(patient_id, org_id=actor.org_id)
     plain = [plain_name(n) for n in items]
     if wants_fhir(request):
         fhir = [{"id": n.id, **fhir_human_name(n)} for n in items]
@@ -97,13 +95,13 @@ async def list_names(
 )
 async def delete_name(
     name_id: int,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """delete_name() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or if name_id doesn't belong to it."""
-    await patient_service.delete_name(patient.patient_id, name_id, org_id=actor.org_id)
+    await patient_service.delete_name(patient_id, name_id, org_id=actor.org_id)
 
 
 @router.patch(
@@ -121,7 +119,7 @@ async def patch_name(
     name_id: int,
     payload: NamePatch,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -129,7 +127,7 @@ async def patch_name(
     Patient. patch_name() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or name_id doesn't belong to it."""
     updated = await patient_service.patch_name(
-        patient.patient_id, name_id, payload, org_id=actor.org_id, updated_by=actor.sub
+        patient_id, name_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request

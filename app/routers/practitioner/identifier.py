@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.practitioner_deps import resolve_practitioner
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.mappers.practitioner import fhir_identifier, plain_identifier
-from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import (
     PractitionerIdentifierCreate,
     PractitionerIdentifierPatch,
@@ -44,12 +42,12 @@ router = APIRouter()
 async def add_identifier(
     payload: PractitionerIdentifierCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_identifier(
-        practitioner.practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
+        practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         practitioner_service._to_fhir(updated),
@@ -71,12 +69,12 @@ async def add_identifier(
 )
 async def list_identifiers(
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_identifiers(
-        practitioner.practitioner_id, org_id=actor.org_id
+        practitioner_id, org_id=actor.org_id
     )
     plain = [plain_identifier(i) for i in items]
     if wants_fhir(request):
@@ -101,12 +99,12 @@ async def list_identifiers(
 )
 async def delete_identifier(
     identifier_id: int,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     await practitioner_service.delete_identifier(
-        practitioner.practitioner_id, identifier_id, org_id=actor.org_id
+        practitioner_id, identifier_id, org_id=actor.org_id
     )
 
 
@@ -125,12 +123,12 @@ async def patch_identifier(
     identifier_id: int,
     payload: PractitionerIdentifierPatch,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.patch_identifier(
-        practitioner.practitioner_id,
+        practitioner_id,
         identifier_id,
         payload,
         org_id=actor.org_id,

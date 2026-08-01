@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.practitioner_deps import resolve_practitioner
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_telecom
 from app.fhir.mappers.practitioner import plain_telecom
-from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerTelecomCreate, PractitionerTelecomPatch
 from app.services.practitioner_service import PractitionerService
 
@@ -41,12 +39,12 @@ router = APIRouter()
 async def add_telecom(
     payload: PractitionerTelecomCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_telecom(
-        practitioner.practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
+        practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         practitioner_service._to_fhir(updated),
@@ -68,12 +66,12 @@ async def add_telecom(
 )
 async def list_telecom(
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_telecoms(
-        practitioner.practitioner_id, org_id=actor.org_id
+        practitioner_id, org_id=actor.org_id
     )
     plain = [plain_telecom(t) for t in items]
     if wants_fhir(request):
@@ -98,12 +96,12 @@ async def list_telecom(
 )
 async def delete_telecom(
     telecom_id: int,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     await practitioner_service.delete_telecom(
-        practitioner.practitioner_id, telecom_id, org_id=actor.org_id
+        practitioner_id, telecom_id, org_id=actor.org_id
     )
 
 
@@ -122,12 +120,12 @@ async def patch_telecom(
     telecom_id: int,
     payload: PractitionerTelecomPatch,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.patch_telecom(
-        practitioner.practitioner_id,
+        practitioner_id,
         telecom_id,
         payload,
         org_id=actor.org_id,

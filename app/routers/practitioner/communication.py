@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.practitioner_deps import resolve_practitioner
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.mappers.practitioner import (
     fhir_practitioner_communication,
     plain_practitioner_communication,
 )
-from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import (
     PractitionerCommunicationCreate,
     PractitionerCommunicationPatch,
@@ -45,12 +43,12 @@ router = APIRouter()
 async def add_communication(
     payload: PractitionerCommunicationCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_communication(
-        practitioner.practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
+        practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         practitioner_service._to_fhir(updated),
@@ -72,12 +70,12 @@ async def add_communication(
 )
 async def list_communications(
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_communications(
-        practitioner.practitioner_id, org_id=actor.org_id
+        practitioner_id, org_id=actor.org_id
     )
     plain = [plain_practitioner_communication(c) for c in items]
     if wants_fhir(request):
@@ -102,12 +100,12 @@ async def list_communications(
 )
 async def delete_communication(
     comm_id: int,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     await practitioner_service.delete_communication(
-        practitioner.practitioner_id, comm_id, org_id=actor.org_id
+        practitioner_id, comm_id, org_id=actor.org_id
     )
 
 
@@ -126,12 +124,12 @@ async def patch_communication(
     comm_id: int,
     payload: PractitionerCommunicationPatch,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.patch_communication(
-        practitioner.practitioner_id,
+        practitioner_id,
         comm_id,
         payload,
         org_id=actor.org_id,

@@ -4,10 +4,8 @@ from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.pagination import ListParams
-from app.deps.patient_deps import resolve_patient
 from app.di.dependencies.patient import get_patient_service
 from app.models.patient.enums import AddressUse, PatientGender
-from app.models.patient.patient import PatientModel
 from app.schemas.patient import (
     PatientCreateSchema,
     PatientFullCreateSchema,
@@ -198,7 +196,7 @@ async def get_patient_core(
 async def patch_patient(
     payload: PatientPatchSchema,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -207,7 +205,7 @@ async def patch_patient(
     raises NotFoundError (404, not 403 — avoids leaking that a patient with
     this id exists in another org) if actor.org_id doesn't match."""
     updated = await patient_service.patch_patient(
-        patient.patient_id, payload, actor.sub, actor.org_id
+        patient_id, payload, actor.sub, actor.org_id
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
@@ -231,7 +229,7 @@ async def patch_patient(
 async def patch_patient_full(
     payload: PatientFullPatchSchema,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -240,7 +238,7 @@ async def patch_patient_full(
     ownership gate as patch_patient — patch_patient_full() raises
     NotFoundError (404) on mismatch."""
     updated = await patient_service.patch_patient_full(
-        patient.patient_id, payload, actor.sub, actor.org_id
+        patient_id, payload, actor.sub, actor.org_id
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
@@ -428,11 +426,11 @@ async def list_patients(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_patient(
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    """resolve_patient() already 404'd if the id doesn't exist at all;
-    delete_patient() raises NotFoundError (404) again if it exists but
-    belongs to a different org. Delete cascades to every sub-resource row."""
-    await patient_service.delete_patient(patient.patient_id, actor.org_id)
+    """delete_patient() raises NotFoundError (404) if the id doesn't exist at
+    all, or if it exists but belongs to a different org. Delete cascades to
+    every sub-resource row."""
+    await patient_service.delete_patient(patient_id, actor.org_id)

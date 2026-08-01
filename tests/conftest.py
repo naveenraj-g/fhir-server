@@ -21,6 +21,31 @@ from app.main import app, container  # triggers all model & router imports
 from app.auth.dependencies import get_current_user
 from app.middleware.rate_limit import RateLimitMiddleware
 
+# ── SQLite fallback for Postgres-only column types ────────────────────────────
+# TSVECTOR (app/models/terminology/terminology.py) and ARRAY
+# (app/models/practitioner_role/practitioner_role.py) have no SQLite
+# equivalent — create_all() builds every table in FHIRBase.metadata at once,
+# so without these shims every test in the suite errors during fixture setup,
+# not just those two resources'.
+
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
+from sqlalchemy.ext.compiler import compiles
+
+
+@compiles(TSVECTOR, "sqlite")
+def _tsvector_as_text(element, compiler, **kw):
+    return "TEXT"
+
+
+@compiles(ARRAY, "sqlite")
+def _array_as_text(element, compiler, **kw):
+    return "TEXT"
+
+
+@compiles(JSONB, "sqlite")
+def _jsonb_as_text(element, compiler, **kw):
+    return "JSON"
+
 # ── Disable rate limiting for tests ───────────────────────────────────────────
 # The in-process sliding-window limiter accumulates across tests when Redis is
 # unavailable, causing 429s.  We bypass dispatch entirely in the test process.

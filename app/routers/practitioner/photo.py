@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.practitioner_deps import resolve_practitioner
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_photo
 from app.fhir.mappers.practitioner import plain_photo
-from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerPhotoCreate, PractitionerPhotoPatch
 from app.services.practitioner_service import PractitionerService
 
@@ -41,12 +39,12 @@ router = APIRouter()
 async def add_photo(
     payload: PractitionerPhotoCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_photo(
-        practitioner.practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
+        practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         practitioner_service._to_fhir(updated),
@@ -68,12 +66,12 @@ async def add_photo(
 )
 async def list_photos(
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_photos(
-        practitioner.practitioner_id, org_id=actor.org_id
+        practitioner_id, org_id=actor.org_id
     )
     plain = [plain_photo(p) for p in items]
     if wants_fhir(request):
@@ -98,12 +96,12 @@ async def list_photos(
 )
 async def delete_photo(
     photo_id: int,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     await practitioner_service.delete_photo(
-        practitioner.practitioner_id, photo_id, org_id=actor.org_id
+        practitioner_id, photo_id, org_id=actor.org_id
     )
 
 
@@ -122,12 +120,12 @@ async def patch_photo(
     photo_id: int,
     payload: PractitionerPhotoPatch,
     request: Request,
-    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.patch_photo(
-        practitioner.practitioner_id,
+        practitioner_id,
         photo_id,
         payload,
         org_id=actor.org_id,

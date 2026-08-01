@@ -4,9 +4,7 @@ from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.pagination import ListParams
-from app.deps.organization_deps import resolve_organization
 from app.di.dependencies.organization import get_organization_service
-from app.models.organization.organization import OrganizationModel
 from app.schemas.enums import AddressUse
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
 from app.services.organization_service import OrganizationService
@@ -112,14 +110,14 @@ async def get_organization(
 async def patch_organization(
     payload: OrganizationPatchSchema,
     request: Request,
-    organization: OrganizationModel = Depends(resolve_organization),
+    organization_id: int = Path(..., ge=1, description="Public organization identifier."),
     actor: AuthUser = Depends(require_permission("organization", "update")),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_organization()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     updated = await organization_service.patch_organization(
-        organization.organization_id, payload, actor.sub, org_id=actor.org_id
+        organization_id, payload, actor.sub, org_id=actor.org_id
     )
     return format_response(
         organization_service._to_fhir(updated),
@@ -256,13 +254,13 @@ async def list_organizations(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_organization(
-    organization: OrganizationModel = Depends(resolve_organization),
+    organization_id: int = Path(..., ge=1, description="Public organization identifier."),
     actor: AuthUser = Depends(require_permission("organization", "delete")),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
-    """resolve_organization() already 404'd if the id doesn't exist at all;
-    delete_organization() raises NotFoundError (404) again if it exists but
-    belongs to a different org. Delete cascades to every sub-resource row."""
+    """delete_organization() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org. Delete
+    cascades to every sub-resource row."""
     await organization_service.delete_organization(
-        organization.organization_id, org_id=actor.org_id
+        organization_id, org_id=actor.org_id
     )

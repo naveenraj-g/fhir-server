@@ -28,23 +28,13 @@ class _CoreMixin:
 
     # ── Read ──────────────────────────────────────────────────────────────
 
-    async def get_raw_by_organization_id(
-        self, organization_id: int
-    ) -> OrganizationModel | None:
-        return await self.repository.get_by_organization_id(organization_id)
-
     async def get_organization_scoped(
         self, organization_id: int, org_id: str | None
     ) -> OrganizationModel:
         """Requires an org-scoped actor — raises PermissionDeniedError (403)
         for an org-less token instead of silently falling back to an
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
-        to a different org, so existence isn't leaked. Deliberately NOT used
-        by resolve_organization() (app/deps/organization_deps.py), which
-        calls get_raw_by_organization_id() directly with no org_id at all —
-        that's an intentional existence-only 404 check before the caller's
-        org is even known, per the "resolve deps don't enforce ownership"
-        convention."""
+        to a different org, so existence isn't leaked."""
         if not org_id:
             raise PermissionDeniedError(
                 "Organization operation requires an org-scoped token"

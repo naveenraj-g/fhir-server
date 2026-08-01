@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.patient_deps import resolve_patient
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.mappers.patient import fhir_contact, plain_contact
-from app.models.patient.patient import PatientModel
 from app.schemas.patient import ContactCreate, ContactPatch
 from app.services.patient_service import PatientService
 
@@ -37,13 +35,13 @@ router = APIRouter()
 async def add_contact(
     payload: ContactCreate,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one contact row (plus its relationship[]/telecom[] grandchildren), then return the full updated Patient."""
     updated = await patient_service.add_contact(
-        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+        patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
@@ -63,12 +61,12 @@ async def add_contact(
 )
 async def list_contacts(
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_contact()/plain_contact() mappers directly (not the shared datatypes.py helpers)."""
-    items = await patient_service.get_contacts(patient.patient_id, org_id=actor.org_id)
+    items = await patient_service.get_contacts(patient_id, org_id=actor.org_id)
     plain = [plain_contact(c) for c in items]
     if wants_fhir(request):
         fhir = [{"id": c.id, **fhir_contact(c)} for c in items]
@@ -93,7 +91,7 @@ async def list_contacts(
 )
 async def delete_contact(
     contact_id: int,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -101,7 +99,7 @@ async def delete_contact(
     belongs to a different org, or contact_id doesn't belong to it; cascades
     to its grandchildren."""
     await patient_service.delete_contact(
-        patient.patient_id, contact_id, org_id=actor.org_id
+        patient_id, contact_id, org_id=actor.org_id
     )
 
 
@@ -122,7 +120,7 @@ async def patch_contact(
     contact_id: int,
     payload: ContactPatch,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -131,7 +129,7 @@ async def patch_contact(
     patch_contact() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or contact_id doesn't belong to it."""
     updated = await patient_service.patch_contact(
-        patient.patient_id,
+        patient_id,
         contact_id,
         payload,
         org_id=actor.org_id,

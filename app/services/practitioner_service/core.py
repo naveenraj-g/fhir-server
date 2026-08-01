@@ -25,16 +25,8 @@ class _CoreMixin:
 
     # ── Read ──────────────────────────────────────────────────────────────
 
-    async def get_raw_by_practitioner_id(
-        self, practitioner_id: int
-    ) -> PractitionerModel | None:
-        return await self.repository.get_by_practitioner_id(practitioner_id)
-
     async def get_raw_by_user_id(self, user_id: str) -> PractitionerModel | None:
         return await self.repository.get_by_user_id(user_id)
-
-    async def get_practitioner(self, practitioner_id: int) -> PractitionerModel | None:
-        return await self.repository.get_by_practitioner_id(practitioner_id)
 
     async def get_practitioner_scoped(
         self, practitioner_id: int, org_id: str | None
@@ -45,13 +37,7 @@ class _CoreMixin:
         Practitioner's "no org-less bypass" invariant: every read/write path
         that must be tenant-scoped (get_practitioner_by_id and all 28
         sub-resource methods) goes through here instead of repeating the
-        check per call site.
-
-        Deliberately NOT used by resolve_practitioner()
-        (app/deps/practitioner_deps.py), which calls get_practitioner()
-        directly with no org_id at all — that's an intentional
-        existence-only 404 check before the caller's org is even known, per
-        the "resolve deps don't enforce ownership" convention."""
+        check per call site."""
         if not org_id:
             raise PermissionDeniedError(
                 "Practitioner operation requires an org-scoped token"

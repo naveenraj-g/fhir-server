@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.patient_deps import resolve_patient
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_address
 from app.fhir.mappers.patient import plain_address
-from app.models.patient.patient import PatientModel
 from app.schemas.patient import AddressCreate, AddressPatch
 from app.services.patient_service import PatientService
 
@@ -38,13 +36,13 @@ router = APIRouter()
 async def add_address(
     payload: AddressCreate,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one address row, then return the full updated Patient."""
     updated = await patient_service.add_address(
-        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+        patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
@@ -64,12 +62,12 @@ async def add_address(
 )
 async def list_addresses(
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_address()/plain_address() mappers directly."""
-    items = await patient_service.get_addresses(patient.patient_id, org_id=actor.org_id)
+    items = await patient_service.get_addresses(patient_id, org_id=actor.org_id)
     plain = [plain_address(a) for a in items]
     if wants_fhir(request):
         fhir = [{"id": a.id, **fhir_address(a)} for a in items]
@@ -93,14 +91,14 @@ async def list_addresses(
 )
 async def delete_address(
     address_id: int,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """delete_address() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or address_id doesn't belong to it."""
     await patient_service.delete_address(
-        patient.patient_id, address_id, org_id=actor.org_id
+        patient_id, address_id, org_id=actor.org_id
     )
 
 
@@ -119,7 +117,7 @@ async def patch_address(
     address_id: int,
     payload: AddressPatch,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -127,7 +125,7 @@ async def patch_address(
     Patient. patch_address() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or address_id doesn't belong to it."""
     updated = await patient_service.patch_address(
-        patient.patient_id,
+        patient_id,
         address_id,
         payload,
         org_id=actor.org_id,

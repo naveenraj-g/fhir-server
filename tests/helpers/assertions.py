@@ -64,6 +64,27 @@ def assert_fhir_appointment(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_organization(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) organization response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected organization.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_organization(data: dict, **expected) -> None:
+    """Assert fields on a FHIR organization response."""
+    assert data.get("resourceType") == "Organization", (
+        f"expected resourceType=Organization, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected organization.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
 def assert_paginated(data: dict, *, min_total: int = 1) -> None:
     """Assert structure of a plain paginated list response."""
     assert "total" in data, "paginated response must have 'total'"

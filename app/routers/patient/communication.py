@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
-from app.deps.patient_deps import resolve_patient
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_communication
 from app.fhir.mappers.patient import plain_communication
-from app.models.patient.patient import PatientModel
 from app.schemas.patient import CommunicationCreate, CommunicationPatch
 from app.services.patient_service import PatientService
 
@@ -39,13 +37,13 @@ router = APIRouter()
 async def add_communication(
     payload: CommunicationCreate,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "create")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one communication-language row, then return the full updated Patient."""
     updated = await patient_service.add_communication(
-        patient.patient_id, payload, org_id=actor.org_id, created_by=actor.sub
+        patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
@@ -65,13 +63,13 @@ async def add_communication(
 )
 async def list_communications(
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_communication()/plain_communication() mappers directly."""
     items = await patient_service.get_communications(
-        patient.patient_id, org_id=actor.org_id
+        patient_id, org_id=actor.org_id
     )
     plain = [plain_communication(cm) for cm in items]
     if wants_fhir(request):
@@ -96,14 +94,14 @@ async def list_communications(
 )
 async def delete_communication(
     comm_id: int,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """delete_communication() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or comm_id doesn't belong to it."""
     await patient_service.delete_communication(
-        patient.patient_id, comm_id, org_id=actor.org_id
+        patient_id, comm_id, org_id=actor.org_id
     )
 
 
@@ -122,7 +120,7 @@ async def patch_communication(
     comm_id: int,
     payload: CommunicationPatch,
     request: Request,
-    patient: PatientModel = Depends(resolve_patient),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -131,7 +129,7 @@ async def patch_communication(
     if the Patient is missing, belongs to a different org, or comm_id
     doesn't belong to it."""
     updated = await patient_service.patch_communication(
-        patient.patient_id, comm_id, payload, org_id=actor.org_id, updated_by=actor.sub
+        patient_id, comm_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )
     return format_response(
         patient_service._to_fhir(updated), patient_service._to_plain(updated), request
