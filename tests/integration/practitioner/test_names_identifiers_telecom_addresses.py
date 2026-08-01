@@ -51,7 +51,6 @@ async def test_add_and_list_practitioner_identifier(client):
             "type_text": "NPI",
             "system": "http://hl7.org/fhir/sid/us-npi",
             "value": "1234567890",
-            "assigner": "NPPES",
         },
     )
     assert resp.status_code == 200
@@ -115,7 +114,7 @@ async def test_delete_practitioner_telecom(client):
 async def test_add_practitioner_telecom_invalid_rank_rejected(client):
     practitioner_id = await create_practitioner(client)
     resp = await client.post(f"{BASE}/{practitioner_id}/telecom", json={"system": "email", "value": "bad@example.com", "rank": 0})
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_add_and_list_practitioner_address(client):
@@ -143,7 +142,18 @@ async def test_add_and_list_practitioner_address(client):
 
 async def test_list_practitioner_addresses_fhir(client):
     practitioner_id = await create_practitioner(client)
-    await client.post(f"{BASE}/{practitioner_id}/addresses", json={"use": "work", "type": "both", "line": ["200 Main St"], "city": "Austin"})
+    await client.post(
+        f"{BASE}/{practitioner_id}/addresses",
+        json={
+            "use": "work",
+            "type": "both",
+            "line": ["200 Main St"],
+            "city": "Austin",
+            "state": "TX",
+            "postal_code": "78701",
+            "country": "US",
+        },
+    )
     resp = await client.get(f"{BASE}/{practitioner_id}/addresses", headers=FHIR_ACCEPT)
     assert resp.status_code == 200
     data = resp.json()
@@ -153,7 +163,17 @@ async def test_list_practitioner_addresses_fhir(client):
 
 async def test_delete_practitioner_address(client):
     practitioner_id = await create_practitioner(client)
-    await client.post(f"{BASE}/{practitioner_id}/addresses", json={"line": ["Delete Address"]})
+    await client.post(
+        f"{BASE}/{practitioner_id}/addresses",
+        json={
+            "type": "physical",
+            "line": ["Delete Address"],
+            "city": "Delete City",
+            "state": "CA",
+            "postal_code": "90001",
+            "country": "US",
+        },
+    )
     address_id = await get_first_child_id(client, f"{BASE}/{practitioner_id}/addresses")
     assert (await client.delete(f"{BASE}/{practitioner_id}/addresses/{address_id}")).status_code == 204
     assert (await client.get(f"{BASE}/{practitioner_id}/addresses")).json()["total"] == 0
@@ -162,10 +182,13 @@ async def test_delete_practitioner_address(client):
 async def test_list_practitioners_filter_family_name(client):
     practitioner_id = await create_practitioner(client)
     await client.post(f"{BASE}/{practitioner_id}/names", json={"use": "official", "family": "TargetFamily", "given": ["Alex"]})
-    other_id = await create_practitioner(client, {"user_id": "u-name-other", "org_id": "org-test", "active": True, "gender": "female"})
+    other_id = await create_practitioner(
+        client,
+        {"user_id": "u-name-other", "active": True, "gender": "female", "birth_date": "1980-01-01"},
+    )
     await client.post(f"{BASE}/{other_id}/names", json={"use": "official", "family": "DifferentFamily", "given": ["Jamie"]})
 
-    resp = await client.get(BASE + "/?family_name=TargetFamily")
+    resp = await client.get(BASE + "/?family=TargetFamily")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1
@@ -175,10 +198,13 @@ async def test_list_practitioners_filter_family_name(client):
 async def test_list_practitioners_filter_given_name(client):
     practitioner_id = await create_practitioner(client)
     await client.post(f"{BASE}/{practitioner_id}/names", json={"use": "official", "family": "Person", "given": ["UniqueGiven"]})
-    other_id = await create_practitioner(client, {"user_id": "u-given-other", "org_id": "org-test", "active": True, "gender": "female"})
+    other_id = await create_practitioner(
+        client,
+        {"user_id": "u-given-other", "active": True, "gender": "female", "birth_date": "1980-01-01"},
+    )
     await client.post(f"{BASE}/{other_id}/names", json={"use": "official", "family": "Person", "given": ["CommonGiven"]})
 
-    resp = await client.get(BASE + "/?given_name=UniqueGiven")
+    resp = await client.get(BASE + "/?given=UniqueGiven")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1

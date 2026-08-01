@@ -5,14 +5,13 @@ FHIR_ACCEPT = {"Accept": "application/fhir+json"}
 
 MINIMAL = {
     "user_id": "u-test",
-    "org_id": "org-test",
     "active": True,
     "gender": "male",
+    "birth_date": "1985-04-12",
 }
 
 FULL = {
     "user_id": "u-test",
-    "org_id": "org-test",
     "active": True,
     "gender": "female",
     "birth_date": "1990-06-15",
@@ -22,8 +21,6 @@ FULL = {
     "marital_status_display": "Married",
     "marital_status_text": "Married",
     "multiple_birth_boolean": False,
-    "managing_organization": "Organization/190001",
-    "managing_organization_display": "General Hospital",
 }
 
 

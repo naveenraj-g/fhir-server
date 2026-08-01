@@ -145,8 +145,7 @@ managing_organization = relationship("OrganizationModel", foreign_keys=[managing
 
 ## Step 6 — Sequence allocation
 
-Pick the next unused block from CLAUDE.md:
-Patient=10000, Encounter=20000, Practitioner=30000, Appointment=40000, QR=60000, Vitals=70000, ServiceRequest=80000, MedicationRequest=90000, Procedure=100000, DiagnosticReport=110000, Condition=120000, DeviceRequest=130000, PractitionerRole=140000.
+Pick the next unused 10000-block. **CLAUDE.md's "Sequence allocation" table is the single source of truth** — always read it fresh rather than hard-coding a list here, since it grows with every new resource and duplicating it drifts out of date. It also states the current "next available block" explicitly.
 
 ## Step 7 — Migration
 
@@ -172,9 +171,10 @@ After the model and migration, walk every layer:
 - [ ] `app/models/<resource>/<resource>.py` — ORM model + child tables
 - [ ] `app/models/<resource>/__init__.py` — exports
 - [ ] `app/schemas/<resource>/input.py` — CreateSchema, PatchSchema; CodeableReference inputs include both concept and reference fields
-- [ ] `app/schemas/fhir/<resource>.py` — FHIRXxxSchema, PlainXxxResponse, PaginatedXxxResponse, FHIRXxxBundle
-- [ ] `app/fhir/mappers/<resource>.py` — to_fhir / to_plain; CodeableReference outputs `{"concept": {...}, "reference": {...}}`
+- [ ] `app/schemas/<resource>/response.py` — FHIRXxxSchema, PlainXxxResponse, PaginatedXxxResponse, FHIRXxxBundle; exported from `app/schemas/<resource>/__init__.py` and re-exported from `app/schemas/fhir/__init__.py`
+- [ ] `app/fhir/mappers/<resource>/` package (`fhir.py` + `plain.py` + `__init__.py`) — to_fhir / to_plain; CodeableReference outputs `{"concept": {...}, "reference": {...}}`
 - [ ] `app/repository/<resource>_repository.py` — CRUD, `_with_relationships`, `_apply_list_filters`, `_cast_ref_type` for closed-set enums
+- [ ] If `input.py`/`response.py`/the repository/service/router grow too large (many sub-resources), split each into a per-sub-resource package — see `/split-resource-package`
 - [ ] Migration generated and manually fixed
 - [ ] `uv run alembic upgrade head` applied
 

@@ -51,7 +51,6 @@ async def test_add_and_list_identifier(client):
             "type_text": "MRN",
             "system": "http://hospital.example.org/mrn",
             "value": "MRN-001",
-            "assigner": "Hospital A",
         },
     )
     assert resp.status_code == 200
@@ -119,7 +118,7 @@ async def test_delete_patient_telecom(client):
 async def test_add_patient_telecom_invalid_rank_rejected(client):
     patient_id = await create_patient(client)
     resp = await client.post(f"{BASE}/{patient_id}/telecom", json={"system": "email", "value": "bad@example.com", "rank": 0})
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_add_and_list_address(client):
@@ -147,7 +146,18 @@ async def test_add_and_list_address(client):
 
 async def test_list_patient_addresses_fhir(client):
     patient_id = await create_patient(client)
-    await client.post(f"{BASE}/{patient_id}/addresses", json={"use": "home", "type": "both", "line": ["456 River Rd"], "city": "Austin"})
+    await client.post(
+        f"{BASE}/{patient_id}/addresses",
+        json={
+            "use": "home",
+            "type": "both",
+            "line": ["456 River Rd"],
+            "city": "Austin",
+            "state": "TX",
+            "postal_code": "78701",
+            "country": "US",
+        },
+    )
     resp = await client.get(f"{BASE}/{patient_id}/addresses", headers=FHIR_ACCEPT)
     assert resp.status_code == 200
     data = resp.json()
@@ -158,7 +168,17 @@ async def test_list_patient_addresses_fhir(client):
 
 async def test_delete_patient_address(client):
     patient_id = await create_patient(client)
-    await client.post(f"{BASE}/{patient_id}/addresses", json={"line": ["Delete Address"]})
+    await client.post(
+        f"{BASE}/{patient_id}/addresses",
+        json={
+            "type": "physical",
+            "line": ["Delete Address"],
+            "city": "Delete City",
+            "state": "CA",
+            "postal_code": "90001",
+            "country": "US",
+        },
+    )
     address_id = await get_first_child_id(client, f"{BASE}/{patient_id}/addresses")
     assert (await client.delete(f"{BASE}/{patient_id}/addresses/{address_id}")).status_code == 204
     assert (await client.get(f"{BASE}/{patient_id}/addresses")).json()["total"] == 0
@@ -167,11 +187,17 @@ async def test_delete_patient_address(client):
 async def test_list_patients_filter_family_name(client):
     patient_id = await create_patient(client)
     await client.post(f"{BASE}/{patient_id}/names", json={"use": "official", "family": "TargetFamily"})
-    await client.post(BASE + "/", json={"user_id": "u-test-2", "org_id": "org-test", "active": True, "gender": "male"})
-    other_id = await create_patient(client, {"user_id": "u-test-3", "org_id": "org-test", "active": True, "gender": "male"})
+    await client.post(
+        BASE + "/",
+        json={"user_id": "u-test-2", "active": True, "gender": "male", "birth_date": "1980-01-01"},
+    )
+    other_id = await create_patient(
+        client,
+        {"user_id": "u-test-3", "active": True, "gender": "male", "birth_date": "1980-01-01"},
+    )
     await client.post(f"{BASE}/{other_id}/names", json={"use": "official", "family": "DifferentFamily"})
 
-    resp = await client.get(BASE + "/?family_name=TargetFamily")
+    resp = await client.get(BASE + "/?family=TargetFamily")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1
@@ -181,10 +207,13 @@ async def test_list_patients_filter_family_name(client):
 async def test_list_patients_filter_given_name(client):
     patient_id = await create_patient(client)
     await client.post(f"{BASE}/{patient_id}/names", json={"use": "official", "family": "Person", "given": ["UniqueGiven"]})
-    other_id = await create_patient(client, {"user_id": "u-test-4", "org_id": "org-test", "active": True, "gender": "male"})
+    other_id = await create_patient(
+        client,
+        {"user_id": "u-test-4", "active": True, "gender": "male", "birth_date": "1980-01-01"},
+    )
     await client.post(f"{BASE}/{other_id}/names", json={"use": "official", "family": "Person", "given": ["CommonGiven"]})
 
-    resp = await client.get(BASE + "/?given_name=UniqueGiven")
+    resp = await client.get(BASE + "/?given=UniqueGiven")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 1

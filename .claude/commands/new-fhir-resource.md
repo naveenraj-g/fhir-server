@@ -31,16 +31,18 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
    - `downgrade()`: drop tables in reverse FK order, drop sequence, drop new enum types (not shared ones)
    - Apply: `uv run alembic upgrade head`
 
-6. **Input Schemas** — `app/schemas/<resource>/input.py` (or flat file for simple resources)
+6. **Input Schemas** — `app/schemas/<resource>/input.py`
    - `<Resource>CreateSchema` — `extra="forbid"`, `json_schema_extra` with complete example including `user_id`, `org_id`
    - `<Resource>PatchSchema` — all optional; exclude immutable fields
+   - If the resource has many sub-resources and this file grows large, split it into an `input/` package instead (`core.py` + one file per sub-resource + `__init__.py`) — see `/split-resource-package`. Patient, Practitioner, and Organization all do this.
 
-7. **FHIR Response Schemas** — `app/schemas/fhir/<resource>.py`
+7. **FHIR Response Schemas** — `app/schemas/<resource>/response.py`
    - `FHIR<Resource>Schema` (camelCase + `resourceType`)
    - `Plain<Resource>Response` (snake_case)
    - `Paginated<Resource>Response` (wraps plain with `total`, `limit`, `offset`, `data[]`)
    - `FHIR<Resource>Bundle` (FHIR Bundle with `entry[]`)
-   - Export from `app/schemas/fhir/__init__.py`
+   - Export from `app/schemas/<resource>/__init__.py`, then re-export from `app/schemas/fhir/__init__.py` (the aggregator every router/mapper imports from)
+   - Same split option as input.py — see `/split-resource-package` — Patient/Practitioner/Organization also split `response.py` this way
 
 8. **Mapper** — `app/fhir/mappers/<resource>/` package
    - `fhir.py` — per-child-model FHIR builder functions + `to_fhir_<resource>()` orchestrator
@@ -58,11 +60,13 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
    - Methods: `get_by_<resource>_id()`, `get_me()`, `list()`, `create()`, `patch()`, `delete()`
    - `get_me()` calls `_apply_list_filters()` with `user_id`/`org_id` always set
    - Session-per-operation: `async with self.session_factory() as session:`
+   - Once this file gets large (many sub-resource CRUD methods), split into `app/repository/<resource>_repository/` — see `/split-resource-package`
 
 10. **Service** — `app/services/<resource>_service.py`
     - `_to_fhir(model)` and `_to_plain(model)` wrappers around the mapper
     - `get_raw_by_<resource>_id()` — for auth dep (no relationships needed)
     - `get_me()`, `list_<resource>s()`, `create_<resource>()`, `patch_<resource>()`, `delete_<resource>()`
+    - Same split option as the repository — see `/split-resource-package`
 
 11. **DI Module** — `app/di/modules/<resource>.py`
     ```python
@@ -84,8 +88,10 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
 13. **Wire container** — `app/di/container.py`
     - `<resource> = providers.Container(<Resource>Container, core=core)`
 
-14. **Auth dep** — `app/auth/<resource>_deps.py`
+14. **Auth dep** — `app/auth/<resource>_deps.py` (this is the plain no-auth pattern that ~32 of 35 resources use — see step 14a for the exception)
     - `resolve_<resource>()` — loads model by public ID, raises 404 if not found (no ownership check)
+
+    **14a. Exception — resource needs to validate JWTs directly.** So far only Patient, Practitioner, and Organization do this (never build it for a new resource unless explicitly asked — it's a deliberate, rare exception, not the default). If asked to add it: use `/resource-auth-rollout`, which covers deriving `org_id`/`created_by`/`updated_by` from the verified JWT instead of the request body, org-scoped 404s, and RBAC gates — and skip step 14's plain `resolve_<resource>()` dep entirely, since routes call service methods directly instead (see CLAUDE.md's "Multi-Tenancy & Ownership").
 
 15. **Router** — `app/routers/<resource>.py`
     - Module-level constants: `_SINGLE_200`, `_SINGLE_201`, `_LIST_200` using `inline_schema()`
@@ -95,11 +101,12 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
     - If `status` is a query param, rename to `<res>_status` with `alias="status"` to avoid shadowing `fastapi.status`
     - Never use `response_model=` — use inline `responses=` with `inline_schema()` only
     - **Sub-resource GET + DELETE routes** (for every `0..*` child table — names, identifiers, telecom, etc.):
-      - Add `<Resource><Sub>ListItem` (plain sub-schema + `id: int`) and `<Resource><Sub>ListResponse` to `response.py`, export from both `__init__.py` and `fhir/__init__.py`
+      - Add `<Resource><Sub>ListItem` (plain sub-schema + `id: int`) and `<Resource><Sub>ListResponse` to `response.py` (or the sub-resource's own file if split), export from both `__init__.py` and `fhir/__init__.py`
       - Add module-level `_SUBRES_<SUB>_200` constant using `inline_schema()` — `application/json` only (no `application/fhir+json`)
       - `GET /{resource_id}/<sub>` → `JSONResponse({"data": [...with id...], "total": N})`
       - `DELETE /{resource_id}/<sub>/{id}` → 204 No Content; repository verifies `child.<resource>_id == parent.id` before deleting
       - See CLAUDE.md "Sub-Resource GET + DELETE Endpoints" for the full pattern
+    - Once this file gets large (many sub-resource routes), split into `app/routers/<resource>/` — see `/split-resource-package`
 
 16. **Register router** — `app/routers/__init__.py`
     - `api_router.include_router(<resource>_router, prefix="/<resources>", tags=["<Resources>"])`

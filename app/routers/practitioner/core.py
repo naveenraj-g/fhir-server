@@ -94,6 +94,36 @@ async def create_practitioner_full(
     )
 
 
+# ── /me — declared before /{practitioner_id} so FastAPI doesn't match "me" as
+# a practitioner_id path param ──────────────────────────────────────────────
+
+
+@router.get(
+    "/me",
+    operation_id="get_my_practitioner_profile",
+    summary="Retrieve the authenticated caller's own Practitioner resource",
+    description=(
+        "Scoped to the verified JWT's sub + activeOrganizationId — never a client-"
+        "suppliable value. Returns the one Practitioner record whose user_id/org_id match "
+        "the caller's own token. " + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
+)
+async def get_my_practitioner(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("practitioner", "read")),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    """get_me() raises PermissionDeniedError (403) for an org-less token, or
+    NotFoundError (404) if no practitioner matches the caller's own user_id/org_id."""
+    practitioner = await practitioner_service.get_me(actor.sub, actor.org_id)
+    return format_response(
+        practitioner_service._to_fhir(practitioner),
+        practitioner_service._to_plain(practitioner),
+        request,
+    )
+
+
 @router.get(
     "/{practitioner_id}",
     operation_id="get_practitioner_by_id",

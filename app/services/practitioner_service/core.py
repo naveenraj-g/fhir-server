@@ -49,8 +49,19 @@ class _CoreMixin:
             raise NotFoundError("Practitioner not found")
         return practitioner
 
-    async def get_me(self, user_id: str, org_id: str) -> PractitionerModel | None:
-        return await self.repository.get_me(user_id, org_id)
+    async def get_me(self, user_id: str, org_id: str | None) -> PractitionerModel:
+        """Lookup scoped to both user_id and org_id — backs the GET /me route.
+        Raises PermissionDeniedError (403) for an org-less token — there's no
+        "my own record" without a tenant to scope it to. Raises NotFoundError
+        (404) if no practitioner matches both."""
+        if not org_id:
+            raise PermissionDeniedError(
+                "Practitioner lookup requires an org-scoped token"
+            )
+        practitioner = await self.repository.get_me(user_id, org_id)
+        if not practitioner:
+            raise NotFoundError("Practitioner not found")
+        return practitioner
 
     async def list_practitioners(
         self,

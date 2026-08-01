@@ -8,7 +8,7 @@ Every FHIR resource with sub-resource POST endpoints **must** also have GET + DE
 
 ## Step 1 — Response schemas
 
-Add to `app/schemas/<resource>/response.py` **for each sub-resource** — both plain and FHIR variants:
+Add to `app/schemas/<resource>/response.py` **for each sub-resource** — both plain and FHIR variants. If the resource's schemas have already been split into a package (see `/split-resource-package` — Patient, Practitioner, and Organization all do this), add these classes to that sub-resource's own file (e.g. `response/name.py`) instead of a flat `response.py`, and re-export them from `response/__init__.py`.
 
 ```python
 # ── Plain sub-resource list responses ─────────────────────────────────────────

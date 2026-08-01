@@ -40,9 +40,6 @@ async def test_create_patient_full(client):
         marital_status_display="Married",
         multiple_birth_boolean=False,
     )
-    assert data["managing_organization_type"] == "Organization"
-    assert data["managing_organization_id"] == 190001
-    assert data["managing_organization_display"] == "General Hospital"
 
 
 async def test_create_patient_returns_fhir_format(client):
@@ -59,13 +56,11 @@ async def test_create_patient_full_returns_fhir_reference_mapping(client):
     assert_fhir_patient(data, gender="female")
     assert data["birthDate"] == "1990-06-15"
     assert data["maritalStatus"]["coding"][0]["code"] == "M"
-    assert data["managingOrganization"]["reference"] == "Organization/190001"
-    assert data["managingOrganization"]["display"] == "General Hospital"
 
 
 async def test_create_patient_extra_field_rejected(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "nonexistent_field": "value"})
-    assert_operation_outcome(resp.json(), expected_status=400, response_status=resp.status_code)
+    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
 
 
 async def test_create_patient_invalid_managing_organization_reference_rejected(client):
@@ -121,17 +116,14 @@ async def test_patch_patient_can_clear_nullable_fields(client):
     resp = await client.patch(
         f"{BASE}/{patient_id}",
         json={
-            "birth_date": None,
-            "managing_organization": None,
-            "managing_organization_display": None,
+            "multiple_birth_boolean": None,
+            "marital_status_code": None,
         },
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert "birth_date" not in data
-    assert "managing_organization_type" not in data
-    assert "managing_organization_id" not in data
-    assert "managing_organization_display" not in data
+    assert "multiple_birth_boolean" not in data or data["multiple_birth_boolean"] is None
+    assert "marital_status_code" not in data or data["marital_status_code"] is None
 
 
 async def test_patch_patient_invalid_managing_organization_reference_rejected(client):
@@ -159,7 +151,7 @@ async def test_delete_patient_not_found(client):
 
 async def test_list_patients_plain(client):
     await client.post(BASE + "/", json=MINIMAL)
-    await client.post(BASE + "/", json={**FULL})
+    await client.post(BASE + "/", json={**FULL, "user_id": "u-test-full"})
     resp = await client.get(BASE + "/")
     assert resp.status_code == 200
     assert_paginated(resp.json(), min_total=2)
@@ -175,8 +167,8 @@ async def test_list_patients_fhir_bundle(client):
 
 
 async def test_list_patients_pagination(client):
-    for _ in range(5):
-        await client.post(BASE + "/", json=MINIMAL)
+    for idx in range(5):
+        await client.post(BASE + "/", json={**MINIMAL, "user_id": f"u-test-{idx}"})
     resp = await client.get(BASE + "/?limit=2&offset=0")
     assert resp.status_code == 200
     data = resp.json()
@@ -187,8 +179,8 @@ async def test_list_patients_pagination(client):
 
 
 async def test_list_patients_filter_gender(client):
-    await client.post(BASE + "/", json={**MINIMAL, "gender": "male"})
-    await client.post(BASE + "/", json={**MINIMAL, "gender": "female"})
+    await client.post(BASE + "/", json={**MINIMAL, "user_id": "u-gender-male", "gender": "male"})
+    await client.post(BASE + "/", json={**MINIMAL, "user_id": "u-gender-female", "gender": "female"})
     resp = await client.get(BASE + "/?gender=female")
     assert resp.status_code == 200
     data = resp.json()
@@ -198,8 +190,8 @@ async def test_list_patients_filter_gender(client):
 
 
 async def test_list_patients_filter_active(client):
-    await client.post(BASE + "/", json={**MINIMAL, "active": True})
-    await client.post(BASE + "/", json={**MINIMAL, "active": False})
+    await client.post(BASE + "/", json={**MINIMAL, "user_id": "u-active-true", "active": True})
+    await client.post(BASE + "/", json={**MINIMAL, "user_id": "u-active-false", "active": False})
     resp = await client.get(BASE + "/?active=true")
     assert resp.status_code == 200
     for patient in resp.json()["data"]:

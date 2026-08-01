@@ -12,7 +12,7 @@ from typing import AsyncGenerator
 import pytest
 from fastapi import Request
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import Sequence as SASequence, event
+from sqlalchemy import BigInteger, Sequence as SASequence, event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import StaticPool
 
@@ -105,6 +105,30 @@ def _simulate_sequence(mapper, connection, target) -> None:
                 else:
                     _seq_counters[key] += seq.increment or 1
                 setattr(target, col.name, _seq_counters[key])
+
+
+_pk_counters: dict[str, int] = {}
+
+
+@event.listens_for(FHIRBase, "before_insert", propagate=True)
+def _simulate_bigint_pk(mapper, connection, target) -> None:
+    """SQLite's implicit rowid-alias autoincrement only kicks in for a
+    primary key column whose DDL literally reads INTEGER PRIMARY KEY —
+    BigInteger compiles to BIGINT, which doesn't get that treatment, so it's
+    left NULL on insert (NOT NULL constraint failure) unless simulated here
+    the same way Sequence-based columns are above. Only Patient.id uses
+    BigInteger today, but this covers any future BigInteger PK table too."""
+    pk_cols = list(mapper.local_table.primary_key.columns)
+    if len(pk_cols) != 1:
+        return
+    col = pk_cols[0]
+    if not isinstance(col.type, BigInteger):
+        return
+    if getattr(target, col.name, None) is not None:
+        return
+    key = mapper.local_table.name
+    _pk_counters[key] = _pk_counters.get(key, 0) + 1
+    setattr(target, col.name, _pk_counters[key])
 
 
 # ── TestDatabase ───────────────────────────────────────────────────────────────

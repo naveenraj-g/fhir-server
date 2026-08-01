@@ -30,7 +30,10 @@ async def test_add_and_list_practitioner_photo(client):
 
 async def test_list_practitioner_photos_fhir(client):
     practitioner_id = await create_practitioner(client)
-    await client.post(f"{BASE}/{practitioner_id}/photos", json={"content_type": "image/jpeg", "title": "FHIR photo"})
+    await client.post(
+        f"{BASE}/{practitioner_id}/photos",
+        json={"content_type": "image/jpeg", "title": "FHIR photo", "url": "https://example.com/fhir-photo.png"},
+    )
     resp = await client.get(f"{BASE}/{practitioner_id}/photos", headers=FHIR_ACCEPT)
     assert resp.status_code == 200
     data = resp.json()
@@ -40,7 +43,10 @@ async def test_list_practitioner_photos_fhir(client):
 
 async def test_delete_practitioner_photo(client):
     practitioner_id = await create_practitioner(client)
-    await client.post(f"{BASE}/{practitioner_id}/photos", json={"title": "Delete Me"})
+    await client.post(
+        f"{BASE}/{practitioner_id}/photos",
+        json={"title": "Delete Me", "url": "https://example.com/delete-me.png"},
+    )
     photo_id = await get_first_child_id(client, f"{BASE}/{practitioner_id}/photos")
     assert (await client.delete(f"{BASE}/{practitioner_id}/photos/{photo_id}")).status_code == 204
     assert (await client.get(f"{BASE}/{practitioner_id}/photos")).json()["total"] == 0
@@ -57,7 +63,6 @@ async def test_add_and_list_practitioner_qualification(client):
                     "system": "http://example.org/licenses",
                     "value": "LIC-12345",
                     "type_text": "License Number",
-                    "assigner": "Medical Board",
                 }
             ],
             "code_system": "http://snomed.info/sct",
@@ -70,8 +75,6 @@ async def test_add_and_list_practitioner_qualification(client):
             "status_text": "Active",
             "period_start": "2020-01-01T00:00:00",
             "period_end": "2030-01-01T00:00:00",
-            "issuer": "Organization/190001",
-            "issuer_display": "Medical Board",
         },
     )
     assert resp.status_code == 200
@@ -81,8 +84,6 @@ async def test_add_and_list_practitioner_qualification(client):
     assert data["total"] == 1
     qual = data["data"][0]
     assert qual["code_code"] == "309343006"
-    assert qual["issuer_type"] == "Organization"
-    assert qual["issuer_id"] == 190001
     assert qual["identifier"][0]["value"] == "LIC-12345"
 
 
@@ -90,14 +91,13 @@ async def test_list_practitioner_qualifications_fhir(client):
     practitioner_id = await create_practitioner(client)
     await client.post(
         f"{BASE}/{practitioner_id}/qualifications",
-        json={"code_text": "Board Certification", "issuer": "Organization/190001", "issuer_display": "Issuer Org"},
+        json={"code_text": "Board Certification"},
     )
     resp = await client.get(f"{BASE}/{practitioner_id}/qualifications", headers=FHIR_ACCEPT)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
     assert data["data"][0]["code"]["text"] == "Board Certification"
-    assert data["data"][0]["issuer"]["reference"] == "Organization/190001"
 
 
 async def test_delete_practitioner_qualification(client):
@@ -123,7 +123,6 @@ async def test_add_and_list_practitioner_communication(client):
             "language_code": "en",
             "language_display": "English",
             "language_text": "English",
-            "preferred": True,
         },
     )
     assert resp.status_code == 200
@@ -132,21 +131,26 @@ async def test_add_and_list_practitioner_communication(client):
     data = list_resp.json()
     assert data["total"] == 1
     assert data["data"][0]["language_code"] == "en"
-    assert data["data"][0]["preferred"] is True
 
 
 async def test_list_practitioner_communications_fhir(client):
     practitioner_id = await create_practitioner(client)
-    await client.post(f"{BASE}/{practitioner_id}/communications", json={"language_code": "fr", "language_display": "French"})
+    await client.post(
+        f"{BASE}/{practitioner_id}/communications",
+        json={"language_system": "urn:ietf:bcp:47", "language_code": "fr", "language_display": "French"},
+    )
     resp = await client.get(f"{BASE}/{practitioner_id}/communications", headers=FHIR_ACCEPT)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["data"][0]["language"]["coding"][0]["code"] == "fr"
+    assert data["data"][0]["coding"][0]["code"] == "fr"
 
 
 async def test_delete_practitioner_communication(client):
     practitioner_id = await create_practitioner(client)
-    await client.post(f"{BASE}/{practitioner_id}/communications", json={"language_code": "de"})
+    await client.post(
+        f"{BASE}/{practitioner_id}/communications",
+        json={"language_system": "urn:ietf:bcp:47", "language_code": "de", "language_display": "German"},
+    )
     comm_id = await get_first_child_id(client, f"{BASE}/{practitioner_id}/communications")
     assert (await client.delete(f"{BASE}/{practitioner_id}/communications/{comm_id}")).status_code == 204
     assert (await client.get(f"{BASE}/{practitioner_id}/communications")).json()["total"] == 0

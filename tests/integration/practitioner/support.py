@@ -5,18 +5,16 @@ FHIR_ACCEPT = {"Accept": "application/fhir+json"}
 
 MINIMAL = {
     "user_id": "u-test",
-    "org_id": "org-test",
     "active": True,
     "gender": "female",
+    "birth_date": "1978-03-15",
 }
 
 FULL = {
     "user_id": "u-test",
-    "org_id": "org-test",
     "active": True,
     "gender": "male",
     "birth_date": "1978-03-15",
-    "deceased_boolean": False,
 }
 
 

@@ -210,6 +210,8 @@ Three schema types per resource, all with `model_config = ConfigDict(extra="forb
 
 Recursive schemas (e.g. QuestionnaireResponse items) must call `model_rebuild()` after class definition.
 
+Once `input.py`/`response.py` grow large (many sub-resources), split each into a same-named package (`input/core.py` + one file per sub-resource + `input/__init__.py` re-exporting everything) — see the `/split-resource-package` skill. Patient, Practitioner, and Organization all do this; the module→package conversion is transparent to every existing import.
+
 ---
 
 ## FHIR Mapper Pattern
@@ -319,6 +321,10 @@ Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detaile
 ## Adding a New FHIR Resource
 
 Use the `/new-fhir-resource` skill (`.claude/commands/new-fhir-resource.md`) for the complete 17-step checklist covering model → migration → schemas → mapper → repository → service → DI → router.
+
+Two related skills, used opportunistically rather than as part of every new resource:
+- `/split-resource-package` — once a resource's model/repository/service/router/schema file grows large (many sub-resources), split it into a per-sub-resource package. Patient, Practitioner, and Organization all do this across every layer.
+- `/resource-auth-rollout` — only if explicitly asked to add direct JWT/RBAC auth to a resource (the Patient/Practitioner/Organization pattern). This is a rare, deliberate deviation from the default gateway-trusts-everything pattern, not something to apply by default.
 
 ---
 

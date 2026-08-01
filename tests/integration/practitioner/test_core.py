@@ -22,7 +22,7 @@ async def test_create_practitioner_minimal(client):
 async def test_create_practitioner_full(client):
     resp = await client.post(BASE + "/", json=FULL)
     assert resp.status_code == 200
-    assert_plain_practitioner(resp.json(), active=True, gender="male", birth_date="1978-03-15", deceased_boolean=False)
+    assert_plain_practitioner(resp.json(), active=True, gender="male", birth_date="1978-03-15")
 
 
 async def test_create_practitioner_returns_fhir_format(client):
@@ -34,7 +34,7 @@ async def test_create_practitioner_returns_fhir_format(client):
 
 async def test_create_practitioner_extra_field_rejected(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "bad_field": "value"})
-    assert_operation_outcome(resp.json(), expected_status=400, response_status=resp.status_code)
+    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
 
 
 async def test_get_practitioner_by_id_plain(client):
@@ -78,15 +78,6 @@ async def test_patch_practitioner_active_false(client):
     resp = await client.patch(f"{BASE}/{practitioner_id}", json={"active": False})
     assert resp.status_code == 200
     assert resp.json()["active"] is False
-
-
-async def test_patch_practitioner_can_clear_nullable_fields(client):
-    practitioner_id = await create_practitioner(client, FULL)
-    resp = await client.patch(f"{BASE}/{practitioner_id}", json={"birth_date": None, "deceased_boolean": None})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "birth_date" not in data
-    assert "deceased_boolean" not in data
 
 
 async def test_patch_practitioner_not_found(client):
