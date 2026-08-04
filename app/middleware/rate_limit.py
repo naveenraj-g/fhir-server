@@ -1,6 +1,7 @@
 import asyncio
 import time
 from collections import defaultdict
+from typing import Literal
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
@@ -40,11 +41,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         read_limit: int = 100,
         write_limit: int = 20,
         window_seconds: int = 60,
+        backend: Literal["redis", "memory"] = "redis",
     ):
         super().__init__(app)
         self.read_limit = read_limit
         self.write_limit = write_limit
         self.window = window_seconds
+        self.backend = backend
 
         self.EXCLUDED_PATHS = {"/", "/health", "/health/ready", "/openapi.json"}
         self.EXCLUDED_PREFIXES = ("/docs", "/redoc", "/favicon")
@@ -104,12 +107,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit = self.read_limit if is_read else self.write_limit
         key = f"rate:{user_id}:{request.method}"
 
-        redis = getattr(request.app.state, "redis", None)
+        redis = getattr(request.app.state, "redis", None) if self.backend == "redis" else None
 
         if redis is not None:
             try:
                 allowed, remaining = await self._check_redis(redis, key, limit)
-                backend = "redis"
+                backend_used = "redis"
             except Exception as exc:
                 # Redis call failed mid-request — fall back to local
                 logger.error(
@@ -117,16 +120,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     exc_info=exc,
                 )
                 allowed, remaining = await self._check_local(key, limit)
-                backend = "local"
+                backend_used = "local"
         else:
-            # Redis unavailable at startup or reconnect — use local limiter.
-            # Log at ERROR so this shows up in alerts, not just warning noise.
-            logger.error(
-                "Redis unavailable — rate limiting is process-local only. "
-                "Protection is degraded in multi-instance deployments."
-            )
+            if self.backend == "redis":
+                # Configured for Redis but unavailable at startup or reconnect.
+                # Log at ERROR so this shows up in alerts, not just warning noise.
+                logger.error(
+                    "Redis unavailable — rate limiting is process-local only. "
+                    "Protection is degraded in multi-instance deployments."
+                )
+            # backend == "memory": in-process limiting is the deliberately
+            # configured choice, not a degradation — no error log.
             allowed, remaining = await self._check_local(key, limit)
-            backend = "local"
+            backend_used = "local"
 
         if not allowed:
             logger.info(
@@ -136,7 +142,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "method": request.method,
                     "path": path,
                     "limit": limit,
-                    "backend": backend,
+                    "backend": backend_used,
                 },
             )
             return _make_429(limit, self.window)

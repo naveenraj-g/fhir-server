@@ -291,9 +291,14 @@ REDIS_URL=redis://localhost:6379
 # BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient, Practitioner, and Organization only, so far)
 IAM_JWKS_URL=http://localhost:5001/api/auth/jwks
 IAM_ISSUER=http://localhost:5001
+
+# Rate-limiter backend: "redis" (default, coordinated across instances) or "memory" (per-process only)
+RATE_LIMIT_BACKEND=redis
 ```
 
 `IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, and Organization now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~32 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
+
+`RATE_LIMIT_BACKEND` only selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency.
 
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 
