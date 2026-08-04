@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from app.fhir.datatypes import fhir_enum, fhir_split
 
 if TYPE_CHECKING:
-    from app.models.practitioner.practitioner import (
+    from app.models.practitioner import (
         PractitionerAddress,
         PractitionerCommunication,
         PractitionerIdentifier,

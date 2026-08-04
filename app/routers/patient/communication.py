@@ -8,7 +8,7 @@ from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_communication
 from app.fhir.mappers.patient import plain_communication
 from app.schemas.patient import CommunicationCreate, CommunicationPatch
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 
 from ._responses import (
     _CONTENT_NEG,

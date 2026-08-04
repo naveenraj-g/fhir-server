@@ -7,7 +7,7 @@ from app.core.pagination import ListParams
 from app.di.dependencies.organization import get_organization_service
 from app.schemas.enums import AddressUse
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
-from app.services.organization_service import OrganizationService
+from app.services.organization import OrganizationService
 
 from ._responses import (
     _CONTENT_NEG,
@@ -49,12 +49,12 @@ async def create_organization(
     actor: AuthUser = Depends(require_permission("organization", "create")),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
-    """user_id comes straight off the validated payload, but org_id and
-    created_by both come from the verified JWT (actor.org_id / actor.sub) —
-    org_id is no longer a request body field at all, and an org-less token
-    is rejected outright (403)."""
+    """org_id and created_by both come from the verified JWT (actor.org_id /
+    actor.sub) — org_id is no longer a request body field at all, and an
+    org-less token is rejected outright (403). Organization has no user_id
+    field at all, unlike every other resource."""
     org = await organization_service.create_organization(
-        payload, payload.user_id, actor.org_id, actor.sub
+        payload, actor.org_id, actor.sub
     )
     return format_response(
         organization_service._to_fhir(org), organization_service._to_plain(org), request
@@ -141,7 +141,7 @@ async def patch_organization(
         "`address` (partial match across every Address sub-field) or "
         "`address-city`/`address-state`/`address-postalcode`/`address-country`/`address-use` "
         "(one specific sub-field), `partof`/`endpoint` (FHIR reference string, e.g. "
-        "`Organization/190001` / `Endpoint/1`), or `user_id`. "
+        "`Organization/190001` / `Endpoint/1`). "
         "Always scoped to the caller's own org (from the verified token) — `org_id` is "
         "not a client-suppliable filter. "
         "Sort with `sort` (e.g. `-name`); set `total_mode=none` to skip the COUNT(*) on large "
@@ -156,7 +156,6 @@ async def list_organizations(
     name: str | None = Query(
         None, description="Partial match against organization name or any alias."
     ),
-    user_id: str | None = Query(None),
     identifier: str | None = Query(
         None, description="Exact match on a business identifier value."
     ),
@@ -209,7 +208,6 @@ async def list_organizations(
     list_organizations() raises PermissionDeniedError (403) outright for an
     org-less token."""
     orgs, total = await organization_service.list_organizations(
-        user_id=user_id,
         org_id=actor.org_id,
         active=active,
         name=name,

@@ -8,7 +8,7 @@ from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_address
 from app.fhir.mappers.patient import plain_address
 from app.schemas.patient import AddressCreate, AddressPatch
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 
 from ._responses import (
     _CONTENT_NEG,

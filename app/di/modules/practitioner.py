@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
-from app.repository.practitioner_repository import PractitionerRepository
-from app.services.practitioner_service import PractitionerService
+from app.repository.practitioner import PractitionerRepository
+from app.services.practitioner import PractitionerService
 
 
 class PractitionerContainer(containers.DeclarativeContainer):

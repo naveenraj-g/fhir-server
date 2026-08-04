@@ -31,7 +31,7 @@ from app.models.insurance_plan.insurance_plan import (
     InsurancePlanPlanSpecificCost,
     InsurancePlanType,
 )
-from app.models.organization.organization import OrganizationModel
+from app.models.organization import OrganizationModel
 from app.schemas.insurance_plan.input import (
     InsurancePlanCreateSchema,
     InsurancePlanPatchSchema,

@@ -27,9 +27,9 @@ from app.models.episode_of_care.episode_of_care import (
     EpisodeOfCareType,
 )
 from app.models.condition.condition import ConditionModel
-from app.models.organization.organization import OrganizationModel
-from app.models.patient.patient import PatientModel
-from app.models.practitioner.practitioner import PractitionerModel
+from app.models.organization import OrganizationModel
+from app.models.patient import PatientModel
+from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role.practitioner_role import PractitionerRoleModel
 from app.models.service_request.service_request import ServiceRequestModel
 from app.schemas.episode_of_care.input import (

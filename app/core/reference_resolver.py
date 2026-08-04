@@ -17,9 +17,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors.domain import BusinessRuleViolationError
-from app.models.organization.organization import OrganizationModel
-from app.models.patient.patient import PatientModel
-from app.models.practitioner.practitioner import PractitionerModel
+from app.models.organization import OrganizationModel
+from app.models.patient import PatientModel
+from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role.practitioner_role import PractitionerRoleModel
 from app.models.related_person.related_person import RelatedPersonModel
 

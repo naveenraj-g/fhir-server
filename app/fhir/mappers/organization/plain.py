@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from app.fhir.datatypes import fhir_enum, fhir_split
 
 if TYPE_CHECKING:
-    from app.models.organization.organization import (
+    from app.models.organization import (
         OrganizationContact,
         OrganizationEndpoint,
         OrganizationIdentifier,
@@ -222,7 +222,6 @@ def to_plain_organization(org: OrganizationModel) -> dict:
         "address": [plain_org_address(a) for a in (org.addresses or [])],
         "contact": [plain_org_contact(c) for c in (org.contacts or [])],
         "endpoint": [plain_org_endpoint(e) for e in (org.endpoints or [])],
-        "user_id": org.user_id,
         "org_id": org.org_id,
         "created_at": org.created_at.isoformat() if org.created_at else None,
         "updated_at": org.updated_at.isoformat() if org.updated_at else None,

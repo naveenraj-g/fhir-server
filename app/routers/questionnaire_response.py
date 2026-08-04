@@ -8,7 +8,7 @@ from app.core.content_negotiation import format_response, format_paginated_respo
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.questionnaire_response import get_questionnaire_response_service
 from app.models.questionnaire_response.questionnaire_response import QuestionnaireResponseModel
-from app.schemas.fhir import (
+from app.schemas.questionnaire_response.response import (
     FHIRQuestionnaireResponseSchema,
     FHIRQuestionnaireResponseBundle,
     PaginatedQuestionnaireResponseResponse,

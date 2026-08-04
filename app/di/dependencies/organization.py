@@ -2,7 +2,7 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import Depends
 
 from app.di.container import Container
-from app.services.organization_service import OrganizationService
+from app.services.organization import OrganizationService
 
 
 @inject

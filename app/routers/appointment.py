@@ -9,7 +9,7 @@ from app.core.schema_utils import inline_schema
 from app.di.dependencies.appointment import get_appointment_service
 from app.models.appointment.appointment import AppointmentModel
 from app.schemas.appointment import AppointmentCreateSchema, AppointmentPatchSchema
-from app.schemas.fhir import (
+from app.schemas.appointment.response import (
     FHIRAppointmentSchema,
     FHIRAppointmentBundle,
     PaginatedAppointmentResponse,

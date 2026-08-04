@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
 from app.models.location.location import LocationModel
-from app.models.organization.organization import OrganizationModel
+from app.models.organization import OrganizationModel
 from app.models.healthcare_service.enums import (
     HealthcareServiceCoverageAreaReferenceType,
     HealthcareServiceEndpointReferenceType,

@@ -7,7 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
-from app.models.organization.organization import OrganizationModel
+from app.models.organization import OrganizationModel
 from app.models.location.enums import (
     LocationEndpointReferenceType,
     LocationMode,

@@ -25,7 +25,7 @@ from app.models.allergy_intolerance.allergy_intolerance import (
 )
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType
-from app.models.patient.patient import PatientModel
+from app.models.patient import PatientModel
 from app.schemas.allergy_intolerance.input import (
     AllergyIntoleranceCreateSchema,
     AllergyIntolerancePatchSchema,

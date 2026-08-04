@@ -8,7 +8,7 @@ from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_telecom
 from app.fhir.mappers.practitioner import plain_telecom
 from app.schemas.practitioner import PractitionerTelecomCreate, PractitionerTelecomPatch
-from app.services.practitioner_service import PractitionerService
+from app.services.practitioner import PractitionerService
 
 from ._responses import (
     _CONTENT_NEG,

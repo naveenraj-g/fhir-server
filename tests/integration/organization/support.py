@@ -4,13 +4,11 @@ BASE = "/api/fhir/v1/organizations"
 FHIR_ACCEPT = {"Accept": "application/fhir+json"}
 
 MINIMAL = {
-    "user_id": "u-test",
     "active": True,
     "name": "Test Hospital",
 }
 
 FULL = {
-    "user_id": "u-test",
     "active": True,
     "name": "General Hospital",
     "identifier": [

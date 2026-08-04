@@ -9,7 +9,7 @@ from app.core.schema_utils import inline_schema
 from app.di.dependencies.encounter import get_encounter_service
 from app.models.encounter.encounter import EncounterModel
 from app.schemas.encounter import EncounterCreateSchema, EncounterPatchSchema
-from app.schemas.fhir import (
+from app.schemas.encounter.response import (
     FHIREncounterSchema,
     FHIREncounterBundle,
     PaginatedEncounterResponse,

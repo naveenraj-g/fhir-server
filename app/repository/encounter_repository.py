@@ -37,7 +37,7 @@ from app.models.encounter.enums import (
     EncounterLocationReferenceType,
 )
 from app.models.enums import SubjectReferenceType, OrganizationReferenceType
-from app.models.organization.organization import OrganizationModel
+from app.models.organization import OrganizationModel
 from app.schemas.encounter import EncounterCreateSchema, EncounterPatchSchema
 
 

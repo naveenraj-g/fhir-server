@@ -24,7 +24,7 @@ from app.models.invoice.enums import (
     InvoiceLineItemChargeItemReferenceType,
 )
 from app.models.enums import OrganizationReferenceType
-from app.models.organization.organization import OrganizationModel
+from app.models.organization import OrganizationModel
 from app.schemas.invoice.input import InvoiceCreateSchema, InvoicePatchSchema
 
 

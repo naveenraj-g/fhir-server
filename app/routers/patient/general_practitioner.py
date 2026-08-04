@@ -10,7 +10,7 @@ from app.fhir.mappers.patient import (
     plain_general_practitioner,
 )
 from app.schemas.patient import GeneralPractitionerCreate, GeneralPractitionerPatch
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 
 from ._responses import (
     _CONTENT_NEG,

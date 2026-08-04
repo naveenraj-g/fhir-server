@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional, Tuple
 
 from app.models.vitals.vitals import VitalsModel
-from app.repository.patient_repository import PatientRepository
+from app.repository.patient import PatientRepository
 from app.repository.vitals_repository import VitalsRepository
 from app.schemas.vitals import VitalsCreateSchema, VitalsPatchSchema
 

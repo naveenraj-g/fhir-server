@@ -7,7 +7,7 @@ from app.models.enums import SubjectReferenceType
 from app.repository.encounter_repository import EncounterRepository
 from app.schemas.encounter import EncounterCreateSchema, EncounterPatchSchema
 from app.fhir.mappers.encounter import to_fhir_encounter, to_plain_encounter
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 
 
 class EncounterService:

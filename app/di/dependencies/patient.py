@@ -1,6 +1,6 @@
 from dependency_injector.wiring import inject, Provide
 from fastapi import Depends
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 from app.di.container import Container
 
 

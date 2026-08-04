@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType, OrganizationReferenceType
 from app.models.location.location import LocationModel
-from app.models.patient.patient import PatientModel
+from app.models.patient import PatientModel
 from app.models.immunization.enums import (
     ImmunizationLocationReferenceType,
     ImmunizationPatientReferenceType,
@@ -31,7 +31,7 @@ from app.models.immunization.immunization import (
     ImmunizationReasonReference,
     ImmunizationSubpotentReason,
 )
-from app.models.organization.organization import OrganizationModel
+from app.models.organization import OrganizationModel
 from app.schemas.immunization.input import (
     ImmunizationCreateSchema,
     ImmunizationPatchSchema,

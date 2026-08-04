@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
-from app.repository.organization_repository import OrganizationRepository
-from app.services.organization_service import OrganizationService
+from app.repository.organization import OrganizationRepository
+from app.services.organization import OrganizationService
 
 
 class OrganizationContainer(containers.DeclarativeContainer):

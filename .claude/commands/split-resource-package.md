@@ -1,6 +1,8 @@
 # Split a Large Resource File into a Per-Sub-Resource Package
 
-Converts a single large file (`app/models/<resource>/<resource>.py`, `app/repository/<resource>_repository.py`, `app/services/<resource>_service.py`, `app/routers/<resource>.py`, `app/schemas/<resource>/input.py`, `app/schemas/<resource>/response.py`) into a same-named package directory with one file per sub-resource. This is the pattern Patient, Practitioner, and Organization all use — apply it to any resource once its file becomes hard to navigate (roughly once it has 4+ sub-resources or crosses ~500 lines).
+Converts a single large file (`app/models/<resource>/<resource>.py`, `app/repository/<resource>_repository.py`, `app/services/<resource>_service.py`, `app/routers/<resource>.py`, `app/schemas/<resource>/input.py`, `app/schemas/<resource>/response.py`) into a package directory with one file per sub-resource. This is the pattern Patient, Practitioner, and Organization all use — apply it to any resource once its file becomes hard to navigate (roughly once it has 4+ sub-resources or crosses ~500 lines).
+
+For repository/service specifically, the resulting package drops the `_repository`/`_service` suffix — the suffix earns its keep on a flat file sharing a directory with ~35 other resources' flat files (`app/repository/encounter_repository.py`), but once it's its own package directory that redundancy isn't needed: `app/repository/<resource>_repository.py` → `app/repository/<resource>/` (not `app/repository/<resource>_repository/`), same for `app/services/<resource>_service.py` → `app/services/<resource>/`. Class names (`<Resource>Repository`, `<Resource>Service`) and DI provider attribute names are unaffected — this is a directory-name-only change. Models, router, and schema splits keep their same-named package (`app/routers/<resource>.py` → `app/routers/<resource>/`, etc.) since there's no suffix to drop there.
 
 ## ARGUMENTS: $RESOURCE $LAYER
 
@@ -24,7 +26,7 @@ Grep the whole `app/` tree for any import that reaches *past* the package root i
 grep -rn "from app.schemas.<resource>.input import\|from app.schemas.<resource>.response import" app/ --include="*.py" | grep -v "app/schemas/<resource>/"
 ```
 
-(Adjust the path for whichever layer you're splitting — `app.repository.<resource>_repository`, `app.services.<resource>_service`, `app.routers.<resource>`, `app.models.<resource>.<resource>`.)
+(Adjust the path for whichever layer you're splitting — `app.repository.<resource>_repository`, `app.services.<resource>_service`, `app.routers.<resource>`, `app.models.<resource>.<resource>`. Note the repository/service *targets* are `app.repository.<resource>`/`app.services.<resource>` post-split — see Step 1.)
 
 If every consumer imports via the package root (e.g. `from app.schemas.patient import X` or `from app.schemas.fhir import X`), the split is safe — those imports don't care whether the target is a module or a package. If something imports a deeply-nested path directly, note it; you'll need to either update that one caller or keep re-exporting from the same relative location inside the new package.
 
@@ -50,6 +52,7 @@ Layer-specific extras seen in this repo:
 - **Router**: `_responses.py` for the module-level `_SINGLE_200`/`_LIST_200`/`_SUBRES_*_200` `inline_schema()` constants shared across route files.
 - **Schema input**: any nested grandchild model (e.g. `QualificationIdentifierCreate` nested inside `PractitionerQualificationCreate`) lives in the *same* file as its parent sub-resource, not its own file.
 - **Schema response**: each sub-resource file also carries its `*ListResponse`/`FHIR*ListResponse`/`FHIR*ListItem` wrapper classes (see `/sub-resource-endpoints`) if the resource has sub-resource GET/DELETE routes. Organization has none of these (5-endpoint design, no sub-resource endpoints) — Patient and Practitioner do.
+- **Models — don't nest a second `<resource>/` folder.** Every other layer's split file (`app/repository/<resource>_repository.py`, `app/schemas/<resource>/input.py`, etc.) is a flat file with no resource-named parent folder wrapping it, so converting it into `<name>/__init__.py` + siblings never collides with anything. Models are the exception: the file being split, `app/models/<resource>/<resource>.py`, already lives *inside* a resource-named folder (which also holds `enums.py`). Do **not** apply the module→package trick literally there — it would produce a redundant `app/models/<resource>/<resource>/` (the name doubled up as a folder inside itself). Instead put `core.py` and the sub-resource files directly into the already-existing `app/models/<resource>/` folder, alongside `enums.py`, and write/update that folder's own `__init__.py` in place.
 
 Assign every class/function in the old flat file to exactly one new file based on which sub-resource it belongs to. `core.py` gets only the parent-entity classes (`<Resource>CreateSchema`, `FHIR<Resource>Schema`, `PlainRepository` CRUD methods, etc.) plus imports from every sub-file it composes.
 

@@ -13,7 +13,7 @@ from app.schemas.practitioner import (
     PractitionerCommunicationCreate,
     PractitionerCommunicationPatch,
 )
-from app.services.practitioner_service import PractitionerService
+from app.services.practitioner import PractitionerService
 
 from ._responses import (
     _CONTENT_NEG,

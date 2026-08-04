@@ -14,8 +14,8 @@ from alembic import context
 from app.core.database import FHIRBase
 
 # Import every model module so SQLAlchemy registers the tables on FHIRBase.metadata
-import app.models.patient.patient  # noqa: F401
-import app.models.practitioner.practitioner  # noqa: F401
+import app.models.patient  # noqa: F401
+import app.models.practitioner  # noqa: F401
 import app.models.encounter.encounter  # noqa: F401
 import app.models.appointment.appointment  # noqa: F401
 import app.models.questionnaire_response.questionnaire_response  # noqa: F401
@@ -31,7 +31,7 @@ import app.models.healthcare_service.healthcare_service  # noqa: F401
 import app.models.observation.observation  # noqa: F401
 import app.models.claim.claim  # noqa: F401
 import app.models.claim_response.claim_response  # noqa: F401
-import app.models.organization.organization  # noqa: F401
+import app.models.organization  # noqa: F401
 import app.models.schedule.schedule  # noqa: F401
 import app.models.slot.slot  # noqa: F401
 import app.models.invoice.invoice  # noqa: F401

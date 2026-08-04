@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F40
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.models.patient.patient import PatientModel
+from app.models.patient import PatientModel
 from app.models.related_person.enums import RelatedPersonPatientReferenceType
 from app.models.related_person.related_person import (
     RelatedPersonAddress,

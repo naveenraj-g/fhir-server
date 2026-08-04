@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from app.fhir.datatypes import fhir_enum, fhir_split, fhir_telecom
 
 if TYPE_CHECKING:
-    from app.models.organization.organization import (
+    from app.models.organization import (
         OrganizationContact,
         OrganizationEndpoint,
         OrganizationIdentifier,

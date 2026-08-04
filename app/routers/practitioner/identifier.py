@@ -10,7 +10,7 @@ from app.schemas.practitioner import (
     PractitionerIdentifierCreate,
     PractitionerIdentifierPatch,
 )
-from app.services.practitioner_service import PractitionerService
+from app.services.practitioner import PractitionerService
 
 from ._responses import (
     _CONTENT_NEG,

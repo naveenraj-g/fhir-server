@@ -13,7 +13,7 @@ from app.fhir.datatypes import (
 )
 
 if TYPE_CHECKING:
-    from app.models.patient.patient import (
+    from app.models.patient import (
         PatientContact,
         PatientGeneralPractitioner,
         PatientIdentifier,

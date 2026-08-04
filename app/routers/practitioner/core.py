@@ -12,7 +12,7 @@ from app.schemas.practitioner import (
     PractitionerFullPatchSchema,
     PractitionerPatchSchema,
 )
-from app.services.practitioner_service import PractitionerService
+from app.services.practitioner import PractitionerService
 
 from ._responses import (
     _CONTENT_NEG,

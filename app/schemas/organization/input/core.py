@@ -20,13 +20,14 @@ class OrganizationCreateSchema(BaseModel):
     create split like Patient/Practitioner, since it's set once at onboarding
     rather than built up incrementally. org_id and created_by both come from
     the verified JWT (actor.org_id / actor.sub) — neither is a request body
-    field; user_id is unaffected, still a plain gateway-forwarded field."""
+    field. Unlike every other resource, Organization has no user_id field at
+    all — it's a shared tenant-level entity, not scoped to an individual
+    end-user."""
 
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
             "example": {
-                "user_id": "user-123",
                 "active": True,
                 "name": "General Hospital",
                 "partof": "Organization/190001",
@@ -75,11 +76,6 @@ class OrganizationCreateSchema(BaseModel):
                 "endpoint": [],
             }
         },
-    )
-
-    user_id: str | None = Field(
-        None,
-        description="JWT sub of the record owner, forwarded by the gateway. Describes who created this database row — not a field of the Organization resource being created.",
     )
 
     active: bool | None = Field(

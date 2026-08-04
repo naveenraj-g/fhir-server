@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 
-from app.repository.patient_repository import PatientRepository
+from app.repository.patient import PatientRepository
 from app.repository.vitals_repository import VitalsRepository
 from app.services.vitals_service import VitalsService
 

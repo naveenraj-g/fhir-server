@@ -7,7 +7,7 @@ from app.core.content_negotiation import format_response, wants_fhir
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.mappers.patient import fhir_contact, plain_contact
 from app.schemas.patient import ContactCreate, ContactPatch
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 
 from ._responses import (
     _CONTENT_NEG,

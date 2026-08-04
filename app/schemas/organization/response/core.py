@@ -149,10 +149,6 @@ class PlainOrganizationResponse(BaseModel):
         None,
         description="Technical endpoints providing access to services operated for the organization.",
     )
-    user_id: str | None = Field(
-        None,
-        description="Gateway-forwarded ID of the user who owns this record — not a field of the Organization resource itself.",
-    )
     org_id: str | None = Field(
         None,
         description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept.",

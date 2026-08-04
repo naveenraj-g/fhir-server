@@ -1,5 +1,5 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.fhir import (
+from app.schemas.practitioner.response import (
     FHIRPractitionerAddressesListResponse,
     FHIRPractitionerBundle,
     FHIRPractitionerCommunicationsListResponse,

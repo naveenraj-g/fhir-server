@@ -8,7 +8,7 @@ from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_address
 from app.fhir.mappers.practitioner import plain_address
 from app.schemas.practitioner import PractitionerAddressCreate, PractitionerAddressPatch
-from app.services.practitioner_service import PractitionerService
+from app.services.practitioner import PractitionerService
 
 from ._responses import (
     _CONTENT_NEG,

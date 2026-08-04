@@ -1,8 +1,8 @@
 from dependency_injector import containers, providers
 from app.repository.encounter_repository import EncounterRepository
-from app.repository.patient_repository import PatientRepository
+from app.repository.patient import PatientRepository
 from app.services.encounter_service import EncounterService
-from app.services.patient_service import PatientService
+from app.services.patient import PatientService
 
 
 class EncounterContainer(containers.DeclarativeContainer):

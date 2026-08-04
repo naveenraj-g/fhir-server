@@ -11,7 +11,7 @@ from app.fhir.datatypes import (
 )
 
 if TYPE_CHECKING:
-    from app.models.practitioner.practitioner import (
+    from app.models.practitioner import (
         PractitionerCommunication,
         PractitionerIdentifier,
         PractitionerModel,

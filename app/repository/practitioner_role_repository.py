@@ -12,8 +12,8 @@ from app.models.healthcare_service.healthcare_service import (
     HealthcareServiceCategory,
 )
 from app.models.location.location import LocationModel, LocationTelecom
-from app.models.organization.organization import OrganizationModel
-from app.models.practitioner.practitioner import (
+from app.models.organization import OrganizationModel
+from app.models.practitioner import (
     PractitionerModel,
     PractitionerName,
     PractitionerQualification,

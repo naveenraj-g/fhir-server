@@ -3,7 +3,7 @@ from typing import Annotated
 from pydantic import StringConstraints
 
 from app.core.schema_utils import inline_schema
-from app.schemas.fhir import (
+from app.schemas.patient.response import (
     FHIRPatientAddressesListResponse,
     FHIRPatientBundle,
     FHIRPatientCommunicationsListResponse,

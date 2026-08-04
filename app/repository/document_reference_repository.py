@@ -273,7 +273,7 @@ class DocumentReferenceRepository:
             custodian_type, custodian_db_id = None, None
             if payload.custodian:
                 _, cust_public_id = _parse_ref(payload.custodian, OrganizationReferenceType, "custodian")
-                from app.models.organization.organization import OrganizationModel
+                from app.models.organization import OrganizationModel
                 result = await session.execute(
                     select(OrganizationModel).where(OrganizationModel.organization_id == cust_public_id)
                 )
@@ -376,7 +376,7 @@ class DocumentReferenceRepository:
 
             if "custodian" in data and data["custodian"]:
                 _, cust_public_id = _parse_ref(data["custodian"], OrganizationReferenceType, "custodian")
-                from app.models.organization.organization import OrganizationModel
+                from app.models.organization import OrganizationModel
                 org_result = await session.execute(
                     select(OrganizationModel).where(OrganizationModel.organization_id == cust_public_id)
                 )
