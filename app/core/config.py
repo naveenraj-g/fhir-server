@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # required regardless — this only selects the rate limiter's backend.
     RATE_LIMIT_BACKEND: Literal["redis", "memory"] = "redis"
 
+    # Path to the YAML file controlling which resource routers get mounted
+    # at startup — see app/core/routes_config.py and CLAUDE.md's
+    # "Enabling/Disabling Resources" section.
+    ROUTES_CONFIG_PATH: str = "routes.yaml"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

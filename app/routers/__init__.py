@@ -35,116 +35,96 @@ from .slot import router as slot_router
 from .specimen import router as specimen_router
 from .task import router as task_router
 
-api_router = APIRouter()
+# Every resource router this server can mount, keyed by the name used in
+# routes.yaml's `routes:` block. Every router is always imported (cheap, no
+# side effects) — only *mounting* is conditional on routes.yaml, resolved at
+# startup by build_api_router(). See CLAUDE.md's "Enabling/Disabling
+# Resources" section.
+_ROUTERS: dict[str, tuple[APIRouter, str, str]] = {
+    "patient": (patient_router, "/patients", "Patients"),
+    "practitioner": (practitioner_router, "/practitioners", "Practitioners"),
+    "organization": (organization_router, "/organizations", "Organizations"),
+    "encounter": (encounter_router, "/encounters", "Encounters"),
+    "appointment": (appointment_router, "/appointments", "Appointments"),
+    "questionnaire_response": (
+        questionnaire_response_router,
+        "/questionnaire-responses",
+        "QuestionnaireResponses",
+    ),
+    "condition": (condition_router, "/conditions", "Conditions"),
+    "service_request": (
+        service_request_router,
+        "/service-requests",
+        "ServiceRequests",
+    ),
+    "device_request": (device_request_router, "/device-requests", "DeviceRequests"),
+    "diagnostic_report": (
+        diagnostic_report_router,
+        "/diagnostic-reports",
+        "DiagnosticReports",
+    ),
+    "medication_request": (
+        medication_request_router,
+        "/medication-requests",
+        "MedicationRequests",
+    ),
+    "observation": (observation_router, "/observations", "Observations"),
+    "procedure": (procedure_router, "/procedures", "Procedures"),
+    "practitioner_role": (
+        practitioner_role_router,
+        "/practitioner-roles",
+        "PractitionerRoles",
+    ),
+    "schedule": (schedule_router, "/schedules", "Schedules"),
+    "slot": (slot_router, "/slots", "Slots"),
+    "healthcare_service": (
+        healthcare_service_router,
+        "/healthcare-services",
+        "HealthcareServices",
+    ),
+    "claim": (claim_router, "/claims", "Claims"),
+    "claim_response": (claim_response_router, "/claim-responses", "ClaimResponses"),
+    "invoice": (invoice_router, "/invoices", "Invoices"),
+    "location": (location_router, "/locations", "Locations"),
+    "coverage": (coverage_router, "/coverages", "Coverages"),
+    "medication": (medication_router, "/medications", "Medications"),
+    "allergy_intolerance": (
+        allergy_intolerance_router,
+        "/allergy-intolerances",
+        "AllergyIntolerances",
+    ),
+    "provenance": (provenance_router, "/provenances", "Provenances"),
+    "task": (task_router, "/tasks", "Tasks"),
+    "care_plan": (care_plan_router, "/care-plans", "CarePlans"),
+    "related_person": (
+        related_person_router,
+        "/related-persons",
+        "RelatedPersons",
+    ),
+    "specimen": (specimen_router, "/specimens", "Specimens"),
+    "document_reference": (
+        document_reference_router,
+        "/document-references",
+        "DocumentReferences",
+    ),
+    "immunization": (immunization_router, "/immunizations", "Immunizations"),
+    "audit_event": (audit_event_router, "/audit-events", "AuditEvents"),
+    "episode_of_care": (
+        episode_of_care_router,
+        "/episode-of-cares",
+        "EpisodeOfCares",
+    ),
+    "insurance_plan": (insurance_plan_router, "/insurance-plans", "InsurancePlans"),
+}
 
-api_router.include_router(patient_router, prefix="/patients", tags=["Patients"])
 
-api_router.include_router(
-    practitioner_router, prefix="/practitioners", tags=["Practitioners"]
-)
-
-# api_router.include_router(encounter_router, prefix="/encounters", tags=["Encounters"])
-
-# api_router.include_router(
-#     appointment_router, prefix="/appointments", tags=["Appointments"]
-# )
-
-# api_router.include_router(
-#     questionnaire_response_router,
-#     prefix="/questionnaire-responses",
-#     tags=["QuestionnaireResponses"],
-# )
-
-# api_router.include_router(condition_router, prefix="/conditions", tags=["Conditions"])
-
-# api_router.include_router(
-#     service_request_router, prefix="/service-requests", tags=["ServiceRequests"]
-# )
-
-# api_router.include_router(
-#     device_request_router, prefix="/device-requests", tags=["DeviceRequests"]
-# )
-
-# api_router.include_router(
-#     diagnostic_report_router, prefix="/diagnostic-reports", tags=["DiagnosticReports"]
-# )
-
-# api_router.include_router(
-#     medication_request_router,
-#     prefix="/medication-requests",
-#     tags=["MedicationRequests"],
-# )
-
-# api_router.include_router(
-#     observation_router, prefix="/observations", tags=["Observations"]
-# )
-
-api_router.include_router(
-    organization_router, prefix="/organizations", tags=["Organizations"]
-)
-
-# api_router.include_router(procedure_router, prefix="/procedures", tags=["Procedures"])
-
-# api_router.include_router(
-#     practitioner_role_router, prefix="/practitioner-roles", tags=["PractitionerRoles"]
-# )
-
-# api_router.include_router(schedule_router, prefix="/schedules", tags=["Schedules"])
-
-# api_router.include_router(slot_router, prefix="/slots", tags=["Slots"])
-
-# api_router.include_router(
-#     healthcare_service_router,
-#     prefix="/healthcare-services",
-#     tags=["HealthcareServices"],
-# )
-
-# api_router.include_router(claim_router, prefix="/claims", tags=["Claims"])
-
-# api_router.include_router(
-#     claim_response_router, prefix="/claim-responses", tags=["ClaimResponses"]
-# )
-
-# api_router.include_router(invoice_router, prefix="/invoices", tags=["Invoices"])
-
-# api_router.include_router(location_router, prefix="/locations", tags=["Locations"])
-
-# api_router.include_router(coverage_router, prefix="/coverages", tags=["Coverages"])
-
-# api_router.include_router(
-#     medication_router, prefix="/medications", tags=["Medications"]
-# )
-
-# api_router.include_router(
-#     allergy_intolerance_router,
-#     prefix="/allergy-intolerances",
-#     tags=["AllergyIntolerances"],
-# )
-
-# api_router.include_router(
-#     provenance_router, prefix="/provenances", tags=["Provenances"]
-# )
-
-# api_router.include_router(task_router, prefix="/tasks", tags=["Tasks"])
-# api_router.include_router(care_plan_router, prefix="/care-plans", tags=["CarePlans"])
-# api_router.include_router(
-#     related_person_router, prefix="/related-persons", tags=["RelatedPersons"]
-# )
-# api_router.include_router(specimen_router, prefix="/specimens", tags=["Specimens"])
-# api_router.include_router(
-#     document_reference_router,
-#     prefix="/document-references",
-#     tags=["DocumentReferences"],
-# )
-# api_router.include_router(
-#     immunization_router, prefix="/immunizations", tags=["Immunizations"]
-# )
-# api_router.include_router(
-#     audit_event_router, prefix="/audit-events", tags=["AuditEvents"]
-# )
-# api_router.include_router(
-#     episode_of_care_router, prefix="/episode-of-cares", tags=["EpisodeOfCares"]
-# )
-# api_router.include_router(
-#     insurance_plan_router, prefix="/insurance-plans", tags=["InsurancePlans"]
-# )
+def build_api_router(enabled: set[str]) -> APIRouter:
+    """Builds the top-level API router, mounting only resources present in
+    `enabled` (the set returned by app.core.routes_config.load_enabled_routes).
+    Unknown names in `enabled` that aren't in _ROUTERS are silently ignored —
+    routes.yaml listing a not-yet-implemented resource shouldn't crash startup."""
+    api_router = APIRouter()
+    for name, (router, prefix, tag) in _ROUTERS.items():
+        if name in enabled:
+            api_router.include_router(router, prefix=prefix, tags=[tag])
+    return api_router

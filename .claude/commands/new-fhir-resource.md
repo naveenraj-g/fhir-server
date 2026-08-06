@@ -41,7 +41,7 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
    - `Plain<Resource>Response` (snake_case)
    - `Paginated<Resource>Response` (wraps plain with `total`, `limit`, `offset`, `data[]`)
    - `FHIR<Resource>Bundle` (FHIR Bundle with `entry[]`)
-   - Export from `app/schemas/<resource>/__init__.py`, then re-export from `app/schemas/fhir/__init__.py` (the aggregator every router/mapper imports from)
+   - Export from `app/schemas/<resource>/__init__.py` — the router imports response schemas directly from `app/schemas/<resource>/response.py` (or the `__init__.py`), never through a shared aggregator
    - Same split option as input.py — see `/split-resource-package` — Patient/Practitioner/Organization also split `response.py` this way
 
 8. **Mapper** — `app/fhir/mappers/<resource>/` package
@@ -109,7 +109,9 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
     - Once this file gets large (many sub-resource routes), split into `app/routers/<resource>/` — see `/split-resource-package`
 
 16. **Register router** — `app/routers/__init__.py`
-    - `api_router.include_router(<resource>_router, prefix="/<resources>", tags=["<Resources>"])`
+    - Add `from .<resource> import router as <resource>_router` to the import block
+    - Add an entry to the `_ROUTERS` table: `"<resource>": (<resource>_router, "/<resources>", "<Resources>")`
+    - Add the same key to `routes.yaml`'s `routes:` block, defaulting to `false` until the resource is ready to expose — see CLAUDE.md's "Enabling/Disabling Resources"
 
 17. **Update CLAUDE.md** — add the new resource to the sequence allocation table
 

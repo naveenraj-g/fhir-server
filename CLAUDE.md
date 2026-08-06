@@ -300,6 +300,8 @@ RATE_LIMIT_BACKEND=redis
 
 `RATE_LIMIT_BACKEND` only selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency.
 
+`ROUTES_CONFIG_PATH` (default `routes.yaml`) points at the YAML file controlling which resource routers get mounted — see "Enabling/Disabling Resources" above.
+
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 
 ---
@@ -330,6 +332,16 @@ Use the `/new-fhir-resource` skill (`.claude/commands/new-fhir-resource.md`) for
 Two related skills, used opportunistically rather than as part of every new resource:
 - `/split-resource-package` — once a resource's model/repository/service/router/schema file grows large (many sub-resources), split it into a per-sub-resource package. Patient, Practitioner, and Organization all do this across every layer.
 - `/resource-auth-rollout` — only if explicitly asked to add direct JWT/RBAC auth to a resource (the Patient/Practitioner/Organization pattern). This is a rare, deliberate deviation from the default gateway-trusts-everything pattern, not something to apply by default.
+
+---
+
+## Enabling/Disabling Resources
+
+Which resource routers get mounted under `/api/fhir/v1` is controlled entirely by **`routes.yaml`** (repo root, committed — not a secret, same spirit as `alembic.ini`), not by editing source. `app/routers/__init__.py`'s `_ROUTERS` table lists every resource's router/prefix/tag; `build_api_router()` mounts only the names present and `true` in `routes.yaml`'s `routes:` block, resolved once at startup (`app/main.py`, via `app.core.routes_config.load_enabled_routes(settings.ROUTES_CONFIG_PATH)`). Toggling a resource on/off is a one-line YAML edit + restart — no code change, no redeploy of different source.
+
+Every router is still always imported in `app/routers/__init__.py` (cheap, no side effects) — only *mounting* is conditional. A missing `routes.yaml` or a missing `routes:` key is a hard startup error (fail fast), not a silent "expose everything" or "expose nothing." Adding a new resource: register it in `_ROUTERS` (router/prefix/tag) and add its entry to `routes.yaml` — default new resources to `false` until they're ready, per Step 17 of `/new-fhir-resource`.
+
+`vitals_router`/`terminology_router` are mounted separately in `app/main.py` under their own prefixes (`/api/v1/vitals`, `/api/v1/terminology`) and aren't covered by `routes.yaml`.
 
 ---
 

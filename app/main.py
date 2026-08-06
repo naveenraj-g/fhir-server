@@ -14,6 +14,7 @@ from app.core.logging import get_logger, setup_logging
 from app.core.openapi_tags import OPENAPI_TAGS
 from app.core.redis import redis_client
 from app.core.request_context import request_context_middleware
+from app.core.routes_config import load_enabled_routes
 from app.di.container import Container
 from app.errors.base import ApplicationError
 from app.errors.handlers import (
@@ -26,7 +27,7 @@ from app.errors.handlers import (
 from app.middleware import (
     RateLimitMiddleware,
 )
-from app.routers import api_router
+from app.routers import build_api_router
 from app.routers.terminology import router as terminology_router
 from app.routers.vitals import router as vitals_router
 
@@ -88,8 +89,11 @@ app.middleware("http")(request_context_middleware)
 # the JWT and sets request.state.user. Individual routes add
 # require_permission(...) on top for fine-grained access control (currently
 # wired for Patient only — see app/routers/patient.py).
+enabled_routes = load_enabled_routes(settings.ROUTES_CONFIG_PATH)
 app.include_router(
-    api_router, prefix="/api/fhir/v1", dependencies=[Depends(get_current_user)]
+    build_api_router(enabled_routes),
+    prefix="/api/fhir/v1",
+    dependencies=[Depends(get_current_user)],
 )
 
 app.include_router(

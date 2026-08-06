@@ -1,10 +1,47 @@
 from dependency_injector import containers, providers
+
 from app.di.core import CoreContainer
-from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer, ImmunizationContainer, AuditEventContainer, EpisodeOfCareContainer, TerminologyContainer, InsurancePlanContainer
+from app.di.modules import (
+    AllergyIntoleranceContainer,
+    AppointmentContainer,
+    AuditEventContainer,
+    CarePlanContainer,
+    ClaimContainer,
+    ClaimResponseContainer,
+    ConditionContainer,
+    CoverageContainer,
+    DeviceRequestContainer,
+    DiagnosticReportContainer,
+    DocumentReferenceContainer,
+    EncounterContainer,
+    EpisodeOfCareContainer,
+    HealthcareServiceContainer,
+    ImmunizationContainer,
+    InsurancePlanContainer,
+    InvoiceContainer,
+    LocationContainer,
+    MedicationContainer,
+    MedicationRequestContainer,
+    ObservationContainer,
+    OrganizationContainer,
+    PatientContainer,
+    PractitionerContainer,
+    PractitionerRoleContainer,
+    ProcedureContainer,
+    ProvenanceContainer,
+    QuestionnaireResponseContainer,
+    RelatedPersonContainer,
+    ScheduleContainer,
+    ServiceRequestContainer,
+    SlotContainer,
+    SpecimenContainer,
+    TaskContainer,
+    TerminologyContainer,
+    VitalsContainer,
+)
 
 
 class Container(containers.DeclarativeContainer):
-
     wiring_config = containers.WiringConfiguration(packages=["app"])
 
     core = providers.Container(CoreContainer)
