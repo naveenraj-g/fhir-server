@@ -14,7 +14,7 @@ from app.schemas.related_person.response import (
 )
 from app.services.related_person_service import RelatedPersonService
 
-router = APIRouter()
+router = APIRouter(prefix="/related-persons", tags=["RelatedPersons"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

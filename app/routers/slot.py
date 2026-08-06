@@ -16,7 +16,7 @@ from app.schemas.slot.response import (
 )
 from app.services.slot_service import SlotService
 
-router = APIRouter()
+router = APIRouter(prefix="/slots", tags=["Slots"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

@@ -17,7 +17,7 @@ from app.schemas.coverage.response import (
 )
 from app.services.coverage_service import CoverageService
 
-router = APIRouter()
+router = APIRouter(prefix="/coverages", tags=["Coverages"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

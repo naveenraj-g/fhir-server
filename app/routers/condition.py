@@ -17,7 +17,7 @@ from app.schemas.condition.response import (
 )
 from app.services.condition_service import ConditionService
 
-router = APIRouter()
+router = APIRouter(prefix="/conditions", tags=["Conditions"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

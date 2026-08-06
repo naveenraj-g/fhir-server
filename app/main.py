@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, Response
@@ -14,7 +14,6 @@ from app.core.logging import get_logger, setup_logging
 from app.core.openapi_tags import OPENAPI_TAGS
 from app.core.redis import redis_client
 from app.core.request_context import request_context_middleware
-from app.core.routes_config import load_enabled_routes
 from app.di.container import Container
 from app.errors.base import ApplicationError
 from app.errors.handlers import (
@@ -27,7 +26,7 @@ from app.errors.handlers import (
 from app.middleware import (
     RateLimitMiddleware,
 )
-from app.routers import build_api_router
+from app.routers import discover_routers
 from app.routers.terminology import router as terminology_router
 from app.routers.vitals import router as vitals_router
 
@@ -38,11 +37,38 @@ container = Container()
 db: Database = container.core.database()
 
 
+def mount_routers(app: FastAPI) -> None:
+    """Discovers + conditionally mounts every FHIR resource router based on
+    configs/config.yaml's routes.enabled list (see app.routers.discover_routers()).
+    Called from lifespan() below at actual ASGI startup — mirrors txtai's
+    api/application.py::lifespan() pattern of mounting at startup rather
+    than at module-import time. Kept as a standalone sync function (not
+    inlined into lifespan) so tests/conftest.py can call it directly once,
+    since httpx's ASGITransport doesn't run the ASGI lifespan protocol on
+    its own. get_current_user runs once for every route mounted here —
+    decodes the JWT and sets request.state.user. Individual routes add
+    require_permission(...) on top for fine-grained access control
+    (currently wired for Patient/Practitioner/Organization only)."""
+    enabled_routes = set(settings.routes.enabled)
+    api_router = APIRouter()
+    for name, router in discover_routers().items():
+        if name in enabled_routes:
+            api_router.include_router(router)
+    logger.info(f"Enabled routes: {enabled_routes}")
+    app.include_router(
+        api_router,
+        prefix="/api/fhir/v1",
+        dependencies=[Depends(get_current_user)],
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🟢 Starting up the application")
 
     await db.create_extensions()
+
+    mount_routers(app)
 
     try:
         await cast(Any, redis_client.ping())
@@ -82,19 +108,14 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 
 app.container = container
 
-app.add_middleware(RateLimitMiddleware, backend=settings.RATE_LIMIT_BACKEND)
-app.middleware("http")(request_context_middleware)
-
-# get_current_user runs once for every route in each group below — decodes
-# the JWT and sets request.state.user. Individual routes add
-# require_permission(...) on top for fine-grained access control (currently
-# wired for Patient only — see app/routers/patient.py).
-enabled_routes = load_enabled_routes(settings.ROUTES_CONFIG_PATH)
-app.include_router(
-    build_api_router(enabled_routes),
-    prefix="/api/fhir/v1",
-    dependencies=[Depends(get_current_user)],
+app.add_middleware(
+    RateLimitMiddleware,
+    backend=settings.rate_limit.backend,
+    read_limit=settings.rate_limit.read_limit,
+    write_limit=settings.rate_limit.write_limit,
+    window_seconds=settings.rate_limit.window_seconds,
 )
+app.middleware("http")(request_context_middleware)
 
 app.include_router(
     vitals_router,

@@ -17,7 +17,7 @@ from app.schemas.procedure.response import (
 )
 from app.services.procedure_service import ProcedureService
 
-router = APIRouter()
+router = APIRouter(prefix="/procedures", tags=["Procedures"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

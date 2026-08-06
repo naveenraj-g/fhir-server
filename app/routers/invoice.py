@@ -17,7 +17,7 @@ from app.schemas.invoice.response import (
 )
 from app.services.invoice_service import InvoiceService
 
-router = APIRouter()
+router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

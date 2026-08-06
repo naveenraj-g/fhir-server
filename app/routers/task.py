@@ -15,7 +15,7 @@ from app.schemas.task.response import (
 )
 from app.services.task_service import TaskService
 
-router = APIRouter()
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

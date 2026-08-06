@@ -17,7 +17,7 @@ from app.schemas.medication_request.response import (
 )
 from app.services.medication_request_service import MedicationRequestService
 
-router = APIRouter()
+router = APIRouter(prefix="/medication-requests", tags=["MedicationRequests"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

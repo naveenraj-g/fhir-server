@@ -17,7 +17,7 @@ from app.schemas.diagnostic_report.response import (
 )
 from app.services.diagnostic_report_service import DiagnosticReportService
 
-router = APIRouter()
+router = APIRouter(prefix="/diagnostic-reports", tags=["DiagnosticReports"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

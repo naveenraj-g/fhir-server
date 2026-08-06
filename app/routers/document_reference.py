@@ -14,7 +14,7 @@ from app.schemas.document_reference.response import (
 )
 from app.services.document_reference_service import DocumentReferenceService
 
-router = APIRouter()
+router = APIRouter(prefix="/document-references", tags=["DocumentReferences"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

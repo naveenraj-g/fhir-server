@@ -20,7 +20,7 @@ from app.schemas.allergy_intolerance.response import (
 )
 from app.services.allergy_intolerance_service import AllergyIntoleranceService
 
-router = APIRouter()
+router = APIRouter(prefix="/allergy-intolerances", tags=["AllergyIntolerances"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

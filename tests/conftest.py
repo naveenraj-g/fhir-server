@@ -17,9 +17,17 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import FHIRBase
-from app.main import app, container  # triggers all model & router imports
+from app.main import app, container, mount_routers  # triggers all model & router imports
 from app.auth.dependencies import get_current_user
 from app.middleware.rate_limit import RateLimitMiddleware
+
+# Router mounting now happens inside app.main's lifespan (at real ASGI
+# startup), not at module-import time — but httpx's ASGITransport (used by
+# every test client fixture below) never triggers the ASGI lifespan
+# protocol. Mount routes once here instead, synchronously, before any test
+# runs — mount_routers() has no async/DB/Redis side effects, only route
+# registration, so this is safe to call directly.
+mount_routers(app)
 
 # ── SQLite fallback for Postgres-only column types ────────────────────────────
 # TSVECTOR (app/models/terminology/terminology.py) and ARRAY

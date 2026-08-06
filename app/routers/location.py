@@ -17,7 +17,7 @@ from app.schemas.location.response import (
 )
 from app.services.location_service import LocationService
 
-router = APIRouter()
+router = APIRouter(prefix="/locations", tags=["Locations"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

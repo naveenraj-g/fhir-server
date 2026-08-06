@@ -109,9 +109,9 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
     - Once this file gets large (many sub-resource routes), split into `app/routers/<resource>/` — see `/split-resource-package`
 
 16. **Register router** — `app/routers/__init__.py`
-    - Add `from .<resource> import router as <resource>_router` to the import block
-    - Add an entry to the `_ROUTERS` table: `"<resource>": (<resource>_router, "/<resources>", "<Resources>")`
-    - Add the same key to `routes.yaml`'s `routes:` block, defaulting to `false` until the resource is ready to expose — see CLAUDE.md's "Enabling/Disabling Resources"
+    - Give the resource's `router = APIRouter()` a `prefix=`/`tags=` at construction: `APIRouter(prefix="/<resources>", tags=["<Resources>"])`
+    - Add `from . import <resource> as <resource>` to the import block + the sorted `__all__` list — `discover_routers()` introspects this namespace for modules exposing `router: APIRouter`, so no separate prefix/tag table to update
+    - Do **not** add the resource to `configs/config.yaml`'s `routes.enabled` list yet — leave it unlisted (disabled) until the resource is ready to expose, then append its name — see CLAUDE.md's "Enabling/Disabling Resources"
 
 17. **Update CLAUDE.md** — add the new resource to the sequence allocation table
 

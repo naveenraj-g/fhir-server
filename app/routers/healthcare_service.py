@@ -19,7 +19,7 @@ from app.schemas.healthcare_service.response import (
 )
 from app.services.healthcare_service_service import HealthcareServiceService
 
-router = APIRouter()
+router = APIRouter(prefix="/healthcare-services", tags=["HealthcareServices"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

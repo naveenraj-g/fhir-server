@@ -11,7 +11,7 @@ from . import (
     telecom,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/practitioners", tags=["Practitioners"])
 
 for _module in (
     core,

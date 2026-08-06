@@ -17,7 +17,7 @@ from app.schemas.appointment.response import (
 )
 from app.services.appointment_service import AppointmentService
 
-router = APIRouter()
+router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

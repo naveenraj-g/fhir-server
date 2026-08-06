@@ -14,7 +14,7 @@ from app.schemas.audit_event.response import (
 )
 from app.services.audit_event_service import AuditEventService
 
-router = APIRouter()
+router = APIRouter(prefix="/audit-events", tags=["AuditEvents"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

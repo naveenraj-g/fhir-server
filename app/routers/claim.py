@@ -16,7 +16,7 @@ from app.schemas.claim.response import (
 )
 from app.services.claim_service import ClaimService
 
-router = APIRouter()
+router = APIRouter(prefix="/claims", tags=["Claims"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

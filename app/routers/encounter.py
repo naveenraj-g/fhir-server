@@ -17,7 +17,7 @@ from app.schemas.encounter.response import (
 )
 from app.services.encounter_service import EncounterService
 
-router = APIRouter()
+router = APIRouter(prefix="/encounters", tags=["Encounters"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

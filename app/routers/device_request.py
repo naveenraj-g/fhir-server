@@ -17,7 +17,7 @@ from app.schemas.device_request.response import (
 )
 from app.services.device_request_service import DeviceRequestService
 
-router = APIRouter()
+router = APIRouter(prefix="/device-requests", tags=["DeviceRequests"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

@@ -14,7 +14,7 @@ from app.schemas.insurance_plan.response import (
 )
 from app.services.insurance_plan_service import InsurancePlanService
 
-router = APIRouter()
+router = APIRouter(prefix="/insurance-plans", tags=["InsurancePlans"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

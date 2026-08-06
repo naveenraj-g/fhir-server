@@ -18,7 +18,7 @@ from app.schemas.provenance.response import (
 )
 from app.services.provenance_service import ProvenanceService
 
-router = APIRouter()
+router = APIRouter(prefix="/provenances", tags=["Provenances"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

@@ -13,7 +13,7 @@ from . import (
     telecom,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/patients", tags=["Patients"])
 
 for _module in (
     core,

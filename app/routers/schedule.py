@@ -16,7 +16,7 @@ from app.schemas.schedule.response import (
 )
 from app.services.schedule_service import ScheduleService
 
-router = APIRouter()
+router = APIRouter(prefix="/schedules", tags=["Schedules"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

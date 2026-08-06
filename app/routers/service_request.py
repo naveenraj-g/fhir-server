@@ -17,7 +17,7 @@ from app.schemas.service_request.response import (
 )
 from app.services.service_request_service import ServiceRequestService
 
-router = APIRouter()
+router = APIRouter(prefix="/service-requests", tags=["ServiceRequests"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

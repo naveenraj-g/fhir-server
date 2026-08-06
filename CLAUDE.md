@@ -284,23 +284,42 @@ Pattern per resource: `di/modules/<resource>.py` (Factory for repo + service) �
 
 ## Environment
 
-```
-FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
-REDIS_URL=redis://localhost:6379
+Config comes from three layers, precedence highest-to-lowest — see `app/core/config.py`'s `Settings.settings_customise_sources()`:
 
-# BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient, Practitioner, and Organization only, so far)
-IAM_JWKS_URL=http://localhost:5001/api/auth/jwks
-IAM_ISSUER=http://localhost:5001
+1. **Real env var** (e.g. exported in the shell, or set by an orchestrator)
+2. **`.env`** — true per-environment secrets only:
+   ```
+   FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
+   REDIS_URL=redis://localhost:6379
 
-# Rate-limiter backend: "redis" (default, coordinated across instances) or "memory" (per-process only)
-RATE_LIMIT_BACKEND=redis
-```
+   # BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient, Practitioner, and Organization only, so far)
+   IAM_JWKS_URL=http://localhost:5001/api/auth/jwks
+   IAM_ISSUER=http://localhost:5001
+   ```
+3. **`configs/config.yaml`** — checked-in application-behavior config, not a secret (same spirit as `alembic.ini`):
+   ```yaml
+   rate_limit:
+     backend: redis
+     read_limit: 100
+     write_limit: 20
+     window_seconds: 60
+
+   routes:
+     enabled:
+       - patient
+       - practitioner
+       - organization
+   ```
 
 `IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, and Organization now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~32 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
 
-`RATE_LIMIT_BACKEND` only selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency.
+`rate_limit.backend` selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend ("redis", coordinated across instances, or "memory", per-process only) — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency. `rate_limit.read_limit`/`write_limit`/`window_seconds` are the actual per-window request caps — all four are wired straight into `app.add_middleware(RateLimitMiddleware, ...)` in `app/main.py`.
 
-`ROUTES_CONFIG_PATH` (default `routes.yaml`) points at the YAML file controlling which resource routers get mounted — see "Enabling/Disabling Resources" above.
+`routes.enabled` is the list consumed by `app/main.py`'s `mount_routers()` — see "Enabling/Disabling Resources" below.
+
+Any nested field can still be overridden by an env var using `__` as the nesting delimiter, without touching the committed file — e.g. `RATE_LIMIT__BACKEND=memory` or `RATE_LIMIT__WRITE_LIMIT=7` (`model_config`'s `env_nested_delimiter="__"`).
+
+There is no hand-rolled loader: `Settings` is a `pydantic_settings.BaseSettings`, so `configs/config.yaml` is wired in as one more `PydanticBaseSettingsSource` (pydantic-settings' built-in `YamlConfigSettingsSource`) in that precedence tuple. A future secrets-manager source (AWS Secrets Manager, SSM, etc.) would slot into the same tuple the same way — no changes needed anywhere that reads `settings.*`.
 
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 
@@ -337,11 +356,11 @@ Two related skills, used opportunistically rather than as part of every new reso
 
 ## Enabling/Disabling Resources
 
-Which resource routers get mounted under `/api/fhir/v1` is controlled entirely by **`routes.yaml`** (repo root, committed — not a secret, same spirit as `alembic.ini`), not by editing source. `app/routers/__init__.py`'s `_ROUTERS` table lists every resource's router/prefix/tag; `build_api_router()` mounts only the names present and `true` in `routes.yaml`'s `routes:` block, resolved once at startup (`app/main.py`, via `app.core.routes_config.load_enabled_routes(settings.ROUTES_CONFIG_PATH)`). Toggling a resource on/off is a one-line YAML edit + restart — no code change, no redeploy of different source.
+Which resource routers get mounted under `/api/fhir/v1` is controlled entirely by **`configs/config.yaml`'s `routes.enabled` list** (repo root's `configs/` folder, committed — not a secret, same spirit as `alembic.ini`), not by editing source. Each router already carries its own `prefix=`/`tags=` (set at construction in the resource's own module/package, e.g. `router = APIRouter(prefix="/patients", tags=["Patients"])`) — `app/routers/__init__.py`'s `discover_routers()` introspects the package namespace for every submodule exposing a module-level `router: APIRouter` and returns a `{name: router}` dict, so there's no separate prefix/tag table to keep in sync. `app/main.py`'s `mount_routers(app)` mounts only the names present in `routes.enabled`, and is called from inside the FastAPI `lifespan` handler at actual ASGI startup (not at module-import time) — mirrors txtai's `api/application.py::lifespan()` pattern. Toggling a resource on/off is a one-line YAML edit + restart — no code change, no redeploy of different source.
 
-Every router is still always imported in `app/routers/__init__.py` (cheap, no side effects) — only *mounting* is conditional. A missing `routes.yaml` or a missing `routes:` key is a hard startup error (fail fast), not a silent "expose everything" or "expose nothing." Adding a new resource: register it in `_ROUTERS` (router/prefix/tag) and add its entry to `routes.yaml` — default new resources to `false` until they're ready, per Step 17 of `/new-fhir-resource`.
+Every router is still always imported in `app/routers/__init__.py` via `from . import <name> as <name>` (cheap, no side effects, and required for `discover_routers()`'s introspection to see it) — only *mounting* is conditional. Adding a new resource: give its `APIRouter()` a `prefix=`/`tags=`, add the `from . import <name> as <name>` re-export + `__all__` entry, and append its name to `configs/config.yaml`'s `routes.enabled` list once it's ready to expose, per Step 17 of `/new-fhir-resource`.
 
-`vitals_router`/`terminology_router` are mounted separately in `app/main.py` under their own prefixes (`/api/v1/vitals`, `/api/v1/terminology`) and aren't covered by `routes.yaml`.
+`vitals_router`/`terminology_router` are mounted separately in `app/main.py` under their own prefixes (`/api/v1/vitals`, `/api/v1/terminology`) at module level and aren't covered by `routes.enabled`.
 
 ---
 

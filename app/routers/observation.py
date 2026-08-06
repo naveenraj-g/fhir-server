@@ -17,7 +17,7 @@ from app.schemas.observation.response import (
 )
 from app.services.observation_service import ObservationService
 
-router = APIRouter()
+router = APIRouter(prefix="/observations", tags=["Observations"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

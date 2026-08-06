@@ -14,7 +14,7 @@ from app.schemas.specimen.response import (
 )
 from app.services.specimen_service import SpecimenService
 
-router = APIRouter()
+router = APIRouter(prefix="/specimens", tags=["Specimens"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

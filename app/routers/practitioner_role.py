@@ -18,7 +18,7 @@ from app.schemas.practitioner_role.response import (
 )
 from app.services.practitioner_role_service import PractitionerRoleService
 
-router = APIRouter()
+router = APIRouter(prefix="/practitioner-roles", tags=["PractitionerRoles"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

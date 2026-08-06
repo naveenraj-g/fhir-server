@@ -14,7 +14,7 @@ from app.schemas.immunization.response import (
 )
 from app.services.immunization_service import ImmunizationService
 
-router = APIRouter()
+router = APIRouter(prefix="/immunizations", tags=["Immunizations"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "

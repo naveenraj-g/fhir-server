@@ -1,0 +1,21 @@
+# Application-behavior config for fhir-server. Checked into git — not a
+# secret, same spirit as alembic.ini. True per-environment secrets (DB/Redis
+# URLs, IAM JWKS/issuer) still live in .env, never here. Precedence, highest
+# first: real env var > .env > this file > field defaults — see
+# app/core/config.py's Settings.settings_customise_sources().
+
+rate_limit:
+  backend: redis
+  read_limit: 100
+  write_limit: 20
+  window_seconds: 60
+
+routes:
+  # Which FHIR resource routers get mounted under /api/fhir/v1 at startup —
+  # see CLAUDE.md's "Enabling/Disabling Resources" section. Not listed = not
+  # mounted. Vitals and Terminology are mounted separately in app/main.py
+  # under their own prefixes and aren't covered by this list.
+  enabled:
+    - patient
+    - practitioner
+    - organization

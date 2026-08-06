@@ -20,7 +20,7 @@ from app.schemas.questionnaire_response import (
 )
 from app.services.questionnaire_response_service import QuestionnaireResponseService
 
-router = APIRouter()
+router = APIRouter(prefix="/questionnaire-responses", tags=["QuestionnaireResponses"])
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "
