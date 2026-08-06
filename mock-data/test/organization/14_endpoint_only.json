@@ -1,0 +1,16 @@
+{
+  "active": true,
+  "name": "Endpoint Test Org",
+  "endpoint": [
+    {
+      "reference_display": "Primary FHIR API endpoint",
+      "reference_identifier_system": "http://example.org/endpoints",
+      "reference_identifier_value": "endpoint-test-org-fhir-01"
+    },
+    {
+      "reference_display": "HL7v2 ADT feed",
+      "reference_identifier_system": "http://example.org/endpoints",
+      "reference_identifier_value": "endpoint-test-org-hl7v2-adt"
+    }
+  ]
+}

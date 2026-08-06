@@ -1,0 +1,10 @@
+{
+  "active": true,
+  "name": "Telecom Test Org",
+  "telecom": [
+    { "system": "phone", "value": "+1-555-300-1000", "use": "work", "rank": 1 },
+    { "system": "fax", "value": "+1-555-300-1001", "use": "work", "rank": 2 },
+    { "system": "email", "value": "contact@telecomtestorg.example.org", "use": "work" },
+    { "system": "url", "value": "https://telecomtestorg.example.org" }
+  ]
+}

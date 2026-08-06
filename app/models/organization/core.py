@@ -1,4 +1,13 @@
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, Sequence, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Integer,
+    Sequence,
+    String,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -18,9 +27,9 @@ organization_id_seq = Sequence(
 class OrganizationModel(Base):
     __tablename__ = "organization"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     organization_id = Column(
-        Integer,
+        BigInteger,
         organization_id_seq,
         server_default=organization_id_seq.next_value(),
         unique=True,

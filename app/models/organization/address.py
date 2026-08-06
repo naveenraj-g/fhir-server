@@ -1,4 +1,13 @@
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,7 +24,7 @@ class OrganizationAddress(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     organization_id = Column(
-        Integer, ForeignKey("organization.id"), nullable=False, index=True
+        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
     use = Column(Enum(AddressUse, name="address_use"), nullable=True)

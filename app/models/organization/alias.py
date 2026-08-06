@@ -1,4 +1,11 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -14,7 +21,7 @@ class OrganizationAlias(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     organization_id = Column(
-        Integer, ForeignKey("organization.id"), nullable=False, index=True
+        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
     value = Column(String, nullable=False)

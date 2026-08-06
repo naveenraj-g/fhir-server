@@ -1,10 +1,10 @@
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     Date,
     DateTime,
     Enum,
-    Integer,
     Sequence,
     String,
     UniqueConstraint,
@@ -26,9 +26,9 @@ class PractitionerModel(Base):
         UniqueConstraint("user_id", "org_id", name="uq_practitioner_user_id_org_id"),
     )
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     practitioner_id = Column(
-        Integer,
+        BigInteger,
         practitioner_id_seq,
         server_default=practitioner_id_seq.next_value(),
         unique=True,

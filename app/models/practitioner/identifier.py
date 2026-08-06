@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -27,7 +28,7 @@ class PractitionerIdentifier(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     practitioner_id = Column(
-        Integer, ForeignKey("practitioner.id"), nullable=False, index=True
+        BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
 

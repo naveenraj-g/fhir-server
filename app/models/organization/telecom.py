@@ -1,4 +1,12 @@
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,7 +23,7 @@ class OrganizationTelecom(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     organization_id = Column(
-        Integer, ForeignKey("organization.id"), nullable=False, index=True
+        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
     system = Column(

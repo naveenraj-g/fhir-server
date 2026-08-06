@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -10,7 +10,7 @@ class PractitionerCommunication(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     practitioner_id = Column(
-        Integer, ForeignKey("practitioner.id"), nullable=False, index=True
+        BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
 

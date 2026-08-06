@@ -1,0 +1,9 @@
+{
+  "active": true,
+  "name": "Saint Mary's Regional Medical Center",
+  "alias": [
+    { "value": "St. Mary's" },
+    { "value": "SMRMC" },
+    { "value": "Saint Mary's Hospital" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "active": true,
+  "name": "Affiliate Clinic (External Parent)",
+  "partof_display": "Global Health Holdings (not modeled in this system)",
+  "partof_identifier_use": "official",
+  "partof_identifier_type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+  "partof_identifier_type_code": "XX",
+  "partof_identifier_type_display": "Organization identifier",
+  "partof_identifier_system": "http://example.org/external-holding-companies",
+  "partof_identifier_value": "GHH-EXT-001"
+}

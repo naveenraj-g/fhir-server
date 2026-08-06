@@ -1,0 +1,17 @@
+{
+  "active": true,
+  "name": "Type Test Org",
+  "type": [
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
+      "coding_code": "prov",
+      "coding_display": "Healthcare Provider"
+    },
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
+      "coding_code": "ins",
+      "coding_display": "Insurance Company",
+      "text": "Secondary line of business: insurance"
+    }
+  ]
+}

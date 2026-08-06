@@ -1,0 +1,22 @@
+{
+  "active": true,
+  "name": "Identifier Test Org",
+  "identifier": [
+    {
+      "use": "official",
+      "type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "type_code": "TAX",
+      "type_display": "Tax ID Number",
+      "system": "http://example.org/tax-ids",
+      "value": "TX-998877",
+      "assigner_display": "State Revenue Department",
+      "assigner_identifier_system": "http://example.org/state-agencies",
+      "assigner_identifier_value": "SRD-01"
+    },
+    {
+      "use": "secondary",
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "9988776655"
+    }
+  ]
+}

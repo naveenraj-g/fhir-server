@@ -1,0 +1,32 @@
+{
+  "active": true,
+  "name": "Acme Health System",
+  "identifier": [
+    {
+      "use": "official",
+      "system": "http://example.org/health-systems",
+      "value": "AHS-0001"
+    }
+  ],
+  "type": [
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
+      "coding_code": "govt",
+      "coding_display": "Government"
+    }
+  ],
+  "telecom": [
+    { "system": "phone", "value": "+1-555-200-0000", "use": "work" }
+  ],
+  "address": [
+    {
+      "use": "work",
+      "type": "both",
+      "line": ["1 Corporate Plaza"],
+      "city": "Metropolis",
+      "state": "NY",
+      "postal_code": "10001",
+      "country": "US"
+    }
+  ]
+}

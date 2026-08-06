@@ -1,4 +1,12 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -14,7 +22,7 @@ class OrganizationType(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     organization_id = Column(
-        Integer, ForeignKey("organization.id"), nullable=False, index=True
+        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
     coding_system = Column(String, nullable=True)

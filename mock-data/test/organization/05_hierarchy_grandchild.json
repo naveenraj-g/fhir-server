@@ -1,0 +1,16 @@
+{
+  "active": true,
+  "name": "Acme Downtown Hospital — Cardiology Department",
+  "partof": "Organization/REPLACE_CHILD_ID",
+  "partof_display": "Acme Downtown Hospital",
+  "type": [
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
+      "coding_code": "dept",
+      "coding_display": "Hospital Department"
+    }
+  ],
+  "telecom": [
+    { "system": "phone", "value": "+1-555-200-0150", "use": "work" }
+  ]
+}

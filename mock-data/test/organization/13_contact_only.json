@@ -1,0 +1,39 @@
+{
+  "active": true,
+  "name": "Contact Test Org",
+  "contact": [
+    {
+      "purpose_system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+      "purpose_code": "BILL",
+      "purpose_display": "Billing",
+      "name_use": "official",
+      "name_family": "Nguyen",
+      "name_given": ["Lan"],
+      "address_type": "both",
+      "address_line": ["10 Billing Way"],
+      "address_city": "Springfield",
+      "address_state": "IL",
+      "address_postal_code": "62701",
+      "address_country": "US",
+      "telecom": [
+        { "system": "phone", "value": "+1-555-300-2000" },
+        { "system": "email", "value": "billing@contacttestorg.example.org" }
+      ]
+    },
+    {
+      "purpose_system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+      "purpose_code": "PRESS",
+      "purpose_display": "Press",
+      "name_family": "Alvarez",
+      "name_given": ["Marco"],
+      "address_type": "both",
+      "address_city": "Springfield",
+      "address_state": "IL",
+      "address_postal_code": "62701",
+      "address_country": "US",
+      "telecom": [
+        { "system": "email", "value": "press@contacttestorg.example.org" }
+      ]
+    }
+  ]
+}

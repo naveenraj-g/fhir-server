@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "name": "Address Test Org",
+  "address": [
+    {
+      "use": "work",
+      "type": "physical",
+      "line": ["500 Clinic Way", "Suite 200"],
+      "city": "Springfield",
+      "district": "Greene County",
+      "state": "IL",
+      "postal_code": "62701",
+      "country": "US"
+    },
+    {
+      "use": "billing",
+      "type": "postal",
+      "line": ["PO Box 900"],
+      "city": "Springfield",
+      "state": "IL",
+      "postal_code": "62705",
+      "country": "US"
+    }
+  ]
+}

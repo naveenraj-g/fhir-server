@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -28,7 +29,7 @@ class OrganizationIdentifier(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    organization_id = Column(Integer, ForeignKey("organization.id"), nullable=False, index=True)
+    organization_id = Column(BigInteger, ForeignKey("organization.id"), nullable=False, index=True)
     org_id = Column(String, nullable=False)
 
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
