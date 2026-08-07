@@ -1,3 +1,5 @@
+from app.core.logging import trace_methods
+
 from .address import _AddressMixin
 from .communication import _CommunicationMixin
 from .core import _CoreMixin
@@ -10,6 +12,7 @@ from .telecom import _TelecomMixin
 __all__ = ["PractitionerService"]
 
 
+@trace_methods
 class PractitionerService(
     _CoreMixin,
     _NameMixin,

@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_address
 from app.fhir.mappers.practitioner import plain_address
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -44,6 +47,11 @@ async def add_address(
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Add an address to a Practitioner",
+        extra={"event": "route.add_practitioner_address", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.address.add.payload", payload)
     updated = await practitioner_service.add_address(
         practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -71,6 +79,10 @@ async def list_addresses(
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "List all addresses for a Practitioner",
+        extra={"event": "route.list_practitioner_addresses", "practitioner_id": practitioner_id},
+    )
     items = await practitioner_service.get_addresses(
         practitioner_id, org_id=actor.org_id
     )
@@ -101,6 +113,10 @@ async def delete_address(
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Remove an address from a Practitioner",
+        extra={"event": "route.delete_practitioner_address", "address_id": address_id, "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_address(
         practitioner_id, address_id, org_id=actor.org_id
     )
@@ -125,6 +141,11 @@ async def patch_address(
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Update an address on a Practitioner",
+        extra={"event": "route.patch_practitioner_address", "address_id": address_id, "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.address.patch.payload", payload)
     updated = await practitioner_service.patch_address(
         practitioner_id,
         address_id,

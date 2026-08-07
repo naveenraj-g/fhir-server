@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import NameCreate, NamePatch
+
+
+logger = get_logger(__name__)
 
 
 class _NameMixin:
@@ -19,6 +23,10 @@ class _NameMixin:
         updated = await self.repository.add_name(patient_id, payload, created_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient name added",
+            extra={"event": "patient.name.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_names(self, patient_id: int, org_id: str | None = None) -> list:
@@ -34,6 +42,10 @@ class _NameMixin:
         deleted = await self.repository.delete_name(patient_id, name_id)
         if not deleted:
             raise NotFoundError("Name not found on this Patient")
+        logger.info(
+            "Patient name deleted",
+            extra={"event": "patient.name.deleted", "patient_id": patient_id, "name_id": name_id},
+        )
 
     async def patch_name(
         self,
@@ -50,4 +62,8 @@ class _NameMixin:
         )
         if not updated:
             raise NotFoundError("Name not found on this Patient")
+        logger.info(
+            "Patient name updated",
+            extra={"event": "patient.name.updated", "patient_id": patient_id, "name_id": name_id},
+        )
         return updated

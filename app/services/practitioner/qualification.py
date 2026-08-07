@@ -1,8 +1,12 @@
 from typing import Optional
 
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerQualificationCreate, PractitionerQualificationPatch
+
+
+logger = get_logger(__name__)
 
 
 class _QualificationMixin:
@@ -18,6 +22,10 @@ class _QualificationMixin:
         updated = await self.repository.add_qualification(practitioner_id, payload, created_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner qualification added",
+            extra={"event": "practitioner.qualification.added", "practitioner_id": practitioner_id},
+        )
         return updated
 
     async def get_qualifications(self, practitioner_id: int, org_id: Optional[str] = None) -> list:
@@ -31,6 +39,10 @@ class _QualificationMixin:
         deleted = await self.repository.delete_qualification(practitioner_id, qualification_id)
         if not deleted:
             raise NotFoundError("Qualification not found on this Practitioner")
+        logger.info(
+            "Practitioner qualification deleted",
+            extra={"event": "practitioner.qualification.deleted", "practitioner_id": practitioner_id, "qualification_id": qualification_id},
+        )
 
     async def patch_qualification(
         self, practitioner_id: int, qualification_id: int, payload: PractitionerQualificationPatch,
@@ -42,4 +54,8 @@ class _QualificationMixin:
         )
         if not updated:
             raise NotFoundError("Qualification not found on this Practitioner")
+        logger.info(
+            "Practitioner qualification updated",
+            extra={"event": "practitioner.qualification.updated", "practitioner_id": practitioner_id, "qualification_id": qualification_id},
+        )
         return updated

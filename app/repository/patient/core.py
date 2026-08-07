@@ -6,6 +6,7 @@ from app.core.filters import (
     apply_token_filter,
     parse_reference,
 )
+from app.core.logging import get_logger
 from app.core.pagination import resolve_sort
 from app.models.enums import OrganizationReferenceType
 from app.models.patient.enums import (
@@ -35,6 +36,9 @@ from ._shared import (
     _validate_reference,
     _with_relationships,
 )
+
+
+logger = get_logger(__name__)
 
 
 class _CoreMixin:
@@ -456,6 +460,19 @@ class _CoreMixin:
                 offset=offset,
                 total_mode=total_mode,
             )
+        logger.debug(
+            "Patients listed",
+            extra={
+                "event": "patient.listed",
+                "returned": len(rows),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "filters": sorted(
+                    k for k, v in filter_kwargs.items() if v is not None
+                ),
+            },
+        )
         return rows, total
 
     # ── Write ─────────────────────────────────────────────────────────────────

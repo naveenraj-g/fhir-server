@@ -1,8 +1,12 @@
 from typing import Optional
 
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerAddressCreate, PractitionerAddressPatch
+
+
+logger = get_logger(__name__)
 
 
 class _AddressMixin:
@@ -17,6 +21,10 @@ class _AddressMixin:
         updated = await self.repository.add_address(practitioner_id, payload, created_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner address added",
+            extra={"event": "practitioner.address.added", "practitioner_id": practitioner_id},
+        )
         return updated
 
     async def get_addresses(self, practitioner_id: int, org_id: Optional[str] = None) -> list:
@@ -30,6 +38,10 @@ class _AddressMixin:
         deleted = await self.repository.delete_address(practitioner_id, address_id)
         if not deleted:
             raise NotFoundError("Address not found on this Practitioner")
+        logger.info(
+            "Practitioner address deleted",
+            extra={"event": "practitioner.address.deleted", "practitioner_id": practitioner_id, "address_id": address_id},
+        )
 
     async def patch_address(
         self, practitioner_id: int, address_id: int, payload: PractitionerAddressPatch,
@@ -39,4 +51,8 @@ class _AddressMixin:
         updated = await self.repository.patch_address(practitioner_id, address_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Address not found on this Practitioner")
+        logger.info(
+            "Practitioner address updated",
+            extra={"event": "practitioner.address.updated", "practitioner_id": practitioner_id, "address_id": address_id},
+        )
         return updated

@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.mappers.practitioner import fhir_qualification, plain_qualification
 from app.schemas.practitioner import (
@@ -22,6 +23,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -46,6 +49,11 @@ async def add_qualification(
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Add a professional qualification to a Practitioner",
+        extra={"event": "route.add_practitioner_qualification", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.qualification.add.payload", payload)
     updated = await practitioner_service.add_qualification(
         practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -75,6 +83,10 @@ async def list_qualifications(
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "List all qualifications for a Practitioner",
+        extra={"event": "route.list_practitioner_qualifications", "practitioner_id": practitioner_id},
+    )
     items = await practitioner_service.get_qualifications(
         practitioner_id, org_id=actor.org_id
     )
@@ -105,6 +117,10 @@ async def delete_qualification(
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Remove a qualification from a Practitioner",
+        extra={"event": "route.delete_practitioner_qualification", "qualification_id": qualification_id, "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_qualification(
         practitioner_id, qualification_id, org_id=actor.org_id
     )
@@ -130,6 +146,11 @@ async def patch_qualification(
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Update a qualification on a Practitioner",
+        extra={"event": "route.patch_practitioner_qualification", "qualification_id": qualification_id, "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.qualification.patch.payload", payload)
     updated = await practitioner_service.patch_qualification(
         practitioner_id,
         qualification_id,

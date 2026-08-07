@@ -26,6 +26,38 @@ class RoutesConfig(BaseModel):
     enabled: list[str] = Field(default_factory=list)
 
 
+class LogConfig(BaseModel):
+    """Observability config — consumed by app.core.logging.setup_logging(),
+    app.middleware.access_log, and app.core.database's query listeners.
+    See CLAUDE.md's "Logging & Observability" section."""
+
+    # Root log level. DEBUG turns on the per-layer flow logging that services
+    # and repositories emit; INFO keeps only business outcomes + the access log.
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+
+    # "json" (one JSON object per line — what log aggregators want) or
+    # "console" (flat, human-readable; local development only).
+    format: Literal["json", "console"] = "json"
+
+    # ⚠️ PHI. Logs full request payloads at DEBUG via log_payload(). This is a
+    # FHIR server — enabling it writes patient names, addresses, birth dates
+    # and identifiers into the log stream. Local development only; `redact`
+    # below is a backstop for obvious secrets, NOT a PHI safeguard.
+    debug_payloads: bool = False
+
+    # Any SQL statement slower than this logs a `db.slow_query` WARNING.
+    slow_query_ms: int = 500
+
+    # Log every SQL statement at DEBUG (very noisy — debugging only).
+    sql_echo: bool = False
+
+    # Field names masked by log_payload() even when debug_payloads is on.
+    # Matched case-insensitively against dict keys at any nesting depth.
+    redact: list[str] = Field(
+        default_factory=lambda: ["authorization", "token", "password", "secret"]
+    )
+
+
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     FHIR_DATABASE_URL: str
@@ -37,6 +69,7 @@ class Settings(BaseSettings):
 
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
+    logging: LogConfig = Field(default_factory=LogConfig)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -64,8 +97,14 @@ class Settings(BaseSettings):
         ranked between `env_settings` and `dotenv_settings` — no changes
         needed anywhere else, since consumers only ever read `settings.*`.
         """
+        # yaml_file_encoding is explicit because the source otherwise opens the
+        # file with the platform default — cp1252 on Windows, which blows up on
+        # any non-ASCII byte in the committed config (e.g. the ⚠️ in the
+        # debug_payloads PHI warning).
         yaml_settings = YamlConfigSettingsSource(
-            settings_cls, yaml_file="configs/config.yaml"
+            settings_cls,
+            yaml_file="configs/config.yaml",
+            yaml_file_encoding="utf-8",
         )
         return (
             init_settings,

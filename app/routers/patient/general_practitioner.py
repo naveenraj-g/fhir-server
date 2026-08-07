@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.mappers.patient import (
     fhir_general_practitioner,
@@ -22,6 +23,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -43,6 +46,11 @@ async def add_general_practitioner(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one general-practitioner reference row, then return the full updated Patient."""
+    logger.info(
+        "Add a general practitioner reference to a Patient",
+        extra={"event": "route.add_patient_general_practitioner", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.general_practitioner.add.payload", payload)
     updated = await patient_service.add_general_practitioner(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -70,6 +78,10 @@ async def list_general_practitioners(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_general_practitioner()/plain_general_practitioner() mappers directly."""
+    logger.info(
+        "List all general practitioner references for a Patient",
+        extra={"event": "route.list_patient_general_practitioners", "patient_id": patient_id},
+    )
     items = await patient_service.get_general_practitioners(
         patient_id, org_id=actor.org_id
     )
@@ -103,6 +115,10 @@ async def delete_general_practitioner(
     """delete_general_practitioner() raises NotFoundError (404) if the
     Patient is missing, belongs to a different org, or gp_id doesn't belong
     to it."""
+    logger.info(
+        "Remove a general practitioner reference from a Patient",
+        extra={"event": "route.delete_patient_general_practitioner", "gp_id": gp_id, "patient_id": patient_id},
+    )
     await patient_service.delete_general_practitioner(
         patient_id, gp_id, org_id=actor.org_id
     )
@@ -131,6 +147,11 @@ async def patch_general_practitioner(
     the full updated Patient. patch_general_practitioner() raises
     NotFoundError (404) if the Patient is missing, belongs to a different
     org, or gp_id doesn't belong to it."""
+    logger.info(
+        "Update a general practitioner reference on a Patient",
+        extra={"event": "route.patch_patient_general_practitioner", "gp_id": gp_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.general_practitioner.patch.payload", payload)
     updated = await patient_service.patch_general_practitioner(
         patient_id, gp_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )

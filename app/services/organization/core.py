@@ -1,9 +1,12 @@
+from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
 from app.fhir.mappers.organization import to_fhir_organization, to_plain_organization
 from app.models.organization import OrganizationModel
 from app.repository.organization import OrganizationRepository
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
+
+logger = get_logger(__name__)
 
 
 class _CoreMixin:
@@ -107,7 +110,15 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Organization creation requires an org-scoped token"
             )
-        return await self.repository.create_full(payload, org_id, created_by)
+        org = await self.repository.create_full(payload, org_id, created_by)
+        logger.info(
+            "Organization created",
+            extra={
+                "event": "organization.created",
+                "organization_id": org.organization_id,
+            },
+        )
+        return org
 
     async def patch_organization(
         self,
@@ -122,10 +133,19 @@ class _CoreMixin:
         if not org_id or not await self.repository.organization_belongs_to_org(
             organization_id, org_id
         ):
+            self._log_org_scope_miss("patch", organization_id, org_id)
             raise NotFoundError("Organization not found")
         updated = await self.repository.patch_full(organization_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Organization not found")
+        logger.info(
+            "Organization updated",
+            extra={
+                "event": "organization.updated",
+                "organization_id": organization_id,
+                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+            },
+        )
         return updated
 
     async def delete_organization(
@@ -135,7 +155,36 @@ class _CoreMixin:
         if not org_id or not await self.repository.organization_belongs_to_org(
             organization_id, org_id
         ):
+            self._log_org_scope_miss("delete", organization_id, org_id)
             raise NotFoundError("Organization not found")
         deleted = await self.repository.delete(organization_id)
         if not deleted:
             raise NotFoundError("Organization not found")
+        logger.info(
+            "Organization deleted",
+            extra={
+                "event": "organization.deleted",
+                "organization_id": organization_id,
+            },
+        )
+
+    # ── Logging helpers ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _log_org_scope_miss(
+        operation: str, organization_id: int, org_id: str | None
+    ) -> None:
+        """The tenant gate rejected a write. The caller gets a plain 404 —
+        deliberately indistinguishable from "no such organization" — so this
+        log line is the only place the distinction is recorded. Worth WARNING
+        because a repeated cross-org miss is a very different signal from a
+        typo'd id."""
+        logger.warning(
+            "Organization write rejected by org scope",
+            extra={
+                "event": "organization.org_scope_miss",
+                "operation": operation,
+                "organization_id": organization_id,
+                "reason": "no_org_token" if not org_id else "different_org",
+            },
+        )

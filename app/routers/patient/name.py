@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_human_name
 from app.fhir.mappers.patient import plain_name
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -44,6 +47,11 @@ async def add_name(
     """Append one HumanName row, then return the full updated Patient.
     add_name() raises NotFoundError (404) if the patient belongs to a
     different org."""
+    logger.info(
+        "Add a name to a Patient",
+        extra={"event": "route.add_patient_name", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.name.add.payload", payload)
     updated = await patient_service.add_name(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -71,6 +79,10 @@ async def list_names(
 ):
     """Calls the shared fhir_human_name()/plain_name() mappers directly — bypasses
     the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
+    logger.info(
+        "List all names for a Patient",
+        extra={"event": "route.list_patient_names", "patient_id": patient_id},
+    )
     items = await patient_service.get_names(patient_id, org_id=actor.org_id)
     plain = [plain_name(n) for n in items]
     if wants_fhir(request):
@@ -101,6 +113,10 @@ async def delete_name(
 ):
     """delete_name() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or if name_id doesn't belong to it."""
+    logger.info(
+        "Remove a name entry from a Patient",
+        extra={"event": "route.delete_patient_name", "name_id": name_id, "patient_id": patient_id},
+    )
     await patient_service.delete_name(patient_id, name_id, org_id=actor.org_id)
 
 
@@ -126,6 +142,11 @@ async def patch_name(
     """Partial update of one HumanName row, then return the full updated
     Patient. patch_name() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or name_id doesn't belong to it."""
+    logger.info(
+        "Update a name entry on a Patient",
+        extra={"event": "route.patch_patient_name", "name_id": name_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.name.patch.payload", payload)
     updated = await patient_service.patch_name(
         patient_id, name_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )

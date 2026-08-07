@@ -3,6 +3,7 @@ from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.logging import get_logger
+from app.core.request_context import request_id_ctx_var
 from app.errors.base import ApplicationError
 from app.errors.validation import InputValidationError
 
@@ -32,7 +33,11 @@ def _base_log_payload(request: Request):
 
 
 def get_request_id(request: Request) -> str | None:
-    return request.state.request_id if request.state.request_id else None
+    """Prefers the ContextVar over request.state — an error handler must never
+    itself raise, and request.state.request_id is unset whenever the
+    request-context middleware didn't run (e.g. an exception raised in a
+    middleware layered above it)."""
+    return request_id_ctx_var.get() or getattr(request.state, "request_id", None)
 
 
 # -------------------------------------------------------
@@ -56,7 +61,10 @@ async def application_error_handler(request: Request, exc: ApplicationError):
     # Input Validation Error
     # -----------------------
     if isinstance(exc, InputValidationError):
-        logger.info("Input validation failed", extra=payload)
+        logger.info(
+            "Input validation failed",
+            extra={**payload, "event": "error.input_validation"},
+        )
 
         return JSONResponse(
             status_code=400,
@@ -79,9 +87,16 @@ async def application_error_handler(request: Request, exc: ApplicationError):
     # Operational Errors
     # -----------------------
     if exc.is_operational:
-        logger.warning("Operational application error", extra=payload)
+        logger.warning(
+            "Operational application error",
+            extra={**payload, "event": "error.operational"},
+        )
     else:
-        logger.error("Non-operational application error", extra=payload, exc_info=True)
+        logger.error(
+            "Non-operational application error",
+            extra={**payload, "event": "error.non_operational"},
+            exc_info=True,
+        )
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -112,7 +127,11 @@ async def request_validation_exception_handler(
 
     logger.info(
         "Request schema validation failed",
-        extra={**payload, "errors": exc.errors()},
+        extra={
+            **payload,
+            "event": "error.schema_validation",
+            "errors": exc.errors(),
+        },
     )
 
     issues = []
@@ -150,7 +169,7 @@ async def response_validation_exception_handler(
 
     logger.critical(
         "Response validation failed",
-        extra=payload,
+        extra={**payload, "event": "error.response_validation"},
         exc_info=True,
     )
 
@@ -185,7 +204,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
     logger.critical(
         "Unhandled exception occurred",
-        extra=payload,
+        extra={**payload, "event": "error.unhandled"},
         exc_info=True,
     )
 
@@ -211,7 +230,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
     logger.warning(
         "HTTP exception raised",
-        extra={**payload, "status_code": exc.status_code, "detail": exc.detail},
+        extra={
+            **payload,
+            "event": "error.http_exception",
+            "status_code": exc.status_code,
+            "detail": exc.detail,
+        },
     )
 
     return JSONResponse(

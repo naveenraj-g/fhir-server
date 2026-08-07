@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, status
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
 from app.di.dependencies.patient import get_patient_service
 from app.models.patient.enums import AddressUse, PatientGender
@@ -27,6 +28,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 # ── Create ─────────────────────────────────────────────────────────────────────
@@ -56,6 +59,11 @@ async def create_patient(
     the validated payload, but org_id and created_by both come from the
     verified JWT (actor.org_id / actor.sub) — org_id is no longer a request
     body field at all, and an org-less token is rejected outright (403)."""
+    logger.info(
+        "Create a new Patient resource",
+        extra={"event": "route.create_patient"},
+    )
+    log_payload(logger, "patient.create.payload", payload)
     patient = await patient_service.create_patient(
         payload, payload.user_id, actor.org_id, actor.sub
     )
@@ -86,6 +94,11 @@ async def create_patient_full(
 ):
     """Create a Patient plus any supplied sub-resource lists, atomically.
     Same org_id/created_by handling as create_patient."""
+    logger.info(
+        "Create a Patient resource with all sub-resources in one request",
+        extra={"event": "route.create_patient_full"},
+    )
+    log_payload(logger, "patient.create_full.payload", payload)
     patient = await patient_service.create_patient_full(
         payload, payload.user_id, actor.org_id, actor.sub
     )
@@ -116,6 +129,10 @@ async def get_my_patient(
 ):
     """get_me() raises PermissionDeniedError (403) for an org-less token, or
     NotFoundError (404) if no patient matches the caller's own user_id/org_id."""
+    logger.info(
+        "Retrieve the authenticated caller's own Patient resource",
+        extra={"event": "route.get_my_patient_record"},
+    )
     patient = await patient_service.get_me(actor.sub, actor.org_id)
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
@@ -138,6 +155,10 @@ async def get_patient(
     raises PermissionDeniedError (403) outright for an org-less token, or
     NotFoundError (404, never 403) if it belongs to a different org, so
     existence isn't leaked."""
+    logger.info(
+        "Retrieve a Patient resource by public patient_id",
+        extra={"event": "route.get_patient_by_id", "patient_id": patient_id},
+    )
     patient = await patient_service.get_patient_scoped(patient_id, actor.org_id)
     return format_response(
         patient_service._to_fhir(patient), patient_service._to_plain(patient), request
@@ -167,6 +188,10 @@ async def get_patient_core(
     """Fetches the patient (scalars only) scoped to the caller's org —
     get_patient_scoped() raises PermissionDeniedError (403) outright for an
     org-less token, or NotFoundError (404) if it belongs to a different org."""
+    logger.info(
+        "Retrieve only a Patient's own table data — no sub-resources",
+        extra={"event": "route.get_patient_core_by_id", "patient_id": patient_id},
+    )
     patient = await patient_service.get_patient_scoped(
         patient_id, actor.org_id, core=True
     )
@@ -204,6 +229,11 @@ async def patch_patient(
     updated_by comes from the verified JWT (actor.sub); patch_patient()
     raises NotFoundError (404, not 403 — avoids leaking that a patient with
     this id exists in another org) if actor.org_id doesn't match."""
+    logger.info(
+        "Partially update a Patient resource",
+        extra={"event": "route.patch_patient", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.patch.payload", payload)
     updated = await patient_service.patch_patient(
         patient_id, payload, actor.sub, actor.org_id
     )
@@ -237,6 +267,11 @@ async def patch_patient_full(
     supplied sub-resource lists. Same actor-derived updated_by and org_id
     ownership gate as patch_patient — patch_patient_full() raises
     NotFoundError (404) on mismatch."""
+    logger.info(
+        "Atomically update a Patient and replace any sub-resource lists in one request",
+        extra={"event": "route.patch_patient_full", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.patch_full.payload", payload)
     updated = await patient_service.patch_patient_full(
         patient_id, payload, actor.sub, actor.org_id
     )
@@ -374,6 +409,10 @@ async def list_patients(
     always the caller's own (actor.org_id), never client-suppliable;
     list_patients() raises PermissionDeniedError (403) outright for an
     org-less token."""
+    logger.info(
+        "List all Patient resources",
+        extra={"event": "route.list_patients"},
+    )
     patients, total = await patient_service.list_patients(
         user_id=user_id,
         org_id=actor.org_id,
@@ -433,4 +472,8 @@ async def delete_patient(
     """delete_patient() raises NotFoundError (404) if the id doesn't exist at
     all, or if it exists but belongs to a different org. Delete cascades to
     every sub-resource row."""
+    logger.info(
+        "Delete a Patient resource",
+        extra={"event": "route.delete_patient", "patient_id": patient_id},
+    )
     await patient_service.delete_patient(patient_id, actor.org_id)

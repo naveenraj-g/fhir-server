@@ -1,3 +1,4 @@
+from app.core.logging import trace_methods
 from app.repository.base import BaseRepository
 
 from .address import _AddressMixin
@@ -15,6 +16,7 @@ from .telecom import _TelecomMixin
 __all__ = ["PatientRepository"]
 
 
+@trace_methods
 class PatientRepository(
     _CoreMixin,
     _FullMixin,

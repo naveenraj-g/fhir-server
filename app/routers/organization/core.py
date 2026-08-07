@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, status
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
 from app.di.dependencies.organization import get_organization_service
 from app.schemas.enums import AddressUse
@@ -19,6 +20,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 _FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
 
@@ -53,6 +56,11 @@ async def create_organization(
     actor.sub) — org_id is no longer a request body field at all, and an
     org-less token is rejected outright (403). Organization has no user_id
     field at all, unlike every other resource."""
+    logger.info(
+        "Create a new Organization resource",
+        extra={"event": "route.create_organization"},
+    )
+    log_payload(logger, "organization.create.payload", payload)
     org = await organization_service.create_organization(
         payload, actor.org_id, actor.sub
     )
@@ -80,6 +88,10 @@ async def get_organization(
     actor: AuthUser = Depends(require_permission("organization", "read")),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
+    logger.info(
+        "Retrieve an Organization resource by public organization_id",
+        extra={"event": "route.get_organization_by_id", "organization_id": organization_id},
+    )
     org = await organization_service.get_organization_scoped(
         organization_id, actor.org_id
     )
@@ -116,6 +128,11 @@ async def patch_organization(
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_organization()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
+    logger.info(
+        "Update an Organization resource",
+        extra={"event": "route.patch_organization", "organization_id": organization_id},
+    )
+    log_payload(logger, "organization.patch.payload", payload)
     updated = await organization_service.patch_organization(
         organization_id, payload, actor.sub, org_id=actor.org_id
     )
@@ -207,6 +224,10 @@ async def list_organizations(
     always the caller's own (actor.org_id), never client-suppliable;
     list_organizations() raises PermissionDeniedError (403) outright for an
     org-less token."""
+    logger.info(
+        "List all Organization resources",
+        extra={"event": "route.list_organizations"},
+    )
     orgs, total = await organization_service.list_organizations(
         org_id=actor.org_id,
         active=active,
@@ -259,6 +280,10 @@ async def delete_organization(
     """delete_organization() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org. Delete
     cascades to every sub-resource row."""
+    logger.info(
+        "Delete an Organization resource",
+        extra={"event": "route.delete_organization", "organization_id": organization_id},
+    )
     await organization_service.delete_organization(
         organization_id, org_id=actor.org_id
     )

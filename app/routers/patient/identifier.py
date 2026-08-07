@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.mappers.patient import fhir_identifier, plain_identifier
 from app.schemas.patient import IdentifierCreate, IdentifierPatch
@@ -19,6 +20,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -41,6 +44,11 @@ async def add_identifier(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one identifier row, then return the full updated Patient."""
+    logger.info(
+        "Add an identifier to a Patient",
+        extra={"event": "route.add_patient_identifier", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.identifier.add.payload", payload)
     updated = await patient_service.add_identifier(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -68,6 +76,10 @@ async def list_identifiers(
 ):
     """Calls the shared fhir_identifier()/plain_identifier() mappers directly — bypasses
     the service's _to_fhir/_to_plain since this returns a bare list, not a full Patient."""
+    logger.info(
+        "List all business identifiers for a Patient",
+        extra={"event": "route.list_patient_identifiers", "patient_id": patient_id},
+    )
     items = await patient_service.get_identifiers(
         patient_id, org_id=actor.org_id
     )
@@ -100,6 +112,10 @@ async def delete_identifier(
 ):
     """delete_identifier() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or identifier_id doesn't belong to it."""
+    logger.info(
+        "Remove a business identifier from a Patient",
+        extra={"event": "route.delete_patient_identifier", "identifier_id": identifier_id, "patient_id": patient_id},
+    )
     await patient_service.delete_identifier(
         patient_id, identifier_id, org_id=actor.org_id
     )
@@ -127,6 +143,11 @@ async def patch_identifier(
     """Partial update of one identifier row, then return the full updated
     Patient. patch_identifier() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or identifier_id doesn't belong to it."""
+    logger.info(
+        "Update a business identifier on a Patient",
+        extra={"event": "route.patch_patient_identifier", "identifier_id": identifier_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.identifier.patch.payload", payload)
     updated = await patient_service.patch_identifier(
         patient_id,
         identifier_id,

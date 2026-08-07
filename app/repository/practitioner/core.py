@@ -2,6 +2,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.future import select
 
 from app.core.filters import apply_child_exists_filter, apply_token_filter
+from app.core.logging import get_logger
 from app.core.pagination import resolve_sort
 from app.models.practitioner import (
     PractitionerAddress,
@@ -16,6 +17,9 @@ from app.schemas.enums import ContactPointSystem
 from app.schemas.practitioner import PractitionerCreateSchema, PractitionerPatchSchema
 
 from ._shared import _SORTABLE_FIELDS, _with_relationships
+
+
+logger = get_logger(__name__)
 
 
 class _CoreMixin:
@@ -331,6 +335,19 @@ class _CoreMixin:
                 offset=offset,
                 total_mode=total_mode,
             )
+        logger.debug(
+            "Practitioners listed",
+            extra={
+                "event": "practitioner.listed",
+                "returned": len(rows),
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "filters": sorted(
+                    k for k, v in filter_kwargs.items() if v is not None
+                ),
+            },
+        )
         return rows, total
 
     async def create(

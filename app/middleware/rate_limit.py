@@ -117,6 +117,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # Redis call failed mid-request — fall back to local
                 logger.error(
                     "Rate limit Redis error, falling back to in-process limiter",
+                    extra={"event": "ratelimit.backend_degraded", "reason": "redis_error"},
                     exc_info=exc,
                 )
                 allowed, remaining = await self._check_local(key, limit)
@@ -127,7 +128,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # Log at ERROR so this shows up in alerts, not just warning noise.
                 logger.error(
                     "Redis unavailable — rate limiting is process-local only. "
-                    "Protection is degraded in multi-instance deployments."
+                    "Protection is degraded in multi-instance deployments.",
+                    extra={
+                        "event": "ratelimit.backend_degraded",
+                        "reason": "redis_unavailable",
+                    },
                 )
             # backend == "memory": in-process limiting is the deliberately
             # configured choice, not a degradation — no error log.
@@ -135,10 +140,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             backend_used = "local"
 
         if not allowed:
-            logger.info(
+            # `rate_limit_key`, not `user_id` — this is the throttling identity
+            # (JWT sub OR client IP for unauthenticated callers), which is a
+            # different thing from the verified actor the formatter injects as
+            # actor_user_id.
+            logger.warning(
                 "Rate limit exceeded",
                 extra={
-                    "user_id": user_id,
+                    "event": "ratelimit.exceeded",
+                    "rate_limit_key": user_id,
                     "method": request.method,
                     "path": path,
                     "limit": limit,

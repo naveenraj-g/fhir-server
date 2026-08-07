@@ -1,8 +1,12 @@
 from typing import Optional
 
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerNameCreate, PractitionerNamePatch
+
+
+logger = get_logger(__name__)
 
 
 class _NameMixin:
@@ -17,6 +21,10 @@ class _NameMixin:
         updated = await self.repository.add_name(practitioner_id, payload, created_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner name added",
+            extra={"event": "practitioner.name.added", "practitioner_id": practitioner_id},
+        )
         return updated
 
     async def get_names(self, practitioner_id: int, org_id: Optional[str] = None) -> list:
@@ -30,6 +38,10 @@ class _NameMixin:
         deleted = await self.repository.delete_name(practitioner_id, name_id)
         if not deleted:
             raise NotFoundError("Name not found on this Practitioner")
+        logger.info(
+            "Practitioner name deleted",
+            extra={"event": "practitioner.name.deleted", "practitioner_id": practitioner_id, "name_id": name_id},
+        )
 
     async def patch_name(
         self, practitioner_id: int, name_id: int, payload: PractitionerNamePatch,
@@ -39,4 +51,8 @@ class _NameMixin:
         updated = await self.repository.patch_name(practitioner_id, name_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Name not found on this Practitioner")
+        logger.info(
+            "Practitioner name updated",
+            extra={"event": "practitioner.name.updated", "practitioner_id": practitioner_id, "name_id": name_id},
+        )
         return updated

@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.mappers.patient import fhir_contact, plain_contact
 from app.schemas.patient import ContactCreate, ContactPatch
@@ -19,6 +20,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -40,6 +43,11 @@ async def add_contact(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one contact row (plus its relationship[]/telecom[] grandchildren), then return the full updated Patient."""
+    logger.info(
+        "Add a contact (next-of-kin / guardian) to a Patient",
+        extra={"event": "route.add_patient_contact", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.contact.add.payload", payload)
     updated = await patient_service.add_contact(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -66,6 +74,10 @@ async def list_contacts(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_contact()/plain_contact() mappers directly (not the shared datatypes.py helpers)."""
+    logger.info(
+        "List all contacts (next-of-kin / guardian) for a Patient",
+        extra={"event": "route.list_patient_contacts", "patient_id": patient_id},
+    )
     items = await patient_service.get_contacts(patient_id, org_id=actor.org_id)
     plain = [plain_contact(c) for c in items]
     if wants_fhir(request):
@@ -98,6 +110,10 @@ async def delete_contact(
     """delete_contact() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or contact_id doesn't belong to it; cascades
     to its grandchildren."""
+    logger.info(
+        "Remove a contact entry from a Patient",
+        extra={"event": "route.delete_patient_contact", "contact_id": contact_id, "patient_id": patient_id},
+    )
     await patient_service.delete_contact(
         patient_id, contact_id, org_id=actor.org_id
     )
@@ -128,6 +144,11 @@ async def patch_contact(
     wholesale if supplied, then return the full updated Patient.
     patch_contact() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or contact_id doesn't belong to it."""
+    logger.info(
+        "Update a contact entry on a Patient",
+        extra={"event": "route.patch_patient_contact", "contact_id": contact_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.contact.patch.payload", payload)
     updated = await patient_service.patch_contact(
         patient_id,
         contact_id,

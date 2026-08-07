@@ -1,8 +1,12 @@
 from typing import Optional
 
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerIdentifierCreate, PractitionerIdentifierPatch
+
+
+logger = get_logger(__name__)
 
 
 class _IdentifierMixin:
@@ -17,6 +21,10 @@ class _IdentifierMixin:
         updated = await self.repository.add_identifier(practitioner_id, payload, created_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner identifier added",
+            extra={"event": "practitioner.identifier.added", "practitioner_id": practitioner_id},
+        )
         return updated
 
     async def get_identifiers(self, practitioner_id: int, org_id: Optional[str] = None) -> list:
@@ -30,6 +38,10 @@ class _IdentifierMixin:
         deleted = await self.repository.delete_identifier(practitioner_id, identifier_id)
         if not deleted:
             raise NotFoundError("Identifier not found on this Practitioner")
+        logger.info(
+            "Practitioner identifier deleted",
+            extra={"event": "practitioner.identifier.deleted", "practitioner_id": practitioner_id, "identifier_id": identifier_id},
+        )
 
     async def patch_identifier(
         self, practitioner_id: int, identifier_id: int, payload: PractitionerIdentifierPatch,
@@ -41,4 +53,8 @@ class _IdentifierMixin:
         )
         if not updated:
             raise NotFoundError("Identifier not found on this Practitioner")
+        logger.info(
+            "Practitioner identifier updated",
+            extra={"event": "practitioner.identifier.updated", "practitioner_id": practitioner_id, "identifier_id": identifier_id},
+        )
         return updated

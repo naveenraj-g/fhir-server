@@ -1,3 +1,4 @@
+from app.core.logging import get_logger
 from sqlalchemy import delete
 from sqlalchemy.future import select
 
@@ -23,6 +24,9 @@ from ._shared import (
     _reference_kwargs,
     _validate_reference,
 )
+
+
+logger = get_logger(__name__)
 
 
 class _FullMixin:
@@ -525,5 +529,22 @@ class _FullMixin:
             except Exception:
                 await session.rollback()
                 raise
+
+            # Which sub-resource lists were wholesale replaced. Only the
+            # repository knows this — the service sees "a patch happened", and
+            # "replaced telecom with 0 rows" vs. "left telecom untouched" is
+            # exactly the distinction that turns into a support ticket.
+            # model_fields_set is the explicitly-supplied field names, same as
+            # model_dump(exclude_unset=True).keys() but without the dump.
+            replaced = sorted(_SUB & payload.model_fields_set)
+            if replaced:
+                logger.debug(
+                    "Practitioner sub-resource lists replaced",
+                    extra={
+                        "event": "practitioner.sublists_replaced",
+                        "practitioner_id": practitioner_id,
+                        "replaced": replaced,
+                    },
+                )
 
         return await self.get_by_practitioner_id(practitioner_id)

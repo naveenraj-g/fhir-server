@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_photo
 from app.fhir.mappers.patient import plain_photo
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -42,6 +45,11 @@ async def add_photo(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one photo attachment row, then return the full updated Patient."""
+    logger.info(
+        "Add a photo (Attachment) to a Patient",
+        extra={"event": "route.add_patient_photo", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.photo.add.payload", payload)
     updated = await patient_service.add_photo(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -68,6 +76,10 @@ async def list_photos(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_photo()/plain_photo() mappers directly."""
+    logger.info(
+        "List all photos (Attachments) for a Patient",
+        extra={"event": "route.list_patient_photos", "patient_id": patient_id},
+    )
     items = await patient_service.get_photos(patient_id, org_id=actor.org_id)
     plain = [plain_photo(p) for p in items]
     if wants_fhir(request):
@@ -98,6 +110,10 @@ async def delete_photo(
 ):
     """delete_photo() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or photo_id doesn't belong to it."""
+    logger.info(
+        "Remove a photo from a Patient",
+        extra={"event": "route.delete_patient_photo", "photo_id": photo_id, "patient_id": patient_id},
+    )
     await patient_service.delete_photo(
         patient_id, photo_id, org_id=actor.org_id
     )
@@ -125,6 +141,11 @@ async def patch_photo(
     """Partial update of one photo attachment row, then return the full
     updated Patient. patch_photo() raises NotFoundError (404) if the Patient
     is missing, belongs to a different org, or photo_id doesn't belong to it."""
+    logger.info(
+        "Update a photo attachment on a Patient",
+        extra={"event": "route.patch_patient_photo", "photo_id": photo_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.photo.patch.payload", payload)
     updated = await patient_service.patch_photo(
         patient_id, photo_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )

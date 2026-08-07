@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.mappers.practitioner import (
     fhir_practitioner_communication,
@@ -26,6 +27,8 @@ from ._responses import (
 
 router = APIRouter()
 
+logger = get_logger(__name__)
+
 
 @router.post(
     "/{practitioner_id}/communications",
@@ -47,6 +50,11 @@ async def add_communication(
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Add a communication language to a Practitioner",
+        extra={"event": "route.add_practitioner_communication", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.communication.add.payload", payload)
     updated = await practitioner_service.add_communication(
         practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -74,6 +82,10 @@ async def list_communications(
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "List all communication languages for a Practitioner",
+        extra={"event": "route.list_practitioner_communications", "practitioner_id": practitioner_id},
+    )
     items = await practitioner_service.get_communications(
         practitioner_id, org_id=actor.org_id
     )
@@ -104,6 +116,10 @@ async def delete_communication(
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Remove a communication language from a Practitioner",
+        extra={"event": "route.delete_practitioner_communication", "comm_id": comm_id, "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_communication(
         practitioner_id, comm_id, org_id=actor.org_id
     )
@@ -128,6 +144,11 @@ async def patch_communication(
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Update a communication language on a Practitioner",
+        extra={"event": "route.patch_practitioner_communication", "comm_id": comm_id, "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.communication.patch.payload", payload)
     updated = await practitioner_service.patch_communication(
         practitioner_id,
         comm_id,

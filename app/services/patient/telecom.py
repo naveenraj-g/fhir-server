@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import TelecomCreate, TelecomPatch
+
+
+logger = get_logger(__name__)
 
 
 class _TelecomMixin:
@@ -19,6 +23,10 @@ class _TelecomMixin:
         updated = await self.repository.add_telecom(patient_id, payload, created_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient telecom added",
+            extra={"event": "patient.telecom.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_telecoms(self, patient_id: int, org_id: str | None = None) -> list:
@@ -34,6 +42,10 @@ class _TelecomMixin:
         deleted = await self.repository.delete_telecom(patient_id, telecom_id)
         if not deleted:
             raise NotFoundError("Telecom not found on this Patient")
+        logger.info(
+            "Patient telecom deleted",
+            extra={"event": "patient.telecom.deleted", "patient_id": patient_id, "telecom_id": telecom_id},
+        )
 
     async def patch_telecom(
         self,
@@ -50,4 +62,8 @@ class _TelecomMixin:
         )
         if not updated:
             raise NotFoundError("Telecom not found on this Patient")
+        logger.info(
+            "Patient telecom updated",
+            extra={"event": "patient.telecom.updated", "patient_id": patient_id, "telecom_id": telecom_id},
+        )
         return updated

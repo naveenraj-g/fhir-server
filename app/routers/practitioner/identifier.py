@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.mappers.practitioner import fhir_identifier, plain_identifier
 from app.schemas.practitioner import (
@@ -22,6 +23,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -46,6 +49,11 @@ async def add_identifier(
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Add a business identifier to a Practitioner (e.g. NPI, license, DEA)",
+        extra={"event": "route.add_practitioner_identifier", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.identifier.add.payload", payload)
     updated = await practitioner_service.add_identifier(
         practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -73,6 +81,10 @@ async def list_identifiers(
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "List all business identifiers for a Practitioner",
+        extra={"event": "route.list_practitioner_identifiers", "practitioner_id": practitioner_id},
+    )
     items = await practitioner_service.get_identifiers(
         practitioner_id, org_id=actor.org_id
     )
@@ -103,6 +115,10 @@ async def delete_identifier(
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Remove a business identifier from a Practitioner",
+        extra={"event": "route.delete_practitioner_identifier", "identifier_id": identifier_id, "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_identifier(
         practitioner_id, identifier_id, org_id=actor.org_id
     )
@@ -127,6 +143,11 @@ async def patch_identifier(
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Update a business identifier on a Practitioner",
+        extra={"event": "route.patch_practitioner_identifier", "identifier_id": identifier_id, "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.identifier.patch.payload", payload)
     updated = await practitioner_service.patch_identifier(
         practitioner_id,
         identifier_id,

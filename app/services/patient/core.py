@@ -1,3 +1,4 @@
+from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
 from app.fhir.mappers.patient import (
@@ -6,8 +7,8 @@ from app.fhir.mappers.patient import (
     to_plain_patient,
     to_plain_patient_core,
 )
-from app.models.patient.enums import AddressUse, PatientGender
 from app.models.patient import PatientModel
+from app.models.patient.enums import AddressUse, PatientGender
 from app.repository.patient import PatientRepository
 from app.schemas.patient import (
     PatientCreateSchema,
@@ -15,6 +16,8 @@ from app.schemas.patient import (
     PatientFullPatchSchema,
     PatientPatchSchema,
 )
+
+logger = get_logger(__name__)
 
 
 class _CoreMixin:
@@ -91,7 +94,9 @@ class _CoreMixin:
         get_patient_core, list_patients, and all 36 sub-resource methods)
         goes through here instead of repeating the check per call site."""
         if not org_id:
-            raise PermissionDeniedError("Patient operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "Patient operation requires an org-scoped token"
+            )
         return await self.get_patient(patient_id, org_id=org_id, core=core)
 
     async def get_raw_by_user_id(self, user_id: str) -> PatientModel | None:
@@ -145,7 +150,9 @@ class _CoreMixin:
         PermissionDeniedError (403) for an org-less token — same invariant as
         get_patient_scoped()."""
         if not org_id:
-            raise PermissionDeniedError("Patient operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "Patient operation requires an org-scoped token"
+            )
         return await self.repository.list(
             user_id=user_id,
             org_id=org_id,
@@ -192,7 +199,16 @@ class _CoreMixin:
         cannot create a Patient at all."""
         if not org_id:
             raise PermissionDeniedError("Patient creation requires an org-scoped token")
-        return await self.repository.create(payload, user_id, org_id, created_by)
+        patient = await self.repository.create(payload, user_id, org_id, created_by)
+        logger.info(
+            "Patient created",
+            extra={
+                "event": "patient.created",
+                "patient_id": patient.patient_id,
+                "variant": "core",
+            },
+        )
+        return patient
 
     async def create_patient_full(
         self,
@@ -205,7 +221,18 @@ class _CoreMixin:
         Same org_id-from-actor handling as create_patient."""
         if not org_id:
             raise PermissionDeniedError("Patient creation requires an org-scoped token")
-        return await self.repository.create_full(payload, user_id, org_id, created_by)
+        patient = await self.repository.create_full(
+            payload, user_id, org_id, created_by
+        )
+        logger.info(
+            "Patient created",
+            extra={
+                "event": "patient.created",
+                "patient_id": patient.patient_id,
+                "variant": "full",
+            },
+        )
+        return patient
 
     async def patch_patient(
         self,
@@ -220,10 +247,20 @@ class _CoreMixin:
         if not org_id or not await self.repository.patient_belongs_to_org(
             patient_id, org_id
         ):
+            self._log_org_scope_miss("patch", patient_id, org_id)
             raise NotFoundError("Patient not found")
         updated = await self.repository.patch(patient_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient updated",
+            extra={
+                "event": "patient.updated",
+                "patient_id": patient_id,
+                "variant": "core",
+                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+            },
+        )
         return updated
 
     async def patch_patient_full(
@@ -238,10 +275,20 @@ class _CoreMixin:
         if not org_id or not await self.repository.patient_belongs_to_org(
             patient_id, org_id
         ):
+            self._log_org_scope_miss("patch_full", patient_id, org_id)
             raise NotFoundError("Patient not found")
         updated = await self.repository.patch_full(patient_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient updated",
+            extra={
+                "event": "patient.updated",
+                "patient_id": patient_id,
+                "variant": "full",
+                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+            },
+        )
         return updated
 
     async def delete_patient(self, patient_id: int, org_id: str | None = None) -> None:
@@ -251,7 +298,31 @@ class _CoreMixin:
         if not org_id or not await self.repository.patient_belongs_to_org(
             patient_id, org_id
         ):
+            self._log_org_scope_miss("delete", patient_id, org_id)
             raise NotFoundError("Patient not found")
         deleted = await self.repository.delete(patient_id)
         if not deleted:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient deleted",
+            extra={"event": "patient.deleted", "patient_id": patient_id},
+        )
+
+    # ── Logging helpers ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _log_org_scope_miss(
+        operation: str, patient_id: int, org_id: str | None
+    ) -> None:
+        """The tenant gate rejected a write. The caller gets a plain 404 —
+        deliberately indistinguishable from "no such patient" — so this log
+        line is the only place the distinction is recorded."""
+        logger.warning(
+            "Patient write rejected by org scope",
+            extra={
+                "event": "patient.org_scope_miss",
+                "operation": operation,
+                "patient_id": patient_id,
+                "reason": "no_org_token" if not org_id else "different_org",
+            },
+        )

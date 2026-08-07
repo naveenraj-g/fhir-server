@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import IdentifierCreate, IdentifierPatch
+
+
+logger = get_logger(__name__)
 
 
 class _IdentifierMixin:
@@ -19,6 +23,10 @@ class _IdentifierMixin:
         updated = await self.repository.add_identifier(patient_id, payload, created_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient identifier added",
+            extra={"event": "patient.identifier.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_identifiers(self, patient_id: int, org_id: str | None = None) -> list:
@@ -34,6 +42,10 @@ class _IdentifierMixin:
         deleted = await self.repository.delete_identifier(patient_id, identifier_id)
         if not deleted:
             raise NotFoundError("Identifier not found on this Patient")
+        logger.info(
+            "Patient identifier deleted",
+            extra={"event": "patient.identifier.deleted", "patient_id": patient_id, "identifier_id": identifier_id},
+        )
 
     async def patch_identifier(
         self,
@@ -50,4 +62,8 @@ class _IdentifierMixin:
         )
         if not updated:
             raise NotFoundError("Identifier not found on this Patient")
+        logger.info(
+            "Patient identifier updated",
+            extra={"event": "patient.identifier.updated", "patient_id": patient_id, "identifier_id": identifier_id},
+        )
         return updated

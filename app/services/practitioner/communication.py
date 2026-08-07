@@ -1,8 +1,12 @@
 from typing import Optional
 
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.practitioner import PractitionerModel
 from app.schemas.practitioner import PractitionerCommunicationCreate, PractitionerCommunicationPatch
+
+
+logger = get_logger(__name__)
 
 
 class _CommunicationMixin:
@@ -18,6 +22,10 @@ class _CommunicationMixin:
         updated = await self.repository.add_communication(practitioner_id, payload, created_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner communication added",
+            extra={"event": "practitioner.communication.added", "practitioner_id": practitioner_id},
+        )
         return updated
 
     async def get_communications(self, practitioner_id: int, org_id: Optional[str] = None) -> list:
@@ -31,6 +39,10 @@ class _CommunicationMixin:
         deleted = await self.repository.delete_communication(practitioner_id, comm_id)
         if not deleted:
             raise NotFoundError("Communication not found on this Practitioner")
+        logger.info(
+            "Practitioner communication deleted",
+            extra={"event": "practitioner.communication.deleted", "practitioner_id": practitioner_id, "comm_id": comm_id},
+        )
 
     async def patch_communication(
         self, practitioner_id: int, comm_id: int, payload: PractitionerCommunicationPatch,
@@ -40,4 +52,8 @@ class _CommunicationMixin:
         updated = await self.repository.patch_communication(practitioner_id, comm_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Communication not found on this Practitioner")
+        logger.info(
+            "Practitioner communication updated",
+            extra={"event": "practitioner.communication.updated", "practitioner_id": practitioner_id, "comm_id": comm_id},
+        )
         return updated

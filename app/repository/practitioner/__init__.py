@@ -1,3 +1,4 @@
+from app.core.logging import trace_methods
 from app.repository.base import BaseRepository
 
 from .address import _AddressMixin
@@ -13,6 +14,7 @@ from .telecom import _TelecomMixin
 __all__ = ["PractitionerRepository"]
 
 
+@trace_methods
 class PractitionerRepository(
     _CoreMixin,
     _FullMixin,

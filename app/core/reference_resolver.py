@@ -16,6 +16,7 @@ registered resource type instead of a hand-written check per resource.
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
 from app.models.organization import OrganizationModel
 from app.models.patient import PatientModel
@@ -79,6 +80,21 @@ async def ensure_resource_exists(
     if not await resource_exists(
         session, resource_type, resource_id, org_id=org_id, user_id=user_id
     ):
+        # A real business event: the caller pointed at something that isn't
+        # there (or isn't theirs). The 422 tells them; this tells us, with the
+        # tenant context attached, which is how you tell "typo'd id" apart
+        # from "cross-org reference attempt".
+        logger.warning(
+            "Reference does not resolve",
+            extra={
+                "event": "reference.unresolved",
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "field": field_name,
+                "scoped_org_id": org_id,
+                "scoped_user_id": user_id,
+            },
+        )
         raise BusinessRuleViolationError(
             f"{field_name or resource_type}: referenced {resource_type}/{resource_id} does not exist"
         )

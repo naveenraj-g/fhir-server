@@ -4,6 +4,35 @@
 # first: real env var > .env > this file > field defaults — see
 # app/core/config.py's Settings.settings_customise_sources().
 
+logging:
+  # Root log level. DEBUG turns on the per-layer flow logging that services and
+  # repositories emit; INFO keeps only business outcomes + the access log.
+  level: INFO
+
+  # "json" (one JSON object per line — what log aggregators want) or "console"
+  # (flat, human-readable). Use console locally, json everywhere else.
+  format: json
+
+  # ⚠️  PHI WARNING — LOCAL DEVELOPMENT ONLY, NEVER ENABLE IN PRODUCTION.
+  # This is a FHIR server. Turning this on logs full request payloads at DEBUG:
+  # patient names, addresses, birth dates, identifiers. The `redact` list below
+  # is a backstop for obvious secrets, NOT a PHI safeguard.
+  debug_payloads: false
+
+  # Any SQL statement slower than this emits a `db.slow_query` WARNING.
+  slow_query_ms: 500
+
+  # Log every SQL statement at DEBUG (very noisy — debugging only).
+  sql_echo: false
+
+  # Field names masked by log_payload(), matched case-insensitively at any
+  # nesting depth, even when debug_payloads is on.
+  redact:
+    - authorization
+    - token
+    - password
+    - secret
+
 rate_limit:
   backend: redis
   read_limit: 100

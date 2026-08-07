@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_address
 from app.fhir.mappers.patient import plain_address
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -41,6 +44,11 @@ async def add_address(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one address row, then return the full updated Patient."""
+    logger.info(
+        "Add an address to a Patient",
+        extra={"event": "route.add_patient_address", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.address.add.payload", payload)
     updated = await patient_service.add_address(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -67,6 +75,10 @@ async def list_addresses(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_address()/plain_address() mappers directly."""
+    logger.info(
+        "List all addresses for a Patient",
+        extra={"event": "route.list_patient_addresses", "patient_id": patient_id},
+    )
     items = await patient_service.get_addresses(patient_id, org_id=actor.org_id)
     plain = [plain_address(a) for a in items]
     if wants_fhir(request):
@@ -97,6 +109,10 @@ async def delete_address(
 ):
     """delete_address() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or address_id doesn't belong to it."""
+    logger.info(
+        "Remove an address from a Patient",
+        extra={"event": "route.delete_patient_address", "address_id": address_id, "patient_id": patient_id},
+    )
     await patient_service.delete_address(
         patient_id, address_id, org_id=actor.org_id
     )
@@ -124,6 +140,11 @@ async def patch_address(
     """Partial update of one address row, then return the full updated
     Patient. patch_address() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or address_id doesn't belong to it."""
+    logger.info(
+        "Update an address on a Patient",
+        extra={"event": "route.patch_patient_address", "address_id": address_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.address.patch.payload", payload)
     updated = await patient_service.patch_address(
         patient_id,
         address_id,

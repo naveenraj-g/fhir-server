@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_telecom
 from app.fhir.mappers.patient import plain_telecom
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -42,6 +45,11 @@ async def add_telecom(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one contact-point row, then return the full updated Patient."""
+    logger.info(
+        "Add a contact point (telecom) to a Patient",
+        extra={"event": "route.add_patient_telecom", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.telecom.add.payload", payload)
     updated = await patient_service.add_telecom(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -68,6 +76,10 @@ async def list_telecom(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_telecom()/plain_telecom() mappers directly."""
+    logger.info(
+        "List all contact points (telecom) for a Patient",
+        extra={"event": "route.list_patient_telecom", "patient_id": patient_id},
+    )
     items = await patient_service.get_telecoms(patient_id, org_id=actor.org_id)
     plain = [plain_telecom(t) for t in items]
     if wants_fhir(request):
@@ -98,6 +110,10 @@ async def delete_telecom(
 ):
     """delete_telecom() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or telecom_id doesn't belong to it."""
+    logger.info(
+        "Remove a contact point from a Patient",
+        extra={"event": "route.delete_patient_telecom", "telecom_id": telecom_id, "patient_id": patient_id},
+    )
     await patient_service.delete_telecom(
         patient_id, telecom_id, org_id=actor.org_id
     )
@@ -125,6 +141,11 @@ async def patch_telecom(
     """Partial update of one contact-point row, then return the full updated
     Patient. patch_telecom() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or telecom_id doesn't belong to it."""
+    logger.info(
+        "Update a contact point on a Patient",
+        extra={"event": "route.patch_patient_telecom", "telecom_id": telecom_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.telecom.patch.payload", payload)
     updated = await patient_service.patch_telecom(
         patient_id,
         telecom_id,

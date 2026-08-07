@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import PhotoCreate, PhotoPatch
+
+
+logger = get_logger(__name__)
 
 
 class _PhotoMixin:
@@ -19,6 +23,10 @@ class _PhotoMixin:
         updated = await self.repository.add_photo(patient_id, payload, created_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient photo added",
+            extra={"event": "patient.photo.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_photos(self, patient_id: int, org_id: str | None = None) -> list:
@@ -34,6 +42,10 @@ class _PhotoMixin:
         deleted = await self.repository.delete_photo(patient_id, photo_id)
         if not deleted:
             raise NotFoundError("Photo not found on this Patient")
+        logger.info(
+            "Patient photo deleted",
+            extra={"event": "patient.photo.deleted", "patient_id": patient_id, "photo_id": photo_id},
+        )
 
     async def patch_photo(
         self,
@@ -50,4 +62,8 @@ class _PhotoMixin:
         )
         if not updated:
             raise NotFoundError("Photo not found on this Patient")
+        logger.info(
+            "Patient photo updated",
+            extra={"event": "patient.photo.updated", "patient_id": patient_id, "photo_id": photo_id},
+        )
         return updated

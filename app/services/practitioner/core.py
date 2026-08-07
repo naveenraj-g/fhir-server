@@ -1,3 +1,4 @@
+from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
 from app.fhir.mappers.practitioner import to_fhir_practitioner, to_plain_practitioner
@@ -9,6 +10,8 @@ from app.schemas.practitioner import (
     PractitionerFullPatchSchema,
     PractitionerPatchSchema,
 )
+
+logger = get_logger(__name__)
 
 
 class _CoreMixin:
@@ -137,7 +140,18 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Practitioner creation requires an org-scoped token"
             )
-        return await self.repository.create(payload, user_id, org_id, created_by)
+        practitioner = await self.repository.create(
+            payload, user_id, org_id, created_by
+        )
+        logger.info(
+            "Practitioner created",
+            extra={
+                "event": "practitioner.created",
+                "practitioner_id": practitioner.practitioner_id,
+                "variant": "core",
+            },
+        )
+        return practitioner
 
     async def create_practitioner_full(
         self,
@@ -151,7 +165,18 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Practitioner creation requires an org-scoped token"
             )
-        return await self.repository.create_full(payload, user_id, org_id, created_by)
+        practitioner = await self.repository.create_full(
+            payload, user_id, org_id, created_by
+        )
+        logger.info(
+            "Practitioner created",
+            extra={
+                "event": "practitioner.created",
+                "practitioner_id": practitioner.practitioner_id,
+                "variant": "full",
+            },
+        )
+        return practitioner
 
     async def patch_practitioner(
         self,
@@ -166,10 +191,20 @@ class _CoreMixin:
         if not org_id or not await self.repository.practitioner_belongs_to_org(
             practitioner_id, org_id
         ):
+            self._log_org_scope_miss("patch", practitioner_id, org_id)
             raise NotFoundError("Practitioner not found")
         updated = await self.repository.patch(practitioner_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner updated",
+            extra={
+                "event": "practitioner.updated",
+                "practitioner_id": practitioner_id,
+                "variant": "core",
+                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+            },
+        )
         return updated
 
     async def patch_practitioner_full(
@@ -183,10 +218,20 @@ class _CoreMixin:
         if not org_id or not await self.repository.practitioner_belongs_to_org(
             practitioner_id, org_id
         ):
+            self._log_org_scope_miss("patch_full", practitioner_id, org_id)
             raise NotFoundError("Practitioner not found")
         updated = await self.repository.patch_full(practitioner_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner updated",
+            extra={
+                "event": "practitioner.updated",
+                "practitioner_id": practitioner_id,
+                "variant": "full",
+                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+            },
+        )
         return updated
 
     async def delete_practitioner(
@@ -198,7 +243,34 @@ class _CoreMixin:
         if not org_id or not await self.repository.practitioner_belongs_to_org(
             practitioner_id, org_id
         ):
+            self._log_org_scope_miss("delete", practitioner_id, org_id)
             raise NotFoundError("Practitioner not found")
         deleted = await self.repository.delete(practitioner_id)
         if not deleted:
             raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner deleted",
+            extra={
+                "event": "practitioner.deleted",
+                "practitioner_id": practitioner_id,
+            },
+        )
+
+    # ── Logging helpers ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _log_org_scope_miss(
+        operation: str, practitioner_id: int, org_id: str | None
+    ) -> None:
+        """The tenant gate rejected a write. The caller gets a plain 404 —
+        deliberately indistinguishable from "no such practitioner" — so this
+        log line is the only place the distinction is recorded."""
+        logger.warning(
+            "Practitioner write rejected by org scope",
+            extra={
+                "event": "practitioner.org_scope_miss",
+                "operation": operation,
+                "practitioner_id": practitioner_id,
+                "reason": "no_org_token" if not org_id else "different_org",
+            },
+        )

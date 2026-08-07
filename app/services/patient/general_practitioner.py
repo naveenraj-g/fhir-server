@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import GeneralPractitionerCreate, GeneralPractitionerPatch
+
+
+logger = get_logger(__name__)
 
 
 class _GeneralPractitionerMixin:
@@ -22,6 +26,10 @@ class _GeneralPractitionerMixin:
         )
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient general_practitioner added",
+            extra={"event": "patient.general_practitioner.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_general_practitioners(
@@ -39,6 +47,10 @@ class _GeneralPractitionerMixin:
         deleted = await self.repository.delete_general_practitioner(patient_id, gp_id)
         if not deleted:
             raise NotFoundError("General practitioner not found on this Patient")
+        logger.info(
+            "Patient general_practitioner deleted",
+            extra={"event": "patient.general_practitioner.deleted", "patient_id": patient_id, "gp_id": gp_id},
+        )
 
     async def patch_general_practitioner(
         self,
@@ -55,4 +67,8 @@ class _GeneralPractitionerMixin:
         )
         if not updated:
             raise NotFoundError("General practitioner not found on this Patient")
+        logger.info(
+            "Patient general_practitioner updated",
+            extra={"event": "patient.general_practitioner.updated", "patient_id": patient_id, "gp_id": gp_id},
+        )
         return updated

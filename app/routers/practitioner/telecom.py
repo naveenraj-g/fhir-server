@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_telecom
 from app.fhir.mappers.practitioner import plain_telecom
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -43,6 +46,11 @@ async def add_telecom(
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Add a contact point (telecom) to a Practitioner",
+        extra={"event": "route.add_practitioner_telecom", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.telecom.add.payload", payload)
     updated = await practitioner_service.add_telecom(
         practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -70,6 +78,10 @@ async def list_telecom(
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "List all contact points (telecom) for a Practitioner",
+        extra={"event": "route.list_practitioner_telecom", "practitioner_id": practitioner_id},
+    )
     items = await practitioner_service.get_telecoms(
         practitioner_id, org_id=actor.org_id
     )
@@ -100,6 +112,10 @@ async def delete_telecom(
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Remove a contact point from a Practitioner",
+        extra={"event": "route.delete_practitioner_telecom", "telecom_id": telecom_id, "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_telecom(
         practitioner_id, telecom_id, org_id=actor.org_id
     )
@@ -124,6 +140,11 @@ async def patch_telecom(
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Update a contact point on a Practitioner",
+        extra={"event": "route.patch_practitioner_telecom", "telecom_id": telecom_id, "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.telecom.patch.payload", payload)
     updated = await practitioner_service.patch_telecom(
         practitioner_id,
         telecom_id,

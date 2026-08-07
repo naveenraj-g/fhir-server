@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import AddressCreate, AddressPatch
+
+
+logger = get_logger(__name__)
 
 
 class _AddressMixin:
@@ -19,6 +23,10 @@ class _AddressMixin:
         updated = await self.repository.add_address(patient_id, payload, created_by)
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient address added",
+            extra={"event": "patient.address.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_addresses(self, patient_id: int, org_id: str | None = None) -> list:
@@ -34,6 +42,10 @@ class _AddressMixin:
         deleted = await self.repository.delete_address(patient_id, address_id)
         if not deleted:
             raise NotFoundError("Address not found on this Patient")
+        logger.info(
+            "Patient address deleted",
+            extra={"event": "patient.address.deleted", "patient_id": patient_id, "address_id": address_id},
+        )
 
     async def patch_address(
         self,
@@ -50,4 +62,8 @@ class _AddressMixin:
         )
         if not updated:
             raise NotFoundError("Address not found on this Patient")
+        logger.info(
+            "Patient address updated",
+            extra={"event": "patient.address.updated", "patient_id": patient_id, "address_id": address_id},
+        )
         return updated

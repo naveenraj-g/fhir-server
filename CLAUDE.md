@@ -276,6 +276,95 @@ All errors return FHIR `OperationOutcome`. Handlers in `app/errors/handlers.py`:
 
 ---
 
+## Logging & Observability
+
+One JSON object per line (`app/core/logging.py`'s `JsonFormatter`), configured entirely from `configs/config.yaml`'s `logging:` block — see the Environment section.
+
+### Two modes, driven by `logging.level`
+
+- **INFO (default/production)** — the call chain and nothing more: one line per route handler, one per service method, one per repository method, plus the access line and the hand-placed business events. Enough to answer "what did this request actually do" without any detail to sift through.
+- **DEBUG** — everything: the same chain plus call arguments, per-method `duration_ms`, result types, full path/query params and every SQL statement. Add `debug_payloads: true` for request bodies.
+
+One `GET /patients/10001` at **INFO** — the call chain, names only:
+
+```
+[INFO] Retrieve a Patient resource by public patient_id   route.get_patient_by_id      patient_id
+[INFO] PatientService.get_patient_scoped                  patient.service.get_patient_scoped
+[INFO] PatientRepository.get_by_patient_id_in_org         patient.repository.get_by_patient_id_in_org
+[INFO] GET /api/fhir/v1/patients/10001 -> 200             http.request   status, duration_ms, actor_*
+```
+
+The same request at **DEBUG** — same lines, now carrying `call_args`, plus a
+completion line per method with `duration_ms` and the result type:
+
+```
+[INFO ] Retrieve a Patient resource by public patient_id
+[INFO ] PatientService.get_patient_scoped                 call_args={patient_id, org_id}
+[INFO ] PatientRepository.get_by_patient_id_in_org        call_args={patient_id, org_id}
+[DEBUG] PatientRepository.get_by_patient_id_in_org ok     duration_ms, result
+[DEBUG] PatientService.get_patient_scoped ok              duration_ms, result
+[INFO ] GET /api/fhir/v1/patients/10001 -> 200
+```
+
+Plus `route.entered` (path/query params) and every SQL statement when
+`sql_echo` is on.
+
+### How each layer is wired
+
+**Routes — explicit, one per handler.** Every one of the 86 handlers across the three resources carries its own `logger.info(...)` with `event: "route.<operation_id>"` plus its path identifiers. Written out in the handler body, not injected — you can see it when you open the file. Write handlers additionally call `log_payload(...)` right before the service call.
+
+```python
+async def get_organization(...):
+    logger.info(
+        "Retrieve an Organization resource by public organization_id",
+        extra={"event": "route.get_organization_by_id", "organization_id": organization_id},
+    )
+```
+
+**Services + repositories — `@trace_methods`.** The class decorator in `app/core/logging.py` makes every public async method announce itself: **one INFO line naming the call** (`PatientService.list_patients` — `component` + `method`, nothing else), and at DEBUG the same line carrying `call_args` plus a completion line with `duration_ms`/result. Applied to the six composed classes in `app/services/<res>/__init__.py` and `app/repository/<res>/__init__.py`; it walks the whole MRO, so methods on the per-sub-resource mixins are covered automatically and **a new mixin method needs no logging code of its own**. Underscore-prefixed methods (`_to_fhir`, `_apply_list_filters`) are skipped deliberately — they run per row and would bury the flow. At INFO the wrapper does one `isEnabledFor` check and calls straight through.
+
+**Plus** `log_route_entry` in `app/main.py`, a router-level dependency that adds a DEBUG line with full path/query params for every mounted resource — including the ~32 that have no per-handler logging of their own.
+
+When adding a route to one of these three resources, add the `logger.info` line by hand; when adding a service or repository method, do nothing.
+
+### Correlation — and the one trap
+
+`app/core/request_context.py` holds three ContextVars (`request_id`, `actor_user_id`, `actor_org_id`); the formatter injects whichever are set into every line.
+
+**The actor keys are prefixed `actor_` deliberately.** Resource rows and request payloads carry their own `user_id`/`org_id` columns (see Standard Columns), so a bare `user_id` in a log line would be ambiguous — the caller, or the record being written? `actor_*` always means *who made this request*, taken from the verified JWT. Never emit bare `user_id`/`org_id` as a logging key. A repository has no access to `Request`, so this is the only way to correlate a repo line back to its request without touching hundreds of signatures.
+
+**⚠️ ContextVars propagate DOWNWARD only.** Starlette's `BaseHTTPMiddleware` runs the downstream app in a child anyio task that *copies* the context at creation. So:
+
+- `request_id`, set in the outermost middleware, reaches everything below it. ✅
+- `actor_user_id`/`actor_org_id`, set in the route's dependency (inside that child task), are **invisible to any middleware above** — including the access log. ❌
+
+That's why `bind_actor()` writes to **both** the ContextVars *and* `request.state` (backed by the shared `scope` dict, which is the same object in both directions), and why `AccessLogMiddleware` reads them via `get_request_actor(request)` rather than the ContextVars. If you add another middleware that needs request-scoped data set below it, use `request.state`, not a ContextVar.
+
+### Layer table
+
+| Layer | Always on (INFO/WARN) | DEBUG | `debug_payloads` | Never |
+|---|---|---|---|---|
+| Middleware | access line (`http.request`): method, path, status, `duration_ms`, `operation_id`, `actor_user_id`, `actor_org_id` | — | — | `Authorization` header |
+| Auth | WARN on 401/403 + reason (`auth.failed`, `auth.permission_denied`); INFO on JWKS fetch | — | decoded claims | raw JWT |
+| Router | `route.<operation_id>` + path ids — explicit `logger.info` in **every** handler | `route.entered` (params) | `log_payload(...)` of the validated schema | — |
+| Service | every method call by name (`component`+`method`); outcomes `<res>.created`/`.updated`/`.deleted`; WARN `<res>.org_scope_miss` | `.ok`/`.error` + `duration_ms` + result | call args on the entry line | — |
+| Repository | every method call by name (`component`+`method`); WARN `db.slow_query` | `.ok`/`.error` + `duration_ms`; `<res>.listed`, `.sublists_replaced` | call args, SQL (`sql_echo`) | bound SQL params |
+| Errors | wired in `handlers.py` (`error.*` events) | — | request payload | stack traces to client |
+
+### Conventions
+
+- Structured data goes in `extra={...}`, never f-stringed into the message.
+- Every line carries an `event` key: dotted, resource-first, past-tense — `organization.created`, `db.slow_query`, `auth.permission_denied`.
+- Don't put `actor_user_id`/`actor_org_id` in `extra` — the formatter already injects them, and a colliding key is dropped. A *different* identity needs a different name (see `rate_limit_key` in `app/middleware/rate_limit.py`). Conversely, a resource's own `user_id`/`org_id` is fine to log under those bare names — that's exactly the distinction the `actor_` prefix buys.
+- **Never call `inspect.signature()` / `get_type_hints()` on repository methods.** Under PEP 649 (Python 3.14) that evaluates annotations lazily, and `app/repository/<res>/core.py`'s method is named `list` while its own parameters are annotated `list[str]` — inside the class body `list` resolves to the method, so evaluation raises `TypeError: 'function' object is not subscriptable`. `trace_methods` reads parameter names from `fn.__code__.co_varnames` for exactly this reason. **This landmine is still live** for anything else that introspects those classes.
+- **`extra` keys must not collide with `LogRecord` attributes** — `args`, `name`, `msg`, `module`, `filename`, `process`, … `logging.makeRecord()` raises `KeyError: Attempt to overwrite 'x' in LogRecord`. That's why the trace decorator emits `call_args`, not `args`. Full list: `_RESERVED_ATTRS` in `app/core/logging.py`.
+- **⚠️ `debug_payloads` logs PHI.** `log_payload()` writes patient names, addresses, birth dates and identifiers. It no-ops unless the flag is on *and* the logger is DEBUG-enabled, so it's free in production — but it must never be enabled there. `logging.redact` masks obvious secrets; it is not a PHI safeguard.
+- `app/core/database.py` instruments **every** query for all resources from one place. Never time queries per call site.
+
+Currently instrumented end-to-end: **Patient, Practitioner, Organization** — all 86 routes (explicit per-handler `logger.info`), all 88 service methods and all 95 repository methods (`@trace_methods`). The other ~32 resources get the global plumbing (access log, slow queries, errors, auth) but no flow trace; add it by applying `@trace_methods` to their service/repository classes.
+
+---
+
 ## Dependency Injection
 
 Pattern per resource: `di/modules/<resource>.py` (Factory for repo + service) → `di/dependencies/<resource>.py` (`@inject` wrapper returning service) → wired in `di/container.py`. See any existing module for the boilerplate.
@@ -298,6 +387,14 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
    ```
 3. **`configs/config.yaml`** — checked-in application-behavior config, not a secret (same spirit as `alembic.ini`):
    ```yaml
+   logging:
+     level: INFO
+     format: json          # json | console
+     debug_payloads: false # ⚠️ PHI — local dev only
+     slow_query_ms: 500
+     sql_echo: false
+     redact: [authorization, token, password, secret]
+
    rate_limit:
      backend: redis
      read_limit: 100
@@ -314,6 +411,8 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
 `IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, and Organization now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~32 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
 
 `rate_limit.backend` selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend ("redis", coordinated across instances, or "memory", per-process only) — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency. `rate_limit.read_limit`/`write_limit`/`window_seconds` are the actual per-window request caps — all four are wired straight into `app.add_middleware(RateLimitMiddleware, ...)` in `app/main.py`.
+
+`logging.*` drives `app/core/logging.py`'s `setup_logging()`, `app/middleware/access_log.py`, and `app/core/database.py`'s query listeners — see the "Logging & Observability" section above. `YamlConfigSettingsSource` is constructed with `yaml_file_encoding="utf-8"` because it otherwise opens the file with the platform default (cp1252 on Windows), which fails on any non-ASCII byte in the committed config.
 
 `routes.enabled` is the list consumed by `app/main.py`'s `mount_routers()` — see "Enabling/Disabling Resources" below.
 

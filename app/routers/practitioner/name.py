@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.datatypes import fhir_human_name
 from app.fhir.mappers.practitioner import plain_name
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -43,6 +46,11 @@ async def add_name(
     actor: AuthUser = Depends(require_permission("practitioner", "create")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Add a HumanName to a Practitioner",
+        extra={"event": "route.add_practitioner_name", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.name.add.payload", payload)
     updated = await practitioner_service.add_name(
         practitioner_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -70,6 +78,10 @@ async def list_names(
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "List all HumanName entries for a Practitioner",
+        extra={"event": "route.list_practitioner_names", "practitioner_id": practitioner_id},
+    )
     items = await practitioner_service.get_names(
         practitioner_id, org_id=actor.org_id
     )
@@ -100,6 +112,10 @@ async def delete_name(
     actor: AuthUser = Depends(require_permission("practitioner", "delete")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Remove a HumanName entry from a Practitioner",
+        extra={"event": "route.delete_practitioner_name", "name_id": name_id, "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_name(
         practitioner_id, name_id, org_id=actor.org_id
     )
@@ -124,6 +140,11 @@ async def patch_name(
     actor: AuthUser = Depends(require_permission("practitioner", "update")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
+    logger.info(
+        "Update a name entry on a Practitioner",
+        extra={"event": "route.patch_practitioner_name", "name_id": name_id, "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.name.patch.payload", payload)
     updated = await practitioner_service.patch_name(
         practitioner_id,
         name_id,

@@ -2,12 +2,28 @@ from fastapi import Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 FHIR_MEDIA_TYPE = "application/fhir+json"
 
 
 def wants_fhir(request: Request) -> bool:
     """Return True when the client signals it wants a FHIR-formatted response."""
-    return FHIR_MEDIA_TYPE in request.headers.get("accept", "")
+    accept = request.headers.get("accept", "")
+    chose_fhir = FHIR_MEDIA_TYPE in accept
+    # DEBUG only — the useful case is a client insisting it asked for FHIR and
+    # getting plain JSON, which is always an Accept-header problem.
+    logger.debug(
+        "Content negotiated",
+        extra={
+            "event": "content.negotiated",
+            "accept": accept,
+            "format": "fhir" if chose_fhir else "plain",
+        },
+    )
+    return chose_fhir
 
 
 def format_response(

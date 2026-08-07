@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.mappers.patient import fhir_link, plain_link
 from app.schemas.patient import LinkCreate, LinkPatch
@@ -19,6 +20,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -40,6 +43,11 @@ async def add_link(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one patient-link row, then return the full updated Patient."""
+    logger.info(
+        "Add a link to a related Patient or RelatedPerson",
+        extra={"event": "route.add_patient_link", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.link.add.payload", payload)
     updated = await patient_service.add_link(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -67,6 +75,10 @@ async def list_links(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the Patient-specific fhir_link()/plain_link() mappers directly."""
+    logger.info(
+        "List all patient links for a Patient",
+        extra={"event": "route.list_patient_links", "patient_id": patient_id},
+    )
     items = await patient_service.get_links(patient_id, org_id=actor.org_id)
     plain = [plain_link(lk) for lk in items]
     if wants_fhir(request):
@@ -97,6 +109,10 @@ async def delete_link(
 ):
     """delete_link() raises NotFoundError (404) if the Patient is missing,
     belongs to a different org, or link_id doesn't belong to it."""
+    logger.info(
+        "Remove a link from a Patient",
+        extra={"event": "route.delete_patient_link", "link_id": link_id, "patient_id": patient_id},
+    )
     await patient_service.delete_link(patient_id, link_id, org_id=actor.org_id)
 
 
@@ -122,6 +138,11 @@ async def patch_link(
     """Partial update of one patient-link row, then return the full updated
     Patient. patch_link() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or link_id doesn't belong to it."""
+    logger.info(
+        "Update a link entry on a Patient",
+        extra={"event": "route.patch_patient_link", "link_id": link_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.link.patch.payload", payload)
     updated = await patient_service.patch_link(
         patient_id, link_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )

@@ -12,12 +12,20 @@ from fastapi import Request
 from jwt import PyJWKClient
 
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.errors.auth import AuthenticationError
+
+logger = get_logger(__name__)
 
 # Module-level singleton — PyJWKClient caches the fetched JWKS response and
 # only re-fetches on a cache miss (e.g. a `kid` it hasn't seen, from IAM key
 # rotation), so this avoids a network round-trip on every request.
 jwks_client = PyJWKClient(settings.IAM_JWKS_URL)
+
+# Signing-key ids already seen. Purely for observability: a `kid` that isn't in
+# here means PyJWKClient just made a blocking network call to the IAM on the
+# request hot path, which is otherwise invisible.
+_seen_kids: set[str] = set()
 
 
 def decode_token(token: str) -> dict:
@@ -29,6 +37,14 @@ def decode_token(token: str) -> dict:
 
     Raises jwt.ExpiredSignatureError / jwt.InvalidTokenError on failure.
     """
+    kid = jwt.get_unverified_header(token).get("kid")
+    if kid and kid not in _seen_kids:
+        _seen_kids.add(kid)
+        logger.info(
+            "JWKS signing key fetched",
+            extra={"event": "auth.jwks_fetch", "kid": kid},
+        )
+
     signing_key = jwks_client.get_signing_key_from_jwt(token)
     return jwt.decode(
         token,
@@ -51,6 +67,7 @@ async def get_current_user(request: Request) -> dict:
     auth_header = request.headers.get("Authorization")
 
     if not auth_header or not auth_header.startswith("Bearer "):
+        _log_auth_failure("missing_token", request)
         raise AuthenticationError("Missing authentication token")
 
     token = auth_header.split(" ")[1]
@@ -61,8 +78,32 @@ async def get_current_user(request: Request) -> dict:
         request.state.token = token
         return payload
     except jwt.ExpiredSignatureError:
+        _log_auth_failure("token_expired", request)
         raise AuthenticationError("Token expired")
     except jwt.InvalidTokenError:
+        _log_auth_failure("invalid_token", request)
         raise AuthenticationError("Invalid token")
-    except Exception:
+    except Exception as exc:
+        # Anything else here is infrastructure, not a bad token — JWKS
+        # unreachable, TLS failure, malformed IAM response. Logged with the
+        # traceback because the 401 the caller sees says nothing useful.
+        logger.error(
+            "Authentication failed unexpectedly",
+            extra={"event": "auth.failed", "reason": "internal", "path": request.url.path},
+            exc_info=exc,
+        )
         raise AuthenticationError("Invalid or expired token")
+
+
+def _log_auth_failure(reason: str, request: Request) -> None:
+    """The caller never learns why authentication failed (deliberately) — the
+    log is the only place the distinction is recorded."""
+    logger.warning(
+        "Authentication failed",
+        extra={
+            "event": "auth.failed",
+            "reason": reason,
+            "path": request.url.path,
+            "client_ip": request.client.host if request.client else None,
+        },
+    )

@@ -1,6 +1,10 @@
+from app.core.logging import get_logger
 from app.errors.domain import NotFoundError
 from app.models.patient import PatientModel
 from app.schemas.patient import CommunicationCreate, CommunicationPatch
+
+
+logger = get_logger(__name__)
 
 
 class _CommunicationMixin:
@@ -21,6 +25,10 @@ class _CommunicationMixin:
         )
         if not updated:
             raise NotFoundError("Patient not found")
+        logger.info(
+            "Patient communication added",
+            extra={"event": "patient.communication.added", "patient_id": patient_id},
+        )
         return updated
 
     async def get_communications(
@@ -38,6 +46,10 @@ class _CommunicationMixin:
         deleted = await self.repository.delete_communication(patient_id, comm_id)
         if not deleted:
             raise NotFoundError("Communication not found on this Patient")
+        logger.info(
+            "Patient communication deleted",
+            extra={"event": "patient.communication.deleted", "patient_id": patient_id, "comm_id": comm_id},
+        )
 
     async def patch_communication(
         self,
@@ -54,4 +66,8 @@ class _CommunicationMixin:
         )
         if not updated:
             raise NotFoundError("Communication not found on this Patient")
+        logger.info(
+            "Patient communication updated",
+            extra={"event": "patient.communication.updated", "patient_id": patient_id, "comm_id": comm_id},
+        )
         return updated

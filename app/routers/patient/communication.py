@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_response, wants_fhir
+from app.core.logging import get_logger, log_payload
 from app.di.dependencies.patient import get_patient_service
 from app.fhir.datatypes import fhir_communication
 from app.fhir.mappers.patient import plain_communication
@@ -20,6 +21,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -42,6 +45,11 @@ async def add_communication(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Append one communication-language row, then return the full updated Patient."""
+    logger.info(
+        "Add a communication language to a Patient",
+        extra={"event": "route.add_patient_communication", "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.communication.add.payload", payload)
     updated = await patient_service.add_communication(
         patient_id, payload, org_id=actor.org_id, created_by=actor.sub
     )
@@ -68,6 +76,10 @@ async def list_communications(
     patient_service: PatientService = Depends(get_patient_service),
 ):
     """Calls the shared fhir_communication()/plain_communication() mappers directly."""
+    logger.info(
+        "List all communication languages for a Patient",
+        extra={"event": "route.list_patient_communications", "patient_id": patient_id},
+    )
     items = await patient_service.get_communications(
         patient_id, org_id=actor.org_id
     )
@@ -100,6 +112,10 @@ async def delete_communication(
 ):
     """delete_communication() raises NotFoundError (404) if the Patient is
     missing, belongs to a different org, or comm_id doesn't belong to it."""
+    logger.info(
+        "Remove a communication language from a Patient",
+        extra={"event": "route.delete_patient_communication", "comm_id": comm_id, "patient_id": patient_id},
+    )
     await patient_service.delete_communication(
         patient_id, comm_id, org_id=actor.org_id
     )
@@ -128,6 +144,11 @@ async def patch_communication(
     full updated Patient. patch_communication() raises NotFoundError (404)
     if the Patient is missing, belongs to a different org, or comm_id
     doesn't belong to it."""
+    logger.info(
+        "Update a communication language on a Patient",
+        extra={"event": "route.patch_patient_communication", "comm_id": comm_id, "patient_id": patient_id},
+    )
+    log_payload(logger, "patient.communication.patch.payload", payload)
     updated = await patient_service.patch_communication(
         patient_id, comm_id, payload, org_id=actor.org_id, updated_by=actor.sub
     )

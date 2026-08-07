@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request, status
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.schemas.enums import AddressUse, AdministrativeGender
@@ -24,6 +25,8 @@ from ._responses import (
 )
 
 router = APIRouter()
+
+logger = get_logger(__name__)
 
 
 # ── Create Practitioner ────────────────────────────────────────────────────
@@ -53,6 +56,11 @@ async def create_practitioner(
     created_by both come from the verified JWT (actor.org_id / actor.sub) —
     org_id is no longer a request body field at all, and an org-less token
     is rejected outright (403)."""
+    logger.info(
+        "Create a new Practitioner resource",
+        extra={"event": "route.create_practitioner"},
+    )
+    log_payload(logger, "practitioner.create.payload", payload)
     practitioner = await practitioner_service.create_practitioner(
         payload, payload.user_id, actor.org_id, actor.sub
     )
@@ -84,6 +92,11 @@ async def create_practitioner_full(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     """Same org_id/created_by handling as create_practitioner."""
+    logger.info(
+        "Create a Practitioner resource with all sub-resources in one request",
+        extra={"event": "route.create_practitioner_full"},
+    )
+    log_payload(logger, "practitioner.create_full.payload", payload)
     practitioner = await practitioner_service.create_practitioner_full(
         payload, payload.user_id, actor.org_id, actor.sub
     )
@@ -116,6 +129,10 @@ async def get_my_practitioner(
 ):
     """get_me() raises PermissionDeniedError (403) for an org-less token, or
     NotFoundError (404) if no practitioner matches the caller's own user_id/org_id."""
+    logger.info(
+        "Retrieve the authenticated caller's own Practitioner resource",
+        extra={"event": "route.get_my_practitioner_profile"},
+    )
     practitioner = await practitioner_service.get_me(actor.sub, actor.org_id)
     return format_response(
         practitioner_service._to_fhir(practitioner),
@@ -147,6 +164,10 @@ async def get_practitioner(
     get_practitioner_scoped() raises PermissionDeniedError (403) outright
     for an org-less token, or NotFoundError (404, never 403) if it belongs
     to a different org, so existence isn't leaked."""
+    logger.info(
+        "Retrieve a Practitioner resource by public practitioner_id",
+        extra={"event": "route.get_practitioner_by_id", "practitioner_id": practitioner_id},
+    )
     practitioner = await practitioner_service.get_practitioner_scoped(
         practitioner_id, actor.org_id
     )
@@ -183,6 +204,11 @@ async def patch_practitioner(
     """updated_by comes from the verified JWT (actor.sub); patch_practitioner()
     raises NotFoundError (404, not 403 — avoids leaking that a practitioner
     with this id exists in another org) if actor.org_id doesn't match."""
+    logger.info(
+        "Partially update a Practitioner resource",
+        extra={"event": "route.patch_practitioner", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.patch.payload", payload)
     updated = await practitioner_service.patch_practitioner(
         practitioner_id, payload, actor.sub, actor.org_id
     )
@@ -216,6 +242,11 @@ async def patch_practitioner_full(
 ):
     """Same actor-derived updated_by and org_id ownership gate as
     patch_practitioner — patch_practitioner_full() raises NotFoundError (404) on mismatch."""
+    logger.info(
+        "Atomically update a Practitioner and replace any sub-resource lists in one request",
+        extra={"event": "route.patch_practitioner_full", "practitioner_id": practitioner_id},
+    )
+    log_payload(logger, "practitioner.patch_full.payload", payload)
     updated = await practitioner_service.patch_practitioner_full(
         practitioner_id, payload, actor.sub, actor.org_id
     )
@@ -327,6 +358,10 @@ async def list_practitioners(
     always the caller's own (actor.org_id), never client-suppliable;
     list_practitioners() raises PermissionDeniedError (403) outright for an
     org-less token."""
+    logger.info(
+        "List all Practitioner resources",
+        extra={"event": "route.list_practitioners"},
+    )
     practitioners, total = await practitioner_service.list_practitioners(
         user_id=user_id,
         org_id=actor.org_id,
@@ -385,6 +420,10 @@ async def delete_practitioner(
     """delete_practitioner() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org. Delete
     cascades to every sub-resource row."""
+    logger.info(
+        "Delete a Practitioner resource",
+        extra={"event": "route.delete_practitioner", "practitioner_id": practitioner_id},
+    )
     await practitioner_service.delete_practitioner(
         practitioner_id, actor.org_id
     )
