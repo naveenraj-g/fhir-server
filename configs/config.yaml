@@ -25,6 +25,14 @@ logging:
   # Log every SQL statement at DEBUG (very noisy — debugging only).
   sql_echo: false
 
+  # Re-enable Uvicorn's own per-request line:
+  #   INFO: 127.0.0.1:53412 - "GET /api/fhir/v1/patients/ HTTP/1.1" 200 OK
+  # Off because app/middleware/access_log.py already logs every request with
+  # more detail (duration_ms, request_id, operation_id, actor), and because
+  # Uvicorn's logger keeps its own handler — so its line stays PLAIN TEXT even
+  # when format is json, breaking anything that parses the stream.
+  uvicorn_access: false
+
   # Field names masked by log_payload(), matched case-insensitively at any
   # nesting depth, even when debug_payloads is on.
   redact:

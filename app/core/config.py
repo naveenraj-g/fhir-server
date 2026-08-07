@@ -1,12 +1,15 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
     YamlConfigSettingsSource,
 )
+
+
+_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
 
 class RateLimitConfig(BaseModel):
@@ -39,6 +42,18 @@ class LogConfig(BaseModel):
     # "console" (flat, human-readable; local development only).
     format: Literal["json", "console"] = "json"
 
+    # Both of the above are matched case-insensitively: `format: JSON` and
+    # `level: debug` are as valid as the canonical spellings. Without this a
+    # perfectly reasonable edit to configs/config.yaml crashes the app at
+    # import time with a pydantic literal_error, which is a miserable first
+    # experience — and these two are the settings people actually hand-edit.
+    @field_validator("level", "format", mode="before")
+    @classmethod
+    def _normalise_case(cls, v):
+        if isinstance(v, str):
+            return v.upper() if v.upper() in _LOG_LEVELS else v.lower()
+        return v
+
     # ⚠️ PHI. Logs full request payloads at DEBUG via log_payload(). This is a
     # FHIR server — enabling it writes patient names, addresses, birth dates
     # and identifiers into the log stream. Local development only; `redact`
@@ -50,6 +65,16 @@ class LogConfig(BaseModel):
 
     # Log every SQL statement at DEBUG (very noisy — debugging only).
     sql_echo: bool = False
+
+    # Re-enable Uvicorn's own per-request access line
+    # (`INFO: 127.0.0.1:53412 - "GET /patients/ HTTP/1.1" 200 OK`).
+    #
+    # Off by default for two reasons: it duplicates app.middleware.access_log's
+    # richer `http.request` line, and — because the `uvicorn.access` logger sets
+    # propagate=False and keeps its own handler — it bypasses our formatter and
+    # emits PLAIN TEXT even when format is "json", which breaks any tool
+    # parsing the stream. Turn it on to see both effects for yourself.
+    uvicorn_access: bool = False
 
     # Field names masked by log_payload() even when debug_payloads is on.
     # Matched case-insensitively against dict keys at any nesting depth.

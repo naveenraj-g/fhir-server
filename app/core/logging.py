@@ -136,11 +136,18 @@ def setup_logging() -> None:
     root.handlers.clear()
     root.addHandler(handler)
 
-    # Uvicorn ships its own plaintext access log. Left enabled it both
-    # duplicates app.middleware.access_log and emits non-JSON lines into a JSON
-    # stream, which breaks downstream parsing — so silence it and let ours be
-    # the single source of request records.
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    # Uvicorn ships its own plaintext access log
+    # (`INFO: 127.0.0.1:53412 - "GET /patients/ HTTP/1.1" 200 OK`).
+    #
+    # Off by default: it duplicates app.middleware.access_log's richer
+    # `http.request` line, and since the uvicorn.access logger sets
+    # propagate=False and keeps its own handler, it bypasses the formatter
+    # installed above — so it stays plain text even with format: json, which
+    # breaks anything parsing the stream. Set logging.uvicorn_access: true in
+    # configs/config.yaml to turn it back on and see both effects.
+    logging.getLogger("uvicorn.access").setLevel(
+        logging.INFO if log_settings.uvicorn_access else logging.WARNING
+    )
 
     # SQLAlchemy's own engine logger is driven explicitly by logging.sql_echo
     # (see app.core.database) rather than inherited from the root level, so

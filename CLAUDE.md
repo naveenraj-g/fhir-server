@@ -360,6 +360,8 @@ That's why `bind_actor()` writes to **both** the ContextVars *and* `request.stat
 - **`extra` keys must not collide with `LogRecord` attributes** — `args`, `name`, `msg`, `module`, `filename`, `process`, … `logging.makeRecord()` raises `KeyError: Attempt to overwrite 'x' in LogRecord`. That's why the trace decorator emits `call_args`, not `args`. Full list: `_RESERVED_ATTRS` in `app/core/logging.py`.
 - **⚠️ `debug_payloads` logs PHI.** `log_payload()` writes patient names, addresses, birth dates and identifiers. It no-ops unless the flag is on *and* the logger is DEBUG-enabled, so it's free in production — but it must never be enabled there. `logging.redact` masks obvious secrets; it is not a PHI safeguard.
 - `app/core/database.py` instruments **every** query for all resources from one place. Never time queries per call site.
+- **Uvicorn's own access log is off** (`logging.uvicorn_access: false`) — `app/middleware/access_log.py` already logs every request with more detail, and the `uvicorn.access` logger sets `propagate=False` with its own handler, so its line stays plain text even under `format: json` and breaks stream parsing. Flip the flag to see both effects.
+- `logging.level` and `logging.format` are matched case-insensitively (`JSON`, `Debug`, … all work) — they're the two settings people hand-edit, and a `literal_error` at import time is a hostile failure mode.
 
 Currently instrumented end-to-end: **Patient, Practitioner, Organization** — all 86 routes (explicit per-handler `logger.info`), all 88 service methods and all 95 repository methods (`@trace_methods`). The other ~32 resources get the global plumbing (access log, slow queries, errors, auth) but no flow trace; add it by applying `@trace_methods` to their service/repository classes.
 
@@ -389,10 +391,11 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
    ```yaml
    logging:
      level: INFO
-     format: json          # json | console
-     debug_payloads: false # ⚠️ PHI — local dev only
+     format: json           # json | console (both matched case-insensitively)
+     debug_payloads: false  # ⚠️ PHI — local dev only
      slow_query_ms: 500
      sql_echo: false
+     uvicorn_access: false  # Uvicorn's own plaintext access line
      redact: [authorization, token, password, secret]
 
    rate_limit:
