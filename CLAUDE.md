@@ -236,6 +236,17 @@ Rules:
 - References: stored as `(subject_type: Enum, subject_id: int)` → output as `"Patient/10001"` string via `fhir_enum()`
 - `fhir_enum(v)` handles both SQLAlchemy Enum objects and plain strings transparently
 
+### Conformance testing the FHIR half
+
+`tests/conformance/` validates `to_fhir_<resource>()` output against **`google-fhir-r4`** (dev group only — nothing in `app/` imports it; FHIR is output-only here, so there is nothing to validate at runtime). It carries HL7's published R4 StructureDefinitions as protobuf, so it is an *independent* oracle: the rest of the suite asserts what we believe the spec says, and if we misread it those assertions encode the same misreading and pass.
+
+Location is done (`test_location_fhir.py`, 24 shapes); the other resources are not yet covered.
+
+- Feed it **JSON text**, not the mapper dict — `json_fhir_object_to_proto` rejects a Python `float` outright, since a FHIR `decimal` carries precision a float has already lost. `assert_valid()` in `tests/conformance/support.py` goes through `jsonable_encoder` + `json.dumps`, which is also exactly what `format_response()` ships.
+- Each file ends with `test_validator_rejects_invalid_fhir` — deliberately broken payloads that must fail. Without it, a version bump that quietly breaks validation would leave every conformance test passing while checking nothing.
+- It catches wrong key names, wrong nesting, bad codes against required bindings, and malformed primitives. It does **not** catch semantics (mapping `address_city` into `state` is still valid FHIR), extensible bindings (`Location.type` codes aren't policed), or a single-element array where the spec says 0..1.
+- A failure does not automatically mean the mapper is wrong — it can also mean the model lets in a value the spec forbids (fix upstream, possibly a migration), or that the oracle is over-strict (document and skip). Triage before changing anything, and remember a mapper change has to move in lockstep with the `FHIR<Resource>Schema` response model.
+
 ---
 
 ## Standard Columns
