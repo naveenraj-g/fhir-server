@@ -5,7 +5,6 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
     String,
     UniqueConstraint,
 )
@@ -19,7 +18,7 @@ from app.models.enums import IdentifierUse, OrganizationReferenceType
 class PractitionerQualification(Base):
     __tablename__ = "practitioner_qualification"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_id = Column(
         BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )
@@ -50,7 +49,7 @@ class PractitionerQualification(Base):
         ),
         nullable=True,
     )
-    issuer_id = Column(Integer, nullable=True)
+    issuer_id = Column(BigInteger, nullable=True)
     issuer_display = Column(String, nullable=True)
 
     # issuer.identifier (0..1 Identifier) — logical-reference fallback for
@@ -94,9 +93,9 @@ class PractitionerQualificationIdentifier(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     qualification_id = Column(
-        Integer, ForeignKey("practitioner_qualification.id"), nullable=False, index=True
+        BigInteger, ForeignKey("practitioner_qualification.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
 
@@ -123,7 +122,7 @@ class PractitionerQualificationIdentifier(Base):
         ),
         nullable=True,
     )
-    assigner_id = Column(Integer, nullable=True)
+    assigner_id = Column(BigInteger, nullable=True)
     assigner_display = Column(String, nullable=True)
 
     # assigner.identifier (0..1 Identifier) — logical-reference fallback for

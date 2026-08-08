@@ -17,7 +17,7 @@ from app.schemas.enums import ContactPointSystem, ContactPointUse
 class PractitionerTelecom(Base):
     __tablename__ = "practitioner_telecom"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_id = Column(
         BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )

@@ -14,24 +14,33 @@ from sqlalchemy.sql import func
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse, OrganizationReferenceType
 
+# ---------------------------------------------------------------------------
+# identifier (0..*) Identifier child table
+# ---------------------------------------------------------------------------
 
-class PractitionerIdentifier(Base):
-    """identifier[] — Identifier — business identifiers for this practitioner (e.g. NPI, license)."""
 
-    __tablename__ = "practitioner_identifier"
+class LocationIdentifier(Base):
+    """Location.identifier[] — unique codes/numbers identifying the location.
+
+    Same shape as OrganizationIdentifier: Identifier.type is a CodeableConcept
+    flattened to the standard six columns, and Identifier.assigner is a
+    resolved Reference(Organization) with an Identifier logical-reference
+    fallback for assigners that aren't resources in this system.
+    """
+
+    __tablename__ = "location_identifier"
     __table_args__ = (
-        UniqueConstraint(
-            "system", "value", name="uq_practitioner_identifier_system_value"
-        ),
+        UniqueConstraint("system", "value", name="uq_location_identifier_system_value"),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    practitioner_id = Column(
-        BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
+    location_id = Column(
+        BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
 
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
+
     # Identifier.type is a CodeableConcept — single coding flattened + text
     type_system = Column(String, nullable=True)
     type_version = Column(String, nullable=True)
@@ -39,13 +48,15 @@ class PractitionerIdentifier(Base):
     type_display = Column(String, nullable=True)
     type_text = Column(String, nullable=True)
     type_user_selected = Column(Boolean, nullable=True)
+
     system = Column(String, nullable=False)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # assigner (0..1 Reference(Organization)) — resolved reference, matching
-    # Patient's identifier.assigner convention (shared OrganizationReferenceType)
+    # assigner (0..1 Reference(Organization)) — resolved reference. Stores the
+    # internal organization.id PK; the public ID is read back through the
+    # repository, matching OrganizationIdentifier.assigner_*.
     assigner_type = Column(
         Enum(
             OrganizationReferenceType,
@@ -78,4 +89,4 @@ class PractitionerIdentifier(Base):
     created_by = Column(String, nullable=False)
     updated_by = Column(String, nullable=True)
 
-    practitioner = relationship("PractitionerModel", back_populates="identifiers")
+    location = relationship("LocationModel", back_populates="identifiers")

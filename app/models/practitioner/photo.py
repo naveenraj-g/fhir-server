@@ -8,7 +8,7 @@ from app.core.database import FHIRBase as Base
 class PractitionerPhoto(Base):
     __tablename__ = "practitioner_photo"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_id = Column(
         BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )

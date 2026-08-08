@@ -3,7 +3,6 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
-    Integer,
     String,
 )
 from sqlalchemy.orm import relationship
@@ -19,7 +18,7 @@ from app.core.database import FHIRBase as Base
 class OrganizationAlias(Base):
     __tablename__ = "organization_alias"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     organization_id = Column(
         BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )

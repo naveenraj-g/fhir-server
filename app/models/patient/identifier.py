@@ -5,7 +5,6 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
     String,
     UniqueConstraint,
 )
@@ -24,7 +23,7 @@ class PatientIdentifier(Base):
         UniqueConstraint("system", "value", name="uq_patient_identifier_system_value"),
     )
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     patient_id = Column(
         BigInteger, ForeignKey("patient.id"), nullable=False, index=True
     )
@@ -54,7 +53,7 @@ class PatientIdentifier(Base):
         ),
         nullable=True,
     )
-    assigner_id = Column(Integer, nullable=True)
+    assigner_id = Column(BigInteger, nullable=True)
     assigner_display = Column(String, nullable=True)
 
     # assigner.identifier (0..1 Identifier) — logical-reference fallback for

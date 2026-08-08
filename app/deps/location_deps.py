@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, Path, status
 
 from app.di.dependencies.location import get_location_service
-from app.models.location.location import LocationModel
+from app.models.location import LocationModel
 from app.services.location_service import LocationService
 
 

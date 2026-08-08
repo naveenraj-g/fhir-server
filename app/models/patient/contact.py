@@ -37,7 +37,7 @@ class PatientContact(Base):
 
     __tablename__ = "patient_contact"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     patient_id = Column(
         BigInteger, ForeignKey("patient.id"), nullable=False, index=True
     )
@@ -77,7 +77,7 @@ class PatientContact(Base):
         ),
         nullable=True,
     )
-    organization_id = Column(Integer, nullable=True)
+    organization_id = Column(BigInteger, nullable=True)
     organization_display = Column(String, nullable=True)
 
     # organization.identifier (0..1 Identifier) — logical-reference fallback,
@@ -125,9 +125,9 @@ class PatientContactRelationship(Base):
 
     __tablename__ = "patient_contact_relationship"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     contact_id = Column(
-        Integer, ForeignKey("patient_contact.id"), nullable=False, index=True
+        BigInteger, ForeignKey("patient_contact.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
 
@@ -151,9 +151,9 @@ class PatientContactTelecom(Base):
 
     __tablename__ = "patient_contact_telecom"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     contact_id = Column(
-        Integer, ForeignKey("patient_contact.id"), nullable=False, index=True
+        BigInteger, ForeignKey("patient_contact.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
 

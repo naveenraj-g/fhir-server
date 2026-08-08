@@ -7,7 +7,7 @@ from app.deps.location_deps import resolve_location
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.location import get_location_service
-from app.models.location.location import LocationModel
+from app.models.location import LocationModel
 from app.schemas.location.input import LocationCreateSchema, LocationPatchSchema
 from app.schemas.location.response import (
     FHIRLocationBundle,

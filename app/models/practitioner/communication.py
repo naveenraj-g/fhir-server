@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -8,7 +8,7 @@ from app.core.database import FHIRBase as Base
 class PractitionerCommunication(Base):
     __tablename__ = "practitioner_communication"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_id = Column(
         BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )

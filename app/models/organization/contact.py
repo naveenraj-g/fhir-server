@@ -29,7 +29,7 @@ from app.schemas.enums import (
 class OrganizationContact(Base):
     __tablename__ = "organization_contact"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     organization_id = Column(
         BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
@@ -87,9 +87,9 @@ class OrganizationContact(Base):
 class OrganizationContactTelecom(Base):
     __tablename__ = "organization_contact_telecom"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     contact_id = Column(
-        Integer, ForeignKey("organization_contact.id"), nullable=False, index=True
+        BigInteger, ForeignKey("organization_contact.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
     system = Column(

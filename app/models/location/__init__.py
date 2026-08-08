@@ -1,29 +1,30 @@
-from app.models.location.enums import (
+from .alias import LocationAlias
+from .core import LocationModel, location_id_seq
+from .endpoint import LocationEndpoint
+from .enums import (
+    LocationDayOfWeek,
     LocationEndpointReferenceType,
     LocationMode,
     LocationPartOfReferenceType,
     LocationStatus,
 )
-from app.models.location.location import (
-    LocationAlias,
-    LocationEndpoint,
-    LocationHoursOfOperation,
-    LocationIdentifier,
-    LocationModel,
-    LocationTelecom,
-    LocationType,
-)
+from .hours_of_operation import LocationHoursOfOperation
+from .identifier import LocationIdentifier
+from .telecom import LocationTelecom
+from .type import LocationType
 
 __all__ = [
-    "LocationModel",
-    "LocationIdentifier",
     "LocationAlias",
-    "LocationType",
-    "LocationTelecom",
-    "LocationHoursOfOperation",
+    "LocationDayOfWeek",
     "LocationEndpoint",
-    "LocationStatus",
-    "LocationMode",
-    "LocationPartOfReferenceType",
     "LocationEndpointReferenceType",
+    "LocationHoursOfOperation",
+    "LocationIdentifier",
+    "LocationMode",
+    "LocationModel",
+    "LocationPartOfReferenceType",
+    "LocationStatus",
+    "LocationTelecom",
+    "LocationType",
+    "location_id_seq",
 ]

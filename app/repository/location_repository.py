@@ -14,7 +14,7 @@ from app.models.location.enums import (
     LocationPartOfReferenceType,
     LocationStatus,
 )
-from app.models.location.location import (
+from app.models.location import (
     LocationAlias,
     LocationEndpoint,
     LocationHoursOfOperation,

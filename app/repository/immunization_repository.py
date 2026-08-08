@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType, OrganizationReferenceType
-from app.models.location.location import LocationModel
+from app.models.location import LocationModel
 from app.models.patient import PatientModel
 from app.models.immunization.enums import (
     ImmunizationLocationReferenceType,

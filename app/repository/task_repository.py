@@ -20,7 +20,7 @@ from app.models.task.enums import (
 )
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import EncounterReferenceType
-from app.models.location.location import LocationModel
+from app.models.location import LocationModel
 from app.models.task.task import (
     TaskBasedOn,
     TaskIdentifier,

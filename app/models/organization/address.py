@@ -4,7 +4,6 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
     String,
     Text,
 )
@@ -22,7 +21,7 @@ from app.schemas.enums import AddressType, AddressUse
 class OrganizationAddress(Base):
     __tablename__ = "organization_address"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     organization_id = Column(
         BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )

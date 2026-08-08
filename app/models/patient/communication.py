@@ -4,7 +4,6 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
-    Integer,
     String,
     UniqueConstraint,
 )
@@ -30,7 +29,7 @@ class PatientCommunication(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     patient_id = Column(
         BigInteger, ForeignKey("patient.id"), nullable=False, index=True
     )

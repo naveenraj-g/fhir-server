@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 # datatype enums
 
 
@@ -121,5 +120,3 @@ class PatientLinkType(str, Enum):
     replaces = "replaces"
     refer = "refer"
     seealso = "seealso"
-
-

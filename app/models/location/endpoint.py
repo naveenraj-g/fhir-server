@@ -13,39 +13,46 @@ from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
-from app.models.organization.enums import OrganizationEndpointReferenceType
+from app.models.location.enums import LocationEndpointReferenceType
 
 # ---------------------------------------------------------------------------
 # endpoint (0..*) Reference(Endpoint) child table
 # ---------------------------------------------------------------------------
 
 
-class OrganizationEndpoint(Base):
-    __tablename__ = "organization_endpoint"
+class LocationEndpoint(Base):
+    """Location.endpoint[] — technical endpoints providing access to services
+    operated for the location.
+
+    Endpoint is not a modeled resource in this system, so the
+    reference_identifier_* columns are in practice the only way to record one
+    — same situation and same shape as OrganizationEndpoint.
+    """
+
+    __tablename__ = "location_endpoint"
     __table_args__ = (
         UniqueConstraint(
-            "organization_id",
+            "location_id",
             "reference_type",
             "reference_id",
-            name="uq_organization_endpoint_reference",
+            name="uq_location_endpoint_reference",
         ),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    organization_id = Column(
-        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
+    location_id = Column(
+        BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
+
     reference_type = Column(
-        Enum(OrganizationEndpointReferenceType, name="organization_endpoint_ref_type"),
+        Enum(LocationEndpointReferenceType, name="location_endpoint_reference_type"),
         nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True)
     reference_display = Column(String, nullable=True)
 
-    # endpoint.identifier (0..1 Identifier) — logical-reference fallback for
-    # when the endpoint isn't a resource in this system (Endpoint isn't a
-    # modeled resource here at all, so this is the only way to record one)
+    # endpoint.identifier (0..1 Identifier) — logical-reference fallback
     reference_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use"), nullable=True
     )
@@ -65,4 +72,4 @@ class OrganizationEndpoint(Base):
     created_by = Column(String, nullable=False)
     updated_by = Column(String, nullable=True)
 
-    organization = relationship("OrganizationModel", back_populates="endpoints")
+    location = relationship("LocationModel", back_populates="endpoints")

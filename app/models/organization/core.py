@@ -4,7 +4,6 @@ from sqlalchemy import (
     Column,
     DateTime,
     Enum,
-    Integer,
     Sequence,
     String,
 )
@@ -57,7 +56,7 @@ class OrganizationModel(Base):
         ),
         nullable=True,
     )
-    partof_id = Column(Integer, nullable=True)
+    partof_id = Column(BigInteger, nullable=True)
     partof_display = Column(String, nullable=True)
 
     # partOf.identifier (0..1 Identifier) — logical-reference fallback for

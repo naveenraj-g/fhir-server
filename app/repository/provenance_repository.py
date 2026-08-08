@@ -11,7 +11,7 @@ from app.models.provenance.enums import (
     ProvenanceEntityRole,
     ProvenanceLocationReferenceType,
 )
-from app.models.location.location import LocationModel
+from app.models.location import LocationModel
 from app.models.provenance.provenance import (
     ProvenanceAgent,
     ProvenanceAgentRole,

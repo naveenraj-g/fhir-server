@@ -5,7 +5,6 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
     String,
     UniqueConstraint,
 )
@@ -28,7 +27,7 @@ class OrganizationIdentifier(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     organization_id = Column(BigInteger, ForeignKey("organization.id"), nullable=False, index=True)
     org_id = Column(String, nullable=False)
 
@@ -55,7 +54,7 @@ class OrganizationIdentifier(Base):
         ),
         nullable=True,
     )
-    assigner_id = Column(Integer, nullable=True)
+    assigner_id = Column(BigInteger, nullable=True)
     assigner_display = Column(String, nullable=True)
 
     # assigner.identifier (0..1 Identifier) — logical-reference fallback for

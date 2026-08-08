@@ -10,7 +10,7 @@ class PatientPhoto(Base):
 
     __tablename__ = "patient_photo"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     patient_id = Column(
         BigInteger, ForeignKey("patient.id"), nullable=False, index=True
     )

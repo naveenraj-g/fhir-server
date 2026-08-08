@@ -4,7 +4,6 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
     String,
     Text,
 )
@@ -18,7 +17,7 @@ from app.schemas.enums import HumanNameUse
 class PractitionerName(Base):
     __tablename__ = "practitioner_name"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_id = Column(
         BigInteger, ForeignKey("practitioner.id"), nullable=False, index=True
     )

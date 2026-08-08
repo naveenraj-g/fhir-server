@@ -16,14 +16,22 @@ from app.core.database import FHIRBase as Base
 # ---------------------------------------------------------------------------
 
 
-class OrganizationType(Base):
-    __tablename__ = "organization_type"
+class LocationType(Base):
+    """Location.type[] — the function performed at the location
+    (v3.ServiceDeliveryLocationRoleType, extensible binding).
+
+    Standard CodeableConcept[] child shape: one flattened coding plus the
+    concept's own text, identical to OrganizationType.
+    """
+
+    __tablename__ = "location_type"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    organization_id = Column(
-        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
+    location_id = Column(
+        BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
+
     coding_system = Column(String, nullable=True)
     coding_version = Column(String, nullable=True)
     coding_code = Column(String, nullable=True)
@@ -36,4 +44,4 @@ class OrganizationType(Base):
     created_by = Column(String, nullable=False)
     updated_by = Column(String, nullable=True)
 
-    organization = relationship("OrganizationModel", back_populates="types")
+    location = relationship("LocationModel", back_populates="types")

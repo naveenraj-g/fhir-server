@@ -18,14 +18,18 @@ from app.schemas.enums import ContactPointSystem, ContactPointUse
 # ---------------------------------------------------------------------------
 
 
-class OrganizationTelecom(Base):
-    __tablename__ = "organization_telecom"
+class LocationTelecom(Base):
+    """Location.telecom[] — contact details (phone, fax, email, website) for
+    the location. Identical shape to OrganizationTelecom."""
+
+    __tablename__ = "location_telecom"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    organization_id = Column(
-        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
+    location_id = Column(
+        BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
     org_id = Column(String, nullable=False)
+
     system = Column(
         Enum(ContactPointSystem, name="contact_point_system"), nullable=False
     )
@@ -40,4 +44,4 @@ class OrganizationTelecom(Base):
     created_by = Column(String, nullable=False)
     updated_by = Column(String, nullable=True)
 
-    organization = relationship("OrganizationModel", back_populates="telecoms")
+    location = relationship("LocationModel", back_populates="telecoms")

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from app.fhir.datatypes import fhir_split
 
 if TYPE_CHECKING:
-    from app.models.location.location import (
+    from app.models.location import (
         LocationAlias,
         LocationEndpoint,
         LocationHoursOfOperation,

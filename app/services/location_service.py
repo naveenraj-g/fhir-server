@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple
 
 from app.fhir.mappers.location import to_fhir_location, to_plain_location
-from app.models.location.location import LocationModel
+from app.models.location import LocationModel
 from app.repository.location_repository import LocationRepository
 from app.schemas.location.input import LocationCreateSchema, LocationPatchSchema
 
