@@ -2,7 +2,7 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import Depends
 
 from app.di.container import Container
-from app.services.location_service import LocationService
+from app.services.location import LocationService
 
 
 @inject

@@ -25,7 +25,7 @@ This is a pure CRUD core with no authentication of its own — it is never expos
 | Web framework | FastAPI + Uvicorn |
 | Database | PostgreSQL 15 (async via asyncpg) |
 | ORM | SQLAlchemy 2.0+ (async) |
-| Auth | None for ~32 resources — handled upstream by a GraphQL gateway. **Patient, Practitioner, and Organization are the exceptions**: `app/auth/` validates JWTs directly via `pyjwt` + JWKS, with flat RBAC scopes (see Multi-Tenancy & Ownership) |
+| Auth | None for ~31 resources — handled upstream by a GraphQL gateway. **Patient, Practitioner, Organization, and Location are the exceptions**: `app/auth/` validates JWTs directly via `pyjwt` + JWKS, with flat RBAC scopes (see Multi-Tenancy & Ownership) |
 | Sessions | Redis 7 (server-side) |
 | DI container | dependency-injector |
 | Config | pydantic-settings (.env) |
@@ -119,12 +119,12 @@ Router → Service → Repository → ORM Model
 
 ## Multi-Tenancy & Ownership
 
-**This server has no authentication of its own — with three exceptions, see below.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. For every resource except Patient, Practitioner, and Organization, the gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase (outside `app/auth/`) decodes a token, checks a JWKS endpoint, or reads `request.state.user`.
+**This server has no authentication of its own — with four exceptions, see below.** It is a pure CRUD core — never exposed directly to clients — sitting behind a GraphQL gateway, which is the only externally-facing surface. For every resource except Patient, Practitioner, Organization, and Location, the gateway validates the caller's JWT and resolves `sub` → `user_id` and the active-org claim → `org_id` itself, then forwards both as ordinary fields on every request. Nothing in this codebase (outside `app/auth/`) decodes a token, checks a JWKS endpoint, or reads `request.state.user`.
 
-**Auth rollout status (in progress, Patient, Practitioner, and Organization so far):** All three validate JWTs directly — see `app/auth/` (JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) and every route in `app/routers/patient/`, `app/routers/practitioner/`, and `app/routers/organization/`, gated with `require_permission("patient", <action>)` / `require_permission("practitioner", <action>)` / `require_permission("organization", <action>)` respectively. For all three resources: `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`); `org_id` comes from the verified JWT's `activeOrganizationId` (`actor.org_id`) — **neither is a request body field anymore**, `PatientCreateSchema`/`PatientPatchSchema`, `PractitionerCreateSchema`/`PractitionerPatchSchema`, and `OrganizationCreateSchema`/`OrganizationPatchSchema` (plus every one of Patient's and Practitioner's sub-resource Create/Patch schemas — Organization has none, see its own Standard Columns note) don't accept them at all. There is **no org-less/super-admin bypass**: a token with no `activeOrganizationId` claim is rejected outright (403) rather than being allowed through — every Patient/Practitioner/Organization operation requires an org-scoped actor. `create`/`create_full` reject a missing `actor.org_id`; `patch`/`patch_full`/`delete`/every sub-resource method 404 if the caller's org doesn't match the target resource's stored `org_id` (also 404, never 403, to avoid leaking whether the resource exists in another org) — enforced via a shared `get_<resource>_scoped()` helper on each service's core mixin plus a `<resource>_belongs_to_org()` repository check. `user_id` is unchanged for Patient and Practitioner — still a plain, gateway-forwarded input field on create, same as every other resource. **Organization is the one exception to that: it has no `user_id` at all** (dropped entirely — model column, schemas, mapper, repository/service/router — since an Organization is a shared tenant-level entity, not scoped to an individual end-user; see its own Standard Columns note). **All other ~32 resources are unaffected and follow the description below exactly as written.**
+**Auth rollout status (in progress, Patient, Practitioner, Organization, and Location so far):** All four validate JWTs directly — see `app/auth/` (JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) and every route in `app/routers/patient/`, `app/routers/practitioner/`, `app/routers/organization/`, and `app/routers/location/`, gated with `require_permission("<resource>", <action>)`. For all four resources: `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`); `org_id` comes from the verified JWT's `activeOrganizationId` (`actor.org_id`) — **neither is a request body field anymore**, `PatientCreateSchema`/`PatientPatchSchema`, `PractitionerCreateSchema`/`PractitionerPatchSchema`, `OrganizationCreateSchema`/`OrganizationPatchSchema`, and `LocationCreateSchema`/`LocationPatchSchema` (plus every one of Patient's and Practitioner's sub-resource Create/Patch schemas — Organization and Location have none, see their Standard Columns note) don't accept them at all. There is **no org-less/super-admin bypass**: a token with no `activeOrganizationId` claim is rejected outright (403) rather than being allowed through — every Patient/Practitioner/Organization/Location operation requires an org-scoped actor. `create`/`create_full` reject a missing `actor.org_id`; `patch`/`patch_full`/`delete`/every sub-resource method 404 if the caller's org doesn't match the target resource's stored `org_id` (also 404, never 403, to avoid leaking whether the resource exists in another org) — enforced via a shared `get_<resource>_scoped()` helper on each service's core mixin plus a `<resource>_belongs_to_org()` repository check. `user_id` is unchanged for Patient and Practitioner — still a plain, gateway-forwarded input field on create, same as every other resource. **Organization and Location are the exceptions to that: neither has a `user_id` at all** (dropped entirely — model column, schemas, mapper, repository/service/router — since both are shared tenant-level entities, not scoped to an individual end-user; see their Standard Columns note). **All other ~31 resources are unaffected and follow the description below exactly as written.**
 
-- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token. (Patient and Practitioner are exceptions: `user_id` still follows this, but `org_id`, like `created_by`/`updated_by`, comes from the verified token instead — see rollout status above. Organization is a further exception: no `user_id` at all.)
-- `created_by`/`updated_by` are the same for every resource except Patient, Practitioner, and Organization: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
+- Every row stores `user_id` and `org_id`; every `<Resource>CreateSchema`/`PatchSchema` declares them as plain input fields (see each schema's `json_schema_extra` example), and every router reads them straight off the validated payload (e.g. `payload.user_id`, `payload.org_id`) — never from a token. (Patient and Practitioner are exceptions: `user_id` still follows this, but `org_id`, like `created_by`/`updated_by`, comes from the verified token instead — see rollout status above. Organization and Location are further exceptions: no `user_id` at all.)
+- `created_by`/`updated_by` are the same for every resource except Patient, Practitioner, Organization, and Location: plain input fields set from whatever "acting user" value the gateway forwards, never derived locally.
 - `resolve_<resource>()` deps (`app/deps/<resource>_deps.py`) only load the resource by public ID and raise 404 if missing — they do **not** enforce ownership. Tenant/ownership scoping happens entirely via `user_id`/`org_id` `WHERE` clauses in the repository's `list()`/`get_me()` queries. Used as `Depends(resolve_<resource>)` in route signatures.
 - Keeping `user_id`/`org_id` on every resource (Organization aside) is deliberate: it gives the GraphQL gateway one uniform scoping contract across all other resource types, with no joins, and it's the only mechanism that works for resources with no patient/subject link at all (Location, HealthcareService, Appointment — whose `participant` list is polymorphic 0..* and may contain zero patients — etc.).
 
@@ -210,7 +210,7 @@ Three schema types per resource, all with `model_config = ConfigDict(extra="forb
 
 Recursive schemas (e.g. QuestionnaireResponse items) must call `model_rebuild()` after class definition.
 
-Once `input.py`/`response.py` grow large (many sub-resources), split each into a same-named package (`input/core.py` + one file per sub-resource + `input/__init__.py` re-exporting everything) — see the `/split-resource-package` skill. Patient, Practitioner, and Organization all do this; the module→package conversion is transparent to every existing import.
+Once `input.py`/`response.py` grow large (many sub-resources), split each into a same-named package (`input/core.py` + one file per sub-resource + `input/__init__.py` re-exporting everything) — see the `/split-resource-package` skill. Patient, Practitioner, Organization, and Location all do this; the module→package conversion is transparent to every existing import.
 
 ---
 
@@ -240,8 +240,10 @@ Rules:
 
 ## Standard Columns
 
-Every resource row: `id` (PK), `<resource>_id` (sequence), `user_id`, `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`. **Organization is the one exception: it has no `user_id` column at all** — dropped end-to-end (model, migration, schemas, mapper, repository/service/router) since an Organization is a shared tenant-level entity, not scoped to an individual end-user, unlike every other resource.
-- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase, **except Patient, Practitioner, and Organization**, where all three come from the verified JWT's `sub` (see Multi-Tenancy & Ownership's "Auth rollout status")
+Every resource row: `id` (PK), `<resource>_id` (sequence), `user_id`, `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`. **Organization and Location are the two exceptions: neither has a `user_id` column at all** — dropped end-to-end (model, migration, schemas, mapper, repository/service/router) since an Organization and a physical Location are both shared tenant-level entities, not scoped to an individual end-user, unlike every other resource.
+
+Every `id` and every sub-resource table's `id` is **`BigInteger`**, as is every `<resource>_id` sequence column, every sub-resource FK back to its parent, and every flattened cross-resource reference `_id`. `org_id`/`user_id` are `String` tenant fields and are not part of that rule.
+- `created_by` / `updated_by` — plain input fields, set from whatever acting-user value the GraphQL gateway forwards; never derived from a token in this codebase, **except Patient, Practitioner, Organization, and Location**, where all four come from the verified JWT's `sub` (see Multi-Tenancy & Ownership's "Auth rollout status")
 - `org_id` / `user_id` are **tenant/ownership fields forwarded by the gateway**, not a reference to the FHIR Organization resource — **except Patient's, Practitioner's, and Organization's own `org_id`**, which comes from the verified JWT's `activeOrganizationId` instead (see Multi-Tenancy & Ownership's "Auth rollout status"); Patient's and Practitioner's `user_id` is unaffected, but Organization has no `user_id` field at all. (Note: on the Organization resource itself, this `org_id` tenant-scoping column is a distinct concept from the Organization *entity* being represented by the row — see `OrganizationCreateSchema`'s docstring.)
 
 ---
@@ -363,7 +365,7 @@ That's why `bind_actor()` writes to **both** the ContextVars *and* `request.stat
 - **Uvicorn's own access log is off** (`logging.uvicorn_access: false`) — `app/middleware/access_log.py` already logs every request with more detail, and the `uvicorn.access` logger sets `propagate=False` with its own handler, so its line stays plain text even under `format: json` and breaks stream parsing. Flip the flag to see both effects.
 - `logging.level` and `logging.format` are matched case-insensitively (`JSON`, `Debug`, … all work) — they're the two settings people hand-edit, and a `literal_error` at import time is a hostile failure mode.
 
-Currently instrumented end-to-end: **Patient, Practitioner, Organization** — all 86 routes (explicit per-handler `logger.info`), all 88 service methods and all 95 repository methods (`@trace_methods`). The other ~32 resources get the global plumbing (access log, slow queries, errors, auth) but no flow trace; add it by applying `@trace_methods` to their service/repository classes.
+Currently instrumented end-to-end: **Patient, Practitioner, Organization, Location** — all 91 routes (explicit per-handler `logger.info`), all 93 service methods and all 102 repository methods (`@trace_methods`). The other ~31 resources get the global plumbing (access log, slow queries, errors, auth) but no flow trace; add it by applying `@trace_methods` to their service/repository classes.
 
 ---
 
@@ -383,7 +385,7 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
    FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
    REDIS_URL=redis://localhost:6379
 
-   # BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient, Practitioner, and Organization only, so far)
+   # BetterAuth / IAM — used by app/auth/ to verify JWTs via JWKS (Patient, Practitioner, Organization, and Location only, so far)
    IAM_JWKS_URL=http://localhost:5001/api/auth/jwks
    IAM_ISSUER=http://localhost:5001
    ```
@@ -411,7 +413,7 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
        - organization
    ```
 
-`IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, and Organization now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~32 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
+`IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, Organization, and Location now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~31 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
 
 `rate_limit.backend` selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend ("redis", coordinated across instances, or "memory", per-process only) — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency. `rate_limit.read_limit`/`write_limit`/`window_seconds` are the actual per-window request caps — all four are wired straight into `app.add_middleware(RateLimitMiddleware, ...)` in `app/main.py`.
 
@@ -441,7 +443,11 @@ Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detaile
 - `CodeableReference` does not exist in R4
 - `organization_reference_type` PG type is shared — always `create_type=False`, never create/drop it again
 - `encounter_reference_type` PG type is shared — always `create_type=False`, never create/drop it again
-- All reference `_id` columns store the **internal `resource.id` PK**, never the public sequence ID. Add `ForeignKey("resource.id")`, `index=True`, and `lazy="selectin"` relationship. Mapper reads the public ID through the relationship.
+- **Two reference conventions exist — check which one the resource follows before touching a `_id` column.**
+  - *Flattened reference (Patient, Practitioner, Organization, Location — the reworked resources, and the one to use for new work):* `{prefix}_type` + `{prefix}_id` + `{prefix}_display`, where `{prefix}_id` stores the **public sequence ID**, not the internal PK. There is deliberately **no `ForeignKey` and no relationship** — the target table varies per row by `{prefix}_type`, so a real FK is impossible. Existence is checked at write time by `ensure_resource_exists()` (`app/core/reference_resolver.py`), which matches on `model.<resource>_id`; the target type must be registered in `RESOURCE_REGISTRY` or the check fails closed and rejects every reference. The mapper emits `f"{type}/{id}"` directly. Pair it with the `{prefix}_identifier_*` logical-reference fallback for targets that aren't resources in this system.
+  - *Legacy single-target reference (most of the other ~31 resources):* a real `ForeignKey("resource.id")` storing the **internal `resource.id` PK**, with `index=True` and a `lazy="selectin"` relationship; the mapper reads the public ID back through that relationship.
+
+  These are not interchangeable: `task.location_id` is a real FK holding an internal PK, while `location.part_of_id` holds a public `location_id` with no FK at all.
 - Alembic autogenerate enum values are correct (key = value convention); still replace `sa.Enum` with `postgresql.ENUM` pattern in migrations for proper create/drop handling
 
 ---
@@ -451,8 +457,8 @@ Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detaile
 Use the `/new-fhir-resource` skill (`.claude/commands/new-fhir-resource.md`) for the complete 17-step checklist covering model → migration → schemas → mapper → repository → service → DI → router.
 
 Two related skills, used opportunistically rather than as part of every new resource:
-- `/split-resource-package` — once a resource's model/repository/service/router/schema file grows large (many sub-resources), split it into a per-sub-resource package. Patient, Practitioner, and Organization all do this across every layer.
-- `/resource-auth-rollout` — only if explicitly asked to add direct JWT/RBAC auth to a resource (the Patient/Practitioner/Organization pattern). This is a rare, deliberate deviation from the default gateway-trusts-everything pattern, not something to apply by default.
+- `/split-resource-package` — once a resource's model/repository/service/router/schema file grows large (many sub-resources), split it into a per-sub-resource package. Patient, Practitioner, Organization, and Location all do this across every layer.
+- `/resource-auth-rollout` — only if explicitly asked to add direct JWT/RBAC auth to a resource (the Patient/Practitioner/Organization/Location pattern). This is a rare, deliberate deviation from the default gateway-trusts-everything pattern, not something to apply by default.
 
 ---
 

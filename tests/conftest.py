@@ -1,3 +1,4 @@
+import math
 import os
 
 # Must be set before any app module is imported so pydantic-settings reads them.
@@ -124,8 +125,9 @@ def _simulate_bigint_pk(mapper, connection, target) -> None:
     primary key column whose DDL literally reads INTEGER PRIMARY KEY —
     BigInteger compiles to BIGINT, which doesn't get that treatment, so it's
     left NULL on insert (NOT NULL constraint failure) unless simulated here
-    the same way Sequence-based columns are above. Only Patient.id uses
-    BigInteger today, but this covers any future BigInteger PK table too."""
+    the same way Sequence-based columns are above. Every resource's `id` and
+    every sub-resource table's `id` is BigInteger, so this covers the whole
+    schema."""
     pk_cols = list(mapper.local_table.primary_key.columns)
     if len(pk_cols) != 1:
         return
@@ -193,6 +195,29 @@ def make_test_user(
     return _dep
 
 
+# ── SQLite math functions ─────────────────────────────────────────────────────
+# Location's `near` search parameter computes a great-circle distance in SQL
+# (see app/repository/location/core.py). Postgres has these built in; SQLite
+# ships none of them unless compiled with SQLITE_ENABLE_MATH_FUNCTIONS, so
+# register them per-connection or every `near` query errors under test while
+# working fine in production — exactly the gap that hides a broken filter.
+
+_SQLITE_MATH_FUNCS = {
+    "radians": math.radians,
+    "acos": math.acos,
+    "sin": math.sin,
+    "cos": math.cos,
+}
+
+
+def _register_sqlite_math(dbapi_conn, _connection_record) -> None:
+    for name, fn in _SQLITE_MATH_FUNCS.items():
+        dbapi_conn.create_function(name, 1, fn)
+    # least/greatest are Postgres-only spellings of SQLite's min/max.
+    dbapi_conn.create_function("least", 2, min)
+    dbapi_conn.create_function("greatest", 2, max)
+
+
 # ── Shared engine fixture ──────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -205,6 +230,7 @@ async def _engine():
         poolclass=StaticPool,
         echo=False,
     )
+    event.listen(eng.sync_engine, "connect", _register_sqlite_math)
     async with eng.begin() as conn:
         await conn.run_sync(FHIRBase.metadata.create_all)
     yield eng

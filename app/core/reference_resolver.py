@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
+from app.models.location import LocationModel
 from app.models.organization import OrganizationModel
 from app.models.patient import PatientModel
 from app.models.practitioner import PractitionerModel
@@ -32,6 +33,12 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "PractitionerRole": (PractitionerRoleModel, "practitioner_role_id"),
     "Patient": (PatientModel, "patient_id"),
     "RelatedPerson": (RelatedPersonModel, "related_person_id"),
+    # Location.partOf is self-referential, so this entry is what makes the
+    # partOf existence check work at all — an unregistered type fails closed
+    # (resource_exists returns False), which would 422 every valid partOf.
+    # Note Location has no user_id column, so resource_exists' user_id filter
+    # must never be passed for it — same as Organization.
+    "Location": (LocationModel, "location_id"),
 }
 
 

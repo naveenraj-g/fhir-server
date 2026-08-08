@@ -13,6 +13,10 @@ def _set_permissions(client):
             "location:read",
             "location:update",
             "location:delete",
+            # Location.managingOrganization references a real Organization, so
+            # these tests need to be able to create one to point at.
+            "organization:create",
+            "organization:read",
         ]
     )
     yield

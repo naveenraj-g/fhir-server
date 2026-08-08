@@ -1,4 +1,5 @@
 from app.schemas.location.input import (
+    LocationAliasInput,
     LocationCreateSchema,
     LocationEndpointInput,
     LocationHoursOfOperationInput,
@@ -9,9 +10,18 @@ from app.schemas.location.input import (
 )
 from app.schemas.location.response import (
     FHIRLocationBundle,
+    FHIRLocationBundleEntry,
+    FHIRLocationHoursOfOperation,
+    FHIRLocationPosition,
     FHIRLocationSchema,
     PaginatedLocationResponse,
+    PlainLocationAlias,
+    PlainLocationEndpoint,
+    PlainLocationHoursOfOperation,
+    PlainLocationIdentifier,
     PlainLocationResponse,
+    PlainLocationTelecom,
+    PlainLocationType,
 )
 
 __all__ = [
@@ -19,11 +29,21 @@ __all__ = [
     "LocationPatchSchema",
     "LocationIdentifierInput",
     "LocationTypeInput",
+    "LocationAliasInput",
     "LocationTelecomInput",
     "LocationHoursOfOperationInput",
     "LocationEndpointInput",
     "FHIRLocationSchema",
+    "FHIRLocationBundleEntry",
     "FHIRLocationBundle",
+    "FHIRLocationPosition",
+    "FHIRLocationHoursOfOperation",
     "PlainLocationResponse",
     "PaginatedLocationResponse",
+    "PlainLocationIdentifier",
+    "PlainLocationType",
+    "PlainLocationAlias",
+    "PlainLocationTelecom",
+    "PlainLocationHoursOfOperation",
+    "PlainLocationEndpoint",
 ]

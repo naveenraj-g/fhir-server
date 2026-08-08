@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
-from app.repository.location_repository import LocationRepository
-from app.services.location_service import LocationService
+from app.repository.location import LocationRepository
+from app.services.location import LocationService
 
 
 class LocationContainer(containers.DeclarativeContainer):
