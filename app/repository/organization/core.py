@@ -9,7 +9,6 @@ from app.core.filters import (
 from app.core.logging import get_logger
 from app.core.pagination import resolve_sort
 from app.models.enums import OrganizationReferenceType
-from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.models.organization import (
     OrganizationAddress,
     OrganizationAlias,
@@ -18,6 +17,7 @@ from app.models.organization import (
     OrganizationModel,
     OrganizationType,
 )
+from app.models.organization.enums import OrganizationEndpointReferenceType
 
 from ._shared import _SORTABLE_FIELDS, _with_relationships
 
@@ -260,9 +260,7 @@ class _CoreMixin:
                 "total": total,
                 "limit": limit,
                 "offset": offset,
-                "filters": sorted(
-                    k for k, v in filter_kwargs.items() if v is not None
-                ),
+                "filters": sorted(k for k, v in filter_kwargs.items() if v is not None),
             },
         )
         return rows, total

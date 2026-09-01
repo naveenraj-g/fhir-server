@@ -2,8 +2,8 @@ from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
-from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.models.organization import OrganizationContact, OrganizationModel
+from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.repository._reference_shared import (
     _IDENTIFIER_FALLBACK_SUFFIXES,
     _org_ref_kwargs,

@@ -69,6 +69,10 @@ async def resource_exists(
     if org_id is not None:
         stmt = stmt.where(model.org_id == org_id)
     if user_id is not None:
+        if not hasattr(model, "user_id"):
+            raise ValueError(
+                f"{resource_type} has no user_id column — caller must not pass user_id"
+            )
         stmt = stmt.where(model.user_id == user_id)
     return (await session.execute(stmt)).scalar_one_or_none() is not None
 

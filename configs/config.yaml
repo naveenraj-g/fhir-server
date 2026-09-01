@@ -53,7 +53,7 @@ routes:
   # mounted. Vitals and Terminology are mounted separately in app/main.py
   # under their own prefixes and aren't covered by this list.
   enabled:
-    - patient
-    - practitioner
+    # - patient
+    # - practitioner
     - organization
-    - location
+    # - location

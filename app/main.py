@@ -59,6 +59,13 @@ async def log_route_entry(request: Request) -> None:
     )
 
 
+# Tags that exist regardless of routes.enabled — Vitals/Terminology are
+# mounted unconditionally below (not resource routers), Health is defined
+# directly on `app`. Kept out of OPENAPI_TAGS filtering the same way these
+# routers are kept out of discover_routers()'s config-gated set.
+_ALWAYS_ON_TAGS = {"Vitals", "Terminology", "Health"}
+
+
 def mount_routers(app: FastAPI) -> None:
     """Discovers + conditionally mounts every FHIR resource router based on
     configs/config.yaml's routes.enabled list (see app.routers.discover_routers()).
@@ -70,12 +77,19 @@ def mount_routers(app: FastAPI) -> None:
     its own. get_current_user runs once for every route mounted here —
     decodes the JWT and sets request.state.user. Individual routes add
     require_permission(...) on top for fine-grained access control
-    (currently wired for Patient/Practitioner/Organization only)."""
+    (currently wired for Patient/Practitioner/Organization only).
+
+    Also filters app.openapi_tags down to the tags actually in play, so a
+    resource left out of routes.enabled doesn't show an empty tag group in
+    Swagger UI — the same config that decides what's mounted now decides
+    what's documented."""
     enabled_routes = set(settings.routes.enabled)
     api_router = APIRouter()
+    active_tags = set(_ALWAYS_ON_TAGS)
     for name, router in discover_routers().items():
         if name in enabled_routes:
             api_router.include_router(router)
+            active_tags.update(router.tags)
     logger.info(
         "Mounted resource routers",
         extra={
@@ -89,6 +103,7 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/fhir/v1",
         dependencies=[Depends(get_current_user), Depends(log_route_entry)],
     )
+    app.openapi_tags = [tag for tag in OPENAPI_TAGS if tag["name"] in active_tags]
 
 
 @asynccontextmanager
@@ -139,9 +154,7 @@ async def lifespan(app: FastAPI):
     logger.info("🔴 Shutting down application...", extra={"event": "shutdown.begin"})
     await db.disconnect()
 
-    logger.info(
-        "Database engine disposed.", extra={"event": "shutdown.db_disposed"}
-    )
+    logger.info("Database engine disposed.", extra={"event": "shutdown.db_disposed"})
 
 
 app: FastAPI = FastAPI(
@@ -153,7 +166,6 @@ app: FastAPI = FastAPI(
         "application/fhir+json). Pure CRUD data layer — no auth, no business rules. "
         "Designed for integration with AI agents via FastMCP dynamic tool generation."
     ),
-    openapi_tags=OPENAPI_TAGS,
     lifespan=lifespan,
 )
 

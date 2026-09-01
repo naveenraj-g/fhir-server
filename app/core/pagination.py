@@ -16,7 +16,7 @@ query-string shape clients already use for limit/offset.
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from fastapi import Query
 
@@ -28,7 +28,7 @@ class ListParams:
         self,
         limit: int = Query(50, ge=1, le=200, description="Page size."),
         offset: int = Query(0, ge=0, description="Number of rows to skip."),
-        sort: Optional[str] = Query(
+        sort: str | None = Query(
             None,
             description="Field to sort by. Prefix with '-' for descending (e.g. '-birth_date').",
         ),
@@ -48,7 +48,7 @@ class ListParams:
 
 
 def resolve_sort(
-    sort: Optional[str],
+    sort: str | None,
     sortable_fields: dict[str, object],
     default_column,
     *,
