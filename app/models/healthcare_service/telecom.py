@@ -21,8 +21,10 @@ class HealthcareServiceTelecom(Base):
     )
     org_id = Column(String, nullable=False)
 
-    system = Column(Enum(ContactPointSystem, name="contact_point_system"), nullable=True)
-    value = Column(String, nullable=True)
+    system = Column(
+        Enum(ContactPointSystem, name="contact_point_system"), nullable=False
+    )
+    value = Column(String, nullable=False)
     use = Column(Enum(ContactPointUse, name="contact_point_use"), nullable=True)
     rank = Column(Integer, nullable=True)
     period_start = Column(DateTime(timezone=True), nullable=True)

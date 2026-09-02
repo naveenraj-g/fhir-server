@@ -4,6 +4,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Enum,
+    Integer,
     Sequence,
     String,
     Text,
@@ -65,7 +66,7 @@ class HealthcareServiceModel(Base):
 
     # ── active (0..1 boolean) ─────────────────────────────────────────────────
 
-    active = Column(Boolean, nullable=True, default=False)
+    active = Column(Boolean, nullable=False, default=False)
 
     # ── providedBy (0..1 Reference(Organization)) ─────────────────────────────
     # provided_by_id stores Organization's PUBLIC organization_id — no FK, no
@@ -120,7 +121,7 @@ class HealthcareServiceModel(Base):
     photo_language = Column(String, nullable=True)  # BCP-47 e.g. "en"
     photo_data = Column(Text, nullable=True)  # base64-encoded binary
     photo_url = Column(String, nullable=True)  # external URL
-    photo_size = Column(BigInteger, nullable=True)  # byte size before base64
+    photo_size = Column(Integer, nullable=True)  # byte size before base64
     photo_hash = Column(String, nullable=True)  # base64-encoded SHA-1
     photo_title = Column(String, nullable=True)  # human-readable label
     photo_creation = Column(DateTime(timezone=True), nullable=True)
