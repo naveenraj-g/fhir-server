@@ -120,3 +120,17 @@ class PatientLinkType(str, Enum):
     replaces = "replaces"
     refer = "refer"
     seealso = "seealso"
+
+
+class HealthcareServiceDayOfWeek(str, Enum):
+    """
+    FHIR DaysOfWeek value set — used by HealthcareService.availableTime.daysOfWeek.
+    """
+
+    mon = "mon"
+    tue = "tue"
+    wed = "wed"
+    thu = "thu"
+    fri = "fri"
+    sat = "sat"
+    sun = "sun"

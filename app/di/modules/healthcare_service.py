@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
-from app.repository.healthcare_service_repository import HealthcareServiceRepository
-from app.services.healthcare_service_service import HealthcareServiceService
+from app.repository.healthcare_service import HealthcareServiceRepository
+from app.services.healthcare_service import HealthcareServiceService
 
 
 class HealthcareServiceContainer(containers.DeclarativeContainer):

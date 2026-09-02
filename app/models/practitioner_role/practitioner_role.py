@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -212,7 +213,7 @@ class PractitionerRoleHealthcareService(Base):
         Enum(PractitionerRoleHealthcareServiceReferenceType, name="pr_healthcare_service_ref_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, ForeignKey("healthcare_service.id"), nullable=True, index=True)
+    reference_id = Column(BigInteger, ForeignKey("healthcare_service.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     reference = relationship("HealthcareServiceModel", foreign_keys=[reference_id], lazy="selectin")

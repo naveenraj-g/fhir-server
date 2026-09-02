@@ -14,10 +14,10 @@ from sqlalchemy.sql import func
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse, OrganizationReferenceType
 
-
 # ---------------------------------------------------------------------------
 # identifier (0..*) child table
 # ---------------------------------------------------------------------------
+
 
 class OrganizationIdentifier(Base):
     __tablename__ = "organization_identifier"
@@ -28,7 +28,9 @@ class OrganizationIdentifier(Base):
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    organization_id = Column(BigInteger, ForeignKey("organization.id"), nullable=False, index=True)
+    organization_id = Column(
+        BigInteger, ForeignKey("organization.id"), nullable=False, index=True
+    )
     org_id = Column(String, nullable=False)
 
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)

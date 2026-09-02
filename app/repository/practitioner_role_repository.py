@@ -7,7 +7,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
-from app.models.healthcare_service.healthcare_service import (
+from app.models.healthcare_service import (
     HealthcareServiceModel,
     HealthcareServiceCategory,
 )
