@@ -134,3 +134,17 @@ class HealthcareServiceDayOfWeek(str, Enum):
     fri = "fri"
     sat = "sat"
     sun = "sun"
+
+
+class PractitionerRoleDayOfWeek(str, Enum):
+    """
+    FHIR DaysOfWeek value set — used by PractitionerRole.availableTime.daysOfWeek.
+    """
+
+    mon = "mon"
+    tue = "tue"
+    wed = "wed"
+    thu = "thu"
+    fri = "fri"
+    sat = "sat"
+    sun = "sun"

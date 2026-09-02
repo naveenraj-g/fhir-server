@@ -106,6 +106,27 @@ def assert_fhir_healthcare_service(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_practitioner_role(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) practitioner role response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected practitioner_role.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_practitioner_role(data: dict, **expected) -> None:
+    """Assert fields on a FHIR practitioner role response."""
+    assert data.get("resourceType") == "PractitionerRole", (
+        f"expected resourceType=PractitionerRole, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected practitioner_role.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
 def assert_paginated(data: dict, *, min_total: int = 1) -> None:
     """Assert structure of a plain paginated list response."""
     assert "total" in data, "paginated response must have 'total'"

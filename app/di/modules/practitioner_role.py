@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
-from app.repository.practitioner_role_repository import PractitionerRoleRepository
-from app.services.practitioner_role_service import PractitionerRoleService
+from app.repository.practitioner_role import PractitionerRoleRepository
+from app.services.practitioner_role import PractitionerRoleService
 
 
 class PractitionerRoleContainer(containers.DeclarativeContainer):

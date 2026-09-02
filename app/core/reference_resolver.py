@@ -23,7 +23,7 @@ from app.models.location import LocationModel
 from app.models.organization import OrganizationModel
 from app.models.patient import PatientModel
 from app.models.practitioner import PractitionerModel
-from app.models.practitioner_role.practitioner_role import PractitionerRoleModel
+from app.models.practitioner_role import PractitionerRoleModel
 from app.models.related_person.related_person import RelatedPersonModel
 
 logger = get_logger(__name__)

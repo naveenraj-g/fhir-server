@@ -11,6 +11,12 @@ class DayOfWeek(str, Enum):
     sun = "sun"
 
 
+class PractitionerRolePractitionerReferenceType(str, Enum):
+    """Allowed reference types for PractitionerRole.practitioner."""
+
+    Practitioner = "Practitioner"
+
+
 class PractitionerRoleLocationReferenceType(str, Enum):
     """Allowed reference types for PractitionerRole.location[]."""
 

@@ -58,3 +58,4 @@ routes:
     - organization
     # - location
     - healthcare_service
+    - practitioner_role

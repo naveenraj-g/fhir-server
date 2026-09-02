@@ -2,7 +2,7 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import Depends
 
 from app.di.container import Container
-from app.services.practitioner_role_service import PractitionerRoleService
+from app.services.practitioner_role import PractitionerRoleService
 
 
 @inject

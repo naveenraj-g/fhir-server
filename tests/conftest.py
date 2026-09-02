@@ -31,11 +31,18 @@ from app.middleware.rate_limit import RateLimitMiddleware
 mount_routers(app)
 
 # ── SQLite fallback for Postgres-only column types ────────────────────────────
-# TSVECTOR (app/models/terminology/terminology.py) and ARRAY
-# (app/models/practitioner_role/practitioner_role.py) have no SQLite
-# equivalent — create_all() builds every table in FHIRBase.metadata at once,
-# so without these shims every test in the suite errors during fixture setup,
-# not just those two resources'.
+# TSVECTOR (app/models/terminology/terminology.py) has no SQLite equivalent —
+# create_all() builds every table in FHIRBase.metadata at once, so without
+# this shim every test in the suite errors during fixture setup, not just
+# that one resource's.
+#
+# The ARRAY shim below is now dead code: it existed only for
+# app/models/practitioner_role/practitioner_role.py's old
+# ARRAY(Enum(DayOfWeek)) column, which the PractitionerRole rework replaced
+# with comma-separated Text (see app/models/practitioner_role/available_time.py).
+# No model in the codebase uses ARRAY anymore (confirmed via
+# `grep -rl "ARRAY(" app/models/*/*.py`) — left in place since removing test
+# infrastructure wasn't part of that change; safe to delete in a future pass.
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.ext.compiler import compiles
