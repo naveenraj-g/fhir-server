@@ -129,16 +129,6 @@ class PractitionerQualificationCreate(BaseModel):
         None,
         description="Human-readable qualification type, e.g. 'MD - Doctor of Medicine'.",
     )
-    status_system: str | None = Field(
-        None, description="Coding system for qualification status."
-    )
-    status_code: str | None = Field(
-        None, description="Status code (e.g. active, inactive, pending)."
-    )
-    status_display: str | None = Field(None, description="Display for the status code.")
-    status_text: str | None = Field(
-        None, description="Human-readable qualification status."
-    )
     period_start: datetime | None = Field(
         None, description="Start of the period during which the qualification is valid."
     )
@@ -197,10 +187,6 @@ class PractitionerQualificationPatch(BaseModel):
     code_code: str | None = None
     code_display: str | None = None
     code_text: str | None = None
-    status_system: str | None = None
-    status_code: str | None = None
-    status_display: str | None = None
-    status_text: str | None = None
     period_start: datetime | None = None
     period_end: datetime | None = None
     issuer: str | None = Field(

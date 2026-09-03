@@ -188,23 +188,6 @@ def fhir_qualification(q: PractitionerQualification) -> dict:
         code_cc["text"] = q.code_text
     if code_cc:
         entry["code"] = code_cc
-    if q.status_system or q.status_code or q.status_text:
-        status_cc: dict = {}
-        if q.status_system or q.status_code:
-            status_cc["coding"] = [
-                {
-                    k: v
-                    for k, v in {
-                        "system": q.status_system,
-                        "code": q.status_code,
-                        "display": q.status_display,
-                    }.items()
-                    if v
-                }
-            ]
-        if q.status_text:
-            status_cc["text"] = q.status_text
-        entry["status"] = status_cc
     if q.period_start or q.period_end:
         entry["period"] = {
             k: v

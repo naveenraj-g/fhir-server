@@ -13,10 +13,6 @@ class FHIRQualification(BaseModel):
     code: FHIRCodeableConcept | None = Field(
         None, description="Coded qualification type."
     )
-    status: FHIRCodeableConcept | None = Field(
-        None,
-        description="Status of the qualification (e.g. active, inactive, pending).",
-    )
     period: FHIRPeriod | None = Field(
         None, description="Qualification validity period."
     )
@@ -134,16 +130,6 @@ class PlainQualification(BaseModel):
     )
     code_text: str | None = Field(
         None, description="Human-readable qualification type."
-    )
-    status_system: str | None = Field(
-        None, description="Coding system URI for qualification status."
-    )
-    status_code: str | None = Field(
-        None, description="Status code (e.g. active, inactive, pending)."
-    )
-    status_display: str | None = Field(None, description="Display for the status code.")
-    status_text: str | None = Field(
-        None, description="Human-readable qualification status."
     )
     period_start: str | None = Field(None, description="ISO 8601 datetime string.")
     period_end: str | None = Field(

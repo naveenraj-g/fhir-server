@@ -30,12 +30,6 @@ class PractitionerQualification(Base):
     code_display = Column(String, nullable=True)
     code_text = Column(String, nullable=True)
 
-    # qualification.status (0..1 CodeableConcept — flattened)
-    status_system = Column(String, nullable=True)
-    status_code = Column(String, nullable=True)
-    status_display = Column(String, nullable=True)
-    status_text = Column(String, nullable=True)
-
     # qualification.period (0..1)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
