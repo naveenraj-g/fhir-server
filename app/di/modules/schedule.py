@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
-from app.repository.schedule_repository import ScheduleRepository
-from app.services.schedule_service import ScheduleService
+from app.repository.schedule import ScheduleRepository
+from app.services.schedule import ScheduleService
 
 
 class ScheduleContainer(containers.DeclarativeContainer):

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F40
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.models.schedule.schedule import ScheduleActor, ScheduleModel
+from app.models.schedule import ScheduleActor, ScheduleModel
 from app.models.schedule.enums import ScheduleActorReferenceType
 from app.models.slot.enums import SlotScheduleReferenceType, SlotStatus
 from app.models.slot.slot import (

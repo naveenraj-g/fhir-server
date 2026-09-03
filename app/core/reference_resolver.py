@@ -25,6 +25,7 @@ from app.models.patient import PatientModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
 from app.models.related_person.related_person import RelatedPersonModel
+from app.models.schedule import ScheduleModel
 
 logger = get_logger(__name__)
 
@@ -41,6 +42,8 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # must never be passed for it — same as Organization.
     "Location": (LocationModel, "location_id"),
     "HealthcareService": (HealthcareServiceModel, "healthcare_service_id"),
+    # Registered so Schedule.actor (and any future reference into Schedule)
+    "Schedule": (ScheduleModel, "schedule_id"),
 }
 
 

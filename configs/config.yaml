@@ -59,3 +59,4 @@ routes:
     # - location
     - healthcare_service
     - practitioner_role
+    - schedule
