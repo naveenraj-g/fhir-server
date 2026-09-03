@@ -79,7 +79,7 @@ class PatientModel(Base):
         ),
         nullable=True,
     )
-    managing_organization_id = Column(BigInteger, nullable=True)
+    managing_organization_id = Column(BigInteger, nullable=True, index=True)
     managing_organization_display = Column(String, nullable=True)
 
     # managingOrganization.identifier (0..1 Identifier) — logical-reference

@@ -56,7 +56,7 @@ class OrganizationIdentifier(Base):
         ),
         nullable=True,
     )
-    assigner_id = Column(BigInteger, nullable=True)
+    assigner_id = Column(BigInteger, nullable=True, index=True)
     assigner_display = Column(String, nullable=True)
 
     # assigner.identifier (0..1 Identifier) — logical-reference fallback for

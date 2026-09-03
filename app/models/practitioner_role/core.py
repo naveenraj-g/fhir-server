@@ -86,7 +86,7 @@ class PractitionerRoleModel(Base):
         ),
         nullable=True,
     )
-    practitioner_id = Column(BigInteger, nullable=True)
+    practitioner_id = Column(BigInteger, nullable=True, index=True)
     practitioner_display = Column(String, nullable=True)
 
     # practitioner.identifier (0..1 Identifier) — logical-reference fallback for
@@ -118,7 +118,7 @@ class PractitionerRoleModel(Base):
         ),
         nullable=True,
     )
-    organization_id = Column(BigInteger, nullable=True)
+    organization_id = Column(BigInteger, nullable=True, index=True)
     organization_display = Column(String, nullable=True)
 
     # organization.identifier (0..1 Identifier) — logical-reference fallback for

@@ -131,7 +131,7 @@ class LocationModel(Base):
         ),
         nullable=True,
     )
-    managing_organization_id = Column(BigInteger, nullable=True)
+    managing_organization_id = Column(BigInteger, nullable=True, index=True)
     managing_organization_display = Column(String, nullable=True)
 
     # managingOrganization.identifier (0..1 Identifier) — logical-reference
@@ -163,7 +163,7 @@ class LocationModel(Base):
         Enum(LocationPartOfReferenceType, name="location_part_of_reference_type"),
         nullable=True,
     )
-    part_of_id = Column(BigInteger, nullable=True)
+    part_of_id = Column(BigInteger, nullable=True, index=True)
     part_of_display = Column(String, nullable=True)
 
     # partOf.identifier (0..1 Identifier) — logical-reference fallback for a

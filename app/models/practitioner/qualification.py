@@ -49,7 +49,7 @@ class PractitionerQualification(Base):
         ),
         nullable=True,
     )
-    issuer_id = Column(BigInteger, nullable=True)
+    issuer_id = Column(BigInteger, nullable=True, index=True)
     issuer_display = Column(String, nullable=True)
 
     # issuer.identifier (0..1 Identifier) — logical-reference fallback for
@@ -122,7 +122,7 @@ class PractitionerQualificationIdentifier(Base):
         ),
         nullable=True,
     )
-    assigner_id = Column(BigInteger, nullable=True)
+    assigner_id = Column(BigInteger, nullable=True, index=True)
     assigner_display = Column(String, nullable=True)
 
     # assigner.identifier (0..1 Identifier) — logical-reference fallback for

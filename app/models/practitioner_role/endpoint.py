@@ -50,7 +50,7 @@ class PractitionerRoleEndpoint(Base):
         ),
         nullable=True,
     )
-    reference_id = Column(BigInteger, nullable=True)
+    reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     reference_identifier_use = Column(

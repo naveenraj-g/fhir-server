@@ -56,7 +56,7 @@ class ScheduleActor(Base):
         Enum(ScheduleActorReferenceType, name="schedule_actor_reference_type"),
         nullable=True,
     )
-    reference_id = Column(BigInteger, nullable=True)
+    reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     # actor.identifier (0..1 Identifier) — logical-reference fallback for an

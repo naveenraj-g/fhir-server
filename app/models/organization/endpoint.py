@@ -40,7 +40,7 @@ class OrganizationEndpoint(Base):
         Enum(OrganizationEndpointReferenceType, name="organization_endpoint_ref_type"),
         nullable=True,
     )
-    reference_id = Column(BigInteger, nullable=True)
+    reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     # endpoint.identifier (0..1 Identifier) — logical-reference fallback for

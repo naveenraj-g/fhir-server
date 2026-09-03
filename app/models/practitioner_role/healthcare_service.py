@@ -53,7 +53,7 @@ class PractitionerRoleHealthcareService(Base):
         ),
         nullable=True,
     )
-    reference_id = Column(BigInteger, nullable=True)
+    reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     # healthcareService.identifier (0..1 Identifier) — logical-reference

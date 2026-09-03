@@ -83,7 +83,7 @@ class HealthcareServiceModel(Base):
         ),
         nullable=True,
     )
-    provided_by_id = Column(BigInteger, nullable=True)
+    provided_by_id = Column(BigInteger, nullable=True, index=True)
     provided_by_display = Column(String, nullable=True)
 
     # providedBy.identifier (0..1 Identifier) — logical-reference fallback for

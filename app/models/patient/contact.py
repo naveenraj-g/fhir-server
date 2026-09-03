@@ -77,7 +77,7 @@ class PatientContact(Base):
         ),
         nullable=True,
     )
-    organization_id = Column(BigInteger, nullable=True)
+    organization_id = Column(BigInteger, nullable=True, index=True)
     organization_display = Column(String, nullable=True)
 
     # organization.identifier (0..1 Identifier) — logical-reference fallback,

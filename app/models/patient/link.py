@@ -43,7 +43,7 @@ class PatientLink(Base):
         nullable=True,  # was nullable=False — a literal internal reference is
         # now optional since other_identifier_* below can carry an external one
     )
-    other_id = Column(BigInteger, nullable=True)  # was nullable=False, same reason
+    other_id = Column(BigInteger, nullable=True, index=True)  # was nullable=False, same reason
     other_display = Column(String, nullable=True)
 
     # link.other.identifier (0..1 Identifier) — logical-reference fallback for

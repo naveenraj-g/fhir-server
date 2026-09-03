@@ -39,7 +39,7 @@ class PatientGeneralPractitioner(Base):
         Enum(PatientGeneralPractitionerType, name="patient_gp_type"),
         nullable=True,
     )
-    reference_id = Column(BigInteger, nullable=True)
+    reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     # generalPractitioner.identifier (0..1 Identifier) — logical-reference

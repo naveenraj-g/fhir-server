@@ -56,7 +56,7 @@ class OrganizationModel(Base):
         ),
         nullable=True,
     )
-    partof_id = Column(BigInteger, nullable=True)
+    partof_id = Column(BigInteger, nullable=True, index=True)
     partof_display = Column(String, nullable=True)
 
     # partOf.identifier (0..1 Identifier) — logical-reference fallback for
