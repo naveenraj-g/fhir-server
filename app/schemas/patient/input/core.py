@@ -44,16 +44,14 @@ class PatientCreateSchema(BaseModel):
         description="Gateway-forwarded ID of the user who owns this record (JWT sub). Describes who this Patient record belongs to — not a field of the FHIR Patient resource's own clinical content.",
     )
     active: bool | None = Field(
-        True, description="Whether this patient's record is in active use."
+        False, description="Whether this patient's record is in active use."
     )
-    gender: PatientGender | None = Field(
-        None, description="Administrative gender. male|female|other|unknown."
+    gender: PatientGender = Field(
+        ..., description="Administrative gender. male|female|other|unknown."
     )
-    birth_date: date | None = Field(
-        None, description="The date of birth for the individual."
-    )
+    birth_date: date = Field(..., description="The date of birth for the individual.")
     deceased_boolean: bool | None = Field(
-        None,
+        False,
         description="deceased[x] choice — indicates the individual is deceased (boolean form).",
     )
     deceased_datetime: datetime | None = Field(

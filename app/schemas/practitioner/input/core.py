@@ -33,7 +33,7 @@ class PractitionerCreateSchema(BaseModel):
         description="Gateway-forwarded ID of the user who owns this record (JWT sub). Describes who this Practitioner record belongs to — not a field of the FHIR Practitioner resource's own clinical content.",
     )
     active: bool | None = Field(
-        True, description="Whether this practitioner's record is in active use."
+        False, description="Whether this practitioner's record is in active use."
     )
     gender: AdministrativeGender = Field(
         ...,

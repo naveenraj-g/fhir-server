@@ -79,11 +79,9 @@ class OrganizationCreateSchema(BaseModel):
     )
 
     active: bool | None = Field(
-        None, description="Whether the organization's record is still in active use."
+        False, description="Whether the organization's record is still in active use."
     )
-    name: str | None = Field(
-        None, description="A name associated with the organization."
-    )
+    name: str = Field(..., description="A name associated with the organization.")
     # partOf (0..1) Reference(Organization) — "The organization of which this organization forms a part."
     partof: str | None = Field(
         None,

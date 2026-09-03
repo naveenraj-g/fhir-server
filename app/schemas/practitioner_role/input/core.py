@@ -68,7 +68,7 @@ class PractitionerRoleCreateSchema(BaseModel):
     )
 
     active: bool | None = Field(
-        None, description="Whether this practitioner role record is in active use."
+        False, description="Whether this practitioner role record is in active use."
     )
 
     # period (0..1 Period) — flattened

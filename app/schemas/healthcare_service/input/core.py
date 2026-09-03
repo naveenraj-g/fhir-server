@@ -83,7 +83,7 @@ class HealthcareServiceCreateSchema(BaseModel):
     )
 
     active: bool | None = Field(
-        None, description="Whether this healthcare service record is in active use."
+        False, description="Whether this healthcare service record is in active use."
     )
     name: str = Field(
         ...,
