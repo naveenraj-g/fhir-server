@@ -60,3 +60,4 @@ routes:
     - healthcare_service
     - practitioner_role
     - schedule
+    - slot

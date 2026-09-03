@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
-from app.repository.slot_repository import SlotRepository
-from app.services.slot_service import SlotService
+from app.repository.slot import SlotRepository
+from app.services.slot import SlotService
 
 
 class SlotContainer(containers.DeclarativeContainer):

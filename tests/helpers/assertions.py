@@ -148,6 +148,27 @@ def assert_fhir_schedule(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_slot(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) slot response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected slot.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_slot(data: dict, **expected) -> None:
+    """Assert fields on a FHIR slot response."""
+    assert data.get("resourceType") == "Slot", (
+        f"expected resourceType=Slot, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected slot.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
 def assert_paginated(data: dict, *, min_total: int = 1) -> None:
     """Assert structure of a plain paginated list response."""
     assert "total" in data, "paginated response must have 'total'"

@@ -33,7 +33,7 @@ import app.models.claim.claim  # noqa: F401
 import app.models.claim_response.claim_response  # noqa: F401
 import app.models.organization  # noqa: F401
 import app.models.schedule  # noqa: F401
-import app.models.slot.slot  # noqa: F401
+import app.models.slot  # noqa: F401
 import app.models.invoice.invoice  # noqa: F401
 import app.models.location  # noqa: F401
 import app.models.coverage.coverage  # noqa: F401

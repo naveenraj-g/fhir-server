@@ -26,6 +26,7 @@ from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
 from app.models.related_person.related_person import RelatedPersonModel
 from app.models.schedule import ScheduleModel
+from app.models.slot import SlotModel
 
 logger = get_logger(__name__)
 
@@ -44,6 +45,10 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "HealthcareService": (HealthcareServiceModel, "healthcare_service_id"),
     # Registered so Schedule.actor (and any future reference into Schedule)
     "Schedule": (ScheduleModel, "schedule_id"),
+    # Registered for consistency with every other fully-reworked resource —
+    # nothing currently references Slot, but Slot itself validates its own
+    # required schedule reference against the Schedule entry above.
+    "Slot": (SlotModel, "slot_id"),
 }
 
 
