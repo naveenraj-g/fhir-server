@@ -31,7 +31,7 @@ logging:
   # more detail (duration_ms, request_id, operation_id, actor), and because
   # Uvicorn's logger keeps its own handler — so its line stays PLAIN TEXT even
   # when format is json, breaking anything that parses the stream.
-  uvicorn_access: false
+  uvicorn_access: true
 
   # Field names masked by log_payload(), matched case-insensitively at any
   # nesting depth, even when debug_payloads is on.
@@ -41,7 +41,17 @@ logging:
     - password
     - secret
 
+redis:
+  # Global switch. false forces every Redis-backed dependent below
+  # (currently just rate_limit.backend) to its non-Redis fallback,
+  # regardless of what's written under that dependent — no per-dependent
+  # edits needed to run without Redis. true (default) defers to each
+  # dependent's own backend setting instead.
+  enabled: true
+
 rate_limit:
+  # redis | memory — only takes effect while redis.enabled above is true;
+  # forced to "memory" otherwise.
   backend: redis
   read_limit: 100
   write_limit: 20
@@ -57,7 +67,7 @@ routes:
     # - practitioner
     - organization
     # - location
-    - healthcare_service
-    - practitioner_role
-    - schedule
-    - slot
+    # - healthcare_service
+    # - practitioner_role
+    # - schedule
+    # - slot

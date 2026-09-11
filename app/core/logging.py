@@ -26,7 +26,7 @@ import logging
 import re
 import sys
 import time
-from typing import Any
+from typing import Any, ClassVar
 
 from app.core.config import settings
 from app.core.request_context import get_log_context
@@ -95,7 +95,7 @@ class ConsoleFormatter(logging.Formatter):
     # Set by logging.Formatter.format() itself (record.message = getMessage(),
     # record.asctime = formatTime()) — already rendered in `base`, so they must
     # not be repeated in the key=value suffix.
-    _FORMATTER_SET = {"message", "asctime"}
+    _FORMATTER_SET: ClassVar[frozenset[str]] = frozenset({"message", "asctime"})
 
     def format(self, record: logging.LogRecord) -> str:
         base = super().format(record)

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -8,14 +8,26 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-
 _LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+
+
+class RedisConfig(BaseModel):
+    """Global Redis on/off switch.
+
+    `enabled: false` forces every Redis-backed dependent (rate limiting
+    today, anything Redis-backed added later) to its non-Redis fallback —
+    see Settings._apply_redis_switch() below — regardless of what that
+    dependent's own backend field says. `enabled: true` defers to each
+    dependent's own setting instead.
+    """
+
+    enabled: bool = True
 
 
 class RateLimitConfig(BaseModel):
     # "redis" (coordinated across instances) or "memory" (per-process, no
-    # cross-instance coordination). Redis remains required regardless — this
-    # only selects the rate limiter's counting backend.
+    # cross-instance coordination). Only consulted when the global
+    # `redis.enabled` switch above is true — forced to "memory" otherwise.
     backend: Literal["redis", "memory"] = "redis"
     read_limit: int = 100
     write_limit: int = 20
@@ -86,12 +98,15 @@ class LogConfig(BaseModel):
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     FHIR_DATABASE_URL: str
-    REDIS_URL: str
+    # Optional — only required when redis.enabled is true (the default).
+    # Deployments that run with redis.enabled: false need not set this.
+    REDIS_URL: str | None = None
 
     # BetterAuth / IAM — used by app.auth to verify JWTs via JWKS.
     IAM_JWKS_URL: str
     IAM_ISSUER: str
 
+    redis: RedisConfig = Field(default_factory=RedisConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
     logging: LogConfig = Field(default_factory=LogConfig)
@@ -101,6 +116,16 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
     )
+
+    @model_validator(mode="after")
+    def _apply_redis_switch(self) -> "Settings":
+        """When Redis is globally disabled, force every dependent's backend
+        to its non-Redis fallback here — once — so nothing downstream
+        (middleware, DI, etc.) needs to know the global switch exists; it
+        just reads its own already-resolved backend field."""
+        if not self.redis.enabled:
+            self.rate_limit.backend = "memory"
+        return self
 
     @classmethod
     def settings_customise_sources(

@@ -120,6 +120,7 @@ async def lifespan(app: FastAPI):
             "log_format": settings.logging.format,
             "debug_payloads": settings.logging.debug_payloads,
             "slow_query_ms": settings.logging.slow_query_ms,
+            "redis_enabled": settings.redis.enabled,
             "rate_limit_backend": settings.rate_limit.backend,
         },
     )
@@ -135,18 +136,29 @@ async def lifespan(app: FastAPI):
 
     mount_routers(app)
 
-    try:
-        await cast(Any, redis_client.ping())
-        app.state.redis = redis_client
+    if settings.redis.enabled:
+        try:
+            await cast(Any, redis_client.ping())
+            app.state.redis = redis_client
+            logger.info(
+                "Connected to Redis successfully.",
+                extra={"event": "startup.redis_connected"},
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to connect to Redis.",
+                extra={"event": "startup.redis_failed"},
+                exc_info=e,
+            )
+            app.state.redis = None
+    else:
+        # Deliberately disabled, not an outage — INFO, not ERROR. Every
+        # Redis-backed dependent already has its backend forced to the
+        # non-Redis fallback by Settings._apply_redis_switch().
         logger.info(
-            "Connected to Redis successfully.",
-            extra={"event": "startup.redis_connected"},
-        )
-    except Exception as e:
-        logger.error(
-            "Failed to connect to Redis.",
-            extra={"event": "startup.redis_failed"},
-            exc_info=e,
+            "Redis disabled by config — dependent features run in their "
+            "non-Redis fallback (e.g. rate limiting is process-local only).",
+            extra={"event": "startup.redis_disabled"},
         )
         app.state.redis = None
     yield
