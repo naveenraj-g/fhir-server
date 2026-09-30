@@ -13,6 +13,7 @@ This folder has four documents:
 | [`storage-strategies.md`](./storage-strategies.md) | How HAPI FHIR, Azure/Microsoft FHIR Server, Google Cloud Healthcare API, IBM FHIR Server, and Aidbox store resources internally, why that's a different problem from a native EMR, and where a hybrid pattern still applies here |
 | [`ai-native-considerations.md`](./ai-native-considerations.md) | Why granular typed data serves an AI/MCP tool-calling agent even better than a human UI, and why spec-fidelity bugs are *more* dangerous with an autonomous consumer than a human one |
 | [`production-readiness-checklist.md`](./production-readiness-checklist.md) | Concrete, incremental steps to harden the current architecture — mainly around keeping the FHIR mapper/adapter layer spec-faithful over time |
+| [`scalability-performance-analysis.md`](./scalability-performance-analysis.md) | A different angle: given the normalized relational choice is correct, is the actual query/index/FK/pagination design ready for real multi-tenant load — indexing, referential integrity, round-trip counts, bulk writes |
 
 ## The one-paragraph version
 

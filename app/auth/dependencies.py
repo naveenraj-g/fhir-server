@@ -51,7 +51,7 @@ def decode_token(token: str) -> dict:
         signing_key.key,
         audience=settings.IAM_ISSUER,
         issuer=settings.IAM_ISSUER,
-        algorithms=["EdDSA", "RS256"],
+        algorithms=settings.auth.algorithms,
         options={"verify_aud": True},
     )
 

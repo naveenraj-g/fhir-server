@@ -20,13 +20,23 @@ from typing import Literal
 
 from fastapi import Query
 
+from app.core.config import settings
+
+# Read once at import time, same as every other config-driven default in this
+# codebase (e.g. Database's slow_query_ms) — a config edit takes effect on
+# restart, consistent with how configs/config.yaml is documented to work.
+_DEFAULT_LIMIT = settings.pagination.default_limit
+_MAX_LIMIT = settings.pagination.max_limit
+
 
 class ListParams:
     """FastAPI class-based dependency for the universal list-endpoint params."""
 
     def __init__(
         self,
-        limit: int = Query(50, ge=1, le=200, description="Page size."),
+        limit: int = Query(
+            _DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT, description="Page size."
+        ),
         offset: int = Query(0, ge=0, description="Number of rows to skip."),
         sort: str | None = Query(
             None,

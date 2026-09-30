@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
@@ -170,14 +171,20 @@ async def lifespan(app: FastAPI):
 
 
 app: FastAPI = FastAPI(
-    title="FHIR Server",
-    version="1.0.0",
+    title=settings.app.title,
+    version=settings.app.version,
     description=(
         "FHIR R4-compliant REST API server for managing healthcare resources. "
         "Supports 34 FHIR R4 resources with dual-format responses (application/json and "
         "application/fhir+json). Pure CRUD data layer — no auth, no business rules. "
         "Designed for integration with AI agents via FastMCP dynamic tool generation."
     ),
+    # docs_enabled gates only the interactive Swagger/Redoc UIs — openapi_url
+    # is never gated (left at its default), since /openapi.json is the
+    # FastMCP contract (see CLAUDE.md's "OpenAPI Spec = MCP Contract") and
+    # must stay reachable regardless.
+    docs_url="/docs" if settings.app.docs_enabled else None,
+    redoc_url="/redoc" if settings.app.docs_enabled else None,
     lifespan=lifespan,
 )
 
@@ -192,9 +199,11 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 app.container = container
 
 # Middleware order matters — Starlette runs the LAST-added one outermost:
-#   request_context (outermost — establishes request_id before anything logs)
-#     -> access_log      (records every response, including 429s below it)
-#       -> rate_limit    (innermost)
+#   cors (outermost, only if enabled — must see preflight OPTIONS before
+#         anything else can reject them)
+#     -> request_context (establishes request_id before anything logs)
+#       -> access_log      (records every response, including 429s below it)
+#         -> rate_limit    (innermost)
 app.add_middleware(
     RateLimitMiddleware,
     backend=settings.rate_limit.backend,
@@ -204,6 +213,15 @@ app.add_middleware(
 )
 app.add_middleware(AccessLogMiddleware)
 app.middleware("http")(request_context_middleware)
+
+if settings.cors.enabled:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors.allow_origins,
+        allow_credentials=settings.cors.allow_credentials,
+        allow_methods=settings.cors.allow_methods,
+        allow_headers=settings.cors.allow_headers,
+    )
 
 app.include_router(
     vitals_router,
@@ -293,19 +311,22 @@ async def readiness_check(request: Request):
         checks["database"] = "unavailable"
         healthy = False
 
-    # Redis check
-    redis = getattr(request.app.state, "redis", None)
-    if redis is not None:
-        try:
-            await redis.ping()
-            checks["redis"] = "ok"
-        except Exception as exc:
-            logger.error("Readiness: Redis check failed", exc_info=exc)
+    # Redis check — disabled by config is a healthy state, not a degradation.
+    if not settings.redis.enabled:
+        checks["redis"] = "disabled"
+    else:
+        redis = getattr(request.app.state, "redis", None)
+        if redis is not None:
+            try:
+                await redis.ping()
+                checks["redis"] = "ok"
+            except Exception as exc:
+                logger.error("Readiness: Redis check failed", exc_info=exc)
+                checks["redis"] = "unavailable"
+                healthy = False
+        else:
             checks["redis"] = "unavailable"
             healthy = False
-    else:
-        checks["redis"] = "unavailable"
-        healthy = False
 
     payload = {
         "status": "ok" if healthy else "degraded",

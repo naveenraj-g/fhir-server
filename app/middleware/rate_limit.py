@@ -7,6 +7,7 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.http_paths import EXCLUDED_PATHS, EXCLUDED_PREFIXES
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -49,8 +50,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.window = window_seconds
         self.backend = backend
 
-        self.EXCLUDED_PATHS = {"/", "/health", "/health/ready", "/openapi.json"}
-        self.EXCLUDED_PREFIXES = ("/docs", "/redoc", "/favicon")
+        self.EXCLUDED_PATHS = EXCLUDED_PATHS
+        self.EXCLUDED_PREFIXES = EXCLUDED_PREFIXES
 
         # Per-process fallback used when Redis is unavailable.
         # Not coordinated across instances — but better than no limiting at all.

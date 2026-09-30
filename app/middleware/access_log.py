@@ -17,15 +17,12 @@ import time
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.http_paths import EXCLUDED_PATHS as _EXCLUDED_PATHS
+from app.core.http_paths import EXCLUDED_PREFIXES as _EXCLUDED_PREFIXES
 from app.core.logging import get_logger
 from app.core.request_context import get_request_actor
 
 logger = get_logger(__name__)
-
-# Probes and docs — high frequency, zero diagnostic value. Same spirit as
-# RateLimitMiddleware's exclusions.
-_EXCLUDED_PATHS = {"/health", "/health/ready", "/openapi.json", "/favicon.ico"}
-_EXCLUDED_PREFIXES = ("/docs", "/redoc")
 
 
 class AccessLogMiddleware(BaseHTTPMiddleware):

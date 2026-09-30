@@ -11,6 +11,63 @@ from pydantic_settings import (
 _LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
 
+class AppConfig(BaseModel):
+    """FastAPI app metadata + interactive-docs exposure."""
+
+    title: str = "FHIR Server"
+    version: str = "1.0.0"
+
+    # Gates only the interactive /docs (Swagger) and /redoc UIs. /openapi.json
+    # itself is never gated by this — it's the FastMCP contract (see
+    # CLAUDE.md's "OpenAPI Spec = MCP Contract"), so it must stay reachable
+    # regardless of whether the human-facing UI is turned off.
+    docs_enabled: bool = True
+
+
+class CorsConfig(BaseModel):
+    """No CORSMiddleware is registered at all while `enabled` is false (the
+    default) — this server has historically had no browser-facing callers.
+    Turn on and fill in `allow_origins` the moment one exists; never use
+    `allow_origins: ["*"]` together with `allow_credentials: true` — browsers
+    reject that combination outright."""
+
+    enabled: bool = False
+    allow_origins: list[str] = Field(default_factory=list)
+    allow_credentials: bool = False
+    allow_methods: list[str] = Field(default_factory=lambda: ["*"])
+    allow_headers: list[str] = Field(default_factory=lambda: ["*"])
+
+    @model_validator(mode="after")
+    def _reject_wildcard_with_credentials(self) -> "CorsConfig":
+        if self.allow_credentials and "*" in self.allow_origins:
+            raise ValueError(
+                "cors.allow_credentials cannot be true while cors.allow_origins "
+                "includes '*' — browsers reject that combination outright. "
+                "List explicit origins instead."
+            )
+        return self
+
+
+class AuthConfig(BaseModel):
+    # Algorithms PyJWT will accept when verifying a token's signature (see
+    # app/auth/dependencies.py's decode_token). Must match whatever the IAM
+    # (IAM_JWKS_URL/IAM_ISSUER) actually signs with.
+    algorithms: list[str] = Field(default_factory=lambda: ["EdDSA", "RS256"])
+
+
+class DatabaseConfig(BaseModel):
+    """SQLAlchemy async engine pool sizing — see app/core/database.py's
+    Database.__init__. Defaults match SQLAlchemy's own (pool_size=5,
+    max_overflow=10) except pool_pre_ping, which we turn on: without it a
+    connection that Postgres or a proxy silently dropped surfaces as a
+    mid-request error instead of being caught and replaced at checkout."""
+
+    pool_size: int = 5
+    max_overflow: int = 10
+    pool_pre_ping: bool = True
+    pool_recycle: int = 1800
+
+
 class RedisConfig(BaseModel):
     """Global Redis on/off switch.
 
@@ -32,6 +89,18 @@ class RateLimitConfig(BaseModel):
     read_limit: int = 100
     write_limit: int = 20
     window_seconds: int = 60
+
+
+class PaginationConfig(BaseModel):
+    """Defaults for the shared `ListParams` dependency (app/core/pagination.py)
+    used by every list endpoint across the eight JWT/RBAC-rolled-out
+    resources (Patient, Practitioner, Organization, Location,
+    HealthcareService, PractitionerRole, Schedule, Slot) — the only routers
+    that share one `ListParams` class instead of declaring `limit`/`offset`
+    inline per route."""
+
+    default_limit: int = 50
+    max_limit: int = 200
 
 
 class RoutesConfig(BaseModel):
@@ -106,8 +175,13 @@ class Settings(BaseSettings):
     IAM_JWKS_URL: str
     IAM_ISSUER: str
 
+    app: AppConfig = Field(default_factory=AppConfig)
+    cors: CorsConfig = Field(default_factory=CorsConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
+    pagination: PaginationConfig = Field(default_factory=PaginationConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
     logging: LogConfig = Field(default_factory=LogConfig)
 
@@ -115,6 +189,11 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
+        # .env carries a few docker-compose-only keys (POSTGRES_USER/
+        # PASSWORD/DB/PORT) that FHIR_DATABASE_URL's DSN already encodes in
+        # full — nothing in Settings declares them individually, so they'd
+        # otherwise fail as unknown fields.
+        extra="ignore",
     )
 
     @model_validator(mode="after")

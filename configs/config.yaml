@@ -4,6 +4,40 @@
 # first: real env var > .env > this file > field defaults — see
 # app/core/config.py's Settings.settings_customise_sources().
 
+app:
+  title: "FHIR Server"
+  version: "1.0.0"
+  # Gates only the interactive /docs and /redoc UIs. /openapi.json stays
+  # reachable regardless — it's the FastMCP contract, see CLAUDE.md's
+  # "OpenAPI Spec = MCP Contract".
+  docs_enabled: true
+
+cors:
+  # No CORSMiddleware is registered at all while this is false — this server
+  # has never had a browser-facing caller. Flip on and fill in allow_origins
+  # the moment one exists.
+  enabled: false
+  allow_origins: []
+  allow_credentials: false
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+auth:
+  # Signature algorithms PyJWT accepts when verifying a token against the
+  # IAM's JWKS (IAM_JWKS_URL/IAM_ISSUER, in .env). Must match what the IAM
+  # actually signs with.
+  algorithms: [EdDSA, RS256]
+
+database:
+  # SQLAlchemy async engine pool sizing. Defaults match SQLAlchemy's own
+  # (pool_size/max_overflow) except pool_pre_ping, which we turn on so a
+  # connection Postgres/a proxy silently dropped is caught and replaced at
+  # checkout instead of surfacing as a mid-request error.
+  pool_size: 5
+  max_overflow: 10
+  pool_pre_ping: true
+  pool_recycle: 1800
+
 logging:
   # Root log level. DEBUG turns on the per-layer flow logging that services and
   # repositories emit; INFO keeps only business outcomes + the access log.
@@ -57,6 +91,15 @@ rate_limit:
   write_limit: 20
   window_seconds: 60
 
+pagination:
+  # Defaults for the shared ListParams dependency (app/core/pagination.py)
+  # used by the eight JWT/RBAC-rolled-out resources' list endpoints —
+  # Patient, Practitioner, Organization, Location, HealthcareService,
+  # PractitionerRole, Schedule, Slot. The other ~27 resources still declare
+  # limit/offset inline per-route and are unaffected by this block.
+  default_limit: 50
+  max_limit: 200
+
 routes:
   # Which FHIR resource routers get mounted under /api/fhir/v1 at startup —
   # see CLAUDE.md's "Enabling/Disabling Resources" section. Not listed = not
@@ -66,7 +109,7 @@ routes:
     # - patient
     # - practitioner
     - organization
-    # - location
+    - location
     # - healthcare_service
     # - practitioner_role
     # - schedule

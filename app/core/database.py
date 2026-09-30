@@ -66,7 +66,14 @@ def _install_query_listeners(engine) -> None:
 
 class Database:
     def __init__(self, db_url: str):
-        self.engine = create_async_engine(db_url, echo=False)
+        self.engine = create_async_engine(
+            db_url,
+            echo=False,
+            pool_size=settings.database.pool_size,
+            max_overflow=settings.database.max_overflow,
+            pool_pre_ping=settings.database.pool_pre_ping,
+            pool_recycle=settings.database.pool_recycle,
+        )
         self.session_maker = async_sessionmaker(
             bind=self.engine,
             class_=AsyncSession,
