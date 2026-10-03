@@ -41,9 +41,13 @@ class OrganizationCreateSchema(BaseModel):
                 ],
                 "type": [
                     {
-                        "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
-                        "coding_code": "prov",
-                        "coding_display": "Healthcare Provider",
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                                "code": "prov",
+                                "display": "Healthcare Provider",
+                            }
+                        ]
                     }
                 ],
                 "alias": [{"value": "Gen Hosp"}],
@@ -61,8 +65,12 @@ class OrganizationCreateSchema(BaseModel):
                 ],
                 "contact": [
                     {
-                        "purpose_code": "ADMIN",
-                        "purpose_system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+                        "purpose_coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+                                "code": "ADMIN",
+                            }
+                        ],
                         "name_family": "Smith",
                         "name_given": ["John"],
                         "address_type": "both",
@@ -78,10 +86,17 @@ class OrganizationCreateSchema(BaseModel):
         },
     )
 
+    # active (0..1) — R4 removed the R3 default of true; no default here either.
     active: bool | None = Field(
-        False, description="Whether the organization's record is still in active use."
+        None, description="Whether the organization's record is still in active use."
     )
-    name: str = Field(..., description="A name associated with the organization.")
+    # name (0..1) — not required on its own; org-1 ("SHALL at least have a
+    # name or an identifier") is enforced by the FHIR validator layer, not
+    # here — same reasoning as every other invariant this session moved out
+    # of the DB (see OrganizationModel's docstring, app/models/organization/core.py).
+    name: str | None = Field(
+        None, description="A name associated with the organization."
+    )
     # partOf (0..1) Reference(Organization) — "The organization of which this organization forms a part."
     partof: str | None = Field(
         None,
@@ -156,6 +171,10 @@ class OrganizationCreateSchema(BaseModel):
     endpoint: list[OrganizationEndpointInput] | None = Field(
         None,
         description="Technical endpoints providing access to services operated for the organization.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions — that's the not-yet-built profile pipeline's job (see docs/architecture/fhir-profiling-and-extensibility-strategy.md).",
     )
 
 
@@ -261,4 +280,8 @@ class OrganizationPatchSchema(BaseModel):
     endpoint: list[OrganizationEndpointInput] | None = Field(
         None,
         description="Technical endpoint(s) for the organization — replaces the full list if supplied.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
     )

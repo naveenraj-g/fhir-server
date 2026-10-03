@@ -16,6 +16,7 @@ from app.models.organization import (
     OrganizationIdentifier,
     OrganizationModel,
     OrganizationType,
+    OrganizationTypeCoding,
 )
 from app.models.organization.enums import OrganizationEndpointReferenceType
 
@@ -47,7 +48,7 @@ class _CoreMixin:
             stmt = _with_relationships(
                 select(OrganizationModel).where(
                     OrganizationModel.organization_id == organization_id,
-                    OrganizationModel.org_id == org_id,
+                    OrganizationModel.tenant_id == org_id,
                 )
             )
             return (await session.execute(stmt)).scalars().first()
@@ -61,7 +62,7 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = select(OrganizationModel.id).where(
                 OrganizationModel.organization_id == organization_id,
-                OrganizationModel.org_id == org_id,
+                OrganizationModel.tenant_id == org_id,
             )
             result = await session.execute(stmt)
             return result.scalar_one_or_none() is not None
@@ -84,7 +85,7 @@ class _CoreMixin:
         endpoint: str | None = None,
     ):
         if org_id:
-            stmt = stmt.where(OrganizationModel.org_id == org_id)
+            stmt = stmt.where(OrganizationModel.tenant_id == org_id)
         stmt = apply_token_filter(stmt, OrganizationModel.active, active)
         if name:
             # Medplum: "name" matches the organization's name OR any alias —
@@ -96,7 +97,7 @@ class _CoreMixin:
                     OrganizationModel.name.ilike(pattern),
                     exists(
                         select(OrganizationAlias.id).where(
-                            OrganizationAlias.organization_id == OrganizationModel.id,
+                            OrganizationAlias.organization_pk == OrganizationModel.id,
                             OrganizationAlias.value.ilike(pattern),
                         )
                     ),
@@ -106,16 +107,25 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationIdentifier.id).where(
-                    OrganizationIdentifier.organization_id == OrganizationModel.id,
+                    OrganizationIdentifier.organization_pk == OrganizationModel.id,
                     OrganizationIdentifier.value == identifier,
                 ),
             )
         if org_type:
+            # Organization.type.coding is a real 0..* child table now (an org
+            # may need its own custom code alongside a standard-terminology
+            # crosswalk) — one EXISTS joining the coding table to its parent
+            # type row, correlated to the outer OrganizationModel.
             stmt = apply_child_exists_filter(
                 stmt,
-                select(OrganizationType.id).where(
-                    OrganizationType.organization_id == OrganizationModel.id,
-                    OrganizationType.coding_code == org_type,
+                select(OrganizationTypeCoding.id)
+                .join(
+                    OrganizationType,
+                    OrganizationTypeCoding.organization_type_id == OrganizationType.id,
+                )
+                .where(
+                    OrganizationType.organization_pk == OrganizationModel.id,
+                    OrganizationTypeCoding.code == org_type,
                 ),
             )
         if address:
@@ -123,9 +133,14 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationAddress.id).where(
-                    OrganizationAddress.organization_id == OrganizationModel.id,
+                    OrganizationAddress.organization_pk == OrganizationModel.id,
                     or_(
-                        OrganizationAddress.line.ilike(pattern),
+                        # line is a real Postgres array now — search its
+                        # joined-text form rather than each element, same
+                        # "find it anywhere in the address" behavior as before.
+                        func.array_to_string(OrganizationAddress.line, " ").ilike(
+                            pattern
+                        ),
                         OrganizationAddress.city.ilike(pattern),
                         OrganizationAddress.district.ilike(pattern),
                         OrganizationAddress.state.ilike(pattern),
@@ -139,7 +154,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationAddress.id).where(
-                    OrganizationAddress.organization_id == OrganizationModel.id,
+                    OrganizationAddress.organization_pk == OrganizationModel.id,
                     OrganizationAddress.city.ilike(f"%{address_city}%"),
                 ),
             )
@@ -147,7 +162,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationAddress.id).where(
-                    OrganizationAddress.organization_id == OrganizationModel.id,
+                    OrganizationAddress.organization_pk == OrganizationModel.id,
                     OrganizationAddress.state.ilike(f"%{address_state}%"),
                 ),
             )
@@ -155,7 +170,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationAddress.id).where(
-                    OrganizationAddress.organization_id == OrganizationModel.id,
+                    OrganizationAddress.organization_pk == OrganizationModel.id,
                     OrganizationAddress.postal_code == address_postal_code,
                 ),
             )
@@ -163,7 +178,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationAddress.id).where(
-                    OrganizationAddress.organization_id == OrganizationModel.id,
+                    OrganizationAddress.organization_pk == OrganizationModel.id,
                     OrganizationAddress.country.ilike(f"%{address_country}%"),
                 ),
             )
@@ -171,7 +186,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationAddress.id).where(
-                    OrganizationAddress.organization_id == OrganizationModel.id,
+                    OrganizationAddress.organization_pk == OrganizationModel.id,
                     OrganizationAddress.use == address_use,
                 ),
             )
@@ -185,7 +200,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(OrganizationEndpoint.id).where(
-                    OrganizationEndpoint.organization_id == OrganizationModel.id,
+                    OrganizationEndpoint.organization_pk == OrganizationModel.id,
                     OrganizationEndpoint.reference_type == ep_type,
                     OrganizationEndpoint.reference_id == ep_id,
                 ),

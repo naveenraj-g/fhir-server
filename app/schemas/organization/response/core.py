@@ -78,15 +78,20 @@ class PlainOrganizationResponse(BaseModel):
     name: str | None = Field(
         None, description="A name associated with the organization."
     )
+    partof_reference: str | None = Field(
+        None,
+        description="The raw literal reference string as received — relative or an absolute URL to another system entirely — kept independently of whether it resolves locally.",
+    )
     partof: str | None = Field(
         None,
-        description="Resolved FHIR reference to the parent organization, e.g. 'Organization/190001'.",
+        description="Resolved FHIR reference to the parent organization, e.g. 'Organization/190001' — populated only when partof_reference resolves to a local row.",
     )
     partof_type: str | None = Field(
         None, description="Resolved reference target type (always 'Organization')."
     )
     partof_id: int | None = Field(
-        None, description="Internal ID of the resolved parent Organization, if any."
+        None,
+        description="Public organization_id of the resolved parent Organization, populated only when partof_reference resolves to a local row.",
     )
     partof_display: str | None = Field(
         None,
@@ -149,9 +154,13 @@ class PlainOrganizationResponse(BaseModel):
         None,
         description="Technical endpoints providing access to services operated for the organization.",
     )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
+    )
     org_id: str | None = Field(
         None,
-        description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept.",
+        description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept. Internally this column is named tenant_id (see app/models/shared/tenant_audit.py) to avoid ambiguity with the Organization entity itself; the external field name stays org_id for consistency with every other resource's response contract.",
     )
     created_at: str | None = Field(None, description="When this row was created.")
     updated_at: str | None = Field(None, description="When this row was last updated.")

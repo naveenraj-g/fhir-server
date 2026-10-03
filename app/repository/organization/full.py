@@ -6,12 +6,15 @@ from app.models.organization import (
     OrganizationAddress,
     OrganizationAlias,
     OrganizationContact,
+    OrganizationContactPurposeCoding,
     OrganizationContactTelecom,
     OrganizationEndpoint,
     OrganizationIdentifier,
+    OrganizationIdentifierTypeCoding,
     OrganizationModel,
     OrganizationTelecom,
     OrganizationType,
+    OrganizationTypeCoding,
 )
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
 
@@ -25,6 +28,22 @@ from ._shared import (
 )
 
 logger = get_logger(__name__)
+
+
+def _coding_kwargs(coding, created_by: str | None) -> dict:
+    """Build constructor kwargs for one OrganizationCodingInput entry,
+    targeting any of the three dedicated coding[] child tables
+    (OrganizationTypeCoding/OrganizationContactPurposeCoding/
+    OrganizationIdentifierTypeCoding) — all three share the same shape via
+    FhirCodingMixin, so one helper covers all of them."""
+    return {
+        "system": coding.system,
+        "version": coding.version,
+        "code": coding.code,
+        "display": coding.display,
+        "user_selected": coding.user_selected,
+        "created_by": created_by,
+    }
 
 
 class _FullMixin:
@@ -47,10 +66,12 @@ class _FullMixin:
         async with self.session_factory() as session:
             await _validate_reference(session, org_id, po_type, po_id, "partOf")
             org = OrganizationModel(
-                org_id=org_id,
+                tenant_id=org_id,
                 created_by=created_by,
                 active=payload.active,
                 name=payload.name,
+                extension=payload.extension or [],
+                partof_reference=payload.partof,
                 **_org_ref_kwargs("partof", payload.partof, payload.partof_display),
                 **_reference_kwargs("partof", payload),
             )
@@ -65,51 +86,58 @@ class _FullMixin:
                     await _validate_reference(
                         session, org_id, a_type, a_id, "identifier.assigner"
                     )
-                    session.add(
-                        OrganizationIdentifier(
-                            organization_id=org.id,
-                            org_id=org_id,
-                            use=i.use,
-                            type_system=i.type_system,
-                            type_version=i.type_version,
-                            type_code=i.type_code,
-                            type_display=i.type_display,
-                            type_text=i.type_text,
-                            type_user_selected=i.type_user_selected,
-                            system=i.system,
-                            value=i.value,
-                            period_start=i.period_start,
-                            period_end=i.period_end,
-                            **_org_ref_kwargs(
-                                "assigner", i.assigner, i.assigner_display
-                            ),
-                            **_reference_kwargs("assigner", i),
-                            created_by=created_by,
-                        )
+                    identifier = OrganizationIdentifier(
+                        organization_pk=org.id,
+                        tenant_id=org_id,
+                        use=i.use,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        assigner_reference=i.assigner,
+                        **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
+                        **_reference_kwargs("assigner", i),
+                        created_by=created_by,
                     )
+                    session.add(identifier)
+                    if i.type_coding:
+                        await session.flush()
+                        for coding in i.type_coding:
+                            session.add(
+                                OrganizationIdentifierTypeCoding(
+                                    organization_identifier_id=identifier.id,
+                                    tenant_id=org_id,
+                                    **_coding_kwargs(coding, created_by),
+                                )
+                            )
 
             if payload.type:
                 for t in payload.type:
-                    session.add(
-                        OrganizationType(
-                            organization_id=org.id,
-                            org_id=org_id,
-                            coding_system=t.coding_system,
-                            coding_version=t.coding_version,
-                            coding_code=t.coding_code,
-                            coding_display=t.coding_display,
-                            text=t.text,
-                            coding_user_selected=t.coding_user_selected,
-                            created_by=created_by,
-                        )
+                    org_type = OrganizationType(
+                        organization_pk=org.id,
+                        tenant_id=org_id,
+                        text=t.text,
+                        created_by=created_by,
                     )
+                    session.add(org_type)
+                    if t.coding:
+                        await session.flush()
+                        for coding in t.coding:
+                            session.add(
+                                OrganizationTypeCoding(
+                                    organization_type_id=org_type.id,
+                                    tenant_id=org_id,
+                                    **_coding_kwargs(coding, created_by),
+                                )
+                            )
 
             if payload.alias:
                 for a in payload.alias:
                     session.add(
                         OrganizationAlias(
-                            organization_id=org.id,
-                            org_id=org_id,
+                            organization_pk=org.id,
+                            tenant_id=org_id,
                             value=a.value,
                             created_by=created_by,
                         )
@@ -119,8 +147,8 @@ class _FullMixin:
                 for t in payload.telecom:
                     session.add(
                         OrganizationTelecom(
-                            organization_id=org.id,
-                            org_id=org_id,
+                            organization_pk=org.id,
+                            tenant_id=org_id,
                             system=t.system,
                             value=t.value,
                             use=t.use,
@@ -135,12 +163,12 @@ class _FullMixin:
                 for a in payload.address:
                     session.add(
                         OrganizationAddress(
-                            organization_id=org.id,
-                            org_id=org_id,
+                            organization_pk=org.id,
+                            tenant_id=org_id,
                             use=a.use,
                             type=a.type,
                             text=a.text,
-                            line=", ".join(a.line) if a.line else None,
+                            line=a.line,
                             city=a.city,
                             district=a.district,
                             state=a.state,
@@ -155,43 +183,47 @@ class _FullMixin:
             if payload.contact:
                 for c in payload.contact:
                     contact = OrganizationContact(
-                        organization_id=org.id,
-                        org_id=org_id,
-                        purpose_system=c.purpose_system,
-                        purpose_code=c.purpose_code,
-                        purpose_display=c.purpose_display,
+                        organization_pk=org.id,
+                        tenant_id=org_id,
                         purpose_text=c.purpose_text,
                         name_use=c.name_use,
                         name_text=c.name_text,
                         name_family=c.name_family,
-                        name_given=", ".join(c.name_given) if c.name_given else None,
-                        name_prefix=", ".join(c.name_prefix) if c.name_prefix else None,
-                        name_suffix=", ".join(c.name_suffix) if c.name_suffix else None,
+                        name_given=c.name_given,
+                        name_prefix=c.name_prefix,
+                        name_suffix=c.name_suffix,
                         name_period_start=c.name_period_start,
                         name_period_end=c.name_period_end,
-                        address_use=c.address_use,
-                        address_type=c.address_type,
-                        address_text=c.address_text,
-                        address_line=", ".join(c.address_line)
-                        if c.address_line
-                        else None,
-                        address_city=c.address_city,
-                        address_district=c.address_district,
-                        address_state=c.address_state,
-                        address_postal_code=c.address_postal_code,
-                        address_country=c.address_country,
-                        address_period_start=c.address_period_start,
-                        address_period_end=c.address_period_end,
+                        use=c.address_use,
+                        type=c.address_type,
+                        text=c.address_text,
+                        line=c.address_line,
+                        city=c.address_city,
+                        district=c.address_district,
+                        state=c.address_state,
+                        postal_code=c.address_postal_code,
+                        country=c.address_country,
+                        period_start=c.address_period_start,
+                        period_end=c.address_period_end,
                         created_by=created_by,
                     )
                     session.add(contact)
                     await session.flush()
+                    if c.purpose_coding:
+                        for coding in c.purpose_coding:
+                            session.add(
+                                OrganizationContactPurposeCoding(
+                                    contact_id=contact.id,
+                                    tenant_id=org_id,
+                                    **_coding_kwargs(coding, created_by),
+                                )
+                            )
                     if c.telecom:
                         for t in c.telecom:
                             session.add(
                                 OrganizationContactTelecom(
                                     contact_id=contact.id,
-                                    org_id=org_id,
+                                    tenant_id=org_id,
                                     system=t.system,
                                     value=t.value,
                                     use=t.use,
@@ -211,8 +243,9 @@ class _FullMixin:
                     )
                     session.add(
                         OrganizationEndpoint(
-                            organization_id=org.id,
-                            org_id=org_id,
+                            organization_pk=org.id,
+                            tenant_id=org_id,
+                            reference_reference=e.reference,
                             reference_type=ep_type,
                             reference_id=ep_id,
                             reference_display=e.reference_display,
@@ -265,18 +298,20 @@ class _FullMixin:
                     if value is not None:
                         po_type, po_id = _parse_org_ref(value)
                         await _validate_reference(
-                            session, org.org_id, po_type, po_id, "partOf"
+                            session, org.tenant_id, po_type, po_id, "partOf"
                         )
                         if await _partof_chain_contains(
-                            session, org.org_id, po_id, org.organization_id
+                            session, org.tenant_id, po_id, org.organization_id
                         ):
                             raise BusinessRuleViolationError(
                                 f"Setting partOf to Organization/{po_id} would create a "
                                 "circular organization hierarchy."
                             )
+                        org.partof_reference = value
                         org.partof_type = po_type
                         org.partof_id = po_id
                     else:
+                        org.partof_reference = None
                         org.partof_type = None
                         org.partof_id = None
                 else:
@@ -287,7 +322,7 @@ class _FullMixin:
             if payload.identifier is not None:
                 await session.execute(
                     delete(OrganizationIdentifier).where(
-                        OrganizationIdentifier.organization_id == org.id
+                        OrganizationIdentifier.organization_pk == org.id
                     )
                 )
                 for i in payload.identifier:
@@ -295,63 +330,70 @@ class _FullMixin:
                         _parse_org_ref(i.assigner) if i.assigner else (None, None)
                     )
                     await _validate_reference(
-                        session, org.org_id, a_type, a_id, "identifier.assigner"
+                        session, org.tenant_id, a_type, a_id, "identifier.assigner"
                     )
-                    session.add(
-                        OrganizationIdentifier(
-                            organization_id=org.id,
-                            org_id=org.org_id,
-                            use=i.use,
-                            type_system=i.type_system,
-                            type_version=i.type_version,
-                            type_code=i.type_code,
-                            type_display=i.type_display,
-                            type_text=i.type_text,
-                            type_user_selected=i.type_user_selected,
-                            system=i.system,
-                            value=i.value,
-                            period_start=i.period_start,
-                            period_end=i.period_end,
-                            **_org_ref_kwargs(
-                                "assigner", i.assigner, i.assigner_display
-                            ),
-                            **_reference_kwargs("assigner", i),
-                            created_by=updated_by,
-                        )
+                    identifier = OrganizationIdentifier(
+                        organization_pk=org.id,
+                        tenant_id=org.tenant_id,
+                        use=i.use,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        assigner_reference=i.assigner,
+                        **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
+                        **_reference_kwargs("assigner", i),
+                        created_by=updated_by,
                     )
+                    session.add(identifier)
+                    if i.type_coding:
+                        await session.flush()
+                        for coding in i.type_coding:
+                            session.add(
+                                OrganizationIdentifierTypeCoding(
+                                    organization_identifier_id=identifier.id,
+                                    tenant_id=org.tenant_id,
+                                    **_coding_kwargs(coding, updated_by),
+                                )
+                            )
 
             if payload.type is not None:
                 await session.execute(
                     delete(OrganizationType).where(
-                        OrganizationType.organization_id == org.id
+                        OrganizationType.organization_pk == org.id
                     )
                 )
                 for t in payload.type:
-                    session.add(
-                        OrganizationType(
-                            organization_id=org.id,
-                            org_id=org.org_id,
-                            coding_system=t.coding_system,
-                            coding_version=t.coding_version,
-                            coding_code=t.coding_code,
-                            coding_display=t.coding_display,
-                            text=t.text,
-                            coding_user_selected=t.coding_user_selected,
-                            created_by=updated_by,
-                        )
+                    org_type = OrganizationType(
+                        organization_pk=org.id,
+                        tenant_id=org.tenant_id,
+                        text=t.text,
+                        created_by=updated_by,
                     )
+                    session.add(org_type)
+                    if t.coding:
+                        await session.flush()
+                        for coding in t.coding:
+                            session.add(
+                                OrganizationTypeCoding(
+                                    organization_type_id=org_type.id,
+                                    tenant_id=org.tenant_id,
+                                    **_coding_kwargs(coding, updated_by),
+                                )
+                            )
 
             if payload.alias is not None:
                 await session.execute(
                     delete(OrganizationAlias).where(
-                        OrganizationAlias.organization_id == org.id
+                        OrganizationAlias.organization_pk == org.id
                     )
                 )
                 for a in payload.alias:
                     session.add(
                         OrganizationAlias(
-                            organization_id=org.id,
-                            org_id=org.org_id,
+                            organization_pk=org.id,
+                            tenant_id=org.tenant_id,
                             value=a.value,
                             created_by=updated_by,
                         )
@@ -360,14 +402,14 @@ class _FullMixin:
             if payload.telecom is not None:
                 await session.execute(
                     delete(OrganizationTelecom).where(
-                        OrganizationTelecom.organization_id == org.id
+                        OrganizationTelecom.organization_pk == org.id
                     )
                 )
                 for t in payload.telecom:
                     session.add(
                         OrganizationTelecom(
-                            organization_id=org.id,
-                            org_id=org.org_id,
+                            organization_pk=org.id,
+                            tenant_id=org.tenant_id,
                             system=t.system,
                             value=t.value,
                             use=t.use,
@@ -381,18 +423,18 @@ class _FullMixin:
             if payload.address is not None:
                 await session.execute(
                     delete(OrganizationAddress).where(
-                        OrganizationAddress.organization_id == org.id
+                        OrganizationAddress.organization_pk == org.id
                     )
                 )
                 for a in payload.address:
                     session.add(
                         OrganizationAddress(
-                            organization_id=org.id,
-                            org_id=org.org_id,
+                            organization_pk=org.id,
+                            tenant_id=org.tenant_id,
                             use=a.use,
                             type=a.type,
                             text=a.text,
-                            line=", ".join(a.line) if a.line else None,
+                            line=a.line,
                             city=a.city,
                             district=a.district,
                             state=a.state,
@@ -409,7 +451,7 @@ class _FullMixin:
                     (
                         await session.execute(
                             select(OrganizationContact.id).where(
-                                OrganizationContact.organization_id == org.id
+                                OrganizationContact.organization_pk == org.id
                             )
                         )
                     )
@@ -422,50 +464,61 @@ class _FullMixin:
                             OrganizationContactTelecom.contact_id.in_(contact_ids)
                         )
                     )
+                    await session.execute(
+                        delete(OrganizationContactPurposeCoding).where(
+                            OrganizationContactPurposeCoding.contact_id.in_(
+                                contact_ids
+                            )
+                        )
+                    )
                 await session.execute(
                     delete(OrganizationContact).where(
-                        OrganizationContact.organization_id == org.id
+                        OrganizationContact.organization_pk == org.id
                     )
                 )
                 for c in payload.contact:
                     contact = OrganizationContact(
-                        organization_id=org.id,
-                        org_id=org.org_id,
-                        purpose_system=c.purpose_system,
-                        purpose_code=c.purpose_code,
-                        purpose_display=c.purpose_display,
+                        organization_pk=org.id,
+                        tenant_id=org.tenant_id,
                         purpose_text=c.purpose_text,
                         name_use=c.name_use,
                         name_text=c.name_text,
                         name_family=c.name_family,
-                        name_given=", ".join(c.name_given) if c.name_given else None,
-                        name_prefix=", ".join(c.name_prefix) if c.name_prefix else None,
-                        name_suffix=", ".join(c.name_suffix) if c.name_suffix else None,
+                        name_given=c.name_given,
+                        name_prefix=c.name_prefix,
+                        name_suffix=c.name_suffix,
                         name_period_start=c.name_period_start,
                         name_period_end=c.name_period_end,
-                        address_use=c.address_use,
-                        address_type=c.address_type,
-                        address_text=c.address_text,
-                        address_line=", ".join(c.address_line)
-                        if c.address_line
-                        else None,
-                        address_city=c.address_city,
-                        address_district=c.address_district,
-                        address_state=c.address_state,
-                        address_postal_code=c.address_postal_code,
-                        address_country=c.address_country,
-                        address_period_start=c.address_period_start,
-                        address_period_end=c.address_period_end,
+                        use=c.address_use,
+                        type=c.address_type,
+                        text=c.address_text,
+                        line=c.address_line,
+                        city=c.address_city,
+                        district=c.address_district,
+                        state=c.address_state,
+                        postal_code=c.address_postal_code,
+                        country=c.address_country,
+                        period_start=c.address_period_start,
+                        period_end=c.address_period_end,
                         created_by=updated_by,
                     )
                     session.add(contact)
                     await session.flush()
+                    if c.purpose_coding:
+                        for coding in c.purpose_coding:
+                            session.add(
+                                OrganizationContactPurposeCoding(
+                                    contact_id=contact.id,
+                                    tenant_id=org.tenant_id,
+                                    **_coding_kwargs(coding, updated_by),
+                                )
+                            )
                     if c.telecom:
                         for t in c.telecom:
                             session.add(
                                 OrganizationContactTelecom(
                                     contact_id=contact.id,
-                                    org_id=org.org_id,
+                                    tenant_id=org.tenant_id,
                                     system=t.system,
                                     value=t.value,
                                     use=t.use,
@@ -479,7 +532,7 @@ class _FullMixin:
             if payload.endpoint is not None:
                 await session.execute(
                     delete(OrganizationEndpoint).where(
-                        OrganizationEndpoint.organization_id == org.id
+                        OrganizationEndpoint.organization_pk == org.id
                     )
                 )
                 for e in payload.endpoint:
@@ -490,8 +543,9 @@ class _FullMixin:
                     )
                     session.add(
                         OrganizationEndpoint(
-                            organization_id=org.id,
-                            org_id=org.org_id,
+                            organization_pk=org.id,
+                            tenant_id=org.tenant_id,
+                            reference_reference=e.reference,
                             reference_type=ep_type,
                             reference_id=ep_id,
                             reference_display=e.reference_display,

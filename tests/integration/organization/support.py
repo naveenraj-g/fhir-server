@@ -21,9 +21,13 @@ FULL = {
     ],
     "type": [
         {
-            "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
-            "coding_code": "prov",
-            "coding_display": "Healthcare Provider",
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                    "code": "prov",
+                    "display": "Healthcare Provider",
+                }
+            ]
         }
     ],
     "alias": [{"value": "Gen Hosp"}],
@@ -41,8 +45,12 @@ FULL = {
     ],
     "contact": [
         {
-            "purpose_code": "ADMIN",
-            "purpose_system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+            "purpose_coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+                    "code": "ADMIN",
+                }
+            ],
             "name_family": "Smith",
             "name_given": ["John"],
             "address_type": "both",

@@ -2,7 +2,12 @@ from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
-from app.models.organization import OrganizationContact, OrganizationModel
+from app.models.organization import (
+    OrganizationContact,
+    OrganizationIdentifier,
+    OrganizationModel,
+    OrganizationType,
+)
 from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.repository._reference_shared import (
     _IDENTIFIER_FALLBACK_SUFFIXES,
@@ -39,13 +44,18 @@ _SORTABLE_FIELDS = {
 def _with_relationships(stmt):
     """Eager-load all organization sub-resources to avoid N+1 and async lazy-load failures."""
     return stmt.options(
-        selectinload(OrganizationModel.identifiers),
-        selectinload(OrganizationModel.types),
+        selectinload(OrganizationModel.identifiers).selectinload(
+            OrganizationIdentifier.type_codings
+        ),
+        selectinload(OrganizationModel.types).selectinload(OrganizationType.codings),
         selectinload(OrganizationModel.aliases),
         selectinload(OrganizationModel.telecoms),
         selectinload(OrganizationModel.addresses),
         selectinload(OrganizationModel.contacts).selectinload(
             OrganizationContact.telecoms
+        ),
+        selectinload(OrganizationModel.contacts).selectinload(
+            OrganizationContact.purpose_codings
         ),
         selectinload(OrganizationModel.endpoints),
     )
@@ -93,7 +103,7 @@ async def _partof_chain_contains(
         literal(1).label("depth"),
     ).where(
         OrganizationModel.organization_id == start_public_id,
-        OrganizationModel.org_id == org_id,
+        OrganizationModel.tenant_id == org_id,
     )
     chain = anchor.cte(name="partof_ancestor_chain", recursive=True)
 
@@ -105,7 +115,7 @@ async def _partof_chain_contains(
         )
         .join(chain, OrganizationModel.organization_id == chain.c.partof_id)
         .where(
-            OrganizationModel.org_id == org_id,
+            OrganizationModel.tenant_id == org_id,
             chain.c.depth < max_depth,
         )
     )

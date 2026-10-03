@@ -5,12 +5,16 @@ from ._shared import _AuditFields
 
 class PlainOrganizationEndpoint(_AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
+    reference_reference: str | None = Field(
+        None,
+        description="The raw literal reference string as received — Endpoint is never a locally resolvable resource in this system, so this is typically the only populated half of the reference.",
+    )
     reference_type: str | None = Field(
         None, description="Resolved reference target type (always 'Endpoint')."
     )
     reference_id: int | None = Field(
         None,
-        description="Internal ID of the resolved Endpoint, if any (Endpoint is not a modeled resource in this system).",
+        description="Public endpoint identifier, if this system ever models Endpoint as a resource (it doesn't today) — never a real FK.",
     )
     reference_display: str | None = Field(
         None, description="Plain text narrative that identifies the endpoint."

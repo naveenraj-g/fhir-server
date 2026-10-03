@@ -1,3 +1,4 @@
+from ._shared import PlainOrganizationCoding
 from .address import PlainOrganizationAddress
 from .alias import PlainOrganizationAlias
 from .contact import (
@@ -24,6 +25,7 @@ __all__ = [
     "FHIROrganizationContact",
     "PlainOrganizationResponse",
     "PaginatedOrganizationResponse",
+    "PlainOrganizationCoding",
     "PlainOrganizationIdentifier",
     "PlainOrganizationType",
     "PlainOrganizationAlias",

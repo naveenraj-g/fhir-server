@@ -51,7 +51,7 @@ async def test_create_organization_full(client):
     assert_plain_organization(data, name="General Hospital", active=True)
     assert data["identifier"][0]["value"] == "1234567893"
     assert data["identifier"][0]["assigner_identifier_value"] == "EXTERNAL-1"
-    assert data["type"][0]["coding_code"] == "prov"
+    assert data["type"][0]["codings"][0]["code"] == "prov"
     assert data["alias"][0]["value"] == "Gen Hosp"
     assert data["telecom"][0]["value"] == "555-1234"
     assert data["address"][0]["city"] == "Anytown"

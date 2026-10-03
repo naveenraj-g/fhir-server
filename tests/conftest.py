@@ -36,13 +36,18 @@ mount_routers(app)
 # this shim every test in the suite errors during fixture setup, not just
 # that one resource's.
 #
-# The ARRAY shim below is now dead code: it existed only for
-# app/models/practitioner_role/practitioner_role.py's old
-# ARRAY(Enum(DayOfWeek)) column, which the PractitionerRole rework replaced
-# with comma-separated Text (see app/models/practitioner_role/available_time.py).
-# No model in the codebase uses ARRAY anymore (confirmed via
-# `grep -rl "ARRAY(" app/models/*/*.py`) — left in place since removing test
-# infrastructure wasn't part of that change; safe to delete in a future pass.
+# The ARRAY-as-TEXT compiler shim handles DDL (CREATE TABLE renders the
+# column as TEXT on SQLite), but not value (de)serialization: the
+# postgresql.ARRAY type's own bind/result processors still assume a
+# Postgres-native array wire format, so handing a plain Python list to
+# aiosqlite raises `sqlite3.ProgrammingError: type 'list' is not supported`.
+# Organization's FhirAddressMixin (line) and OrganizationContact
+# (name_given/name_prefix/name_suffix) are the first real users of
+# ARRAY(String) in this codebase — everything earlier that looked like a
+# list (PractitionerRole's old ARRAY(Enum(DayOfWeek))) was replaced with
+# comma-separated Text instead. JSON-encode/decode on SQLite only; Postgres
+# keeps its native array handling untouched.
+import json
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.ext.compiler import compiles
@@ -56,6 +61,32 @@ def _tsvector_as_text(element, compiler, **kw):
 @compiles(ARRAY, "sqlite")
 def _array_as_text(element, compiler, **kw):
     return "TEXT"
+
+
+_orig_array_bind_processor = ARRAY.bind_processor
+_orig_array_result_processor = ARRAY.result_processor
+
+
+def _array_bind_processor(self, dialect):
+    if dialect.name == "sqlite":
+        def process(value):
+            return None if value is None else json.dumps(list(value))
+
+        return process
+    return _orig_array_bind_processor(self, dialect)
+
+
+def _array_result_processor(self, dialect, coltype):
+    if dialect.name == "sqlite":
+        def process(value):
+            return None if value is None else json.loads(value)
+
+        return process
+    return _orig_array_result_processor(self, dialect, coltype)
+
+
+ARRAY.bind_processor = _array_bind_processor
+ARRAY.result_processor = _array_result_processor
 
 
 @compiles(JSONB, "sqlite")

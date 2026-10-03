@@ -77,7 +77,12 @@ async def resource_exists(
     model, id_column = entry
     stmt = select(model.id).where(getattr(model, id_column) == resource_id)
     if org_id is not None:
-        stmt = stmt.where(model.org_id == org_id)
+        # Every registered model's tenant-scoping column is org_id, except
+        # OrganizationModel — renamed to tenant_id to avoid the column
+        # literally being named the same thing as the Organization entity
+        # itself (see app/models/shared/tenant_audit.py's docstring).
+        org_column = "tenant_id" if hasattr(model, "tenant_id") else "org_id"
+        stmt = stmt.where(getattr(model, org_column) == org_id)
     if user_id is not None:
         if not hasattr(model, "user_id"):
             raise ValueError(

@@ -14,6 +14,7 @@ This folder has four documents:
 | [`ai-native-considerations.md`](./ai-native-considerations.md) | Why granular typed data serves an AI/MCP tool-calling agent even better than a human UI, and why spec-fidelity bugs are *more* dangerous with an autonomous consumer than a human one |
 | [`production-readiness-checklist.md`](./production-readiness-checklist.md) | Concrete, incremental steps to harden the current architecture — mainly around keeping the FHIR mapper/adapter layer spec-faithful over time |
 | [`scalability-performance-analysis.md`](./scalability-performance-analysis.md) | A different angle: given the normalized relational choice is correct, is the actual query/index/FK/pagination design ready for real multi-tenant load — indexing, referential integrity, round-trip counts, bulk writes |
+| [`organization-reference-design.md`](./organization-reference-design.md) | A clean-slate, spec-verified reference schema for Organization — every column justified against the actual R4 binding strength/cardinality, applying the lessons of the two docs above to one resource end-to-end |
 
 ## The one-paragraph version
 

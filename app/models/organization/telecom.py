@@ -1,43 +1,30 @@
 from sqlalchemy import (
     BigInteger,
     Column,
-    DateTime,
-    Enum,
     ForeignKey,
-    Integer,
-    String,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
-from app.schemas.enums import ContactPointSystem, ContactPointUse
+from app.models.shared import FhirContactPointMixin, TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # telecom (0..*) ContactPoint child table
 # ---------------------------------------------------------------------------
 
 
-class OrganizationTelecom(Base):
+class OrganizationTelecom(FhirContactPointMixin, TenantAuditMixin, Base):
+    """No DB-level CHECK constraints — org-3 ("no home-use telecom") and the
+    rank>0 (positiveInt) rule are both enforced by the FHIR validator layer
+    instead — see OrganizationModel's docstring (core.py) for why."""
+
     __tablename__ = "organization_telecom"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    organization_id = Column(
+    # Containment FK — see identifier.py's organization_pk for why this
+    # isn't named organization_id.
+    organization_pk = Column(
         BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
-    system = Column(
-        Enum(ContactPointSystem, name="contact_point_system"), nullable=False
-    )
-    value = Column(String, nullable=False)
-    use = Column(Enum(ContactPointUse, name="contact_point_use"), nullable=True)
-    rank = Column(Integer, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
 
     organization = relationship("OrganizationModel", back_populates="telecoms")

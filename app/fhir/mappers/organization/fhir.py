@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_split, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.organization import (
@@ -13,18 +13,47 @@ if TYPE_CHECKING:
     )
 
 
+def _fhir_coding_list(codings) -> list[dict]:
+    """Render a list of FhirCodingMixin-shaped rows as a FHIR `coding[]`
+    array — shared by Organization.type, Organization.identifier.type, and
+    Organization.contact.purpose, all three being real 0..* child tables now
+    (an org may need its own custom code alongside a standard-terminology
+    crosswalk at once)."""
+    result = []
+    for c in codings or []:
+        entry = {
+            k: v
+            for k, v in {
+                "system": c.system,
+                "version": c.version,
+                "code": c.code,
+                "display": c.display,
+                "userSelected": c.user_selected,
+            }.items()
+            if v is not None
+        }
+        if entry:
+            result.append(entry)
+    return result
+
+
 def _fhir_reference(obj, prefix: str) -> dict:
-    """Build a FHIR Reference dict for a `{prefix}_type`/`{prefix}_id`/`{prefix}_display`
-    resolved reference, with a `{prefix}_identifier_*` logical-reference (Identifier)
-    fallback for when the target isn't a resource in this system. Shared by every
-    flattened Reference field on Organization (identifier.assigner, partOf, endpoint)
-    — mirrors app.fhir.mappers.practitioner.fhir._fhir_reference."""
+    """Build a FHIR Reference dict: the raw `{prefix}_reference` string takes
+    priority when present (it's the literal value as received, independent of
+    whether it resolves locally); otherwise falls back to the resolved
+    `{prefix}_type`/`{prefix}_id`. Plus a `{prefix}_identifier_*`
+    logical-reference (Identifier) fallback for when the target isn't a
+    resource in this system. Shared by every flattened Reference field on
+    Organization (identifier.assigner, partOf, endpoint)."""
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
 
     entry: dict = {}
-    if ref_type and ref_id:
+    if raw_reference:
+        entry["reference"] = raw_reference
+    elif ref_type and ref_id:
         entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
     if display:
         entry["display"] = display
@@ -98,22 +127,11 @@ def fhir_org_identifier(i: OrganizationIdentifier) -> dict:
     entry: dict = {}
     if i.use:
         entry["use"] = fhir_enum(i.use)
-    if i.type_system or i.type_code or i.type_text:
+    coding = _fhir_coding_list(i.type_codings)
+    if coding or i.type_text:
         type_cc: dict = {}
-        if i.type_system or i.type_code:
-            type_cc["coding"] = [
-                {
-                    k: v
-                    for k, v in {
-                        "system": i.type_system,
-                        "version": i.type_version,
-                        "code": i.type_code,
-                        "display": i.type_display,
-                        "userSelected": i.type_user_selected,
-                    }.items()
-                    if v is not None
-                }
-            ]
+        if coding:
+            type_cc["coding"] = coding
         if i.type_text:
             type_cc["text"] = i.type_text
         entry["type"] = type_cc
@@ -137,20 +155,10 @@ def fhir_org_identifier(i: OrganizationIdentifier) -> dict:
 
 
 def fhir_org_type(t) -> dict:
-    coding = {
-        k: v
-        for k, v in {
-            "system": t.coding_system,
-            "version": t.coding_version,
-            "code": t.coding_code,
-            "display": t.coding_display,
-            "userSelected": t.coding_user_selected,
-        }.items()
-        if v is not None
-    }
     entry: dict = {}
+    coding = _fhir_coding_list(t.codings)
     if coding:
-        entry["coding"] = [coding]
+        entry["coding"] = coding
     if t.text:
         entry["text"] = t.text
     return entry
@@ -172,9 +180,8 @@ def fhir_org_address(a) -> dict:
         entry["type"] = a.type
     if a.text:
         entry["text"] = a.text
-    lines = fhir_split(a.line)
-    if lines:
-        entry["line"] = lines
+    if a.line:
+        entry["line"] = list(a.line)
     if a.city:
         entry["city"] = a.city
     if a.district:
@@ -201,23 +208,14 @@ def fhir_org_contact(c: OrganizationContact) -> dict:
     entry: dict = {}
 
     # purpose
-    if c.purpose_system or c.purpose_code or c.purpose_text:
-        coding = {
-            k: v
-            for k, v in {
-                "system": c.purpose_system,
-                "code": c.purpose_code,
-                "display": c.purpose_display,
-            }.items()
-            if v
-        }
+    coding = _fhir_coding_list(c.purpose_codings)
+    if coding or c.purpose_text:
         purpose_cc: dict = {}
         if coding:
-            purpose_cc["coding"] = [coding]
+            purpose_cc["coding"] = coding
         if c.purpose_text:
             purpose_cc["text"] = c.purpose_text
-        if purpose_cc:
-            entry["purpose"] = purpose_cc
+        entry["purpose"] = purpose_cc
 
     # name (HumanName) — columns are prefixed name_*
     if any([c.name_use, c.name_text, c.name_family, c.name_given]):
@@ -228,15 +226,12 @@ def fhir_org_contact(c: OrganizationContact) -> dict:
             name["text"] = c.name_text
         if c.name_family:
             name["family"] = c.name_family
-        given = fhir_split(c.name_given)
-        if given:
-            name["given"] = given
-        prefix = fhir_split(c.name_prefix)
-        if prefix:
-            name["prefix"] = prefix
-        suffix = fhir_split(c.name_suffix)
-        if suffix:
-            name["suffix"] = suffix
+        if c.name_given:
+            name["given"] = list(c.name_given)
+        if c.name_prefix:
+            name["prefix"] = list(c.name_prefix)
+        if c.name_suffix:
+            name["suffix"] = list(c.name_suffix)
         if c.name_period_start or c.name_period_end:
             name["period"] = {
                 k: v
@@ -255,38 +250,35 @@ def fhir_org_contact(c: OrganizationContact) -> dict:
     if telecoms:
         entry["telecom"] = telecoms
 
-    # address — columns are prefixed address_*
-    if any([c.address_use, c.address_text, c.address_line, c.address_city]):
+    # address (0..1) — provided by FhirAddressMixin with
+    # _address_prefix="address_": Python attributes are bare
+    # (c.use/c.type/c.city/...), DB columns stay address_*.
+    if any([c.use, c.text, c.line, c.city]):
         addr: dict = {}
-        if c.address_use:
-            addr["use"] = c.address_use
-        if c.address_type:
-            addr["type"] = c.address_type
-        if c.address_text:
-            addr["text"] = c.address_text
-        lines = fhir_split(c.address_line)
-        if lines:
-            addr["line"] = lines
-        if c.address_city:
-            addr["city"] = c.address_city
-        if c.address_district:
-            addr["district"] = c.address_district
-        if c.address_state:
-            addr["state"] = c.address_state
-        if c.address_postal_code:
-            addr["postalCode"] = c.address_postal_code
-        if c.address_country:
-            addr["country"] = c.address_country
-        if c.address_period_start or c.address_period_end:
+        if c.use:
+            addr["use"] = c.use
+        if c.type:
+            addr["type"] = c.type
+        if c.text:
+            addr["text"] = c.text
+        if c.line:
+            addr["line"] = list(c.line)
+        if c.city:
+            addr["city"] = c.city
+        if c.district:
+            addr["district"] = c.district
+        if c.state:
+            addr["state"] = c.state
+        if c.postal_code:
+            addr["postalCode"] = c.postal_code
+        if c.country:
+            addr["country"] = c.country
+        if c.period_start or c.period_end:
             addr["period"] = {
                 k: v
                 for k, v in {
-                    "start": c.address_period_start.isoformat()
-                    if c.address_period_start
-                    else None,
-                    "end": c.address_period_end.isoformat()
-                    if c.address_period_end
-                    else None,
+                    "start": c.period_start.isoformat() if c.period_start else None,
+                    "end": c.period_end.isoformat() if c.period_end else None,
                 }.items()
                 if v
             }
@@ -308,6 +300,9 @@ def to_fhir_organization(org: OrganizationModel) -> dict:
         "resourceType": "Organization",
         "id": str(org.organization_id),
     }
+
+    if org.extension:
+        result["extension"] = list(org.extension)
 
     if org.active is not None:
         result["active"] = org.active

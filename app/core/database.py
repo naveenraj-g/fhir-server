@@ -66,14 +66,15 @@ def _install_query_listeners(engine) -> None:
 
 class Database:
     def __init__(self, db_url: str):
-        self.engine = create_async_engine(
-            db_url,
-            echo=False,
-            pool_size=settings.database.pool_size,
-            max_overflow=settings.database.max_overflow,
-            pool_pre_ping=settings.database.pool_pre_ping,
-            pool_recycle=settings.database.pool_recycle,
-        )
+        # pool_size/max_overflow/pool_recycle are Postgres (QueuePool)-only —
+        # SQLite (used by the test suite, StaticPool) rejects them outright.
+        # pool_pre_ping is accepted everywhere, so it's unconditional.
+        engine_kwargs = {"echo": False, "pool_pre_ping": settings.database.pool_pre_ping}
+        if not db_url.startswith("sqlite"):
+            engine_kwargs["pool_size"] = settings.database.pool_size
+            engine_kwargs["max_overflow"] = settings.database.max_overflow
+            engine_kwargs["pool_recycle"] = settings.database.pool_recycle
+        self.engine = create_async_engine(db_url, **engine_kwargs)
         self.session_maker = async_sessionmaker(
             bind=self.engine,
             class_=AsyncSession,

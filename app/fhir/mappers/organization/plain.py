@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_split
+from app.fhir.datatypes import fhir_enum
 
 if TYPE_CHECKING:
     from app.models.organization import (
@@ -24,17 +24,35 @@ def _audit_fields(obj) -> dict:
     }
 
 
+def plain_coding(c) -> dict:
+    """One Coding entry (FhirCodingMixin-shaped row) → plain dict. Shared by
+    Organization.type.coding, Organization.identifier.type.coding, and
+    Organization.contact.purpose.coding — all three are dedicated child
+    tables with the exact same shape."""
+    return {
+        "id": c.id,
+        "system": c.system,
+        "version": c.version,
+        "code": c.code,
+        "display": c.display,
+        "user_selected": c.user_selected,
+        **_audit_fields(c),
+    }
+
+
 def _plain_reference_fields(obj, prefix: str) -> dict:
-    """Flat `{prefix}_type`/`{prefix}_id`/`{prefix}_display` + `{prefix}_identifier_*`
-    fallback fields for a resolved-or-logical Reference, plus a resolved
-    `{prefix}` FHIR-reference-string convenience field. Shared by every
-    flattened Reference field on Organization (identifier.assigner, partOf,
-    endpoint) — mirrors app.fhir.mappers.practitioner.plain._plain_reference_fields."""
+    """Raw `{prefix}_reference` string + resolved `{prefix}_type`/`{prefix}_id`/
+    `{prefix}_display` + `{prefix}_identifier_*` fallback fields, plus a
+    resolved `{prefix}` FHIR-reference-string convenience field (populated
+    only when `{prefix}_id` is set, i.e. the reference actually resolved
+    locally). Shared by every flattened Reference field on Organization
+    (identifier.assigner, partOf, endpoint)."""
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     return {
+        f"{prefix}_reference": getattr(obj, f"{prefix}_reference", None),
         prefix: f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None,
         f"{prefix}_type": fhir_enum(ref_type),
         f"{prefix}_id": ref_id,
@@ -79,14 +97,9 @@ def plain_org_identifier(i: OrganizationIdentifier) -> dict:
     with an identifier fallback, and because the row carries an audit trail."""
     return {
         "id": i.id,
-        "org_id": i.org_id,
         "use": fhir_enum(i.use),
-        "type_system": i.type_system,
-        "type_version": i.type_version,
-        "type_code": i.type_code,
-        "type_display": i.type_display,
+        "type_codings": [plain_coding(c) for c in (i.type_codings or [])],
         "type_text": i.type_text,
-        "type_user_selected": i.type_user_selected,
         "system": i.system,
         "value": i.value,
         "period_start": i.period_start.isoformat() if i.period_start else None,
@@ -99,12 +112,8 @@ def plain_org_identifier(i: OrganizationIdentifier) -> dict:
 def plain_org_type(t) -> dict:
     return {
         "id": t.id,
-        "coding_system": t.coding_system,
-        "coding_version": t.coding_version,
-        "coding_code": t.coding_code,
-        "coding_display": t.coding_display,
+        "codings": [plain_coding(c) for c in (t.codings or [])],
         "text": t.text,
-        "coding_user_selected": t.coding_user_selected,
         **_audit_fields(t),
     }
 
@@ -136,7 +145,7 @@ def plain_org_address(a) -> dict:
         "use": fhir_enum(a.use),
         "type": fhir_enum(a.type),
         "text": a.text,
-        "line": fhir_split(a.line),
+        "line": a.line,
         "city": a.city,
         "district": a.district,
         "state": a.state,
@@ -164,35 +173,32 @@ def plain_org_contact_telecom(ct) -> dict:
 def plain_org_contact(c: OrganizationContact) -> dict:
     return {
         "id": c.id,
-        "purpose_system": c.purpose_system,
-        "purpose_code": c.purpose_code,
-        "purpose_display": c.purpose_display,
+        "purpose_codings": [plain_coding(pc) for pc in (c.purpose_codings or [])],
         "purpose_text": c.purpose_text,
         "name_use": fhir_enum(c.name_use),
         "name_text": c.name_text,
         "name_family": c.name_family,
-        "name_given": fhir_split(c.name_given),
-        "name_prefix": fhir_split(c.name_prefix),
-        "name_suffix": fhir_split(c.name_suffix),
+        "name_given": c.name_given,
+        "name_prefix": c.name_prefix,
+        "name_suffix": c.name_suffix,
         "name_period_start": c.name_period_start.isoformat()
         if c.name_period_start
         else None,
         "name_period_end": c.name_period_end.isoformat() if c.name_period_end else None,
-        "address_use": fhir_enum(c.address_use),
-        "address_type": fhir_enum(c.address_type),
-        "address_text": c.address_text,
-        "address_line": fhir_split(c.address_line),
-        "address_city": c.address_city,
-        "address_district": c.address_district,
-        "address_state": c.address_state,
-        "address_postal_code": c.address_postal_code,
-        "address_country": c.address_country,
-        "address_period_start": c.address_period_start.isoformat()
-        if c.address_period_start
-        else None,
-        "address_period_end": c.address_period_end.isoformat()
-        if c.address_period_end
-        else None,
+        # address (0..1) is provided by FhirAddressMixin with
+        # _address_prefix="address_" — Python attributes are bare
+        # (c.use/c.type/c.city/...), DB columns stay address_*.
+        "address_use": fhir_enum(c.use),
+        "address_type": fhir_enum(c.type),
+        "address_text": c.text,
+        "address_line": c.line,
+        "address_city": c.city,
+        "address_district": c.district,
+        "address_state": c.state,
+        "address_postal_code": c.postal_code,
+        "address_country": c.country,
+        "address_period_start": c.period_start.isoformat() if c.period_start else None,
+        "address_period_end": c.period_end.isoformat() if c.period_end else None,
         "telecoms": [plain_org_contact_telecom(ct) for ct in (c.telecoms or [])],
         **_audit_fields(c),
     }
@@ -222,7 +228,8 @@ def to_plain_organization(org: OrganizationModel) -> dict:
         "address": [plain_org_address(a) for a in (org.addresses or [])],
         "contact": [plain_org_contact(c) for c in (org.contacts or [])],
         "endpoint": [plain_org_endpoint(e) for e in (org.endpoints or [])],
-        "org_id": org.org_id,
+        "extension": org.extension or [],
+        "org_id": org.tenant_id,
         "created_at": org.created_at.isoformat() if org.created_at else None,
         "updated_at": org.updated_at.isoformat() if org.updated_at else None,
         "created_by": org.created_by,
