@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from app.core.logging import get_logger
 from app.core.request_context import request_id_ctx_var
 from app.errors.base import ApplicationError
-from app.errors.validation import InputValidationError
+from app.errors.validation import FhirValidationError, InputValidationError
 
 logger = get_logger(__name__)
 
@@ -68,6 +68,32 @@ async def application_error_handler(request: Request, exc: ApplicationError):
 
         return JSONResponse(
             status_code=400,
+            content={
+                "resourceType": "OperationOutcome",
+                "issue": [
+                    {
+                        "severity": "error",
+                        "code": "invalid",
+                        "diagnostics": error["message"],
+                        "expression": [error["field"]],
+                    }
+                    for error in exc.errors
+                ],
+            },
+            headers=({"X-Request-ID": request_id} if request_id else None),
+        )
+
+    # -----------------------
+    # FHIR Base R4 Validation Error
+    # -----------------------
+    if isinstance(exc, FhirValidationError):
+        logger.info(
+            "FHIR base R4 validation failed",
+            extra={**payload, "event": "error.fhir_validation"},
+        )
+
+        return JSONResponse(
+            status_code=422,
             content={
                 "resourceType": "OperationOutcome",
                 "issue": [

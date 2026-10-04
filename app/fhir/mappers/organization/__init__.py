@@ -19,6 +19,18 @@ from app.fhir.mappers.organization.plain import (
     plain_org_contact,
     plain_org_endpoint,
 )
+from app.fhir.mappers.organization.payload import (
+    payload_to_fhir_organization,
+    patch_fragment_to_fhir_organization,
+    merge_patch_fragment,
+    payload_identifier,
+    payload_type,
+    payload_alias,
+    payload_telecom,
+    payload_address,
+    payload_contact,
+    payload_endpoint,
+)
 
 __all__ = [
     "to_fhir_organization",
@@ -38,4 +50,14 @@ __all__ = [
     "plain_org_contact_telecom",
     "plain_org_contact",
     "plain_org_endpoint",
+    "payload_to_fhir_organization",
+    "patch_fragment_to_fhir_organization",
+    "merge_patch_fragment",
+    "payload_identifier",
+    "payload_type",
+    "payload_alias",
+    "payload_telecom",
+    "payload_address",
+    "payload_contact",
+    "payload_endpoint",
 ]

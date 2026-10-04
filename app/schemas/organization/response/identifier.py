@@ -37,6 +37,9 @@ class PlainOrganizationIdentifier(_AuditFields):
         None,
         description="Resolved FHIR reference to the issuing organization, e.g. 'Organization/190001' — populated only when assigner_reference resolves to a local row.",
     )
+    assigner_type: str | None = Field(
+        None, description="Resolved reference target type (always 'Organization')."
+    )
     assigner_id: int | None = Field(
         None,
         description="Public organization_id of the resolved assigning Organization, populated only when assigner_reference resolves to a local row.",

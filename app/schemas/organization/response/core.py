@@ -23,6 +23,10 @@ from .type import PlainOrganizationType
 class FHIROrganizationSchema(BaseModel):
     resourceType: str = Field("Organization", description="Always 'Organization'.")
     id: str = Field(..., description="Public organization_id as a string.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
     active: bool | None = Field(
         None, description="Whether the organization's record is still in active use."
     )

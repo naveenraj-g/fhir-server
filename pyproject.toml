@@ -12,6 +12,7 @@ dependencies = [
     "dependency-injector>=4.48.3",
     "fastapi[standard]>=0.129.0",
     "fhir-resources>=8.2.0",
+    "jsonschema>=4.26.0",
     "orjson>=3.11.7",
     "pydantic-settings>=2.13.0",
     "pyjwt>=2.11.0",

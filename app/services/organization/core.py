@@ -1,7 +1,15 @@
 from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
-from app.fhir.mappers.organization import to_fhir_organization, to_plain_organization
+from app.errors.validation import FhirValidationError
+from app.fhir.mappers.organization import (
+    merge_patch_fragment,
+    patch_fragment_to_fhir_organization,
+    payload_to_fhir_organization,
+    to_fhir_organization,
+    to_plain_organization,
+)
+from app.fhir.validation import validate_base_r4
 from app.models.organization import OrganizationModel
 from app.repository.organization import OrganizationRepository
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
@@ -110,6 +118,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Organization creation requires an org-scoped token"
             )
+        self._validate_base_r4(payload_to_fhir_organization(payload))
         org = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Organization created",
@@ -129,12 +138,27 @@ class _CoreMixin:
     ) -> OrganizationModel:
         """org_id comes from the verified JWT's actor.org_id — no bypass: a
         missing org_id or an organization belonging to a different org both
-        raise NotFoundError (404), never 403, so existence isn't leaked."""
-        if not org_id or not await self.repository.organization_belongs_to_org(
-            organization_id, org_id
-        ):
+        raise NotFoundError (404), never 403, so existence isn't leaked.
+
+        The current row is fetched (rather than a lightweight existence
+        check) because base R4 validation needs it: a PATCH payload is
+        partial by nature, so it's merged onto the resource's current full
+        FHIR representation before validating — see
+        patch_fragment_to_fhir_organization()'s docstring."""
+        if not org_id:
             self._log_org_scope_miss("patch", organization_id, org_id)
             raise NotFoundError("Organization not found")
+        existing = await self.repository.get_by_organization_id_in_org(
+            organization_id, org_id
+        )
+        if not existing:
+            self._log_org_scope_miss("patch", organization_id, org_id)
+            raise NotFoundError("Organization not found")
+
+        fragment, touched = patch_fragment_to_fhir_organization(payload)
+        merged = merge_patch_fragment(to_fhir_organization(existing), fragment, touched)
+        self._validate_base_r4(merged)
+
         updated = await self.repository.patch_full(organization_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Organization not found")
@@ -167,6 +191,25 @@ class _CoreMixin:
                 "organization_id": organization_id,
             },
         )
+
+    # ── Validation helpers ────────────────────────────────────────────────
+
+    @staticmethod
+    def _validate_base_r4(fhir_resource: dict) -> None:
+        """Raises FhirValidationError (422) if `fhir_resource` fails HL7's
+        base R4 structural schema — the first link in the base -> country ->
+        organization profile chain (see
+        docs/architecture/fhir-profiling-and-extensibility-strategy.md).
+        Structural only (required elements, cardinality, primitive formats,
+        required-binding enums); invariants are a separate, not-yet-built
+        layer."""
+        errors = validate_base_r4("Organization", fhir_resource)
+        if errors:
+            logger.warning(
+                "Organization failed base R4 validation",
+                extra={"event": "organization.base_r4_invalid", "errors": errors},
+            )
+            raise FhirValidationError(errors)
 
     # ── Logging helpers ───────────────────────────────────────────────────
 

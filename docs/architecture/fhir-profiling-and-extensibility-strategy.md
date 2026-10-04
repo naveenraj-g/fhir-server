@@ -24,7 +24,7 @@ describing standard FHIR profile derivation (`StructureDefinition.baseDefinition
 
 **One rule governs the entire design and has to be enforced mechanically, not just assumed:**
 
-> A profile can only make an inherited element *more* restrictive than its parent, never less.
+> A profile can only make an inherited element _more_ restrictive than its parent, never less.
 > A base element of `0..1` can become `0..0` or `1..1` under a profile, but never `0..*`. A
 > required (`required`) terminology binding can never be loosened to `extensible` by a child
 > profile. Whatever a child profile allows must already have been allowed by its parent.
@@ -32,7 +32,7 @@ describing standard FHIR profile derivation (`StructureDefinition.baseDefinition
 This matters concretely for your design because **organization admins will be authoring
 profiles at runtime through some future UI**, not through a reviewed PR. Nothing stops a
 hospital admin from accidentally trying to make a country-mandated required field optional
-unless something *mechanically* rejects that at authoring time. Section 4 covers the
+unless something _mechanically_ rejects that at authoring time. Section 4 covers the
 authoring-time guard this requires — it's not optional for a system where profile authorship
 is self-service.
 
@@ -53,7 +53,7 @@ correct shape:
 Organization-level profiles can't be static data in the repo at all — they're created at
 runtime by tenants, so they have to live in the database and be authored through an
 (eventually-built) admin API, which is explicitly out of scope for this report per your
-instruction to ignore the API layer for now. What *is* in scope is the shape they're stored
+instruction to ignore the API layer for now. What _is_ in scope is the shape they're stored
 in and how they get validated — covered below.
 
 ---
@@ -64,14 +64,14 @@ Grounding this in the spec so the storage design in §3 has a real target, not a
 `StructureDefinition` profiles work through five independent mechanisms — a profile can use
 any combination of these per element:
 
-| Mechanism | What it does | Example |
-|---|---|---|
-| **Cardinality narrowing** | Tightens `min`/`max` within what the parent already allows | Base `Organization.name` is `0..1`; a hospital profile could make it `1..1` |
-| **Fixed/pattern values** | Locks an element to one value, or a pattern complex types must match | A clinic profile fixes `Organization.type` to always be `prov` |
-| **Must-support** | Flags an element systems must be able to populate/use | Doesn't change validity, just conformance expectations — lower priority for you |
-| **Terminology binding** | Narrows which codes are valid, and how strictly (`required` / `extensible` / `preferred` / `example`) | A country profile could bind `Organization.type` to a government-published code system as `required` |
-| **Slicing** | Splits a repeating element into named sub-lists with per-slice rules | Not urgent for Organization; relevant later for things like `Patient.identifier` (MRN slice vs. SSN slice, each with its own required system) |
-| **Invariants** | Arbitrary FHIRPath boolean expressions, with a severity, evaluated against the whole resource instance | `org-1` itself — *"name or identifier required"* — is exactly this kind of rule, already in the base spec |
+| Mechanism                 | What it does                                                                                           | Example                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cardinality narrowing** | Tightens `min`/`max` within what the parent already allows                                             | Base `Organization.name` is `0..1`; a hospital profile could make it `1..1`                                                                   |
+| **Fixed/pattern values**  | Locks an element to one value, or a pattern complex types must match                                   | A clinic profile fixes `Organization.type` to always be `prov`                                                                                |
+| **Must-support**          | Flags an element systems must be able to populate/use                                                  | Doesn't change validity, just conformance expectations — lower priority for you                                                               |
+| **Terminology binding**   | Narrows which codes are valid, and how strictly (`required` / `extensible` / `preferred` / `example`)  | A country profile could bind `Organization.type` to a government-published code system as `required`                                          |
+| **Slicing**               | Splits a repeating element into named sub-lists with per-slice rules                                   | Not urgent for Organization; relevant later for things like `Patient.identifier` (MRN slice vs. SSN slice, each with its own required system) |
+| **Invariants**            | Arbitrary FHIRPath boolean expressions, with a severity, evaluated against the whole resource instance | `org-1` itself — _"name or identifier required"_ — is exactly this kind of rule, already in the base spec                                     |
 
 **The important realization for your "business rules" question (§5): invariants are already
 the FHIR-native mechanism for exactly what you're describing**, as long as the rule is
@@ -82,8 +82,8 @@ needs this mechanism — it just isn't built generically yet.
 
 ## 3. Storage design for the profile chain
 
-A profile, at any layer, needs the same shape: *what resource type it constrains*, *what its
-parent is*, *its own list of constraints*, and *who owns it*. One generalized model handles
+A profile, at any layer, needs the same shape: _what resource type it constrains_, _what its
+parent is_, _its own list of constraints_, and _who owns it_. One generalized model handles
 all three layers instead of three different mechanisms:
 
 ```
@@ -108,14 +108,17 @@ not a full copy of the parent):
 ```json
 {
   "elements": {
-    "name":   { "min": 1 },
-    "type":   { "binding": { "strength": "required", "valueSetUrl": "..." } },
+    "name": { "min": 1 },
+    "type": { "binding": { "strength": "required", "valueSetUrl": "..." } },
     "active": { "fixed": true }
   },
   "invariants": [
-    { "key": "org-clinic-1", "severity": "error",
+    {
+      "key": "org-clinic-1",
+      "severity": "error",
       "expression": "telecom.where(system='phone').exists()",
-      "description": "Clinics must record at least one phone contact." }
+      "description": "Clinics must record at least one phone contact."
+    }
   ]
 }
 ```
@@ -152,7 +155,7 @@ chain = [base_profile, country_profile, org_profile]  -- apply in order, each la
 ```
 
 Merge left-to-right into one effective constraint set, and **reject the merge outright** (not
-just at validation time, but at the moment a profile is *saved*) if any layer tries to widen
+just at validation time, but at the moment a profile is _saved_) if any layer tries to widen
 what its parent already constrained — this is the mechanical guard from §1.
 
 ---
@@ -184,7 +187,7 @@ another source of 422s, not a parallel error system.
 
 **This also resolves the org-1 question left open on Organization.** Once this pipeline
 exists, `org-1` ("name or identifier required") is simply the base profile's own invariant —
-evaluated the same way as every other layer's invariants, at create *and* patch (since the
+evaluated the same way as every other layer's invariants, at create _and_ patch (since the
 pipeline runs on every write, not just create). No bespoke Pydantic validator needed; it falls
 out of building this generically.
 
@@ -202,7 +205,7 @@ that's supposed to be the trustworthy validation layer.
 You're right that this is resource-level, and the spec backs that framing directly: an
 `Extension.url` is a globally unique absolute URI naming a separate `StructureDefinition` (of
 type `Extension`) that defines the extension's own cardinality, value type, and binding —
-*"An extension SHALL have either a value... or sub-extensions, but not both."* Practically,
+_"An extension SHALL have either a value... or sub-extensions, but not both."_ Practically,
 that means **an extension is just another profile artifact**, reusing the exact same
 `fhir_profile` storage from §3 with `resource_type = "Extension"`:
 
@@ -227,9 +230,9 @@ fhir_profile (resource_type="Extension")
   resource type. An unregistered `url` should be rejected (422), not silently accepted — this
   is what "100% FHIR standard, nothing extra, nothing untracked" actually means in practice
   for a field designed to carry arbitrary data.
-- **`modifierExtension` needs a stricter rule than `extension`, per spec**: *"If it is not
+- **`modifierExtension` needs a stricter rule than `extension`, per spec**: _"If it is not
   safe for an application processing the content of the resource to ignore the extension it
-  SHALL be represented using modifierExtension."* If/when you support it, any unrecognized
+  SHALL be represented using modifierExtension."_ If/when you support it, any unrecognized
   `modifierExtension` must hard-fail closed with no exceptions — that's a spec safety rule,
   not a house style choice.
 - **Mapper layer**: `to_fhir_*` emits the JSONB array as `resource["extension"]` directly
@@ -256,7 +259,7 @@ organization layer, evaluated by the same pipeline step as `org-1`. No separate 
 practitioner must already have an active PractitionerRole at this Location," "reject if this
 is the patient's 3rd no-show this month"). FHIRPath over a single resource instance can't
 express these — they need their own explicitly-scoped mechanism, evaluated as pipeline step 5
-in §4, *after* structural/invariant validation passes.
+in §4, _after_ structural/invariant validation passes.
 
 **Strong recommendation for Tier 2: do not let organizations upload arbitrary executable
 code.** This is a multi-tenant system — a hospital's "custom business rule" running as
@@ -278,8 +281,8 @@ decided deliberately rather than inherited from whatever's fastest to prototype.
 remaining Postgres `Enum` columns split into two categories that need different answers.**
 
 **Category A — required-binding, spec-fixed value sets. Keep these as Postgres `Enum`.**
-FHIR's `required` binding strength means *no profile, at any layer, can ever add a code
-outside that value set* — narrowing-only cuts both ways here: a required binding can be
+FHIR's `required` binding strength means _no profile, at any layer, can ever add a code
+outside that value set_ — narrowing-only cuts both ways here: a required binding can be
 narrowed further but never swapped or widened. `PatientGender`
 (`app/models/patient/enums.py`), `IdentifierUse`, `AppointmentStatus` — these are permanently
 closed by the base spec itself, for every country and every organization, forever. A Postgres
@@ -301,7 +304,7 @@ profile-validated, resource by resource.
 enums** (`OrganizationReferenceType`, `PatientLinkOtherType`, etc.). These have nothing to do
 with terminology bindings or profiles — they're the structural type-tag half of the
 flattened-reference pattern (`CLAUDE.md`'s "Two reference conventions" section), and exist
-because a polymorphic `Reference` field's target type has to be stored *somehow* without a
+because a polymorphic `Reference` field's target type has to be stored _somehow_ without a
 real FK. Don't conflate "stop enforcing terminology enums in the DB" with "remove the
 reference-type enums" — they're solving an unrelated problem and should stay exactly as they
 are.
@@ -342,3 +345,36 @@ than needing the whole thing before anything works:
 - Whether unknown `extension` URLs are hard-rejected or merely flagged — this report
   recommends hard-reject for consistency with "100% strict FHIR," but it's your call on how
   strict the write path should be during a migration/onboarding period.
+
+---
+
+# Reference Conversation (NVM)
+
+Short answer: yes, this is the right approach — and it's not just "a valid approach," it's literally how real FHIR validators (HL7's own reference validator, HAPI FHIR's validation module) are architected. You've independently arrived at the standard design. Let me confirm the details and be honest about the scope.
+
+StructureDefinition is indeed the one resource for all of this. There is no separate FHIR resource for "business rules" or "custom validation logic" — profiles, extensions, and constraints/invariants all live in the same place:
+
+- Profiling (narrowing an existing resource): a StructureDefinition with derivation: "constraint" and baseDefinition pointing at its parent, redeclaring elements in its differential to tighten cardinality (e.g. Organization.name 0..1 → 1..1), fix/pattern a value, add slicing, or flag mustSupport.
+- Extensions: also a StructureDefinition, just with type: "Extension" and a context[] saying where it's allowed to attach.
+- Business rules / invariants: ElementDefinition.constraint[] — the exact mechanism behind org-1/2/3 we already found.
+
+One StructureDefinition, three jobs. There's no alternate resource doing any of this in parallel — the supporting cast (ValueSet/CodeSystem for terminology a binding points at, ImplementationGuide for packaging a set of these together for publication, CapabilityStatement for a server declaring which profiles it claims to support) all exist around StructureDefinition, none of them carry rule logic themselves.
+
+So "one engine, fed different StructureDefinitions, chained by baseDefinition" is exactly right conceptually — base R4, country profile, org profile become three documents walked by the same code, not three code paths. That's precisely the HL7/HAPI model.
+
+Where I want to be straight with you: a complete engine is a much bigger undertaking than anything built so far this session. A full profile-validation engine needs, at minimum:
+
+- Snapshot generation — merging a profile's differential against its base's full snapshot recursively up the baseDefinition chain (the differential only lists changed elements; you need the merged, fully-resolved element list to validate against)
+- Slicing — arrays split into named sub-constraints with discriminators (e.g. "this list must contain exactly one identifier sliced by system = 'npi'")
+- Binding validation — codes checked against an actual ValueSet, which itself may need expansion (potentially contacting a terminology server)
+- Extension validation — resolving a referenced extension's own StructureDefinition and recursing into it
+- Invariant execution — the FHIRPath piece we already discussed
+
+Each of those is its own non-trivial subsystem. The real HL7 Java validator is a mature, decade-refined codebase specifically because of this surface area — it's not a weekend build, and there isn't a mature "do all of this" Python library to lean on (that's a known gap in the Python FHIR ecosystem, part of why fhir.resources only goes as far as Pydantic-model-level structure).
+
+Given that, there are really two honest paths, and I don't think I should pick for you without flagging both:
+
+1. Build a deliberately scoped-down version of this engine — not the full spec surface, just the subset your actual profiles need: cardinality tightening, fixed values, constraint-invariant evaluation (bounded FHIRPath subset), maybe simple required-binding checks. This matches how the base layer was built (checked empirically against what the data actually requires, not against the full spec surface) and is realistic to grow incrementally, resource by resource. No slicing, no terminology-server integration, until something genuinely needs it.
+2. Delegate to HL7's own reference validator (the validator_cli.jar, or a REST sidecar wrapping it — this pattern is common enough that an official fhir-validator-wrapper HTTP service exists specifically so non-Java apps can call it) and point it at your own authored StructureDefinitions for the country/org layers. You get full spec-complete validation for free, maintained by HL7, at the cost of introducing a JVM dependency/sidecar into what's currently a pure-Python stack — a bigger architectural commitment than a pip package, worth deciding deliberately rather than backing into.
+
+You mentioned you want to go study ElementDefinition field-by-field first — that's exactly the right move before committing to either path, since it'll tell you concretely which of those subsystems (slicing? bindings? just invariants + cardinality?) your real country/org profiles actually need, which is what should drive the scope decision rather than trying to cover the whole spec upfront.

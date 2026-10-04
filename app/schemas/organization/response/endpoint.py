@@ -9,6 +9,10 @@ class PlainOrganizationEndpoint(_AuditFields):
         None,
         description="The raw literal reference string as received — Endpoint is never a locally resolvable resource in this system, so this is typically the only populated half of the reference.",
     )
+    reference: str | None = Field(
+        None,
+        description="Resolved FHIR reference, e.g. 'Endpoint/1' — populated only when reference_reference resolves to a local row (Endpoint is not modeled in this system today, so this is typically null).",
+    )
     reference_type: str | None = Field(
         None, description="Resolved reference target type (always 'Endpoint')."
     )

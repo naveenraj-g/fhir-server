@@ -466,9 +466,7 @@ class _FullMixin:
                     )
                     await session.execute(
                         delete(OrganizationContactPurposeCoding).where(
-                            OrganizationContactPurposeCoding.contact_id.in_(
-                                contact_ids
-                            )
+                            OrganizationContactPurposeCoding.contact_id.in_(contact_ids)
                         )
                     )
                 await session.execute(
