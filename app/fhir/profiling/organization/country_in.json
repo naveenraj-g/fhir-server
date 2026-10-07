@@ -1,0 +1,122 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "in-organization",
+  "url": "https://fhir-server.dev/fhir/StructureDefinition/in-organization",
+  "name": "INOrganization",
+  "title": "India Organization Profile",
+  "status": "draft",
+  "description": "Country-layer profile for Organization under Indian jurisdiction. Authored by this project, NOT an official NRCES/ABDM-published profile — the identifier-system URIs below are project-chosen placeholders; swap in the real NRCES canonical URLs if/when integrating with India's official ABDM FHIR Implementation Guide. Requires a GSTIN and a PAN tax-registration identifier on every Organization, each format-checked, plus an optional Health Facility Registry (HFR) identifier (Ayushman Bharat Digital Mission) for healthcare-facility Organizations specifically. Each of the three requires `use` to be populated, restricted to 'official' or 'temp' — these are registry identifiers, not the kind of thing 'usual'/'secondary'/'old' naturally describes, but a temporary/provisional registration is a real, legitimate case.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "Organization",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Organization",
+  "derivation": "constraint",
+  "_comment_element_order": "IMPORTANT, empirically verified: within each slice, every OTHER child sub-element (e.g. .use) must be listed BEFORE the discriminator's own target sub-element (.system here, since slicing.discriminator.path='system') in this array. Confirmed by direct testing against this validator version (org.hl7.fhir.validation 6.5.18): with .system listed first and .use second, the discriminator failed to resolve for every slice ('Could not match discriminator (system) ... does not have fixed value, binding or existence assertions'); swapping to .use first, .system second fixed it immediately, for all three slices. This looks like a real quirk/bug in this validator version's discriminator-resolution logic, not documented spec behavior — not something to rely on if the validator is ever upgraded, but required for it to work correctly today. This key is not a real StructureDefinition field — it's a note for whoever edits this file next, since getting element order wrong here fails silently at /profiles registration (200 OK) and only surfaces as a confusing error at /validate time.",
+  "differential": {
+    "element": [
+      {
+        "id": "Organization.identifier",
+        "path": "Organization.identifier",
+        "slicing": {
+          "discriminator": [
+            { "type": "value", "path": "system" }
+          ],
+          "rules": "open",
+          "description": "Slices Organization.identifier by system to separately track India-specific registry identifiers (GSTIN, PAN, HFR ID) alongside any other identifiers an organization may carry — 'open' so unrelated identifiers (DUNS, internal references, etc.) are still allowed."
+        }
+      },
+      {
+        "id": "Organization.identifier:gstin",
+        "path": "Organization.identifier",
+        "sliceName": "gstin",
+        "short": "GST Identification Number",
+        "min": 1,
+        "max": "1",
+        "constraint": [
+          {
+            "key": "in-org-1",
+            "severity": "error",
+            "human": "GSTIN value must match the standard 15-character GSTIN format (2-digit state code + 10-character PAN + entity code + check digit + checksum).",
+            "expression": "value.matches('^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Za-z]{1}Z[0-9A-Za-z]{1}$')"
+          },
+          {
+            "key": "in-org-3",
+            "severity": "error",
+            "human": "GSTIN identifier's use must be 'official' or 'temp'.",
+            "expression": "use = 'official' or use = 'temp'"
+          }
+        ]
+      },
+      {
+        "id": "Organization.identifier:gstin.use",
+        "path": "Organization.identifier.use",
+        "min": 1
+      },
+      {
+        "id": "Organization.identifier:gstin.system",
+        "path": "Organization.identifier.system",
+        "fixedUri": "https://fhir-server.dev/fhir/identifier-system/gstin"
+      },
+      {
+        "id": "Organization.identifier:pan",
+        "path": "Organization.identifier",
+        "sliceName": "pan",
+        "short": "Permanent Account Number",
+        "min": 1,
+        "max": "1",
+        "constraint": [
+          {
+            "key": "in-org-2",
+            "severity": "error",
+            "human": "PAN value must match the standard 10-character PAN format (5 letters + 4 digits + 1 letter).",
+            "expression": "value.matches('^[A-Z]{5}[0-9]{4}[A-Z]{1}$')"
+          },
+          {
+            "key": "in-org-4",
+            "severity": "error",
+            "human": "PAN identifier's use must be 'official' or 'temp'.",
+            "expression": "use = 'official' or use = 'temp'"
+          }
+        ]
+      },
+      {
+        "id": "Organization.identifier:pan.use",
+        "path": "Organization.identifier.use",
+        "min": 1
+      },
+      {
+        "id": "Organization.identifier:pan.system",
+        "path": "Organization.identifier.system",
+        "fixedUri": "https://fhir-server.dev/fhir/identifier-system/pan"
+      },
+      {
+        "id": "Organization.identifier:hfr-id",
+        "path": "Organization.identifier",
+        "sliceName": "hfr-id",
+        "short": "ABDM Health Facility Registry ID",
+        "min": 0,
+        "max": "1",
+        "comment": "0..1 at this generic country layer since not every Organization using this profile is itself a healthcare facility. A tenant-layer (organization-scope) profile for an actual hospital/clinic/lab/pharmacy would tighten this to 1..1 — narrowing an already-allowed 0..1 down to 1..1 is a legal profile-of-a-profile per the narrowing rule (see docs/structure-definitions/05-cardinality-and-multiplicity.md).",
+        "constraint": [
+          {
+            "key": "in-org-5",
+            "severity": "error",
+            "human": "HFR ID identifier's use must be 'official' or 'temp'.",
+            "expression": "use = 'official' or use = 'temp'"
+          }
+        ]
+      },
+      {
+        "id": "Organization.identifier:hfr-id.use",
+        "path": "Organization.identifier.use",
+        "min": 1
+      },
+      {
+        "id": "Organization.identifier:hfr-id.system",
+        "path": "Organization.identifier.system",
+        "fixedUri": "https://fhir-server.dev/fhir/identifier-system/hfr-id"
+      }
+    ]
+  }
+}

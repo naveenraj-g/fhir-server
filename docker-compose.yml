@@ -59,6 +59,22 @@ services:
     networks:
       - bezs-net
 
+  # Stopgap FHIR StructureDefinition/profile validator (HL7's Java validator,
+  # wrapped in a REST API) — see docker/fhir-validator/README.md and
+  # docs/structure-definitions/12-three-layer-validation-architecture.md.
+  fhir-validator:
+    build: ./docker/fhir-validator
+    container_name: fhir-validator
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4567/version"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    networks:
+      - bezs-net
+
 volumes:
   postgres_data:
   redis_data:

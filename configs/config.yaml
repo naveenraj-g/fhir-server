@@ -100,6 +100,33 @@ pagination:
   default_limit: 50
   max_limit: 200
 
+fhir_validation:
+  # native | java_validator — see app/core/config.py's FhirValidationConfig
+  # and docs/structure-definitions/12-three-layer-validation-architecture.md.
+  # "native" is this project's own fhir.schema.json structural check
+  # (no invariants). "java_validator" delegates to the HL7 Java validator
+  # sidecar (docker/fhir-validator/) instead, which also enforces real
+  # invariants (org-1/org-2/org-3) — opt in once that container is running.
+  backend: java_validator
+  # Global, deploy-time choice of which country-layer profile to apply on
+  # top of base R4 — e.g. "IN". null/omitted means base R4 only. One
+  # deployment serves one country (same model as a single-hospital rollout
+  # or a single-country SaaS deployment) — not resolved per-request/tenant;
+  # see app/fhir/validation/dispatch.py's module docstring for why. Only
+  # takes effect for a resource_type that has an
+  # app/fhir/profiling/<resource_type>/country_<code>.json file — falls
+  # back to base R4 for any resource_type that doesn't yet (today, only
+  # Organization has one).
+  country: IN
+  java_validator:
+    # Host-mapped port from docker-compose.dev.yml (API runs on the host,
+    # validator runs in Docker). Override via
+    # FHIR_VALIDATION__JAVA_VALIDATOR__BASE_URL=http://fhir-validator:4567
+    # for the fully-containerized stacks, where it's reachable by service
+    # name on the shared network instead.
+    base_url: http://localhost:4567
+    timeout_seconds: 30
+
 routes:
   # Which FHIR resource routers get mounted under /api/fhir/v1 at startup —
   # see CLAUDE.md's "Enabling/Disabling Resources" section. Not listed = not

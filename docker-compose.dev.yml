@@ -50,6 +50,22 @@ services:
       start_period: 5s
       retries: 5
 
+  # Stopgap FHIR StructureDefinition/profile validator (HL7's Java validator,
+  # wrapped in a REST API) — see docker/fhir-validator/README.md and
+  # docs/structure-definitions/12-three-layer-validation-architecture.md.
+  # Not called by the app yet; this just makes it available to develop against.
+  fhir-validator:
+    build: ./docker/fhir-validator
+    container_name: fhir-validator-dev
+    ports:
+      - "${FHIR_VALIDATOR_PORT:-4567}:4567"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4567/version"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
 volumes:
   postgres_dev_data:
   redis_dev_data:

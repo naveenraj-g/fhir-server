@@ -13,6 +13,58 @@ own GraphQL gateway and the MCP tool surface built on top of the OpenAPI spec.
 | `isModifierReason` | `0..1` | `string` | Required alongside `isModifier: true` — explains *why* this element is a modifier, for anyone trying to understand the resource's semantics. |
 | `isSummary` | `0..1` | `boolean` | Marks that this element should be included when a server returns a resource with `_summary=true` (a FHIR search parameter requesting an abbreviated representation). Purely a response-shaping concern. |
 
+## Worked example: the three flags on real `ElementDefinition` entries
+
+**`mustSupport`** — a country profile flagging `Organization.telecom` as something every
+conformant system must actually handle, without making it structurally required:
+
+```json
+{
+  "path": "Organization.telecom",
+  "mustSupport": true
+}
+```
+
+This changes nothing about whether an instance with no `telecom` at all is valid (it still is —
+`min` is untouched). What it changes is this: if an instance *does* submit a `telecom` entry, a
+system claiming to support this profile is not allowed to silently drop it. A system that
+accepted a payload with `telecom` populated but returned it as `null` on the next `GET` would be
+violating this flag — even though no JSON Schema check or cardinality check would ever catch that
+violation, since both the write and the (broken) read are individually "valid shape."
+
+**`isModifier` + `isModifierReason`** — this is the flag that makes `modifierExtension` behave
+the way [`09-extensions.md`](09-extensions.md)'s worked example described. `Resource` itself (the
+most abstract root type) carries no `extension`/`modifierExtension` at all — they're introduced
+one level down, on `DomainResource` (what every actual resource, including `Organization`,
+derives from). Verified directly against the real file:
+
+```json
+{
+  "path": "DomainResource.modifierExtension",
+  "isModifier": true,
+  "isModifierReason": "Modifier extensions are expected to modify the meaning or interpretation of the resource that contains them"
+}
+```
+
+Contrast with plain `extension`'s own `ElementDefinition` on the same base type, which explicitly
+sets `isModifier: false`:
+
+```json
+{
+  "path": "DomainResource.extension",
+  "isModifier": false
+}
+```
+
+This one flag — `true` on one path, explicitly `false` on the other — is the entire formal
+distinction between "safe to ignore if unrecognized" and "must not be silently ignored." Nothing
+else in the two elements' definitions differs.
+
+**`isSummary`** — e.g. `Organization.name`'s own `ElementDefinition` in the base spec carries
+`isSummary: true`, meaning a `GET /Organization/190001?_summary=true` request (not currently
+implemented by this project, per the closing section below) would be expected to include `name`
+in its trimmed-down response even though most other fields are omitted.
+
 ## Why `mustSupport` matters for this project specifically
 
 `mustSupport` is the field a country or organization profile would use to say "yes, the base

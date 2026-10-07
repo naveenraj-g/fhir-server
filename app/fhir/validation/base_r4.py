@@ -16,9 +16,28 @@ from pathlib import Path
 
 from jsonschema import Draft6Validator
 
+from app.errors.fhir_codes import IssueType
+
 _SCHEMA_PATH = Path(__file__).resolve().parent.parent / "spec" / "fhir.schema.json"
 _FHIR_SCHEMA = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
 _DEFINITIONS = _FHIR_SCHEMA["definitions"]
+
+# jsonschema's own `ValidationError.validator` keyword -> the nearest real
+# HL7 IssueType. Not exhaustive (jsonschema has more keywords than FHIR has
+# matching issue types) — unmapped keywords fall back to IssueType.INVALID
+# (the parent code) in validate_base_r4() below, which is always a legal
+# choice, just less specific.
+_JSONSCHEMA_KEYWORD_TO_ISSUE_TYPE = {
+    "required": IssueType.REQUIRED,
+    "type": IssueType.VALUE,
+    "pattern": IssueType.VALUE,
+    "format": IssueType.VALUE,
+    "minLength": IssueType.VALUE,
+    "maxLength": IssueType.VALUE,
+    "enum": IssueType.CODE_INVALID,
+    "const": IssueType.VALUE,
+    "additionalProperties": IssueType.STRUCTURE,
+}
 
 _validators: dict[str, Draft6Validator] = {}
 
@@ -49,11 +68,20 @@ def validate_base_r4(resource_type: str, fhir_resource: dict) -> list[dict]:
     """Validates `fhir_resource` (a true FHIR JSON dict — e.g. a payload
     mapper's output, not the DB-shaped input schema) against HL7's base R4
     JSON Schema for `resource_type`. Returns a list of
-    `{"field": str, "message": str}` dicts, sorted by path, empty when
-    valid."""
+    `{"field": str, "message": str, "issue_type": IssueType}` dicts, sorted
+    by path, empty when valid — `issue_type` is a best-effort mapping from
+    jsonschema's own failure keyword (see _JSONSCHEMA_KEYWORD_TO_ISSUE_TYPE
+    above), falling back to the generic IssueType.INVALID when a keyword
+    has no closer match."""
     validator = _validator_for(resource_type)
     errors = [
-        {"field": ".".join(str(p) for p in err.absolute_path) or "(root)", "message": err.message}
+        {
+            "field": ".".join(str(p) for p in err.absolute_path) or "(root)",
+            "message": err.message,
+            "issue_type": _JSONSCHEMA_KEYWORD_TO_ISSUE_TYPE.get(
+                err.validator, IssueType.INVALID
+            ),
+        }
         for err in sorted(
             validator.iter_errors(fhir_resource), key=lambda e: list(e.absolute_path)
         )

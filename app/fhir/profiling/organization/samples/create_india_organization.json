@@ -1,0 +1,56 @@
+{
+  "active": true,
+  "name": "Riverside Multispecialty Hospital",
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+      "value": "27AAACR5055K1Z8"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/pan",
+      "value": "AAACR5055K"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/hfr-id",
+      "value": "IN2024HF00123456"
+    }
+  ],
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov",
+          "display": "Healthcare Provider"
+        }
+      ],
+      "text": "Hospital"
+    }
+  ],
+  "telecom": [
+    { "system": "phone", "value": "+91-22-61234567", "use": "work" },
+    { "system": "email", "value": "contact@riversidehospital.in", "use": "work" }
+  ],
+  "address": [
+    {
+      "use": "work",
+      "type": "both",
+      "line": ["Plot 45, Sector 12"],
+      "city": "Navi Mumbai",
+      "state": "Maharashtra",
+      "postal_code": "400614",
+      "country": "IN"
+    }
+  ],
+  "contact": [
+    {
+      "purpose_text": "Billing",
+      "name_family": "Sharma",
+      "name_given": ["Priya"],
+      "telecom": [{ "system": "phone", "value": "+91-22-61234599" }]
+    }
+  ]
+}

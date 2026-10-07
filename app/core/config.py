@@ -110,6 +110,53 @@ class RoutesConfig(BaseModel):
     enabled: list[str] = Field(default_factory=list)
 
 
+class JavaValidatorConfig(BaseModel):
+    """Connection details for the stopgap HL7 Java FHIR validator sidecar
+    (docker/fhir-validator/) — see
+    docs/structure-definitions/12-three-layer-validation-architecture.md.
+    base_url defaults to the host-mapped port docker-compose.dev.yml exposes
+    (the API runs on the host, the validator runs in Docker); override via
+    FHIR_VALIDATION__JAVA_VALIDATOR__BASE_URL for docker-compose.yml/
+    docker-compose.prod.yml, where it's reachable by service name
+    ("http://fhir-validator:4567") instead."""
+
+    base_url: str = "http://localhost:4567"
+    timeout_seconds: float = 30.0
+
+
+class FhirValidationConfig(BaseModel):
+    """Selects which engine validates a resource against base R4 (and, once
+    built, country/organization profiles) — see
+    docs/structure-definitions/12-three-layer-validation-architecture.md.
+
+    "native": this project's own fhir.schema.json + jsonschema structural
+    check (app/fhir/validation/base_r4.py) — fast, in-process, but
+    structural-only (no invariants, so org-1/org-2/org-3 aren't enforced).
+    This is the default so existing behavior/tests don't change underneath
+    anyone.
+
+    "java_validator": delegates to the HL7 Java validator sidecar instead —
+    slower (a network call per validation), but checks real invariants too.
+    Swapping is this one field; no caller of app.fhir.validation needs to
+    know which backend is active."""
+
+    # Which country-layer profile to apply, on top of base R4 — e.g. "IN".
+    # null/omitted means base R4 only, same as before country profiles
+    # existed. A single, global, deploy-time choice (see dispatch.py's
+    # module docstring for why this is deliberately NOT resolved per-request
+    # or per-tenant): one deployment serves one country, same as a specific
+    # hospital's instance or a single-country SaaS rollout would — swapping
+    # country is one config edit + redeploy, not a runtime lookup. Only
+    # consulted when backend is "java_validator"; "native" has no concept of
+    # profiles at all. Only takes effect for a resource_type that actually
+    # has an `app/fhir/profiling/<resource_type>/country_<code>.json` file —
+    # falls back to base R4 for any resource_type that doesn't yet.
+    country: str | None = None
+
+    backend: Literal["native", "java_validator"] = "native"
+    java_validator: JavaValidatorConfig = Field(default_factory=JavaValidatorConfig)
+
+
 class LogConfig(BaseModel):
     """Observability config — consumed by app.core.logging.setup_logging(),
     app.middleware.access_log, and app.core.database's query listeners.
@@ -183,6 +230,7 @@ class Settings(BaseSettings):
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     pagination: PaginationConfig = Field(default_factory=PaginationConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
+    fhir_validation: FhirValidationConfig = Field(default_factory=FhirValidationConfig)
     logging: LogConfig = Field(default_factory=LogConfig)
 
     model_config = SettingsConfigDict(

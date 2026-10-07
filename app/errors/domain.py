@@ -1,4 +1,5 @@
 from app.errors.base import ApplicationError
+from app.errors.fhir_codes import IssueType
 
 
 class BusinessRuleViolationError(ApplicationError):
@@ -8,6 +9,7 @@ class BusinessRuleViolationError(ApplicationError):
             message=message,
             status_code=422,
             code="BUSINESS_RULE_VIOLATION",
+            issue_type=IssueType.BUSINESS_RULE,
             metadata=metadata,
         )
 
@@ -19,6 +21,7 @@ class ResourceConflictError(ApplicationError):
             message=message,
             status_code=409,
             code="RESOURCE_CONFLICT",
+            issue_type=IssueType.CONFLICT,
         )
 
 
@@ -33,4 +36,5 @@ class NotFoundError(ApplicationError):
             message=message,
             status_code=404,
             code="NOT_FOUND",
+            issue_type=IssueType.NOT_FOUND,
         )

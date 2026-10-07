@@ -1,4 +1,5 @@
 from app.errors.base import ApplicationError
+from app.errors.fhir_codes import IssueType
 
 
 class InfrastructureError(ApplicationError):
@@ -8,6 +9,7 @@ class InfrastructureError(ApplicationError):
             message=message,
             status_code=500,
             code="INFRASTRUCTURE_ERROR",
+            issue_type=IssueType.EXCEPTION,
             cause=cause,
             is_operational=False,
         )
@@ -20,6 +22,10 @@ class DatabaseError(ApplicationError):
             message=message,
             status_code=500,
             code="DATABASE_ERROR",
+            # "The persistent store is unavailable" is a more specific,
+            # correct description of this class's actual meaning than the
+            # generic "exception" default.
+            issue_type=IssueType.NO_STORE,
             cause=cause,
             is_operational=False,
         )

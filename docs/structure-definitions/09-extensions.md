@@ -62,6 +62,71 @@ This maps directly to `ElementDefinition.isModifier` (covered in
 different validation rule from plain `extension` if/when this project ever supports it — not
 built yet.
 
+## Worked example: a simple extension, a complex extension, and a modifier extension
+
+**Simple extension** (one scalar value via `value[x]`) — a preferred-pharmacy reference on an
+Organization:
+
+```json
+{
+  "resourceType": "Organization",
+  "name": "Riverside Clinic",
+  "extension": [
+    {
+      "url": "https://clinic-x.dev/fhir/StructureDefinition/preferred-pharmacy",
+      "valueReference": { "reference": "Organization/190042" }
+    }
+  ]
+}
+```
+
+One `url` (identifying which extension this is), one `value[x]` key (`valueReference`, since
+this extension's own `StructureDefinition` says its value type is `Reference`) — no nested
+`extension[]`, confirming the "`value[x]` or nested extensions, never both" rule from above.
+
+**Complex extension** (multiple named sub-fields, no single `value[x]`) — recording a billing
+contact as two related pieces of data (a name and a phone number) under one extension, instead
+of two unrelated top-level extensions:
+
+```json
+{
+  "url": "https://clinic-x.dev/fhir/StructureDefinition/billing-contact",
+  "extension": [
+    { "url": "contactName", "valueString": "Priya Shah" },
+    { "url": "contactPhone", "valueString": "+1-555-0100" }
+  ]
+}
+```
+
+The outer extension has **no `value[x]` at all** — only nested `extension[]` entries, each a
+simple extension in its own right, with a short local `url` (`"contactName"`, not a full
+canonical URI) since it's only meaningful scoped inside the parent.
+
+**Modifier extension** — the same shape as a simple extension, but placed in
+`modifierExtension` instead of `extension` because, per the safety rule above, ignoring it would
+be unsafe (see [`use-cases/13-modifier-extensions.md`](use-cases/13-modifier-extensions.md) for
+the full scenario this is drawn from):
+
+```json
+{
+  "resourceType": "Organization",
+  "active": true,
+  "modifierExtension": [
+    {
+      "url": "https://clinic-x.dev/fhir/StructureDefinition/regulatory-hold",
+      "valueBoolean": true
+    }
+  ]
+}
+```
+
+A system that doesn't recognize `regulatory-hold` and reads only `extension` (ignoring
+`modifierExtension` entirely) would see an Organization that looks perfectly normal — `active:
+true`, nothing else — and would be wrong to treat it that way. That's precisely why this
+content is required to be in `modifierExtension`: it forces a correctly-implemented consumer to
+either understand it or refuse to treat the resource as fully understood, rather than silently
+missing it.
+
 ## How this maps to what's already built
 
 - **Storage**: `OrganizationModel.extension` (`app/models/organization/core.py`) is a

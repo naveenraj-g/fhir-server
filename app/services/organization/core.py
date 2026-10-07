@@ -9,7 +9,7 @@ from app.fhir.mappers.organization import (
     to_fhir_organization,
     to_plain_organization,
 )
-from app.fhir.validation import validate_base_r4
+from app.fhir.validation import validate_resource
 from app.models.organization import OrganizationModel
 from app.repository.organization import OrganizationRepository
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
@@ -118,7 +118,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Organization creation requires an org-scoped token"
             )
-        self._validate_base_r4(payload_to_fhir_organization(payload))
+        await self._validate_base_r4(payload_to_fhir_organization(payload))
         org = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Organization created",
@@ -157,7 +157,7 @@ class _CoreMixin:
 
         fragment, touched = patch_fragment_to_fhir_organization(payload)
         merged = merge_patch_fragment(to_fhir_organization(existing), fragment, touched)
-        self._validate_base_r4(merged)
+        await self._validate_base_r4(merged)
 
         updated = await self.repository.patch_full(organization_id, payload, updated_by)
         if not updated:
@@ -195,15 +195,18 @@ class _CoreMixin:
     # ── Validation helpers ────────────────────────────────────────────────
 
     @staticmethod
-    def _validate_base_r4(fhir_resource: dict) -> None:
-        """Raises FhirValidationError (422) if `fhir_resource` fails HL7's
-        base R4 structural schema — the first link in the base -> country ->
-        organization profile chain (see
+    async def _validate_base_r4(fhir_resource: dict) -> None:
+        """Raises FhirValidationError (422) if `fhir_resource` fails base R4
+        validation — the first link in the base -> country -> organization
+        profile chain (see
         docs/architecture/fhir-profiling-and-extensibility-strategy.md).
-        Structural only (required elements, cardinality, primitive formats,
-        required-binding enums); invariants are a separate, not-yet-built
-        layer."""
-        errors = validate_base_r4("Organization", fhir_resource)
+        Delegates to validate_resource(), which picks the actual backend
+        (this project's own structural-only check, or the HL7 Java validator
+        sidecar — which also enforces real invariants) per
+        settings.fhir_validation.backend — see
+        docs/structure-definitions/12-three-layer-validation-architecture.md.
+        Neither backend yet applies country/organization layers."""
+        errors = await validate_resource("Organization", fhir_resource)
         if errors:
             logger.warning(
                 "Organization failed base R4 validation",

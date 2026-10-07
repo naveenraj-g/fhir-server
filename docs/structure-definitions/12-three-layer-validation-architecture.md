@@ -93,6 +93,39 @@ Conceptually (precise pipeline steps are `docs/architecture/fhir-profiling-and-e
 
 Step 3, for the base layer specifically, is the only one that currently exists in running code.
 
+### Worked example
+
+One payload, checked against all five steps (condensed from the full trace in
+[`use-cases/16-end-to-end-three-layer-trace.md`](use-cases/16-end-to-end-three-layer-trace.md) —
+see that file for every intermediate FHIRPath evaluation spelled out):
+
+```json
+{
+  "active": true,
+  "name": "Riverside Clinic",
+  "type": [{ "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/organization-type", "code": "prov" }] }],
+  "identifier": [{ "system": "https://example.gov/registry-id", "value": "RC-4471" }],
+  "telecom": [{ "system": "email", "value": "contact@riverside.example" }]
+}
+```
+
+Against a hypothetical chain of `[base R4, a country profile requiring a registry identifier, an
+org profile requiring a phone number for providers]`:
+
+| Step | Check | Result |
+|---|---|---|
+| 1–2 | Resolve + merge the chain | three layers combined into one effective rule set |
+| 3 | Structure (`fhir.schema.json`) | **pass** — well-formed |
+| 4 | Base invariants `org-1`/`org-2`/`org-3` | **pass** — has a name, no home-use address/telecom |
+| 4 | Country invariant (registry identifier required) | **pass** — `identifier[0].system` matches |
+| 4 | Org invariant (phone required for providers) | **fail** — `type` includes `prov`, but the only `telecom` entry is `email`, not `phone` |
+| 5 | Reject | 422, `OperationOutcome` citing the org-layer rule specifically |
+
+This is the concrete illustration of "layers are additive, never substitutive" from the
+pipeline above: the payload is valid base R4 *and* valid under the country profile — it's
+rejected solely because of the organization's own additional rule, which still has to be
+checked even though every layer below it already passed.
+
 ## What's genuinely still an open decision
 
 Two things this documentation folder deliberately didn't resolve, because they're build
