@@ -136,6 +136,19 @@ fhir_validation:
     base_url: http://localhost:4567
     timeout_seconds: 30
 
+terminology:
+  # embedded | remote — see app/core/config.py's TerminologyConfig and
+  # app/terminology/dispatch.py. "embedded" (the default) runs
+  # TerminologyService in-process against this app's own Postgres.
+  # "remote" forwards every call to a standalone terminology deployment's
+  # own /api/v1/terminology routes instead — flip this the day terminology
+  # is actually extracted into its own service; no code changes needed at
+  # any call site.
+  backend: embedded
+  remote:
+    base_url: http://localhost:8000
+    timeout_seconds: 30
+
 routes:
   # Which FHIR resource routers get mounted under /api/fhir/v1 at startup —
   # see CLAUDE.md's "Enabling/Disabling Resources" section. Not listed = not

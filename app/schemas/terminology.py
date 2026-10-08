@@ -204,3 +204,36 @@ class AuditLogListResponse(BaseModel):
     limit: int
     offset: int
     data: list[AuditLogRecord]
+
+
+class CreateDisplayOverrideRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: str
+    code: str
+    display: str
+    definition: str | None = None
+
+
+class PatchDisplayOverrideRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    display: str | None = None
+    definition: str | None = None
+
+
+class DisplayOverrideResponse(BaseModel):
+    id: int
+    code: str
+    system: str
+    system_name: str
+    display: str
+    definition: str | None = None
+    org_id: str | None = None
+    user_id: str | None = None
+    created_at: datetime | None = None
+
+
+class DisplayOverrideListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    data: list[DisplayOverrideResponse]

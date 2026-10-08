@@ -2,7 +2,7 @@ from dependency_injector.wiring import inject, Provide
 from fastapi import Depends
 
 from app.di.container import Container
-from app.services.fhir_profile_service import FhirProfileService
+from app.services.fhir_profile import FhirProfileService
 
 
 @inject

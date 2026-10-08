@@ -2,8 +2,8 @@ from dependency_injector import containers, providers
 
 from app.core.cache.factory import get_cache_backend
 from app.core.config import settings
-from app.repository.fhir_profile_repository import FhirProfileRepository
-from app.services.fhir_profile_service import FhirProfileService
+from app.repository.fhir_profile import FhirProfileRepository
+from app.services.fhir_profile import FhirProfileService
 
 
 class FhirProfileContainer(containers.DeclarativeContainer):

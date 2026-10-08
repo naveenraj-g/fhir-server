@@ -271,7 +271,7 @@ def _register_sqlite_math(dbapi_conn, _connection_record) -> None:
 
 
 # ── fhir_profile seed (so validation tests exercise the real DB+cache path) ────
-# FhirProfileService (app/services/fhir_profile_service.py) reads base/country
+# FhirProfileService (app/services/fhir_profile/core.py) reads base/country
 # StructureDefinitions from the fhir_profile table through the same
 # container.core.database session every other repository uses — which this
 # fixture points at a fresh, empty per-test SQLite engine (see TestDatabase

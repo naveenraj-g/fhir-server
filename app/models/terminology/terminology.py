@@ -49,13 +49,16 @@ class TerminologyConcept(FHIRBase):
     __table_args__ = (
         Index(
             "uq_terminology_concept_system_code_null_org",
-            "code_system_id", "code",
+            "code_system_id",
+            "code",
             unique=True,
             postgresql_where=text("org_id IS NULL"),
         ),
         Index(
             "uq_terminology_concept_system_code_org",
-            "code_system_id", "code", "org_id",
+            "code_system_id",
+            "code",
+            "org_id",
             unique=True,
             postgresql_where=text("org_id IS NOT NULL"),
         ),
@@ -94,6 +97,11 @@ class TerminologyConcept(FHIRBase):
         "TerminologyConceptEmbedding",
         back_populates="concept",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    display_overrides = relationship(
+        "TerminologyDisplayOverride",
+        back_populates="concept",
         cascade="all, delete-orphan",
     )
 
@@ -239,17 +247,38 @@ class TerminologyConceptEmbedding(FHIRBase):
 
 
 class TerminologyAuditLog(FHIRBase):
-    """Governance trail for all terminology changes."""
+    """Governance trail for all terminology changes.
+
+    Every concept_id/value_set_id/display_override_id FK below is
+    ondelete="SET NULL" deliberately: this table's job is to preserve a
+    historical record (old_value/new_value already snapshot what changed)
+    even after the thing itself is deleted — the audit row must survive
+    deleting its subject, not block the delete. Without SET NULL, the
+    default RESTRICT means nothing referencing one of these could ever be
+    deleted at all, since creating something always logs an audit row
+    pointing at it first."""
 
     __tablename__ = "terminology_audit_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     action = Column(String, nullable=False, index=True)
     concept_id = Column(
-        Integer, ForeignKey("terminology_concept.id"), nullable=True, index=True
+        Integer,
+        ForeignKey("terminology_concept.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     value_set_id = Column(
-        Integer, ForeignKey("terminology_value_set.id"), nullable=True, index=True
+        Integer,
+        ForeignKey("terminology_value_set.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    display_override_id = Column(
+        Integer,
+        ForeignKey("terminology_display_override.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     performed_by = Column(String, nullable=True)
     old_value = Column(JSONB, nullable=True)
@@ -282,3 +311,32 @@ class TerminologyConceptMap(FHIRBase):
     target_concept = relationship(
         "TerminologyConcept", foreign_keys=[target_concept_id]
     )
+
+
+class TerminologyDisplayOverride(FHIRBase):
+    """Org-scoped display/definition override for an EXISTING concept —
+    distinct from org_id on TerminologyConcept, which adds a brand-new
+    code. This relabels a fixed, already-loaded code (e.g. one of HL7's
+    own required-binding status codes) per-org, without changing the code
+    itself: concept_id always points at the same canonical row every org
+    shares, org_id scopes which org's label this particular row supplies.
+    Resolving which display to show (this override if one exists for the
+    caller's org, the concept's own canonical display otherwise) is a read
+    concern for a later change, not implemented yet — this table and its
+    CRUD are the only thing built so far."""
+
+    __tablename__ = "terminology_display_override"
+    __table_args__ = (UniqueConstraint("concept_id", "org_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    concept_id = Column(
+        Integer, ForeignKey("terminology_concept.id"), nullable=False, index=True
+    )
+    org_id = Column(String, nullable=False, index=True)
+    display = Column(String, nullable=False)
+    definition = Column(Text, nullable=True)
+    user_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    concept = relationship("TerminologyConcept", back_populates="display_overrides")

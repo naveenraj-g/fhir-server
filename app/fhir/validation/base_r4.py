@@ -87,3 +87,55 @@ def validate_base_r4(resource_type: str, fhir_resource: dict) -> list[dict]:
         )
     ]
     return errors
+
+
+def inline_schema_for_docs(resource_type: str) -> dict:
+    """Returns `resource_type`'s own real HL7 JSON Schema definition with
+    every internal `$ref` to a shared datatype (Identifier, CodeableConcept,
+    ElementDefinition, ...) recursively inlined — same flattening
+    app/core/schema_utils.py's inline_schema() does for Pydantic-generated
+    schemas, adapted to this module's own "definitions"/"#/definitions/..."
+    convention (HL7's own, not Pydantic's "$defs"/"#/$defs/...").
+
+    For embedding a real FHIR resource's complete shape directly into
+    OpenAPI docs (see app/routers/fhir_profile/) without hand-building a
+    Pydantic model for it — e.g. StructureDefinition, which would otherwise
+    need ~50+ fields modeled by hand just to document one request body.
+    Reuses the exact same `_DEFINITIONS` dict validate_base_r4() already
+    has loaded, so the documented shape and the enforced shape can never
+    drift apart — they're the same source.
+
+    Memoizes each named definition's fully-resolved form exactly once
+    (`resolved`, keyed by name) — FHIR's datatypes cross-reference each
+    other heavily (Extension alone touches most of the datatype catalog
+    through its value[x] choices), so without memoization this blows up
+    combinatorially: every distinct reference path re-expands the same
+    definitions from scratch, and the same shared datatypes get re-visited
+    many times over. `seen` (unlike `resolved`) tracks only the names
+    currently *mid-resolution* on the active path, purely to break real
+    cycles (e.g. Extension nesting itself) with a placeholder — it is not
+    a cache."""
+    if resource_type not in _DEFINITIONS:
+        raise ValueError(f"No base R4 definition for resource type {resource_type!r}")
+
+    resolved: dict[str, object] = {}
+
+    def _resolve(node, seen: frozenset):
+        if isinstance(node, dict):
+            if "$ref" in node and node["$ref"].startswith("#/definitions/"):
+                name = node["$ref"][len("#/definitions/"):]
+                if name in seen:
+                    return {"type": "object", "description": f"(recursive ref: {name})"}
+                if name in resolved:
+                    return resolved[name]
+                if name not in _DEFINITIONS:
+                    return {"type": "object", "description": f"(unresolved ref: {name})"}
+                result = _resolve(_DEFINITIONS[name], seen | {name})
+                resolved[name] = result
+                return result
+            return {k: _resolve(v, seen) for k, v in node.items()}
+        if isinstance(node, list):
+            return [_resolve(item, seen) for item in node]
+        return node
+
+    return _resolve(_DEFINITIONS[resource_type], frozenset({resource_type}))

@@ -27,7 +27,7 @@ import json
 
 from app.core.cache.base import CacheBackend
 from app.core.logging import get_logger
-from app.repository.fhir_profile_repository import FhirProfileRepository
+from app.repository.fhir_profile import FhirProfileRepository
 
 logger = get_logger(__name__)
 
@@ -36,7 +36,7 @@ _COUNTRY_KEY = "fhir_profile:country:{resource_type}:{country_code}"
 _ORGANIZATION_KEY = "fhir_profile:organization:{resource_type}:{org_id}"
 
 
-class FhirProfileService:
+class _CoreMixin:
     def __init__(self, repository: FhirProfileRepository, cache_backend: CacheBackend):
         self.repository = repository
         self.cache_backend = cache_backend

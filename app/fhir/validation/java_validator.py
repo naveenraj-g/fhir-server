@@ -6,7 +6,7 @@ this exists and what it trades off against `base_r4.py`'s native path.
 
 Profile registration reads a country layer's StructureDefinition from the
 fhir_profile DB table (behind FhirProfileService's cache-aside layer,
-app/services/fhir_profile_service.py) instead of the file-based
+app/services/fhir_profile/core.py) instead of the file-based
 app/fhir/profiling/ convention that stood in for it before that table
 existed — dispatch.py is the caller that resolves which structure_definition
 (if any) applies and passes it in here; this module no longer reads

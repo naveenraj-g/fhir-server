@@ -3,7 +3,7 @@
 **This directory is no longer read at validation/request time.** It was originally a
 file-backed stand-in for the `fhir_profile` database table; now that table is the live
 source for both layers — base and country alike — read through
-`FhirProfileService`'s cache-aside layer (`app/services/fhir_profile_service.py`,
+`FhirProfileService`'s cache-aside layer (`app/services/fhir_profile/`,
 cache config in `configs/cache.yaml`'s `fhir_profile_cache`), resolved by
 `app/fhir/validation/dispatch.py` and registered with the Java validator sidecar by
 `app/fhir/validation/java_validator.py` — neither touches this folder anymore. This

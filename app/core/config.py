@@ -94,7 +94,7 @@ class RateLimitConfig(BaseModel):
 class FhirProfileCacheConfig(BaseModel):
     """Caches `fhir_profile` DB rows (app/models/fhir_profile/) so validation
     doesn't hit Postgres on every request. Covers all three scope levels in
-    the base -> country -> organization chain (app/services/fhir_profile_service.py):
+    the base -> country -> organization chain (app/services/fhir_profile/core.py):
     base profiles (immutable — no admin write path exists for them, see
     app/fhir/profiling/README.md — so once cached, never invalidated), and
     country/organization profiles (evict on write once each one's admin
@@ -177,6 +177,40 @@ class FhirValidationConfig(BaseModel):
     java_validator: JavaValidatorConfig = Field(default_factory=JavaValidatorConfig)
 
 
+class TerminologyRemoteConfig(BaseModel):
+    """Connection details for a standalone terminology deployment — only
+    consulted when terminology.backend is "remote". base_url should point
+    at that deployment's own root; RemoteTerminologyClient
+    (app/terminology/remote_client.py) appends its own /api/v1/terminology
+    prefix."""
+
+    base_url: str = "http://localhost:8000"
+    timeout_seconds: float = 30.0
+
+
+class TerminologyConfig(BaseModel):
+    """Selects whether terminology lookups (code systems, value sets,
+    concept search/lookup/translation, field-binding validation, org
+    custom concepts) run in-process against this app's own Postgres, or
+    are forwarded over HTTP to a standalone terminology deployment — see
+    app/terminology/dispatch.py. Same shape as FhirValidationConfig's
+    native/java_validator swap above: one field picks the backend, no
+    caller needs to know which one is active.
+
+    "embedded" (default): TerminologyService runs here, zero network hop —
+    today's only consumer is this app's own /api/v1/terminology router.
+
+    "remote": every call goes through RemoteTerminologyClient instead,
+    hitting a separately-deployed terminology service's own
+    /api/v1/terminology routes (the same router this application mounts —
+    when actually extracted, that deployment is just another copy of this
+    codebase). Swap this one field the day that extraction happens; no
+    code changes needed at any call site."""
+
+    backend: Literal["embedded", "remote"] = "embedded"
+    remote: TerminologyRemoteConfig = Field(default_factory=TerminologyRemoteConfig)
+
+
 class LogConfig(BaseModel):
     """Observability config — consumed by app.core.logging.setup_logging(),
     app.middleware.access_log, and app.core.database's query listeners.
@@ -252,6 +286,7 @@ class Settings(BaseSettings):
     pagination: PaginationConfig = Field(default_factory=PaginationConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
     fhir_validation: FhirValidationConfig = Field(default_factory=FhirValidationConfig)
+    terminology: TerminologyConfig = Field(default_factory=TerminologyConfig)
     logging: LogConfig = Field(default_factory=LogConfig)
 
     model_config = SettingsConfigDict(

@@ -1,19 +1,15 @@
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.fhir_profile.enums import FhirProfileScopeLevel
 from app.models.fhir_profile.fhir_profile import FhirProfile
 
 
-class FhirProfileRepository:
-    """All DB I/O for fhir_profile — plain reads only, no write path exists
-    yet for any of the three scope levels (base is seeded once, never
-    admin-editable; country has no admin write path yet either — see
-    app/fhir/profiling/README.md and app/fhir_profile/seed_*.py;
-    organization has no seeding or write path at all yet)."""
-
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
-        self.session_factory = session_factory
+class _CoreMixin:
+    """Plain reads only, no write path exists yet for any of the three
+    scope levels (base is seeded once, never admin-editable; country has
+    no admin write path yet either — see app/fhir/profiling/README.md and
+    app/fhir_profile/seed_*.py; organization has no seeding or write path
+    at all yet)."""
 
     async def get_base(self, resource_type: str) -> FhirProfile | None:
         async with self.session_factory() as session:
