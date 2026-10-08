@@ -16,7 +16,6 @@ A **FHIR R4-compliant REST API** built with FastAPI + PostgreSQL. It serves six 
 | Encounter | `/api/fhir/v1/encounters` | FHIR + plain JSON |
 | Appointment | `/api/fhir/v1/appointments` | FHIR + plain JSON |
 | QuestionnaireResponse | `/api/fhir/v1/questionnaire-responses` | FHIR + plain JSON |
-| Vitals | `/api/v1/vitals` | Plain JSON only |
 
 Every FHIR resource returns either FHIR R4 JSON (`Accept: application/fhir+json`) or simplified snake_case JSON (`Accept: application/json`), chosen per-request via the Accept header.
 
@@ -55,7 +54,7 @@ Router  →  Service  →  Repository  →  ORM Model
 ### Service (`app/services/<resource>_service.py`)
 - Thin wrapper — delegates everything to repository
 - Hosts `_to_fhir(model)` and `_to_plain(model)` mapper wrappers
-- Cross-entity logic lives here (e.g. auto-resolving patient_id from user_id in VitalsService)
+- Cross-entity logic lives here (e.g. resolving a cross-resource reference before delegating to the repository)
 
 ### Repository (`app/repository/<resource>_repository.py`)
 - All SQL via async SQLAlchemy
@@ -79,7 +78,6 @@ Router  →  Service  →  Repository  →  ORM Model
 | Practitioner | `practitioner_id` | 30000 |
 | Appointment | `appointment_id` | 40000 |
 | QuestionnaireResponse | `questionnaire_response_id` | 60000 |
-| Vitals | `vitals_id` | 70000 |
 
 ---
 
@@ -94,7 +92,6 @@ org_id  = request.state.user.get("activeOrganizationId")   # tenant identity
 ```
 
 **FHIR resources** use `require_permission("<resource>", "<action>")` as a route dependency for RBAC.
-**Vitals** does NOT use `require_permission` — it uses `resolve_vitals` in function params only.
 
 ---
 
@@ -127,8 +124,6 @@ return format_paginated_response([...fhir...], [...plain...], total, limit, offs
 
 - `Accept: application/fhir+json` → FHIR R4 camelCase + `resourceType`
 - `Accept: application/json` (or absent) → snake_case flat JSON
-
-**Vitals does not use content negotiation** — returns `JSONResponse(content=jsonable_encoder(...))` only.
 
 ---
 
@@ -166,7 +161,7 @@ _LIST_200 = {200: {"description": "Paginated list", "content": {
 Three classes per resource:
 1. `XxxCreateSchema` — `ConfigDict(extra="forbid")`, all optional except required fields, `json_schema_extra` with a full example that **must include `user_id` and `org_id`**
 2. `XxxPatchSchema` — `ConfigDict(extra="forbid")`, all fields optional, excludes immutable fields
-3. `XxxResponseSchema` (only for non-FHIR resources like Vitals) — includes `id`, `created_at`, `updated_at`
+3. `XxxResponseSchema` (only for non-FHIR resources) — includes `id`, `created_at`, `updated_at`
 
 ### Location: `app/schemas/fhir/<resource>.py`
 

@@ -11,6 +11,7 @@ from .diagnostic_report import DiagnosticReportContainer
 from .document_reference import DocumentReferenceContainer
 from .encounter import EncounterContainer
 from .episode_of_care import EpisodeOfCareContainer
+from .fhir_profile import FhirProfileContainer
 from .healthcare_service import HealthcareServiceContainer
 from .immunization import ImmunizationContainer
 from .insurance_plan import InsurancePlanContainer
@@ -33,7 +34,6 @@ from .slot import SlotContainer
 from .specimen import SpecimenContainer
 from .task import TaskContainer
 from .terminology import TerminologyContainer
-from .vitals import VitalsContainer
 
 __all__ = [
     "AllergyIntoleranceContainer",
@@ -49,6 +49,7 @@ __all__ = [
     "DocumentReferenceContainer",
     "EncounterContainer",
     "EpisodeOfCareContainer",
+    "FhirProfileContainer",
     "HealthcareServiceContainer",
     "ImmunizationContainer",
     "InsurancePlanContainer",
@@ -71,5 +72,4 @@ __all__ = [
     "SpecimenContainer",
     "TaskContainer",
     "TerminologyContainer",
-    "VitalsContainer",
 ]

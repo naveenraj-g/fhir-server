@@ -255,13 +255,6 @@ OPENAPI_TAGS: list[dict] = [
     },
     # ── Infrastructure ────────────────────────────────────────────────────────
     {
-        "name": "Vitals",
-        "description": (
-            "User vitals data from wearable devices — activity, heart rate, sleep, and demographic "
-            "metrics. Not a FHIR resource. Scoped to the authenticated user."
-        ),
-    },
-    {
         "name": "Health",
         "description": (
             "Server liveness and readiness probes. No authentication required. "

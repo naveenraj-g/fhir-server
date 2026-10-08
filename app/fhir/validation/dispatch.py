@@ -15,12 +15,21 @@ country rollout, per deployment) rather than multi-tenant-per-country — so
 (app/core/config.py's RoutesConfig), not something to resolve dynamically.
 Swapping which country a deployment serves is one config edit, same as
 flipping `backend`.
+
+The country-layer StructureDefinition itself comes from the fhir_profile DB
+table, through FhirProfileService's cache-aside read (base: never
+invalidated; country: invalidated on write once an admin edit path exists —
+see that service's own docstring) — not from the file-based
+app/fhir/profiling/ convention that stood in for it before that table
+existed. This module is the only caller that resolves it, so
+java_validator.py's registration path stays a plain "register this dict"
+step with no DB/cache concerns of its own.
 """
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.fhir.validation.base_r4 import validate_base_r4
-from app.fhir.validation.java_validator import profile_exists, validate_via_java
+from app.fhir.validation.java_validator import validate_via_java
 
 logger = get_logger(__name__)
 
@@ -30,14 +39,31 @@ logger = get_logger(__name__)
 _BASE_PROFILE_URL = "http://hl7.org/fhir/StructureDefinition/{resource_type}"
 
 # Country-layer profiles are this project's own, not HL7-published — see
-# app/fhir/profiling/README.md. URL and on-disk layer name both derive from
-# (country, resource_type) by this one convention; nothing reads a file just
-# to discover its own URL.
+# app/fhir/profiling/README.md. URL and registration-cache layer name both
+# derive from (country, resource_type) by this one convention; nothing
+# fetches a profile just to discover its own URL — though the row's own
+# "url" field (from FhirProfileService) is used verbatim when present, since
+# it's the authoritative value, this convention is just the fallback/check.
 _COUNTRY_PROFILE_URL = "https://fhir-server.dev/fhir/StructureDefinition/{country}-{resource_type}"
 
 
 def _country_layer(country: str) -> str:
     return f"country_{country.lower()}"
+
+
+async def _country_structure_definition(
+    resource_type: str, country: str
+) -> dict | None:
+    # Deferred import: app.di.container imports, transitively (through
+    # app.di.modules -> every resource's service, including this
+    # validation path itself), this exact module — a genuine cycle at
+    # module-load time. By the time this function actually runs (a real
+    # request, always after the whole app has finished importing), the
+    # container module is fully initialized, so the import is safe here.
+    from app.di.container import container
+
+    service = container.fhir_profile.fhir_profile_service()
+    return await service.get_country_profile(resource_type, country)
 
 
 async def validate_resource(resource_type: str, fhir_resource: dict) -> list[dict]:
@@ -48,22 +74,30 @@ async def validate_resource(resource_type: str, fhir_resource: dict) -> list[dic
     regardless of backend or which layer actually fired.
 
     Resolution order for "java_validator", per resource_type:
-      1. If settings.fhir_validation.country is set AND a
-         country_<code>.json exists for this resource_type, validate against
-         that profile's URL. The sidecar walks baseDefinition itself (already
-         confirmed), so base R4's own invariants (org-1/org-2/org-3 for
-         Organization) still apply underneath — naming the country profile is
-         enough, the base layer is never named directly here.
+      1. If settings.fhir_validation.country is set AND fhir_profile has a
+         scope_level='country' row for (resource_type, country) — read via
+         FhirProfileService's cache-aside lookup, not a direct DB hit on
+         every call — validate against that profile's own URL. The sidecar
+         walks baseDefinition itself (already confirmed), so base R4's own
+         invariants (org-1/org-2/org-3 for Organization) still apply
+         underneath — naming the country profile is enough, the base layer
+         is never named directly here.
       2. Otherwise (no country configured, or this resource_type has no
-         country-layer file yet), fall back to the plain base R4 profile —
+         country-layer row yet), fall back to the plain base R4 profile —
          same behavior as before country profiles existed at all.
 
     "native" never considers country at all — it has no concept of profiles,
     by design (see base_r4.py's module docstring)."""
     if settings.fhir_validation.backend == "java_validator":
         country = settings.fhir_validation.country
-        if country and profile_exists(resource_type, _country_layer(country)):
-            profile_url = _COUNTRY_PROFILE_URL.format(
+        structure_definition = None
+        if country:
+            structure_definition = await _country_structure_definition(
+                resource_type, country
+            )
+
+        if structure_definition is not None:
+            profile_url = structure_definition.get("url") or _COUNTRY_PROFILE_URL.format(
                 country=country.lower(), resource_type=resource_type.lower()
             )
             layer = _country_layer(country)
@@ -79,7 +113,12 @@ async def validate_resource(resource_type: str, fhir_resource: dict) -> list[dic
                 )
             profile_url = _BASE_PROFILE_URL.format(resource_type=resource_type)
             layer = None
+
         return await validate_via_java(
-            resource_type, fhir_resource, profile_url=profile_url, layer=layer
+            resource_type,
+            fhir_resource,
+            profile_url=profile_url,
+            layer=layer,
+            structure_definition=structure_definition,
         )
     return validate_base_r4(resource_type, fhir_resource)

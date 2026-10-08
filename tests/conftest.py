@@ -8,6 +8,7 @@ os.environ.setdefault("IAM_ISSUER", "https://test.example.com")
 os.environ.setdefault("IAM_JWKS_URL", "https://test.example.com/.well-known/jwks.json")
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
@@ -103,6 +104,19 @@ async def _no_rate_limit(self, request, call_next):
 
 
 RateLimitMiddleware.dispatch = _no_rate_limit
+
+# ── Force the FHIR profile cache to in-process memory for tests ───────────────
+# Same reason rate limiting is bypassed above: REDIS_URL here (localhost:6379)
+# doesn't point at a real server, so every cache get/set would otherwise hit
+# RedisCacheBackend's fail-open path on every single call — correct, but a
+# real TCP connect-timeout per call (confirmed ~2s each on this stack even
+# with app/core/redis.py's socket_connect_timeout set), which multiplies out
+# to minutes across a full run. Overriding the DI-provided cache_backend
+# once, for the whole test session, avoids any real network call entirely —
+# deterministic and fast, not just "fails open quickly."
+from app.core.cache.memory_backend import MemoryCacheBackend  # noqa: E402
+
+container.fhir_profile.cache_backend.override(MemoryCacheBackend())
 
 # ── Sequence simulation ────────────────────────────────────────────────────────
 # PostgreSQL sequences are not supported by SQLite.  We strip the server_default
@@ -256,6 +270,66 @@ def _register_sqlite_math(dbapi_conn, _connection_record) -> None:
     dbapi_conn.create_function("greatest", 2, max)
 
 
+# ── fhir_profile seed (so validation tests exercise the real DB+cache path) ────
+# FhirProfileService (app/services/fhir_profile_service.py) reads base/country
+# StructureDefinitions from the fhir_profile table through the same
+# container.core.database session every other repository uses — which this
+# fixture points at a fresh, empty per-test SQLite engine (see TestDatabase
+# below). Without seeding it, every lookup here would miss, country-layer
+# validation would silently never fire, and tests that exist specifically to
+# check it (GSTIN/PAN enforcement in test_core.py, test_base_r4_validation.py)
+# would stop testing anything real while still reporting green. Seeded from
+# the exact same committed JSON the real DB is seeded from
+# (app/fhir/profiling/, see its README and app/fhir_profile/seed_*.py) so
+# there's one source of truth, not a hand-rolled test fixture that can drift.
+
+_PROFILING_ROOT = Path(__file__).resolve().parent.parent / "app" / "fhir" / "profiling"
+
+
+async def _seed_fhir_profiles(engine) -> None:
+    from app.models.fhir_profile.enums import FhirProfileScopeLevel, FhirProfileStatus
+    from app.models.fhir_profile.fhir_profile import FhirProfile
+
+    base_sd = json.loads(
+        (_PROFILING_ROOT / "organization" / "base_fhir_r4.json").read_text(encoding="utf-8")
+    )
+    country_sd = json.loads(
+        (_PROFILING_ROOT / "organization" / "country_in.json").read_text(encoding="utf-8")
+    )
+
+    session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_maker() as session:
+        base_row = FhirProfile(
+            resource_type="Organization",
+            scope_level=FhirProfileScopeLevel.base,
+            scope_id=None,
+            canonical_url=base_sd["url"],
+            version=base_sd.get("version", "1"),
+            status=FhirProfileStatus(base_sd.get("status", "active")),
+            structure_definition=base_sd,
+            created_by="system:test_seed",
+            updated_by="system:test_seed",
+        )
+        session.add(base_row)
+        await session.flush()
+
+        session.add(
+            FhirProfile(
+                resource_type="Organization",
+                scope_level=FhirProfileScopeLevel.country,
+                scope_id="IN",
+                parent_profile_id=base_row.id,
+                canonical_url=country_sd["url"],
+                version=country_sd.get("version", "1"),
+                status=FhirProfileStatus(country_sd.get("status", "draft")),
+                structure_definition=country_sd,
+                created_by="system:test_seed",
+                updated_by="system:test_seed",
+            )
+        )
+        await session.commit()
+
+
 # ── Shared engine fixture ──────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -271,6 +345,7 @@ async def _engine():
     event.listen(eng.sync_engine, "connect", _register_sqlite_math)
     async with eng.begin() as conn:
         await conn.run_sync(FHIRBase.metadata.create_all)
+    await _seed_fhir_profiles(eng)
     yield eng
     await eng.dispose()
 

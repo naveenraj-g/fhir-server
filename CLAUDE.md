@@ -82,7 +82,6 @@ Router → Service → Repository → ORM Model
 | Practitioner | 30000 |
 | Appointment | 40000 |
 | QuestionnaireResponse | 60000 |
-| Vitals | 70000 |
 | ServiceRequest | 80000 |
 | MedicationRequest | 90000 |
 | Procedure | 100000 |
@@ -135,8 +134,6 @@ Router → Service → Repository → ORM Model
 `format_response()` / `format_paginated_response()` in `app/core/content_negotiation.py` dispatch on `Accept` header:
 - `application/fhir+json` → FHIR R4 camelCase dict / Bundle
 - `application/json` (or absent) → snake_case dict / `{total, limit, offset, data[]}`
-
-Vitals only returns plain JSON via `JSONResponse` — no content negotiation.
 
 ---
 
@@ -388,7 +385,7 @@ Pattern per resource: `di/modules/<resource>.py` (Factory for repo + service) �
 
 ## Environment
 
-Config comes from three layers, precedence highest-to-lowest — see `app/core/config.py`'s `Settings.settings_customise_sources()`:
+Config comes from four sources across three precedence tiers, highest-to-lowest — see `app/core/config.py`'s `Settings.settings_customise_sources()`:
 
 1. **Real env var** (e.g. exported in the shell, or set by an orchestrator)
 2. **`.env`** — true per-environment secrets only:
@@ -411,6 +408,9 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
      uvicorn_access: false  # Uvicorn's own plaintext access line
      redact: [authorization, token, password, secret]
 
+   redis:
+     enabled: true   # global switch — see below
+
    rate_limit:
      backend: redis
      read_limit: 100
@@ -423,18 +423,23 @@ Config comes from three layers, precedence highest-to-lowest — see `app/core/c
        - practitioner
        - organization
    ```
+4. **`configs/cache.yaml`** — a sibling file, same precedence tier as `configs/config.yaml` (not a fallback chain between the two — they never share a top-level key), holding only settings for things that are genuinely a *cache* (something stored to avoid a re-fetch, with an eviction concept):
+   ```yaml
+   fhir_profile_cache:
+     backend: redis
+   ```
 
 `IAM_JWKS_URL`/`IAM_ISSUER` exist because Patient, Practitioner, Organization, Location, HealthcareService, PractitionerRole, Schedule, and Slot now validate JWTs directly (see Multi-Tenancy & Ownership's "Auth rollout status") — same BetterAuth instance the `fhir-gql` gateway validates against. The other ~27 resources still don't authenticate; the upstream GraphQL gateway owns that for them.
 
-`rate_limit.backend` selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend ("redis", coordinated across instances, or "memory", per-process only) — Redis is still required regardless, for sessions (`app/core/session.py`) and the `get_redis()` DI dependency. `rate_limit.read_limit`/`write_limit`/`window_seconds` are the actual per-window request caps — all four are wired straight into `app.add_middleware(RateLimitMiddleware, ...)` in `app/main.py`.
+`redis.enabled` and `rate_limit` both live in `config.yaml`, not `cache.yaml`, deliberately: neither is a caching-feature setting. Redis isn't only used for caching here — it also backs sessions (`app/core/session.py`) and the `get_redis()` DI dependency — so whether it's available at all is an infra-level decision. `rate_limit` is Redis-backed too, but it isn't a cache either — it's a shared sliding-window counter enforcing a request quota, not something stored to avoid re-fetching it. `redis.enabled` is still a global on/off switch: `false` forces every Redis-backed dependent (`rate_limit.backend` here, `fhir_profile_cache.backend` in `cache.yaml`) to its non-Redis fallback regardless of what's written under that dependent — see `Settings._apply_redis_switch()`. `rate_limit.backend` selects `RateLimitMiddleware`'s (`app/middleware/rate_limit.py`) counting backend ("redis", coordinated across instances, or "memory", per-process only). `rate_limit.read_limit`/`write_limit`/`window_seconds` are the actual per-window request caps — all four are wired straight into `app.add_middleware(RateLimitMiddleware, ...)` in `app/main.py`. `fhir_profile_cache.backend` is for caching `fhir_profile` DB rows (base + country layers) read by the FHIR validation dispatch path — base profiles are never invalidated (no admin write path exists for them), country profiles will need an evict-on-write once one does.
 
-`logging.*` drives `app/core/logging.py`'s `setup_logging()`, `app/middleware/access_log.py`, and `app/core/database.py`'s query listeners — see the "Logging & Observability" section above. `YamlConfigSettingsSource` is constructed with `yaml_file_encoding="utf-8"` because it otherwise opens the file with the platform default (cp1252 on Windows), which fails on any non-ASCII byte in the committed config.
+`logging.*` drives `app/core/logging.py`'s `setup_logging()`, `app/middleware/access_log.py`, and `app/core/database.py`'s query listeners — see the "Logging & Observability" section above. Both `YamlConfigSettingsSource` instances are constructed with `yaml_file_encoding="utf-8"` because they otherwise open the file with the platform default (cp1252 on Windows), which fails on any non-ASCII byte in the committed config.
 
 `routes.enabled` is the list consumed by `app/main.py`'s `mount_routers()` — see "Enabling/Disabling Resources" below.
 
-Any nested field can still be overridden by an env var using `__` as the nesting delimiter, without touching the committed file — e.g. `RATE_LIMIT__BACKEND=memory` or `RATE_LIMIT__WRITE_LIMIT=7` (`model_config`'s `env_nested_delimiter="__"`).
+Any nested field can still be overridden by an env var using `__` as the nesting delimiter, without touching either committed file — e.g. `RATE_LIMIT__BACKEND=memory` or `RATE_LIMIT__WRITE_LIMIT=7` (`model_config`'s `env_nested_delimiter="__"`).
 
-There is no hand-rolled loader: `Settings` is a `pydantic_settings.BaseSettings`, so `configs/config.yaml` is wired in as one more `PydanticBaseSettingsSource` (pydantic-settings' built-in `YamlConfigSettingsSource`) in that precedence tuple. A future secrets-manager source (AWS Secrets Manager, SSM, etc.) would slot into the same tuple the same way — no changes needed anywhere that reads `settings.*`.
+There is no hand-rolled loader: `Settings` is a `pydantic_settings.BaseSettings`, so `configs/config.yaml` and `configs/cache.yaml` are each wired in as their own `PydanticBaseSettingsSource` (pydantic-settings' built-in `YamlConfigSettingsSource`) in that precedence tuple. A future secrets-manager source (AWS Secrets Manager, SSM, etc.) would slot into the same tuple the same way — no changes needed anywhere that reads `settings.*`.
 
 Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:8000/docs`.
 
@@ -479,7 +484,7 @@ Which resource routers get mounted under `/api/fhir/v1` is controlled entirely b
 
 Every router is still always imported in `app/routers/__init__.py` via `from . import <name> as <name>` (cheap, no side effects, and required for `discover_routers()`'s introspection to see it) — only *mounting* is conditional. Adding a new resource: give its `APIRouter()` a `prefix=`/`tags=`, add the `from . import <name> as <name>` re-export + `__all__` entry, and append its name to `configs/config.yaml`'s `routes.enabled` list once it's ready to expose, per Step 17 of `/new-fhir-resource`.
 
-`vitals_router`/`terminology_router` are mounted separately in `app/main.py` under their own prefixes (`/api/v1/vitals`, `/api/v1/terminology`) at module level and aren't covered by `routes.enabled`.
+`terminology_router` is mounted separately in `app/main.py` under its own prefix (`/api/v1/terminology`) at module level and isn't covered by `routes.enabled`.
 
 ---
 

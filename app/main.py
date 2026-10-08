@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, Response
+from scalar_fastapi import get_scalar_api_reference
 from sqlalchemy import text
 
 from app.auth.dependencies import get_current_user
@@ -14,7 +15,7 @@ from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
 from app.core.openapi_tags import OPENAPI_TAGS
 from app.core.redis import redis_client
-from app.di.container import Container
+from app.di.container import container
 from app.errors.base import ApplicationError
 from app.errors.handlers import (
     application_error_handler,
@@ -30,12 +31,10 @@ from app.middleware import (
 )
 from app.routers import discover_routers
 from app.routers.terminology import router as terminology_router
-from app.routers.vitals import router as vitals_router
 
 setup_logging()
 logger = get_logger(__name__)
 
-container = Container()
 db: Database = container.core.database()
 
 
@@ -60,11 +59,11 @@ async def log_route_entry(request: Request) -> None:
     )
 
 
-# Tags that exist regardless of routes.enabled — Vitals/Terminology are
-# mounted unconditionally below (not resource routers), Health is defined
-# directly on `app`. Kept out of OPENAPI_TAGS filtering the same way these
-# routers are kept out of discover_routers()'s config-gated set.
-_ALWAYS_ON_TAGS = {"Vitals", "Terminology", "Health"}
+# Tags that exist regardless of routes.enabled — Terminology is mounted
+# unconditionally below (not a resource router), Health is defined directly
+# on `app`. Kept out of OPENAPI_TAGS filtering the same way this router is
+# kept out of discover_routers()'s config-gated set.
+_ALWAYS_ON_TAGS = {"Terminology", "Health"}
 
 
 def mount_routers(app: FastAPI) -> None:
@@ -224,18 +223,23 @@ if settings.cors.enabled:
     )
 
 app.include_router(
-    vitals_router,
-    prefix="/api/v1/vitals",
-    tags=["Vitals"],
-    dependencies=[Depends(get_current_user)],
-)
-
-app.include_router(
     terminology_router,
     prefix="/api/v1/terminology",
     tags=["Terminology"],
     dependencies=[Depends(get_current_user)],
 )
+
+# Scalar renders the same /openapi.json as /docs and /redoc — no spec
+# changes, just a nicer UI with a built-in light/dark toggle neither of
+# those ship with. Gated by docs_enabled the same way /docs and /redoc are
+# (the route isn't registered at all when disabled, same "doesn't exist"
+# behavior FastAPI's own docs_url=None gives those two).
+if settings.app.docs_enabled:
+    @app.get("/docs/scalar", include_in_schema=False)
+    async def scalar_docs():
+        return get_scalar_api_reference(
+            openapi_url=app.openapi_url, title=app.title
+        )
 
 
 # ── OpenAPI schema override ────────────────────────────────────────────────────

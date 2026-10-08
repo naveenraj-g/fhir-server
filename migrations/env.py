@@ -19,7 +19,6 @@ import app.models.practitioner  # noqa: F401
 import app.models.encounter.encounter  # noqa: F401
 import app.models.appointment.appointment  # noqa: F401
 import app.models.questionnaire_response.questionnaire_response  # noqa: F401
-import app.models.vitals.vitals  # noqa: F401
 import app.models.service_request.service_request  # noqa: F401
 import app.models.medication_request.medication_request  # noqa: F401
 import app.models.procedure.procedure  # noqa: F401
@@ -50,6 +49,7 @@ import app.models.audit_event.audit_event  # noqa: F401
 import app.models.episode_of_care.episode_of_care  # noqa: F401
 import app.models.terminology.terminology  # noqa: F401
 import app.models.insurance_plan.insurance_plan  # noqa: F401
+import app.models.fhir_profile.fhir_profile  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

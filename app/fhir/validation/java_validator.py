@@ -4,14 +4,13 @@ project's own fhir.schema.json structural check — see
 docs/structure-definitions/12-three-layer-validation-architecture.md for why
 this exists and what it trades off against `base_r4.py`'s native path.
 
-Profile registration is file-backed for now (app/fhir/profiling/, see its
-README) — a deliberate stand-in for the planned `fhir_profile` DB table, so
-only `_ensure_registered()`'s file-read needs to change when that table
-exists; nothing about registering with or calling the sidecar does.
-"""
-
-import json
-from pathlib import Path
+Profile registration reads a country layer's StructureDefinition from the
+fhir_profile DB table (behind FhirProfileService's cache-aside layer,
+app/services/fhir_profile_service.py) instead of the file-based
+app/fhir/profiling/ convention that stood in for it before that table
+existed — dispatch.py is the caller that resolves which structure_definition
+(if any) applies and passes it in here; this module no longer reads
+anything off disk at validation time."""
 
 import httpx
 
@@ -21,29 +20,15 @@ from app.errors.fhir_codes import IssueType
 
 logger = get_logger(__name__)
 
-_PROFILING_ROOT = Path(__file__).resolve().parent.parent / "profiling"
-
 # Tracks which (resource_type, layer) pairs this process has already POSTed
 # to the sidecar's /profiles endpoint — registration is almost certainly
 # held in the sidecar's in-memory validator context (not persisted), but is
 # also almost certainly idempotent to repeat, so this cache only exists to
 # avoid a redundant network round-trip per validation call, not for
-# correctness.
+# correctness. Separate from (and sitting in front of) FhirProfileService's
+# own cache, which avoids the Postgres round-trip instead — this one avoids
+# the sidecar round-trip.
 _registered: set[str] = set()
-
-
-def _profile_path(resource_type: str, layer: str) -> Path:
-    return _PROFILING_ROOT / resource_type.lower() / f"{layer}.json"
-
-
-def profile_exists(resource_type: str, layer: str) -> bool:
-    """Whether a `<resource_type>/<layer>.json` file exists under
-    app/fhir/profiling/ — lets a caller (dispatch.py) check whether a given
-    resource type has a country-layer profile before asking for it, since
-    not every resource will have one from day one. Not every (resource_type,
-    layer) pair is expected to exist; a missing one is a normal, silent
-    "nothing more specific than base for this resource" case, not an error."""
-    return _profile_path(resource_type, layer).is_file()
 
 
 def _client() -> httpx.AsyncClient:
@@ -51,12 +36,12 @@ def _client() -> httpx.AsyncClient:
     return httpx.AsyncClient(base_url=cfg.base_url, timeout=cfg.timeout_seconds)
 
 
-async def _ensure_registered(resource_type: str, layer: str) -> None:
+async def _ensure_registered(
+    resource_type: str, layer: str, structure_definition: dict
+) -> None:
     key = f"{resource_type}:{layer}"
     if key in _registered:
         return
-    path = _profile_path(resource_type, layer)
-    structure_definition = json.loads(path.read_text(encoding="utf-8"))
     async with _client() as client:
         resp = await client.post("/profiles", json=structure_definition)
         resp.raise_for_status()
@@ -122,6 +107,7 @@ async def validate_via_java(
     *,
     profile_url: str,
     layer: str | None = None,
+    structure_definition: dict | None = None,
 ) -> list[dict]:
     """Validates `fhir_resource` (true FHIR JSON, same shape validate_base_r4()
     takes) against `profile_url` via the Java validator sidecar.
@@ -129,16 +115,20 @@ async def validate_via_java(
     `layer=None` (the default) means "plain base R4" — every base R4
     definition ships preloaded in the sidecar itself (confirmed via its own
     GET /profiles), so nothing needs registering first; this is also the
-    only way validation can work at all for a resource_type this project has
-    no local base_fhir_r4.json for (i.e. everything except Organization
-    today — there's no reason to ever author one, since the sidecar already
-    has every resource's base definition built in).
+    only way validation can work at all for a resource_type this project
+    hasn't authored a country profile for — there's no reason to ever fetch
+    one, since the sidecar already has every resource's base definition
+    built in.
 
-    Pass an actual `layer` (e.g. "country_in") only for a profile this
-    project authored itself, not preloaded anywhere — that's registered
-    from app/fhir/profiling/ first if this process hasn't already."""
+    Pass an actual `layer` (e.g. "country_in") together with
+    `structure_definition` (the real StructureDefinition dict, already
+    resolved by dispatch.py from FhirProfileService) only for a profile this
+    project authored itself, not preloaded anywhere — registered with the
+    sidecar from that dict first if this process hasn't already."""
     if layer is not None:
-        await _ensure_registered(resource_type, layer)
+        if structure_definition is None:
+            raise ValueError("structure_definition is required when layer is set")
+        await _ensure_registered(resource_type, layer, structure_definition)
     async with _client() as client:
         resp = await client.post(
             "/validate", params={"profile": profile_url}, json=fhir_resource

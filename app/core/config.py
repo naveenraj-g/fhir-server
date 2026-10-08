@@ -71,11 +71,11 @@ class DatabaseConfig(BaseModel):
 class RedisConfig(BaseModel):
     """Global Redis on/off switch.
 
-    `enabled: false` forces every Redis-backed dependent (rate limiting
-    today, anything Redis-backed added later) to its non-Redis fallback —
-    see Settings._apply_redis_switch() below — regardless of what that
-    dependent's own backend field says. `enabled: true` defers to each
-    dependent's own setting instead.
+    `enabled: false` forces every Redis-backed dependent (rate limiting,
+    FHIR profile caching, anything Redis-backed added later) to its
+    non-Redis fallback — see Settings._apply_redis_switch() below —
+    regardless of what that dependent's own backend field says. `enabled:
+    true` defers to each dependent's own setting instead.
     """
 
     enabled: bool = True
@@ -89,6 +89,26 @@ class RateLimitConfig(BaseModel):
     read_limit: int = 100
     write_limit: int = 20
     window_seconds: int = 60
+
+
+class FhirProfileCacheConfig(BaseModel):
+    """Caches `fhir_profile` DB rows (app/models/fhir_profile/) so validation
+    doesn't hit Postgres on every request. Covers all three scope levels in
+    the base -> country -> organization chain (app/services/fhir_profile_service.py):
+    base profiles (immutable — no admin write path exists for them, see
+    app/fhir/profiling/README.md — so once cached, never invalidated), and
+    country/organization profiles (evict on write once each one's admin
+    edit path exists — FhirProfileService already has both
+    invalidate_country_profile() and invalidate_organization_profile()
+    ready, just no caller yet — let the next read repopulate from the DB
+    rather than updating the cache in place).
+
+    "redis" (shared across instances) or "memory" (per-process). Only
+    consulted when the global `redis.enabled` switch above is true — forced
+    to "memory" otherwise, same as rate_limit.backend.
+    """
+
+    backend: Literal["redis", "memory"] = "redis"
 
 
 class PaginationConfig(BaseModel):
@@ -228,6 +248,7 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
+    fhir_profile_cache: FhirProfileCacheConfig = Field(default_factory=FhirProfileCacheConfig)
     pagination: PaginationConfig = Field(default_factory=PaginationConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
     fhir_validation: FhirValidationConfig = Field(default_factory=FhirValidationConfig)
@@ -252,6 +273,7 @@ class Settings(BaseSettings):
         just reads its own already-resolved backend field."""
         if not self.redis.enabled:
             self.rate_limit.backend = "memory"
+            self.fhir_profile_cache.backend = "memory"
         return self
 
     @classmethod
@@ -264,10 +286,21 @@ class Settings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         """Precedence, highest first: real env var > `.env` >
-        `configs/config.yaml` > field defaults. `.env` stays reserved for
-        true per-environment secrets (DB/Redis/IAM URLs); everything else —
-        rate limiting, which routes are enabled — is checked-in application
-        behavior that lives in `configs/config.yaml` instead.
+        `configs/config.yaml` + `configs/cache.yaml` > field defaults. `.env`
+        stays reserved for true per-environment secrets (DB/Redis/IAM URLs);
+        everything else — rate limiting, which routes are enabled, caching —
+        is checked-in application behavior that lives in those two YAML
+        files instead. They're two peer sources at the same precedence tier,
+        not a fallback chain between them: config.yaml carries general
+        app-behavior settings, including both the global `redis` on/off
+        switch (Redis also backs sessions and get_redis(), not just
+        caching, so whether it's available at all is an infra-level
+        decision) and `rate_limit` (Redis-backed, but not a cache itself —
+        a shared sliding-window counter, not something stored to avoid a
+        re-fetch). cache.yaml carries only genuine caching settings
+        (`fhir_profile_cache` today — see that file's header comment).
+        Their top-level keys never overlap, so load order between the two
+        doesn't matter.
 
         A future secrets-manager source (e.g. AWS Secrets Manager/SSM) would
         slot into this same tuple as another `PydanticBaseSettingsSource`,
@@ -283,11 +316,17 @@ class Settings(BaseSettings):
             yaml_file="configs/config.yaml",
             yaml_file_encoding="utf-8",
         )
+        cache_yaml_settings = YamlConfigSettingsSource(
+            settings_cls,
+            yaml_file="configs/cache.yaml",
+            yaml_file_encoding="utf-8",
+        )
         return (
             init_settings,
             env_settings,
             dotenv_settings,
             yaml_settings,
+            cache_yaml_settings,
             file_secret_settings,
         )
 

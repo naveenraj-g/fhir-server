@@ -48,7 +48,6 @@ All FHIR resource endpoints are mounted under `/api/fhir/v1` and require a valid
 | Encounter | `/encounters` | Clinical interactions (visits, admissions) |
 | Appointment | `/appointments` | Scheduled healthcare events |
 | QuestionnaireResponse | `/questionnaire-responses` | Structured answers to questionnaires |
-| Vitals | `/api/v1/vitals` | Wearable device metrics (non-FHIR) |
 
 Each resource supports: `POST /`, `GET /`, `GET /me`, `GET /{id}`, `PATCH /{id}`, `DELETE /{id}`.
 

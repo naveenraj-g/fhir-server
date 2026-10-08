@@ -54,8 +54,6 @@ migrations/         # Alembic migration versions
 
 `format_response()` / `format_paginated_response()` (`app/core/content_negotiation.py`) dispatch on the `Accept` header at the very edge of the router, after the service has already produced both a FHIR dict and a plain dict from the same ORM model. This keeps the mapping logic in one place per resource (`app/fhir/mappers/<resource>/`) instead of duplicating shaping logic across routers.
 
-A single resource, `Vitals`, is the exception — it's not a FHIR resource and always returns plain JSON.
-
 ---
 
 ## Multi-Tenancy

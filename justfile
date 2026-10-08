@@ -73,6 +73,24 @@ terminology-seed-bindings-r4:
 # Load all terminologies in order (each is idempotent — safe to re-run)
 terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings-r4
 
+# ── FHIR Profiles ─────────────────────────────────────────────────────────────
+# Seeds app/fhir/profiling/ (see its README) into the fhir_profile table —
+# base -> country -> organization layer chain, see
+# docs/structure-definitions/12-three-layer-validation-architecture.md.
+
+# Seed base-layer profiles (HL7's own StructureDefinitions, e.g. Organization)
+fhir-profile-seed-base:
+    uv run python -m app.fhir_profile.seed_base_profiles
+
+# Seed country-layer profiles (e.g. India's Organization profile) — depends on
+# base being seeded first, since each row's parent_profile_id is resolved
+# against the matching base row.
+fhir-profile-seed-country: fhir-profile-seed-base
+    uv run python -m app.fhir_profile.seed_country_profiles
+
+# Seed every known profile layer, in dependency order
+fhir-profile-seed-all: fhir-profile-seed-base fhir-profile-seed-country
+
 # ── VPS / Production ──────────────────────────────────────────────────────────
 
 IMAGE := "ghcr.io/naveenraj-g/fhir-server-v1"
