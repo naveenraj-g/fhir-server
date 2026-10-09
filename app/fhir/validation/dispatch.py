@@ -46,9 +46,19 @@ _BASE_PROFILE_URL = "http://hl7.org/fhir/StructureDefinition/{resource_type}"
 # it's the authoritative value, this convention is just the fallback/check.
 _COUNTRY_PROFILE_URL = "https://fhir-server.dev/fhir/StructureDefinition/{country}-{resource_type}"
 
+# Organization-layer profiles follow the same convention, one level more
+# specific than country — see _organization_structure_definition() below.
+_ORGANIZATION_PROFILE_URL = (
+    "https://fhir-server.dev/fhir/StructureDefinition/org-{org_id}-{resource_type}"
+)
+
 
 def _country_layer(country: str) -> str:
     return f"country_{country.lower()}"
+
+
+def _organization_layer(org_id: str) -> str:
+    return f"organization_{org_id}"
 
 
 async def _country_structure_definition(
@@ -66,49 +76,89 @@ async def _country_structure_definition(
     return await service.get_country_profile(resource_type, country)
 
 
-async def validate_resource(resource_type: str, fhir_resource: dict) -> list[dict]:
+async def _organization_structure_definition(
+    resource_type: str, org_id: str
+) -> dict | None:
+    # Same deferred-import reason as _country_structure_definition() above.
+    from app.di.container import container
+
+    service = container.fhir_profile.fhir_profile_service()
+    return await service.get_organization_profile(resource_type, org_id)
+
+
+async def validate_resource(
+    resource_type: str, fhir_resource: dict, org_id: str | None = None
+) -> list[dict]:
     """Validates `fhir_resource` (true FHIR JSON) against `resource_type`'s
     most specific applicable profile, using whichever backend
     settings.fhir_validation.backend selects. Returns a list of
     {"field", "message"} dicts, empty when valid — identical shape
     regardless of backend or which layer actually fired.
 
-    Resolution order for "java_validator", per resource_type:
-      1. If settings.fhir_validation.country is set AND fhir_profile has a
-         scope_level='country' row for (resource_type, country) — read via
-         FhirProfileService's cache-aside lookup, not a direct DB hit on
-         every call — validate against that profile's own URL. The sidecar
-         walks baseDefinition itself (already confirmed), so base R4's own
-         invariants (org-1/org-2/org-3 for Organization) still apply
-         underneath — naming the country profile is enough, the base layer
-         is never named directly here.
-      2. Otherwise (no country configured, or this resource_type has no
-         country-layer row yet), fall back to the plain base R4 profile —
-         same behavior as before country profiles existed at all.
+    `org_id` is the caller's own tenant org_id (e.g. the verified JWT's
+    activeOrganizationId for Organization/Patient/etc.) — optional, since
+    not every resource_type's service has one in scope yet.
 
-    "native" never considers country at all — it has no concept of profiles,
-    by design (see base_r4.py's module docstring)."""
+    Resolution order for "java_validator", per resource_type:
+      1. If `org_id` is given AND fhir_profile has a scope_level='organization'
+         row for (resource_type, org_id) — read via FhirProfileService's
+         cache-aside lookup — validate against that profile's own URL. This
+         is the most specific layer. No admin write path exists yet to
+         create one of these rows (see FhirProfileService.get_organization_profile's
+         docstring), so this lookup always misses today — it's a cheap
+         negative-cached no-op — but every call site that has an org_id now
+         passes it, so this starts working the moment such a row exists,
+         with no further plumbing.
+      2. Otherwise, if settings.fhir_validation.country is set AND
+         fhir_profile has a scope_level='country' row for (resource_type,
+         country) — read the same way — validate against that profile's own
+         URL.
+      3. Otherwise (no org/country profile found, or neither configured),
+         fall back to the plain base R4 profile.
+
+    Whichever layer actually fires, the sidecar walks baseDefinition itself
+    (already confirmed for country -> base), so naming the most specific
+    profile is enough — the layers underneath are never named directly here.
+
+    "native" never considers org_id or country at all — it has no concept of
+    profiles, by design (see base_r4.py's module docstring)."""
     if settings.fhir_validation.backend == "java_validator":
         country = settings.fhir_validation.country
         structure_definition = None
-        if country:
+        profile_url = None
+        layer = None
+
+        if org_id:
+            structure_definition = await _organization_structure_definition(
+                resource_type, org_id
+            )
+            if structure_definition is not None:
+                profile_url = structure_definition.get(
+                    "url"
+                ) or _ORGANIZATION_PROFILE_URL.format(
+                    org_id=org_id, resource_type=resource_type.lower()
+                )
+                layer = _organization_layer(org_id)
+
+        if structure_definition is None and country:
             structure_definition = await _country_structure_definition(
                 resource_type, country
             )
+            if structure_definition is not None:
+                profile_url = structure_definition.get("url") or _COUNTRY_PROFILE_URL.format(
+                    country=country.lower(), resource_type=resource_type.lower()
+                )
+                layer = _country_layer(country)
 
-        if structure_definition is not None:
-            profile_url = structure_definition.get("url") or _COUNTRY_PROFILE_URL.format(
-                country=country.lower(), resource_type=resource_type.lower()
-            )
-            layer = _country_layer(country)
-        else:
-            if country:
+        if structure_definition is None:
+            if country or org_id:
                 logger.info(
-                    "No country-layer profile for this resource type — falling back to base R4",
+                    "No organization/country-layer profile for this resource type — falling back to base R4",
                     extra={
-                        "event": "fhir_validation.country_profile_missing",
+                        "event": "fhir_validation.profile_fallback",
                         "resource_type": resource_type,
                         "country": country,
+                        "org_id": org_id,
                     },
                 )
             profile_url = _BASE_PROFILE_URL.format(resource_type=resource_type)

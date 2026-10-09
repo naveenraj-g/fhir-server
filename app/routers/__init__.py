@@ -84,15 +84,33 @@ __all__ = [
 
 
 def discover_routers() -> dict[str, APIRouter]:
-    """Introspects this package's own namespace for submodules exposing a
-    module-level `router: APIRouter` — mirrors txtai's
-    api/application.py::apirouters(). Each router already carries its own
-    prefix/tags (set at construction in the resource's own module/package),
-    so mounting is just `app.include_router(router)` — no separate
-    prefix/tag table to keep in sync."""
+    """Returns the module-level `router: APIRouter` for every name in this
+    module's own `__all__` — mirrors txtai's api/application.py::apirouters().
+    Each router already carries its own prefix/tags (set at construction in
+    the resource's own module/package), so mounting is just
+    `app.include_router(router)` — no separate prefix/tag table to keep in
+    sync.
+
+    Deliberately NOT a blanket `inspect.getmembers(here, inspect.ismodule)`
+    scan of this package's whole namespace, even though that looks
+    equivalent at first glance — Python's import machinery binds ANY
+    submodule anyone imports anywhere (e.g. main.py's
+    `from app.routers.terminology import router as ...`) onto this package
+    object as a side effect, regardless of whether it's re-exported here.
+    A blanket scan would see those too, and if a name like "terminology"
+    ever also appeared in configs/config.yaml's routes.enabled (exactly
+    what making it independently toggleable requires), this function would
+    hand it back to mount_routers() for a SECOND, duplicate mount on top of
+    its own separate app.include_router() call in main.py — confirmed the
+    hard way via duplicate-operation-id warnings at startup. Restricting to
+    __all__ is what actually keeps this scoped to the resources meant to be
+    mounted together under one shared /api/fhir/v1 prefix."""
     here = sys.modules[__name__]
-    return {
-        name: mod.router
-        for name, mod in inspect.getmembers(here, inspect.ismodule)
-        if isinstance(getattr(mod, "router", None), APIRouter)
-    }
+    result: dict[str, APIRouter] = {}
+    for name in __all__:
+        if name == "discover_routers":
+            continue
+        mod = getattr(here, name, None)
+        if inspect.ismodule(mod) and isinstance(getattr(mod, "router", None), APIRouter):
+            result[name] = mod.router
+    return result

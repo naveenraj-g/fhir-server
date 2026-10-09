@@ -34,7 +34,9 @@ _LIST_200 = {
         "description": "Paginated list of organizations",
         "content": {
             "application/json": {
-                "schema": inline_schema(PaginatedOrganizationResponse.model_json_schema())
+                "schema": inline_schema(
+                    PaginatedOrganizationResponse.model_json_schema()
+                )
             },
             "application/fhir+json": {
                 "schema": inline_schema(FHIROrganizationBundle.model_json_schema())

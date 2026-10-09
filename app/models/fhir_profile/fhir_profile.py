@@ -27,10 +27,12 @@ class FhirProfile(FHIRBase):
     the validation sidecar (app/fhir/validation/java_validator.py) means
     POSTing `structure_definition` as-is to its /profiles endpoint.
 
-    `scope_id` is NULL for base and country rows (shared/deployment-level,
-    nobody's tenant) and the owning organization's public org_id for
-    organization rows — the same nullable-tenant-column shape already used
-    by TerminologyConcept.org_id, not a new pattern.
+    `scope_id` is NULL for base rows only (shared/deployment-level, nobody's
+    tenant) — the country code for country rows and the owning
+    organization's public org_id for organization rows (see
+    FhirProfileRepository.get_country/get_organization, which filter on it
+    directly). Same nullable-tenant-column shape already used by
+    TerminologyConcept.org_id, not a new pattern.
 
     Which country is active for a given deployment is a single, global
     config setting (settings.fhir_validation.country — see
@@ -47,6 +49,47 @@ class FhirProfile(FHIRBase):
         Index("ix_fhir_profile_resource_type", "resource_type"),
         Index("ix_fhir_profile_scope_level", "scope_level"),
         Index("ix_fhir_profile_scope_id", "scope_id"),
+        # Base rows have no draft -> active -> retired lifecycle at all —
+        # there is exactly one HL7-published StructureDefinition per
+        # resource_type (see app/fhir_profile/seed_base_profiles.py), and
+        # its own `status` is HL7's real published maturity for that
+        # resource (confirmed: Organization's is genuinely "draft" in
+        # HL7's own R4 bundle, not an authoring mistake here) — unrelated
+        # to whether it's "in effect", which for base it always,
+        # unconditionally is. So the base invariant is just "at most one
+        # row per resource_type", status notwithstanding.
+        # sqlite_where is set too, identically, because postgresql_where is
+        # dialect-prefixed — SQLAlchemy silently drops it for any other
+        # dialect and emits a PLAIN, unconditional unique index instead,
+        # which would wrongly forbid a base row and a country row from
+        # ever coexisting for the same resource_type. Confirmed the hard
+        # way: the test suite runs against in-memory SQLite (see
+        # tests/conftest.py), where exactly that happened before this was
+        # added. Postgres is still the only target these conditions need
+        # to be semantically correct for in production; sqlite_where just
+        # keeps the test suite honest against the same intent.
+        Index(
+            "uq_fhir_profile_base_singleton",
+            "resource_type",
+            unique=True,
+            postgresql_where=text("scope_id IS NULL"),
+            sqlite_where=text("scope_id IS NULL"),
+        ),
+        # Country/organization rows DO have a real draft -> active ->
+        # retired lifecycle (FhirProfileService.activate_profile()) —
+        # draft/retired history can pile up freely (that's what `version`
+        # exists for), but dispatch.py/FhirProfileService must always
+        # resolve to exactly one ACTIVE row per scope, never pick an
+        # arbitrary one among several equally-"active" candidates.
+        Index(
+            "uq_fhir_profile_active_scoped",
+            "resource_type",
+            "scope_level",
+            "scope_id",
+            unique=True,
+            postgresql_where=text("status = 'active' AND scope_id IS NOT NULL"),
+            sqlite_where=text("status = 'active' AND scope_id IS NOT NULL"),
+        ),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)

@@ -101,6 +101,60 @@ def _issues_to_errors(operation_outcome: dict) -> list[dict]:
     return errors
 
 
+async def check_profile_registers(structure_definition: dict) -> list[dict]:
+    """POSTs `structure_definition` to the sidecar's /profiles endpoint to
+    force snapshot generation and surface whatever the sidecar does catch,
+    in the same {"field", "message"} shape validate_via_java() returns —
+    used by the (future) profile authoring/activation write-path to reject
+    a candidate country/organization profile before it's ever persisted,
+    instead of unconditionally registering it the way _ensure_registered()
+    does for an already-trusted, already-persisted profile.
+
+    Caveat, confirmed empirically against the real sidecar: this is a
+    best-effort check, not a guarantee that every illegal "child profile
+    widens/contradicts its parent" case is rejected. The sidecar hard-fails
+    on some malformed differentials (e.g. the zero-slice-member pattern
+    this project hit earlier — see country_in.json's _comment_element_order)
+    but silently accepted, in direct testing, both a differential
+    referencing a field that doesn't exist and one widening a cardinality
+    beyond its own baseDefinition — neither raised an error at registration
+    or at a subsequent /validate call. Treat a clean return here as "the
+    sidecar didn't object", not as "this profile is provably a legal
+    narrowing of its parent"; a real narrowing-legality guarantee would
+    need this project's own field-by-field comparison against the parent's
+    resolved snapshot, which doesn't exist yet."""
+    async with _client() as client:
+        try:
+            resp = await client.post("/profiles", json=structure_definition)
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            return _registration_error_to_errors(exc.response)
+    return []
+
+
+def _registration_error_to_errors(response: httpx.Response) -> list[dict]:
+    try:
+        body = response.json()
+    except ValueError:
+        return [
+            {
+                "field": "(root)",
+                "message": response.text.strip() or f"HTTP {response.status_code}",
+            }
+        ]
+    if isinstance(body, dict) and body.get("resourceType") == "OperationOutcome":
+        errors = _issues_to_errors(body)
+        if errors:
+            return errors
+    # Not an OperationOutcome (e.g. a plain Spring Boot error body) — fall
+    # back to whatever text is available rather than silently returning no
+    # errors for a genuinely non-2xx response.
+    message = None
+    if isinstance(body, dict):
+        message = body.get("message") or body.get("error")
+    return [{"field": "(root)", "message": message or f"HTTP {response.status_code}"}]
+
+
 async def validate_via_java(
     resource_type: str,
     fhir_resource: dict,

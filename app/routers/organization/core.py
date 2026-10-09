@@ -90,7 +90,10 @@ async def get_organization(
 ):
     logger.info(
         "Retrieve an Organization resource by public organization_id",
-        extra={"event": "route.get_organization_by_id", "organization_id": organization_id},
+        extra={
+            "event": "route.get_organization_by_id",
+            "organization_id": organization_id,
+        },
     )
     org = await organization_service.get_organization_scoped(
         organization_id, actor.org_id
@@ -122,7 +125,9 @@ async def get_organization(
 async def patch_organization(
     payload: OrganizationPatchSchema,
     request: Request,
-    organization_id: int = Path(..., ge=1, description="Public organization identifier."),
+    organization_id: int = Path(
+        ..., ge=1, description="Public organization identifier."
+    ),
     actor: AuthUser = Depends(require_permission("organization", "update")),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
@@ -273,7 +278,9 @@ async def list_organizations(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_organization(
-    organization_id: int = Path(..., ge=1, description="Public organization identifier."),
+    organization_id: int = Path(
+        ..., ge=1, description="Public organization identifier."
+    ),
     actor: AuthUser = Depends(require_permission("organization", "delete")),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
@@ -282,8 +289,9 @@ async def delete_organization(
     cascades to every sub-resource row."""
     logger.info(
         "Delete an Organization resource",
-        extra={"event": "route.delete_organization", "organization_id": organization_id},
+        extra={
+            "event": "route.delete_organization",
+            "organization_id": organization_id,
+        },
     )
-    await organization_service.delete_organization(
-        organization_id, org_id=actor.org_id
-    )
+    await organization_service.delete_organization(organization_id, org_id=actor.org_id)

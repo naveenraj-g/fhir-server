@@ -26,8 +26,13 @@ class _ConceptMapsMixin:
             if target_system:
                 stmt = stmt.where(TgtCSAlias.canonical_url == target_system)
 
-            count_stmt = select(func.count()).select_from(TerminologyConceptMap)
-            count = await session.scalar(count_stmt)
+            # Count over the same filtered/joined stmt (pre sort/limit/offset),
+            # not a bare count of the whole table — otherwise `total` ignores
+            # source_system/target_system entirely and overstates how many
+            # rows actually match under pagination.
+            count = await session.scalar(
+                select(func.count()).select_from(stmt.subquery())
+            )
             rows = await session.execute(
                 stmt.order_by(TerminologyConceptMap.confidence.desc()).limit(limit).offset(offset)
             )

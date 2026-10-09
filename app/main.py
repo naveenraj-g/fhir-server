@@ -30,6 +30,8 @@ from app.middleware import (
     request_context_middleware,
 )
 from app.routers import discover_routers
+from app.routers.fhir_profile import router as fhir_profile_router
+from app.routers.fhir_validate import router as fhir_validate_router
 from app.routers.terminology import router as terminology_router
 
 setup_logging()
@@ -59,25 +61,55 @@ async def log_route_entry(request: Request) -> None:
     )
 
 
-# Tags that exist regardless of routes.enabled — Terminology is mounted
-# unconditionally below (not a resource router), Health is defined directly
-# on `app`. Kept out of OPENAPI_TAGS filtering the same way this router is
-# kept out of discover_routers()'s config-gated set.
-_ALWAYS_ON_TAGS = {"Terminology", "Health"}
+# Tags that exist regardless of routes.enabled — Health is defined
+# directly on `app`, not gated by any router mount at all. Terminology/
+# FHIR Profiles/FHIR Validation are NOT here (unlike before) — they're
+# now gated by routes.enabled same as everything else in
+# _OWN_PREFIX_ROUTERS, so their tags only show up in the docs when
+# actually mounted, via the same active_tags.update(router.tags) call
+# every other mounted router gets.
+_ALWAYS_ON_TAGS = {"Health"}
+
+
+# Mounted via mount_routers() under their OWN distinct prefix, not merged
+# into the shared /api/fhir/v1 api_router below — they aren't FHIR
+# resources with public sequence IDs, so folding them into that generic
+# mechanism would also move their URLs under /api/fhir/v1. Still driven by
+# the exact same routes.enabled set as everything else, computed once in
+# mount_routers() — see that function's own docstring for why this used to
+# be a second, separate module-level check instead, and why that was
+# actually a real bug (duplicate-mounted routes, confirmed via duplicate-
+# operation-id warnings at startup).
+_OWN_PREFIX_ROUTERS: tuple[tuple[str, APIRouter, dict], ...] = (
+    (
+        "terminology",
+        terminology_router,
+        {"prefix": "/api/v1/terminology", "tags": ["Terminology"]},
+    ),
+    ("fhir_profile", fhir_profile_router, {"prefix": "/api/v1"}),
+    ("fhir_validate", fhir_validate_router, {"prefix": "/api/v1"}),
+)
 
 
 def mount_routers(app: FastAPI) -> None:
-    """Discovers + conditionally mounts every FHIR resource router based on
-    configs/config.yaml's routes.enabled list (see app.routers.discover_routers()).
-    Called from lifespan() below at actual ASGI startup — mirrors txtai's
-    api/application.py::lifespan() pattern of mounting at startup rather
-    than at module-import time. Kept as a standalone sync function (not
-    inlined into lifespan) so tests/conftest.py can call it directly once,
-    since httpx's ASGITransport doesn't run the ASGI lifespan protocol on
-    its own. get_current_user runs once for every route mounted here —
-    decodes the JWT and sets request.state.user. Individual routes add
+    """Discovers + conditionally mounts every FHIR resource router, plus
+    the handful of own-prefix routers in _OWN_PREFIX_ROUTERS above, based
+    on configs/config.yaml's routes.enabled list (see
+    app.routers.discover_routers()). Called from lifespan() below at
+    actual ASGI startup — mirrors txtai's api/application.py::lifespan()
+    pattern of mounting at startup rather than at module-import time.
+    Kept as a standalone sync function (not inlined into lifespan) so
+    tests/conftest.py can call it directly once, since httpx's
+    ASGITransport doesn't run the ASGI lifespan protocol on its own.
+    get_current_user runs once for every route mounted here — decodes the
+    JWT and sets request.state.user. Individual routes add
     require_permission(...) on top for fine-grained access control
     (currently wired for Patient/Practitioner/Organization only).
+
+    One `enabled_routes` set, computed once here, is the only thing either
+    group checks — deliberately not two separate checks living in two
+    separate places, which is exactly what caused the duplicate-mount bug
+    this replaced.
 
     Also filters app.openapi_tags down to the tags actually in play, so a
     resource left out of routes.enabled doesn't show an empty tag group in
@@ -103,6 +135,14 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/fhir/v1",
         dependencies=[Depends(get_current_user), Depends(log_route_entry)],
     )
+
+    for name, router, kwargs in _OWN_PREFIX_ROUTERS:
+        if name in enabled_routes:
+            app.include_router(
+                router, dependencies=[Depends(get_current_user)], **kwargs
+            )
+            active_tags.update(router.tags)
+
     app.openapi_tags = [tag for tag in OPENAPI_TAGS if tag["name"] in active_tags]
 
 
@@ -221,13 +261,6 @@ if settings.cors.enabled:
         allow_methods=settings.cors.allow_methods,
         allow_headers=settings.cors.allow_headers,
     )
-
-app.include_router(
-    terminology_router,
-    prefix="/api/v1/terminology",
-    tags=["Terminology"],
-    dependencies=[Depends(get_current_user)],
-)
 
 # Scalar renders the same /openapi.json as /docs and /redoc — no spec
 # changes, just a nicer UI with a built-in light/dark toggle neither of

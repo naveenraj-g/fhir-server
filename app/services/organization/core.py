@@ -118,7 +118,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Organization creation requires an org-scoped token"
             )
-        await self._validate_base_r4(payload_to_fhir_organization(payload))
+        await self._validate_base_r4(payload_to_fhir_organization(payload), org_id)
         org = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Organization created",
@@ -157,7 +157,7 @@ class _CoreMixin:
 
         fragment, touched = patch_fragment_to_fhir_organization(payload)
         merged = merge_patch_fragment(to_fhir_organization(existing), fragment, touched)
-        await self._validate_base_r4(merged)
+        await self._validate_base_r4(merged, org_id)
 
         updated = await self.repository.patch_full(organization_id, payload, updated_by)
         if not updated:
@@ -195,18 +195,22 @@ class _CoreMixin:
     # ── Validation helpers ────────────────────────────────────────────────
 
     @staticmethod
-    async def _validate_base_r4(fhir_resource: dict) -> None:
-        """Raises FhirValidationError (422) if `fhir_resource` fails base R4
-        validation — the first link in the base -> country -> organization
-        profile chain (see
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+        """Raises FhirValidationError (422) if `fhir_resource` fails
+        validation against the most specific applicable layer of the
+        base -> country -> organization profile chain (see
         docs/architecture/fhir-profiling-and-extensibility-strategy.md).
         Delegates to validate_resource(), which picks the actual backend
         (this project's own structural-only check, or the HL7 Java validator
         sidecar — which also enforces real invariants) per
-        settings.fhir_validation.backend — see
+        settings.fhir_validation.backend, and — for java_validator — the
+        most specific of org/country/base that has a row, passing `org_id`
+        through so the organization layer is considered — see
         docs/structure-definitions/12-three-layer-validation-architecture.md.
-        Neither backend yet applies country/organization layers."""
-        errors = await validate_resource("Organization", fhir_resource)
+        No organization-scope profile row exists in the DB yet (no admin
+        write path for that layer), so this always falls through to
+        country/base today — see validate_resource()'s own docstring."""
+        errors = await validate_resource("Organization", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "Organization failed base R4 validation",

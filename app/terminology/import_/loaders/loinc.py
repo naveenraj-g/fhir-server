@@ -15,7 +15,14 @@ Key columns used:
   LONG_COMMON_NAME   -> display  (fallback: COMPONENT)
   DEFINITION_DESCRIPTION -> definition
   STATUS             -> ACTIVE / DEPRECATED / DISCOURAGED / TRIAL
-  CLASS              -> stored as synonym for search
+
+CLASS is NOT currently loaded as a synonym, despite an earlier version of
+this docstring claiming it was — bulk_insert_concepts() does a plain
+executemany() INSERT with no RETURNING, so this loader has no way to learn
+which concept_db_id a given LOINC_NUM landed at without a follow-up SELECT
+(or restructuring bulk_insert_concepts()'s return contract, which every
+other loader also depends on). Not done here — flagged as a real gap, not
+silently implemented halfway.
 """
 import csv
 import time

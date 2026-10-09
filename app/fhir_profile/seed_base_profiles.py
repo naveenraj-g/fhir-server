@@ -69,11 +69,24 @@ async def seed(db_url: str) -> None:
         for structure_definition in _discover_base_profiles():
             resource_type = structure_definition["type"]
             canonical_url = structure_definition["url"]
-            # Both fall back sensibly if a future HL7 publish ever omits
-            # them — version/status are 0..1/1..1 respectively per spec
-            # (see docs/structure-definitions/02-structuredefinition-root-fields.md).
+            # version falls back sensibly if a future HL7 publish ever
+            # omits it (0..1 per spec, see
+            # docs/structure-definitions/02-structuredefinition-root-fields.md).
             version = structure_definition.get("version", "1")
-            status = structure_definition.get("status", "active")
+            #
+            # status is NOT taken from the StructureDefinition's own
+            # "status" field — that's HL7's own publication-maturity
+            # declaration for the resource (e.g. Organization's real HL7
+            # R4 entry genuinely says "draft", confirmed against the real
+            # bundle; that's not an authoring mistake, just HL7's own
+            # maturity model), a different concept from "is this the
+            # profile layer this app currently enforces". Base rows have
+            # no draft -> active -> retired lifecycle at all (there's
+            # exactly one per resource_type, seeded here, never created or
+            # activated through FhirProfileService's write path) — seeding
+            # is this app's own ground truth, so every base row goes in as
+            # 'active' unconditionally, same as every country row below.
+            status = "active"
 
             await conn.execute(
                 """

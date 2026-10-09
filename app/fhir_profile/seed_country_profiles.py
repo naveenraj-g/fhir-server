@@ -69,7 +69,18 @@ async def seed(db_url: str) -> None:
             canonical_url = structure_definition["url"]
             base_definition_url = structure_definition.get("baseDefinition")
             version = structure_definition.get("version", "1")
-            status = structure_definition.get("status", "draft")
+            # Not taken from the StructureDefinition's own "status" field —
+            # same reasoning as seed_base_profiles.py's identical change:
+            # that field is this project's own authoring-maturity note on
+            # the JSON content (country_in.json says "draft" because
+            # nobody had flipped it when authoring it, not because it
+            # isn't live), separate from whether the row is the one this
+            # app actually enforces. Seeding is this app's ground truth —
+            # a seeded country profile is immediately the active one for
+            # its (resource_type, country_code) unless/until an admin
+            # activates a newer version through FhirProfileService's
+            # write path, so it goes in as 'active' unconditionally.
+            status = "active"
 
             parent_profile_id = None
             if base_definition_url:

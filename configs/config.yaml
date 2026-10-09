@@ -150,10 +150,18 @@ terminology:
     timeout_seconds: 30
 
 routes:
-  # Which FHIR resource routers get mounted under /api/fhir/v1 at startup —
-  # see CLAUDE.md's "Enabling/Disabling Resources" section. Not listed = not
-  # mounted. Terminology is mounted separately in app/main.py under its own
-  # prefix and isn't covered by this list.
+  # Which routers get mounted at startup — see CLAUDE.md's
+  # "Enabling/Disabling Resources" section. Not listed = not mounted.
+  #
+  # The ~34 FHIR resource names (patient, organization, ...) are all
+  # mounted together under one shared /api/fhir/v1 prefix via
+  # discover_routers()/mount_routers().
+  #
+  # terminology, fhir_profile, and fhir_validate are each mounted in
+  # app/main.py directly instead, under their OWN distinct prefix
+  # (/api/v1/terminology, /api/v1/fhir-profiles, /api/v1/validate) — this
+  # same list just gates whether each one is included at all, same as any
+  # other entry here.
   enabled:
     # - patient
     # - practitioner
@@ -163,3 +171,6 @@ routes:
     # - practitioner_role
     # - schedule
     # - slot
+    - terminology
+    - fhir_profile
+    - fhir_validate

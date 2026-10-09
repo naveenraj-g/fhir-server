@@ -484,7 +484,7 @@ Which resource routers get mounted under `/api/fhir/v1` is controlled entirely b
 
 Every router is still always imported in `app/routers/__init__.py` via `from . import <name> as <name>` (cheap, no side effects, and required for `discover_routers()`'s introspection to see it) — only *mounting* is conditional. Adding a new resource: give its `APIRouter()` a `prefix=`/`tags=`, add the `from . import <name> as <name>` re-export + `__all__` entry, and append its name to `configs/config.yaml`'s `routes.enabled` list once it's ready to expose, per Step 17 of `/new-fhir-resource`.
 
-`terminology_router` is mounted separately in `app/main.py` under its own prefix (`/api/v1/terminology`) at module level and isn't covered by `routes.enabled`.
+`terminology_router`, `fhir_profile_router`, and `fhir_validate_router` are each mounted separately in `app/main.py` at module level, under their own distinct prefix (`/api/v1/terminology`, `/api/v1/fhir-profiles`, `/api/v1/validate`) rather than the shared `/api/fhir/v1` `discover_routers()`/`mount_routers()` mounts everything else under — they aren't FHIR resources with public sequence IDs, so folding them into that generic mechanism would also move their URLs under `/api/fhir/v1`. Still gated by the same `routes.enabled` list, just via a plain `if "<name>" in settings.routes.enabled:` check around each one's own `app.include_router(...)` call instead of going through `discover_routers()`.
 
 ---
 
