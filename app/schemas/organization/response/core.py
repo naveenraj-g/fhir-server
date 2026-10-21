@@ -6,6 +6,7 @@ from app.schemas.common.fhir import (
     FHIRCodeableConcept,
     FHIRContactPoint,
     FHIRIdentifier,
+    FHIRMeta,
     FHIRReference,
 )
 
@@ -23,6 +24,10 @@ from .type import PlainOrganizationType
 class FHIROrganizationSchema(BaseModel):
     resourceType: str = Field("Organization", description="Always 'Organization'.")
     id: str = Field(..., description="Public organization_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
     extension: list[dict] | None = Field(
         None,
         description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",

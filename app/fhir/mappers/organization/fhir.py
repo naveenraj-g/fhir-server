@@ -295,11 +295,59 @@ def fhir_org_endpoint(e: OrganizationEndpoint) -> dict:
     return _fhir_reference(e, "reference")
 
 
+# Base URL for this server's own, not-yet-formally-registered extensions —
+# same convention as app/fhir/profiling/organization/country_in.json's
+# StructureDefinition URLs.
+_EXT_BASE = "https://fhir-server.dev/fhir/StructureDefinition"
+
+
+def _fhir_meta(org: OrganizationModel) -> dict:
+    """TenantAuditMixin's columns (tenant_id/created_by/updated_by/
+    created_at/updated_at — see app.models.shared.tenant_audit) rendered
+    into Resource.meta. `lastUpdated` is Meta's own native field for
+    "when did this version last change"; the other four have no native
+    Meta field in R4, so they ride as extensions — same raw,
+    not-yet-registered-extension-definition convention as this resource's
+    own top-level `extension` field below."""
+    meta: dict = {}
+    if org.updated_at:
+        meta["lastUpdated"] = org.updated_at.isoformat()
+
+    extensions = []
+    if org.tenant_id:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/org-id", "valueString": org.tenant_id}
+        )
+    if org.created_by:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": org.created_by}
+        )
+    if org.updated_by:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": org.updated_by}
+        )
+    if org.created_at:
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": org.created_at.isoformat(),
+            }
+        )
+    if extensions:
+        meta["extension"] = extensions
+
+    return meta
+
+
 def to_fhir_organization(org: OrganizationModel) -> dict:
     result: dict = {
         "resourceType": "Organization",
         "id": str(org.organization_id),
     }
+
+    meta = _fhir_meta(org)
+    if meta:
+        result["meta"] = meta
 
     if org.extension:
         result["extension"] = list(org.extension)
