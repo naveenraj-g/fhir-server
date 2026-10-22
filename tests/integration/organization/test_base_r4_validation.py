@@ -16,13 +16,21 @@ from tests.integration.organization.support import BASE, MINIMAL, create_organiz
 async def test_create_rejects_naive_datetime_period(client):
     """period_start with no UTC offset passes Pydantic's `datetime` type but
     violates FHIR's dateTime primitive pattern — the base R4 validator must
-    catch it before anything is written."""
+    catch it before anything is written.
+
+    Uses a real identifier.system (the India country-layer profile's GSTIN
+    URI, see app/fhir/profiling/organization/country_in.json) rather than
+    an http://example.org placeholder — the java validator sidecar flags
+    example.org/example.com URLs as "not allowed in this context" in any
+    profile, which would otherwise fail before the period check under test
+    ever runs."""
     payload = {
         **MINIMAL,
         "identifier": [
             {
-                "system": "http://example.org/ids",
-                "value": "123",
+                "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+                "value": "22AAAAA0000A1Z5",
+                "use": "official",
                 "period_start": "2024-01-01T00:00:00",
             }
         ],
@@ -32,19 +40,22 @@ async def test_create_rejects_naive_datetime_period(client):
     body = resp.json()
     assert body["resourceType"] == "OperationOutcome"
     assert any(
-        "identifier.0.period.start" in issue.get("expression", [])
+        "Organization.identifier[0].period.start" in issue.get("expression", [])
         for issue in body["issue"]
     )
 
 
 async def test_create_accepts_tz_aware_datetime_period(client):
-    """Same field, with a UTC offset, must pass."""
+    """Same field, with a UTC offset, must pass. Same real identifier.system
+    as test_create_rejects_naive_datetime_period above — see that test's
+    docstring."""
     payload = {
         **MINIMAL,
         "identifier": [
             {
-                "system": "http://example.org/ids",
-                "value": "123",
+                "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+                "value": "22AAAAA0000A1Z5",
+                "use": "official",
                 "period_start": "2024-01-01T00:00:00+00:00",
             }
         ],
@@ -63,8 +74,9 @@ async def test_patch_rejects_naive_datetime_period(client):
         json={
             "identifier": [
                 {
-                    "system": "http://example.org/ids",
-                    "value": "123",
+                    "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+                    "value": "22AAAAA0000A1Z5",
+                    "use": "official",
                     "period_start": "2024-01-01T00:00:00",
                 }
             ]

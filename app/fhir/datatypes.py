@@ -1,5 +1,22 @@
 from __future__ import annotations
 
+from datetime import timezone
+
+
+def fhir_instant(dt) -> str | None:
+    """Render a datetime as a FHIR `instant`/`dateTime` string, which must
+    always carry a timezone offset. SQLite (used by the test suite) doesn't
+    preserve tzinfo on `DateTime(timezone=True)` columns, so a naive value
+    read back from the DB is assumed UTC rather than left bare — Postgres
+    itself never actually produces a naive value here, since every such
+    column is populated via `func.now()`/application code that already
+    passes a tz-aware datetime."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
 
 def fhir_split(value: str | None) -> list[str]:
     if not value:

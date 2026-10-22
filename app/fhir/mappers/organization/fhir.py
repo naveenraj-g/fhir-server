@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.organization import (
@@ -311,7 +311,7 @@ def _fhir_meta(org: OrganizationModel) -> dict:
     own top-level `extension` field below."""
     meta: dict = {}
     if org.updated_at:
-        meta["lastUpdated"] = org.updated_at.isoformat()
+        meta["lastUpdated"] = fhir_instant(org.updated_at)
 
     extensions = []
     if org.tenant_id:
@@ -330,7 +330,7 @@ def _fhir_meta(org: OrganizationModel) -> dict:
         extensions.append(
             {
                 "url": f"{_EXT_BASE}/created-at",
-                "valueDateTime": org.created_at.isoformat(),
+                "valueDateTime": fhir_instant(org.created_at),
             }
         )
     if extensions:

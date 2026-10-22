@@ -78,18 +78,18 @@ async def test_create_healthcare_service_full(client):
     assert_plain_healthcare_service(data, name="Cardiology Services", active=True)
     assert data["identifier"][0]["value"] == "HS-1001"
     assert data["identifier"][0]["assigner_identifier_value"] == "EXTERNAL-1"
-    assert data["category"][0]["coding_code"] == "8"
-    assert data["type"][0]["coding_code"] == "394579002"
-    assert data["specialty"][0]["coding_code"] == "394579002"
+    assert data["category"][0]["codings"][0]["code"] == "8"
+    assert data["type"][0]["codings"][0]["code"] == "394579002"
+    assert data["specialty"][0]["codings"][0]["code"] == "394579002"
     assert data["telecom"][0]["value"] == "555-1234"
     assert data["location"][0]["reference_identifier_value"] == "LOC-9"
     assert data["coverage_area"][0]["reference_identifier_value"] == "LOC-8"
-    assert data["service_provision_code"][0]["coding_code"] == "free"
-    assert data["eligibility"][0]["code_code"] == "ind"
-    assert data["program"][0]["coding_code"] == "mh"
-    assert data["characteristic"][0]["coding_code"] == "wheelchair"
-    assert data["communication"][0]["coding_code"] == "en"
-    assert data["referral_method"][0]["coding_code"] == "phone"
+    assert data["service_provision_code"][0]["codings"][0]["code"] == "free"
+    assert data["eligibility"][0]["code_codings"][0]["code"] == "ind"
+    assert data["program"][0]["codings"][0]["code"] == "mh"
+    assert data["characteristic"][0]["codings"][0]["code"] == "wheelchair"
+    assert data["communication"][0]["codings"][0]["code"] == "en"
+    assert data["referral_method"][0]["codings"][0]["code"] == "phone"
     assert data["available_time"][0]["days_of_week"] == ["mon", "tue", "wed", "thu", "fri"]
     assert data["available_time"][0]["available_start_time"] == "09:00:00"
     assert data["not_available"][0]["description"] == "Closed for renovations."
@@ -324,12 +324,12 @@ async def test_patch_healthcare_service_replaces_category_list(client):
     hs_id = await create_healthcare_service(client, FULL)
     resp = await client.patch(
         f"{BASE}/{hs_id}",
-        json={"category": [{"coding_code": "new-cat", "coding_display": "New Category"}]},
+        json={"category": [{"coding": [{"code": "new-cat", "display": "New Category"}]}]},
     )
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["category"]) == 1
-    assert data["category"][0]["coding_code"] == "new-cat"
+    assert data["category"][0]["codings"][0]["code"] == "new-cat"
     # Untouched lists are left alone.
     assert len(data["identifier"]) == 1
 

@@ -64,7 +64,7 @@ async def test_create_full_roundtrips_every_sublist(client):
     assert len(body["identifier"]) == 1
     assert body["identifier"][0]["value"] == "B1-S.F2"
     assert body["identifier"][0]["assigner_identifier_value"] == "EXTERNAL-1"
-    assert body["type"][0]["coding_code"] == "HOSP"
+    assert body["type"][0]["codings"][0]["code"] == "HOSP"
     assert body["alias"][0]["value"] == "South Wing OR"
     assert body["telecom"][0]["value"] == "2328"
     assert body["endpoint"][0]["reference_identifier_value"] == "EP-1"
@@ -311,13 +311,16 @@ async def test_filter_name_matches_name_or_alias(client):
     assert [d["name"] for d in by_alias["data"]] == ["Radiology"]
 
 
-async def test_filter_identifier_status_type_physical_type(client):
+async def test_filter_identifier_status_type(client):
+    """physical-type is deliberately not a filter here — it was never a
+    registered FHIR R4 SearchParameter for Location, so it was dropped
+    rather than kept as a non-standard extra (see Location's router
+    docstring)."""
     await create_location(client, FULL)
     await create_location(client, MINIMAL, name="Other")
 
     assert (await client.get(BASE + "/", params={"identifier": "B1-S.F2"})).json()["total"] == 1
     assert (await client.get(BASE + "/", params={"type": "HOSP"})).json()["total"] == 1
-    assert (await client.get(BASE + "/", params={"physical-type": "wi"})).json()["total"] == 1
     assert (await client.get(BASE + "/", params={"operational-status": "U"})).json()["total"] == 1
     assert (await client.get(BASE + "/", params={"status": "active"})).json()["total"] == 2
 

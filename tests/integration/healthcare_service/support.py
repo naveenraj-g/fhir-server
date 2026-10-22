@@ -29,23 +29,35 @@ FULL = {
     ],
     "category": [
         {
-            "coding_system": "http://terminology.hl7.org/CodeSystem/service-category",
-            "coding_code": "8",
-            "coding_display": "Counselling",
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/service-category",
+                    "code": "8",
+                    "display": "Counselling",
+                }
+            ]
         }
     ],
     "type": [
         {
-            "coding_system": "http://snomed.info/sct",
-            "coding_code": "394579002",
-            "coding_display": "Cardiology",
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "394579002",
+                    "display": "Cardiology",
+                }
+            ]
         }
     ],
     "specialty": [
         {
-            "coding_system": "http://snomed.info/sct",
-            "coding_code": "394579002",
-            "coding_display": "Cardiology",
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "394579002",
+                    "display": "Cardiology",
+                }
+            ]
         }
     ],
     "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
@@ -63,40 +75,59 @@ FULL = {
     ],
     "service_provision_code": [
         {
-            "coding_system": "http://terminology.hl7.org/CodeSystem/service-provision-conditions",
-            "coding_code": "free",
-            "coding_display": "Free",
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/service-provision-conditions",
+                    "code": "free",
+                    "display": "Free",
+                }
+            ]
         }
     ],
     "eligibility": [
         {
-            "code_code": "ind",
-            "code_display": "Indigenous population",
+            "code_coding": [{"code": "ind", "display": "Indigenous population"}],
             "comment": "Must provide proof of eligibility.",
         }
     ],
     "program": [
         {
-            "coding_system": "http://example.org/programs",
-            "coding_code": "mh",
-            "coding_display": "Mental Health",
+            "coding": [
+                {
+                    "system": "http://example.org/programs",
+                    "code": "mh",
+                    "display": "Mental Health",
+                }
+            ]
         }
     ],
     "characteristic": [
         {
-            "coding_system": "http://example.org/characteristics",
-            "coding_code": "wheelchair",
-            "coding_display": "Wheelchair accessible",
+            "coding": [
+                {
+                    "system": "http://example.org/characteristics",
+                    "code": "wheelchair",
+                    "display": "Wheelchair accessible",
+                }
+            ]
         }
     ],
     "communication": [
-        {"coding_system": "urn:ietf:bcp:47", "coding_code": "en", "coding_display": "English"}
+        {
+            "coding": [
+                {"system": "urn:ietf:bcp:47", "code": "en", "display": "English"}
+            ]
+        }
     ],
     "referral_method": [
         {
-            "coding_system": "http://example.org/referral-method",
-            "coding_code": "phone",
-            "coding_display": "Phone",
+            "coding": [
+                {
+                    "system": "http://example.org/referral-method",
+                    "code": "phone",
+                    "display": "Phone",
+                }
+            ]
         }
     ],
     "available_time": [
@@ -144,7 +175,7 @@ async def seed_location(
         session.add(
             LocationModel(
                 location_id=location_id,
-                org_id=org_id,
+                tenant_id=org_id,
                 status=LocationStatus.active,
                 name="Test Location",
                 mode=LocationMode.instance,

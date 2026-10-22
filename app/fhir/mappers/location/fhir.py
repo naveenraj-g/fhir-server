@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_split, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_split, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.location import (
@@ -311,7 +311,7 @@ def _fhir_meta(loc: LocationModel) -> dict:
     docstring), so there's no equivalent of a user-scoped extension here."""
     meta: dict = {}
     if loc.updated_at:
-        meta["lastUpdated"] = loc.updated_at.isoformat()
+        meta["lastUpdated"] = fhir_instant(loc.updated_at)
 
     extensions = []
     if loc.tenant_id:
@@ -330,7 +330,7 @@ def _fhir_meta(loc: LocationModel) -> dict:
         extensions.append(
             {
                 "url": f"{_EXT_BASE}/created-at",
-                "valueDateTime": loc.created_at.isoformat(),
+                "valueDateTime": fhir_instant(loc.created_at),
             }
         )
     if extensions:

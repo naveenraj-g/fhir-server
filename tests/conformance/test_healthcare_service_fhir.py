@@ -11,21 +11,31 @@ from app.fhir.mappers.healthcare_service import to_fhir_healthcare_service
 from app.models.healthcare_service import (
     HealthcareServiceAvailableTime,
     HealthcareServiceCategory,
+    HealthcareServiceCategoryCoding,
     HealthcareServiceCharacteristic,
+    HealthcareServiceCharacteristicCoding,
     HealthcareServiceCommunication,
+    HealthcareServiceCommunicationCoding,
     HealthcareServiceCoverageArea,
     HealthcareServiceEligibility,
+    HealthcareServiceEligibilityCodeCoding,
     HealthcareServiceEndpoint,
     HealthcareServiceIdentifier,
+    HealthcareServiceIdentifierTypeCoding,
     HealthcareServiceLocation,
     HealthcareServiceModel,
     HealthcareServiceNotAvailable,
     HealthcareServiceProgram,
+    HealthcareServiceProgramCoding,
     HealthcareServiceReferralMethod,
+    HealthcareServiceReferralMethodCoding,
     HealthcareServiceServiceProvisionCode,
+    HealthcareServiceServiceProvisionCodeCoding,
     HealthcareServiceSpecialty,
+    HealthcareServiceSpecialtyCoding,
     HealthcareServiceTelecom,
     HealthcareServiceType,
+    HealthcareServiceTypeCoding,
 )
 
 from .support import assert_valid, fhir_json_text
@@ -51,7 +61,7 @@ def _hs(**overrides) -> HealthcareServiceModel:
     session here)."""
     fields = {
         "healthcare_service_id": 150001,
-        "org_id": "org-test",
+        "tenant_id": "org-test",
         "name": "South Wing Physio",
         "created_by": "u-test",
         "created_at": D,
@@ -71,20 +81,48 @@ def _with(attr, *rows) -> HealthcareServiceModel:
 
 
 def _identifier(**kw) -> HealthcareServiceIdentifier:
-    return HealthcareServiceIdentifier(
+    i = HealthcareServiceIdentifier(
         **{
-            "id": 1, "org_id": "org-test", "system": "http://ex.org/ids",
+            "id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
             "value": "HS-1", "created_by": "u-test", "created_at": D, **kw,
         }
     )
+    if i.type_codings is None:
+        i.type_codings = []
+    return i
 
 
-def _cc(model_cls, **kw):
+# Each CodeableConcept-list field (category/type/specialty/
+# serviceProvisionCode/program/characteristic/communication/referralMethod)
+# is now a real 0..* child table with its own dedicated Coding grandchild
+# table — this maps a parent model class to its matching Coding class so
+# one `_cc()` helper still covers all eight.
+_CODING_CLASS = {
+    HealthcareServiceCategory: HealthcareServiceCategoryCoding,
+    HealthcareServiceType: HealthcareServiceTypeCoding,
+    HealthcareServiceSpecialty: HealthcareServiceSpecialtyCoding,
+    HealthcareServiceServiceProvisionCode: HealthcareServiceServiceProvisionCodeCoding,
+    HealthcareServiceProgram: HealthcareServiceProgramCoding,
+    HealthcareServiceCharacteristic: HealthcareServiceCharacteristicCoding,
+    HealthcareServiceCommunication: HealthcareServiceCommunicationCoding,
+    HealthcareServiceReferralMethod: HealthcareServiceReferralMethodCoding,
+}
+
+
+def _cc(model_cls, *, codings=None, **kw):
+    coding_cls = _CODING_CLASS[model_cls]
+    if codings is None:
+        codings = [
+            coding_cls(
+                id=1,
+                system="http://terminology.hl7.org/CodeSystem/service-category",
+                code="8", display="Counselling",
+                created_by="u-test", created_at=D,
+            )
+        ]
     return model_cls(
         **{
-            "id": 1, "org_id": "org-test",
-            "coding_system": "http://terminology.hl7.org/CodeSystem/service-category",
-            "coding_code": "8", "coding_display": "Counselling",
+            "id": 1, "tenant_id": "org-test", "codings": codings,
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
@@ -133,12 +171,15 @@ CASES = {
         "identifiers",
         _identifier(
             use="official",
-            type_system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            type_version="2.9",
-            type_code="PRN",
-            type_display="Provider number",
+            type_codings=[
+                HealthcareServiceIdentifierTypeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
+                    version="2.9", code="PRN", display="Provider number",
+                    user_selected=True, created_by="u-test", created_at=D,
+                )
+            ],
             type_text="Provider number",
-            type_user_selected=True,
             period_start=D,
             period_end=D,
         ),
@@ -165,20 +206,27 @@ CASES = {
         "types",
         _cc(
             HealthcareServiceType,
-            coding_system="http://snomed.info/sct",
-            coding_code="394814009",
-            coding_display="General practice",
+            codings=[
+                HealthcareServiceTypeCoding(
+                    id=1, system="http://snomed.info/sct", code="394814009",
+                    display="General practice", user_selected=True,
+                    created_by="u-test", created_at=D,
+                )
+            ],
             text="General practice",
-            coding_user_selected=True,
         ),
     ),
     "specialty_with_text": _with(
         "specialties",
         _cc(
             HealthcareServiceSpecialty,
-            coding_system="http://snomed.info/sct",
-            coding_code="408443003",
-            coding_display="General medical practice",
+            codings=[
+                HealthcareServiceSpecialtyCoding(
+                    id=1, system="http://snomed.info/sct", code="408443003",
+                    display="General medical practice",
+                    created_by="u-test", created_at=D,
+                )
+            ],
             text="General medical practice",
         ),
     ),
@@ -186,14 +234,14 @@ CASES = {
     "location_resolved": _with(
         "locations",
         HealthcareServiceLocation(
-            id=1, org_id="org-test", reference_type="Location", reference_id=230001,
+            id=1, tenant_id="org-test", reference_type="Location", reference_id=230001,
             reference_display="Main Building", created_by="u-test", created_at=D,
         ),
     ),
     "location_identifier_fallback": _with(
         "locations",
         HealthcareServiceLocation(
-            id=1, org_id="org-test", reference_identifier_system="urn:loc-registry",
+            id=1, tenant_id="org-test", reference_identifier_system="urn:loc-registry",
             reference_identifier_value="LOC-9", created_by="u-test", created_at=D,
         ),
     ),
@@ -201,11 +249,11 @@ CASES = {
     "telecoms_with_rank_and_period": _with(
         "telecoms",
         HealthcareServiceTelecom(
-            id=1, org_id="org-test", system="phone", value="2328", use="work",
+            id=1, tenant_id="org-test", system="phone", value="2328", use="work",
             rank=1, period_start=D, period_end=D, created_by="u-test", created_at=D,
         ),
         HealthcareServiceTelecom(
-            id=2, org_id="org-test", system="email", value="a@b.example",
+            id=2, tenant_id="org-test", system="email", value="a@b.example",
             created_by="u-test", created_at=D,
         ),
     ),
@@ -213,14 +261,14 @@ CASES = {
     "coverage_area_resolved": _with(
         "coverage_areas",
         HealthcareServiceCoverageArea(
-            id=1, org_id="org-test", reference_type="Location", reference_id=230001,
+            id=1, tenant_id="org-test", reference_type="Location", reference_id=230001,
             reference_display="Downtown catchment", created_by="u-test", created_at=D,
         ),
     ),
     "coverage_area_identifier_fallback": _with(
         "coverage_areas",
         HealthcareServiceCoverageArea(
-            id=1, org_id="org-test", reference_identifier_system="urn:loc-registry",
+            id=1, tenant_id="org-test", reference_identifier_system="urn:loc-registry",
             reference_identifier_value="LOC-8", created_by="u-test", created_at=D,
         ),
     ),
@@ -229,17 +277,30 @@ CASES = {
         "service_provision_codes",
         _cc(
             HealthcareServiceServiceProvisionCode,
-            coding_system="http://terminology.hl7.org/CodeSystem/service-provision-conditions",
-            coding_code="free", coding_display="Free", text="Free",
+            codings=[
+                HealthcareServiceServiceProvisionCodeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/service-provision-conditions",
+                    code="free", display="Free",
+                    created_by="u-test", created_at=D,
+                )
+            ],
+            text="Free",
         ),
     ),
 
     "eligibility_code_and_comment": _with(
         "eligibilities",
         HealthcareServiceEligibility(
-            id=1, org_id="org-test",
-            code_system="http://terminology.hl7.org/CodeSystem/eligibility",
-            code_code="ind", code_display="Indigenous population",
+            id=1, tenant_id="org-test",
+            code_codings=[
+                HealthcareServiceEligibilityCodeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/eligibility",
+                    code="ind", display="Indigenous population",
+                    created_by="u-test", created_at=D,
+                )
+            ],
             code_text="Indigenous population",
             comment="Must provide proof of eligibility.",
             created_by="u-test", created_at=D,
@@ -248,7 +309,7 @@ CASES = {
     "eligibility_comment_only": _with(
         "eligibilities",
         HealthcareServiceEligibility(
-            id=1, org_id="org-test", comment="Referral required.",
+            id=1, tenant_id="org-test", comment="Referral required.",
             created_by="u-test", created_at=D,
         ),
     ),
@@ -257,16 +318,26 @@ CASES = {
         "programs",
         _cc(
             HealthcareServiceProgram,
-            coding_system="http://example.org/programs",
-            coding_code="mh", coding_display="Mental Health", text="Mental Health",
+            codings=[
+                HealthcareServiceProgramCoding(
+                    id=1, system="http://example.org/programs", code="mh",
+                    display="Mental Health", created_by="u-test", created_at=D,
+                )
+            ],
+            text="Mental Health",
         ),
     ),
     "characteristic_with_text": _with(
         "characteristics",
         _cc(
             HealthcareServiceCharacteristic,
-            coding_system="http://example.org/characteristics",
-            coding_code="wheelchair", coding_display="Wheelchair accessible",
+            codings=[
+                HealthcareServiceCharacteristicCoding(
+                    id=1, system="http://example.org/characteristics",
+                    code="wheelchair", display="Wheelchair accessible",
+                    created_by="u-test", created_at=D,
+                )
+            ],
             text="Wheelchair accessible",
         ),
     ),
@@ -274,30 +345,41 @@ CASES = {
         "communications",
         _cc(
             HealthcareServiceCommunication,
-            coding_system="urn:ietf:bcp:47",
-            coding_code="en", coding_display="English", text="English",
+            codings=[
+                HealthcareServiceCommunicationCoding(
+                    id=1, system="urn:ietf:bcp:47", code="en", display="English",
+                    created_by="u-test", created_at=D,
+                )
+            ],
+            text="English",
         ),
     ),
     "referral_method_with_text": _with(
         "referral_methods",
         _cc(
             HealthcareServiceReferralMethod,
-            coding_system="http://example.org/referral-method",
-            coding_code="phone", coding_display="Phone", text="Phone",
+            codings=[
+                HealthcareServiceReferralMethodCoding(
+                    id=1, system="http://example.org/referral-method",
+                    code="phone", display="Phone",
+                    created_by="u-test", created_at=D,
+                )
+            ],
+            text="Phone",
         ),
     ),
 
     "available_time_all_day_no_times": _with(
         "available_times",
         HealthcareServiceAvailableTime(
-            id=1, org_id="org-test", days_of_week="sat,sun", all_day=True,
+            id=1, tenant_id="org-test", days_of_week="sat,sun", all_day=True,
             created_by="u-test", created_at=D,
         ),
     ),
     "available_time_all_seven_days_edge_times": _with(
         "available_times",
         HealthcareServiceAvailableTime(
-            id=1, org_id="org-test", days_of_week="mon,tue,wed,thu,fri,sat,sun",
+            id=1, tenant_id="org-test", days_of_week="mon,tue,wed,thu,fri,sat,sun",
             all_day=False, available_start_time=dt.time(0, 0),
             available_end_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
         ),
@@ -306,14 +388,14 @@ CASES = {
     "not_available_description_only": _with(
         "not_available",
         HealthcareServiceNotAvailable(
-            id=1, org_id="org-test", description="Closed for renovations.",
+            id=1, tenant_id="org-test", description="Closed for renovations.",
             created_by="u-test", created_at=D,
         ),
     ),
     "not_available_with_during": _with(
         "not_available",
         HealthcareServiceNotAvailable(
-            id=1, org_id="org-test", description="Annual maintenance.",
+            id=1, tenant_id="org-test", description="Annual maintenance.",
             during_start=D, during_end=D, created_by="u-test", created_at=D,
         ),
     ),
@@ -321,14 +403,14 @@ CASES = {
     "endpoint_resolved": _with(
         "endpoints",
         HealthcareServiceEndpoint(
-            id=1, org_id="org-test", reference_type="Endpoint", reference_id=7,
+            id=1, tenant_id="org-test", reference_type="Endpoint", reference_id=7,
             reference_display="Main endpoint", created_by="u-test", created_at=D,
         ),
     ),
     "endpoint_identifier_fallback": _with(
         "endpoints",
         HealthcareServiceEndpoint(
-            id=1, org_id="org-test", reference_identifier_system="urn:ext-endpoint",
+            id=1, tenant_id="org-test", reference_identifier_system="urn:ext-endpoint",
             reference_identifier_value="EP-1", created_by="u-test", created_at=D,
         ),
     ),

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_split, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_split, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.healthcare_service import HealthcareServiceModel
@@ -262,7 +262,7 @@ def _fhir_meta(hs: HealthcareServiceModel) -> dict:
     here."""
     meta: dict = {}
     if hs.updated_at:
-        meta["lastUpdated"] = hs.updated_at.isoformat()
+        meta["lastUpdated"] = fhir_instant(hs.updated_at)
 
     extensions = []
     if hs.tenant_id:
@@ -281,7 +281,7 @@ def _fhir_meta(hs: HealthcareServiceModel) -> dict:
         extensions.append(
             {
                 "url": f"{_EXT_BASE}/created-at",
-                "valueDateTime": hs.created_at.isoformat(),
+                "valueDateTime": fhir_instant(hs.created_at),
             }
         )
     if extensions:

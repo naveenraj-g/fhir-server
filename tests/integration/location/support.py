@@ -28,9 +28,13 @@ FULL = {
     "address_use": "work",
     "address_type": "both",
     "address_line": ["Galapagosweg 91", "Building A"],
-    "physical_type_system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
-    "physical_type_code": "wi",
-    "physical_type_display": "Wing",
+    "physical_type_coding": [
+        {
+            "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+            "code": "wi",
+            "display": "Wing",
+        }
+    ],
     "position_longitude": "-83.6945691",
     "position_latitude": "42.25475478",
     "position_altitude": "0",
@@ -46,9 +50,13 @@ FULL = {
     ],
     "type": [
         {
-            "coding_system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-            "coding_code": "HOSP",
-            "coding_display": "Hospital",
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                    "code": "HOSP",
+                    "display": "Hospital",
+                }
+            ]
         }
     ],
     "alias": [{"value": "South Wing OR"}],

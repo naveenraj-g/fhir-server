@@ -14,11 +14,14 @@ from app.models.location import (
     LocationEndpoint,
     LocationHoursOfOperation,
     LocationIdentifier,
+    LocationIdentifierTypeCoding,
     LocationMode,
     LocationModel,
+    LocationPhysicalTypeCoding,
     LocationStatus,
     LocationTelecom,
     LocationType,
+    LocationTypeCoding,
 )
 
 from .support import assert_valid, fhir_json_text
@@ -36,7 +39,7 @@ def _location(**overrides) -> LocationModel:
     empty sub-resource lists (nothing is lazy-loadable off a session here)."""
     fields = {
         "location_id": 230001,
-        "org_id": "org-test",
+        "tenant_id": "org-test",
         "status": LocationStatus.active,
         "name": "South Wing",
         "mode": LocationMode.instance,
@@ -52,7 +55,7 @@ def _location(**overrides) -> LocationModel:
     loc = LocationModel(**fields)
     for attr in (
         "identifiers", "types", "telecoms", "endpoints", "aliases",
-        "hours_of_operation",
+        "hours_of_operation", "physical_type_codings",
     ):
         if getattr(loc, attr, None) is None:
             setattr(loc, attr, [])
@@ -66,10 +69,13 @@ def _with(attr, *rows) -> LocationModel:
 
 
 def _identifier(**kw) -> LocationIdentifier:
-    return LocationIdentifier(
-        **{"id": 1, "org_id": "org-test", "system": "http://ex.org/ids",
+    i = LocationIdentifier(
+        **{"id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
            "value": "B1-S.F2", "created_by": "u-test", "created_at": D, **kw}
     )
+    if i.type_codings is None:
+        i.type_codings = []
+    return i
 
 
 # Each case is one distinct shape the mapper can emit. Anything with a
@@ -90,11 +96,15 @@ CASES = {
         operational_status_user_selected=True,
     ),
     "physical_type_with_text": _location(
-        physical_type_system="http://terminology.hl7.org/CodeSystem/location-physical-type",
-        physical_type_code="ro",
-        physical_type_display="Room",
+        physical_type_codings=[
+            LocationPhysicalTypeCoding(
+                id=1,
+                system="http://terminology.hl7.org/CodeSystem/location-physical-type",
+                code="ro", display="Room", user_selected=False,
+                created_by="u-test", created_at=D,
+            )
+        ],
         physical_type_text="A room",
-        physical_type_user_selected=False,
     ),
 
     "address_full": _location(
@@ -138,12 +148,15 @@ CASES = {
         "identifiers",
         _identifier(
             use="official",
-            type_system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            type_version="2.9",
-            type_code="PRN",
-            type_display="Provider number",
+            type_codings=[
+                LocationIdentifierTypeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
+                    version="2.9", code="PRN", display="Provider number",
+                    user_selected=True, created_by="u-test", created_at=D,
+                )
+            ],
             type_text="Provider number",
-            type_user_selected=True,
             period_start=D,
             period_end=D,
         ),
@@ -166,28 +179,33 @@ CASES = {
     "type_with_text": _with(
         "types",
         LocationType(
-            id=1, org_id="org-test",
-            coding_system="http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-            coding_version="2.0", coding_code="HOSP", coding_display="Hospital",
-            text="Hospital", coding_user_selected=True,
+            id=1, tenant_id="org-test",
+            text="Hospital",
+            codings=[
+                LocationTypeCoding(
+                    id=1, system="http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                    version="2.0", code="HOSP", display="Hospital",
+                    user_selected=True, created_by="u-test", created_at=D,
+                )
+            ],
             created_by="u-test", created_at=D,
         ),
     ),
     "aliases": _with(
         "aliases",
         *[
-            LocationAlias(id=i, org_id="org-test", value=v, created_by="u-test", created_at=D)
+            LocationAlias(id=i, tenant_id="org-test", value=v, created_by="u-test", created_at=D)
             for i, v in enumerate(["South Wing OR", "SW"], 1)
         ],
     ),
     "telecoms_with_rank_and_period": _with(
         "telecoms",
         LocationTelecom(
-            id=1, org_id="org-test", system="phone", value="2328", use="work",
+            id=1, tenant_id="org-test", system="phone", value="2328", use="work",
             rank=1, period_start=D, period_end=D, created_by="u-test", created_at=D,
         ),
         LocationTelecom(
-            id=2, org_id="org-test", system="email", value="a@b.example",
+            id=2, tenant_id="org-test", system="email", value="a@b.example",
             created_by="u-test", created_at=D,
         ),
     ),
@@ -195,14 +213,14 @@ CASES = {
     "hours_all_day_no_times": _with(
         "hours_of_operation",
         LocationHoursOfOperation(
-            id=1, org_id="org-test", days_of_week="sat,sun", all_day=True,
+            id=1, tenant_id="org-test", days_of_week="sat,sun", all_day=True,
             created_by="u-test", created_at=D,
         ),
     ),
     "hours_all_seven_days_edge_times": _with(
         "hours_of_operation",
         LocationHoursOfOperation(
-            id=1, org_id="org-test", days_of_week="mon,tue,wed,thu,fri,sat,sun",
+            id=1, tenant_id="org-test", days_of_week="mon,tue,wed,thu,fri,sat,sun",
             all_day=False, opening_time=dt.time(0, 0),
             closing_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
         ),
@@ -211,14 +229,14 @@ CASES = {
     "endpoint_resolved": _with(
         "endpoints",
         LocationEndpoint(
-            id=1, org_id="org-test", reference_type="Endpoint", reference_id=7,
+            id=1, tenant_id="org-test", reference_type="Endpoint", reference_id=7,
             reference_display="Main endpoint", created_by="u-test", created_at=D,
         ),
     ),
     "endpoint_identifier_fallback": _with(
         "endpoints",
         LocationEndpoint(
-            id=1, org_id="org-test", reference_identifier_system="urn:ext-endpoint",
+            id=1, tenant_id="org-test", reference_identifier_system="urn:ext-endpoint",
             reference_identifier_value="EP-1", created_by="u-test", created_at=D,
         ),
     ),

@@ -12,12 +12,15 @@ from app.models.organization import (
     OrganizationAddress,
     OrganizationAlias,
     OrganizationContact,
+    OrganizationContactPurposeCoding,
     OrganizationContactTelecom,
     OrganizationEndpoint,
     OrganizationIdentifier,
+    OrganizationIdentifierTypeCoding,
     OrganizationModel,
     OrganizationTelecom,
     OrganizationType,
+    OrganizationTypeCoding,
 )
 
 from .support import assert_valid, fhir_json_text
@@ -42,7 +45,7 @@ def _org(**overrides) -> OrganizationModel:
     carry them."""
     fields = {
         "organization_id": 190001,
-        "org_id": "org-test",
+        "tenant_id": "org-test",
         "active": True,
         "name": "Acme Health",
         "created_by": "u-test",
@@ -63,20 +66,29 @@ def _with(attr, *rows) -> OrganizationModel:
 
 
 def _identifier(**kw) -> OrganizationIdentifier:
-    return OrganizationIdentifier(
+    i = OrganizationIdentifier(
         **{
-            "id": 1, "org_id": "org-test", "system": "http://ex.org/ids",
+            "id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
             "value": "ORG-1", "created_by": "u-test", "created_at": D, **kw,
         }
     )
+    if i.type_codings is None:
+        i.type_codings = []
+    return i
 
 
 def _type(**kw) -> OrganizationType:
     return OrganizationType(
         **{
-            "id": 1, "org_id": "org-test",
-            "coding_system": "http://terminology.hl7.org/CodeSystem/organization-type",
-            "coding_code": "prov", "coding_display": "Healthcare Provider",
+            "id": 1, "tenant_id": "org-test", "text": "Healthcare Provider",
+            "codings": [
+                OrganizationTypeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/organization-type",
+                    code="prov", display="Healthcare Provider",
+                    created_by="u-test", created_at=D,
+                )
+            ],
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
@@ -85,7 +97,7 @@ def _type(**kw) -> OrganizationType:
 def _alias(**kw) -> OrganizationAlias:
     return OrganizationAlias(
         **{
-            "id": 1, "org_id": "org-test", "value": "Acme",
+            "id": 1, "tenant_id": "org-test", "value": "Acme",
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
@@ -94,7 +106,7 @@ def _alias(**kw) -> OrganizationAlias:
 def _telecom(**kw) -> OrganizationTelecom:
     return OrganizationTelecom(
         **{
-            "id": 1, "org_id": "org-test", "system": "phone", "value": "555-1234",
+            "id": 1, "tenant_id": "org-test", "system": "phone", "value": "555-1234",
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
@@ -103,7 +115,7 @@ def _telecom(**kw) -> OrganizationTelecom:
 def _address(**kw) -> OrganizationAddress:
     return OrganizationAddress(
         **{
-            "id": 1, "org_id": "org-test", "type": "both", "city": "Amsterdam",
+            "id": 1, "tenant_id": "org-test", "type": "both", "city": "Amsterdam",
             "state": "NH", "postal_code": "1000 AA", "country": "NLD",
             "created_by": "u-test", "created_at": D, **kw,
         }
@@ -113,7 +125,7 @@ def _address(**kw) -> OrganizationAddress:
 def _endpoint(**kw) -> OrganizationEndpoint:
     return OrganizationEndpoint(
         **{
-            "id": 1, "org_id": "org-test",
+            "id": 1, "tenant_id": "org-test",
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
@@ -124,13 +136,18 @@ def _contact(*, telecoms=None, **kw) -> OrganizationContact:
     set explicitly — nothing lazy-loads off a detached instance here."""
     c = OrganizationContact(
         **{
-            "id": 1, "org_id": "org-test", "address_type": "both",
-            "address_city": "Amsterdam", "address_state": "NH",
-            "address_postal_code": "1000 AA", "address_country": "NLD",
+            # FhirAddressMixin's Python-side attribute names stay bare
+            # (`type`/`city`/...) regardless of the `address_` DB-column
+            # prefix OrganizationContact sets — see that mixin's docstring.
+            "id": 1, "tenant_id": "org-test", "type": "both",
+            "city": "Amsterdam", "state": "NH",
+            "postal_code": "1000 AA", "country": "NLD",
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
     c.telecoms = list(telecoms) if telecoms else []
+    if c.purpose_codings is None:
+        c.purpose_codings = []
     return c
 
 
@@ -154,12 +171,15 @@ CASES = {
         "identifiers",
         _identifier(
             use="official",
-            type_system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            type_version="2.9",
-            type_code="PRN",
-            type_display="Provider number",
+            type_codings=[
+                OrganizationIdentifierTypeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
+                    version="2.9", code="PRN", display="Provider number",
+                    user_selected=True, created_by="u-test", created_at=D,
+                )
+            ],
             type_text="Provider number",
-            type_user_selected=True,
             period_start=D,
             period_end=D,
         ),
@@ -182,24 +202,43 @@ CASES = {
     "type_with_text": _with(
         "types",
         _type(
-            coding_system="http://terminology.hl7.org/CodeSystem/organization-type",
-            coding_version="2.0",
-            coding_code="prov",
-            coding_display="Healthcare Provider",
+            codings=[
+                OrganizationTypeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/organization-type",
+                    version="2.0", code="prov", display="Healthcare Provider",
+                    user_selected=True, created_by="u-test", created_at=D,
+                )
+            ],
             text="Healthcare Provider",
-            coding_user_selected=True,
         ),
     ),
     "type_multiple": _with(
         "types",
-        _type(id=1, coding_code="prov", coding_display="Healthcare Provider"),
-        _type(id=2, coding_code="ins", coding_display="Insurance Company"),
+        _type(
+            id=1,
+            codings=[
+                OrganizationTypeCoding(
+                    id=1, code="prov", display="Healthcare Provider",
+                    created_by="u-test", created_at=D,
+                )
+            ],
+        ),
+        _type(
+            id=2,
+            codings=[
+                OrganizationTypeCoding(
+                    id=2, code="ins", display="Insurance Company",
+                    created_by="u-test", created_at=D,
+                )
+            ],
+        ),
     ),
 
     "alias_multiple": _with(
         "aliases",
         *[
-            OrganizationAlias(id=i, org_id="org-test", value=v, created_by="u-test", created_at=D)
+            OrganizationAlias(id=i, tenant_id="org-test", value=v, created_by="u-test", created_at=D)
             for i, v in enumerate(["Acme Health Group", "AHG"], 1)
         ],
     ),
@@ -225,9 +264,14 @@ CASES = {
     "contact_purpose_name_address_telecom": _with(
         "contacts",
         _contact(
-            purpose_system="http://terminology.hl7.org/CodeSystem/contactentity-type",
-            purpose_code="ADMIN",
-            purpose_display="Administrative",
+            purpose_codings=[
+                OrganizationContactPurposeCoding(
+                    id=1,
+                    system="http://terminology.hl7.org/CodeSystem/contactentity-type",
+                    code="ADMIN", display="Administrative",
+                    created_by="u-test", created_at=D,
+                )
+            ],
             purpose_text="Administrative",
             name_use="official",
             name_text="Mr. Denny Denwiddie",
@@ -236,15 +280,15 @@ CASES = {
             name_prefix="Mr.",
             name_period_start=D,
             name_period_end=D,
-            address_use="work",
-            address_text="Galapagosweg 91, Building A",
-            address_line="Galapagosweg 91, Building A",
-            address_district="Texel",
-            address_period_start=D,
-            address_period_end=D,
+            use="work",
+            text="Galapagosweg 91, Building A",
+            line="Galapagosweg 91, Building A",
+            district="Texel",
+            period_start=D,
+            period_end=D,
             telecoms=[
                 OrganizationContactTelecom(
-                    id=1, org_id="org-test", system="phone", value="022-655 2321",
+                    id=1, tenant_id="org-test", system="phone", value="022-655 2321",
                     use="work", rank=1, created_by="u-test", created_at=D,
                 ),
             ],
