@@ -1,15 +1,15 @@
 from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # notAvailable (0..*) BackboneElement child table
 # ---------------------------------------------------------------------------
 
 
-class HealthcareServiceNotAvailable(Base):
+class HealthcareServiceNotAvailable(TenantAuditMixin, Base):
     """notAvailable[] BackboneElement — periods when service is unavailable.
 
     BackboneElement fields:
@@ -20,19 +20,13 @@ class HealthcareServiceNotAvailable(Base):
     __tablename__ = "healthcare_service_not_available"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    healthcare_service_id = Column(
+    healthcare_service_pk = Column(
         BigInteger, ForeignKey("healthcare_service.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
 
     description = Column(String, nullable=False)  # 1..1 required
     during_start = Column(DateTime(timezone=True), nullable=True)
     during_end = Column(DateTime(timezone=True), nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
 
     healthcare_service = relationship(
         "HealthcareServiceModel", back_populates="not_available"

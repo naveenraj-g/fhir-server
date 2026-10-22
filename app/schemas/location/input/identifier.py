@@ -4,39 +4,31 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.enums import IdentifierUse
 
+from ._shared import LocationCodingInput
+
 
 class LocationIdentifierInput(BaseModel):
     """Location.identifier — unique code or number identifying the location to
-    its users (Identifier)."""
+    its users (Identifier). `type_coding` is the real 0..* coding list (a
+    deployment may need its own custom identifier-type code AND a standard
+    crosswalk at once) — mirrors
+    app.schemas.organization.input.identifier.OrganizationIdentifierInput.
+    This is distinct from assigner_identifier_type_* below (the *assigner's*
+    Identifier fallback's .type), which stays a single flattened coding —
+    see LocationCodingInput's docstring."""
 
     model_config = ConfigDict(extra="forbid")
     use: IdentifierUse | None = Field(
         None,
         description="Identifies the purpose for this identifier, if known — usual|official|temp|secondary|old.",
     )
-    type_system: str | None = Field(
+    type_coding: list[LocationCodingInput] | None = Field(
         None,
-        description="The identification of the code system that defines the meaning of the identifier type code.",
-    )
-    type_version: str | None = Field(
-        None,
-        description="The version of the code system which was used when choosing this identifier type code.",
-    )
-    type_code: str | None = Field(
-        None,
-        description="A symbol in syntax defined by the code system (e.g. NPI, DEA, license).",
-    )
-    type_display: str | None = Field(
-        None,
-        description="A representation of the meaning of the identifier type code, following the rules of the system.",
+        description="Coding(s) for this identifier's type — e.g. NPI, DEA, license.",
     )
     type_text: str | None = Field(
         None,
         description="A human language representation of the identifier's type, as seen/selected/entered by the user.",
-    )
-    type_user_selected: bool | None = Field(
-        None,
-        description="Indicates that this identifier-type coding was chosen by a user directly, e.g. off a pick list of available items.",
     )
     system: str | None = Field(
         None,

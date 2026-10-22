@@ -24,6 +24,23 @@ def _audit_fields(obj) -> dict:
     }
 
 
+def plain_coding(c) -> dict:
+    """One Coding entry (FhirCodingMixin-shaped row) → plain dict. Shared by
+    Location.type.coding, Location.identifier.type.coding, and
+    Location.physicalType.coding — all three are dedicated child tables with
+    the exact same shape — mirrors
+    app.fhir.mappers.organization.plain.plain_coding."""
+    return {
+        "id": c.id,
+        "system": c.system,
+        "version": c.version,
+        "code": c.code,
+        "display": c.display,
+        "user_selected": c.user_selected,
+        **_audit_fields(c),
+    }
+
+
 def _plain_reference_fields(obj, prefix: str) -> dict:
     """Flat `{prefix}_type`/`{prefix}_id`/`{prefix}_display` + `{prefix}_identifier_*`
     fallback fields for a resolved-or-logical Reference, plus a resolved
@@ -75,19 +92,17 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
 
 
 def plain_location_identifier(i: LocationIdentifier) -> dict:
-    """Location.identifier (Identifier) → plain snake_case dict. Resource-specific
-    because assigner is a resolved Reference(Organization) with an identifier
-    fallback, and because the row carries an audit trail."""
+    """Location.identifier (Identifier) → plain snake_case dict.
+    Resource-specific because assigner is a resolved Reference(Organization)
+    with an identifier fallback, and because the row carries an audit
+    trail. `type_codings` is a real 0..* child table (type_codings) rather
+    than a single flattened coding — mirrors
+    app.fhir.mappers.organization.plain.plain_org_identifier."""
     return {
         "id": i.id,
-        "org_id": i.org_id,
         "use": fhir_enum(i.use),
-        "type_system": i.type_system,
-        "type_version": i.type_version,
-        "type_code": i.type_code,
-        "type_display": i.type_display,
+        "type_codings": [plain_coding(c) for c in (i.type_codings or [])],
         "type_text": i.type_text,
-        "type_user_selected": i.type_user_selected,
         "system": i.system,
         "value": i.value,
         "period_start": i.period_start.isoformat() if i.period_start else None,
@@ -98,16 +113,13 @@ def plain_location_identifier(i: LocationIdentifier) -> dict:
 
 
 def plain_location_type(t) -> dict:
-    """Location.type (CodeableConcept) → plain snake_case dict."""
+    """Location.type (CodeableConcept) → plain snake_case dict. `codings`
+    is a real 0..* child table rather than a single flattened coding —
+    mirrors app.fhir.mappers.organization.plain.plain_org_type."""
     return {
         "id": t.id,
-        "org_id": t.org_id,
-        "coding_system": t.coding_system,
-        "coding_version": t.coding_version,
-        "coding_code": t.coding_code,
-        "coding_display": t.coding_display,
+        "codings": [plain_coding(c) for c in (t.codings or [])],
         "text": t.text,
-        "coding_user_selected": t.coding_user_selected,
         **_audit_fields(t),
     }
 
@@ -118,7 +130,6 @@ def plain_location_alias(a) -> dict:
     callers can target it with a sub-resource DELETE."""
     return {
         "id": a.id,
-        "org_id": a.org_id,
         "value": a.value,
         **_audit_fields(a),
     }
@@ -128,7 +139,6 @@ def plain_location_telecom(t) -> dict:
     """Location.telecom (ContactPoint) → plain snake_case dict."""
     return {
         "id": t.id,
-        "org_id": t.org_id,
         "system": fhir_enum(t.system),
         "value": t.value,
         "use": fhir_enum(t.use),
@@ -145,7 +155,6 @@ def plain_location_hours_of_operation(h: LocationHoursOfOperation) -> dict:
     list, so the plain form and the FHIR form agree."""
     return {
         "id": h.id,
-        "org_id": h.org_id,
         "days_of_week": fhir_split(h.days_of_week),
         "all_day": h.all_day,
         "opening_time": h.opening_time.isoformat() if h.opening_time else None,
@@ -158,7 +167,6 @@ def plain_location_endpoint(e: LocationEndpoint) -> dict:
     """Location.endpoint (Reference(Endpoint)) → plain snake_case dict."""
     return {
         "id": e.id,
-        "org_id": e.org_id,
         **_plain_reference_fields(e, "reference"),
         **_audit_fields(e),
     }
@@ -193,12 +201,10 @@ def to_plain_location(loc: LocationModel) -> dict:
         "address_period_end": loc.address_period_end.isoformat()
         if loc.address_period_end
         else None,
-        "physical_type_system": loc.physical_type_system,
-        "physical_type_version": loc.physical_type_version,
-        "physical_type_code": loc.physical_type_code,
-        "physical_type_display": loc.physical_type_display,
+        "physical_type_codings": [
+            plain_coding(c) for c in (loc.physical_type_codings or [])
+        ],
         "physical_type_text": loc.physical_type_text,
-        "physical_type_user_selected": loc.physical_type_user_selected,
         "position_longitude": loc.position_longitude,
         "position_latitude": loc.position_latitude,
         "position_altitude": loc.position_altitude,
@@ -214,7 +220,7 @@ def to_plain_location(loc: LocationModel) -> dict:
             for h in (loc.hours_of_operation or [])
         ],
         "endpoint": [plain_location_endpoint(e) for e in (loc.endpoints or [])],
-        "org_id": loc.org_id,
+        "org_id": loc.tenant_id,
         "created_at": loc.created_at.isoformat() if loc.created_at else None,
         "updated_at": loc.updated_at.isoformat() if loc.updated_at else None,
         "created_by": loc.created_by,

@@ -11,15 +11,20 @@ from app.core.pagination import resolve_sort
 from app.models.enums import OrganizationReferenceType
 from app.models.healthcare_service import (
     HealthcareServiceCategory,
+    HealthcareServiceCategoryCoding,
     HealthcareServiceCharacteristic,
+    HealthcareServiceCharacteristicCoding,
     HealthcareServiceCoverageArea,
     HealthcareServiceEndpoint,
     HealthcareServiceIdentifier,
     HealthcareServiceLocation,
     HealthcareServiceModel,
     HealthcareServiceProgram,
+    HealthcareServiceProgramCoding,
     HealthcareServiceSpecialty,
+    HealthcareServiceSpecialtyCoding,
     HealthcareServiceType,
+    HealthcareServiceTypeCoding,
 )
 from app.models.healthcare_service.enums import (
     HealthcareServiceCoverageAreaReferenceType,
@@ -57,7 +62,7 @@ class _CoreMixin:
                 select(HealthcareServiceModel).where(
                     HealthcareServiceModel.healthcare_service_id
                     == healthcare_service_id,
-                    HealthcareServiceModel.org_id == org_id,
+                    HealthcareServiceModel.tenant_id == org_id,
                 )
             )
             return (await session.execute(stmt)).scalars().first()
@@ -71,7 +76,7 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = select(HealthcareServiceModel.id).where(
                 HealthcareServiceModel.healthcare_service_id == healthcare_service_id,
-                HealthcareServiceModel.org_id == org_id,
+                HealthcareServiceModel.tenant_id == org_id,
             )
             result = await session.execute(stmt)
             return result.scalar_one_or_none() is not None
@@ -94,7 +99,7 @@ class _CoreMixin:
         endpoint: str | None = None,
     ):
         if org_id:
-            stmt = stmt.where(HealthcareServiceModel.org_id == org_id)
+            stmt = stmt.where(HealthcareServiceModel.tenant_id == org_id)
         stmt = apply_token_filter(stmt, HealthcareServiceModel.active, active)
         if name:
             stmt = stmt.where(HealthcareServiceModel.name.ilike(f"%{name}%"))
@@ -102,54 +107,90 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(HealthcareServiceIdentifier.id).where(
-                    HealthcareServiceIdentifier.healthcare_service_id
+                    HealthcareServiceIdentifier.healthcare_service_pk
                     == HealthcareServiceModel.id,
                     HealthcareServiceIdentifier.value == identifier,
                 ),
             )
+        # category/service_type/specialty/characteristic/program: each
+        # CodeableConcept's coding is a real 0..* child table now (a
+        # deployment may need its own custom code alongside a standard-
+        # terminology crosswalk) — one EXISTS joining the coding table to
+        # its parent row, correlated to the outer HealthcareServiceModel.
+        # Mirrors Organization's own org_type filter.
         if category:
             stmt = apply_child_exists_filter(
                 stmt,
-                select(HealthcareServiceCategory.id).where(
-                    HealthcareServiceCategory.healthcare_service_id
+                select(HealthcareServiceCategoryCoding.id)
+                .join(
+                    HealthcareServiceCategory,
+                    HealthcareServiceCategoryCoding.healthcare_service_category_id
+                    == HealthcareServiceCategory.id,
+                )
+                .where(
+                    HealthcareServiceCategory.healthcare_service_pk
                     == HealthcareServiceModel.id,
-                    HealthcareServiceCategory.coding_code == category,
+                    HealthcareServiceCategoryCoding.code == category,
                 ),
             )
         if service_type:
             stmt = apply_child_exists_filter(
                 stmt,
-                select(HealthcareServiceType.id).where(
-                    HealthcareServiceType.healthcare_service_id
+                select(HealthcareServiceTypeCoding.id)
+                .join(
+                    HealthcareServiceType,
+                    HealthcareServiceTypeCoding.healthcare_service_type_id
+                    == HealthcareServiceType.id,
+                )
+                .where(
+                    HealthcareServiceType.healthcare_service_pk
                     == HealthcareServiceModel.id,
-                    HealthcareServiceType.coding_code == service_type,
+                    HealthcareServiceTypeCoding.code == service_type,
                 ),
             )
         if specialty:
             stmt = apply_child_exists_filter(
                 stmt,
-                select(HealthcareServiceSpecialty.id).where(
-                    HealthcareServiceSpecialty.healthcare_service_id
+                select(HealthcareServiceSpecialtyCoding.id)
+                .join(
+                    HealthcareServiceSpecialty,
+                    HealthcareServiceSpecialtyCoding.healthcare_service_specialty_id
+                    == HealthcareServiceSpecialty.id,
+                )
+                .where(
+                    HealthcareServiceSpecialty.healthcare_service_pk
                     == HealthcareServiceModel.id,
-                    HealthcareServiceSpecialty.coding_code == specialty,
+                    HealthcareServiceSpecialtyCoding.code == specialty,
                 ),
             )
         if characteristic:
             stmt = apply_child_exists_filter(
                 stmt,
-                select(HealthcareServiceCharacteristic.id).where(
-                    HealthcareServiceCharacteristic.healthcare_service_id
+                select(HealthcareServiceCharacteristicCoding.id)
+                .join(
+                    HealthcareServiceCharacteristic,
+                    HealthcareServiceCharacteristicCoding.healthcare_service_characteristic_id
+                    == HealthcareServiceCharacteristic.id,
+                )
+                .where(
+                    HealthcareServiceCharacteristic.healthcare_service_pk
                     == HealthcareServiceModel.id,
-                    HealthcareServiceCharacteristic.coding_code == characteristic,
+                    HealthcareServiceCharacteristicCoding.code == characteristic,
                 ),
             )
         if program:
             stmt = apply_child_exists_filter(
                 stmt,
-                select(HealthcareServiceProgram.id).where(
-                    HealthcareServiceProgram.healthcare_service_id
+                select(HealthcareServiceProgramCoding.id)
+                .join(
+                    HealthcareServiceProgram,
+                    HealthcareServiceProgramCoding.healthcare_service_program_id
+                    == HealthcareServiceProgram.id,
+                )
+                .where(
+                    HealthcareServiceProgram.healthcare_service_pk
                     == HealthcareServiceModel.id,
-                    HealthcareServiceProgram.coding_code == program,
+                    HealthcareServiceProgramCoding.code == program,
                 ),
             )
         if provided_by:
@@ -164,7 +205,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(HealthcareServiceLocation.id).where(
-                    HealthcareServiceLocation.healthcare_service_id
+                    HealthcareServiceLocation.healthcare_service_pk
                     == HealthcareServiceModel.id,
                     HealthcareServiceLocation.reference_type == loc_type,
                     HealthcareServiceLocation.reference_id == loc_id,
@@ -177,7 +218,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(HealthcareServiceCoverageArea.id).where(
-                    HealthcareServiceCoverageArea.healthcare_service_id
+                    HealthcareServiceCoverageArea.healthcare_service_pk
                     == HealthcareServiceModel.id,
                     HealthcareServiceCoverageArea.reference_type == ca_type,
                     HealthcareServiceCoverageArea.reference_id == ca_id,
@@ -190,7 +231,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(HealthcareServiceEndpoint.id).where(
-                    HealthcareServiceEndpoint.healthcare_service_id
+                    HealthcareServiceEndpoint.healthcare_service_pk
                     == HealthcareServiceModel.id,
                     HealthcareServiceEndpoint.reference_type == ep_type,
                     HealthcareServiceEndpoint.reference_id == ep_id,

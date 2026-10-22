@@ -1,7 +1,19 @@
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
-from app.models.healthcare_service import HealthcareServiceModel
+from app.models.healthcare_service import (
+    HealthcareServiceCategory,
+    HealthcareServiceCharacteristic,
+    HealthcareServiceCommunication,
+    HealthcareServiceEligibility,
+    HealthcareServiceIdentifier,
+    HealthcareServiceModel,
+    HealthcareServiceProgram,
+    HealthcareServiceReferralMethod,
+    HealthcareServiceServiceProvisionCode,
+    HealthcareServiceSpecialty,
+    HealthcareServiceType,
+)
 from app.models.healthcare_service.enums import (
     HealthcareServiceCoverageAreaReferenceType,
     HealthcareServiceEndpointReferenceType,
@@ -43,21 +55,46 @@ _SORTABLE_FIELDS = {
 
 def _with_relationships(stmt):
     """Eager-load all 16 healthcare_service sub-resources to avoid N+1 and
-    async lazy-load failures."""
+    async lazy-load failures. identifier.type_codings, category.codings,
+    type.codings, specialty.codings, service_provision_code.codings,
+    eligibility.code_codings, program.codings, characteristic.codings,
+    communication.codings, and referral_method.codings are each a nested
+    0..* coding child table now (see app.models.healthcare_service.*) —
+    mirrors app.repository.organization._shared._with_relationships."""
     return stmt.options(
-        selectinload(HealthcareServiceModel.identifiers),
-        selectinload(HealthcareServiceModel.categories),
-        selectinload(HealthcareServiceModel.types),
-        selectinload(HealthcareServiceModel.specialties),
+        selectinload(HealthcareServiceModel.identifiers).selectinload(
+            HealthcareServiceIdentifier.type_codings
+        ),
+        selectinload(HealthcareServiceModel.categories).selectinload(
+            HealthcareServiceCategory.codings
+        ),
+        selectinload(HealthcareServiceModel.types).selectinload(
+            HealthcareServiceType.codings
+        ),
+        selectinload(HealthcareServiceModel.specialties).selectinload(
+            HealthcareServiceSpecialty.codings
+        ),
         selectinload(HealthcareServiceModel.locations),
         selectinload(HealthcareServiceModel.telecoms),
         selectinload(HealthcareServiceModel.coverage_areas),
-        selectinload(HealthcareServiceModel.service_provision_codes),
-        selectinload(HealthcareServiceModel.eligibilities),
-        selectinload(HealthcareServiceModel.programs),
-        selectinload(HealthcareServiceModel.characteristics),
-        selectinload(HealthcareServiceModel.communications),
-        selectinload(HealthcareServiceModel.referral_methods),
+        selectinload(HealthcareServiceModel.service_provision_codes).selectinload(
+            HealthcareServiceServiceProvisionCode.codings
+        ),
+        selectinload(HealthcareServiceModel.eligibilities).selectinload(
+            HealthcareServiceEligibility.code_codings
+        ),
+        selectinload(HealthcareServiceModel.programs).selectinload(
+            HealthcareServiceProgram.codings
+        ),
+        selectinload(HealthcareServiceModel.characteristics).selectinload(
+            HealthcareServiceCharacteristic.codings
+        ),
+        selectinload(HealthcareServiceModel.communications).selectinload(
+            HealthcareServiceCommunication.codings
+        ),
+        selectinload(HealthcareServiceModel.referral_methods).selectinload(
+            HealthcareServiceReferralMethod.codings
+        ),
         selectinload(HealthcareServiceModel.available_times),
         selectinload(HealthcareServiceModel.not_available),
         selectinload(HealthcareServiceModel.endpoints),

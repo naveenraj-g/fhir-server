@@ -1,37 +1,52 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # referralMethod (0..*) CodeableConcept child table
 # ---------------------------------------------------------------------------
 
 
-class HealthcareServiceReferralMethod(Base):
-    """referralMethod[] — ways that the service accepts referrals."""
+class HealthcareServiceReferralMethod(TenantAuditMixin, Base):
+    """referralMethod[] — ways that the service accepts referrals. `text`
+    stays flattened (sibling of coding[], not part of it); `coding[]`
+    itself is a real 0..* child table (HealthcareServiceReferralMethodCoding,
+    below) rather than a single flattened coding — same reasoning as
+    OrganizationType's own coding[] promotion."""
 
     __tablename__ = "healthcare_service_referral_method"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    healthcare_service_id = Column(
+    healthcare_service_pk = Column(
         BigInteger, ForeignKey("healthcare_service.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
-
-    coding_system = Column(String, nullable=True)
-    coding_version = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
     text = Column(String, nullable=True)
-    coding_user_selected = Column(Boolean, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
 
     healthcare_service = relationship(
         "HealthcareServiceModel", back_populates="referral_methods"
+    )
+    codings = relationship(
+        "HealthcareServiceReferralMethodCoding",
+        back_populates="referral_method",
+        cascade="all, delete-orphan",
+    )
+
+
+class HealthcareServiceReferralMethodCoding(FhirCodingMixin, TenantAuditMixin, Base):
+    """One entry of HealthcareService.referralMethod.coding (0..*)."""
+
+    __tablename__ = "healthcare_service_referral_method_coding"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    healthcare_service_referral_method_id = Column(
+        BigInteger,
+        ForeignKey("healthcare_service_referral_method.id"),
+        nullable=False,
+        index=True,
+    )
+
+    referral_method = relationship(
+        "HealthcareServiceReferralMethod", back_populates="codings"
     )

@@ -1,24 +1,15 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    String,
-    Text,
-    Time,
-)
+from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Text, Time
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # availableTime (0..*) BackboneElement child table
 # ---------------------------------------------------------------------------
 
 
-class HealthcareServiceAvailableTime(Base):
+class HealthcareServiceAvailableTime(TenantAuditMixin, Base):
     """availableTime[] BackboneElement — times the service site is available.
 
     BackboneElement fields:
@@ -40,20 +31,14 @@ class HealthcareServiceAvailableTime(Base):
     __tablename__ = "healthcare_service_available_time"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    healthcare_service_id = Column(
+    healthcare_service_pk = Column(
         BigInteger, ForeignKey("healthcare_service.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
 
     days_of_week = Column(Text, nullable=True)  # comma-separated: mon,tue,…
     all_day = Column(Boolean, nullable=True)
     available_start_time = Column(Time, nullable=True)
     available_end_time = Column(Time, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
 
     healthcare_service = relationship(
         "HealthcareServiceModel", back_populates="available_times"

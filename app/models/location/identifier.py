@@ -9,23 +9,29 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # identifier (0..*) Identifier child table
 # ---------------------------------------------------------------------------
 
 
-class LocationIdentifier(Base):
+class LocationIdentifier(TenantAuditMixin, Base):
     """Location.identifier[] — unique codes/numbers identifying the location.
 
-    Same shape as OrganizationIdentifier: Identifier.type is a CodeableConcept
-    flattened to the standard six columns, and Identifier.assigner is a
-    resolved Reference(Organization) with an Identifier logical-reference
-    fallback for assigners that aren't resources in this system.
+    Same shape as OrganizationIdentifier: type_text stays flattened (sibling
+    of coding[], not part of it); type's coding[] is a real 0..* child table
+    (LocationIdentifierTypeCoding, below) rather than a single flattened
+    coding — same org-custom-code-plus-standard-crosswalk reasoning as
+    OrganizationIdentifier's own type.coding[] promotion. Identifier.assigner
+    is a resolved Reference(Organization) with an Identifier logical-
+    reference fallback for assigners that aren't resources in this system —
+    that fallback's own `.type` stays flattened/one-to-one (it's a
+    reference's logical-identifier fallback, not a first-class identifier of
+    this resource), matching OrganizationIdentifier's assigner_identifier_type_*.
     """
 
     __tablename__ = "location_identifier"
@@ -34,20 +40,19 @@ class LocationIdentifier(Base):
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    location_id = Column(
+    # Containment FK — named location_pk, not location_id, so it can never
+    # be confused with LocationModel.location_id (the public, FHIR-facing
+    # sequence ID) — same reasoning as Organization's organization_pk.
+    location_pk = Column(
         BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
 
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
 
-    # Identifier.type is a CodeableConcept — single coding flattened + text
-    type_system = Column(String, nullable=True)
-    type_version = Column(String, nullable=True)
-    type_code = Column(String, nullable=True)
-    type_display = Column(String, nullable=True)
+    # Identifier.type (0..1 CodeableConcept) — type_text is the
+    # CodeableConcept's own field; type_coding is the real 0..* coding list,
+    # via the type_codings relationship below.
     type_text = Column(String, nullable=True)
-    type_user_selected = Column(Boolean, nullable=True)
 
     system = Column(String, nullable=False)
     value = Column(String, nullable=False)
@@ -84,9 +89,29 @@ class LocationIdentifier(Base):
     assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
+    # Audit columns come from TenantAuditMixin above.
 
     location = relationship("LocationModel", back_populates="identifiers")
+    type_codings = relationship(
+        "LocationIdentifierTypeCoding",
+        back_populates="identifier",
+        cascade="all, delete-orphan",
+    )
+
+
+# ---------------------------------------------------------------------------
+# identifier.type.coding (0..*) grandchild table
+# ---------------------------------------------------------------------------
+
+
+class LocationIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+    """One entry of Location.identifier.type.coding (0..*)."""
+
+    __tablename__ = "location_identifier_type_coding"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    location_identifier_id = Column(
+        BigInteger, ForeignKey("location_identifier.id"), nullable=False, index=True
+    )
+
+    identifier = relationship("LocationIdentifier", back_populates="type_codings")

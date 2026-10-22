@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.models.location.enums import LocationMode, LocationStatus
 from app.schemas.enums import AddressType, AddressUse, IdentifierUse
 
+from ._shared import LocationCodingInput
 from .alias import LocationAliasInput
 from .endpoint import LocationEndpointInput
 from .hours_of_operation import LocationHoursOfOperationInput
@@ -73,9 +74,13 @@ class LocationCreateSchema(_PositionMixin):
                 "address_state": "NH",
                 "address_postal_code": "9105 PZ",
                 "address_country": "NLD",
-                "physical_type_system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
-                "physical_type_code": "wi",
-                "physical_type_display": "Wing",
+                "physical_type_coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+                        "code": "wi",
+                        "display": "Wing",
+                    }
+                ],
                 "position_longitude": "-83.6945691",
                 "position_latitude": "42.25475478",
                 "managing_organization": "Organization/190001",
@@ -92,9 +97,13 @@ class LocationCreateSchema(_PositionMixin):
                 ],
                 "type": [
                     {
-                        "coding_system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-                        "coding_code": "HOSP",
-                        "coding_display": "Hospital",
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                                "code": "HOSP",
+                                "display": "Hospital",
+                            }
+                        ]
                     }
                 ],
                 "alias": [{"value": "South Wing OR"}],
@@ -200,30 +209,18 @@ class LocationCreateSchema(_PositionMixin):
     )
 
     # ── physicalType (0..1 CodeableConcept) ────────────────────────────────
+    # text stays flattened here (sibling of coding[], not part of it);
+    # coding is the real 0..* list — see LocationCodingInput. physicalType
+    # itself is 0..1 at the Location level, but its own coding[] is still
+    # 0..* per spec, same reasoning as Location.type/identifier.type.
 
-    physical_type_system: str | None = Field(
+    physical_type_coding: list[LocationCodingInput] | None = Field(
         None,
-        description="Physical form — the code system that defines the meaning of the symbol in the code.",
-    )
-    physical_type_version: str | None = Field(
-        None,
-        description="Physical form — the version of the code system used when choosing this code.",
-    )
-    physical_type_code: str | None = Field(
-        None,
-        description="Physical form — a symbol in syntax defined by the code system (e.g. 'wi' for Wing, 'bu' for Building, 'ro' for Room).",
-    )
-    physical_type_display: str | None = Field(
-        None,
-        description="Physical form — a representation of the meaning of the code in the system.",
+        description="Coding(s) for the physical form — e.g. 'wi' for Wing, 'bu' for Building, 'ro' for Room.",
     )
     physical_type_text: str | None = Field(
         None,
         description="Physical form — a human language representation of the concept, as seen/selected/entered by the user.",
-    )
-    physical_type_user_selected: bool | None = Field(
-        None,
-        description="Physical form — whether this coding was chosen by a user directly.",
     )
 
     # ── position (0..1 BackboneElement, flattened) ─────────────────────────
@@ -472,23 +469,11 @@ class LocationPatchSchema(_PositionMixin):
         None, description="End of the time period when this address was/is in use."
     )
 
-    physical_type_system: str | None = Field(
-        None, description="Physical form — the code system for the code."
-    )
-    physical_type_version: str | None = Field(
-        None, description="Physical form — the version of the code system."
-    )
-    physical_type_code: str | None = Field(
-        None, description="Physical form — a symbol defined by the code system."
-    )
-    physical_type_display: str | None = Field(
-        None, description="Physical form — the meaning of the code in the system."
+    physical_type_coding: list[LocationCodingInput] | None = Field(
+        None, description="Coding(s) for the physical form — replaces the full list if supplied."
     )
     physical_type_text: str | None = Field(
         None, description="Physical form — a human language representation."
-    )
-    physical_type_user_selected: bool | None = Field(
-        None, description="Physical form — whether the coding was user-selected."
     )
 
     position_longitude: Decimal | None = Field(

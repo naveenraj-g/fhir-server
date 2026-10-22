@@ -1,5 +1,5 @@
 from .alias import LocationAlias
-from .core import LocationModel, location_id_seq
+from .core import LocationModel, LocationPhysicalTypeCoding, location_id_seq
 from .endpoint import LocationEndpoint
 from .enums import (
     LocationDayOfWeek,
@@ -9,9 +9,9 @@ from .enums import (
     LocationStatus,
 )
 from .hours_of_operation import LocationHoursOfOperation
-from .identifier import LocationIdentifier
+from .identifier import LocationIdentifier, LocationIdentifierTypeCoding
 from .telecom import LocationTelecom
-from .type import LocationType
+from .type import LocationType, LocationTypeCoding
 
 __all__ = [
     "LocationAlias",
@@ -20,11 +20,14 @@ __all__ = [
     "LocationEndpointReferenceType",
     "LocationHoursOfOperation",
     "LocationIdentifier",
+    "LocationIdentifierTypeCoding",
     "LocationMode",
     "LocationModel",
     "LocationPartOfReferenceType",
+    "LocationPhysicalTypeCoding",
     "LocationStatus",
     "LocationTelecom",
     "LocationType",
+    "LocationTypeCoding",
     "location_id_seq",
 ]

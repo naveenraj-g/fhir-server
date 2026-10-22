@@ -9,9 +9,11 @@ from app.schemas.common.fhir import (
     FHIRCoding,
     FHIRContactPoint,
     FHIRIdentifier,
+    FHIRMeta,
     FHIRReference,
 )
 
+from ._shared import PlainLocationCoding
 from .alias import PlainLocationAlias
 from .endpoint import PlainLocationEndpoint
 from .hours_of_operation import PlainLocationHoursOfOperation
@@ -52,6 +54,10 @@ class FHIRLocationHoursOfOperation(BaseModel):
 class FHIRLocationSchema(BaseModel):
     resourceType: str = Field("Location", description="Always 'Location'.")
     id: str = Field(..., description="Public location_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="Unique code or number identifying the location to its users."
     )
@@ -186,23 +192,12 @@ class PlainLocationResponse(BaseModel):
         None, description="End of the time period when this address was/is in use."
     )
 
-    physical_type_system: str | None = Field(
-        None, description="Physical form — the code system for the code."
-    )
-    physical_type_version: str | None = Field(
-        None, description="Physical form — the version of the code system."
-    )
-    physical_type_code: str | None = Field(
-        None, description="Physical form — a symbol defined by the code system."
-    )
-    physical_type_display: str | None = Field(
-        None, description="Physical form — the meaning of the code in the system."
+    physical_type_codings: list[PlainLocationCoding] | None = Field(
+        None,
+        description="Physical form — coding(s), a real 0..* child table rather than a single flattened coding.",
     )
     physical_type_text: str | None = Field(
         None, description="Physical form — a human language representation."
-    )
-    physical_type_user_selected: bool | None = Field(
-        None, description="Physical form — whether the coding was user-selected."
     )
 
     position_longitude: Decimal | None = Field(

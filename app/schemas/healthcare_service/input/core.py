@@ -46,17 +46,25 @@ class HealthcareServiceCreateSchema(BaseModel):
                 "availability_exceptions": "Closed public holidays",
                 "category": [
                     {
-                        "coding_system": "http://example.org/service-category",
-                        "coding_code": "17",
-                        "coding_display": "General Practice",
+                        "coding": [
+                            {
+                                "system": "http://example.org/service-category",
+                                "code": "17",
+                                "display": "General Practice",
+                            }
+                        ]
                     }
                 ],
-                "type": [{"coding_code": "57", "coding_display": "Immunization"}],
+                "type": [{"coding": [{"code": "57", "display": "Immunization"}]}],
                 "specialty": [
                     {
-                        "coding_system": "http://snomed.info/sct",
-                        "coding_code": "394814009",
-                        "coding_display": "General practice",
+                        "coding": [
+                            {
+                                "system": "http://snomed.info/sct",
+                                "code": "394814009",
+                                "display": "General practice",
+                            }
+                        ]
                     }
                 ],
                 "location": [],

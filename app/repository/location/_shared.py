@@ -2,7 +2,7 @@ from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
-from app.models.location import LocationModel
+from app.models.location import LocationIdentifier, LocationModel, LocationType
 from app.models.location.enums import (
     LocationEndpointReferenceType,
     LocationPartOfReferenceType,
@@ -43,16 +43,20 @@ _SORTABLE_FIELDS = {
 
 def _with_relationships(stmt):
     """Eager-load all location sub-resources to avoid N+1 and async lazy-load
-    failures. Location's sub-resources are all one level deep — there is no
-    nested list like Organization.contact.telecom — so no chained
-    selectinload is needed."""
+    failures. identifiers.type_codings, types.codings, and
+    physical_type_codings are each a nested 0..* coding child table now
+    (see app.models.location.identifier/type/core) — mirrors
+    app.repository.organization._shared._with_relationships."""
     return stmt.options(
-        selectinload(LocationModel.identifiers),
-        selectinload(LocationModel.types),
+        selectinload(LocationModel.identifiers).selectinload(
+            LocationIdentifier.type_codings
+        ),
+        selectinload(LocationModel.types).selectinload(LocationType.codings),
         selectinload(LocationModel.aliases),
         selectinload(LocationModel.telecoms),
         selectinload(LocationModel.hours_of_operation),
         selectinload(LocationModel.endpoints),
+        selectinload(LocationModel.physical_type_codings),
     )
 
 
@@ -122,7 +126,7 @@ async def _partof_chain_contains(
         literal(1).label("depth"),
     ).where(
         LocationModel.location_id == start_public_id,
-        LocationModel.org_id == org_id,
+        LocationModel.tenant_id == org_id,
     )
     chain = anchor.cte(name="part_of_ancestor_chain", recursive=True)
 
@@ -134,7 +138,7 @@ async def _partof_chain_contains(
         )
         .join(chain, LocationModel.location_id == chain.c.part_of_id)
         .where(
-            LocationModel.org_id == org_id,
+            LocationModel.tenant_id == org_id,
             chain.c.depth < max_depth,
         )
     )

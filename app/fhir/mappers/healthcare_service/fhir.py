@@ -85,28 +85,39 @@ def _fhir_reference(obj, prefix: str) -> dict:
     return entry
 
 
-def _fhir_cc(
-    coding_system,
-    coding_version,
-    coding_code,
-    coding_display,
-    text,
-    coding_user_selected,
-) -> dict:
-    coding = {
-        k: v
-        for k, v in {
-            "system": coding_system,
-            "version": coding_version,
-            "code": coding_code,
-            "display": coding_display,
-            "userSelected": coding_user_selected,
-        }.items()
-        if v is not None
-    }
+def _fhir_coding_list(codings) -> list[dict]:
+    """Render a list of FhirCodingMixin-shaped rows as a FHIR `coding[]`
+    array — shared by category/type/specialty/serviceProvisionCode/program/
+    characteristic/communication/referralMethod/identifier.type/
+    eligibility.code, all of which are real 0..* child tables now (a
+    deployment may need its own custom code alongside a standard-
+    terminology crosswalk at once) — mirrors
+    app.fhir.mappers.organization.fhir._fhir_coding_list."""
+    result = []
+    for c in codings or []:
+        entry = {
+            k: v
+            for k, v in {
+                "system": c.system,
+                "version": c.version,
+                "code": c.code,
+                "display": c.display,
+                "userSelected": c.user_selected,
+            }.items()
+            if v is not None
+        }
+        if entry:
+            result.append(entry)
+    return result
+
+
+def _fhir_cc(codings, text) -> dict:
+    """(codings relationship, text) -> FHIR CodeableConcept dict. Shared by
+    every HealthcareService CodeableConcept-list field below."""
+    coding = _fhir_coding_list(codings)
     entry: dict = {}
     if coding:
-        entry["coding"] = [coding]
+        entry["coding"] = coding
     if text:
         entry["text"] = text
     return entry
@@ -116,28 +127,14 @@ def fhir_hs_identifier(i) -> dict:
     """HealthcareService.identifier (Identifier) → FHIR camelCase dict.
     Resource-specific (not the shared app.fhir.datatypes.fhir_identifier)
     because assigner is a resolved Reference(Organization) with an identifier
-    fallback, unlike a flat display string."""
+    fallback, unlike a flat display string. `type.coding[]` is a real 0..*
+    child table (type_codings), not a single flattened coding — same
+    reasoning as OrganizationIdentifier's own type.coding[] promotion."""
     entry: dict = {}
     if i.use:
         entry["use"] = fhir_enum(i.use)
-    if i.type_system or i.type_code or i.type_text:
-        type_cc: dict = {}
-        if i.type_system or i.type_code:
-            type_cc["coding"] = [
-                {
-                    k: v
-                    for k, v in {
-                        "system": i.type_system,
-                        "version": i.type_version,
-                        "code": i.type_code,
-                        "display": i.type_display,
-                        "userSelected": i.type_user_selected,
-                    }.items()
-                    if v is not None
-                }
-            ]
-        if i.type_text:
-            type_cc["text"] = i.type_text
+    type_cc = _fhir_cc(i.type_codings, i.type_text)
+    if type_cc:
         entry["type"] = type_cc
     if i.system:
         entry["system"] = i.system
@@ -159,36 +156,15 @@ def fhir_hs_identifier(i) -> dict:
 
 
 def fhir_hs_category(c) -> dict:
-    return _fhir_cc(
-        c.coding_system,
-        c.coding_version,
-        c.coding_code,
-        c.coding_display,
-        c.text,
-        c.coding_user_selected,
-    )
+    return _fhir_cc(c.codings, c.text)
 
 
 def fhir_hs_type(t) -> dict:
-    return _fhir_cc(
-        t.coding_system,
-        t.coding_version,
-        t.coding_code,
-        t.coding_display,
-        t.text,
-        t.coding_user_selected,
-    )
+    return _fhir_cc(t.codings, t.text)
 
 
 def fhir_hs_specialty(sp) -> dict:
-    return _fhir_cc(
-        sp.coding_system,
-        sp.coding_version,
-        sp.coding_code,
-        sp.coding_display,
-        sp.text,
-        sp.coding_user_selected,
-    )
+    return _fhir_cc(sp.codings, sp.text)
 
 
 def fhir_hs_location(loc) -> dict:
@@ -204,26 +180,12 @@ def fhir_hs_coverage_area(ca) -> dict:
 
 
 def fhir_hs_service_provision_code(spc) -> dict:
-    return _fhir_cc(
-        spc.coding_system,
-        spc.coding_version,
-        spc.coding_code,
-        spc.coding_display,
-        spc.text,
-        spc.coding_user_selected,
-    )
+    return _fhir_cc(spc.codings, spc.text)
 
 
 def fhir_hs_eligibility(e) -> dict:
     entry: dict = {}
-    code_cc = _fhir_cc(
-        e.code_system,
-        e.code_version,
-        e.code_code,
-        e.code_display,
-        e.code_text,
-        e.code_user_selected,
-    )
+    code_cc = _fhir_cc(e.code_codings, e.code_text)
     if code_cc:
         entry["code"] = code_cc
     if e.comment:
@@ -232,47 +194,19 @@ def fhir_hs_eligibility(e) -> dict:
 
 
 def fhir_hs_program(p) -> dict:
-    return _fhir_cc(
-        p.coding_system,
-        p.coding_version,
-        p.coding_code,
-        p.coding_display,
-        p.text,
-        p.coding_user_selected,
-    )
+    return _fhir_cc(p.codings, p.text)
 
 
 def fhir_hs_characteristic(c) -> dict:
-    return _fhir_cc(
-        c.coding_system,
-        c.coding_version,
-        c.coding_code,
-        c.coding_display,
-        c.text,
-        c.coding_user_selected,
-    )
+    return _fhir_cc(c.codings, c.text)
 
 
 def fhir_hs_communication(cm) -> dict:
-    return _fhir_cc(
-        cm.coding_system,
-        cm.coding_version,
-        cm.coding_code,
-        cm.coding_display,
-        cm.text,
-        cm.coding_user_selected,
-    )
+    return _fhir_cc(cm.codings, cm.text)
 
 
 def fhir_hs_referral_method(rm) -> dict:
-    return _fhir_cc(
-        rm.coding_system,
-        rm.coding_version,
-        rm.coding_code,
-        rm.coding_display,
-        rm.text,
-        rm.coding_user_selected,
-    )
+    return _fhir_cc(rm.codings, rm.text)
 
 
 def fhir_hs_available_time(at) -> dict:
@@ -313,11 +247,58 @@ def fhir_hs_endpoint(ep) -> dict:
     return _fhir_reference(ep, "reference")
 
 
+# Base URL for this server's own, not-yet-formally-registered extensions —
+# same convention as app.fhir.mappers.organization.fhir._EXT_BASE.
+_EXT_BASE = "https://fhir-server.dev/fhir/StructureDefinition"
+
+
+def _fhir_meta(hs: HealthcareServiceModel) -> dict:
+    """Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
+    rendered into Resource.meta — same convention as
+    app.fhir.mappers.organization.fhir._fhir_meta. `lastUpdated` is Meta's
+    own native field; the other four have no native Meta field in R4, so
+    they ride as extensions. HealthcareService has no user_id (see the
+    model's docstring), so there's no equivalent of a user-scoped extension
+    here."""
+    meta: dict = {}
+    if hs.updated_at:
+        meta["lastUpdated"] = hs.updated_at.isoformat()
+
+    extensions = []
+    if hs.tenant_id:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/org-id", "valueString": hs.tenant_id}
+        )
+    if hs.created_by:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": hs.created_by}
+        )
+    if hs.updated_by:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": hs.updated_by}
+        )
+    if hs.created_at:
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": hs.created_at.isoformat(),
+            }
+        )
+    if extensions:
+        meta["extension"] = extensions
+
+    return meta
+
+
 def to_fhir_healthcare_service(hs: HealthcareServiceModel) -> dict:
     result: dict = {
         "resourceType": "HealthcareService",
         "id": str(hs.healthcare_service_id),
     }
+
+    meta = _fhir_meta(hs)
+    if meta:
+        result["meta"] = meta
 
     identifiers = [fhir_hs_identifier(i) for i in (hs.identifiers or [])]
     if identifiers:
@@ -331,14 +312,17 @@ def to_fhir_healthcare_service(hs: HealthcareServiceModel) -> dict:
         result["providedBy"] = provided_by
 
     categories = [fhir_hs_category(c) for c in (hs.categories or [])]
+    categories = [c for c in categories if c]
     if categories:
         result["category"] = categories
 
     types = [fhir_hs_type(t) for t in (hs.types or [])]
+    types = [t for t in types if t]
     if types:
         result["type"] = types
 
     specialties = [fhir_hs_specialty(sp) for sp in (hs.specialties or [])]
+    specialties = [sp for sp in specialties if sp]
     if specialties:
         result["specialty"] = specialties
 
@@ -384,26 +368,32 @@ def to_fhir_healthcare_service(hs: HealthcareServiceModel) -> dict:
         fhir_hs_service_provision_code(spc)
         for spc in (hs.service_provision_codes or [])
     ]
+    spcs = [s for s in spcs if s]
     if spcs:
         result["serviceProvisionCode"] = spcs
 
     eligibilities = [fhir_hs_eligibility(e) for e in (hs.eligibilities or [])]
+    eligibilities = [e for e in eligibilities if e]
     if eligibilities:
         result["eligibility"] = eligibilities
 
     programs = [fhir_hs_program(p) for p in (hs.programs or [])]
+    programs = [p for p in programs if p]
     if programs:
         result["program"] = programs
 
     chars = [fhir_hs_characteristic(c) for c in (hs.characteristics or [])]
+    chars = [c for c in chars if c]
     if chars:
         result["characteristic"] = chars
 
     comms = [fhir_hs_communication(cm) for cm in (hs.communications or [])]
+    comms = [c for c in comms if c]
     if comms:
         result["communication"] = comms
 
     ref_methods = [fhir_hs_referral_method(rm) for rm in (hs.referral_methods or [])]
+    ref_methods = [r for r in ref_methods if r]
     if ref_methods:
         result["referralMethod"] = ref_methods
 

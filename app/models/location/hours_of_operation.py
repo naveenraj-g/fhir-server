@@ -2,23 +2,21 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
-    DateTime,
     ForeignKey,
-    String,
     Text,
     Time,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # hoursOfOperation (0..*) BackboneElement child table
 # ---------------------------------------------------------------------------
 
 
-class LocationHoursOfOperation(Base):
+class LocationHoursOfOperation(TenantAuditMixin, Base):
     """Location.hoursOfOperation[] — what days/times the location is usually
     open.
 
@@ -41,19 +39,16 @@ class LocationHoursOfOperation(Base):
     __tablename__ = "location_hours_of_operation"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    location_id = Column(
+    # Containment FK — named location_pk, not location_id, so it can never
+    # be confused with LocationModel.location_id (the public, FHIR-facing
+    # sequence ID) — same reasoning as Organization's organization_pk.
+    location_pk = Column(
         BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
 
     days_of_week = Column(Text, nullable=True)  # comma-separated: mon,tue,…
     all_day = Column(Boolean, nullable=True)
     opening_time = Column(Time, nullable=True)
     closing_time = Column(Time, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
 
     location = relationship("LocationModel", back_populates="hours_of_operation")

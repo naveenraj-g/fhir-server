@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common.fhir import FHIRCodeableConcept
 
-from ._shared import _AuditFields
+from ._shared import PlainHealthcareServiceCoding, _AuditFields
 
 
 class FHIRHealthcareServiceEligibility(BaseModel):
@@ -18,25 +18,16 @@ class FHIRHealthcareServiceEligibility(BaseModel):
 
 
 class PlainHealthcareServiceEligibility(_AuditFields):
+    """`code_codings` is a real 0..* child table rather than a single
+    flattened coding — code_text stays flattened (sibling of coding[],
+    not part of it)."""
+
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
-    code_system: str | None = Field(
-        None,
-        description="The code system that defines the meaning of the eligibility code.",
-    )
-    code_version: str | None = Field(
-        None, description="The version of the code system used."
-    )
-    code_code: str | None = Field(
-        None, description="A symbol in syntax defined by the code system."
-    )
-    code_display: str | None = Field(
-        None, description="A representation of the meaning of the eligibility code."
+    code_codings: list[PlainHealthcareServiceCoding] | None = Field(
+        None, description="Coding(s) for the eligibility code."
     )
     code_text: str | None = Field(
         None, description="A human language representation of the eligibility code."
-    )
-    code_user_selected: bool | None = Field(
-        None, description="Whether this coding was chosen by a user directly."
     )
     comment: str | None = Field(
         None, description="Describes the eligibility conditions in more detail."

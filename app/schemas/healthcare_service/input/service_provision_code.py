@@ -1,28 +1,21 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from ._shared import HealthcareServiceCodingInput
+
 
 class HealthcareServiceServiceProvisionCodeInput(BaseModel):
-    """HealthcareService.serviceProvisionCode — conditions under which the service is available/offered (CodeableConcept)."""
+    """HealthcareService.serviceProvisionCode — the code(s) that detail the
+    conditions under which the healthcare service is available/offered
+    (CodeableConcept). `text` is the CodeableConcept's own field (sibling of
+    coding[], not part of it); `coding` is the real 0..* list — see
+    HealthcareServiceCodingInput."""
 
     model_config = ConfigDict(extra="forbid")
-    coding_system: str | None = Field(
+    coding: list[HealthcareServiceCodingInput] | None = Field(
         None,
-        description="The identification of the code system that defines the meaning of the symbol in the code.",
-    )
-    coding_version: str | None = Field(
-        None,
-        description="The version of the code system which was used when choosing this code.",
-    )
-    coding_code: str | None = Field(
-        None, description="A symbol in syntax defined by the code system."
-    )
-    coding_display: str | None = Field(
-        None, description="A representation of the meaning of the code in the system."
+        description="Coding(s) for this service provision code — may include both a custom code and a standard-terminology crosswalk.",
     )
     text: str | None = Field(
         None,
-        description="A human language representation of the provision code, as seen/selected/entered by the user.",
-    )
-    coding_user_selected: bool | None = Field(
-        None, description="Indicates that this coding was chosen by a user directly."
+        description="A human language representation of the service provision code, as seen/selected/entered by the user.",
     )

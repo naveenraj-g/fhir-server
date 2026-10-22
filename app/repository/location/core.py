@@ -18,6 +18,7 @@ from app.models.location import (
     LocationIdentifier,
     LocationModel,
     LocationType,
+    LocationTypeCoding,
 )
 from app.models.location.enums import (
     LocationEndpointReferenceType,
@@ -98,7 +99,7 @@ class _CoreMixin:
             stmt = _with_relationships(
                 select(LocationModel).where(
                     LocationModel.location_id == location_id,
-                    LocationModel.org_id == org_id,
+                    LocationModel.tenant_id == org_id,
                 )
             )
             return (await session.execute(stmt)).scalars().first()
@@ -110,7 +111,7 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = select(LocationModel.id).where(
                 LocationModel.location_id == location_id,
-                LocationModel.org_id == org_id,
+                LocationModel.tenant_id == org_id,
             )
             result = await session.execute(stmt)
             return result.scalar_one_or_none() is not None
@@ -124,7 +125,6 @@ class _CoreMixin:
         location_status=None,
         operational_status: str | None = None,
         location_type: str | None = None,
-        physical_type: str | None = None,
         address: str | None = None,
         address_city: str | None = None,
         address_state: str | None = None,
@@ -137,7 +137,7 @@ class _CoreMixin:
         near: str | None = None,
     ):
         if org_id:
-            stmt = stmt.where(LocationModel.org_id == org_id)
+            stmt = stmt.where(LocationModel.tenant_id == org_id)
 
         if name:
             # Medplum: "name" matches Location.name OR Location.alias — the
@@ -147,7 +147,7 @@ class _CoreMixin:
                 or_(
                     LocationModel.name.ilike(pattern),
                     LocationModel.id.in_(
-                        select(LocationAlias.location_id).where(
+                        select(LocationAlias.location_pk).where(
                             LocationAlias.value.ilike(pattern)
                         )
                     ),
@@ -158,7 +158,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(LocationIdentifier.id).where(
-                    LocationIdentifier.location_id == LocationModel.id,
+                    LocationIdentifier.location_pk == LocationModel.id,
                     LocationIdentifier.value == identifier,
                 ),
             )
@@ -167,16 +167,23 @@ class _CoreMixin:
         stmt = apply_token_filter(
             stmt, LocationModel.operational_status_code, operational_status
         )
-        stmt = apply_token_filter(
-            stmt, LocationModel.physical_type_code, physical_type
-        )
 
         if location_type:
+            # Location.type.coding is a real 0..* child table now (a
+            # deployment may need its own custom code alongside a
+            # standard-terminology crosswalk) — one EXISTS joining the
+            # coding table to its parent type row, correlated to the outer
+            # LocationModel. Mirrors Organization's own org_type filter.
             stmt = apply_child_exists_filter(
                 stmt,
-                select(LocationType.id).where(
-                    LocationType.location_id == LocationModel.id,
-                    LocationType.coding_code == location_type,
+                select(LocationTypeCoding.id)
+                .join(
+                    LocationType,
+                    LocationTypeCoding.location_type_id == LocationType.id,
+                )
+                .where(
+                    LocationType.location_pk == LocationModel.id,
+                    LocationTypeCoding.code == location_type,
                 ),
             )
 
@@ -225,7 +232,7 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(LocationEndpoint.id).where(
-                    LocationEndpoint.location_id == LocationModel.id,
+                    LocationEndpoint.location_pk == LocationModel.id,
                     LocationEndpoint.reference_type == ep_type,
                     LocationEndpoint.reference_id == ep_id,
                 ),
@@ -270,7 +277,6 @@ class _CoreMixin:
         location_status=None,
         operational_status: str | None = None,
         location_type: str | None = None,
-        physical_type: str | None = None,
         address: str | None = None,
         address_city: str | None = None,
         address_state: str | None = None,
@@ -296,7 +302,6 @@ class _CoreMixin:
                 "location_status": location_status,
                 "operational_status": operational_status,
                 "location_type": location_type,
-                "physical_type": physical_type,
                 "address": address,
                 "address_city": address_city,
                 "address_state": address_state,

@@ -19,6 +19,22 @@ def _audit_fields(obj) -> dict:
     }
 
 
+def plain_coding(c) -> dict:
+    """One Coding entry (FhirCodingMixin-shaped row) → plain dict. Shared by
+    every HealthcareService CodeableConcept-list field's coding[] — all
+    real dedicated child tables with the exact same shape — mirrors
+    app.fhir.mappers.organization.plain.plain_coding."""
+    return {
+        "id": c.id,
+        "system": c.system,
+        "version": c.version,
+        "code": c.code,
+        "display": c.display,
+        "user_selected": c.user_selected,
+        **_audit_fields(c),
+    }
+
+
 def _plain_reference_fields(obj, prefix: str) -> dict:
     """Flat `{prefix}_type`/`{prefix}_id`/`{prefix}_display` + `{prefix}_identifier_*`
     fallback fields for a resolved-or-logical Reference, plus a resolved
@@ -72,17 +88,15 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
 def plain_hs_identifier(i) -> dict:
     """HealthcareService.identifier (Identifier) → plain snake_case dict.
     Resource-specific because assigner is a resolved Reference(Organization)
-    with an identifier fallback, and because the row carries an audit trail."""
+    with an identifier fallback, and because the row carries an audit
+    trail. `type_codings` is a real 0..* child table rather than a single
+    flattened coding — mirrors
+    app.fhir.mappers.organization.plain.plain_org_identifier."""
     return {
         "id": i.id,
-        "org_id": i.org_id,
         "use": fhir_enum(i.use),
-        "type_system": i.type_system,
-        "type_version": i.type_version,
-        "type_code": i.type_code,
-        "type_display": i.type_display,
+        "type_codings": [plain_coding(c) for c in (i.type_codings or [])],
         "type_text": i.type_text,
-        "type_user_selected": i.type_user_selected,
         "system": i.system,
         "value": i.value,
         "period_start": i.period_start.isoformat() if i.period_start else None,
@@ -95,12 +109,8 @@ def plain_hs_identifier(i) -> dict:
 def plain_hs_category(c) -> dict:
     return {
         "id": c.id,
-        "coding_system": c.coding_system,
-        "coding_version": c.coding_version,
-        "coding_code": c.coding_code,
-        "coding_display": c.coding_display,
+        "codings": [plain_coding(x) for x in (c.codings or [])],
         "text": c.text,
-        "coding_user_selected": c.coding_user_selected,
         **_audit_fields(c),
     }
 
@@ -108,12 +118,8 @@ def plain_hs_category(c) -> dict:
 def plain_hs_type(t) -> dict:
     return {
         "id": t.id,
-        "coding_system": t.coding_system,
-        "coding_version": t.coding_version,
-        "coding_code": t.coding_code,
-        "coding_display": t.coding_display,
+        "codings": [plain_coding(x) for x in (t.codings or [])],
         "text": t.text,
-        "coding_user_selected": t.coding_user_selected,
         **_audit_fields(t),
     }
 
@@ -121,12 +127,8 @@ def plain_hs_type(t) -> dict:
 def plain_hs_specialty(sp) -> dict:
     return {
         "id": sp.id,
-        "coding_system": sp.coding_system,
-        "coding_version": sp.coding_version,
-        "coding_code": sp.coding_code,
-        "coding_display": sp.coding_display,
+        "codings": [plain_coding(x) for x in (sp.codings or [])],
         "text": sp.text,
-        "coding_user_selected": sp.coding_user_selected,
         **_audit_fields(sp),
     }
 
@@ -163,12 +165,8 @@ def plain_hs_coverage_area(ca) -> dict:
 def plain_hs_service_provision_code(spc) -> dict:
     return {
         "id": spc.id,
-        "coding_system": spc.coding_system,
-        "coding_version": spc.coding_version,
-        "coding_code": spc.coding_code,
-        "coding_display": spc.coding_display,
+        "codings": [plain_coding(x) for x in (spc.codings or [])],
         "text": spc.text,
-        "coding_user_selected": spc.coding_user_selected,
         **_audit_fields(spc),
     }
 
@@ -176,12 +174,8 @@ def plain_hs_service_provision_code(spc) -> dict:
 def plain_hs_eligibility(e) -> dict:
     return {
         "id": e.id,
-        "code_system": e.code_system,
-        "code_version": e.code_version,
-        "code_code": e.code_code,
-        "code_display": e.code_display,
+        "code_codings": [plain_coding(x) for x in (e.code_codings or [])],
         "code_text": e.code_text,
-        "code_user_selected": e.code_user_selected,
         "comment": e.comment,
         **_audit_fields(e),
     }
@@ -190,12 +184,8 @@ def plain_hs_eligibility(e) -> dict:
 def plain_hs_program(p) -> dict:
     return {
         "id": p.id,
-        "coding_system": p.coding_system,
-        "coding_version": p.coding_version,
-        "coding_code": p.coding_code,
-        "coding_display": p.coding_display,
+        "codings": [plain_coding(x) for x in (p.codings or [])],
         "text": p.text,
-        "coding_user_selected": p.coding_user_selected,
         **_audit_fields(p),
     }
 
@@ -203,12 +193,8 @@ def plain_hs_program(p) -> dict:
 def plain_hs_characteristic(c) -> dict:
     return {
         "id": c.id,
-        "coding_system": c.coding_system,
-        "coding_version": c.coding_version,
-        "coding_code": c.coding_code,
-        "coding_display": c.coding_display,
+        "codings": [plain_coding(x) for x in (c.codings or [])],
         "text": c.text,
-        "coding_user_selected": c.coding_user_selected,
         **_audit_fields(c),
     }
 
@@ -216,12 +202,8 @@ def plain_hs_characteristic(c) -> dict:
 def plain_hs_communication(cm) -> dict:
     return {
         "id": cm.id,
-        "coding_system": cm.coding_system,
-        "coding_version": cm.coding_version,
-        "coding_code": cm.coding_code,
-        "coding_display": cm.coding_display,
+        "codings": [plain_coding(x) for x in (cm.codings or [])],
         "text": cm.text,
-        "coding_user_selected": cm.coding_user_selected,
         **_audit_fields(cm),
     }
 
@@ -229,12 +211,8 @@ def plain_hs_communication(cm) -> dict:
 def plain_hs_referral_method(rm) -> dict:
     return {
         "id": rm.id,
-        "coding_system": rm.coding_system,
-        "coding_version": rm.coding_version,
-        "coding_code": rm.coding_code,
-        "coding_display": rm.coding_display,
+        "codings": [plain_coding(x) for x in (rm.codings or [])],
         "text": rm.text,
-        "coding_user_selected": rm.coding_user_selected,
         **_audit_fields(rm),
     }
 
@@ -324,7 +302,7 @@ def to_plain_healthcare_service(hs: HealthcareServiceModel) -> dict:
             plain_hs_not_available(na) for na in (hs.not_available or [])
         ],
         "endpoint": [plain_hs_endpoint(ep) for ep in (hs.endpoints or [])],
-        "org_id": hs.org_id,
+        "org_id": hs.tenant_id,
         "created_at": hs.created_at.isoformat() if hs.created_at else None,
         "updated_at": hs.updated_at.isoformat() if hs.updated_at else None,
         "created_by": hs.created_by,

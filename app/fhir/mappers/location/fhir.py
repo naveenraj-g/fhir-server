@@ -13,6 +13,31 @@ if TYPE_CHECKING:
     )
 
 
+def _fhir_coding_list(codings) -> list[dict]:
+    """Render a list of FhirCodingMixin-shaped rows as a FHIR `coding[]`
+    array — shared by Location.type, Location.identifier.type, and
+    Location.physicalType, all three being real 0..* child tables now (a
+    deployment may need its own custom code alongside a standard-terminology
+    crosswalk at once) — mirrors
+    app.fhir.mappers.organization.fhir._fhir_coding_list."""
+    result = []
+    for c in codings or []:
+        entry = {
+            k: v
+            for k, v in {
+                "system": c.system,
+                "version": c.version,
+                "code": c.code,
+                "display": c.display,
+                "userSelected": c.user_selected,
+            }.items()
+            if v is not None
+        }
+        if entry:
+            result.append(entry)
+    return result
+
+
 def _fhir_reference(obj, prefix: str) -> dict:
     """Build a FHIR Reference dict for a `{prefix}_type`/`{prefix}_id`/`{prefix}_display`
     resolved reference, with a `{prefix}_identifier_*` logical-reference (Identifier)
@@ -93,26 +118,18 @@ def _fhir_reference(obj, prefix: str) -> dict:
 def fhir_location_identifier(i: LocationIdentifier) -> dict:
     """Location.identifier (Identifier) → FHIR camelCase dict. Resource-specific
     (not the shared app.fhir.datatypes.fhir_identifier) because assigner is a
-    resolved Reference(Organization) with an identifier fallback."""
+    resolved Reference(Organization) with an identifier fallback, and
+    `type.coding[]` is a real 0..* child table (type_codings) rather than a
+    single flattened coding — mirrors OrganizationIdentifier's own
+    type.coding[] promotion."""
     entry: dict = {}
     if i.use:
         entry["use"] = fhir_enum(i.use)
-    if i.type_system or i.type_code or i.type_text:
+    type_codings = _fhir_coding_list(i.type_codings)
+    if type_codings or i.type_text:
         type_cc: dict = {}
-        if i.type_system or i.type_code:
-            type_cc["coding"] = [
-                {
-                    k: v
-                    for k, v in {
-                        "system": i.type_system,
-                        "version": i.type_version,
-                        "code": i.type_code,
-                        "display": i.type_display,
-                        "userSelected": i.type_user_selected,
-                    }.items()
-                    if v is not None
-                }
-            ]
+        if type_codings:
+            type_cc["coding"] = type_codings
         if i.type_text:
             type_cc["text"] = i.type_text
         entry["type"] = type_cc
@@ -136,21 +153,13 @@ def fhir_location_identifier(i: LocationIdentifier) -> dict:
 
 
 def fhir_location_type(t) -> dict:
-    """Location.type (CodeableConcept) → FHIR camelCase dict."""
-    coding = {
-        k: v
-        for k, v in {
-            "system": t.coding_system,
-            "version": t.coding_version,
-            "code": t.coding_code,
-            "display": t.coding_display,
-            "userSelected": t.coding_user_selected,
-        }.items()
-        if v is not None
-    }
+    """Location.type (CodeableConcept) → FHIR camelCase dict. `coding[]` is
+    a real 0..* child table (codings) rather than a single flattened coding
+    — mirrors OrganizationType's own coding[] promotion."""
+    coding = _fhir_coding_list(t.codings)
     entry: dict = {}
     if coding:
-        entry["coding"] = [coding]
+        entry["coding"] = coding
     if t.text:
         entry["text"] = t.text
     return entry
@@ -274,24 +283,60 @@ def fhir_location_operational_status(loc: LocationModel) -> dict:
 
 
 def fhir_location_physical_type(loc: LocationModel) -> dict:
-    """Location.physicalType (0..1 CodeableConcept) → FHIR camelCase dict."""
-    coding = {
-        k: v
-        for k, v in {
-            "system": loc.physical_type_system,
-            "version": loc.physical_type_version,
-            "code": loc.physical_type_code,
-            "display": loc.physical_type_display,
-            "userSelected": loc.physical_type_user_selected,
-        }.items()
-        if v is not None
-    }
+    """Location.physicalType (0..1 CodeableConcept) → FHIR camelCase dict.
+    `coding[]` is a real 0..* child table (physical_type_codings) rather
+    than a single flattened coding — physicalType itself is 0..1 at the
+    Location level, but its own coding[] is still 0..* per spec, same
+    reasoning as Location.type/identifier.type."""
+    coding = _fhir_coding_list(loc.physical_type_codings)
     entry: dict = {}
     if coding:
-        entry["coding"] = [coding]
+        entry["coding"] = coding
     if loc.physical_type_text:
         entry["text"] = loc.physical_type_text
     return entry
+
+
+# Base URL for this server's own, not-yet-formally-registered extensions —
+# same convention as app.fhir.mappers.organization.fhir._EXT_BASE.
+_EXT_BASE = "https://fhir-server.dev/fhir/StructureDefinition"
+
+
+def _fhir_meta(loc: LocationModel) -> dict:
+    """Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
+    rendered into Resource.meta — same convention as
+    app.fhir.mappers.organization.fhir._fhir_meta. `lastUpdated` is Meta's
+    own native field; the other four have no native Meta field in R4, so
+    they ride as extensions. Location has no user_id (see the model's
+    docstring), so there's no equivalent of a user-scoped extension here."""
+    meta: dict = {}
+    if loc.updated_at:
+        meta["lastUpdated"] = loc.updated_at.isoformat()
+
+    extensions = []
+    if loc.tenant_id:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/org-id", "valueString": loc.tenant_id}
+        )
+    if loc.created_by:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": loc.created_by}
+        )
+    if loc.updated_by:
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": loc.updated_by}
+        )
+    if loc.created_at:
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": loc.created_at.isoformat(),
+            }
+        )
+    if extensions:
+        meta["extension"] = extensions
+
+    return meta
 
 
 def to_fhir_location(loc: LocationModel) -> dict:
@@ -299,6 +344,10 @@ def to_fhir_location(loc: LocationModel) -> dict:
         "resourceType": "Location",
         "id": str(loc.location_id),
     }
+
+    meta = _fhir_meta(loc)
+    if meta:
+        result["meta"] = meta
 
     identifiers = [fhir_location_identifier(i) for i in (loc.identifiers or [])]
     if identifiers:

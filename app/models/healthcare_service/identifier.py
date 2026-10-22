@@ -9,18 +9,24 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # identifier (0..*) child table
 # ---------------------------------------------------------------------------
 
 
-class HealthcareServiceIdentifier(Base):
-    """identifier[] — external business identifiers for this service."""
+class HealthcareServiceIdentifier(TenantAuditMixin, Base):
+    """identifier[] — external business identifiers for this service.
+
+    type_text stays flattened (sibling of coding[], not part of it);
+    type's coding[] is a real 0..* child table
+    (HealthcareServiceIdentifierTypeCoding, below) rather than a single
+    flattened coding — same reasoning as OrganizationIdentifier's own
+    type.coding[] promotion."""
 
     __tablename__ = "healthcare_service_identifier"
     __table_args__ = (
@@ -30,19 +36,19 @@ class HealthcareServiceIdentifier(Base):
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    healthcare_service_id = Column(
+    # Containment FK — named healthcare_service_pk, not healthcare_service_id,
+    # so it can never be confused with HealthcareServiceModel.healthcare_service_id
+    # (the public, FHIR-facing sequence ID) — same reasoning as Organization's
+    # organization_pk.
+    healthcare_service_pk = Column(
         BigInteger, ForeignKey("healthcare_service.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
 
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
-    # Identifier.type is a CodeableConcept — single coding flattened + text
-    type_system = Column(String, nullable=True)
-    type_version = Column(String, nullable=True)
-    type_code = Column(String, nullable=True)
-    type_display = Column(String, nullable=True)
+    # Identifier.type (0..1 CodeableConcept) — type_text is the
+    # CodeableConcept's own field; type's coding[] is the real 0..* list,
+    # via the type_codings relationship below.
     type_text = Column(String, nullable=True)
-    type_user_selected = Column(Boolean, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
@@ -77,9 +83,36 @@ class HealthcareServiceIdentifier(Base):
     assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
+    # Audit columns come from TenantAuditMixin above.
 
-    healthcare_service = relationship("HealthcareServiceModel", back_populates="identifiers")
+    healthcare_service = relationship(
+        "HealthcareServiceModel", back_populates="identifiers"
+    )
+    type_codings = relationship(
+        "HealthcareServiceIdentifierTypeCoding",
+        back_populates="identifier",
+        cascade="all, delete-orphan",
+    )
+
+
+# ---------------------------------------------------------------------------
+# identifier.type.coding (0..*) grandchild table
+# ---------------------------------------------------------------------------
+
+
+class HealthcareServiceIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+    """One entry of HealthcareService.identifier.type.coding (0..*)."""
+
+    __tablename__ = "healthcare_service_identifier_type_coding"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    healthcare_service_identifier_id = Column(
+        BigInteger,
+        ForeignKey("healthcare_service_identifier.id"),
+        nullable=False,
+        index=True,
+    )
+
+    identifier = relationship(
+        "HealthcareServiceIdentifier", back_populates="type_codings"
+    )

@@ -7,9 +7,12 @@ from app.models.location import (
     LocationEndpoint,
     LocationHoursOfOperation,
     LocationIdentifier,
+    LocationIdentifierTypeCoding,
     LocationModel,
+    LocationPhysicalTypeCoding,
     LocationTelecom,
     LocationType,
+    LocationTypeCoding,
 )
 from app.schemas.location import LocationCreateSchema, LocationPatchSchema
 
@@ -46,94 +49,27 @@ def _join_days(values: list | None) -> str | None:
     return ",".join(getattr(v, "value", v) for v in values)
 
 
+def _coding_kwargs(coding, created_by: str | None) -> dict:
+    """Build constructor kwargs for one LocationCodingInput entry, targeting
+    any of the three dedicated coding[] child tables
+    (LocationTypeCoding/LocationIdentifierTypeCoding/
+    LocationPhysicalTypeCoding) — all three share the same shape via
+    FhirCodingMixin, so one helper covers all of them. Mirrors
+    app.repository.organization.full._coding_kwargs."""
+    return {
+        "system": coding.system,
+        "version": coding.version,
+        "code": coding.code,
+        "display": coding.display,
+        "user_selected": coding.user_selected,
+        "created_by": created_by,
+    }
+
+
 class _FullMixin:
     """create_full/patch_full — the two atomic nested-write orchestrators that
     touch all 6 sub-resource types (plus core scalar fields) in one
     transaction."""
-
-    def _build_identifier(self, i, location_pk: int, org_id: str, actor: str | None):
-        return LocationIdentifier(
-            location_id=location_pk,
-            org_id=org_id,
-            use=i.use,
-            type_system=i.type_system,
-            type_version=i.type_version,
-            type_code=i.type_code,
-            type_display=i.type_display,
-            type_text=i.type_text,
-            type_user_selected=i.type_user_selected,
-            system=i.system,
-            value=i.value,
-            period_start=i.period_start,
-            period_end=i.period_end,
-            **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
-            **_reference_kwargs("assigner", i),
-            created_by=actor,
-        )
-
-    @staticmethod
-    def _build_type(t, location_pk: int, org_id: str, actor: str | None):
-        return LocationType(
-            location_id=location_pk,
-            org_id=org_id,
-            coding_system=t.coding_system,
-            coding_version=t.coding_version,
-            coding_code=t.coding_code,
-            coding_display=t.coding_display,
-            text=t.text,
-            coding_user_selected=t.coding_user_selected,
-            created_by=actor,
-        )
-
-    @staticmethod
-    def _build_alias(a, location_pk: int, org_id: str, actor: str | None):
-        return LocationAlias(
-            location_id=location_pk,
-            org_id=org_id,
-            value=a.value,
-            created_by=actor,
-        )
-
-    @staticmethod
-    def _build_telecom(t, location_pk: int, org_id: str, actor: str | None):
-        return LocationTelecom(
-            location_id=location_pk,
-            org_id=org_id,
-            system=t.system,
-            value=t.value,
-            use=t.use,
-            rank=t.rank,
-            period_start=t.period_start,
-            period_end=t.period_end,
-            created_by=actor,
-        )
-
-    @staticmethod
-    def _build_hours(h, location_pk: int, org_id: str, actor: str | None):
-        return LocationHoursOfOperation(
-            location_id=location_pk,
-            org_id=org_id,
-            days_of_week=_join_days(h.days_of_week),
-            all_day=h.all_day,
-            opening_time=h.opening_time,
-            closing_time=h.closing_time,
-            created_by=actor,
-        )
-
-    @staticmethod
-    def _build_endpoint(e, location_pk: int, org_id: str, actor: str | None):
-        ep_type, ep_id = (
-            _parse_endpoint_ref(e.reference) if e.reference else (None, None)
-        )
-        return LocationEndpoint(
-            location_id=location_pk,
-            org_id=org_id,
-            reference_type=ep_type,
-            reference_id=ep_id,
-            reference_display=e.reference_display,
-            **_reference_kwargs("reference", e),
-            created_by=actor,
-        )
 
     async def create_full(
         self,
@@ -165,7 +101,7 @@ class _FullMixin:
             await _validate_reference(session, org_id, po_type, po_id, "partOf")
 
             loc = LocationModel(
-                org_id=org_id,
+                tenant_id=org_id,
                 created_by=created_by,
                 status=payload.status,
                 mode=payload.mode,
@@ -187,12 +123,7 @@ class _FullMixin:
                 address_country=payload.address_country,
                 address_period_start=payload.address_period_start,
                 address_period_end=payload.address_period_end,
-                physical_type_system=payload.physical_type_system,
-                physical_type_version=payload.physical_type_version,
-                physical_type_code=payload.physical_type_code,
-                physical_type_display=payload.physical_type_display,
                 physical_type_text=payload.physical_type_text,
-                physical_type_user_selected=payload.physical_type_user_selected,
                 position_longitude=payload.position_longitude,
                 position_latitude=payload.position_latitude,
                 position_altitude=payload.position_altitude,
@@ -211,6 +142,16 @@ class _FullMixin:
             session.add(loc)
             await session.flush()
 
+            if payload.physical_type_coding:
+                for coding in payload.physical_type_coding:
+                    session.add(
+                        LocationPhysicalTypeCoding(
+                            location_pk=loc.id,
+                            tenant_id=org_id,
+                            **_coding_kwargs(coding, created_by),
+                        )
+                    )
+
             if payload.identifier:
                 for i in payload.identifier:
                     a_type, a_id = (
@@ -219,20 +160,110 @@ class _FullMixin:
                     await _validate_reference(
                         session, org_id, a_type, a_id, "identifier.assigner"
                     )
+                    identifier = LocationIdentifier(
+                        location_pk=loc.id,
+                        tenant_id=org_id,
+                        use=i.use,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
+                        **_reference_kwargs("assigner", i),
+                        created_by=created_by,
+                    )
+                    session.add(identifier)
+                    if i.type_coding:
+                        await session.flush()
+                        for coding in i.type_coding:
+                            session.add(
+                                LocationIdentifierTypeCoding(
+                                    location_identifier_id=identifier.id,
+                                    tenant_id=org_id,
+                                    **_coding_kwargs(coding, created_by),
+                                )
+                            )
+
+            if payload.type:
+                for t in payload.type:
+                    location_type = LocationType(
+                        location_pk=loc.id,
+                        tenant_id=org_id,
+                        text=t.text,
+                        created_by=created_by,
+                    )
+                    session.add(location_type)
+                    if t.coding:
+                        await session.flush()
+                        for coding in t.coding:
+                            session.add(
+                                LocationTypeCoding(
+                                    location_type_id=location_type.id,
+                                    tenant_id=org_id,
+                                    **_coding_kwargs(coding, created_by),
+                                )
+                            )
+
+            if payload.alias:
+                for a in payload.alias:
                     session.add(
-                        self._build_identifier(i, loc.id, org_id, created_by)
+                        LocationAlias(
+                            location_pk=loc.id,
+                            tenant_id=org_id,
+                            value=a.value,
+                            created_by=created_by,
+                        )
                     )
 
-            for t in payload.type or []:
-                session.add(self._build_type(t, loc.id, org_id, created_by))
-            for a in payload.alias or []:
-                session.add(self._build_alias(a, loc.id, org_id, created_by))
-            for t in payload.telecom or []:
-                session.add(self._build_telecom(t, loc.id, org_id, created_by))
-            for h in payload.hours_of_operation or []:
-                session.add(self._build_hours(h, loc.id, org_id, created_by))
-            for e in payload.endpoint or []:
-                session.add(self._build_endpoint(e, loc.id, org_id, created_by))
+            if payload.telecom:
+                for t in payload.telecom:
+                    session.add(
+                        LocationTelecom(
+                            location_pk=loc.id,
+                            tenant_id=org_id,
+                            system=t.system,
+                            value=t.value,
+                            use=t.use,
+                            rank=t.rank,
+                            period_start=t.period_start,
+                            period_end=t.period_end,
+                            created_by=created_by,
+                        )
+                    )
+
+            if payload.hours_of_operation:
+                for h in payload.hours_of_operation:
+                    session.add(
+                        LocationHoursOfOperation(
+                            location_pk=loc.id,
+                            tenant_id=org_id,
+                            days_of_week=_join_days(h.days_of_week),
+                            all_day=h.all_day,
+                            opening_time=h.opening_time,
+                            closing_time=h.closing_time,
+                            created_by=created_by,
+                        )
+                    )
+
+            if payload.endpoint:
+                for e in payload.endpoint:
+                    ep_type, ep_id = (
+                        _parse_endpoint_ref(e.reference)
+                        if e.reference
+                        else (None, None)
+                    )
+                    session.add(
+                        LocationEndpoint(
+                            location_pk=loc.id,
+                            tenant_id=org_id,
+                            reference_type=ep_type,
+                            reference_id=ep_id,
+                            reference_display=e.reference_display,
+                            **_reference_kwargs("reference", e),
+                            created_by=created_by,
+                        )
+                    )
 
             try:
                 await session.commit()
@@ -262,7 +293,7 @@ class _FullMixin:
 
             data = payload.model_dump(exclude_unset=True)
             for field, value in data.items():
-                if field in _SUB:
+                if field in _SUB or field == "physical_type_coding":
                     continue
 
                 if field == "managing_organization":
@@ -270,7 +301,7 @@ class _FullMixin:
                         mo_type, mo_id = _parse_org_ref(value)
                         await _validate_reference(
                             session,
-                            loc.org_id,
+                            loc.tenant_id,
                             mo_type,
                             mo_id,
                             "managingOrganization",
@@ -285,13 +316,13 @@ class _FullMixin:
                     if value is not None:
                         po_type, po_id = _parse_location_ref(value)
                         await _validate_reference(
-                            session, loc.org_id, po_type, po_id, "partOf"
+                            session, loc.tenant_id, po_type, po_id, "partOf"
                         )
                         # Walking UP from the proposed parent: if this location
                         # already appears among its ancestors (or is the parent
                         # itself), attaching would close a loop.
                         if await _partof_chain_contains(
-                            session, loc.org_id, po_id, loc.location_id
+                            session, loc.tenant_id, po_id, loc.location_id
                         ):
                             raise BusinessRuleViolationError(
                                 f"Setting partOf to Location/{po_id} would create a "
@@ -312,10 +343,25 @@ class _FullMixin:
             if updated_by is not None:
                 loc.updated_by = updated_by
 
+            if payload.physical_type_coding is not None:
+                await session.execute(
+                    delete(LocationPhysicalTypeCoding).where(
+                        LocationPhysicalTypeCoding.location_pk == loc.id
+                    )
+                )
+                for coding in payload.physical_type_coding:
+                    session.add(
+                        LocationPhysicalTypeCoding(
+                            location_pk=loc.id,
+                            tenant_id=loc.tenant_id,
+                            **_coding_kwargs(coding, updated_by),
+                        )
+                    )
+
             if payload.identifier is not None:
                 await session.execute(
                     delete(LocationIdentifier).where(
-                        LocationIdentifier.location_id == loc.id
+                        LocationIdentifier.location_pk == loc.id
                     )
                 )
                 for i in payload.identifier:
@@ -323,55 +369,132 @@ class _FullMixin:
                         _parse_org_ref(i.assigner) if i.assigner else (None, None)
                     )
                     await _validate_reference(
-                        session, loc.org_id, a_type, a_id, "identifier.assigner"
+                        session, loc.tenant_id, a_type, a_id, "identifier.assigner"
                     )
-                    session.add(
-                        self._build_identifier(i, loc.id, loc.org_id, updated_by)
+                    identifier = LocationIdentifier(
+                        location_pk=loc.id,
+                        tenant_id=loc.tenant_id,
+                        use=i.use,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
+                        **_reference_kwargs("assigner", i),
+                        created_by=updated_by,
                     )
+                    session.add(identifier)
+                    if i.type_coding:
+                        await session.flush()
+                        for coding in i.type_coding:
+                            session.add(
+                                LocationIdentifierTypeCoding(
+                                    location_identifier_id=identifier.id,
+                                    tenant_id=loc.tenant_id,
+                                    **_coding_kwargs(coding, updated_by),
+                                )
+                            )
 
             if payload.type is not None:
                 await session.execute(
-                    delete(LocationType).where(LocationType.location_id == loc.id)
+                    delete(LocationType).where(LocationType.location_pk == loc.id)
                 )
                 for t in payload.type:
-                    session.add(self._build_type(t, loc.id, loc.org_id, updated_by))
+                    location_type = LocationType(
+                        location_pk=loc.id,
+                        tenant_id=loc.tenant_id,
+                        text=t.text,
+                        created_by=updated_by,
+                    )
+                    session.add(location_type)
+                    if t.coding:
+                        await session.flush()
+                        for coding in t.coding:
+                            session.add(
+                                LocationTypeCoding(
+                                    location_type_id=location_type.id,
+                                    tenant_id=loc.tenant_id,
+                                    **_coding_kwargs(coding, updated_by),
+                                )
+                            )
 
             if payload.alias is not None:
                 await session.execute(
-                    delete(LocationAlias).where(LocationAlias.location_id == loc.id)
+                    delete(LocationAlias).where(LocationAlias.location_pk == loc.id)
                 )
                 for a in payload.alias:
-                    session.add(self._build_alias(a, loc.id, loc.org_id, updated_by))
+                    session.add(
+                        LocationAlias(
+                            location_pk=loc.id,
+                            tenant_id=loc.tenant_id,
+                            value=a.value,
+                            created_by=updated_by,
+                        )
+                    )
 
             if payload.telecom is not None:
                 await session.execute(
                     delete(LocationTelecom).where(
-                        LocationTelecom.location_id == loc.id
+                        LocationTelecom.location_pk == loc.id
                     )
                 )
                 for t in payload.telecom:
                     session.add(
-                        self._build_telecom(t, loc.id, loc.org_id, updated_by)
+                        LocationTelecom(
+                            location_pk=loc.id,
+                            tenant_id=loc.tenant_id,
+                            system=t.system,
+                            value=t.value,
+                            use=t.use,
+                            rank=t.rank,
+                            period_start=t.period_start,
+                            period_end=t.period_end,
+                            created_by=updated_by,
+                        )
                     )
 
             if payload.hours_of_operation is not None:
                 await session.execute(
                     delete(LocationHoursOfOperation).where(
-                        LocationHoursOfOperation.location_id == loc.id
+                        LocationHoursOfOperation.location_pk == loc.id
                     )
                 )
                 for h in payload.hours_of_operation:
-                    session.add(self._build_hours(h, loc.id, loc.org_id, updated_by))
+                    session.add(
+                        LocationHoursOfOperation(
+                            location_pk=loc.id,
+                            tenant_id=loc.tenant_id,
+                            days_of_week=_join_days(h.days_of_week),
+                            all_day=h.all_day,
+                            opening_time=h.opening_time,
+                            closing_time=h.closing_time,
+                            created_by=updated_by,
+                        )
+                    )
 
             if payload.endpoint is not None:
                 await session.execute(
                     delete(LocationEndpoint).where(
-                        LocationEndpoint.location_id == loc.id
+                        LocationEndpoint.location_pk == loc.id
                     )
                 )
                 for e in payload.endpoint:
+                    ep_type, ep_id = (
+                        _parse_endpoint_ref(e.reference)
+                        if e.reference
+                        else (None, None)
+                    )
                     session.add(
-                        self._build_endpoint(e, loc.id, loc.org_id, updated_by)
+                        LocationEndpoint(
+                            location_pk=loc.id,
+                            tenant_id=loc.tenant_id,
+                            reference_type=ep_type,
+                            reference_id=ep_id,
+                            reference_display=e.reference_display,
+                            **_reference_kwargs("reference", e),
+                            created_by=updated_by,
+                        )
                     )
 
             try:

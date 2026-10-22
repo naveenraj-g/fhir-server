@@ -10,10 +10,10 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.shared import TenantAuditMixin
 
 healthcare_service_id_seq = Sequence(
     "healthcare_service_pub_seq", start=150000, increment=1, metadata=Base.metadata
@@ -25,22 +25,27 @@ healthcare_service_id_seq = Sequence(
 # ---------------------------------------------------------------------------
 
 
-class HealthcareServiceModel(Base):
+class HealthcareServiceModel(TenantAuditMixin, Base):
     """FHIR R4 HealthcareService — https://www.hl7.org/fhir/R4/healthcareservice.html
 
     The details of a healthcare service available at a location, or by an
     organization, for a certain type of patient.
 
-    Modeled to the same conventions as Organization/Location/Patient: BigInteger
-    internal PK + public sequence ID, full six-column CodeableConcept/Coding
-    flattening, and flattened references (`{prefix}_type`/`_id`/`_display`,
-    storing the target's PUBLIC sequence ID with no ForeignKey/relationship —
-    see CLAUDE.md's FHIR DB Model Design section) with an Identifier
-    logical-reference fallback where the target may live outside this system.
+    Modeled to the same conventions as Organization/Location: BigInteger
+    internal PK + public sequence ID, TenantAuditMixin (tenant_id, not a
+    hand-declared org_id), flattened references (`{prefix}_type`/`_id`/
+    `_display`, storing the target's PUBLIC sequence ID with no
+    ForeignKey/relationship — see CLAUDE.md's FHIR DB Model Design section)
+    with an Identifier logical-reference fallback where the target may live
+    outside this system, and every CodeableConcept's coding[] as a real
+    0..* child/grandchild table rather than a single flattened coding (see
+    category.py/type.py/specialty.py/service_provision_code.py/program.py/
+    characteristic.py/communication.py/referral_method.py/identifier.py/
+    eligibility.py).
 
-    Not part of the Patient/Practitioner/Organization/Location JWT auth
-    rollout, so org_id stays a plain, nullable, gateway-forwarded field — same
-    as every other non-auth resource (Encounter, PractitionerRole, …).
+    This resource IS part of the JWT auth rollout (see CLAUDE.md's
+    Multi-Tenancy & Ownership section) — org_id comes from the verified
+    JWT's activeOrganizationId claim, never a client-suppliable field.
     There is deliberately no user_id: like Organization and Location, a
     HealthcareService is a shared tenant-level entity (a service the org
     offers) rather than something scoped to one end user.
@@ -61,8 +66,6 @@ class HealthcareServiceModel(Base):
         index=True,
         nullable=False,
     )
-
-    org_id = Column(String, nullable=False, index=True)
 
     # ── active (0..1 boolean) ─────────────────────────────────────────────────
 
@@ -134,12 +137,9 @@ class HealthcareServiceModel(Base):
 
     availability_exceptions = Column(Text, nullable=True)
 
-    # ── Audit ─────────────────────────────────────────────────────────────────
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
+    # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
+    # come from TenantAuditMixin above — no hand-declared org_id here, same
+    # as OrganizationModel/LocationModel.
 
     # ── Relationships ─────────────────────────────────────────────────────────
 

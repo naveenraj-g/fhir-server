@@ -5,6 +5,7 @@ from app.schemas.common.fhir import (
     FHIRCodeableConcept,
     FHIRContactPoint,
     FHIRIdentifier,
+    FHIRMeta,
     FHIRReference,
 )
 
@@ -70,6 +71,10 @@ class FHIRHealthcareServiceSchema(BaseModel):
         "HealthcareService", description="Always 'HealthcareService'."
     )
     id: str = Field(..., description="Public healthcare_service_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="External identifiers for this item."
     )

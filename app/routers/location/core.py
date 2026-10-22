@@ -156,8 +156,8 @@ async def patch_location(
         "Returns a paginated list of Location resources, matching the FHIR R4 Location "
         "search parameter set (mirroring Medplum's documented filters). "
         "Filter by `name` (partial match against the location's name or any alias), "
-        "`identifier` (exact business-identifier value), `status`, `operational-status`, "
-        "`type` and `physical-type` (exact code match), "
+        "`identifier` (exact business-identifier value), `status`, `operational-status` "
+        "and `type` (exact code match), "
         "`address` (partial match across every Address sub-field) or "
         "`address-city`/`address-state`/`address-postalcode`/`address-country`/`address-use` "
         "(one specific sub-field), `organization`/`partof`/`endpoint` (FHIR reference string, "
@@ -192,11 +192,6 @@ async def list_locations(
         None,
         alias="type",
         description="Exact match on a coded function performed at the location (e.g. `HOSP`).",
-    ),
-    physical_type: str | None = Query(
-        None,
-        alias="physical-type",
-        description="Exact match on the physical form code (e.g. `wi` for Wing, `ro` for Room).",
     ),
     address: str | None = Query(
         None,
@@ -266,7 +261,6 @@ async def list_locations(
         location_status=location_status,
         operational_status=operational_status,
         location_type=location_type,
-        physical_type=physical_type,
         address=address,
         address_city=address_city,
         address_state=address_state,

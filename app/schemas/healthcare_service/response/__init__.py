@@ -1,3 +1,4 @@
+from ._shared import PlainHealthcareServiceCoding
 from .available_time import (
     FHIRHealthcareServiceAvailableTime,
     PlainHealthcareServiceAvailableTime,
@@ -43,6 +44,7 @@ __all__ = [
     "PaginatedHealthcareServiceResponse",
     "PlainHealthcareServiceAvailableTime",
     "PlainHealthcareServiceCategory",
+    "PlainHealthcareServiceCoding",
     "PlainHealthcareServiceCharacteristic",
     "PlainHealthcareServiceCommunication",
     "PlainHealthcareServiceCoverageArea",

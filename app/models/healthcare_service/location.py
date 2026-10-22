@@ -9,18 +9,18 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
 from app.models.healthcare_service.enums import HealthcareServiceLocationReferenceType
+from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
 # location (0..*) Reference(Location) child table
 # ---------------------------------------------------------------------------
 
 
-class HealthcareServiceLocation(Base):
+class HealthcareServiceLocation(TenantAuditMixin, Base):
     """location[] — Location(s) where this service may be provided.
 
     reference_id stores Location's PUBLIC location_id — no FK/relationship,
@@ -31,7 +31,7 @@ class HealthcareServiceLocation(Base):
     __tablename__ = "healthcare_service_location"
     __table_args__ = (
         UniqueConstraint(
-            "healthcare_service_id",
+            "healthcare_service_pk",
             "reference_type",
             "reference_id",
             name="uq_healthcare_service_location_reference",
@@ -39,10 +39,11 @@ class HealthcareServiceLocation(Base):
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    healthcare_service_id = Column(
+    # Containment FK — named healthcare_service_pk, not healthcare_service_id,
+    # so it can never be confused with the public sequence ID.
+    healthcare_service_pk = Column(
         BigInteger, ForeignKey("healthcare_service.id"), nullable=False, index=True
     )
-    org_id = Column(String, nullable=False)
 
     reference_type = Column(
         Enum(
@@ -70,9 +71,6 @@ class HealthcareServiceLocation(Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
-
-    healthcare_service = relationship("HealthcareServiceModel", back_populates="locations")
+    healthcare_service = relationship(
+        "HealthcareServiceModel", back_populates="locations"
+    )

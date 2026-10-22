@@ -1,3 +1,4 @@
+from ._shared import HealthcareServiceCodingInput
 from .available_time import HealthcareServiceAvailableTimeInput
 from .category import HealthcareServiceCategoryInput
 from .characteristic import HealthcareServiceCharacteristicInput
@@ -19,6 +20,7 @@ from .type import HealthcareServiceTypeInput
 __all__ = [
     "HealthcareServiceAvailableTimeInput",
     "HealthcareServiceCategoryInput",
+    "HealthcareServiceCodingInput",
     "HealthcareServiceCharacteristicInput",
     "HealthcareServiceCommunicationInput",
     "HealthcareServiceCoverageAreaInput",

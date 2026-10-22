@@ -1,30 +1,22 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from ._shared import HealthcareServiceCodingInput
+
 
 class HealthcareServiceEligibilityInput(BaseModel):
-    """HealthcareService.eligibility — specific eligibility requirements for using the service (BackboneElement)."""
+    """HealthcareService.eligibility — specific eligibility requirements for
+    using the service (BackboneElement). `code_text` is the code
+    CodeableConcept's own field (sibling of coding[], not part of it);
+    `code_coding` is the real 0..* list — see HealthcareServiceCodingInput."""
 
     model_config = ConfigDict(extra="forbid")
-    code_system: str | None = Field(
+    code_coding: list[HealthcareServiceCodingInput] | None = Field(
         None,
-        description="Coding for the eligibility code — the identification of the code system that defines its meaning.",
-    )
-    code_version: str | None = Field(
-        None,
-        description="The version of the code system which was used when choosing this code.",
-    )
-    code_code: str | None = Field(
-        None, description="A symbol in syntax defined by the code system."
-    )
-    code_display: str | None = Field(
-        None, description="A representation of the meaning of the eligibility code."
+        description="Coding(s) for the eligibility code — may include both a custom code and a standard-terminology crosswalk.",
     )
     code_text: str | None = Field(
         None,
         description="A human language representation of the eligibility code, as seen/selected/entered by the user.",
-    )
-    code_user_selected: bool | None = Field(
-        None, description="Indicates that this coding was chosen by a user directly."
     )
     comment: str | None = Field(
         None,

@@ -1,33 +1,22 @@
 from pydantic import Field
 
-from ._shared import _AuditFields
+from ._shared import PlainHealthcareServiceCoding, _AuditFields
 
 
 class PlainHealthcareServiceIdentifier(_AuditFields):
+    """`type_codings` is a real 0..* child table rather than a single
+    flattened coding, mirroring
+    app.schemas.organization.response.identifier.PlainOrganizationIdentifier."""
+
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     use: str | None = Field(
         None, description="Identifies the purpose for this identifier, if known."
     )
-    type_system: str | None = Field(
-        None,
-        description="The code system that defines the meaning of the identifier type code.",
-    )
-    type_version: str | None = Field(
-        None,
-        description="The version of the code system used for the identifier type code.",
-    )
-    type_code: str | None = Field(
-        None, description="A symbol in syntax defined by the code system."
-    )
-    type_display: str | None = Field(
-        None, description="A representation of the meaning of the identifier type code."
+    type_codings: list[PlainHealthcareServiceCoding] | None = Field(
+        None, description="Coding(s) for this identifier's type."
     )
     type_text: str | None = Field(
         None, description="A human language representation of the identifier's type."
-    )
-    type_user_selected: bool | None = Field(
-        None,
-        description="Whether this identifier-type coding was chosen by a user directly.",
     )
     system: str | None = Field(
         None, description="Establishes the namespace for the value."

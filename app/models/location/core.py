@@ -4,13 +4,13 @@ from sqlalchemy import (
     Column,
     DateTime,
     Enum,
+    ForeignKey,
     Numeric,
     Sequence,
     String,
     Text,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse, OrganizationReferenceType
@@ -19,6 +19,7 @@ from app.models.location.enums import (
     LocationPartOfReferenceType,
     LocationStatus,
 )
+from app.models.shared import FhirCodingMixin, TenantAuditMixin
 from app.schemas.enums import AddressType, AddressUse
 
 location_id_seq = Sequence(
@@ -31,16 +32,26 @@ location_id_seq = Sequence(
 # ---------------------------------------------------------------------------
 
 
-class LocationModel(Base):
+class LocationModel(TenantAuditMixin, Base):
     """FHIR R4 Location — https://www.hl7.org/fhir/R4/location.html
 
     Physical place where services are provided, resources and participants
     may be stored, found, contained or accommodated.
 
-    Modeled to the same conventions as Patient/Practitioner/Organization:
-    BigInteger internal PK + public sequence ID, full six-column
-    CodeableConcept/Coding flattening, resolved references with an
-    Identifier logical-reference fallback, and audit columns on every table.
+    Modeled to the same conventions as Organization: BigInteger internal PK
+    + public sequence ID, TenantAuditMixin (tenant_id, not a hand-declared
+    org_id — see that mixin's docstring), resolved references with an
+    Identifier logical-reference fallback, and every CodeableConcept's
+    coding[] as a real 0..* child/grandchild table rather than a single
+    flattened coding (see LocationPhysicalTypeCoding below, and type.py/
+    identifier.py) — a CodeableConcept's coding is 0..* per spec even where
+    this resource only ever carries one CodeableConcept at that position
+    (e.g. physicalType, which is 0..1 at the Location level but whose
+    *coding* array within it is still 0..*).
+
+    There is deliberately no user_id: like Organization, a Location is a
+    shared tenant-level entity (a physical place belongs to an org, not to
+    one end user).
     """
 
     __tablename__ = "location"
@@ -58,12 +69,6 @@ class LocationModel(Base):
         index=True,
         nullable=False,
     )
-
-    # Tenant field forwarded by the gateway — NOT FHIR data, and unrelated to
-    # managing_organization below. There is deliberately no user_id: like
-    # Organization, a Location is a shared tenant-level entity (a physical
-    # place belongs to an org, not to one end user).
-    org_id = Column(String, nullable=False, index=True)
 
     # ── status (0..1 code) ────────────────────────────────────────────────────
 
@@ -102,7 +107,9 @@ class LocationModel(Base):
     address_use = Column(Enum(AddressUse, name="address_use"), nullable=True)
     address_type = Column(Enum(AddressType, name="address_type"), nullable=False)
     address_text = Column(Text, nullable=True)
-    address_line = Column(Text, nullable=True)  # comma-separated (Address.line[] exception)
+    address_line = Column(
+        Text, nullable=True
+    )  # comma-separated (Address.line[] exception)
     address_city = Column(String, nullable=False)
     address_district = Column(String, nullable=True)
     address_state = Column(String, nullable=False)
@@ -112,13 +119,14 @@ class LocationModel(Base):
     address_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # ── physicalType (0..1 CodeableConcept) ──────────────────────────────────
+    # text stays flattened (sibling of coding[], not part of it); coding[]
+    # is a real 0..* child table (LocationPhysicalTypeCoding, below) rather
+    # than a single flattened coding — same reasoning as Organization.type's
+    # own coding[] promotion (see app.models.organization.type), just here
+    # the parent CodeableConcept sits directly on this row instead of its
+    # own child table, since physicalType itself is 0..1, not 0..*.
 
-    physical_type_system = Column(String, nullable=True)
-    physical_type_version = Column(String, nullable=True)
-    physical_type_code = Column(String, nullable=True)
-    physical_type_display = Column(String, nullable=True)
     physical_type_text = Column(String, nullable=True)
-    physical_type_user_selected = Column(Boolean, nullable=True)
 
     # ── managingOrganization (0..1 Reference(Organization)) ──────────────────
     # Shared PG enum type — never created/dropped by this resource's migration.
@@ -145,9 +153,7 @@ class LocationModel(Base):
     managing_organization_identifier_type_code = Column(String, nullable=True)
     managing_organization_identifier_type_display = Column(String, nullable=True)
     managing_organization_identifier_type_text = Column(String, nullable=True)
-    managing_organization_identifier_type_user_selected = Column(
-        Boolean, nullable=True
-    )
+    managing_organization_identifier_type_user_selected = Column(Boolean, nullable=True)
     managing_organization_identifier_system = Column(String, nullable=True)
     managing_organization_identifier_value = Column(String, nullable=True)
     managing_organization_identifier_period_start = Column(
@@ -196,12 +202,9 @@ class LocationModel(Base):
     position_latitude = Column(Numeric(18, 8), nullable=True)
     position_altitude = Column(Numeric(18, 8), nullable=True)
 
-    # ── Audit ─────────────────────────────────────────────────────────────────
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(String, nullable=False)
-    updated_by = Column(String, nullable=True)
+    # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
+    # come from TenantAuditMixin above — no hand-declared org_id here, same
+    # as OrganizationModel.
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
@@ -235,3 +238,33 @@ class LocationModel(Base):
         back_populates="location",
         cascade="all, delete-orphan",
     )
+    physical_type_codings = relationship(
+        "LocationPhysicalTypeCoding",
+        back_populates="location",
+        cascade="all, delete-orphan",
+    )
+
+
+# ---------------------------------------------------------------------------
+# physicalType.coding (0..*) child table
+# ---------------------------------------------------------------------------
+
+
+class LocationPhysicalTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+    """One entry of Location.physicalType.coding (0..*). physicalType itself
+    is 0..1 at the Location level, so this points straight at `location.id`
+    rather than at an intermediate CodeableConcept child row — unlike
+    LocationTypeCoding/LocationIdentifierTypeCoding (type.py/identifier.py),
+    which hang off their own 0..* parent row instead."""
+
+    __tablename__ = "location_physical_type_coding"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # Containment FK — named location_pk, not location_id, so it can never
+    # be confused with LocationModel.location_id (the public, FHIR-facing
+    # sequence ID) — same reasoning as Organization's organization_pk.
+    location_pk = Column(
+        BigInteger, ForeignKey("location.id"), nullable=False, index=True
+    )
+
+    location = relationship("LocationModel", back_populates="physical_type_codings")

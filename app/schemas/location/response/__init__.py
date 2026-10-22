@@ -1,3 +1,4 @@
+from ._shared import PlainLocationCoding
 from .alias import PlainLocationAlias
 from .core import (
     FHIRLocationBundle,
@@ -22,6 +23,7 @@ __all__ = [
     "FHIRLocationHoursOfOperation",
     "PlainLocationResponse",
     "PaginatedLocationResponse",
+    "PlainLocationCoding",
     "PlainLocationIdentifier",
     "PlainLocationType",
     "PlainLocationAlias",
