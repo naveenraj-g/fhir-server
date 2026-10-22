@@ -21,21 +21,16 @@ from app.errors.domain import BusinessRuleViolationError
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
 from app.models.organization import OrganizationModel
-from app.models.patient import PatientModel
-from app.models.practitioner import PractitionerModel
-from app.models.practitioner_role import PractitionerRoleModel
-from app.models.related_person.related_person import RelatedPersonModel
-from app.models.schedule import ScheduleModel
-from app.models.slot import SlotModel
 
 logger = get_logger(__name__)
 
+# Trimmed down to Organization/Location/HealthcareService only — every other
+# resource was deleted to rebuild from scratch; re-register a resource here
+# as soon as something needs to reference into it again (e.g. Location.partOf
+# needs its own Location entry so the self-referential existence check
+# doesn't fail closed).
 RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "Organization": (OrganizationModel, "organization_id"),
-    "Practitioner": (PractitionerModel, "practitioner_id"),
-    "PractitionerRole": (PractitionerRoleModel, "practitioner_role_id"),
-    "Patient": (PatientModel, "patient_id"),
-    "RelatedPerson": (RelatedPersonModel, "related_person_id"),
     # Location.partOf is self-referential, so this entry is what makes the
     # partOf existence check work at all — an unregistered type fails closed
     # (resource_exists returns False), which would 422 every valid partOf.
@@ -43,12 +38,6 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # must never be passed for it — same as Organization.
     "Location": (LocationModel, "location_id"),
     "HealthcareService": (HealthcareServiceModel, "healthcare_service_id"),
-    # Registered so Schedule.actor (and any future reference into Schedule)
-    "Schedule": (ScheduleModel, "schedule_id"),
-    # Registered for consistency with every other fully-reworked resource —
-    # nothing currently references Slot, but Slot itself validates its own
-    # required schedule reference against the Schedule entry above.
-    "Slot": (SlotModel, "slot_id"),
 }
 
 

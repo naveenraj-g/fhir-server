@@ -153,9 +153,10 @@ routes:
   # Which routers get mounted at startup — see CLAUDE.md's
   # "Enabling/Disabling Resources" section. Not listed = not mounted.
   #
-  # The ~34 FHIR resource names (patient, organization, ...) are all
-  # mounted together under one shared /api/fhir/v1 prefix via
-  # discover_routers()/mount_routers().
+  # Organization/Location/HealthcareService are mounted together under one
+  # shared /api/fhir/v1 prefix via discover_routers()/mount_routers() —
+  # every other resource was deleted to rebuild from scratch, one at a
+  # time, against the now-settled tenant_id/coding-list conventions.
   #
   # terminology, fhir_profile, and fhir_validate are each mounted in
   # app/main.py directly instead, under their OWN distinct prefix
@@ -163,14 +164,9 @@ routes:
   # same list just gates whether each one is included at all, same as any
   # other entry here.
   enabled:
-    # - patient
-    # - practitioner
     - organization
-    # - location
-    # - healthcare_service
-    # - practitioner_role
-    # - schedule
-    # - slot
+    - location
+    - healthcare_service
     - terminology
     - fhir_profile
     - fhir_validate
