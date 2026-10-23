@@ -21,14 +21,18 @@ from app.errors.domain import BusinessRuleViolationError
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
 from app.models.organization import OrganizationModel
+from app.models.practitioner import PractitionerModel
+from app.models.practitioner_role import PractitionerRoleModel
+from app.models.schedule import ScheduleModel
 
 logger = get_logger(__name__)
 
-# Trimmed down to Organization/Location/HealthcareService only — every other
-# resource was deleted to rebuild from scratch; re-register a resource here
-# as soon as something needs to reference into it again (e.g. Location.partOf
-# needs its own Location entry so the self-referential existence check
-# doesn't fail closed).
+# Trimmed down to Organization/Location/HealthcareService/Practitioner/
+# PractitionerRole/Schedule only — every other resource was deleted to
+# rebuild from scratch; re-register a resource here as soon as something
+# needs to reference into it again (e.g. Location.partOf needs its own
+# Location entry so the self-referential existence check doesn't fail
+# closed).
 RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "Organization": (OrganizationModel, "organization_id"),
     # Location.partOf is self-referential, so this entry is what makes the
@@ -38,6 +42,16 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # must never be passed for it — same as Organization.
     "Location": (LocationModel, "location_id"),
     "HealthcareService": (HealthcareServiceModel, "healthcare_service_id"),
+    # Registered so PractitionerRole.practitioner's existence check works —
+    # Practitioner has a user_id column (see PractitionerModel's docstring),
+    # but resource_exists() only applies that filter when the caller passes
+    # user_id, which PractitionerRole's own reference validation never does.
+    "Practitioner": (PractitionerModel, "practitioner_id"),
+    # Registered so Schedule.actor's existence check works when the actor
+    # is a PractitionerRole.
+    "PractitionerRole": (PractitionerRoleModel, "practitioner_role_id"),
+    # Registered so Slot.schedule's existence check works.
+    "Schedule": (ScheduleModel, "schedule_id"),
 }
 
 

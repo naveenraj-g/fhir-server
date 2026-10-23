@@ -24,6 +24,9 @@ import app.models.healthcare_service  # noqa: F401
 import app.models.location  # noqa: F401
 import app.models.organization  # noqa: F401
 import app.models.practitioner  # noqa: F401
+import app.models.practitioner_role  # noqa: F401
+import app.models.schedule  # noqa: F401
+import app.models.slot  # noqa: F401
 import app.models.terminology.terminology  # noqa: F401
 import app.models.fhir_profile.fhir_profile  # noqa: F401
 

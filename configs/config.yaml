@@ -168,6 +168,9 @@ routes:
     - location
     - healthcare_service
     - practitioner
+    - practitioner_role
+    - schedule
+    - slot
     - terminology
     - fhir_profile
     - fhir_validate

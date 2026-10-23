@@ -24,6 +24,22 @@ class EncounterReferenceType(str, Enum):
     Encounter = "Encounter"
 
 
+class PractitionerReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is Practitioner.
+    Stored as DB type name 'practitioner_reference_type' (shared across all tables,
+    create_type=False once PractitionerRole's migration creates it)."""
+
+    Practitioner = "Practitioner"
+
+
+class ScheduleReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is Schedule.
+    Stored as DB type name 'schedule_reference_type' (shared across all tables,
+    create_type=False once Slot's migration creates it)."""
+
+    Schedule = "Schedule"
+
+
 class IdentifierUse(str, Enum):
     """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 

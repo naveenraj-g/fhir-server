@@ -148,3 +148,23 @@ class PractitionerRoleDayOfWeek(str, Enum):
     fri = "fri"
     sat = "sat"
     sun = "sun"
+
+
+class SlotStatus(str, Enum):
+    """
+    FHIR Slot.status value set — https://www.hl7.org/fhir/R4/valueset-slotstatus.html
+
+    Member name uses underscores (valid Python identifiers can't contain
+    hyphens); the stored `.value` is the true hyphenated FHIR wire code —
+    same key!=value shape as PatientLinkType above. The model-layer
+    app.models.slot.enums.SlotStatus is a *different* enum with matching
+    member NAMES but underscore-only values (see that class's docstring
+    for why) — convert between them by member name, e.g.
+    `ModelSlotStatus[payload.status.name]`, never by value.
+    """
+
+    busy = "busy"
+    free = "free"
+    busy_unavailable = "busy-unavailable"
+    busy_tentative = "busy-tentative"
+    entered_in_error = "entered-in-error"

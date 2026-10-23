@@ -7,6 +7,9 @@ from app.di.modules import (
     LocationContainer,
     OrganizationContainer,
     PractitionerContainer,
+    PractitionerRoleContainer,
+    ScheduleContainer,
+    SlotContainer,
     TerminologyContainer,
 )
 
@@ -33,6 +36,21 @@ class Container(containers.DeclarativeContainer):
 
     practitioner = providers.Container(
         PractitionerContainer,
+        core=core,
+    )
+
+    practitioner_role = providers.Container(
+        PractitionerRoleContainer,
+        core=core,
+    )
+
+    schedule = providers.Container(
+        ScheduleContainer,
+        core=core,
+    )
+
+    slot = providers.Container(
+        SlotContainer,
         core=core,
     )
 

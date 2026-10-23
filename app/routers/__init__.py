@@ -19,6 +19,9 @@ from . import healthcare_service as healthcare_service
 from . import location as location
 from . import organization as organization
 from . import practitioner as practitioner
+from . import practitioner_role as practitioner_role
+from . import schedule as schedule
+from . import slot as slot
 
 __all__ = [
     "discover_routers",
@@ -26,6 +29,9 @@ __all__ = [
     "location",
     "organization",
     "practitioner",
+    "practitioner_role",
+    "schedule",
+    "slot",
 ]
 
 
