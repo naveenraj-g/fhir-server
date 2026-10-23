@@ -26,6 +26,8 @@ java_validator.py's registration path stays a plain "register this dict"
 step with no DB/cache concerns of its own.
 """
 
+from fastapi.encoders import jsonable_encoder
+
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.fhir.validation.base_r4 import validate_base_r4
@@ -122,6 +124,19 @@ async def validate_resource(
 
     "native" never considers org_id or country at all — it has no concept of
     profiles, by design (see base_r4.py's module docstring)."""
+    # Payload mappers (app.fhir.mappers.<resource>.payload) build this dict
+    # straight off the validated Pydantic *input* schema, which can still
+    # carry non-JSON-native Python types a persisted ORM row never would —
+    # Decimal (e.g. Location.position's longitude/latitude), date/datetime,
+    # Enum members. jsonable_encoder() is the same conversion
+    # format_response() already applies before anything ships to a client
+    # (see app/core/content_negotiation.py), so validating this exact,
+    # fully-JSON-safe shape keeps "what gets validated" and "what gets
+    # shipped" from ever drifting apart — and avoids every backend (the
+    # java_validator sidecar's httpx POST, in particular) choking on a type
+    # `json.dumps`/jsonschema was never going to accept anyway.
+    fhir_resource = jsonable_encoder(fhir_resource)
+
     if settings.fhir_validation.backend == "java_validator":
         country = settings.fhir_validation.country
         structure_definition = None

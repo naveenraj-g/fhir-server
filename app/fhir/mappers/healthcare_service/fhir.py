@@ -76,8 +76,8 @@ def _fhir_reference(obj, prefix: str) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": id_period_start.isoformat() if id_period_start else None,
-                    "end": id_period_end.isoformat() if id_period_end else None,
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
                 }.items()
                 if v
             }
@@ -144,8 +144,8 @@ def fhir_hs_identifier(i) -> dict:
         entry["period"] = {
             k: v
             for k, v in {
-                "start": i.period_start.isoformat() if i.period_start else None,
-                "end": i.period_end.isoformat() if i.period_end else None,
+                "start": fhir_instant(i.period_start),
+                "end": fhir_instant(i.period_end),
             }.items()
             if v
         }
@@ -231,8 +231,8 @@ def fhir_hs_not_available(na) -> dict:
         entry["during"] = {
             k: v
             for k, v in {
-                "start": na.during_start.isoformat() if na.during_start else None,
-                "end": na.during_end.isoformat() if na.during_end else None,
+                "start": fhir_instant(na.during_start),
+                "end": fhir_instant(na.during_end),
             }.items()
             if v
         }
@@ -349,7 +349,7 @@ def to_fhir_healthcare_service(hs: HealthcareServiceModel) -> dict:
             "size": hs.photo_size,
             "hash": hs.photo_hash,
             "title": hs.photo_title,
-            "creation": hs.photo_creation.isoformat() if hs.photo_creation else None,
+            "creation": fhir_instant(hs.photo_creation),
         }.items()
         if v is not None
     }

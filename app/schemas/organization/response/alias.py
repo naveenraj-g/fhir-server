@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields
 
 
-class PlainOrganizationAlias(_AuditFields):
+class PlainOrganizationAlias(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     value: str | None = Field(
         None,

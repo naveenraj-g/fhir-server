@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields
 
 
-class PlainLocationHoursOfOperation(_AuditFields):
+class PlainLocationHoursOfOperation(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     days_of_week: list[str] | None = Field(
         None,

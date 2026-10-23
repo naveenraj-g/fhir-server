@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.enums import IdentifierUse
 
-from ._shared import HealthcareServiceCodingInput
+from app.schemas.datatypes import CodingInput
 
 
 class HealthcareServiceIdentifierInput(BaseModel):
@@ -13,14 +13,14 @@ class HealthcareServiceIdentifierInput(BaseModel):
     mirrors app.schemas.organization.input.identifier.OrganizationIdentifierInput.
     This is distinct from assigner_identifier_type_* below (the *assigner's*
     Identifier fallback's .type), which stays a single flattened coding —
-    see HealthcareServiceCodingInput's docstring."""
+    see CodingInput's docstring."""
 
     model_config = ConfigDict(extra="forbid")
     use: IdentifierUse | None = Field(
         None,
         description="Identifies the purpose for this identifier, if known — usual|official|temp|secondary|old.",
     )
-    type_coding: list[HealthcareServiceCodingInput] | None = Field(
+    type_coding: list[CodingInput] | None = Field(
         None,
         description="Coding(s) for this identifier's type — e.g. NPI, DEA, license.",
     )

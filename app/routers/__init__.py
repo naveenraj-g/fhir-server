@@ -18,12 +18,14 @@ from fastapi import APIRouter
 from . import healthcare_service as healthcare_service
 from . import location as location
 from . import organization as organization
+from . import practitioner as practitioner
 
 __all__ = [
     "discover_routers",
     "healthcare_service",
     "location",
     "organization",
+    "practitioner",
 ]
 
 

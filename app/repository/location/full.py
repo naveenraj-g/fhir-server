@@ -50,7 +50,7 @@ def _join_days(values: list | None) -> str | None:
 
 
 def _coding_kwargs(coding, created_by: str | None) -> dict:
-    """Build constructor kwargs for one LocationCodingInput entry, targeting
+    """Build constructor kwargs for one app.schemas.datatypes.CodingInput entry, targeting
     any of the three dedicated coding[] child tables
     (LocationTypeCoding/LocationIdentifierTypeCoding/
     LocationPhysicalTypeCoding) — all three share the same shape via

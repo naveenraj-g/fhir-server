@@ -4,9 +4,9 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.location.enums import LocationMode, LocationStatus
+from app.schemas.datatypes import CodingInput
 from app.schemas.enums import AddressType, AddressUse, IdentifierUse
 
-from ._shared import LocationCodingInput
 from .alias import LocationAliasInput
 from .endpoint import LocationEndpointInput
 from .hours_of_operation import LocationHoursOfOperationInput
@@ -210,11 +210,11 @@ class LocationCreateSchema(_PositionMixin):
 
     # ── physicalType (0..1 CodeableConcept) ────────────────────────────────
     # text stays flattened here (sibling of coding[], not part of it);
-    # coding is the real 0..* list — see LocationCodingInput. physicalType
+    # coding is the real 0..* list — see CodingInput. physicalType
     # itself is 0..1 at the Location level, but its own coding[] is still
     # 0..* per spec, same reasoning as Location.type/identifier.type.
 
-    physical_type_coding: list[LocationCodingInput] | None = Field(
+    physical_type_coding: list[CodingInput] | None = Field(
         None,
         description="Coding(s) for the physical form — e.g. 'wi' for Wing, 'bu' for Building, 'ro' for Room.",
     )
@@ -469,7 +469,7 @@ class LocationPatchSchema(_PositionMixin):
         None, description="End of the time period when this address was/is in use."
     )
 
-    physical_type_coding: list[LocationCodingInput] | None = Field(
+    physical_type_coding: list[CodingInput] | None = Field(
         None, description="Coding(s) for the physical form — replaces the full list if supplied."
     )
     physical_type_text: str | None = Field(

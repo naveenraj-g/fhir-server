@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields
 
 
-class PlainHealthcareServiceCoverageArea(_AuditFields):
+class PlainHealthcareServiceCoverageArea(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     reference: str | None = Field(
         None,

@@ -6,6 +6,7 @@ from app.di.modules import (
     HealthcareServiceContainer,
     LocationContainer,
     OrganizationContainer,
+    PractitionerContainer,
     TerminologyContainer,
 )
 
@@ -27,6 +28,11 @@ class Container(containers.DeclarativeContainer):
 
     healthcare_service = providers.Container(
         HealthcareServiceContainer,
+        core=core,
+    )
+
+    practitioner = providers.Container(
+        PractitionerContainer,
         core=core,
     )
 

@@ -1,17 +1,17 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class LocationCodingInput(BaseModel):
-    """One entry of a CodeableConcept's `coding[]` — reused wherever
-    Location has a CodeableConcept whose coding is modeled as a real 0..*
-    list (Location.type, Location.identifier.type, Location.physicalType):
-    a deployment may need its own custom code for a concept AND a
-    crosswalk to a standard terminology (e.g. SNOMED CT) at the same time.
-    NOT used for a Reference's own logical-identifier fallback .type (e.g.
+class CodingInput(BaseModel):
+    """One entry of a CodeableConcept's `coding[]` — reused wherever a
+    resource has a CodeableConcept whose coding is modeled as a real 0..*
+    list (e.g. Organization.type, Location.physicalType,
+    HealthcareService.category): a deployment may need its own custom code
+    for a concept AND a crosswalk to a standard terminology (e.g. SNOMED
+    CT) at the same time. NOT used for a Reference's own
+    logical-identifier fallback .type (e.g.
     identifier.assigner.identifier.type) — those stay a single flattened
     coding, since they're a reference's fallback, not a first-class
-    identifier/type of this resource. Mirrors
-    app.schemas.organization.input._shared.OrganizationCodingInput."""
+    identifier/type of the resource itself."""
 
     model_config = ConfigDict(extra="forbid")
     system: str | None = Field(

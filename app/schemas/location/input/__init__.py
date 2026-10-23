@@ -1,4 +1,5 @@
-from ._shared import LocationCodingInput
+from app.schemas.datatypes import CodingInput
+
 from .alias import LocationAliasInput
 from .core import LocationCreateSchema, LocationPatchSchema
 from .endpoint import LocationEndpointInput
@@ -8,7 +9,7 @@ from .telecom import LocationTelecomInput
 from .type import LocationTypeInput
 
 __all__ = [
-    "LocationCodingInput",
+    "CodingInput",
     "LocationCreateSchema",
     "LocationPatchSchema",
     "LocationIdentifierInput",

@@ -160,8 +160,9 @@ When adding, renaming, or removing any field, walk every layer:
 4. **Repository `create()`** — pass field to ORM constructor
 5. **Repository `patch()`** — apply field when present in `model_dump(exclude_unset=True)`
 6. **FHIR Mapper** — `to_fhir_*`: add camelCase key; `to_plain_*`: add snake_case key
-7. **FHIR Response Schema** — add to both `FHIRXxxSchema` and `PlainXxxResponse`
-8. **Verify `/openapi.json`** — field must appear in request body and both response content types
+7. **`payload.py`** — add the same camelCase key to both `payload_to_fhir_<resource>()` (CREATE) and `patch_fragment_to_fhir_<resource>()` (PATCH, plus its field-group membership set if the new field is part of a flattened group) — see "Base R4 Validation" below. Easy to forget since it's a third, parallel copy of the same shape `to_fhir_*` already has — forgetting it means the new field is silently never validated pre-write.
+8. **FHIR Response Schema** — add to both `FHIRXxxSchema` and `PlainXxxResponse`
+9. **Verify `/openapi.json`** — field must appear in request body and both response content types
 
 Removing a field: same order in reverse (mapper → schemas → repo → model).
 
@@ -232,6 +233,57 @@ Rules:
 - `to_plain_<resource>`: `"id": model.<resource>_id` as int
 - References: stored as `(subject_type: Enum, subject_id: int)` → output as `"Patient/10001"` string via `fhir_enum()`
 - `fhir_enum(v)` handles both SQLAlchemy Enum objects and plain strings transparently
+
+### Base R4 Validation — mandatory for every resource
+
+Every resource's `create_<resource>()`/`patch_<resource>()` service methods validate the request **before** writing to the DB — not just Pydantic's own field-level checks, but the *real* FHIR R4 structure (via `app.fhir.validation.validate_resource()`, see below). This is mandatory, not opportunistic — Organization, Location, HealthcareService, and Practitioner all do it; a new resource's `/new-fhir-resource` build is not complete without it.
+
+**`payload.py` — the third mapper file.** `app/fhir/mappers/<resource>/` gets a third file alongside `fhir.py`/`plain.py`:
+
+| File | Purpose |
+|---|---|
+| `fhir.py` | ORM model (post-insert) → FHIR camelCase dict, for GET responses |
+| `plain.py` | ORM model (post-insert) → plain snake_case dict, for GET responses |
+| `payload.py` | **Validated Pydantic input schema** (pre-insert) → FHIR camelCase dict, for pre-write validation |
+
+`payload.py` is `fhir.py`'s mirror image, written field-for-field parallel to it — same CodeableConcept/coding-list/ContactPoint/Address builders, same flattened-Reference pattern — but reading off `<Resource>CreateSchema`/`<Resource>PatchSchema` instead of the ORM model. The two can't fully share code: a Reference field on the input schema only has the raw `{prefix}` string the caller submitted (no resolved `{prefix}_type`/`{prefix}_id` — that only exists after `RESOURCE_REGISTRY`'s existence check at write time), so `payload.py`'s own `_reference_from_payload(obj, prefix)` reads `getattr(obj, prefix)` directly rather than `{prefix}_type`/`{prefix}_id`.
+
+It exports two orchestrators:
+- `payload_to_fhir_<resource>(create_schema) -> dict` — full-resource conversion for CREATE; every field is considered present (a create payload is the resource's entire initial state).
+- `patch_fragment_to_fhir_<resource>(patch_schema) -> tuple[dict, set[str]]` — tri-state conversion for PATCH, using `payload.model_fields_set` (the same source of truth the repository's own `model_dump(exclude_unset=True)` uses): returns only the FHIR keys the request actually touched, plus that same key set. A touched key absent from the fragment means "clear it" (an explicit null, or an empty-list sub-resource replacement); an untouched key means "leave it alone."
+
+**`merge_patch_fragment(existing, fragment, touched)`** (`app.fhir.datatypes` — shared, not per-resource: it has zero resource-specific logic) shallow-merges a patch fragment onto the resource's current full FHIR representation (`to_fhir_<resource>(existing_row)`): drops every touched key from `existing` first, then overlays `fragment` on top. This is what makes PATCH validation possible at all — a partial payload can't be meaningfully validated on its own, so the service builds "what the resource would look like after this patch" and validates *that*.
+
+**Service wiring** — every `create_<resource>()`/`patch_<resource>()` does this (see `app/services/organization/core.py` for the original, or any of the other three for the identical copy):
+
+```python
+# create_<resource>()
+await self._validate_base_r4(payload_to_fhir_<resource>(payload), org_id)
+<resource> = await self.repository.create_full(payload, org_id, created_by)
+
+# patch_<resource>() — needs the current full row, not just an existence check
+existing = await self.repository.get_by_<resource>_id_in_org(<resource>_id, org_id)
+if not existing: raise NotFoundError(...)
+fragment, touched = patch_fragment_to_fhir_<resource>(payload)
+merged = merge_patch_fragment(to_fhir_<resource>(existing), fragment, touched)
+await self._validate_base_r4(merged, org_id)
+updated = await self.repository.patch_full(<resource>_id, payload, updated_by)
+```
+
+Each service also has its own `_validate_base_r4` static method — a thin, identical-everywhere wrapper (just the resource-type string literal changes):
+
+```python
+@staticmethod
+async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+    errors = await validate_resource("<Resource>", fhir_resource, org_id=org_id)
+    if errors:
+        logger.warning("<Resource> failed base R4 validation", extra={"event": "<resource>.base_r4_invalid", "errors": errors})
+        raise FhirValidationError(errors)
+```
+
+`validate_resource()` (`app/fhir/validation/dispatch.py`) is already fully resource-agnostic — it takes `resource_type` as a plain string and dispatches to whichever backend `settings.fhir_validation.backend` selects (`native`: this project's own structural JSON-Schema check against HL7's published `fhir.schema.json`, no profile concept; `java_validator`: the HL7 Java validator sidecar, which also walks the base → country → organization profile chain and enforces real terminology bindings) — nothing resource-specific needs to be built there. It also runs every `fhir_resource` dict through `jsonable_encoder()` before validating, since a payload mapper's output can carry `Decimal`/`date`/`Enum` values a persisted ORM row never would (e.g. `Location.position`'s `Decimal` longitude/latitude) — this keeps "what gets validated" and "what gets shipped" (`format_response()` applies the same encoder) from ever drifting apart, and avoids the java_validator sidecar's own httpx POST choking on a type `json.dumps` was never going to accept.
+
+**⚠️ Known `java_validator` gotcha — don't pick test fixture codes that trigger a live terminology lookup.** Some CodeableConcept/Coding fields carry a real HL7 binding that makes the sidecar attempt to verify the code against an *external* ValueSet — e.g. any `Coding.system = "urn:ietf:bcp:47"` (language codes) triggers a check against the full "All Languages" ValueSet (`http://hl7.org/fhir/ValueSet/languages`), and `Attachment.contentType` is checked against the full IANA MimeType ValueSet via a remote `tx.fhir.org` cache lookup. In a sandboxed/offline dev environment these can hang for minutes (confirmed via the sidecar's own container logs: `Operation took too long - longer than 60000ms ... codeInValueSet: urn:ietf:bcp:47#en`, 180s+) instead of failing fast. **When writing a test fixture:** omit `system`/`contentType` on fields like these (they're legitimately optional per spec) rather than supplying a real-world value, unless you specifically intend to test that lookup. `http://example.org/*` systems are a separate, *fast*-reject gotcha (the sidecar explicitly blocks example-domain URLs with a quick "Example URLs are not allowed in this context" error) — use this project's own `https://fhir-server.dev/fhir/identifier-system/<name>` convention instead.
 
 ### Conformance testing the FHIR half
 

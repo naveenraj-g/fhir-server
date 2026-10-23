@@ -1,14 +1,14 @@
 from pydantic import Field
 
-from ._shared import PlainOrganizationCoding, _AuditFields
+from app.schemas.datatypes import AuditFields, PlainCodingRow
 
 
-class PlainOrganizationIdentifier(_AuditFields):
+class PlainOrganizationIdentifier(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     use: str | None = Field(
         None, description="Identifies the purpose for this identifier, if known."
     )
-    type_codings: list[PlainOrganizationCoding] | None = Field(
+    type_codings: list[PlainCodingRow] | None = Field(
         None, description="Coding(s) for this identifier's type."
     )
     type_text: str | None = Field(

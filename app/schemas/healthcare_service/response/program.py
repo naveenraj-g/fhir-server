@@ -1,11 +1,11 @@
 from pydantic import Field
 
-from ._shared import PlainHealthcareServiceCoding, _AuditFields
+from app.schemas.datatypes import AuditFields, PlainCodingRow
 
 
-class PlainHealthcareServiceProgram(_AuditFields):
+class PlainHealthcareServiceProgram(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
-    codings: list[PlainHealthcareServiceCoding] | None = Field(
+    codings: list[PlainCodingRow] | None = Field(
         None, description="Coding(s) for this program."
     )
     text: str | None = Field(

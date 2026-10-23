@@ -389,12 +389,3 @@ def patch_fragment_to_fhir_organization(
     return fragment, touched
 
 
-def merge_patch_fragment(existing: dict, fragment: dict, touched: set[str]) -> dict:
-    """Shallow-merges a PATCH fragment over the resource's current full FHIR
-    representation: every touched key is dropped first (so an explicit
-    clear or an empty-list replacement — which the fragment simply omits —
-    actually disappears from the merged result), then the fragment's own
-    keys are overlaid on top."""
-    merged = {k: v for k, v in existing.items() if k not in touched}
-    merged.update(fragment)
-    return merged

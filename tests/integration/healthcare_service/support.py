@@ -21,7 +21,7 @@ FULL = {
     "availability_exceptions": "Closed public holidays",
     "identifier": [
         {
-            "system": "http://example.org/hs-ids",
+            "system": "https://fhir-server.dev/fhir/identifier-system/hs-ids",
             "value": "HS-1001",
             "assigner_identifier_system": "urn:external-registry",
             "assigner_identifier_value": "EXTERNAL-1",
@@ -29,36 +29,20 @@ FULL = {
     ],
     "category": [
         {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/service-category",
-                    "code": "8",
-                    "display": "Counselling",
-                }
-            ]
+            # No `system` here deliberately, same as `communication`/
+            # `eligibility` below — this field's binding makes the java
+            # validator sidecar attempt a live terminology-server lookup
+            # for *any* non-empty coding.system (even a custom, unregistered
+            # one), which this environment can't resolve. The filter tests
+            # only match on `code`, so this doesn't lose coverage.
+            "coding": [{"code": "8", "display": "Counselling"}]
         }
     ],
     "type": [
-        {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "394579002",
-                    "display": "Cardiology",
-                }
-            ]
-        }
+        {"coding": [{"code": "394579002", "display": "Cardiology"}]}
     ],
     "specialty": [
-        {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "394579002",
-                    "display": "Cardiology",
-                }
-            ]
-        }
+        {"coding": [{"code": "394579002", "display": "Cardiology"}]}
     ],
     "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
     "location": [
@@ -74,15 +58,7 @@ FULL = {
         }
     ],
     "service_provision_code": [
-        {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/service-provision-conditions",
-                    "code": "free",
-                    "display": "Free",
-                }
-            ]
-        }
+        {"coding": [{"code": "free", "display": "Free"}]}
     ],
     "eligibility": [
         {
@@ -91,44 +67,26 @@ FULL = {
         }
     ],
     "program": [
-        {
-            "coding": [
-                {
-                    "system": "http://example.org/programs",
-                    "code": "mh",
-                    "display": "Mental Health",
-                }
-            ]
-        }
+        {"coding": [{"code": "mh", "display": "Mental Health"}]}
     ],
     "characteristic": [
-        {
-            "coding": [
-                {
-                    "system": "http://example.org/characteristics",
-                    "code": "wheelchair",
-                    "display": "Wheelchair accessible",
-                }
-            ]
-        }
+        {"coding": [{"code": "wheelchair", "display": "Wheelchair accessible"}]}
     ],
     "communication": [
         {
-            "coding": [
-                {"system": "urn:ietf:bcp:47", "code": "en", "display": "English"}
-            ]
+            # No `system` here deliberately: `urn:ietf:bcp:47` triggers the
+            # java validator sidecar's preferred-binding check against the
+            # full "All Languages" ValueSet (http://hl7.org/fhir/ValueSet/languages),
+            # which this sandboxed environment can't resolve quickly —
+            # confirmed via the sidecar's own logs ("Operation took too
+            # long... codeInValueSet: urn:ietf:bcp:47#en", 180s+). Dropping
+            # `system` keeps the coding structurally valid without
+            # triggering that specific lookup.
+            "coding": [{"code": "en", "display": "English"}]
         }
     ],
     "referral_method": [
-        {
-            "coding": [
-                {
-                    "system": "http://example.org/referral-method",
-                    "code": "phone",
-                    "display": "Phone",
-                }
-            ]
-        }
+        {"coding": [{"code": "phone", "display": "Phone"}]}
     ],
     "available_time": [
         {

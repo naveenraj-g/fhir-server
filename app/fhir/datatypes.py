@@ -18,6 +18,23 @@ def fhir_instant(dt) -> str | None:
     return dt.isoformat()
 
 
+def merge_patch_fragment(existing: dict, fragment: dict, touched: set[str]) -> dict:
+    """Shallow-merges a PATCH fragment over a resource's current full FHIR
+    representation: every touched key is dropped first (so an explicit
+    clear or an empty-list replacement — which the fragment simply omits —
+    actually disappears from the merged result), then the fragment's own
+    keys are overlaid on top. 100% resource-agnostic (no resource-specific
+    logic at all), so every resource's payload.py imports this one copy
+    instead of redeclaring it — originally written for Organization, see
+    app/fhir/mappers/organization/payload.py's patch_fragment_to_fhir_organization()
+    for the full reasoning on why PATCH needs this (you can't meaningfully
+    validate a partial payload on its own, so this builds "what the
+    resource would look like after this patch" first)."""
+    merged = {k: v for k, v in existing.items() if k not in touched}
+    merged.update(fragment)
+    return merged
+
+
 def fhir_split(value: str | None) -> list[str]:
     if not value:
         return []

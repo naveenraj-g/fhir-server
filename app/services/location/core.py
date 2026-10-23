@@ -1,7 +1,15 @@
 from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
-from app.fhir.mappers.location import to_fhir_location, to_plain_location
+from app.errors.validation import FhirValidationError
+from app.fhir.mappers.location import (
+    merge_patch_fragment,
+    patch_fragment_to_fhir_location,
+    payload_to_fhir_location,
+    to_fhir_location,
+    to_plain_location,
+)
+from app.fhir.validation import validate_resource
 from app.models.location import LocationModel
 from app.repository.location import LocationRepository
 from app.schemas.location import LocationCreateSchema, LocationPatchSchema
@@ -114,6 +122,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Location creation requires an org-scoped token"
             )
+        await self._validate_base_r4(payload_to_fhir_location(payload), org_id)
         loc = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Location created",
@@ -130,12 +139,25 @@ class _CoreMixin:
     ) -> LocationModel:
         """org_id comes from the verified JWT's actor.org_id — no bypass: a
         missing org_id or a location belonging to a different org both raise
-        NotFoundError (404), never 403, so existence isn't leaked."""
-        if not org_id or not await self.repository.location_belongs_to_org(
-            location_id, org_id
-        ):
+        NotFoundError (404), never 403, so existence isn't leaked.
+
+        The current row is fetched (rather than a lightweight existence
+        check) because base R4 validation needs it: a PATCH payload is
+        partial by nature, so it's merged onto the resource's current full
+        FHIR representation before validating — see
+        patch_fragment_to_fhir_location()'s docstring."""
+        if not org_id:
             self._log_org_scope_miss("patch", location_id, org_id)
             raise NotFoundError("Location not found")
+        existing = await self.repository.get_by_location_id_in_org(location_id, org_id)
+        if not existing:
+            self._log_org_scope_miss("patch", location_id, org_id)
+            raise NotFoundError("Location not found")
+
+        fragment, touched = patch_fragment_to_fhir_location(payload)
+        merged = merge_patch_fragment(to_fhir_location(existing), fragment, touched)
+        await self._validate_base_r4(merged, org_id)
+
         updated = await self.repository.patch_full(location_id, payload, updated_by)
         if not updated:
             raise NotFoundError("Location not found")
@@ -165,6 +187,24 @@ class _CoreMixin:
             "Location deleted",
             extra={"event": "location.deleted", "location_id": location_id},
         )
+
+    # ── Validation helpers ────────────────────────────────────────────────
+
+    @staticmethod
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+        """Raises FhirValidationError (422) if `fhir_resource` fails
+        validation against the most specific applicable layer of the
+        base -> country -> organization profile chain — see
+        app.services.organization.core._CoreMixin._validate_base_r4's
+        docstring for the full reasoning (identical here; validate_resource()
+        is already resource-agnostic)."""
+        errors = await validate_resource("Location", fhir_resource, org_id=org_id)
+        if errors:
+            logger.warning(
+                "Location failed base R4 validation",
+                extra={"event": "location.base_r4_invalid", "errors": errors},
+            )
+            raise FhirValidationError(errors)
 
     # ── Logging helpers ───────────────────────────────────────────────────
 

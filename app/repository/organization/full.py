@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 
 
 def _coding_kwargs(coding, created_by: str | None) -> dict:
-    """Build constructor kwargs for one OrganizationCodingInput entry,
+    """Build constructor kwargs for one app.schemas.datatypes.CodingInput entry,
     targeting any of the three dedicated coding[] child tables
     (OrganizationTypeCoding/OrganizationContactPurposeCoding/
     OrganizationIdentifierTypeCoding) — all three share the same shape via

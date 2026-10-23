@@ -1,4 +1,5 @@
-from ._shared import PlainLocationCoding
+from app.schemas.datatypes import PlainCodingRow
+
 from .alias import PlainLocationAlias
 from .core import (
     FHIRLocationBundle,
@@ -23,7 +24,7 @@ __all__ = [
     "FHIRLocationHoursOfOperation",
     "PlainLocationResponse",
     "PaginatedLocationResponse",
-    "PlainLocationCoding",
+    "PlainCodingRow",
     "PlainLocationIdentifier",
     "PlainLocationType",
     "PlainLocationAlias",

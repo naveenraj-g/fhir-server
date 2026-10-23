@@ -1,0 +1,34 @@
+from pydantic import Field
+
+from app.schemas.datatypes.audit_fields import AuditFields
+
+
+class PlainContactPointRow(AuditFields):
+    """One stored ContactPoint row — plain/snake_case rendering plus the
+    row's own DB identity and audit trail. Shared by every resource's
+    `telecom[]` child table (Organization.telecom, Organization.contact.telecom,
+    Location.telecom, HealthcareService.telecom, ...)."""
+
+    id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
+    system: str | None = Field(
+        None,
+        description="Telecommunications form for the contact point (phone|fax|email|pager|url|sms|other).",
+    )
+    value: str | None = Field(
+        None, description="The actual contact point details (e.g. a phone number or email address)."
+    )
+    use: str | None = Field(
+        None, description="Identifies the purpose for the contact point."
+    )
+    rank: int | None = Field(
+        None,
+        description="Preferred order among a set of contacts — lower values are more preferred.",
+    )
+    period_start: str | None = Field(
+        None,
+        description="Start of the time period when this contact point was/is in use.",
+    )
+    period_end: str | None = Field(
+        None,
+        description="End of the time period when this contact point was/is in use.",
+    )

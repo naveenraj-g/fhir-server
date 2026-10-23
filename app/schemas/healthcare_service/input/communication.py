@@ -1,16 +1,16 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from ._shared import HealthcareServiceCodingInput
+from app.schemas.datatypes import CodingInput
 
 
 class HealthcareServiceCommunicationInput(BaseModel):
     """HealthcareService.communication — languages that people who work
     at/perform the service can use (CodeableConcept). `text` is the
     CodeableConcept's own field (sibling of coding[], not part of it);
-    `coding` is the real 0..* list — see HealthcareServiceCodingInput."""
+    `coding` is the real 0..* list — see CodingInput."""
 
     model_config = ConfigDict(extra="forbid")
-    coding: list[HealthcareServiceCodingInput] | None = Field(
+    coding: list[CodingInput] | None = Field(
         None,
         description="Coding(s) for this communication language — may include both a custom code and a standard-terminology crosswalk.",
     )

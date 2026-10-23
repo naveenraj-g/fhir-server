@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from ._shared import PlainHealthcareServiceCoding, _AuditFields
+from app.schemas.datatypes import AuditFields, PlainCodingRow
 
 
-class PlainHealthcareServiceIdentifier(_AuditFields):
+class PlainHealthcareServiceIdentifier(AuditFields):
     """`type_codings` is a real 0..* child table rather than a single
     flattened coding, mirroring
     app.schemas.organization.response.identifier.PlainOrganizationIdentifier."""
@@ -12,7 +12,7 @@ class PlainHealthcareServiceIdentifier(_AuditFields):
     use: str | None = Field(
         None, description="Identifies the purpose for this identifier, if known."
     )
-    type_codings: list[PlainHealthcareServiceCoding] | None = Field(
+    type_codings: list[PlainCodingRow] | None = Field(
         None, description="Coding(s) for this identifier's type."
     )
     type_text: str | None = Field(

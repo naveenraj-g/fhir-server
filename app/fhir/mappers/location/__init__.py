@@ -20,8 +20,36 @@ from app.fhir.mappers.location.plain import (
     plain_location_type,
     to_plain_location,
 )
+from app.fhir.datatypes import merge_patch_fragment
+from app.fhir.mappers.location.payload import (
+    patch_fragment_to_fhir_location,
+    payload_address,
+    payload_alias,
+    payload_endpoint,
+    payload_hours_of_operation,
+    payload_identifier,
+    payload_operational_status,
+    payload_physical_type,
+    payload_position,
+    payload_telecom,
+    payload_to_fhir_location,
+    payload_type,
+)
 
 __all__ = [
+    "merge_patch_fragment",
+    "patch_fragment_to_fhir_location",
+    "payload_address",
+    "payload_alias",
+    "payload_endpoint",
+    "payload_hours_of_operation",
+    "payload_identifier",
+    "payload_operational_status",
+    "payload_physical_type",
+    "payload_position",
+    "payload_telecom",
+    "payload_to_fhir_location",
+    "payload_type",
     "to_fhir_location",
     "to_plain_location",
     "fhir_location_identifier",

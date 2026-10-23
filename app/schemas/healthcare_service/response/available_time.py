@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields
 
 
 class FHIRHealthcareServiceAvailableTime(BaseModel):
@@ -20,7 +20,7 @@ class FHIRHealthcareServiceAvailableTime(BaseModel):
     )
 
 
-class PlainHealthcareServiceAvailableTime(_AuditFields):
+class PlainHealthcareServiceAvailableTime(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     days_of_week: list[str] | None = Field(
         None, description="Days of the week available between the start/end times."

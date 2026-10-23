@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.common.fhir import (
+from app.schemas.datatypes import (
     FHIRAddress,
     FHIRBundle,
     FHIRCodeableConcept,

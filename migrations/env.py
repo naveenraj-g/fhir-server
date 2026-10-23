@@ -13,42 +13,18 @@ from alembic import context
 # Import FHIRBase so Alembic can see all table metadata
 from app.core.database import FHIRBase
 
-# Import every model module so SQLAlchemy registers the tables on FHIRBase.metadata
-import app.models.patient  # noqa: F401
-import app.models.practitioner  # noqa: F401
-import app.models.encounter.encounter  # noqa: F401
-import app.models.appointment.appointment  # noqa: F401
-import app.models.questionnaire_response.questionnaire_response  # noqa: F401
-import app.models.service_request.service_request  # noqa: F401
-import app.models.medication_request.medication_request  # noqa: F401
-import app.models.procedure.procedure  # noqa: F401
-import app.models.diagnostic_report.diagnostic_report  # noqa: F401
-import app.models.condition.condition  # noqa: F401
-import app.models.device_request.device_request  # noqa: F401
-import app.models.practitioner_role  # noqa: F401
+# Import every model module so SQLAlchemy registers the tables on FHIRBase.metadata.
+# Only Organization, Location, HealthcareService, Terminology, and FhirProfile
+# currently exist in this codebase — every other resource was deleted in a
+# mass cleanup (see CLAUDE.md's resource list); their old DB objects may
+# still be live but are no longer modeled here. Add a new import line here
+# the same day a deleted resource (or a new one, like Practitioner) gets its
+# model files back.
 import app.models.healthcare_service  # noqa: F401
-import app.models.observation.observation  # noqa: F401
-import app.models.claim.claim  # noqa: F401
-import app.models.claim_response.claim_response  # noqa: F401
-import app.models.organization  # noqa: F401
-import app.models.schedule  # noqa: F401
-import app.models.slot  # noqa: F401
-import app.models.invoice.invoice  # noqa: F401
 import app.models.location  # noqa: F401
-import app.models.coverage.coverage  # noqa: F401
-import app.models.medication.medication  # noqa: F401
-import app.models.allergy_intolerance.allergy_intolerance  # noqa: F401
-import app.models.provenance.provenance  # noqa: F401
-import app.models.task.task  # noqa: F401
-import app.models.care_plan.care_plan  # noqa: F401
-import app.models.related_person.related_person  # noqa: F401
-import app.models.specimen.specimen  # noqa: F401
-import app.models.document_reference.document_reference  # noqa: F401
-import app.models.immunization.immunization  # noqa: F401
-import app.models.audit_event.audit_event  # noqa: F401
-import app.models.episode_of_care.episode_of_care  # noqa: F401
+import app.models.organization  # noqa: F401
+import app.models.practitioner  # noqa: F401
 import app.models.terminology.terminology  # noqa: F401
-import app.models.insurance_plan.insurance_plan  # noqa: F401
 import app.models.fhir_profile.fhir_profile  # noqa: F401
 
 # Read alembic.ini logging config

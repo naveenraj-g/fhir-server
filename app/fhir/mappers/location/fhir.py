@@ -106,8 +106,8 @@ def _fhir_reference(obj, prefix: str) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": id_period_start.isoformat() if id_period_start else None,
-                    "end": id_period_end.isoformat() if id_period_end else None,
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
                 }.items()
                 if v
             }
@@ -141,8 +141,8 @@ def fhir_location_identifier(i: LocationIdentifier) -> dict:
         entry["period"] = {
             k: v
             for k, v in {
-                "start": i.period_start.isoformat() if i.period_start else None,
-                "end": i.period_end.isoformat() if i.period_end else None,
+                "start": fhir_instant(i.period_start),
+                "end": fhir_instant(i.period_end),
             }.items()
             if v
         }
@@ -232,12 +232,8 @@ def fhir_location_address(loc: LocationModel) -> dict:
         entry["period"] = {
             k: v
             for k, v in {
-                "start": loc.address_period_start.isoformat()
-                if loc.address_period_start
-                else None,
-                "end": loc.address_period_end.isoformat()
-                if loc.address_period_end
-                else None,
+                "start": fhir_instant(loc.address_period_start),
+                "end": fhir_instant(loc.address_period_end),
             }.items()
             if v
         }

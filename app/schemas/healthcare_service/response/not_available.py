@@ -1,8 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.common.fhir import FHIRPeriod
-
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields, FHIRPeriod
 
 
 class FHIRHealthcareServiceNotAvailable(BaseModel):
@@ -17,7 +15,7 @@ class FHIRHealthcareServiceNotAvailable(BaseModel):
     )
 
 
-class PlainHealthcareServiceNotAvailable(_AuditFields):
+class PlainHealthcareServiceNotAvailable(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     description: str | None = Field(
         None,

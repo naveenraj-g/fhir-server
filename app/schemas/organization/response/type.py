@@ -1,11 +1,11 @@
 from pydantic import Field
 
-from ._shared import PlainOrganizationCoding, _AuditFields
+from app.schemas.datatypes import AuditFields, PlainCodingRow
 
 
-class PlainOrganizationType(_AuditFields):
+class PlainOrganizationType(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
-    codings: list[PlainOrganizationCoding] | None = Field(
+    codings: list[PlainCodingRow] | None = Field(
         None, description="Coding(s) for this organization type."
     )
     text: str | None = Field(

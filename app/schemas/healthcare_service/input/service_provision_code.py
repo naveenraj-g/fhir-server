@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from ._shared import HealthcareServiceCodingInput
+from app.schemas.datatypes import CodingInput
 
 
 class HealthcareServiceServiceProvisionCodeInput(BaseModel):
@@ -8,10 +8,10 @@ class HealthcareServiceServiceProvisionCodeInput(BaseModel):
     conditions under which the healthcare service is available/offered
     (CodeableConcept). `text` is the CodeableConcept's own field (sibling of
     coding[], not part of it); `coding` is the real 0..* list — see
-    HealthcareServiceCodingInput."""
+    CodingInput."""
 
     model_config = ConfigDict(extra="forbid")
-    coding: list[HealthcareServiceCodingInput] | None = Field(
+    coding: list[CodingInput] | None = Field(
         None,
         description="Coding(s) for this service provision code — may include both a custom code and a standard-terminology crosswalk.",
     )

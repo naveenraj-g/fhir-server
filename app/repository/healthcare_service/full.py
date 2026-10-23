@@ -76,7 +76,7 @@ def _days_of_week(days) -> str | None:
 
 
 def _coding_kwargs(coding, created_by: str | None) -> dict:
-    """Build constructor kwargs for one HealthcareServiceCodingInput entry,
+    """Build constructor kwargs for one app.schemas.datatypes.CodingInput entry,
     targeting any of the ten dedicated coding[] child tables — all share
     the same shape via FhirCodingMixin, so one helper covers all of them.
     Mirrors app.repository.organization.full._coding_kwargs."""

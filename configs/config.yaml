@@ -167,6 +167,7 @@ routes:
     - organization
     - location
     - healthcare_service
+    - practitioner
     - terminology
     - fhir_profile
     - fhir_validate

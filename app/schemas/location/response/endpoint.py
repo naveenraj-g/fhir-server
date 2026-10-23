@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields
 
 
-class PlainLocationEndpoint(_AuditFields):
+class PlainLocationEndpoint(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     reference_type: str | None = Field(
         None, description="Resolved reference target type (always 'Endpoint')."

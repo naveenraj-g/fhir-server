@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.common.fhir import (
+from app.schemas.datatypes import (
     FHIRAddress,
     FHIRBundle,
     FHIRCodeableConcept,
@@ -11,9 +11,9 @@ from app.schemas.common.fhir import (
     FHIRIdentifier,
     FHIRMeta,
     FHIRReference,
+    PlainCodingRow,
 )
 
-from ._shared import PlainLocationCoding
 from .alias import PlainLocationAlias
 from .endpoint import PlainLocationEndpoint
 from .hours_of_operation import PlainLocationHoursOfOperation
@@ -192,7 +192,7 @@ class PlainLocationResponse(BaseModel):
         None, description="End of the time period when this address was/is in use."
     )
 
-    physical_type_codings: list[PlainLocationCoding] | None = Field(
+    physical_type_codings: list[PlainCodingRow] | None = Field(
         None,
         description="Physical form — coding(s), a real 0..* child table rather than a single flattened coding.",
     )

@@ -1,4 +1,5 @@
-from ._shared import OrganizationCodingInput
+from app.schemas.datatypes import CodingInput
+
 from .address import OrganizationAddressInput
 from .alias import OrganizationAliasInput
 from .contact import OrganizationContactInput, OrganizationContactTelecomInput
@@ -11,7 +12,7 @@ from .type import OrganizationTypeInput
 __all__ = [
     "OrganizationCreateSchema",
     "OrganizationPatchSchema",
-    "OrganizationCodingInput",
+    "CodingInput",
     "OrganizationIdentifierInput",
     "OrganizationTypeInput",
     "OrganizationAliasInput",

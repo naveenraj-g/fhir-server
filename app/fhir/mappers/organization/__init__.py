@@ -19,10 +19,10 @@ from app.fhir.mappers.organization.plain import (
     plain_org_contact,
     plain_org_endpoint,
 )
+from app.fhir.datatypes import merge_patch_fragment
 from app.fhir.mappers.organization.payload import (
     payload_to_fhir_organization,
     patch_fragment_to_fhir_organization,
-    merge_patch_fragment,
     payload_identifier,
     payload_type,
     payload_alias,

@@ -110,8 +110,8 @@ def _fhir_reference(obj, prefix: str) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": id_period_start.isoformat() if id_period_start else None,
-                    "end": id_period_end.isoformat() if id_period_end else None,
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
                 }.items()
                 if v
             }
@@ -143,8 +143,8 @@ def fhir_org_identifier(i: OrganizationIdentifier) -> dict:
         entry["period"] = {
             k: v
             for k, v in {
-                "start": i.period_start.isoformat() if i.period_start else None,
-                "end": i.period_end.isoformat() if i.period_end else None,
+                "start": fhir_instant(i.period_start),
+                "end": fhir_instant(i.period_end),
             }.items()
             if v
         }
@@ -196,8 +196,8 @@ def fhir_org_address(a) -> dict:
         entry["period"] = {
             k: v
             for k, v in {
-                "start": a.period_start.isoformat() if a.period_start else None,
-                "end": a.period_end.isoformat() if a.period_end else None,
+                "start": fhir_instant(a.period_start),
+                "end": fhir_instant(a.period_end),
             }.items()
             if v
         }
@@ -236,10 +236,8 @@ def fhir_org_contact(c: OrganizationContact) -> dict:
             name["period"] = {
                 k: v
                 for k, v in {
-                    "start": c.name_period_start.isoformat()
-                    if c.name_period_start
-                    else None,
-                    "end": c.name_period_end.isoformat() if c.name_period_end else None,
+                    "start": fhir_instant(c.name_period_start),
+                    "end": fhir_instant(c.name_period_end),
                 }.items()
                 if v
             }
@@ -277,8 +275,8 @@ def fhir_org_contact(c: OrganizationContact) -> dict:
             addr["period"] = {
                 k: v
                 for k, v in {
-                    "start": c.period_start.isoformat() if c.period_start else None,
-                    "end": c.period_end.isoformat() if c.period_end else None,
+                    "start": fhir_instant(c.period_start),
+                    "end": fhir_instant(c.period_end),
                 }.items()
                 if v
             }

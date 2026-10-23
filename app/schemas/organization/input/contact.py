@@ -2,47 +2,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.enums import (
-    AddressType,
-    AddressUse,
-    ContactPointSystem,
-    ContactPointUse,
-    HumanNameUse,
-)
-
-from ._shared import OrganizationCodingInput
+from app.schemas.datatypes import CodingInput, ContactPointInput
+from app.schemas.enums import AddressType, AddressUse, HumanNameUse
 
 
-class OrganizationContactTelecomInput(BaseModel):
+class OrganizationContactTelecomInput(ContactPointInput):
     """Organization.contact.telecom — a contact detail for the contact person (ContactPoint)."""
-
-    model_config = ConfigDict(extra="forbid")
-    # system/value are 0..1 on ContactPoint — not required even here.
-    system: ContactPointSystem | None = Field(
-        None,
-        description="Telecommunications form for the contact point — what communications system is required to make use of it: phone|fax|email|pager|url|sms|other.",
-    )
-    value: str | None = Field(
-        None,
-        description="The actual contact point details, in a form meaningful to the designated communication system.",
-    )
-    use: ContactPointUse | None = Field(
-        None,
-        description="Identifies the purpose for the contact point — home|work|temp|old|mobile.",
-    )
-    rank: int | None = Field(
-        None,
-        ge=1,
-        description="Specifies a preferred order in which to use a set of contacts. Lower values are more preferred than higher values.",
-    )
-    period_start: datetime | None = Field(
-        None,
-        description="Start of the time period when this contact point was/is in use.",
-    )
-    period_end: datetime | None = Field(
-        None,
-        description="End of the time period when this contact point was/is in use.",
-    )
 
 
 class OrganizationContactInput(BaseModel):
@@ -52,8 +17,8 @@ class OrganizationContactInput(BaseModel):
     # purpose (0..1 CodeableConcept) — "Indicates a purpose for which the
     # contact can be reached." purpose_text is the CodeableConcept's own
     # field; purpose_coding is the real 0..* coding list — see
-    # OrganizationCodingInput's docstring.
-    purpose_coding: list[OrganizationCodingInput] | None = Field(
+    # app.schemas.datatypes.CodingInput's docstring.
+    purpose_coding: list[CodingInput] | None = Field(
         None,
         description="Coding(s) for this contact's purpose — e.g. 'ADMIN', 'BILL', 'PRESS'.",
     )

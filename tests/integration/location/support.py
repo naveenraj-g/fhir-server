@@ -41,7 +41,7 @@ FULL = {
     "availability_exceptions": "Reduced services on public holidays",
     "identifier": [
         {
-            "system": "http://example.org/location-ids",
+            "system": "https://fhir-server.dev/fhir/identifier-system/location-ids",
             "value": "B1-S.F2",
             "use": "official",
             "assigner_identifier_system": "urn:external-registry",

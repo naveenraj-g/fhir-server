@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from ._shared import _AuditFields
+from app.schemas.datatypes import AuditFields
 
 
-class PlainOrganizationAddress(_AuditFields):
+class PlainOrganizationAddress(AuditFields):
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     use: str | None = Field(None, description="The purpose of this address.")
     type: str | None = Field(

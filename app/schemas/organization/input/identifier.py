@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.enums import IdentifierUse
 
-from ._shared import OrganizationCodingInput
+from app.schemas.datatypes import CodingInput
 
 
 class OrganizationIdentifierInput(BaseModel):
@@ -18,8 +18,8 @@ class OrganizationIdentifierInput(BaseModel):
     # own custom identifier-type code AND a standard crosswalk at once). This
     # is distinct from assigner_identifier_type_* below (the *assigner's*
     # Identifier fallback's .type), which stays a single flattened coding —
-    # see OrganizationCodingInput's docstring.
-    type_coding: list[OrganizationCodingInput] | None = Field(
+    # see app.schemas.datatypes.CodingInput's docstring.
+    type_coding: list[CodingInput] | None = Field(
         None,
         description="Coding(s) for this identifier's type — e.g. NPI, DEA, license.",
     )
