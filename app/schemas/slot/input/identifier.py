@@ -24,8 +24,8 @@ class SlotIdentifierInput(BaseModel):
     system: str | None = Field(
         None, description="Establishes the namespace for the value."
     )
-    value: str = Field(
-        ...,
+    value: str | None = Field(
+        None,
         description="The portion of the identifier typically relevant to the user and which is unique within the system.",
     )
     period_start: datetime | None = Field(

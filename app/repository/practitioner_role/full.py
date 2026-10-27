@@ -52,8 +52,9 @@ _SUB = {
 }
 
 
-def _days_of_week(days) -> str | None:
-    return ",".join(d.value for d in days) if days else None
+def _days_of_week(days) -> list[str] | None:
+    """availableTime.daysOfWeek[] is a real Postgres ARRAY(String) column."""
+    return [d.value for d in days] if days else None
 
 
 def _coding_kwargs(coding, created_by: str | None) -> dict:
@@ -99,13 +100,16 @@ class _FullMixin:
             pr = PractitionerRoleModel(
                 tenant_id=org_id,
                 created_by=created_by,
+                extension=payload.extension or [],
                 active=payload.active,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                practitioner_reference=payload.practitioner,
                 **_practitioner_ref_kwargs(
                     "practitioner", payload.practitioner, payload.practitioner_display
                 ),
                 **_reference_kwargs("practitioner", payload),
+                organization_reference=payload.organization,
                 **_org_ref_kwargs(
                     "organization", payload.organization, payload.organization_display
                 ),
@@ -132,6 +136,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=created_by,
@@ -202,6 +207,7 @@ class _FullMixin:
                         PractitionerRoleLocation(
                             practitioner_role_pk=pr.id,
                             tenant_id=org_id,
+                            reference_reference=loc.reference,
                             **_location_ref_kwargs(
                                 "reference", loc.reference, loc.reference_display
                             ),
@@ -224,6 +230,7 @@ class _FullMixin:
                         PractitionerRoleHealthcareService(
                             practitioner_role_pk=pr.id,
                             tenant_id=org_id,
+                            reference_reference=hs.reference,
                             **_healthcare_service_ref_kwargs(
                                 "reference", hs.reference, hs.reference_display
                             ),
@@ -288,6 +295,7 @@ class _FullMixin:
                             tenant_id=org_id,
                             reference_type=ep_type,
                             reference_id=ep_id,
+                            reference_reference=e.reference,
                             reference_display=e.reference_display,
                             **_reference_kwargs("reference", e),
                             created_by=created_by,
@@ -326,6 +334,7 @@ class _FullMixin:
                 if field in _SUB:
                     continue
                 if field == "practitioner":
+                    pr.practitioner_reference = value
                     if value is not None:
                         p_type, p_id = _parse_practitioner_ref(value)
                         await _validate_reference(
@@ -337,6 +346,7 @@ class _FullMixin:
                         pr.practitioner_type = None
                         pr.practitioner_id = None
                 elif field == "organization":
+                    pr.organization_reference = value
                     if value is not None:
                         o_type, o_id = _parse_org_ref(value)
                         await _validate_reference(
@@ -374,6 +384,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=updated_by,
@@ -459,6 +470,7 @@ class _FullMixin:
                         PractitionerRoleLocation(
                             practitioner_role_pk=pr.id,
                             tenant_id=pr.tenant_id,
+                            reference_reference=loc.reference,
                             **_location_ref_kwargs(
                                 "reference", loc.reference, loc.reference_display
                             ),
@@ -486,6 +498,7 @@ class _FullMixin:
                         PractitionerRoleHealthcareService(
                             practitioner_role_pk=pr.id,
                             tenant_id=pr.tenant_id,
+                            reference_reference=hs.reference,
                             **_healthcare_service_ref_kwargs(
                                 "reference", hs.reference, hs.reference_display
                             ),
@@ -570,6 +583,7 @@ class _FullMixin:
                             tenant_id=pr.tenant_id,
                             reference_type=ep_type,
                             reference_id=ep_id,
+                            reference_reference=e.reference,
                             reference_display=e.reference_display,
                             **_reference_kwargs("reference", e),
                             created_by=updated_by,

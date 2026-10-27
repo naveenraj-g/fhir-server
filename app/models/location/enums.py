@@ -46,9 +46,9 @@ class LocationEndpointReferenceType(str, Enum):
 class LocationDayOfWeek(str, Enum):
     """FHIR R4 Location.hoursOfOperation.daysOfWeek (0..*, required binding).
 
-    Stored comma-separated in a single Text column per the `daysOfWeek[]`
-    exception in /fhir-db-model, so this enum is not bound to a PostgreSQL
-    type — it exists for schema-layer validation and mapper round-tripping.
+    Stored as a real Postgres `ARRAY(String)` column (same shape as
+    `Address.line`), not bound to a PostgreSQL enum type — this enum exists
+    for schema-layer validation and mapper round-tripping only.
     https://www.hl7.org/fhir/R4/valueset-days-of-week.html
     """
 

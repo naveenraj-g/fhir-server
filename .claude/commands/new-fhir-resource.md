@@ -4,6 +4,8 @@ Complete step-by-step checklist for adding a new FHIR R4 resource to this server
 
 **Before starting:** run `/fhir-db-model` with the R4 spec URL to design the ORM model, enums, and migration first.
 
+**This skill covers the fhir-server half only.** Per CLAUDE.md's "What 'End-to-End' Means" — a resource isn't end-to-end complete until the fhir-gql gateway (`D:\code\work\projects\fhir-gql`, sibling repo) can serve it too, on **both** connectors (`internal` and `medplum`), not just one. Step 18 below covers that half; don't skip it or treat it as a separate follow-up task.
+
 ## ARGUMENTS: $RESOURCE
 
 Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust paths accordingly.
@@ -15,7 +17,7 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
 1. **Model** — `app/models/<resource>/<resource>.py` (+ one file per sub-resource once there are several — Organization/Location/HealthcareService all do `core.py` + `<sub>.py` + `__init__.py`)
    - `id` (internal, `BigInteger` PK, never exposed) + public `<resource>_id` (`BigInteger`, via a `Sequence("<resource>_pub_seq", start=<block>, increment=1, metadata=Base.metadata)` — not `<resource>_id_seq`; next available block from CLAUDE.md)
    - Mix in `TenantAuditMixin` (`app/models/shared/`) for `tenant_id`/`created_by`(NOT NULL)/`updated_by`/`created_at`/`updated_at` — don't hand-declare these. Add a plain `user_id = Column(String, nullable=True, index=True)` alongside it unless this resource is getting the auth-rollout treatment (see step 14a) — see `/fhir-db-model`'s Step 5 for the full reasoning, including why there's no live non-auth example to copy from today.
-   - Every CodeableConcept's `coding[]` (0..1 or 0..*) is a dedicated child/grandchild table built from `FhirCodingMixin`, never flattened columns. Every Address/ContactPoint 0..1 use `FhirAddressMixin`/`FhirContactPointMixin` (prefixed if sharing a row) instead of hand-declared columns. See `/fhir-db-model` Steps 3 and 5.
+   - Every CodeableConcept's `coding[]` (0..1 or 0..*) is a dedicated child/grandchild table built from `FhirCodingMixin`, never flattened columns. Every Address/ContactPoint 0..1 use `FhirAddressMixin`/`FhirContactPointMixin` instead of hand-declared columns — prefixed when sharing a row with other field groups, but mixed in regardless even when it's the only datatype group on that table (never hand-roll just because there's nothing to prefix against). Every Reference field gets all **four** flattened columns (`_reference`/`_type`/`_id`/`_display`), not three. Nullability matches the real FHIR cardinality — never a stricter-than-spec `NOT NULL`. Every resource's main table also gets a mandatory `extension` JSONB column (inherited from base `DomainResource`, not resource-specific — see `/fhir-db-model` Step 4a). See `/fhir-db-model` Steps 2, 3, 4a, and 5.
    - Child tables mix in `TenantAuditMixin` too; FK to the **main** resource table is named `<resource>_pk` (not `<resource>_id` — would collide with the public sequence column); a grandchild's FK to its immediate parent child table is ordinary `<parent_table>_id`.
    - Child tables with `cascade="all, delete-orphan"` on parent side
 
@@ -123,6 +125,16 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
 
 17. **Update CLAUDE.md** — add the new resource to the sequence allocation table
 
+18. **fhir-gql half — the other repo, not optional.** In `D:\code\work\projects\fhir-gql`, mirror an existing resource's package (Organization's is the reference; Organization's own `app/gql/organization` module docstrings explain the pattern in full):
+    - `app/fhir/schemas/<resource>.py` — canonical FHIR-shaped `Fhir<Resource>Response`/`Fhir<Resource>Input` Pydantic models. Any field whose value is a raw `dict` (e.g. `extension`) still gets typed as `list[dict] | None` here — the GraphQL-scalar override happens one layer up, in the type files below, not here.
+    - **Both connectors, always:**
+      - `app/connectors/internal/translators/<resource>.py` — translates to/from fhir-server's own flattened REST conventions (`to_wire_create`/`to_wire_patch` emit the plain partial-fields dict fhir-server's PATCH expects)
+      - `app/connectors/medplum/translators/<resource>.py` — translates to/from genuine FHIR R4 wire format. **`to_wire_patch()` must return an RFC 6902 JSON Patch array via `app.connectors.medplum.json_patch.to_json_patch(data)`, never a plain resource dict** — Medplum's PATCH rejects a plain body outright with `400 Invalid patch body`, and this was silently wrong for every one of the 7 existing resources until caught by actually calling `updateFhirX` against a live Medplum instance, not by reading the code
+      - Register both in `app/connectors/translator_registry.py`: a `<RESOURCE>_TRANSLATORS = {"internal": ..., "medplum": ...}` dict + `active_<resource>_translator()` function
+    - `app/gql/<resource>/types/response.py` and `types/input.py` — `@strawberry.experimental.pydantic.type`/`.input` with `all_fields=True`, built from the Pydantic models in the first bullet. **Any field that isn't a native GraphQL scalar needs an explicit override in the class body** — `extension: JSON | None` (response) / `extension: JSON | None = None` (input), importing `from strawberry.scalars import JSON`. `all_fields=True` does not handle this on its own; the schema fails to build (`TypeError: ... fields cannot be resolved. Unexpected type '<class 'dict'>'`) without it.
+    - `app/gql/<resource>/queries.py` (`getFhir<Resource>`, `getFhir<Resource>s`) and `mutations.py` (`createFhir<Resource>`, `updateFhir<Resource>`, `deleteFhir<Resource>`) — call `active_<resource>_translator()`, never a hardcoded connector
+    - Wire the new `Fhir<Resource>Query`/`Fhir<Resource>Mutation` mixins into the root `Query`/`Mutation` in `app/gql/schema.py`
+
 ## Verify
 
 ```bash
@@ -130,3 +142,12 @@ uv run python -c "from app.models.<resource> import *; print('OK')"
 uv run fastapi dev app/main.py
 # Check http://localhost:8000/openapi.json — confirm all fields in request + response schemas
 ```
+
+**Then verify the fhir-gql half, on BOTH connectors — don't stop at step 18 compiling/importing cleanly:**
+
+```bash
+# In fhir-gql:
+uv run python -c "import app.gql.schema; print('schema builds OK')"
+```
+
+Actually exercise `createFhir<Resource>`/`getFhir<Resource>`/`getFhir<Resource>s`/`updateFhir<Resource>`/`deleteFhir<Resource>` with `connectors.active: internal`, then again with `connectors.active: medplum` (`configs/config.yaml`, or override at runtime for a test). A connector can look correct by code inspection and still be broken in practice — code review alone did not catch the Medplum JSON-Patch bug above; only actually calling the mutation against a live Medplum instance did.

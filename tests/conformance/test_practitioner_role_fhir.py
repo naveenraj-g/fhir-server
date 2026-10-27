@@ -235,14 +235,15 @@ CASES = {
     "available_time_all_day_no_times": _with(
         "available_times",
         PractitionerRoleAvailableTime(
-            id=1, tenant_id="org-test", days_of_week="sat,sun", all_day=True,
+            id=1, tenant_id="org-test", days_of_week=["sat", "sun"], all_day=True,
             created_by="u-test", created_at=D,
         ),
     ),
     "available_time_all_seven_days_edge_times": _with(
         "available_times",
         PractitionerRoleAvailableTime(
-            id=1, tenant_id="org-test", days_of_week="mon,tue,wed,thu,fri,sat,sun",
+            id=1, tenant_id="org-test",
+            days_of_week=["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
             all_day=False, available_start_time=dt.time(0, 0),
             available_end_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
         ),

@@ -8,7 +8,9 @@ from sqlalchemy import (
     Sequence,
     String,
     Text,
+    text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -68,8 +70,12 @@ class HealthcareServiceModel(TenantAuditMixin, Base):
     )
 
     # ── active (0..1 boolean) ─────────────────────────────────────────────────
+    # Absent means unknown, not false — nullable with no default, same
+    # reasoning as OrganizationModel.active/PractitionerModel.active. Was
+    # NOT NULL with a Python-level default=False here; that was a spec
+    # deviation, not a documented exception — fixed.
 
-    active = Column(Boolean, nullable=False, default=False)
+    active = Column(Boolean, nullable=True)
 
     # ── providedBy (0..1 Reference(Organization)) ─────────────────────────────
     # provided_by_id stores Organization's PUBLIC organization_id — no FK, no
@@ -77,7 +83,10 @@ class HealthcareServiceModel(TenantAuditMixin, Base):
     # this pattern, and existence is enforced at write time via
     # ensure_resource_exists(), not the database). Shared PG enum type — never
     # created/dropped by this resource's migration.
-
+    #
+    # provided_by_reference is the raw literal string exactly as received —
+    # see OrganizationModel.partof_reference for the full reasoning.
+    provided_by_reference = Column(String, nullable=True)
     provided_by_type = Column(
         Enum(
             OrganizationReferenceType,
@@ -107,7 +116,7 @@ class HealthcareServiceModel(TenantAuditMixin, Base):
 
     # ── name (0..1 string) ────────────────────────────────────────────────────
 
-    name = Column(String, nullable=False, index=True)
+    name = Column(String, nullable=True, index=True)
 
     # ── comment (0..1 string) ─────────────────────────────────────────────────
 
@@ -136,6 +145,13 @@ class HealthcareServiceModel(TenantAuditMixin, Base):
     # ── availabilityExceptions (0..1 string) ─────────────────────────────────
 
     availability_exceptions = Column(Text, nullable=True)
+
+    # Resource-level extension support (0..* Extension, inherited from the
+    # base DomainResource type — not HealthcareService-specific). Raw
+    # [{url, valueType, value}, ...]; validated against registered
+    # extension definitions by the (not-yet-built) profile pipeline, not by
+    # the database. Same shape as OrganizationModel.extension.
+    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 
     # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
     # come from TenantAuditMixin above — no hand-declared org_id here, same

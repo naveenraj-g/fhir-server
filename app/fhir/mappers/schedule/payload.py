@@ -202,6 +202,8 @@ def payload_to_fhir_schedule(payload: ScheduleCreateSchema) -> dict:
     unlike patch_fragment_to_fhir_schedule()'s tri-state handling."""
     result: dict = {"resourceType": "Schedule"}
 
+    if payload.extension:
+        result["extension"] = list(payload.extension)
     if payload.active is not None:
         result["active"] = payload.active
     horizon = _period(payload.planning_horizon_start, payload.planning_horizon_end)
@@ -231,6 +233,10 @@ def patch_fragment_to_fhir_schedule(
     fragment: dict = {}
     touched: set[str] = set()
 
+    if "extension" in provided:
+        touched.add("extension")
+        if payload.extension:
+            fragment["extension"] = list(payload.extension)
     if "active" in provided:
         touched.add("active")
         if payload.active is not None:

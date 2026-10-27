@@ -45,6 +45,9 @@ class ScheduleActor(TenantAuditMixin, Base):
         BigInteger, ForeignKey("schedule.id"), nullable=False, index=True
     )
 
+    # The raw literal string as received — see OrganizationEndpoint's
+    # reference_reference for the full reasoning.
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(ScheduleActorReferenceType, name="schedule_actor_reference_type"),
         nullable=True,

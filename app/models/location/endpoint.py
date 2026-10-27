@@ -47,6 +47,10 @@ class LocationEndpoint(TenantAuditMixin, Base):
         BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
 
+    # The raw literal string as received — see OrganizationEndpoint's
+    # reference_reference for the full reasoning (an absolute URL to
+    # another system's Endpoint has nowhere else to live).
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(LocationEndpointReferenceType, name="location_endpoint_reference_type"),
         nullable=True,

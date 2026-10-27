@@ -71,8 +71,9 @@ _SUB = {
 }
 
 
-def _days_of_week(days) -> str | None:
-    return ",".join(d.value for d in days) if days else None
+def _days_of_week(days) -> list[str] | None:
+    """availableTime.daysOfWeek[] is a real Postgres ARRAY(String) column."""
+    return [d.value for d in days] if days else None
 
 
 def _coding_kwargs(coding, created_by: str | None) -> dict:
@@ -112,8 +113,10 @@ class _FullMixin:
             hs = HealthcareServiceModel(
                 tenant_id=org_id,
                 created_by=created_by,
+                extension=payload.extension or [],
                 active=payload.active,
                 name=payload.name,
+                provided_by_reference=payload.provided_by,
                 **_org_ref_kwargs(
                     "provided_by", payload.provided_by, payload.provided_by_display
                 ),
@@ -151,6 +154,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs(
                             "assigner", i.assigner, i.assigner_display
                         ),
@@ -243,6 +247,7 @@ class _FullMixin:
                         HealthcareServiceLocation(
                             healthcare_service_pk=hs.id,
                             tenant_id=org_id,
+                            reference_reference=loc.reference,
                             **_location_ref_kwargs(
                                 "reference", loc.reference, loc.reference_display
                             ),
@@ -281,6 +286,7 @@ class _FullMixin:
                         HealthcareServiceCoverageArea(
                             healthcare_service_pk=hs.id,
                             tenant_id=org_id,
+                            reference_reference=ca.reference,
                             **_coverage_area_ref_kwargs(
                                 "reference", ca.reference, ca.reference_display
                             ),
@@ -450,6 +456,7 @@ class _FullMixin:
                             tenant_id=org_id,
                             reference_type=ep_type,
                             reference_id=ep_id,
+                            reference_reference=e.reference,
                             reference_display=e.reference_display,
                             **_reference_kwargs("reference", e),
                             created_by=created_by,
@@ -488,6 +495,7 @@ class _FullMixin:
                 if field in _SUB:
                     continue
                 if field == "provided_by":
+                    hs.provided_by_reference = value
                     if value is not None:
                         pb_type, pb_id = _parse_org_ref(value)
                         await _validate_reference(
@@ -525,6 +533,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs(
                             "assigner", i.assigner, i.assigner_display
                         ),
@@ -637,6 +646,7 @@ class _FullMixin:
                         HealthcareServiceLocation(
                             healthcare_service_pk=hs.id,
                             tenant_id=hs.tenant_id,
+                            reference_reference=loc.reference,
                             **_location_ref_kwargs(
                                 "reference", loc.reference, loc.reference_display
                             ),
@@ -685,6 +695,7 @@ class _FullMixin:
                         HealthcareServiceCoverageArea(
                             healthcare_service_pk=hs.id,
                             tenant_id=hs.tenant_id,
+                            reference_reference=ca.reference,
                             **_coverage_area_ref_kwargs(
                                 "reference", ca.reference, ca.reference_display
                             ),
@@ -900,6 +911,7 @@ class _FullMixin:
                             tenant_id=hs.tenant_id,
                             reference_type=ep_type,
                             reference_id=ep_id,
+                            reference_reference=e.reference,
                             reference_display=e.reference_display,
                             **_reference_kwargs("reference", e),
                             created_by=updated_by,

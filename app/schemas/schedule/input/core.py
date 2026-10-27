@@ -62,8 +62,12 @@ class ScheduleCreateSchema(BaseModel):
         },
     )
 
-    active: bool = Field(
-        False, description="Whether this schedule record is in active use."
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
+    active: bool | None = Field(
+        None, description="Whether this schedule record is in active use."
     )
 
     planning_horizon_start: datetime | None = Field(
@@ -117,6 +121,10 @@ class SchedulePatchSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
+    )
     active: bool | None = Field(
         None, description="Whether this schedule record is in active use."
     )

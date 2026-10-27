@@ -194,28 +194,28 @@ class _CoreMixin:
             pattern = f"%{address}%"
             stmt = stmt.where(
                 or_(
-                    LocationModel.address_line.ilike(pattern),
-                    LocationModel.address_city.ilike(pattern),
-                    LocationModel.address_district.ilike(pattern),
-                    LocationModel.address_state.ilike(pattern),
-                    LocationModel.address_country.ilike(pattern),
-                    LocationModel.address_postal_code.ilike(pattern),
-                    LocationModel.address_text.ilike(pattern),
+                    LocationModel.line.ilike(pattern),
+                    LocationModel.city.ilike(pattern),
+                    LocationModel.district.ilike(pattern),
+                    LocationModel.state.ilike(pattern),
+                    LocationModel.country.ilike(pattern),
+                    LocationModel.postal_code.ilike(pattern),
+                    LocationModel.text.ilike(pattern),
                 )
             )
         if address_city:
-            stmt = stmt.where(LocationModel.address_city.ilike(f"%{address_city}%"))
+            stmt = stmt.where(LocationModel.city.ilike(f"%{address_city}%"))
         if address_state:
-            stmt = stmt.where(LocationModel.address_state.ilike(f"%{address_state}%"))
+            stmt = stmt.where(LocationModel.state.ilike(f"%{address_state}%"))
         if address_postal_code:
             stmt = stmt.where(
-                LocationModel.address_postal_code == address_postal_code
+                LocationModel.postal_code == address_postal_code
             )
         if address_country:
             stmt = stmt.where(
-                LocationModel.address_country.ilike(f"%{address_country}%")
+                LocationModel.country.ilike(f"%{address_country}%")
             )
-        stmt = apply_token_filter(stmt, LocationModel.address_use, address_use)
+        stmt = apply_token_filter(stmt, LocationModel.use, address_use)
 
         if organization:
             _, org_ref_id = parse_reference(organization, OrganizationReferenceType)

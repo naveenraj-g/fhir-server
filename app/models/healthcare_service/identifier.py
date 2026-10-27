@@ -50,12 +50,16 @@ class HealthcareServiceIdentifier(TenantAuditMixin, Base):
     # via the type_codings relationship below.
     type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
-    value = Column(String, nullable=False)
+    value = Column(String, nullable=True)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
     # assigner (0..1 Reference(Organization)) — resolved reference (public ID,
     # no FK/relationship — see HealthcareServiceModel.provided_by_*)
+    #
+    # assigner_reference is the raw literal string exactly as received —
+    # see OrganizationIdentifier.assigner_reference for the full reasoning.
+    assigner_reference = Column(String, nullable=True)
     assigner_type = Column(
         Enum(
             OrganizationReferenceType,

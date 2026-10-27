@@ -333,6 +333,8 @@ def payload_to_fhir_location(payload: LocationCreateSchema) -> dict:
     unlike patch_fragment_to_fhir_location()'s tri-state handling."""
     result: dict = {"resourceType": "Location"}
 
+    if payload.extension:
+        result["extension"] = list(payload.extension)
     if payload.status:
         result["status"] = fhir_enum(payload.status)
     operational_status = payload_operational_status(payload)
@@ -382,6 +384,10 @@ def patch_fragment_to_fhir_location(
     fragment: dict = {}
     touched: set[str] = set()
 
+    if "extension" in provided:
+        touched.add("extension")
+        if payload.extension:
+            fragment["extension"] = list(payload.extension)
     if "status" in provided:
         touched.add("status")
         if payload.status:

@@ -140,6 +140,7 @@ def plain_sch_actor(a) -> dict:
 def to_plain_schedule(sch: ScheduleModel) -> dict:
     return {
         "id": sch.schedule_id,
+        "extension": sch.extension or [],
         "active": sch.active,
         "planning_horizon_start": sch.planning_horizon_start.isoformat()
         if sch.planning_horizon_start

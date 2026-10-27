@@ -137,11 +137,13 @@ async def seed_location(
                 status=LocationStatus.active,
                 name="Test Location",
                 mode=LocationMode.instance,
-                address_type="both",
-                address_city="Test City",
-                address_state="TS",
-                address_postal_code="00000",
-                address_country="USA",
+                # Address columns come from FhirAddressMixin
+                # (_address_prefix="address_") — bare attribute names.
+                type="both",
+                city="Test City",
+                state="TS",
+                postal_code="00000",
+                country="USA",
                 created_by="u-test",
                 created_at=dt.datetime.now(dt.timezone.utc),
             )

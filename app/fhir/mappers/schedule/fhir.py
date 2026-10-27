@@ -217,6 +217,9 @@ def to_fhir_schedule(sch: ScheduleModel) -> dict:
     if meta:
         result["meta"] = meta
 
+    if sch.extension:
+        result["extension"] = list(sch.extension)
+
     identifiers = [fhir_sch_identifier(i) for i in (sch.identifiers or [])]
     if identifiers:
         result["identifier"] = identifiers

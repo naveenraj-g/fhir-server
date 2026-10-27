@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_split, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.location import (
@@ -178,12 +178,11 @@ def fhir_location_telecom(t) -> dict:
 
 def fhir_location_hours_of_operation(h: LocationHoursOfOperation) -> dict:
     """Location.hoursOfOperation (BackboneElement) → FHIR camelCase dict.
-    `days_of_week` is stored comma-separated (see the model's docstring) and is
-    split back into a real `daysOfWeek[]` array here."""
+    `days_of_week` is a real Postgres ARRAY(String) column — no splitting
+    needed, the model already returns a list."""
     entry: dict = {}
-    days = fhir_split(h.days_of_week)
-    if days:
-        entry["daysOfWeek"] = days
+    if h.days_of_week:
+        entry["daysOfWeek"] = list(h.days_of_week)
     if h.all_day is not None:
         entry["allDay"] = h.all_day
     if h.opening_time:
@@ -209,31 +208,30 @@ def fhir_location_address(loc: LocationModel) -> dict:
     than in a child table.
     """
     entry: dict = {}
-    if loc.address_use:
-        entry["use"] = fhir_enum(loc.address_use)
-    if loc.address_type:
-        entry["type"] = fhir_enum(loc.address_type)
-    if loc.address_text:
-        entry["text"] = loc.address_text
-    lines = fhir_split(loc.address_line)
-    if lines:
-        entry["line"] = lines
-    if loc.address_city:
-        entry["city"] = loc.address_city
-    if loc.address_district:
-        entry["district"] = loc.address_district
-    if loc.address_state:
-        entry["state"] = loc.address_state
-    if loc.address_postal_code:
-        entry["postalCode"] = loc.address_postal_code
-    if loc.address_country:
-        entry["country"] = loc.address_country
-    if loc.address_period_start or loc.address_period_end:
+    if loc.use:
+        entry["use"] = fhir_enum(loc.use)
+    if loc.type:
+        entry["type"] = fhir_enum(loc.type)
+    if loc.text:
+        entry["text"] = loc.text
+    if loc.line:
+        entry["line"] = list(loc.line)
+    if loc.city:
+        entry["city"] = loc.city
+    if loc.district:
+        entry["district"] = loc.district
+    if loc.state:
+        entry["state"] = loc.state
+    if loc.postal_code:
+        entry["postalCode"] = loc.postal_code
+    if loc.country:
+        entry["country"] = loc.country
+    if loc.period_start or loc.period_end:
         entry["period"] = {
             k: v
             for k, v in {
-                "start": fhir_instant(loc.address_period_start),
-                "end": fhir_instant(loc.address_period_end),
+                "start": fhir_instant(loc.period_start),
+                "end": fhir_instant(loc.period_end),
             }.items()
             if v
         }
@@ -344,6 +342,9 @@ def to_fhir_location(loc: LocationModel) -> dict:
     meta = _fhir_meta(loc)
     if meta:
         result["meta"] = meta
+
+    if loc.extension:
+        result["extension"] = list(loc.extension)
 
     identifiers = [fhir_location_identifier(i) for i in (loc.identifiers or [])]
     if identifiers:

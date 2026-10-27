@@ -34,19 +34,30 @@ logger = get_logger(__name__)
 _SUB = {"identifier", "type", "alias", "telecom", "hours_of_operation", "endpoint"}
 
 
-def _join_lines(values: list[str] | None) -> str | None:
-    """Address.line[] is stored comma-separated (the `line[]` exception in
-    /fhir-db-model) — same as every other flattened Address in this project."""
-    return ", ".join(values) if values else None
+def _day_values(values: list | None) -> list[str] | None:
+    """hoursOfOperation.daysOfWeek[] is a real Postgres ARRAY(String) column
+    — see LocationHoursOfOperation's docstring. Values arrive as
+    LocationDayOfWeek enum members from the schema layer, so unwrap to
+    `.value` (plain strings) rather than storing enum members."""
+    return [getattr(v, "value", v) for v in values] if values else None
 
 
-def _join_days(values: list | None) -> str | None:
-    """hoursOfOperation.daysOfWeek[] is stored comma-separated — see
-    LocationHoursOfOperation's docstring. Values arrive as LocationDayOfWeek
-    enum members from the schema layer, so unwrap to `.value` before joining."""
-    if not values:
-        return None
-    return ",".join(getattr(v, "value", v) for v in values)
+# LocationModel's address columns come from FhirAddressMixin
+# (_address_prefix="address_") — maps each address_*-prefixed schema/patch
+# field name to the model's bare attribute name.
+_ADDRESS_FIELD_MAP = {
+    "address_use": "use",
+    "address_type": "type",
+    "address_text": "text",
+    "address_line": "line",
+    "address_city": "city",
+    "address_district": "district",
+    "address_state": "state",
+    "address_postal_code": "postal_code",
+    "address_country": "country",
+    "address_period_start": "period_start",
+    "address_period_end": "period_end",
+}
 
 
 def _coding_kwargs(coding, created_by: str | None) -> dict:
@@ -103,6 +114,7 @@ class _FullMixin:
             loc = LocationModel(
                 tenant_id=org_id,
                 created_by=created_by,
+                extension=payload.extension or [],
                 status=payload.status,
                 mode=payload.mode,
                 operational_status_system=payload.operational_status_system,
@@ -112,28 +124,34 @@ class _FullMixin:
                 operational_status_user_selected=payload.operational_status_user_selected,
                 name=payload.name,
                 description=payload.description,
-                address_use=payload.address_use,
-                address_type=payload.address_type,
-                address_text=payload.address_text,
-                address_line=_join_lines(payload.address_line),
-                address_city=payload.address_city,
-                address_district=payload.address_district,
-                address_state=payload.address_state,
-                address_postal_code=payload.address_postal_code,
-                address_country=payload.address_country,
-                address_period_start=payload.address_period_start,
-                address_period_end=payload.address_period_end,
+                # LocationModel's address columns come from FhirAddressMixin
+                # (_address_prefix="address_") — the Python attribute names
+                # are the bare datatype names (use/type/city/...), not the
+                # address_*-prefixed schema field names on the left here.
+                use=payload.address_use,
+                type=payload.address_type,
+                text=payload.address_text,
+                line=payload.address_line,
+                city=payload.address_city,
+                district=payload.address_district,
+                state=payload.address_state,
+                postal_code=payload.address_postal_code,
+                country=payload.address_country,
+                period_start=payload.address_period_start,
+                period_end=payload.address_period_end,
                 physical_type_text=payload.physical_type_text,
                 position_longitude=payload.position_longitude,
                 position_latitude=payload.position_latitude,
                 position_altitude=payload.position_altitude,
                 availability_exceptions=payload.availability_exceptions,
+                managing_organization_reference=payload.managing_organization,
                 **_org_ref_kwargs(
                     "managing_organization",
                     payload.managing_organization,
                     payload.managing_organization_display,
                 ),
                 **_reference_kwargs("managing_organization", payload),
+                part_of_reference=payload.part_of,
                 **_location_ref_kwargs(
                     "part_of", payload.part_of, payload.part_of_display
                 ),
@@ -169,6 +187,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=created_by,
@@ -238,7 +257,7 @@ class _FullMixin:
                         LocationHoursOfOperation(
                             location_pk=loc.id,
                             tenant_id=org_id,
-                            days_of_week=_join_days(h.days_of_week),
+                            days_of_week=_day_values(h.days_of_week),
                             all_day=h.all_day,
                             opening_time=h.opening_time,
                             closing_time=h.closing_time,
@@ -259,6 +278,7 @@ class _FullMixin:
                             tenant_id=org_id,
                             reference_type=ep_type,
                             reference_id=ep_id,
+                            reference_reference=e.reference,
                             reference_display=e.reference_display,
                             **_reference_kwargs("reference", e),
                             created_by=created_by,
@@ -297,6 +317,7 @@ class _FullMixin:
                     continue
 
                 if field == "managing_organization":
+                    loc.managing_organization_reference = value
                     if value is not None:
                         mo_type, mo_id = _parse_org_ref(value)
                         await _validate_reference(
@@ -313,6 +334,7 @@ class _FullMixin:
                         loc.managing_organization_id = None
 
                 elif field == "part_of":
+                    loc.part_of_reference = value
                     if value is not None:
                         po_type, po_id = _parse_location_ref(value)
                         await _validate_reference(
@@ -334,8 +356,12 @@ class _FullMixin:
                         loc.part_of_type = None
                         loc.part_of_id = None
 
-                elif field == "address_line":
-                    loc.address_line = _join_lines(value)
+                elif field in _ADDRESS_FIELD_MAP:
+                    # LocationModel's address columns come from
+                    # FhirAddressMixin (_address_prefix="address_") — the
+                    # Python attribute is the bare datatype name, not the
+                    # address_*-prefixed schema field name used here.
+                    setattr(loc, _ADDRESS_FIELD_MAP[field], value)
 
                 else:
                     setattr(loc, field, value)
@@ -380,6 +406,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=updated_by,
@@ -465,7 +492,7 @@ class _FullMixin:
                         LocationHoursOfOperation(
                             location_pk=loc.id,
                             tenant_id=loc.tenant_id,
-                            days_of_week=_join_days(h.days_of_week),
+                            days_of_week=_day_values(h.days_of_week),
                             all_day=h.all_day,
                             opening_time=h.opening_time,
                             closing_time=h.closing_time,
@@ -491,6 +518,7 @@ class _FullMixin:
                             tenant_id=loc.tenant_id,
                             reference_type=ep_type,
                             reference_id=ep_id,
+                            reference_reference=e.reference,
                             reference_display=e.reference_display,
                             **_reference_kwargs("reference", e),
                             created_by=updated_by,

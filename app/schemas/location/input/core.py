@@ -121,14 +121,19 @@ class LocationCreateSchema(_PositionMixin):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
+
     # ── status / mode ──────────────────────────────────────────────────────
 
-    status: LocationStatus = Field(
-        ...,
+    status: LocationStatus | None = Field(
+        None,
         description="The status of the location as normally viewed by a user — active|suspended|inactive.",
     )
-    mode: LocationMode = Field(
-        ...,
+    mode: LocationMode | None = Field(
+        None,
         description="Indicates whether this record describes a specific instance of a location, or a class of locations — instance|kind.",
     )
 
@@ -158,8 +163,8 @@ class LocationCreateSchema(_PositionMixin):
 
     # ── name / description ─────────────────────────────────────────────────
 
-    name: str = Field(
-        ...,
+    name: str | None = Field(
+        None,
         description="Name of the location as used by humans. Does not need to be unique.",
     )
     description: str | None = Field(
@@ -172,8 +177,8 @@ class LocationCreateSchema(_PositionMixin):
     address_use: AddressUse | None = Field(
         None, description="The purpose of this address — home|work|temp|old|billing."
     )
-    address_type: AddressType = Field(
-        ...,
+    address_type: AddressType | None = Field(
+        None,
         description="Distinguishes between physical addresses and mailing addresses — postal|physical|both.",
     )
     address_text: str | None = Field(
@@ -183,23 +188,23 @@ class LocationCreateSchema(_PositionMixin):
         None,
         description="Street name, number, direction, PO Box etc. — this repeating element order matters and is preserved.",
     )
-    address_city: str = Field(
-        ...,
+    address_city: str | None = Field(
+        None,
         description="The name of the city, town, suburb, village or other community or delivery center.",
     )
     address_district: str | None = Field(
         None, description="The name of the administrative area (county)."
     )
-    address_state: str = Field(
-        ...,
+    address_state: str | None = Field(
+        None,
         description="Sub-unit of a country with limited sovereignty in a federally organized country.",
     )
-    address_postal_code: str = Field(
-        ...,
+    address_postal_code: str | None = Field(
+        None,
         description="A postal code designating a region defined by the postal service.",
     )
-    address_country: str = Field(
-        ..., description="Country — ISO 3166 3-letter codes can be used in place of a full country name."
+    address_country: str | None = Field(
+        None, description="Country — ISO 3166 3-letter codes can be used in place of a full country name."
     )
     address_period_start: datetime | None = Field(
         None, description="Start of the time period when this address was/is in use."
@@ -401,6 +406,10 @@ class LocationPatchSchema(_PositionMixin):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
+    )
     status: LocationStatus | None = Field(
         None,
         description="The status of the location as normally viewed by a user — active|suspended|inactive.",

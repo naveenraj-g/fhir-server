@@ -1,4 +1,15 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Sequence, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Sequence,
+    String,
+    Text,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -68,7 +79,13 @@ class SlotModel(TenantAuditMixin, Base):
     # pattern). Shared PG enum type — create_type=False since the
     # migration owns creation and it's registered in app/models/enums.py
     # for reuse by any future resource referencing Schedule.
-
+    #
+    # schedule_reference is the raw literal string exactly as received —
+    # see OrganizationModel.partof_reference for the full reasoning. Kept
+    # nullable even though schedule_type/schedule_id are themselves
+    # required (1..1) — an unresolvable absolute URL would otherwise have
+    # nowhere to live, same as every other Reference field's `_reference`.
+    schedule_reference = Column(String, nullable=True)
     schedule_type = Column(
         Enum(ScheduleReferenceType, name="schedule_reference_type", create_type=False),
         nullable=False,
@@ -115,6 +132,13 @@ class SlotModel(TenantAuditMixin, Base):
     # ── comment (0..1 string) ─────────────────────────────────────────────────
 
     comment = Column(Text, nullable=True)
+
+    # Resource-level extension support (0..* Extension, inherited from the
+    # base DomainResource type — not Slot-specific). Raw
+    # [{url, valueType, value}, ...]; validated against registered
+    # extension definitions by the (not-yet-built) profile pipeline, not by
+    # the database. Same shape as OrganizationModel.extension.
+    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 
     # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
     # come from TenantAuditMixin above — no hand-declared org_id here, same

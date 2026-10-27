@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_split
+from app.fhir.datatypes import fhir_enum
 
 if TYPE_CHECKING:
     from app.models.location import (
@@ -155,7 +155,7 @@ def plain_location_hours_of_operation(h: LocationHoursOfOperation) -> dict:
     list, so the plain form and the FHIR form agree."""
     return {
         "id": h.id,
-        "days_of_week": fhir_split(h.days_of_week),
+        "days_of_week": list(h.days_of_week) if h.days_of_week else [],
         "all_day": h.all_day,
         "opening_time": h.opening_time.isoformat() if h.opening_time else None,
         "closing_time": h.closing_time.isoformat() if h.closing_time else None,
@@ -175,6 +175,7 @@ def plain_location_endpoint(e: LocationEndpoint) -> dict:
 def to_plain_location(loc: LocationModel) -> dict:
     return {
         "id": loc.location_id,
+        "extension": loc.extension or [],
         "status": fhir_enum(loc.status),
         "operational_status_system": loc.operational_status_system,
         "operational_status_version": loc.operational_status_version,
@@ -186,20 +187,20 @@ def to_plain_location(loc: LocationModel) -> dict:
         "mode": fhir_enum(loc.mode),
         # address (0..1) is flattened onto the parent row — address_line is
         # split back out of its comma-separated column, matching the FHIR form.
-        "address_use": fhir_enum(loc.address_use),
-        "address_type": fhir_enum(loc.address_type),
-        "address_text": loc.address_text,
-        "address_line": fhir_split(loc.address_line),
-        "address_city": loc.address_city,
-        "address_district": loc.address_district,
-        "address_state": loc.address_state,
-        "address_postal_code": loc.address_postal_code,
-        "address_country": loc.address_country,
-        "address_period_start": loc.address_period_start.isoformat()
-        if loc.address_period_start
+        "address_use": fhir_enum(loc.use),
+        "address_type": fhir_enum(loc.type),
+        "address_text": loc.text,
+        "address_line": list(loc.line) if loc.line else [],
+        "address_city": loc.city,
+        "address_district": loc.district,
+        "address_state": loc.state,
+        "address_postal_code": loc.postal_code,
+        "address_country": loc.country,
+        "address_period_start": loc.period_start.isoformat()
+        if loc.period_start
         else None,
-        "address_period_end": loc.address_period_end.isoformat()
-        if loc.address_period_end
+        "address_period_end": loc.period_end.isoformat()
+        if loc.period_end
         else None,
         "physical_type_codings": [
             plain_coding(c) for c in (loc.physical_type_codings or [])

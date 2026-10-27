@@ -131,6 +131,7 @@ def plain_slot_specialty(sp) -> dict:
 def to_plain_slot(slot: SlotModel) -> dict:
     return {
         "id": slot.slot_id,
+        "extension": slot.extension or [],
         **_plain_reference_fields(slot, "schedule"),
         "status": fhir_enum(slot.status),
         "start": slot.start.isoformat() if slot.start else None,

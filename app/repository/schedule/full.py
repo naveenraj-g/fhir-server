@@ -65,6 +65,7 @@ class _FullMixin:
             sch = ScheduleModel(
                 tenant_id=org_id,
                 created_by=created_by,
+                extension=payload.extension or [],
                 active=payload.active,
                 planning_horizon_start=payload.planning_horizon_start,
                 planning_horizon_end=payload.planning_horizon_end,
@@ -90,6 +91,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=created_by,
@@ -176,6 +178,7 @@ class _FullMixin:
                         ScheduleActor(
                             schedule_pk=sch.id,
                             tenant_id=org_id,
+                            reference_reference=a.reference,
                             **_actor_ref_kwargs(
                                 "reference", a.reference, a.reference_display
                             ),
@@ -241,6 +244,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=updated_by,
@@ -347,6 +351,7 @@ class _FullMixin:
                         ScheduleActor(
                             schedule_pk=sch.id,
                             tenant_id=sch.tenant_id,
+                            reference_reference=a.reference,
                             **_actor_ref_kwargs(
                                 "reference", a.reference, a.reference_display
                             ),

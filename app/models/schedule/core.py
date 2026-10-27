@@ -1,4 +1,5 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Sequence, Text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Sequence, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -56,13 +57,15 @@ class ScheduleModel(TenantAuditMixin, Base):
     )
 
     # ── active (0..1 boolean) ─────────────────────────────────────────────────
-    # Historically NOT NULL on this resource (predates the later nullable=True
-    # convention adopted for Organization/Practitioner's own active column) —
-    # kept as-is since this mirrors this resource's own pre-existing
-    # documented behavior from before it was removed in the mass resource
-    # cleanup (same precedent HealthcareServiceModel.active follows).
+    # Absent means unknown, not false — nullable with no default, same
+    # reasoning as OrganizationModel.active. Was NOT NULL with a
+    # Python-level default=False here, citing "historical precedent" from
+    # before the mass resource cleanup — that precedent was itself a spec
+    # deviation (Schedule.active is 0..1), not a documented exception, so
+    # it isn't preserved. HealthcareServiceModel.active had the identical
+    # issue, fixed the same way.
 
-    active = Column(Boolean, nullable=False, default=False)
+    active = Column(Boolean, nullable=True)
 
     # ── planningHorizon (0..1 Period) ─────────────────────────────────────────
 
@@ -72,6 +75,13 @@ class ScheduleModel(TenantAuditMixin, Base):
     # ── comment (0..1 string) ─────────────────────────────────────────────────
 
     comment = Column(Text, nullable=True)
+
+    # Resource-level extension support (0..* Extension, inherited from the
+    # base DomainResource type — not Schedule-specific). Raw
+    # [{url, valueType, value}, ...]; validated against registered
+    # extension definitions by the (not-yet-built) profile pipeline, not by
+    # the database. Same shape as OrganizationModel.extension.
+    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 
     # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
     # come from TenantAuditMixin above — no hand-declared org_id here, same

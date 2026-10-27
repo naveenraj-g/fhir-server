@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_split, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.practitioner_role import PractitionerRoleModel
@@ -173,9 +173,8 @@ def fhir_pr_telecom(t) -> dict:
 
 def fhir_pr_available_time(at) -> dict:
     entry: dict = {}
-    days = fhir_split(at.days_of_week)
-    if days:
-        entry["daysOfWeek"] = days
+    if at.days_of_week:
+        entry["daysOfWeek"] = list(at.days_of_week)
     if at.all_day is not None:
         entry["allDay"] = at.all_day
     if at.available_start_time:
@@ -259,6 +258,9 @@ def to_fhir_practitioner_role(pr: PractitionerRoleModel) -> dict:
     meta = _fhir_meta(pr)
     if meta:
         result["meta"] = meta
+
+    if pr.extension:
+        result["extension"] = list(pr.extension)
 
     identifiers = [fhir_pr_identifier(i) for i in (pr.identifiers or [])]
     if identifiers:

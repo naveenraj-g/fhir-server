@@ -76,6 +76,10 @@ class PractitionerRoleCreateSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
     active: bool | None = Field(
         None, description="Whether this practitioner role record is in active use."
     )
@@ -242,6 +246,10 @@ class PractitionerRolePatchSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
+    )
     active: bool | None = Field(
         None, description="Whether this practitioner role record is in active use."
     )

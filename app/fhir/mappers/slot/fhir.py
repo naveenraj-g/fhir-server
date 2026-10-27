@@ -222,6 +222,9 @@ def to_fhir_slot(slot: SlotModel) -> dict:
     if meta:
         result["meta"] = meta
 
+    if slot.extension:
+        result["extension"] = list(slot.extension)
+
     identifiers = [fhir_slot_identifier(i) for i in (slot.identifiers or [])]
     if identifiers:
         result["identifier"] = identifiers

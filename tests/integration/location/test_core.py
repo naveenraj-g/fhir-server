@@ -51,10 +51,14 @@ async def test_create_rejects_user_id_in_body(client):
     ["status", "name", "mode", "address_type", "address_city", "address_state",
      "address_postal_code", "address_country"],
 )
-async def test_create_requires_not_null_fields(client, missing):
+async def test_create_allows_omitting_0_1_fields(client, missing):
+    """status/name/mode are 0..1 on Location itself, and every Address
+    sub-field (type/city/state/postalCode/country) is 0..1 on the base
+    Address datatype — none of these are actually required by R4, so
+    omitting any one of them must still succeed."""
     payload = {k: v for k, v in MINIMAL.items() if k != missing}
     resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 422, resp.text
+    assert resp.status_code in (200, 201), resp.text
 
 
 async def test_create_full_roundtrips_every_sublist(client):

@@ -200,6 +200,8 @@ def payload_to_fhir_slot(payload: SlotCreateSchema) -> dict:
     unlike patch_fragment_to_fhir_slot()'s tri-state handling."""
     result: dict = {"resourceType": "Slot"}
 
+    if payload.extension:
+        result["extension"] = list(payload.extension)
     schedule = _reference_from_payload(payload, "schedule")
     if schedule:
         result["schedule"] = schedule
@@ -237,6 +239,10 @@ def patch_fragment_to_fhir_slot(payload: SlotPatchSchema) -> tuple[dict, set[str
     fragment: dict = {}
     touched: set[str] = set()
 
+    if "extension" in provided:
+        touched.add("extension")
+        if payload.extension:
+            fragment["extension"] = list(payload.extension)
     if provided & {
         "schedule", "schedule_display",
         "schedule_identifier_use", "schedule_identifier_type_system",

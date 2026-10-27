@@ -58,6 +58,10 @@ class FHIRLocationSchema(BaseModel):
         None,
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="Unique code or number identifying the location to its users."
     )
@@ -137,6 +141,10 @@ class FHIRLocationBundle(FHIRBundle):
 class PlainLocationResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: int = Field(..., description="Public location_id.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
+    )
     status: str | None = Field(
         None,
         description="The status of the location as normally viewed by a user — active|suspended|inactive.",

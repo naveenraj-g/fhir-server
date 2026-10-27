@@ -329,6 +329,8 @@ def payload_to_fhir_healthcare_service(payload: HealthcareServiceCreateSchema) -
     unlike patch_fragment_to_fhir_healthcare_service()'s tri-state handling."""
     result: dict = {"resourceType": "HealthcareService"}
 
+    if payload.extension:
+        result["extension"] = list(payload.extension)
     provided_by = _reference_from_payload(payload, "provided_by")
     if provided_by:
         result["providedBy"] = provided_by
@@ -369,6 +371,10 @@ def patch_fragment_to_fhir_healthcare_service(
     fragment: dict = {}
     touched: set[str] = set()
 
+    if "extension" in provided:
+        touched.add("extension")
+        if payload.extension:
+            fragment["extension"] = list(payload.extension)
     if provided & _PROVIDED_BY_FIELDS:
         touched.add("providedBy")
         provided_by = _reference_from_payload(payload, "provided_by")

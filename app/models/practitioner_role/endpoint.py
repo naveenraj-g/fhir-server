@@ -44,6 +44,9 @@ class PractitionerRoleEndpoint(TenantAuditMixin, Base):
         BigInteger, ForeignKey("practitioner_role.id"), nullable=False, index=True
     )
 
+    # The raw literal string as received — see OrganizationEndpoint's
+    # reference_reference for the full reasoning.
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(
             PractitionerRoleEndpointReferenceType,

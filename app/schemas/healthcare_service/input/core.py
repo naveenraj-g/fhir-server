@@ -90,11 +90,15 @@ class HealthcareServiceCreateSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
     active: bool | None = Field(
         False, description="Whether this healthcare service record is in active use."
     )
-    name: str = Field(
-        ...,
+    name: str | None = Field(
+        None,
         description="Further description of the service as it would be presented to a consumer while searching.",
     )
 
@@ -272,6 +276,10 @@ class HealthcareServicePatchSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
+    )
     active: bool | None = Field(
         None, description="Whether this healthcare service record is in active use."
     )

@@ -38,6 +38,10 @@ class FHIRPractitionerRoleSchema(BaseModel):
         None,
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="Business identifiers for this role."
     )
@@ -99,6 +103,10 @@ class FHIRPractitionerRoleBundle(FHIRBundle):
 class PlainPractitionerRoleResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: int = Field(..., description="Public practitioner_role_id.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
+    )
     active: bool | None = Field(
         None, description="Whether this practitioner role record is in active use."
     )

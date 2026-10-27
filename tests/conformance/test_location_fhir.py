@@ -43,11 +43,13 @@ def _location(**overrides) -> LocationModel:
         "status": LocationStatus.active,
         "name": "South Wing",
         "mode": LocationMode.instance,
-        "address_type": "both",
-        "address_city": "Den Burg",
-        "address_state": "NH",
-        "address_postal_code": "9105 PZ",
-        "address_country": "NLD",
+        # Address columns come from FhirAddressMixin (_address_prefix=
+        # "address_") — bare attribute names, not address_*-prefixed.
+        "type": "both",
+        "city": "Den Burg",
+        "state": "NH",
+        "postal_code": "9105 PZ",
+        "country": "NLD",
         "created_by": "u-test",
         "created_at": D,
     }
@@ -108,12 +110,12 @@ CASES = {
     ),
 
     "address_full": _location(
-        address_use="work",
-        address_text="Galapagosweg 91, Building A",
-        address_line="Galapagosweg 91, Building A",
-        address_district="Texel",
-        address_period_start=D,
-        address_period_end=D,
+        use="work",
+        text="Galapagosweg 91, Building A",
+        line=["Galapagosweg 91, Building A"],
+        district="Texel",
+        period_start=D,
+        period_end=D,
     ),
 
     "position_lon_lat": _location(
@@ -213,14 +215,15 @@ CASES = {
     "hours_all_day_no_times": _with(
         "hours_of_operation",
         LocationHoursOfOperation(
-            id=1, tenant_id="org-test", days_of_week="sat,sun", all_day=True,
+            id=1, tenant_id="org-test", days_of_week=["sat", "sun"], all_day=True,
             created_by="u-test", created_at=D,
         ),
     ),
     "hours_all_seven_days_edge_times": _with(
         "hours_of_operation",
         LocationHoursOfOperation(
-            id=1, tenant_id="org-test", days_of_week="mon,tue,wed,thu,fri,sat,sun",
+            id=1, tenant_id="org-test",
+            days_of_week=["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
             all_day=False, opening_time=dt.time(0, 0),
             closing_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
         ),

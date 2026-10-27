@@ -55,6 +55,11 @@ class SlotCreateSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
+
     # schedule (1..1) Reference(Schedule) — required
     schedule: str = Field(
         ...,
@@ -164,6 +169,10 @@ class SlotPatchSchema(BaseModel):
         },
     )
 
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
+    )
     schedule: str | None = Field(
         None,
         description="The schedule resource, as a FHIR reference string. Set to null to clear.",

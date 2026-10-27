@@ -91,6 +91,8 @@ class _FullMixin:
             slot = SlotModel(
                 tenant_id=org_id,
                 created_by=created_by,
+                extension=payload.extension or [],
+                schedule_reference=payload.schedule,
                 **_schedule_ref_kwargs(
                     "schedule", payload.schedule, payload.schedule_display
                 ),
@@ -132,6 +134,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=created_by,
@@ -303,6 +306,7 @@ class _FullMixin:
                         value=i.value,
                         period_start=i.period_start,
                         period_end=i.period_end,
+                        assigner_reference=i.assigner,
                         **_org_ref_kwargs("assigner", i.assigner, i.assigner_display),
                         **_reference_kwargs("assigner", i),
                         created_by=updated_by,

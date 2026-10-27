@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_split, fhir_telecom
+from app.fhir.datatypes import fhir_enum, fhir_instant, fhir_telecom
 
 if TYPE_CHECKING:
     from app.models.healthcare_service import HealthcareServiceModel
@@ -211,9 +211,8 @@ def fhir_hs_referral_method(rm) -> dict:
 
 def fhir_hs_available_time(at) -> dict:
     entry: dict = {}
-    days = fhir_split(at.days_of_week)
-    if days:
-        entry["daysOfWeek"] = days
+    if at.days_of_week:
+        entry["daysOfWeek"] = list(at.days_of_week)
     if at.all_day is not None:
         entry["allDay"] = at.all_day
     if at.available_start_time:
@@ -299,6 +298,9 @@ def to_fhir_healthcare_service(hs: HealthcareServiceModel) -> dict:
     meta = _fhir_meta(hs)
     if meta:
         result["meta"] = meta
+
+    if hs.extension:
+        result["extension"] = list(hs.extension)
 
     identifiers = [fhir_hs_identifier(i) for i in (hs.identifiers or [])]
     if identifiers:

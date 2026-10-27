@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.fhir.datatypes import fhir_enum, fhir_split
+from app.fhir.datatypes import fhir_enum
 
 if TYPE_CHECKING:
     from app.models.healthcare_service import HealthcareServiceModel
@@ -220,7 +220,7 @@ def plain_hs_referral_method(rm) -> dict:
 def plain_hs_available_time(at) -> dict:
     return {
         "id": at.id,
-        "days_of_week": fhir_split(at.days_of_week),
+        "days_of_week": list(at.days_of_week) if at.days_of_week else [],
         "all_day": at.all_day,
         "available_start_time": at.available_start_time.isoformat()
         if at.available_start_time
@@ -256,6 +256,7 @@ def plain_hs_endpoint(ep) -> dict:
 def to_plain_healthcare_service(hs: HealthcareServiceModel) -> dict:
     return {
         "id": hs.healthcare_service_id,
+        "extension": hs.extension or [],
         "active": hs.active,
         "name": hs.name,
         **_plain_reference_fields(hs, "provided_by"),

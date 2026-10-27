@@ -24,6 +24,10 @@ class FHIRSlotSchema(BaseModel):
         None,
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="External identifiers for this item."
     )
@@ -72,6 +76,10 @@ class FHIRSlotBundle(FHIRBundle):
 class PlainSlotResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: int = Field(..., description="Public slot_id.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
+    )
     schedule: str | None = Field(
         None,
         description="Resolved FHIR reference to the schedule, e.g. 'Schedule/200001'.",

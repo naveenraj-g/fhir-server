@@ -271,6 +271,8 @@ def payload_to_fhir_practitioner_role(payload: PractitionerRoleCreateSchema) -> 
     unlike patch_fragment_to_fhir_practitioner_role()'s tri-state handling."""
     result: dict = {"resourceType": "PractitionerRole"}
 
+    if payload.extension:
+        result["extension"] = list(payload.extension)
     if payload.active is not None:
         result["active"] = payload.active
     period = _period(payload.period_start, payload.period_end)
@@ -306,6 +308,10 @@ def patch_fragment_to_fhir_practitioner_role(
     fragment: dict = {}
     touched: set[str] = set()
 
+    if "extension" in provided:
+        touched.add("extension")
+        if payload.extension:
+            fragment["extension"] = list(payload.extension)
     if "active" in provided:
         touched.add("active")
         if payload.active is not None:

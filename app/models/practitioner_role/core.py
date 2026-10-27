@@ -1,4 +1,15 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Sequence, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Sequence,
+    String,
+    Text,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -72,7 +83,10 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
     # pattern). Shared PG enum type, created by this resource's own migration
     # (Practitioner is the first/only resource this reference type targets so
     # far) — create_type=False here since the migration owns creation.
-
+    #
+    # practitioner_reference is the raw literal string exactly as received —
+    # see OrganizationModel.partof_reference for the full reasoning.
+    practitioner_reference = Column(String, nullable=True)
     practitioner_type = Column(
         Enum(
             PractitionerReferenceType,
@@ -103,7 +117,10 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
     # ── organization (0..1 Reference(Organization)) ───────────────────────────
     # Shared organization_reference_type PG enum — never created/dropped by
     # this resource's migration.
-
+    #
+    # organization_reference is the raw literal string exactly as received —
+    # see OrganizationModel.partof_reference for the full reasoning.
+    organization_reference = Column(String, nullable=True)
     organization_type = Column(
         Enum(
             OrganizationReferenceType,
@@ -134,6 +151,13 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
     # ── availabilityExceptions (0..1 string) ─────────────────────────────────
 
     availability_exceptions = Column(Text, nullable=True)
+
+    # Resource-level extension support (0..* Extension, inherited from the
+    # base DomainResource type — not PractitionerRole-specific). Raw
+    # [{url, valueType, value}, ...]; validated against registered
+    # extension definitions by the (not-yet-built) profile pipeline, not by
+    # the database. Same shape as OrganizationModel.extension.
+    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 
     # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
     # come from TenantAuditMixin above — no hand-declared org_id here, same
