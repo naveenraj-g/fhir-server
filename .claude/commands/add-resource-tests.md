@@ -25,7 +25,7 @@ Read these files first. They determine what the tests must actually assert:
 - `app/fhir/mappers/<resource>/plain.py` - exact plain JSON field names
 - `app/fhir/mappers/<resource>/fhir.py` - exact FHIR response field names
 - `app/schemas/<resource>/input.py` - required fields, patchable fields, nested input shapes
-- `app/auth/<resource>_deps.py` - `resolve_<resource>()` resolves by public ID and raises 404 (no ownership check)
+- `app/services/<resource>/core.py` - every currently-built resource is auth-rolled-out (see CLAUDE.md's "Multi-Tenancy & Ownership"): `get_<resource>_scoped()` 404s on cross-org, 403s on an org-less token; tests need a real or overridden `get_current_user` that supplies `activeOrganizationId` and the right `<resource>:<action>` permission scopes, not just a bare authenticated user
 - `app/repository/<resource>_repository.py` - runtime list filters, foreign-key resolution, custom reference parsing
 - `app/core/content_negotiation.py` - current runtime status behavior may differ from decorator metadata
 

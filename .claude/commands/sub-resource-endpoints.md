@@ -4,11 +4,13 @@ Complete pattern for adding GET and DELETE endpoints to any `0..*` child table (
 
 Every FHIR resource with sub-resource POST endpoints **must** also have GET + DELETE endpoints for each sub-resource. Every route must have `operation_id`, `summary`, `description`, and `responses=` with `inline_schema()`.
 
+Every currently-built resource is auth-rolled-out (see CLAUDE.md's "Multi-Tenancy & Ownership") — sub-resource routes gate with `actor: AuthUser = Depends(require_permission("<resource>", "<action>"))` and fetch the parent row via `service.get_<resource>_scoped(resource_id, actor.org_id)` (404 on cross-org, 403 on an org-less token), not the old `resolve_<resource>()` dependency.
+
 ---
 
 ## Step 1 — Response schemas
 
-Add to `app/schemas/<resource>/response.py` **for each sub-resource** — both plain and FHIR variants. If the resource's schemas have already been split into a package (see `/split-resource-package` — Patient, Practitioner, and Organization all do this), add these classes to that sub-resource's own file (e.g. `response/name.py`) instead of a flat `response.py`, and re-export them from `response/__init__.py`.
+Add to `app/schemas/<resource>/response.py` **for each sub-resource** — both plain and FHIR variants. If the resource's schemas have already been split into a package (see `/split-resource-package` — Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, and Slot all do this), add these classes to that sub-resource's own file (e.g. `response/name.py`) instead of a flat `response.py`, and re-export them from `response/__init__.py`.
 
 ```python
 # ── Plain sub-resource list responses ─────────────────────────────────────────
@@ -152,7 +154,6 @@ _SUBRES_<SUB>_200 = {200: {"description": "List of <sub> entries", "content": {
 ```python
 @router.get(
     "/{resource_id}/<sub>s",
-    dependencies=[Depends(require_permission("<resource>", "read"))],
     operation_id="list_<resource>_<sub>s",
     summary="List all <sub> entries for a <Resource>",
     description=(
@@ -164,9 +165,11 @@ _SUBRES_<SUB>_200 = {200: {"description": "List of <sub> entries", "content": {
 )
 async def list_<sub>s(
     request: Request,
-    resource: <Resource>Model = Depends(resolve_<resource>),
+    resource_id: int,
+    actor: AuthUser = Depends(require_permission("<resource>", "read")),
     service: <Resource>Service = Depends(get_<resource>_service),
 ):
+    resource = await service.get_<resource>_scoped(resource_id, actor.org_id)
     items = await service.get_<sub>s(resource.<resource>_id)
     plain = [{"id": r.id, **plain_<sub>(r)} for r in items]
     if wants_fhir(request):
@@ -183,7 +186,6 @@ The `**plain_<sub>(r)` / `**fhir_<sub>(r)` pattern unpacks the helper's dict alo
 @router.delete(
     "/{resource_id}/<sub>s/{sub_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("<resource>", "update"))],
     operation_id="delete_<resource>_<sub>",
     summary="Remove a <sub> entry from a <Resource>",
     description=(
@@ -194,10 +196,12 @@ The `**plain_<sub>(r)` / `**fhir_<sub>(r)` pattern unpacks the helper's dict alo
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_<sub>(
+    resource_id: int,
     sub_id: int,
-    resource: <Resource>Model = Depends(resolve_<resource>),
+    actor: AuthUser = Depends(require_permission("<resource>", "update")),
     service: <Resource>Service = Depends(get_<resource>_service),
 ):
+    resource = await service.get_<resource>_scoped(resource_id, actor.org_id)
     deleted = await service.delete_<sub>(resource.<resource>_id, sub_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="<Sub> not found")
