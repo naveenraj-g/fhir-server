@@ -15,22 +15,36 @@ from fastapi import APIRouter
 # tenant_id/coding-list/location_pk-style conventions, one resource at a
 # time, rather than carrying forward drifted code. See git history for the
 # deleted implementations if a past version is ever needed for reference.
+from . import appointment as appointment
+from . import appointment_response as appointment_response
+from . import encounter as encounter
 from . import healthcare_service as healthcare_service
 from . import location as location
+from . import medication_request as medication_request
 from . import organization as organization
 from . import practitioner as practitioner
 from . import practitioner_role as practitioner_role
+from . import questionnaire as questionnaire
+from . import questionnaire_response as questionnaire_response
 from . import schedule as schedule
+from . import service_request as service_request
 from . import slot as slot
 
 __all__ = [
+    "appointment",
+    "appointment_response",
     "discover_routers",
+    "encounter",
     "healthcare_service",
     "location",
+    "medication_request",
     "organization",
     "practitioner",
     "practitioner_role",
+    "questionnaire",
+    "questionnaire_response",
     "schedule",
+    "service_request",
     "slot",
 ]
 

@@ -40,6 +40,41 @@ class ScheduleReferenceType(str, Enum):
     Schedule = "Schedule"
 
 
+class AppointmentReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is Appointment.
+    Stored as DB type name 'appointment_reference_type' (shared across all tables,
+    create_type=False once AppointmentResponse's migration creates it)."""
+
+    Appointment = "Appointment"
+
+
+class LocationReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is Location.
+    Stored as DB type name 'location_reference_type' (shared across all tables,
+    create_type=False once a later migration creates it)."""
+
+    Location = "Location"
+
+
+class ServiceRequestReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is
+    ServiceRequest (e.g. ServiceRequest.replaces, and the ServiceRequest
+    member of ServiceRequest.basedOn's own 3-member enum). Stored as DB
+    type name 'service_request_reference_type' (shared across all tables,
+    create_type=False once a later migration creates it)."""
+
+    ServiceRequest = "ServiceRequest"
+
+
+class MedicationRequestReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is
+    MedicationRequest (e.g. MedicationRequest.priorPrescription). Stored
+    as DB type name 'medication_request_reference_type' (shared across
+    all tables, create_type=False once a later migration creates it)."""
+
+    MedicationRequest = "MedicationRequest"
+
+
 class IdentifierUse(str, Enum):
     """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 

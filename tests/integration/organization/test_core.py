@@ -40,19 +40,19 @@ ORG_PERMS = [
 
 async def test_create_organization_minimal(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert_plain_organization(resp.json(), name="Test Hospital", active=True)
 
 
 async def test_create_organization_full(client):
     resp = await client.post(BASE + "/", json=FULL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert_plain_organization(data, name="General Hospital", active=True)
     assert data["identifier"][0]["value"] == "1234567893"
     assert data["identifier"][0]["assigner_identifier_value"] == "EXTERNAL-1"
     assert data["type"][0]["codings"][0]["code"] == "prov"
-    assert data["alias"][0]["value"] == "Gen Hosp"
+    assert data["alias"][0] == "Gen Hosp"
     assert data["telecom"][0]["value"] == "555-1234"
     assert data["address"][0]["city"] == "Anytown"
     assert data["contact"][0]["name_family"] == "Smith"
@@ -62,7 +62,7 @@ async def test_create_organization_full(client):
 
 async def test_create_organization_returns_fhir_format(client):
     resp = await client.post(BASE + "/", json=MINIMAL, headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert "application/fhir+json" in resp.headers["content-type"]
     assert_fhir_organization(resp.json(), name="Test Hospital")
 
@@ -81,7 +81,7 @@ async def test_create_organization_org_id_in_body_rejected(client):
 
 async def test_create_organization_created_by_derived_from_actor(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert data["created_by"] == "u-test"
     assert data["org_id"] == "org-test"
@@ -92,7 +92,7 @@ async def test_create_organization_with_partof(client):
     resp = await client.post(
         BASE + "/", json={**MINIMAL, "name": "Child Org", "partof": f"Organization/{parent_id}"}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert data["partof_id"] == parent_id
 
@@ -174,7 +174,7 @@ async def test_list_organizations_filter_active(client):
 
 async def test_list_organizations_filter_name_matches_alias(client):
     await create_organization(
-        client, {**MINIMAL, "name": "Unrelated Name", "alias": [{"value": "FindMeAlias"}]}
+        client, {**MINIMAL, "name": "Unrelated Name", "alias": ["FindMeAlias"]}
     )
     resp = await client.get(BASE + "/", params={"name": "FindMeAlias"})
     assert resp.status_code == 200
@@ -240,11 +240,11 @@ async def test_patch_organization_active(client):
 
 async def test_patch_organization_replaces_alias_list(client):
     org_id = await create_organization(client, FULL)
-    resp = await client.patch(f"{BASE}/{org_id}", json={"alias": [{"value": "New Alias"}]})
+    resp = await client.patch(f"{BASE}/{org_id}", json={"alias": ["New Alias"]})
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["alias"]) == 1
-    assert data["alias"][0]["value"] == "New Alias"
+    assert data["alias"][0] == "New Alias"
     # Untouched lists are left alone.
     assert len(data["identifier"]) == 1
 

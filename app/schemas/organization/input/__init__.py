@@ -1,7 +1,6 @@
 from app.schemas.datatypes import CodingInput
 
 from .address import OrganizationAddressInput
-from .alias import OrganizationAliasInput
 from .contact import OrganizationContactInput, OrganizationContactTelecomInput
 from .core import OrganizationCreateSchema, OrganizationPatchSchema
 from .endpoint import OrganizationEndpointInput
@@ -15,7 +14,6 @@ __all__ = [
     "CodingInput",
     "OrganizationIdentifierInput",
     "OrganizationTypeInput",
-    "OrganizationAliasInput",
     "OrganizationTelecomInput",
     "OrganizationAddressInput",
     "OrganizationContactTelecomInput",

@@ -1,7 +1,6 @@
 from app.schemas.datatypes import PlainCodingRow
 
 from .address import PlainOrganizationAddress
-from .alias import PlainOrganizationAlias
 from .contact import (
     FHIROrganizationContact,
     PlainOrganizationContact,
@@ -29,7 +28,6 @@ __all__ = [
     "PlainCodingRow",
     "PlainOrganizationIdentifier",
     "PlainOrganizationType",
-    "PlainOrganizationAlias",
     "PlainOrganizationTelecom",
     "PlainOrganizationAddress",
     "PlainOrganizationContactTelecom",

@@ -10,7 +10,6 @@ import pytest
 from app.fhir.mappers.organization import to_fhir_organization
 from app.models.organization import (
     OrganizationAddress,
-    OrganizationAlias,
     OrganizationContact,
     OrganizationContactPurposeCoding,
     OrganizationContactTelecom,
@@ -33,7 +32,7 @@ organization_pb2 = pytest.importorskip(
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
 _CHILD_ATTRS = (
-    "identifiers", "types", "aliases", "telecoms", "addresses", "contacts",
+    "identifiers", "types", "telecoms", "addresses", "contacts",
     "endpoints",
 )
 
@@ -89,15 +88,6 @@ def _type(**kw) -> OrganizationType:
                     created_by="u-test", created_at=D,
                 )
             ],
-            "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
-
-
-def _alias(**kw) -> OrganizationAlias:
-    return OrganizationAlias(
-        **{
-            "id": 1, "tenant_id": "org-test", "value": "Acme",
             "created_by": "u-test", "created_at": D, **kw,
         }
     )
@@ -235,13 +225,7 @@ CASES = {
         ),
     ),
 
-    "alias_multiple": _with(
-        "aliases",
-        *[
-            OrganizationAlias(id=i, tenant_id="org-test", value=v, created_by="u-test", created_at=D)
-            for i, v in enumerate(["Acme Health Group", "AHG"], 1)
-        ],
-    ),
+    "alias_multiple": _org(alias=["Acme Health Group", "AHG"]),
 
     "telecoms_with_rank_and_period": _with(
         "telecoms",

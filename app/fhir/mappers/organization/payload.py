@@ -170,10 +170,6 @@ def payload_type(t: OrganizationTypeInput) -> dict:
     return entry
 
 
-def payload_alias(a) -> str:
-    return a.value
-
-
 def payload_telecom(t) -> dict:
     entry: dict = {}
     if t.system:
@@ -284,11 +280,13 @@ def payload_endpoint(e: OrganizationEndpointInput) -> dict:
 
 
 # Shared by both orchestrators below — every Organization field that's a
-# 0..* list, mapped to the builder that renders one of its items.
+# 0..* list of structured objects, mapped to the builder that renders one
+# of its items. `alias` is NOT here — it's a plain list[str] with no
+# per-item transform, so it's handled directly alongside `extension`/
+# `name` instead (see both orchestrators below).
 _LIST_FIELDS = {
     "identifier": payload_identifier,
     "type": payload_type,
-    "alias": payload_alias,
     "telecom": payload_telecom,
     "address": payload_address,
     "contact": payload_contact,
@@ -327,6 +325,8 @@ def payload_to_fhir_organization(payload: OrganizationCreateSchema) -> dict:
         result["active"] = payload.active
     if payload.name:
         result["name"] = payload.name
+    if payload.alias:
+        result["alias"] = list(payload.alias)
 
     partof = _reference_from_payload(payload, "partof")
     if partof:
@@ -372,6 +372,10 @@ def patch_fragment_to_fhir_organization(
         touched.add("name")
         if payload.name:
             fragment["name"] = payload.name
+    if "alias" in provided:
+        touched.add("alias")
+        if payload.alias:
+            fragment["alias"] = list(payload.alias)
 
     if provided & _PARTOF_FIELDS:
         touched.add("partOf")

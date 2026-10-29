@@ -1,5 +1,4 @@
 from .address import OrganizationAddress
-from .alias import OrganizationAlias
 from .contact import (
     OrganizationContact,
     OrganizationContactPurposeCoding,
@@ -13,7 +12,6 @@ from .type import OrganizationType, OrganizationTypeCoding
 
 __all__ = [
     "OrganizationAddress",
-    "OrganizationAlias",
     "OrganizationContact",
     "OrganizationContactPurposeCoding",
     "OrganizationContactTelecom",

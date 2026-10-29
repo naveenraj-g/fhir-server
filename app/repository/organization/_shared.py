@@ -48,7 +48,6 @@ def _with_relationships(stmt):
             OrganizationIdentifier.type_codings
         ),
         selectinload(OrganizationModel.types).selectinload(OrganizationType.codings),
-        selectinload(OrganizationModel.aliases),
         selectinload(OrganizationModel.telecoms),
         selectinload(OrganizationModel.addresses),
         selectinload(OrganizationModel.contacts).selectinload(

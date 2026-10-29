@@ -61,7 +61,7 @@ async def test_create_accepts_tz_aware_datetime_period(client):
         ],
     }
     resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
 
 
 async def test_patch_rejects_naive_datetime_period(client):

@@ -4,7 +4,6 @@ from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
 from app.models.organization import (
     OrganizationAddress,
-    OrganizationAlias,
     OrganizationContact,
     OrganizationContactPurposeCoding,
     OrganizationContactTelecom,
@@ -70,6 +69,7 @@ class _FullMixin:
                 created_by=created_by,
                 active=payload.active,
                 name=payload.name,
+                alias=payload.alias,
                 extension=payload.extension or [],
                 partof_reference=payload.partof,
                 **_org_ref_kwargs("partof", payload.partof, payload.partof_display),
@@ -131,17 +131,6 @@ class _FullMixin:
                                     **_coding_kwargs(coding, created_by),
                                 )
                             )
-
-            if payload.alias:
-                for a in payload.alias:
-                    session.add(
-                        OrganizationAlias(
-                            organization_pk=org.id,
-                            tenant_id=org_id,
-                            value=a.value,
-                            created_by=created_by,
-                        )
-                    )
 
             if payload.telecom:
                 for t in payload.telecom:
@@ -284,7 +273,6 @@ class _FullMixin:
             _SUB = {
                 "identifier",
                 "type",
-                "alias",
                 "telecom",
                 "address",
                 "contact",
@@ -382,22 +370,6 @@ class _FullMixin:
                                     **_coding_kwargs(coding, updated_by),
                                 )
                             )
-
-            if payload.alias is not None:
-                await session.execute(
-                    delete(OrganizationAlias).where(
-                        OrganizationAlias.organization_pk == org.id
-                    )
-                )
-                for a in payload.alias:
-                    session.add(
-                        OrganizationAlias(
-                            organization_pk=org.id,
-                            tenant_id=org.tenant_id,
-                            value=a.value,
-                            created_by=updated_by,
-                        )
-                    )
 
             if payload.telecom is not None:
                 await session.execute(

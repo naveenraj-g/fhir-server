@@ -118,14 +118,6 @@ def plain_org_type(t) -> dict:
     }
 
 
-def plain_org_alias(a) -> dict:
-    return {
-        "id": a.id,
-        "value": a.value,
-        **_audit_fields(a),
-    }
-
-
 def plain_org_telecom(t) -> dict:
     return {
         "id": t.id,
@@ -223,7 +215,7 @@ def to_plain_organization(org: OrganizationModel) -> dict:
         **_plain_reference_fields(org, "partof"),
         "identifier": [plain_org_identifier(i) for i in (org.identifiers or [])],
         "type": [plain_org_type(t) for t in (org.types or [])],
-        "alias": [plain_org_alias(a) for a in (org.aliases or [])],
+        "alias": list(org.alias or []),
         "telecom": [plain_org_telecom(t) for t in (org.telecoms or [])],
         "address": [plain_org_address(a) for a in (org.addresses or [])],
         "contact": [plain_org_contact(c) for c in (org.contacts or [])],

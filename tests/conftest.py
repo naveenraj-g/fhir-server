@@ -14,7 +14,7 @@ from typing import AsyncGenerator
 import pytest
 from fastapi import Request
 from httpx import AsyncClient, ASGITransport
-from sqlalchemy import BigInteger, Sequence as SASequence, event
+from sqlalchemy import BigInteger, Sequence as SASequence, bindparam, event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import StaticPool
 
@@ -93,6 +93,29 @@ ARRAY.result_processor = _array_result_processor
 @compiles(JSONB, "sqlite")
 def _jsonb_as_text(element, compiler, **kw):
     return "JSON"
+
+
+# ── SQLite equivalent of Organization's alias-array search filter ───────────
+# app.core.filters.ArrayContainsILike (Organization's `alias` name-search
+# filter, the first "any element of an ARRAY(String) column matches" query in
+# this codebase) compiles to real Postgres unnest() by default — see that
+# class's own docstring for why it's a hand-compiled clause rather than a
+# portable select()/table_valued() expression (Postgres's unnest(), one
+# output column, and SQLite's json_each(), several output columns, don't
+# share a SQL shape a single Core expression can render correctly on both).
+# This registers the SQLite-only override, same as the ARRAY/TSVECTOR/JSONB
+# shims above: json_each() reads the same JSON-encoded-text column the
+# ARRAY-as-TEXT shim already produces, and its own built-in `value` column
+# (unqualified — there's only one FROM source in this EXISTS subquery, so no
+# qualification is needed) holds each array element.
+from app.core.filters import ArrayContainsILike  # noqa: E402
+
+
+@compiles(ArrayContainsILike, "sqlite")
+def _array_contains_ilike_sqlite(element, compiler, **kw):
+    col_sql = compiler.process(element.column, **kw)
+    pattern_sql = compiler.process(bindparam(None, element.pattern), **kw)
+    return f"EXISTS (SELECT 1 FROM json_each({col_sql}) WHERE value LIKE {pattern_sql})"
 
 # ── Disable rate limiting for tests ───────────────────────────────────────────
 # The in-process sliding-window limiter accumulates across tests when Redis is

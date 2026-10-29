@@ -1,0 +1,19 @@
+from dependency_injector import containers, providers
+
+from app.repository.appointment import AppointmentRepository
+from app.services.appointment import AppointmentService
+
+
+class AppointmentContainer(containers.DeclarativeContainer):
+
+    core = providers.DependenciesContainer()
+
+    appointment_repository = providers.Factory(
+        AppointmentRepository,
+        session_factory=core.database.provided.session,
+    )
+
+    appointment_service = providers.Factory(
+        AppointmentService,
+        repository=appointment_repository,
+    )

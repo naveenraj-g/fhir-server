@@ -65,7 +65,10 @@ async def create_organization(
         payload, actor.org_id, actor.sub
     )
     return format_response(
-        organization_service._to_fhir(org), organization_service._to_plain(org), request
+        organization_service._to_fhir(org),
+        organization_service._to_plain(org),
+        request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

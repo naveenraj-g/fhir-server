@@ -67,7 +67,10 @@ async def create_location(
     log_payload(logger, "location.create.payload", payload)
     loc = await location_service.create_location(payload, actor.org_id, actor.sub)
     return format_response(
-        location_service._to_fhir(loc), location_service._to_plain(loc), request
+        location_service._to_fhir(loc),
+        location_service._to_plain(loc),
+        request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

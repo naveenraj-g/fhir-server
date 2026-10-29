@@ -58,7 +58,7 @@ ORG_AND_HS_PERMS = HS_PERMS + [
 
 async def _create_organization(client, name="Provider Org") -> int:
     resp = await client.post(ORG_BASE + "/", json={**ORG_MINIMAL, "name": name})
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     return resp.json()["id"]
 
 
@@ -67,13 +67,13 @@ async def _create_organization(client, name="Provider Org") -> int:
 
 async def test_create_healthcare_service_minimal(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert_plain_healthcare_service(resp.json(), name="Test Healthcare Service", active=True)
 
 
 async def test_create_healthcare_service_full(client):
     resp = await client.post(BASE + "/", json=FULL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert_plain_healthcare_service(data, name="Cardiology Services", active=True)
     assert data["identifier"][0]["value"] == "HS-1001"
@@ -98,7 +98,7 @@ async def test_create_healthcare_service_full(client):
 
 async def test_create_healthcare_service_returns_fhir_format(client):
     resp = await client.post(BASE + "/", json=MINIMAL, headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert "application/fhir+json" in resp.headers["content-type"]
     assert_fhir_healthcare_service(resp.json(), name="Test Healthcare Service")
 
@@ -117,7 +117,7 @@ async def test_create_healthcare_service_org_id_in_body_rejected(client):
 
 async def test_create_healthcare_service_created_by_derived_from_actor(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert data["created_by"] == "u-test"
     assert data["org_id"] == "org-test"
@@ -132,7 +132,7 @@ async def test_create_healthcare_service_with_provided_by(client):
     resp = await client.post(
         BASE + "/", json={**MINIMAL, "provided_by": f"Organization/{org_id}"}
     )
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     data = resp.json()
     assert data["provided_by_id"] == org_id
     assert data["provided_by"] == f"Organization/{org_id}"
@@ -154,7 +154,7 @@ async def test_create_healthcare_service_with_resolved_location(client, _engine)
         BASE + "/",
         json={**MINIMAL, "location": [{"reference": f"Location/{location_id}"}]},
     )
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     data = resp.json()
     assert data["location"][0]["reference_id"] == location_id
     assert data["location"][0]["reference"] == f"Location/{location_id}"

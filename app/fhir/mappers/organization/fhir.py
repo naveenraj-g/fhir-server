@@ -164,10 +164,6 @@ def fhir_org_type(t) -> dict:
     return entry
 
 
-def fhir_org_alias(a) -> str:
-    return a.value
-
-
 def fhir_org_telecom(t) -> dict:
     return fhir_telecom(t)
 
@@ -363,9 +359,8 @@ def to_fhir_organization(org: OrganizationModel) -> dict:
     if types:
         result["type"] = types
 
-    aliases = [fhir_org_alias(a) for a in (org.aliases or []) if a.value]
-    if aliases:
-        result["alias"] = aliases
+    if org.alias:
+        result["alias"] = list(org.alias)
 
     telecoms = [fhir_org_telecom(t) for t in (org.telecoms or [])]
     if telecoms:

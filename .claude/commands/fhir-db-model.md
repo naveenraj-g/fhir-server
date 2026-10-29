@@ -80,6 +80,8 @@ This is the one narrow exception to the "no DB CHECK constraints" default, and i
 ### BackboneElement (0..*)
 → Child table. Any `0..*` inside the BackboneElement becomes a grandchild table.
 
+**⚠️ Grandchild tables need a repository-layer reminder, not a schema change.** None of this codebase's child/grandchild FK pairs declare `ondelete="CASCADE"` — `cascade="all, delete-orphan"` on the SQLAlchemy relationship only fires on `session.delete(parent_instance)`, never on the Core-level bulk `delete(ParentTable).where(...)` every resource's `patch_full()` uses to replace a sub-resource list wholesale. Whenever a `patch_full()` replaces a parent-with-grandchild list (any CodeableConcept-list field, `identifier.type.coding[]`, etc.), delete the grandchildren first via a `.in_(select(ParentTable.id).where(...))` subquery, *then* the parent rows — otherwise the first PATCH that replaces an already-populated list throws `ForeignKeyViolationError`. Found building AppointmentResponse; likely still latent in earlier resources' own list-replace blocks that never happened to get PATCH-tested with existing grandchild rows in place.
+
 ## Step 4 — Enum rules
 
 Use `Enum(MyClass, name="pg_type_name")` when the allowed reference types are a **closed, known set**.

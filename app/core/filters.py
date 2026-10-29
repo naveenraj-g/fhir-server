@@ -39,8 +39,11 @@ from enum import Enum
 from typing import TypeVar
 
 from fastapi import HTTPException, status
-from sqlalchemy import exists
+from sqlalchemy import bindparam, exists
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import Select
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.types import Boolean
 
 EnumT = TypeVar("EnumT", bound=Enum)
 
@@ -163,6 +166,52 @@ def apply_child_exists_filter(stmt: Select, child_select: Select) -> Select:
     rather than repeating `stmt.where(exists(...))` inline every time.
     """
     return stmt.where(exists(child_select))
+
+
+class ArrayContainsILike(ColumnElement):
+    """Boolean clause: does any element of this `ARRAY(String)` column
+    case-insensitively match `pattern`? The array-column equivalent of
+    `apply_child_exists_filter` above, for a 0..* scalar string list
+    that — per /fhir-db-model's "no comma-Text exception for 0..* scalar
+    lists" rule — is a flat array column rather than a real child table,
+    so there's no child `select()` to correlate against.
+
+    Compiled per-dialect via `@compiles` rather than composed from
+    portable `select()`/`table_valued()` pieces: Postgres's `unnest()`
+    (one output column) and SQLite's `json_each()` (several output
+    columns: key, value, type, ...) don't share a SQL shape that a single
+    SQLAlchemy Core expression can render correctly on both backends —
+    tried first, confirmed broken both as a bare `table_valued("value")`
+    (Postgres silently omits the needed "AS alias(value)" column list)
+    and with `.render_derived()` added to fix that (SQLite then rejects
+    the same column-list syntax on a derived subquery). This class's own
+    default compilation below is the real, Postgres-correct form; the
+    test suite registers a SQLite-only override for it (see
+    tests/conftest.py) — the one place a test-only dialect shim belongs,
+    same as the ARRAY/TSVECTOR/JSONB shims already there."""
+
+    inherit_cache = True
+
+    def __init__(self, column, pattern: str):
+        super().__init__()
+        self.column = column
+        self.pattern = pattern
+        self.type = Boolean()
+
+
+@compiles(ArrayContainsILike)
+def _array_contains_ilike_default(element, compiler, **kw):
+    """Postgres (and the default for any other real dialect)."""
+    col_sql = compiler.process(element.column, **kw)
+    pattern_sql = compiler.process(bindparam(None, element.pattern), **kw)
+    return f"EXISTS (SELECT 1 FROM unnest({col_sql}) AS _acil(value) WHERE _acil.value ILIKE {pattern_sql})"
+
+
+def array_contains_ilike(column, pattern: str) -> ArrayContainsILike:
+    """Returns the boolean clause itself (not a `stmt`) so the caller can
+    combine it with other conditions, e.g.
+    `or_(name_match, array_contains_ilike(...))`."""
+    return ArrayContainsILike(column, pattern)
 
 
 def parse_reference[EnumT: Enum](

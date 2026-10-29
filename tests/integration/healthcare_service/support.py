@@ -115,7 +115,7 @@ async def create_healthcare_service(client, payload=None) -> int:
     """Create a healthcare service and return the public healthcare_service id."""
     payload = payload or MINIMAL
     resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     return resp.json()["id"]
 
 

@@ -1,9 +1,10 @@
-from sqlalchemy import exists, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.future import select
 
 from app.core.filters import (
     apply_child_exists_filter,
     apply_token_filter,
+    array_contains_ilike,
     parse_reference,
 )
 from app.core.logging import get_logger
@@ -11,7 +12,6 @@ from app.core.pagination import resolve_sort
 from app.models.enums import OrganizationReferenceType
 from app.models.organization import (
     OrganizationAddress,
-    OrganizationAlias,
     OrganizationEndpoint,
     OrganizationIdentifier,
     OrganizationModel,
@@ -91,16 +91,14 @@ class _CoreMixin:
             # Medplum: "name" matches the organization's name OR any alias —
             # unlike Patient/Practitioner's "name" (HumanName sub-fields),
             # Organization has no HumanName; this is the resource's own quirk.
+            # `alias` is a plain ARRAY(String) column (no child table), so
+            # "any element matches" uses array_contains_ilike() rather than
+            # apply_child_exists_filter() (which is for real child tables).
             pattern = f"%{name}%"
             stmt = stmt.where(
                 or_(
                     OrganizationModel.name.ilike(pattern),
-                    exists(
-                        select(OrganizationAlias.id).where(
-                            OrganizationAlias.organization_pk == OrganizationModel.id,
-                            OrganizationAlias.value.ilike(pattern),
-                        )
-                    ),
+                    array_contains_ilike(OrganizationModel.alias, pattern),
                 )
             )
         if identifier:

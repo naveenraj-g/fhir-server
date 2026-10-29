@@ -73,6 +73,7 @@ async def create_practitioner_role(
         practitioner_role_service._to_fhir(pr),
         practitioner_role_service._to_plain(pr),
         request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

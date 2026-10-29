@@ -60,7 +60,10 @@ async def create_practitioner(
     log_payload(logger, "practitioner.create.payload", payload)
     p = await practitioner_service.create_practitioner(payload, actor.org_id, actor.sub)
     return format_response(
-        practitioner_service._to_fhir(p), practitioner_service._to_plain(p), request
+        practitioner_service._to_fhir(p),
+        practitioner_service._to_plain(p),
+        request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

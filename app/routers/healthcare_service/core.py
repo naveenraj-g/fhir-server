@@ -73,6 +73,7 @@ async def create_healthcare_service(
         healthcare_service_service._to_fhir(hs),
         healthcare_service_service._to_plain(hs),
         request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

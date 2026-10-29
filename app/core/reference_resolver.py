@@ -18,12 +18,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
+from app.models.appointment import AppointmentModel
+from app.models.encounter import EncounterModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
+from app.models.medication_request import MedicationRequestModel
 from app.models.organization import OrganizationModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
 from app.models.schedule import ScheduleModel
+from app.models.service_request import ServiceRequestModel
+from app.models.slot import SlotModel
 
 logger = get_logger(__name__)
 
@@ -52,6 +57,24 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "PractitionerRole": (PractitionerRoleModel, "practitioner_role_id"),
     # Registered so Slot.schedule's existence check works.
     "Schedule": (ScheduleModel, "schedule_id"),
+    # Registered so Appointment.slot's existence check works.
+    "Slot": (SlotModel, "slot_id"),
+    # Registered so AppointmentResponse.appointment's existence check works.
+    "Appointment": (AppointmentModel, "appointment_id"),
+    # Encounter.partOf is self-referential, so this entry is what makes
+    # that existence check work at all — same reasoning as Location's own
+    # self-referential partOf entry above. Also registered so
+    # Encounter.appointment's existence check works the other way.
+    "Encounter": (EncounterModel, "encounter_id"),
+    # ServiceRequest.replaces is self-referential (same reasoning as
+    # Location's/Encounter's own self-referential entries above) — also
+    # registered so ServiceRequest.basedOn's ServiceRequest subset and
+    # ServiceRequest's own org_id/tenant_id-scoped lookups work.
+    "ServiceRequest": (ServiceRequestModel, "service_request_id"),
+    # MedicationRequest.priorPrescription is self-referential — also
+    # registered so MedicationRequest.basedOn's MedicationRequest subset
+    # works.
+    "MedicationRequest": (MedicationRequestModel, "medication_request_id"),
 }
 
 

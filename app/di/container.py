@@ -2,13 +2,20 @@ from dependency_injector import containers, providers
 
 from app.di.core import CoreContainer
 from app.di.modules import (
+    AppointmentContainer,
+    AppointmentResponseContainer,
+    EncounterContainer,
     FhirProfileContainer,
     HealthcareServiceContainer,
     LocationContainer,
+    MedicationRequestContainer,
     OrganizationContainer,
     PractitionerContainer,
     PractitionerRoleContainer,
+    QuestionnaireContainer,
+    QuestionnaireResponseContainer,
     ScheduleContainer,
+    ServiceRequestContainer,
     SlotContainer,
     TerminologyContainer,
 )
@@ -18,6 +25,21 @@ class Container(containers.DeclarativeContainer):
     wiring_config = containers.WiringConfiguration(packages=["app"])
 
     core = providers.Container(CoreContainer)
+
+    appointment = providers.Container(
+        AppointmentContainer,
+        core=core,
+    )
+
+    appointment_response = providers.Container(
+        AppointmentResponseContainer,
+        core=core,
+    )
+
+    encounter = providers.Container(
+        EncounterContainer,
+        core=core,
+    )
 
     organization = providers.Container(
         OrganizationContainer,
@@ -44,8 +66,28 @@ class Container(containers.DeclarativeContainer):
         core=core,
     )
 
+    medication_request = providers.Container(
+        MedicationRequestContainer,
+        core=core,
+    )
+
+    questionnaire = providers.Container(
+        QuestionnaireContainer,
+        core=core,
+    )
+
+    questionnaire_response = providers.Container(
+        QuestionnaireResponseContainer,
+        core=core,
+    )
+
     schedule = providers.Container(
         ScheduleContainer,
+        core=core,
+    )
+
+    service_request = providers.Container(
+        ServiceRequestContainer,
         core=core,
     )
 

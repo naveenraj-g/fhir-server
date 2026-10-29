@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.enums import IdentifierUse
 
 from .address import OrganizationAddressInput
-from .alias import OrganizationAliasInput
 from .contact import OrganizationContactInput
 from .endpoint import OrganizationEndpointInput
 from .identifier import OrganizationIdentifierInput
@@ -50,7 +49,7 @@ class OrganizationCreateSchema(BaseModel):
                         ]
                     }
                 ],
-                "alias": [{"value": "Gen Hosp"}],
+                "alias": ["Gen Hosp"],
                 "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
                 "address": [
                     {
@@ -155,7 +154,7 @@ class OrganizationCreateSchema(BaseModel):
     type: list[OrganizationTypeInput] | None = Field(
         None, description="The kind(s) of organization that this is."
     )
-    alias: list[OrganizationAliasInput] | None = Field(
+    alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the organization is known as, or was known as in the past.",
     )
@@ -191,7 +190,7 @@ class OrganizationPatchSchema(BaseModel):
             "example": {
                 "active": True,
                 "name": "General Hospital",
-                "alias": [{"value": "Gen Hosp"}],
+                "alias": ["Gen Hosp"],
                 "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
             }
         },
@@ -261,7 +260,7 @@ class OrganizationPatchSchema(BaseModel):
         None,
         description="The kind(s) of organization that this is — replaces the full list if supplied.",
     )
-    alias: list[OrganizationAliasInput] | None = Field(
+    alias: list[str] | None = Field(
         None,
         description="Alternate name(s) for the organization — replaces the full list if supplied.",
     )

@@ -64,7 +64,10 @@ async def create_schedule(
     log_payload(logger, "schedule.create.payload", payload)
     sch = await schedule_service.create_schedule(payload, actor.org_id, actor.sub)
     return format_response(
-        schedule_service._to_fhir(sch), schedule_service._to_plain(sch), request
+        schedule_service._to_fhir(sch),
+        schedule_service._to_plain(sch),
+        request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

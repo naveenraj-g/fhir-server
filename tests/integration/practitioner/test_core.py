@@ -42,14 +42,14 @@ PRACTITIONER_PERMS = [
 
 async def test_create_practitioner_minimal(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     assert_plain_practitioner(resp.json(), active=True)
     assert resp.json()["name"][0]["family"] == "Careful"
 
 
 async def test_create_practitioner_full(client):
     resp = await client.post(BASE + "/", json=FULL)
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     data = resp.json()
     assert_plain_practitioner(data, active=True, gender="male", user_id="end-user-1")
     assert data["identifier"][0]["value"] == "9941339108"
@@ -64,7 +64,7 @@ async def test_create_practitioner_full(client):
 
 async def test_create_practitioner_returns_fhir_format(client):
     resp = await client.post(BASE + "/", json=MINIMAL, headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert "application/fhir+json" in resp.headers["content-type"]
     assert_fhir_practitioner(resp.json())
     assert resp.json()["name"][0]["family"] == "Careful"
@@ -84,7 +84,7 @@ async def test_create_practitioner_tenant_id_in_body_rejected(client):
 
 async def test_create_practitioner_created_by_derived_from_actor(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     data = resp.json()
     assert data["created_by"] == "u-test"
     assert data["org_id"] == "org-test"

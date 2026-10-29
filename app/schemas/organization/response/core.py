@@ -11,7 +11,6 @@ from app.schemas.datatypes import (
 )
 
 from .address import PlainOrganizationAddress
-from .alias import PlainOrganizationAlias
 from .contact import FHIROrganizationContact, PlainOrganizationContact
 from .endpoint import PlainOrganizationEndpoint
 from .identifier import PlainOrganizationIdentifier
@@ -146,7 +145,7 @@ class PlainOrganizationResponse(BaseModel):
     type: list[PlainOrganizationType] | None = Field(
         None, description="The kind(s) of organization that this is."
     )
-    alias: list[PlainOrganizationAlias] | None = Field(
+    alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the organization is known as, or was known as in the past.",
     )

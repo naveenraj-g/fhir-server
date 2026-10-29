@@ -8,7 +8,7 @@ from sqlalchemy import (
     String,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -56,6 +56,13 @@ class OrganizationModel(TenantAuditMixin, Base):
     # DB NOT NULL (identifier lives in a separate child table, so a
     # single-column constraint can't express it anyway).
     name = Column(String, nullable=True)
+
+    # alias (0..*) — plain scalar string list, no sub-structure at all, so
+    # it's a flat ARRAY(String) column directly on this row rather than a
+    # child table — see /fhir-db-model's "no comma-Text exception for 0..*
+    # scalar lists" rule. (Previously modeled as a child table,
+    # OrganizationAlias; fixed to match that rule.)
+    alias = Column(ARRAY(String), nullable=True)
 
     # partOf (0..1 Reference(Organization)) — a Reference is {reference,
     # type, identifier, display}, each independently 0..1 (see
@@ -140,9 +147,6 @@ class OrganizationModel(TenantAuditMixin, Base):
     )
     types = relationship(
         "OrganizationType", back_populates="organization", cascade="all, delete-orphan"
-    )
-    aliases = relationship(
-        "OrganizationAlias", back_populates="organization", cascade="all, delete-orphan"
     )
     telecoms = relationship(
         "OrganizationTelecom",

@@ -72,5 +72,5 @@ async def create_practitioner(client, payload=None) -> int:
     """Create a practitioner and return the public practitioner id."""
     payload = payload or MINIMAL
     resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     return resp.json()["id"]

@@ -63,7 +63,10 @@ async def create_slot(
     log_payload(logger, "slot.create.payload", payload)
     slot = await slot_service.create_slot(payload, actor.org_id, actor.sub)
     return format_response(
-        slot_service._to_fhir(slot), slot_service._to_plain(slot), request
+        slot_service._to_fhir(slot),
+        slot_service._to_plain(slot),
+        request,
+        status_code=status.HTTP_201_CREATED,
     )
 
 

@@ -27,7 +27,7 @@ def wants_fhir(request: Request) -> bool:
 
 
 def format_response(
-    fhir_data: dict, plain_data: dict, request: Request
+    fhir_data: dict, plain_data: dict, request: Request, status_code: int = 200
 ) -> JSONResponse:
     """
     Serialise and return either the FHIR or the plain JSON representation
@@ -36,24 +36,30 @@ def format_response(
     Always returns a JSONResponse so that FastAPI skips response_model
     validation — the response_model decorators are kept for OpenAPI docs only.
     jsonable_encoder handles dates, Enum subclasses, Decimal, etc.
+
+    status_code must be passed explicitly by the caller (e.g. 201 on create)
+    — returning a Response instance makes FastAPI use ITS status code
+    verbatim and ignore the route decorator's own status_code= entirely.
     """
     if wants_fhir(request):
         return JSONResponse(
             content=jsonable_encoder(fhir_data),
             media_type=FHIR_MEDIA_TYPE,
+            status_code=status_code,
         )
-    return JSONResponse(content=jsonable_encoder(plain_data))
+    return JSONResponse(content=jsonable_encoder(plain_data), status_code=status_code)
 
 
 def format_list_response(
-    fhir_list: list, plain_list: list, request: Request
+    fhir_list: list, plain_list: list, request: Request, status_code: int = 200
 ) -> JSONResponse:
     if wants_fhir(request):
         return JSONResponse(
             content=jsonable_encoder(fhir_list),
             media_type=FHIR_MEDIA_TYPE,
+            status_code=status_code,
         )
-    return JSONResponse(content=jsonable_encoder(plain_list))
+    return JSONResponse(content=jsonable_encoder(plain_list), status_code=status_code)
 
 
 def format_paginated_response(
@@ -63,6 +69,7 @@ def format_paginated_response(
     limit: int,
     offset: int,
     request: Request,
+    status_code: int = 200,
 ) -> JSONResponse:
     """
     Return a paginated response in either plain-JSON or FHIR Bundle format.
@@ -80,6 +87,7 @@ def format_paginated_response(
         return JSONResponse(
             content=jsonable_encoder(bundle),
             media_type=FHIR_MEDIA_TYPE,
+            status_code=status_code,
         )
     return JSONResponse(
         content=jsonable_encoder(
@@ -89,5 +97,6 @@ def format_paginated_response(
                 "offset": offset,
                 "data": plain_list,
             }
-        )
+        ),
+        status_code=status_code,
     )

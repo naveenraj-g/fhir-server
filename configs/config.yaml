@@ -164,12 +164,19 @@ routes:
   # same list just gates whether each one is included at all, same as any
   # other entry here.
   enabled:
+    - appointment
+    - appointment_response
+    - encounter
     - organization
     - location
+    - medication_request
     - healthcare_service
     - practitioner
     - practitioner_role
+    - questionnaire
+    - questionnaire_response
     - schedule
+    - service_request
     - slot
     - terminology
     - fhir_profile
