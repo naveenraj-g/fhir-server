@@ -75,6 +75,19 @@ class MedicationRequestReferenceType(str, Enum):
     MedicationRequest = "MedicationRequest"
 
 
+class ObservationReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is
+    Observation (e.g. DiagnosticReport.result). Stored as DB type name
+    'observation_reference_type' (shared across all tables, create_type=False
+    once a later migration creates it). Observation's own self-referential
+    hasMember/derivedFrom fields keep their own local multi-member enums
+    (ObservationHasMemberReferenceType/ObservationDerivedFromReferenceType)
+    since those allow more than just Observation — this shared, single-
+    member enum is for a field whose *only* allowed target is Observation."""
+
+    Observation = "Observation"
+
+
 class IdentifierUse(str, Enum):
     """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 

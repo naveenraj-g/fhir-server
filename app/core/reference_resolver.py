@@ -23,9 +23,11 @@ from app.models.encounter import EncounterModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
 from app.models.medication_request import MedicationRequestModel
+from app.models.observation import ObservationModel
 from app.models.organization import OrganizationModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
+from app.models.questionnaire_response import QuestionnaireResponseModel
 from app.models.schedule import ScheduleModel
 from app.models.service_request import ServiceRequestModel
 from app.models.slot import SlotModel
@@ -75,6 +77,12 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # registered so MedicationRequest.basedOn's MedicationRequest subset
     # works.
     "MedicationRequest": (MedicationRequestModel, "medication_request_id"),
+    # Registered so Observation.hasMember/.derivedFrom's QuestionnaireResponse
+    # subset works.
+    "QuestionnaireResponse": (QuestionnaireResponseModel, "questionnaire_response_id"),
+    # Observation.hasMember/.derivedFrom are self-referential — this entry is
+    # what makes that existence check work at all.
+    "Observation": (ObservationModel, "observation_id"),
 }
 
 

@@ -558,3 +558,54 @@ class ServiceRequestQuantityComparator(str, Enum):
     le = "<="
     ge = ">="
     gt = ">"
+
+
+class ObservationStatus(str, Enum):
+    """
+    FHIR Observation.status value set (modifier) —
+    https://www.hl7.org/fhir/R4/valueset-observation-status.html
+    """
+
+    registered = "registered"
+    preliminary = "preliminary"
+    final = "final"
+    amended = "amended"
+    corrected = "corrected"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
+
+
+class ObservationQuantityComparator(str, Enum):
+    """
+    FHIR Duration/Quantity.comparator value set, used by
+    Observation.valueQuantity and valueRatio's numerator/denominator
+    (both plain Quantity, unlike valueRange/valueSampledData's
+    SimpleQuantity, which forbids comparator entirely) —
+    https://www.hl7.org/fhir/R4/datatypes.html#Quantity
+    Resource-scoped copy. Member name uses a readable identifier; stored
+    `.value` is the true FHIR wire symbol.
+    """
+
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
+class DiagnosticReportStatus(str, Enum):
+    """
+    FHIR DiagnosticReport.status value set (modifier) --
+    https://www.hl7.org/fhir/R4/valueset-diagnostic-report-status.html
+    """
+
+    registered = "registered"
+    partial = "partial"
+    preliminary = "preliminary"
+    final = "final"
+    amended = "amended"
+    corrected = "corrected"
+    appended = "appended"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"

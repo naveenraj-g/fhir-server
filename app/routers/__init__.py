@@ -17,10 +17,12 @@ from fastapi import APIRouter
 # deleted implementations if a past version is ever needed for reference.
 from . import appointment as appointment
 from . import appointment_response as appointment_response
+from . import diagnostic_report as diagnostic_report
 from . import encounter as encounter
 from . import healthcare_service as healthcare_service
 from . import location as location
 from . import medication_request as medication_request
+from . import observation as observation
 from . import organization as organization
 from . import practitioner as practitioner
 from . import practitioner_role as practitioner_role
@@ -33,11 +35,13 @@ from . import slot as slot
 __all__ = [
     "appointment",
     "appointment_response",
+    "diagnostic_report",
     "discover_routers",
     "encounter",
     "healthcare_service",
     "location",
     "medication_request",
+    "observation",
     "organization",
     "practitioner",
     "practitioner_role",

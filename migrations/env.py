@@ -20,11 +20,13 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # model files back.
 import app.models.appointment
 import app.models.appointment_response
+import app.models.diagnostic_report
 import app.models.encounter
 import app.models.fhir_profile.fhir_profile
 import app.models.healthcare_service
 import app.models.location
 import app.models.medication_request
+import app.models.observation
 import app.models.organization
 import app.models.practitioner
 import app.models.practitioner_role

@@ -4,11 +4,13 @@ from app.di.core import CoreContainer
 from app.di.modules import (
     AppointmentContainer,
     AppointmentResponseContainer,
+    DiagnosticReportContainer,
     EncounterContainer,
     FhirProfileContainer,
     HealthcareServiceContainer,
     LocationContainer,
     MedicationRequestContainer,
+    ObservationContainer,
     OrganizationContainer,
     PractitionerContainer,
     PractitionerRoleContainer,
@@ -63,6 +65,16 @@ class Container(containers.DeclarativeContainer):
 
     practitioner_role = providers.Container(
         PractitionerRoleContainer,
+        core=core,
+    )
+
+    observation = providers.Container(
+        ObservationContainer,
+        core=core,
+    )
+
+    diagnostic_report = providers.Container(
+        DiagnosticReportContainer,
         core=core,
     )
 

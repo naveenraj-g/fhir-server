@@ -166,10 +166,12 @@ routes:
   enabled:
     - appointment
     - appointment_response
+    - diagnostic_report
     - encounter
     - organization
     - location
     - medication_request
+    - observation
     - healthcare_service
     - practitioner
     - practitioner_role
