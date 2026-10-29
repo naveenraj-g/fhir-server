@@ -171,20 +171,25 @@ async def _replace_identifier_type_coding(session, sr_pk, identifier_row_id, cod
 class _FullMixin:
     """create_full/patch_full — the two atomic nested-write orchestrators."""
 
-    async def create_full(self, payload: ServiceRequestCreateSchema) -> ServiceRequestModel:
+    async def create_full(
+        self,
+        payload: ServiceRequestCreateSchema,
+        org_id: str,
+        created_by: str | None = None,
+    ) -> ServiceRequestModel:
         async with self.session_factory() as session:
             subject_kwargs = _single_reference_kwargs("subject", payload.subject, ServiceRequestSubjectReferenceType)
             encounter_kwargs = _single_reference_kwargs("encounter", payload.encounter, EncounterReferenceType)
             requester_kwargs = _single_reference_kwargs("requester", payload.requester, ServiceRequestRequesterReferenceType)
 
-            await _validate_ref(session, payload.tenant_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], _MODELED_SUBJECT_TYPES)
-            await _validate_ref(session, payload.tenant_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
-            await _validate_ref(session, payload.tenant_id, "requester", requester_kwargs["requester_type"], requester_kwargs["requester_id"], _MODELED_REQUESTER_TYPES)
+            await _validate_ref(session, org_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], _MODELED_SUBJECT_TYPES)
+            await _validate_ref(session, org_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
+            await _validate_ref(session, org_id, "requester", requester_kwargs["requester_type"], requester_kwargs["requester_id"], _MODELED_REQUESTER_TYPES)
 
             sr = ServiceRequestModel(
-                tenant_id=payload.tenant_id,
+                tenant_id=org_id,
                 user_id=payload.user_id,
-                created_by=payload.created_by,
+                created_by=created_by,
                 extension=payload.extension or [],
                 instantiates_canonical=payload.instantiates_canonical,
                 instantiates_uri=payload.instantiates_uri,
@@ -236,26 +241,26 @@ class _FullMixin:
             # Direct-child coding tables for the main row's own 0..1 CCs.
             for coding in (payload.requisition.type_coding if payload.requisition else None) or []:
                 session.add(ServiceRequestRequisitionTypeCoding(
-                    service_request_pk=sr.id, tenant_id=payload.tenant_id, created_by=payload.created_by,
+                    service_request_pk=sr.id, tenant_id=org_id, created_by=created_by,
                     system=coding.system, version=coding.version, code=coding.code, display=coding.display, user_selected=coding.user_selected,
                 ))
             for coding in (payload.code.coding if payload.code else None) or []:
                 session.add(ServiceRequestCodeCoding(
-                    service_request_pk=sr.id, tenant_id=payload.tenant_id, created_by=payload.created_by,
+                    service_request_pk=sr.id, tenant_id=org_id, created_by=created_by,
                     system=coding.system, version=coding.version, code=coding.code, display=coding.display, user_selected=coding.user_selected,
                 ))
             for coding in (payload.as_needed_codeable_concept.coding if payload.as_needed_codeable_concept else None) or []:
                 session.add(ServiceRequestAsNeededCoding(
-                    service_request_pk=sr.id, tenant_id=payload.tenant_id, created_by=payload.created_by,
+                    service_request_pk=sr.id, tenant_id=org_id, created_by=created_by,
                     system=coding.system, version=coding.version, code=coding.code, display=coding.display, user_selected=coding.user_selected,
                 ))
             for coding in (payload.performer_type.coding if payload.performer_type else None) or []:
                 session.add(ServiceRequestPerformerTypeCoding(
-                    service_request_pk=sr.id, tenant_id=payload.tenant_id, created_by=payload.created_by,
+                    service_request_pk=sr.id, tenant_id=org_id, created_by=created_by,
                     system=coding.system, version=coding.version, code=coding.code, display=coding.display, user_selected=coding.user_selected,
                 ))
 
-            await self._insert_sub_resources(session, sr.id, payload, payload.tenant_id, payload.created_by)
+            await self._insert_sub_resources(session, sr.id, payload, org_id, created_by)
 
             try:
                 await session.commit()
@@ -402,7 +407,12 @@ class _FullMixin:
                 **_list_reference_kwargs(rh, ServiceRequestRelevantHistoryReferenceType),
             ))
 
-    async def patch_full(self, service_request_id: int, payload: ServiceRequestPatchSchema) -> ServiceRequestModel | None:
+    async def patch_full(
+        self,
+        service_request_id: int,
+        payload: ServiceRequestPatchSchema,
+        updated_by: str | None = None,
+    ) -> ServiceRequestModel | None:
         async with self.session_factory() as session:
             stmt = select(ServiceRequestModel).where(ServiceRequestModel.service_request_id == service_request_id)
             sr = (await session.execute(stmt)).scalars().first()
@@ -411,12 +421,15 @@ class _FullMixin:
 
             data = payload.model_dump(exclude_unset=True)
             provided = payload.model_fields_set
-            sub_created_by = payload.updated_by if payload.updated_by is not None else sr.created_by
 
             for field, value in data.items():
                 if field in _SUB or field in _SPECIAL:
                     continue
                 setattr(sr, field, value)
+
+            if updated_by is not None:
+                sr.updated_by = updated_by
+            sub_created_by = updated_by if updated_by is not None else sr.created_by
 
             if "status" in provided and payload.status is not None:
                 sr.status = _model_status(payload.status)

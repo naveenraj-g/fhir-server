@@ -211,24 +211,26 @@ class _FullMixin:
     async def create_full(
         self,
         payload: QuestionnaireResponseCreateSchema,
+        org_id: str,
+        created_by: str | None = None,
     ) -> QuestionnaireResponseModel:
-        """Default (gateway-trusted) pattern: `tenant_id`/`user_id`/
-        `created_by` all come straight off the validated payload, not a
-        verified JWT — see QuestionnaireResponseCreateSchema's docstring."""
+        """org_id/created_by come from the verified JWT (actor.org_id/
+        actor.sub), passed as explicit parameters — not read off the
+        payload, which no longer carries either field."""
         async with self.session_factory() as session:
             subject_kwargs = _single_reference_kwargs("subject", payload.subject, _any_ref_kwargs)
             encounter_kwargs = _single_reference_kwargs("encounter", payload.encounter, _encounter_ref_kwargs)
             author_kwargs = _single_reference_kwargs("author", payload.author, _author_ref_kwargs)
             source_kwargs = _single_reference_kwargs("source", payload.source, _source_ref_kwargs)
 
-            await _validate_single_reference(session, payload.tenant_id, "encounter", encounter_kwargs)
-            await _validate_single_reference(session, payload.tenant_id, "author", author_kwargs)
-            await _validate_single_reference(session, payload.tenant_id, "source", source_kwargs)
+            await _validate_single_reference(session, org_id, "encounter", encounter_kwargs)
+            await _validate_single_reference(session, org_id, "author", author_kwargs)
+            await _validate_single_reference(session, org_id, "source", source_kwargs)
 
             qr = QuestionnaireResponseModel(
-                tenant_id=payload.tenant_id,
+                tenant_id=org_id,
                 user_id=payload.user_id,
-                created_by=payload.created_by,
+                created_by=created_by,
                 extension=payload.extension or [],
                 **_identifier_kwargs(payload.identifier),
                 questionnaire=payload.questionnaire,
@@ -247,8 +249,8 @@ class _FullMixin:
                     session.add(
                         QuestionnaireResponseIdentifierTypeCoding(
                             questionnaire_response_pk=qr.id,
-                            tenant_id=payload.tenant_id,
-                            **_identifier_type_coding_kwargs(coding, payload.created_by),
+                            tenant_id=org_id,
+                            **_identifier_type_coding_kwargs(coding, created_by),
                         )
                     )
 
@@ -256,8 +258,8 @@ class _FullMixin:
                 session.add(
                     QuestionnaireResponseBasedOn(
                         questionnaire_response_pk=qr.id,
-                        tenant_id=payload.tenant_id,
-                        created_by=payload.created_by,
+                        tenant_id=org_id,
+                        created_by=created_by,
                         reference_reference=b.reference,
                         **_based_on_ref_kwargs("reference", b.reference, b.reference_display),
                         **{
@@ -271,8 +273,8 @@ class _FullMixin:
                 session.add(
                     QuestionnaireResponsePartOf(
                         questionnaire_response_pk=qr.id,
-                        tenant_id=payload.tenant_id,
-                        created_by=payload.created_by,
+                        tenant_id=org_id,
+                        created_by=created_by,
                         reference_reference=p.reference,
                         **_part_of_ref_kwargs("reference", p.reference, p.reference_display),
                         **{
@@ -283,7 +285,7 @@ class _FullMixin:
                 )
 
             if payload.item:
-                await _insert_items(session, qr.id, payload.item, None, None, payload.tenant_id, payload.created_by)
+                await _insert_items(session, qr.id, payload.item, None, None, org_id, created_by)
 
             try:
                 await session.commit()
@@ -298,6 +300,7 @@ class _FullMixin:
         self,
         questionnaire_response_id: int,
         payload: QuestionnaireResponsePatchSchema,
+        updated_by: str | None = None,
     ) -> QuestionnaireResponseModel | None:
         """Patches core scalar fields and, for each sub-resource list that
         is supplied — even `[]` — atomically deletes all existing rows and
@@ -322,10 +325,13 @@ class _FullMixin:
                     continue
                 setattr(qr, field, value)
 
-            # updated_by is itself a plain payload field for this default-
-            # pattern resource — the generic setattr loop above already
-            # applied it when provided.
-            sub_created_by = payload.updated_by if payload.updated_by is not None else qr.created_by
+            # updated_by is actor.sub, forwarded as an explicit parameter
+            # (not a payload field) — stamp the main row's own column
+            # explicitly, since the generic setattr loop above only
+            # applies fields still present in the schema.
+            if updated_by is not None:
+                qr.updated_by = updated_by
+            sub_created_by = updated_by if updated_by is not None else qr.created_by
 
             if "status" in provided and payload.status is not None:
                 qr.status = _model_status(payload.status)

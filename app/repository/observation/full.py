@@ -221,22 +221,27 @@ def _reference_range_kwargs(rr) -> dict:
 class _FullMixin:
     """create_full/patch_full — the two atomic nested-write orchestrators."""
 
-    async def create_full(self, payload: ObservationCreateSchema) -> ObservationModel:
+    async def create_full(
+        self,
+        payload: ObservationCreateSchema,
+        org_id: str,
+        created_by: str | None = None,
+    ) -> ObservationModel:
         async with self.session_factory() as session:
             subject_kwargs = _single_reference_kwargs("subject", payload.subject, ObservationSubjectReferenceType)
             encounter_kwargs = _single_reference_kwargs("encounter", payload.encounter, EncounterReferenceType)
             specimen_kwargs = _single_reference_kwargs("specimen", payload.specimen, ObservationSpecimenReferenceType)
             device_kwargs = _single_reference_kwargs("device", payload.device, ObservationDeviceReferenceType)
 
-            await _validate_ref(session, payload.tenant_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], _MODELED_SUBJECT_TYPES)
-            await _validate_ref(session, payload.tenant_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
-            await _validate_ref(session, payload.tenant_id, "specimen", specimen_kwargs["specimen_type"], specimen_kwargs["specimen_id"], set())
-            await _validate_ref(session, payload.tenant_id, "device", device_kwargs["device_type"], device_kwargs["device_id"], set())
+            await _validate_ref(session, org_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], _MODELED_SUBJECT_TYPES)
+            await _validate_ref(session, org_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
+            await _validate_ref(session, org_id, "specimen", specimen_kwargs["specimen_type"], specimen_kwargs["specimen_id"], set())
+            await _validate_ref(session, org_id, "device", device_kwargs["device_type"], device_kwargs["device_id"], set())
 
             obs = ObservationModel(
-                tenant_id=payload.tenant_id,
+                tenant_id=org_id,
                 user_id=payload.user_id,
-                created_by=payload.created_by,
+                created_by=created_by,
                 extension=payload.extension or [],
                 status=_model_status(payload.status),
                 code_text=payload.code.text if payload.code else None,
@@ -260,11 +265,11 @@ class _FullMixin:
             await session.flush()
 
             for coding in (payload.code.coding if payload.code else None) or []:
-                session.add(ObservationCodeCoding(observation_pk=obs.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(ObservationCodeCoding(observation_pk=obs.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.value_codeable_concept.coding if payload.value_codeable_concept else None) or []:
-                session.add(ObservationValueCodeableConceptCoding(observation_pk=obs.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(ObservationValueCodeableConceptCoding(observation_pk=obs.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
 
-            await self._insert_sub_resources(session, obs.id, payload, payload.tenant_id, payload.created_by)
+            await self._insert_sub_resources(session, obs.id, payload, org_id, created_by)
 
             try:
                 await session.commit()
@@ -411,7 +416,12 @@ class _FullMixin:
                     for coding in a.coding:
                         session.add(ObservationComponentReferenceRangeAppliesToCoding(observation_component_reference_range_applies_to_id=applies_to.id, tenant_id=tenant_id, **_coding_kwargs(coding, created_by)))
 
-    async def patch_full(self, observation_id: int, payload: ObservationPatchSchema) -> ObservationModel | None:
+    async def patch_full(
+        self,
+        observation_id: int,
+        payload: ObservationPatchSchema,
+        updated_by: str | None = None,
+    ) -> ObservationModel | None:
         async with self.session_factory() as session:
             stmt = select(ObservationModel).where(ObservationModel.observation_id == observation_id)
             obs = (await session.execute(stmt)).scalars().first()
@@ -420,13 +430,13 @@ class _FullMixin:
 
             data = payload.model_dump(exclude_unset=True)
             provided = payload.model_fields_set
-            sub_created_by = payload.updated_by if payload.updated_by is not None else obs.created_by
+            sub_created_by = updated_by if updated_by is not None else obs.created_by
 
             for field, value in data.items():
                 if field in _SUB or field in _SPECIAL:
                     continue
                 setattr(obs, field, value)
-            if updated_by := payload.updated_by:
+            if updated_by is not None:
                 obs.updated_by = updated_by
 
             if "status" in provided and payload.status is not None:

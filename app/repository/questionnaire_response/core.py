@@ -40,18 +40,42 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
+    async def get_by_questionnaire_response_id_in_org(
+        self, questionnaire_response_id: int, org_id: str
+    ) -> QuestionnaireResponseModel | None:
+        """Full lookup (with sub-resources) scoped to org_id — returns None
+        unless the resource exists AND belongs to org_id."""
+        async with self.session_factory() as session:
+            stmt = _with_relationships(
+                select(QuestionnaireResponseModel).where(
+                    QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id,
+                    QuestionnaireResponseModel.tenant_id == org_id,
+                )
+            )
+            return (await session.execute(stmt)).scalars().first()
+
+    async def questionnaire_response_belongs_to_org(
+        self, questionnaire_response_id: int, org_id: str
+    ) -> bool:
+        async with self.session_factory() as session:
+            stmt = select(QuestionnaireResponseModel.id).where(
+                QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id,
+                QuestionnaireResponseModel.tenant_id == org_id,
+            )
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
+
     def _apply_list_filters(
         self,
         stmt,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         user_id: str | None = None,
         status: QuestionnaireResponseStatus | None = None,
         questionnaire: str | None = None,
         subject: str | None = None,
         identifier: str | None = None,
     ):
-        if tenant_id:
-            stmt = stmt.where(QuestionnaireResponseModel.tenant_id == tenant_id)
+        if org_id:
+            stmt = stmt.where(QuestionnaireResponseModel.tenant_id == org_id)
         if user_id:
             stmt = stmt.where(QuestionnaireResponseModel.user_id == user_id)
         stmt = apply_token_filter(stmt, QuestionnaireResponseModel.status, status)
@@ -65,7 +89,7 @@ class _CoreMixin:
 
     async def list(
         self,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         user_id: str | None = None,
         status: QuestionnaireResponseStatus | None = None,
         questionnaire: str | None = None,
@@ -78,7 +102,7 @@ class _CoreMixin:
     ) -> tuple[list[QuestionnaireResponseModel], int | None]:
         async with self.session_factory() as session:
             filter_kwargs = {
-                "tenant_id": tenant_id,
+                "org_id": org_id,
                 "user_id": user_id,
                 "status": status,
                 "questionnaire": questionnaire,
@@ -123,7 +147,7 @@ class _CoreMixin:
     async def get_me(
         self,
         user_id: str,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         status: QuestionnaireResponseStatus | None = None,
         questionnaire: str | None = None,
         subject: str | None = None,
@@ -134,7 +158,7 @@ class _CoreMixin:
         total_mode: str = "accurate",
     ) -> tuple[list[QuestionnaireResponseModel], int | None]:
         return await self.list(
-            tenant_id=tenant_id,
+            org_id=org_id,
             user_id=user_id,
             status=status,
             questionnaire=questionnaire,

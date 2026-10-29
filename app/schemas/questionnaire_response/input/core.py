@@ -21,22 +21,17 @@ class QuestionnaireResponseCreateSchema(BaseModel):
     sub-resource lists atomically in one request — same set-once-then-patch
     shape as every other resource in this codebase.
 
-    Default (gateway-trusted) pattern — NOT part of the JWT auth rollout
-    (see CLAUDE.md's Multi-Tenancy & Ownership section): `tenant_id` and
-    `created_by` are plain, gateway-forwarded request fields here, unlike
-    every currently-built resource (all of which have since been
-    individually rolled into the auth-rollout pattern) — this is the first
-    new resource built since then, so it's the live example of the plain
-    default pattern CLAUDE.md always described but had no current example
-    of. `user_id` behaves the same either way."""
+    JWT/RBAC auth-rollout pattern — same as every other resource now:
+    `org_id`/`created_by` come from the verified JWT (`actor.org_id`/
+    `actor.sub`), not the request body — an org-less token is rejected
+    outright (403). `user_id` is unaffected — still a plain, optional,
+    gateway-forwarded field."""
 
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
             "example": {
                 "user_id": "user-001",
-                "tenant_id": "org-001",
-                "created_by": "user-001",
                 "questionnaire": "https://fhir-server.dev/fhir/Questionnaire/intake-form",
                 "status": "completed",
                 "authored": "2026-01-15T10:30:00Z",
@@ -53,12 +48,6 @@ class QuestionnaireResponseCreateSchema(BaseModel):
 
     user_id: str | None = Field(
         None, description="Gateway-forwarded ID of the end-user this record is scoped to — not a FHIR concept."
-    )
-    tenant_id: str = Field(
-        ..., description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept."
-    )
-    created_by: str = Field(
-        ..., description="Gateway-forwarded ID of the acting user who created this record — not a FHIR concept."
     )
 
     extension: list[dict] | None = Field(
@@ -106,18 +95,12 @@ class QuestionnaireResponseCreateSchema(BaseModel):
 class QuestionnaireResponsePatchSchema(BaseModel):
     """Partial update — only supplied fields are written. Every supplied
     sub-resource list (even `[]`) replaces the corresponding rows wholesale;
-    omitted lists are left untouched. `tenant_id`/`created_by` are
-    immutable and excluded here; `updated_by` is a plain, optional,
-    gateway-forwarded field (default pattern — see
-    QuestionnaireResponseCreateSchema's docstring)."""
+    omitted lists are left untouched. `org_id`/`created_by`/`updated_by`
+    all come from the verified JWT now — none are request-body fields."""
 
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={"example": {"updated_by": "user-001", "status": "amended"}},
-    )
-
-    updated_by: str | None = Field(
-        None, description="Gateway-forwarded ID of the acting user making this update — not a FHIR concept."
+        json_schema_extra={"example": {"status": "amended"}},
     )
 
     extension: list[dict] | None = Field(

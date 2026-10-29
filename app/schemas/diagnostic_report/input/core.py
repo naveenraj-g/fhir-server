@@ -22,7 +22,6 @@ from .reference import (
 _EXAMPLE = {
     "user_id": "user-001",
     "tenant_id": "org-001",
-    "created_by": "user-001",
     "status": "final",
     "code": {"coding": [{"system": "http://loinc.org", "code": "58410-2", "display": "Complete blood count panel"}]},
     "subject": {"reference": "Patient/10001"},
@@ -32,16 +31,15 @@ _EXAMPLE = {
 
 class DiagnosticReportCreateSchema(BaseModel):
     """Creates a DiagnosticReport and any combination of its sub-resource
-    lists atomically in one request. Default (gateway-trusted) pattern —
-    NOT part of the JWT auth rollout, same as Observation/
-    QuestionnaireResponse/ServiceRequest/MedicationRequest: `tenant_id`/
-    `created_by` are plain, gateway-forwarded request fields."""
+    lists atomically in one request. JWT/RBAC auth-rollout pattern —
+    same as every other resource now: `org_id`/`created_by` come from
+    the verified JWT (`actor.org_id`/`actor.sub`), not the request body
+    — an org-less token is rejected outright (403). `user_id` is
+    unaffected — still a plain, optional, gateway-forwarded field."""
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
 
     user_id: str | None = Field(None, description="Gateway-forwarded ID of the end-user this record is scoped to.")
-    tenant_id: str = Field(..., description="Gateway-forwarded ID of the tenant/account this record is scoped to.")
-    created_by: str = Field(..., description="Gateway-forwarded ID of the acting user who created this record.")
 
     extension: list[dict] | None = Field(None, description="Resource-level FHIR extensions.")
 
@@ -73,11 +71,11 @@ class DiagnosticReportCreateSchema(BaseModel):
 class DiagnosticReportPatchSchema(BaseModel):
     """Partial update — only supplied fields are written. Every supplied
     sub-resource list (even `[]`) replaces the corresponding rows
-    wholesale; omitted lists are left untouched."""
+    wholesale; omitted lists are left untouched. `org_id`/`created_by`/
+    `updated_by` all come from the verified JWT now — none are
+    request-body fields."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"updated_by": "user-001", "status": "amended"}})
-
-    updated_by: str | None = Field(None, description="Gateway-forwarded ID of the acting user making this update.")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"status": "amended"}})
 
     extension: list[dict] | None = Field(None, description="Replaces the full list if supplied.")
     identifier: list[DiagnosticReportIdentifierInput] | None = Field(None, description="Replaces the full list if supplied.")

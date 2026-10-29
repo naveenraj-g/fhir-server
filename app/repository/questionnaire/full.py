@@ -415,20 +415,18 @@ class _FullMixin:
             if "status" in provided and payload.status is not None:
                 q.status = _model_status(payload.status)
 
-            # updated_by is itself a plain payload field for this default-
-            # pattern resource (see QuestionnairePatchSchema) — the generic
-            # setattr loop above already applied it when provided; no
-            # separate actor-derived override needed, unlike an auth-
-            # rollout resource's patch_full().
-            #
-            # updated_by is also OPTIONAL here (unlike an auth-rollout
-            # resource's actor.sub, which is always present once
-            # authenticated) — a PATCH that replaces a sub-resource list
-            # still inserts genuinely NEW child rows, and
-            # TenantAuditMixin.created_by is NOT NULL on every one of
-            # them, so a None updated_by falls back to the parent
-            # questionnaire's own original created_by rather than
-            # violating that constraint.
+            # updated_by is actor.sub, forwarded as an explicit parameter
+            # (not a payload field — Questionnaire is auth-rolled-out) —
+            # stamp the main row's own column explicitly, since the
+            # generic setattr loop above only applies fields that are
+            # still *in the schema*, which updated_by no longer is.
+            if updated_by is not None:
+                q.updated_by = updated_by
+
+            # Sub-resource rows fall back to the parent's own created_by
+            # when updated_by is somehow absent, rather than violating
+            # TenantAuditMixin.created_by's NOT NULL constraint on a
+            # genuinely new child row.
             sub_created_by = updated_by if updated_by is not None else q.created_by
 
             if payload.code is not None:

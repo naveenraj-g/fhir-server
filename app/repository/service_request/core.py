@@ -28,18 +28,40 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
+    async def get_by_service_request_id_in_org(
+        self, service_request_id: int, org_id: str
+    ) -> ServiceRequestModel | None:
+        """Full lookup (with sub-resources) scoped to org_id — returns None
+        unless the resource exists AND belongs to org_id."""
+        async with self.session_factory() as session:
+            stmt = _with_relationships(
+                select(ServiceRequestModel).where(
+                    ServiceRequestModel.service_request_id == service_request_id,
+                    ServiceRequestModel.tenant_id == org_id,
+                )
+            )
+            return (await session.execute(stmt)).scalars().first()
+
+    async def service_request_belongs_to_org(self, service_request_id: int, org_id: str) -> bool:
+        async with self.session_factory() as session:
+            stmt = select(ServiceRequestModel.id).where(
+                ServiceRequestModel.service_request_id == service_request_id,
+                ServiceRequestModel.tenant_id == org_id,
+            )
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
+
     def _apply_list_filters(
         self,
         stmt,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         user_id: str | None = None,
         status: ServiceRequestStatus | None = None,
         intent: ServiceRequestIntent | None = None,
         subject: str | None = None,
         identifier: str | None = None,
     ):
-        if tenant_id:
-            stmt = stmt.where(ServiceRequestModel.tenant_id == tenant_id)
+        if org_id:
+            stmt = stmt.where(ServiceRequestModel.tenant_id == org_id)
         if user_id:
             stmt = stmt.where(ServiceRequestModel.user_id == user_id)
         stmt = apply_token_filter(stmt, ServiceRequestModel.status, status)
@@ -58,7 +80,7 @@ class _CoreMixin:
 
     async def list(
         self,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         user_id: str | None = None,
         status: ServiceRequestStatus | None = None,
         intent: ServiceRequestIntent | None = None,
@@ -71,7 +93,7 @@ class _CoreMixin:
     ) -> tuple[list[ServiceRequestModel], int | None]:
         async with self.session_factory() as session:
             filter_kwargs = {
-                "tenant_id": tenant_id,
+                "org_id": org_id,
                 "user_id": user_id,
                 "status": status,
                 "intent": intent,
@@ -105,7 +127,7 @@ class _CoreMixin:
     async def get_me(
         self,
         user_id: str,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         status: ServiceRequestStatus | None = None,
         intent: ServiceRequestIntent | None = None,
         subject: str | None = None,
@@ -116,7 +138,7 @@ class _CoreMixin:
         total_mode: str = "accurate",
     ) -> tuple[list[ServiceRequestModel], int | None]:
         return await self.list(
-            tenant_id=tenant_id, user_id=user_id, status=status, intent=intent,
+            org_id=org_id, user_id=user_id, status=status, intent=intent,
             subject=subject, identifier=identifier, limit=limit, offset=offset,
             sort=sort, total_mode=total_mode,
         )

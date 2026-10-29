@@ -177,7 +177,12 @@ def _coding_kwargs(coding, created_by: str | None) -> dict:
 class _FullMixin:
     """create_full/patch_full — the two atomic nested-write orchestrators."""
 
-    async def create_full(self, payload: MedicationRequestCreateSchema) -> MedicationRequestModel:
+    async def create_full(
+        self,
+        payload: MedicationRequestCreateSchema,
+        org_id: str,
+        created_by: str | None = None,
+    ) -> MedicationRequestModel:
         async with self.session_factory() as session:
             reported_reference_kwargs = _single_reference_kwargs(
                 "reported_reference", payload.reported_reference, MedicationRequestReportedReferenceType
@@ -197,20 +202,20 @@ class _FullMixin:
                 "prior_prescription", payload.prior_prescription, MedicationRequestReferenceType
             )
 
-            await _validate_ref(session, payload.tenant_id, "reportedReference", reported_reference_kwargs["reported_reference_type"], reported_reference_kwargs["reported_reference_id"], _MODELED_REPORTED_REFERENCE_TYPES)
-            await _validate_ref(session, payload.tenant_id, "medicationReference", medication_reference_kwargs["medication_reference_type"], medication_reference_kwargs["medication_reference_id"], set())
-            await _validate_ref(session, payload.tenant_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], set())
-            await _validate_ref(session, payload.tenant_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
-            await _validate_ref(session, payload.tenant_id, "requester", requester_kwargs["requester_type"], requester_kwargs["requester_id"], _MODELED_REQUESTER_TYPES)
-            await _validate_ref(session, payload.tenant_id, "performer", performer_kwargs["performer_type"], performer_kwargs["performer_id"], _MODELED_PERFORMER_TYPES)
-            await _validate_ref(session, payload.tenant_id, "recorder", recorder_kwargs["recorder_type"], recorder_kwargs["recorder_id"], None)
-            await _validate_ref(session, payload.tenant_id, "dispenseRequest.performer", dispense_request_performer_kwargs["dispense_request_performer_type"], dispense_request_performer_kwargs["dispense_request_performer_id"], None)
-            await _validate_ref(session, payload.tenant_id, "priorPrescription", prior_prescription_kwargs["prior_prescription_type"], prior_prescription_kwargs["prior_prescription_id"], None)
+            await _validate_ref(session, org_id, "reportedReference", reported_reference_kwargs["reported_reference_type"], reported_reference_kwargs["reported_reference_id"], _MODELED_REPORTED_REFERENCE_TYPES)
+            await _validate_ref(session, org_id, "medicationReference", medication_reference_kwargs["medication_reference_type"], medication_reference_kwargs["medication_reference_id"], set())
+            await _validate_ref(session, org_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], set())
+            await _validate_ref(session, org_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
+            await _validate_ref(session, org_id, "requester", requester_kwargs["requester_type"], requester_kwargs["requester_id"], _MODELED_REQUESTER_TYPES)
+            await _validate_ref(session, org_id, "performer", performer_kwargs["performer_type"], performer_kwargs["performer_id"], _MODELED_PERFORMER_TYPES)
+            await _validate_ref(session, org_id, "recorder", recorder_kwargs["recorder_type"], recorder_kwargs["recorder_id"], None)
+            await _validate_ref(session, org_id, "dispenseRequest.performer", dispense_request_performer_kwargs["dispense_request_performer_type"], dispense_request_performer_kwargs["dispense_request_performer_id"], None)
+            await _validate_ref(session, org_id, "priorPrescription", prior_prescription_kwargs["prior_prescription_type"], prior_prescription_kwargs["prior_prescription_id"], None)
 
             mr = MedicationRequestModel(
-                tenant_id=payload.tenant_id,
+                tenant_id=org_id,
                 user_id=payload.user_id,
-                created_by=payload.created_by,
+                created_by=created_by,
                 extension=payload.extension or [],
                 instantiates_canonical=payload.instantiates_canonical,
                 instantiates_uri=payload.instantiates_uri,
@@ -266,21 +271,21 @@ class _FullMixin:
             await session.flush()
 
             for coding in (payload.status_reason.coding if payload.status_reason else None) or []:
-                session.add(MedicationRequestStatusReasonCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestStatusReasonCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.medication_codeable_concept.coding if payload.medication_codeable_concept else None) or []:
-                session.add(MedicationRequestMedicationCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestMedicationCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.performer_type.coding if payload.performer_type else None) or []:
-                session.add(MedicationRequestPerformerTypeCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestPerformerTypeCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.group_identifier.type_coding if payload.group_identifier else None) or []:
-                session.add(MedicationRequestGroupIdentifierTypeCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestGroupIdentifierTypeCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.course_of_therapy_type.coding if payload.course_of_therapy_type else None) or []:
-                session.add(MedicationRequestCourseOfTherapyTypeCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestCourseOfTherapyTypeCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.substitution_allowed_codeable_concept.coding if payload.substitution_allowed_codeable_concept else None) or []:
-                session.add(MedicationRequestSubstitutionAllowedCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestSubstitutionAllowedCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
             for coding in (payload.substitution_reason.coding if payload.substitution_reason else None) or []:
-                session.add(MedicationRequestSubstitutionReasonCoding(medication_request_pk=mr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(MedicationRequestSubstitutionReasonCoding(medication_request_pk=mr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
 
-            await self._insert_sub_resources(session, mr.id, payload, payload.tenant_id, payload.created_by)
+            await self._insert_sub_resources(session, mr.id, payload, org_id, created_by)
 
             try:
                 await session.commit()
@@ -397,7 +402,12 @@ class _FullMixin:
         for eh in payload.event_history or []:
             session.add(MedicationRequestEventHistory(medication_request_pk=mr_pk, tenant_id=tenant_id, created_by=created_by, **_list_reference_kwargs(eh, MedicationRequestEventHistoryReferenceType)))
 
-    async def patch_full(self, medication_request_id: int, payload: MedicationRequestPatchSchema) -> MedicationRequestModel | None:
+    async def patch_full(
+        self,
+        medication_request_id: int,
+        payload: MedicationRequestPatchSchema,
+        updated_by: str | None = None,
+    ) -> MedicationRequestModel | None:
         async with self.session_factory() as session:
             stmt = select(MedicationRequestModel).where(MedicationRequestModel.medication_request_id == medication_request_id)
             mr = (await session.execute(stmt)).scalars().first()
@@ -406,12 +416,15 @@ class _FullMixin:
 
             data = payload.model_dump(exclude_unset=True)
             provided = payload.model_fields_set
-            sub_created_by = payload.updated_by if payload.updated_by is not None else mr.created_by
 
             for field, value in data.items():
                 if field in _SUB or field in _SPECIAL:
                     continue
                 setattr(mr, field, value)
+
+            if updated_by is not None:
+                mr.updated_by = updated_by
+            sub_created_by = updated_by if updated_by is not None else mr.created_by
 
             if "status" in provided and payload.status is not None:
                 mr.status = _model_status(payload.status)

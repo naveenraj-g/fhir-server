@@ -30,17 +30,39 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
+    async def get_by_diagnostic_report_id_in_org(
+        self, diagnostic_report_id: int, org_id: str
+    ) -> DiagnosticReportModel | None:
+        """Full lookup (with sub-resources) scoped to org_id — returns None
+        unless the resource exists AND belongs to org_id."""
+        async with self.session_factory() as session:
+            stmt = _with_relationships(
+                select(DiagnosticReportModel).where(
+                    DiagnosticReportModel.diagnostic_report_id == diagnostic_report_id,
+                    DiagnosticReportModel.tenant_id == org_id,
+                )
+            )
+            return (await session.execute(stmt)).scalars().first()
+
+    async def diagnostic_report_belongs_to_org(self, diagnostic_report_id: int, org_id: str) -> bool:
+        async with self.session_factory() as session:
+            stmt = select(DiagnosticReportModel.id).where(
+                DiagnosticReportModel.diagnostic_report_id == diagnostic_report_id,
+                DiagnosticReportModel.tenant_id == org_id,
+            )
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
+
     def _apply_list_filters(
         self,
         stmt,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         user_id: str | None = None,
         status: DiagnosticReportStatus | None = None,
         subject: str | None = None,
         identifier: str | None = None,
     ):
-        if tenant_id:
-            stmt = stmt.where(DiagnosticReportModel.tenant_id == tenant_id)
+        if org_id:
+            stmt = stmt.where(DiagnosticReportModel.tenant_id == org_id)
         if user_id:
             stmt = stmt.where(DiagnosticReportModel.user_id == user_id)
         stmt = apply_token_filter(stmt, DiagnosticReportModel.status, status)
@@ -58,7 +80,7 @@ class _CoreMixin:
 
     async def list(
         self,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         user_id: str | None = None,
         status: DiagnosticReportStatus | None = None,
         subject: str | None = None,
@@ -70,7 +92,7 @@ class _CoreMixin:
     ) -> tuple[list[DiagnosticReportModel], int | None]:
         async with self.session_factory() as session:
             filter_kwargs = {
-                "tenant_id": tenant_id,
+                "org_id": org_id,
                 "user_id": user_id,
                 "status": status,
                 "subject": subject,
@@ -103,7 +125,7 @@ class _CoreMixin:
     async def get_me(
         self,
         user_id: str,
-        tenant_id: str | None = None,
+        org_id: str | None = None,
         status: DiagnosticReportStatus | None = None,
         subject: str | None = None,
         identifier: str | None = None,
@@ -113,7 +135,7 @@ class _CoreMixin:
         total_mode: str = "accurate",
     ) -> tuple[list[DiagnosticReportModel], int | None]:
         return await self.list(
-            tenant_id=tenant_id, user_id=user_id, status=status,
+            org_id=org_id, user_id=user_id, status=status,
             subject=subject, identifier=identifier, limit=limit, offset=offset,
             sort=sort, total_mode=total_mode,
         )

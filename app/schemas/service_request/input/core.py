@@ -29,8 +29,6 @@ from .reference import (
 
 _EXAMPLE = {
     "user_id": "user-001",
-    "tenant_id": "org-001",
-    "created_by": "user-001",
     "status": "active",
     "intent": "order",
     "subject": {"reference": "Patient/10001"},
@@ -44,11 +42,11 @@ class ServiceRequestCreateSchema(BaseModel):
     lists atomically in one request — same set-once-then-patch shape as
     every other resource in this codebase.
 
-    Default (gateway-trusted) pattern — NOT part of the JWT auth rollout,
-    same as QuestionnaireResponse (see that resource's own
-    CreateSchema docstring): `tenant_id`/`created_by` are plain,
-    gateway-forwarded request fields. `user_id` behaves the same either
-    way.
+    JWT/RBAC auth-rollout pattern — same as every other resource now:
+    `org_id`/`created_by` come from the verified JWT (`actor.org_id`/
+    `actor.sub`), not the request body — an org-less token is rejected
+    outright (403). `user_id` is unaffected — still a plain, optional,
+    gateway-forwarded field.
 
     `quantity[x]`/`occurrence[x]`/`asNeeded[x]` choice-type fields are
     all flattened directly onto this schema with a field-group-per-
@@ -62,12 +60,6 @@ class ServiceRequestCreateSchema(BaseModel):
 
     user_id: str | None = Field(
         None, description="Gateway-forwarded ID of the end-user this record is scoped to — not a FHIR concept."
-    )
-    tenant_id: str = Field(
-        ..., description="Gateway-forwarded ID of the tenant/account this record is scoped to — not a FHIR concept."
-    )
-    created_by: str = Field(
-        ..., description="Gateway-forwarded ID of the acting user who created this record — not a FHIR concept."
     )
 
     extension: list[dict] | None = Field(
@@ -152,13 +144,11 @@ class ServiceRequestCreateSchema(BaseModel):
 class ServiceRequestPatchSchema(BaseModel):
     """Partial update — only supplied fields are written. Every supplied
     sub-resource list (even `[]`) replaces the corresponding rows
-    wholesale; omitted lists are left untouched. `tenant_id`/`created_by`
-    are immutable and excluded here; `updated_by` is a plain, optional,
-    gateway-forwarded field (default pattern)."""
+    wholesale; omitted lists are left untouched. `org_id`/`created_by`/
+    `updated_by` all come from the verified JWT now — none are
+    request-body fields."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"updated_by": "user-001", "status": "completed"}})
-
-    updated_by: str | None = Field(None, description="Gateway-forwarded ID of the acting user making this update.")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"status": "completed"}})
 
     extension: list[dict] | None = Field(None, description="Replaces the full list if supplied.")
     identifier: list[ServiceRequestIdentifierInput] | None = Field(None, description="Replaces the full list if supplied.")

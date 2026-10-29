@@ -131,18 +131,23 @@ def _presented_form_kwargs(a) -> dict:
 class _FullMixin:
     """create_full/patch_full — the two atomic nested-write orchestrators."""
 
-    async def create_full(self, payload: DiagnosticReportCreateSchema) -> DiagnosticReportModel:
+    async def create_full(
+        self,
+        payload: DiagnosticReportCreateSchema,
+        org_id: str,
+        created_by: str | None = None,
+    ) -> DiagnosticReportModel:
         async with self.session_factory() as session:
             subject_kwargs = _single_reference_kwargs("subject", payload.subject, DiagnosticReportSubjectReferenceType)
             encounter_kwargs = _single_reference_kwargs("encounter", payload.encounter, EncounterReferenceType)
 
-            await _validate_ref(session, payload.tenant_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], _MODELED_SUBJECT_TYPES)
-            await _validate_ref(session, payload.tenant_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
+            await _validate_ref(session, org_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"], _MODELED_SUBJECT_TYPES)
+            await _validate_ref(session, org_id, "encounter", encounter_kwargs["encounter_type"], encounter_kwargs["encounter_id"], None)
 
             dr = DiagnosticReportModel(
-                tenant_id=payload.tenant_id,
+                tenant_id=org_id,
                 user_id=payload.user_id,
-                created_by=payload.created_by,
+                created_by=created_by,
                 extension=payload.extension or [],
                 status=_model_status(payload.status),
                 code_text=payload.code.text if payload.code else None,
@@ -158,9 +163,9 @@ class _FullMixin:
             await session.flush()
 
             for coding in (payload.code.coding if payload.code else None) or []:
-                session.add(DiagnosticReportCodeCoding(diagnostic_report_pk=dr.id, tenant_id=payload.tenant_id, **_coding_kwargs(coding, payload.created_by)))
+                session.add(DiagnosticReportCodeCoding(diagnostic_report_pk=dr.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)))
 
-            await self._insert_sub_resources(session, dr.id, payload, payload.tenant_id, payload.created_by)
+            await self._insert_sub_resources(session, dr.id, payload, org_id, created_by)
 
             try:
                 await session.commit()
@@ -239,7 +244,12 @@ class _FullMixin:
         for a in payload.presented_form or []:
             session.add(DiagnosticReportPresentedForm(diagnostic_report_pk=dr_pk, tenant_id=tenant_id, created_by=created_by, **_presented_form_kwargs(a)))
 
-    async def patch_full(self, diagnostic_report_id: int, payload: DiagnosticReportPatchSchema) -> DiagnosticReportModel | None:
+    async def patch_full(
+        self,
+        diagnostic_report_id: int,
+        payload: DiagnosticReportPatchSchema,
+        updated_by: str | None = None,
+    ) -> DiagnosticReportModel | None:
         async with self.session_factory() as session:
             stmt = select(DiagnosticReportModel).where(DiagnosticReportModel.diagnostic_report_id == diagnostic_report_id)
             dr = (await session.execute(stmt)).scalars().first()
@@ -248,13 +258,13 @@ class _FullMixin:
 
             data = payload.model_dump(exclude_unset=True)
             provided = payload.model_fields_set
-            sub_created_by = payload.updated_by if payload.updated_by is not None else dr.created_by
+            sub_created_by = updated_by if updated_by is not None else dr.created_by
 
             for field, value in data.items():
                 if field in _SUB or field in _SPECIAL:
                     continue
                 setattr(dr, field, value)
-            if updated_by := payload.updated_by:
+            if updated_by is not None:
                 dr.updated_by = updated_by
 
             if "status" in provided and payload.status is not None:
