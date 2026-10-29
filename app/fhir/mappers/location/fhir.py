@@ -172,11 +172,13 @@ def fhir_location_telecom(t) -> dict:
 
 def fhir_location_hours_of_operation(h: LocationHoursOfOperation) -> dict:
     """Location.hoursOfOperation (BackboneElement) → FHIR camelCase dict.
-    `days_of_week` is a real Postgres ARRAY(String) column — no splitting
-    needed, the model already returns a list."""
+    `days_of_week` is a real Postgres ARRAY(Enum) column — SQLAlchemy hands
+    back a list of LocationDayOfWeek members, so each one goes through
+    fhir_enum() same as any other enum-typed field, rather than being
+    emitted directly."""
     entry: dict = {}
     if h.days_of_week:
-        entry["daysOfWeek"] = list(h.days_of_week)
+        entry["daysOfWeek"] = [fhir_enum(d) for d in h.days_of_week]
     if h.all_day is not None:
         entry["allDay"] = h.all_day
     if h.opening_time:

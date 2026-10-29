@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -32,12 +31,13 @@ class LocationIdentifier(TenantAuditMixin, Base):
     that fallback's own `.type` stays flattened/one-to-one (it's a
     reference's logical-identifier fallback, not a first-class identifier of
     this resource), matching OrganizationIdentifier's assigner_identifier_type_*.
+
+    No UniqueConstraint on (system, value) and no DB-level CHECK
+    constraints — same reasoning as OrganizationIdentifier, see
+    app/models/organization/identifier.py's docstring.
     """
 
     __tablename__ = "location_identifier"
-    __table_args__ = (
-        UniqueConstraint("system", "value", name="uq_location_identifier_system_value"),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Containment FK — named location_pk, not location_id, so it can never

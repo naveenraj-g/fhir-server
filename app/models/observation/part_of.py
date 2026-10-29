@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -18,15 +17,14 @@ from app.models.shared import TenantAuditMixin
 
 class ObservationPartOf(TenantAuditMixin, Base):
     """partOf[] — none of the six allowed types is a modeled resource in
-    this system; the existence check is never attempted for this field."""
+    this system; the existence check is never attempted for this field.
+
+    No UniqueConstraint on (observation_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment that
+    wants that as a rule expresses it as a profile-layer invariant, not a
+    base constraint."""
 
     __tablename__ = "observation_part_of"
-    __table_args__ = (
-        UniqueConstraint(
-            "observation_pk", "reference_type", "reference_id",
-            name="uq_observation_part_of_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)

@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -26,14 +25,13 @@ class PractitionerRoleIdentifier(TenantAuditMixin, Base):
     type's coding[] is a real 0..* child table
     (PractitionerRoleIdentifierTypeCoding, below) rather than a single
     flattened coding — same reasoning as HealthcareServiceIdentifier's own
-    type.coding[] promotion."""
+    type.coding[] promotion.
+
+    No UniqueConstraint on (system, value) and no DB-level CHECK
+    constraints — same reasoning as OrganizationIdentifier, see
+    app/models/organization/identifier.py's docstring."""
 
     __tablename__ = "practitioner_role_identifier"
-    __table_args__ = (
-        UniqueConstraint(
-            "system", "value", name="uq_practitioner_role_identifier_system_value"
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Containment FK — named practitioner_role_pk, not practitioner_role_id,

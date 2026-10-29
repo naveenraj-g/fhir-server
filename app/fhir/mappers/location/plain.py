@@ -140,11 +140,12 @@ def plain_location_telecom(t) -> dict:
 
 def plain_location_hours_of_operation(h: LocationHoursOfOperation) -> dict:
     """Location.hoursOfOperation (BackboneElement) → plain snake_case dict.
-    `days_of_week` is split back out of the comma-separated column into a real
-    list, so the plain form and the FHIR form agree."""
+    `days_of_week` is a real Postgres ARRAY(Enum) column — each element goes
+    through fhir_enum() same as fhir_location_hours_of_operation, so the
+    plain form and the FHIR form agree on plain code strings."""
     return {
         "id": h.id,
-        "days_of_week": list(h.days_of_week) if h.days_of_week else [],
+        "days_of_week": [fhir_enum(d) for d in h.days_of_week] if h.days_of_week else [],
         "all_day": h.all_day,
         "opening_time": h.opening_time.isoformat() if h.opening_time else None,
         "closing_time": h.closing_time.isoformat() if h.closing_time else None,

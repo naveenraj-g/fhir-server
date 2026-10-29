@@ -2,14 +2,15 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    Enum,
     ForeignKey,
-    String,
     Time,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.location.enums import LocationDayOfWeek
 from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
@@ -27,13 +28,13 @@ class LocationHoursOfOperation(TenantAuditMixin, Base):
       - openingTime (0..1 time)
       - closingTime (0..1 time)
 
-    `days_of_week` is a real Postgres `ARRAY(String)`, same as `Address.line`/
-    `HumanName.given`/`prefix`/`suffix` — the former comma-separated-Text
-    "exception" documented in /fhir-db-model conflated "don't promote this to
-    a child table" (still correct — there's nothing to join on) with "don't
-    use a plain array column either" (not actually justified; an array is
-    one column, not a join). Validated against LocationDayOfWeek at the
-    schema layer.
+    `days_of_week` is a real Postgres `ARRAY(Enum)` — unlike a plain
+    `ARRAY(String)` scalar list (`Address.line`, `HumanName.given`/`prefix`/
+    `suffix`), daysOfWeek carries a `required` binding, a closed code list
+    HL7 defines completely, so the DB type itself mirrors that enumeration
+    (`location_day_of_week` Postgres type) rather than leaving it to
+    schema-layer validation alone — see `LocationDayOfWeek`'s docstring
+    (`app/models/location/enums.py`) for the full reasoning.
 
     opening/closing use SQL `TIME`, not String: FHIR `time` is a wall-clock
     time with no date and no timezone, which is exactly what TIME stores, and
@@ -50,7 +51,16 @@ class LocationHoursOfOperation(TenantAuditMixin, Base):
         BigInteger, ForeignKey("location.id"), nullable=False, index=True
     )
 
-    days_of_week = Column(ARRAY(String), nullable=True)
+    days_of_week = Column(
+        ARRAY(
+            Enum(
+                LocationDayOfWeek,
+                name="location_day_of_week",
+                values_callable=lambda enum_cls: [m.value for m in enum_cls],
+            )
+        ),
+        nullable=True,
+    )
     all_day = Column(Boolean, nullable=True)
     opening_time = Column(Time, nullable=True)
     closing_time = Column(Time, nullable=True)

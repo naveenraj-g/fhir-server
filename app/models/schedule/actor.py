@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -30,15 +29,14 @@ class ScheduleActor(TenantAuditMixin, Base):
     (1..*) is enforced by the FHIR validator layer, not the database — see
     OrganizationModel's docstring for why no DB-level CHECK constraints exist
     in this codebase.
+
+    No UniqueConstraint on (schedule_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint.
     """
 
     __tablename__ = "schedule_actor"
-    __table_args__ = (
-        UniqueConstraint(
-            "schedule_pk", "reference_type", "reference_id",
-            name="uq_schedule_actor_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     schedule_pk = Column(

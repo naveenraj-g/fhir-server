@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -19,15 +18,14 @@ class ObservationFocus(TenantAuditMixin, Base):
     """focus[] — Reference(Any), genuinely any resource type, so
     `reference_type` is a plain free-text String rather than an Enum —
     same reasoning as MedicationRequest.supportingInformation (see
-    CLAUDE.md's `Reference(Any)` rule)."""
+    CLAUDE.md's `Reference(Any)` rule).
+
+    No UniqueConstraint on (observation_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment that
+    wants that as a rule expresses it as a profile-layer invariant, not a
+    base constraint."""
 
     __tablename__ = "observation_focus"
-    __table_args__ = (
-        UniqueConstraint(
-            "observation_pk", "reference_type", "reference_id",
-            name="uq_observation_focus_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)

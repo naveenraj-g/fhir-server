@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -22,15 +21,14 @@ from app.models.shared import TenantAuditMixin
 
 class EncounterBasedOn(TenantAuditMixin, Base):
     """basedOn[] — the ServiceRequest that initiated this encounter. Not a
-    modeled resource here; existence check never attempted."""
+    modeled resource here; existence check never attempted.
+
+    No UniqueConstraint on (encounter_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint."""
 
     __tablename__ = "encounter_based_on"
-    __table_args__ = (
-        UniqueConstraint(
-            "encounter_pk", "reference_type", "reference_id",
-            name="uq_encounter_based_on_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     encounter_pk = Column(

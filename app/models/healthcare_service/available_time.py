@@ -1,8 +1,9 @@
-from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, String, Time
+from sqlalchemy import BigInteger, Boolean, Column, Enum, ForeignKey, Time
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.healthcare_service.enums import HealthcareServiceDayOfWeek
 from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
@@ -19,13 +20,12 @@ class HealthcareServiceAvailableTime(TenantAuditMixin, Base):
       - availableStartTime (0..1 time)    ignored if allDay = true
       - availableEndTime   (0..1 time)    ignored if allDay = true
 
-    `days_of_week` is a real Postgres `ARRAY(String)`, same as `Address.line`/
-    `HumanName.given`/`prefix`/`suffix` — the former comma-separated-Text
-    "exception" documented in /fhir-db-model conflated "don't promote this to
-    a child table" (still correct — there's nothing to join on) with "don't
-    use a plain array column either" (not actually justified; an array is
-    one column, not a join). Validated against HealthcareServiceDayOfWeek at
-    the schema layer.
+    `days_of_week` is a real Postgres `ARRAY(Enum)` — daysOfWeek carries a
+    `required` binding (a closed code list HL7 defines completely), so the
+    DB type itself mirrors that enumeration (`healthcare_service_day_of_week`
+    Postgres type) rather than leaving it to schema-layer validation alone —
+    see `LocationDayOfWeek`'s docstring (`app/models/location/enums.py`) for
+    the full reasoning this mirrors.
 
     start/end use SQL `TIME`, not String: FHIR `time` is a wall-clock time
     with no date and no timezone, which is exactly what TIME stores — same
@@ -39,7 +39,16 @@ class HealthcareServiceAvailableTime(TenantAuditMixin, Base):
         BigInteger, ForeignKey("healthcare_service.id"), nullable=False, index=True
     )
 
-    days_of_week = Column(ARRAY(String), nullable=True)
+    days_of_week = Column(
+        ARRAY(
+            Enum(
+                HealthcareServiceDayOfWeek,
+                name="healthcare_service_day_of_week",
+                values_callable=lambda enum_cls: [m.value for m in enum_cls],
+            )
+        ),
+        nullable=True,
+    )
     all_day = Column(Boolean, nullable=True)
     available_start_time = Column(Time, nullable=True)
     available_end_time = Column(Time, nullable=True)

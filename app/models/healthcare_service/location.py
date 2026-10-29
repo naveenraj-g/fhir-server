@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -26,17 +25,14 @@ class HealthcareServiceLocation(TenantAuditMixin, Base):
     reference_id stores Location's PUBLIC location_id — no FK/relationship,
     same flattened-reference convention as HealthcareServiceModel.provided_by_*
     and PatientGeneralPractitioner.
+
+    No UniqueConstraint on (healthcare_service_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint.
     """
 
     __tablename__ = "healthcare_service_location"
-    __table_args__ = (
-        UniqueConstraint(
-            "healthcare_service_pk",
-            "reference_type",
-            "reference_id",
-            name="uq_healthcare_service_location_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Containment FK — named healthcare_service_pk, not healthcare_service_id,

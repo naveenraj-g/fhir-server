@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -24,15 +23,14 @@ class ServiceRequestReplaces(TenantAuditMixin, Base):
     ServiceRequest IS a modeled resource here (self-referential, same
     reasoning as Location.partOf/Encounter.partOf's own self-referential
     RESOURCE_REGISTRY entry), so this one's existence check is always
-    enforced — see app.repository.service_request._shared."""
+    enforced — see app.repository.service_request._shared.
+
+    No UniqueConstraint on (service_request_pk, reference_id): R4 doesn't
+    forbid listing the same reference twice — a deployment that wants
+    that as a rule expresses it as a profile-layer invariant, not a base
+    constraint."""
 
     __tablename__ = "service_request_replaces"
-    __table_args__ = (
-        UniqueConstraint(
-            "service_request_pk", "reference_id",
-            name="uq_service_request_replaces_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_pk = Column(

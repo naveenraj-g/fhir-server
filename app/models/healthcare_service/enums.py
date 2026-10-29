@@ -31,9 +31,14 @@ class HealthcareServiceDayOfWeek(str, Enum):
     """FHIR R4 HealthcareService.availableTime.daysOfWeek (0..*, required
     binding).
 
-    Stored as a real Postgres `ARRAY(String)` column (same shape as
-    `Address.line`), not bound to a PostgreSQL enum type — this enum exists
-    for schema-layer validation and mapper round-tripping only.
+    A `required` binding is a closed code list — HL7 defines the entire
+    allowed value set, with no room for a deployment or profile to extend
+    it — so this is bound to a real Postgres `ARRAY(Enum)` column
+    (`healthcare_service_day_of_week` type, see
+    `HealthcareServiceAvailableTime`), the same way every *single*-value
+    code column in this codebase already is. See `LocationDayOfWeek`'s
+    docstring (`app/models/location/enums.py`) for the full reasoning this
+    mirrors.
     https://www.hl7.org/fhir/R4/valueset-days-of-week.html
     """
 

@@ -46,9 +46,18 @@ class LocationEndpointReferenceType(str, Enum):
 class LocationDayOfWeek(str, Enum):
     """FHIR R4 Location.hoursOfOperation.daysOfWeek (0..*, required binding).
 
-    Stored as a real Postgres `ARRAY(String)` column (same shape as
-    `Address.line`), not bound to a PostgreSQL enum type — this enum exists
-    for schema-layer validation and mapper round-tripping only.
+    A `required` binding is a closed code list — HL7 defines the entire
+    allowed value set, with no room for a deployment or profile to extend
+    it — so unlike every other `ARRAY(String)` scalar list in this project
+    (`Address.line`, `HumanName.given`/`prefix`/`suffix`, none of which carry
+    any binding at all), this one is bound to a real Postgres `ARRAY(Enum)`
+    column (`location_day_of_week` type, see `LocationHoursOfOperation`), the
+    same way every *single*-value code column in this codebase already is
+    (`LocationModel.status`/`.mode`, etc.) — enforcing a spec-defined closed
+    enumeration at the DB layer isn't "inventing a rule beyond spec," it's
+    mirroring the required binding verbatim. This enum is still what the
+    Pydantic schema layer validates against and the mapper round-trips
+    through; it's just no longer schema-layer-only.
     https://www.hl7.org/fhir/R4/valueset-days-of-week.html
     """
 

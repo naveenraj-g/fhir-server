@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -28,15 +27,14 @@ class ServiceRequestPerformer(TenantAuditMixin, Base):
     CareTeam/Patient/Device/RelatedPerson rows always rely on the
     identifier fallback instead; the existence check is only ever
     attempted for the modeled subset (see
-    app.repository.service_request._shared._MODELED_PERFORMER_TYPES)."""
+    app.repository.service_request._shared._MODELED_PERFORMER_TYPES).
+
+    No UniqueConstraint on (service_request_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint."""
 
     __tablename__ = "service_request_performer"
-    __table_args__ = (
-        UniqueConstraint(
-            "service_request_pk", "reference_type", "reference_id",
-            name="uq_service_request_performer_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_pk = Column(

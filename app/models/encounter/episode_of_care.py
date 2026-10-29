@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -25,15 +24,14 @@ class EncounterEpisodeOfCare(TenantAuditMixin, Base):
 
     EpisodeOfCare is not a modeled resource in this system, so
     reference_identifier_* columns are in practice the only way to record
-    one. The existence check is never attempted for this field."""
+    one. The existence check is never attempted for this field.
+
+    No UniqueConstraint on (encounter_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint."""
 
     __tablename__ = "encounter_episode_of_care"
-    __table_args__ = (
-        UniqueConstraint(
-            "encounter_pk", "reference_type", "reference_id",
-            name="uq_encounter_episode_of_care_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     encounter_pk = Column(

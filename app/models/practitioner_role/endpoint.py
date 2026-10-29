@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -27,17 +26,14 @@ class PractitionerRoleEndpoint(TenantAuditMixin, Base):
     Endpoint is not a modeled resource in this system, so the
     reference_identifier_* columns are in practice the only way to record one
     — same situation and same shape as HealthcareServiceEndpoint.
+
+    No UniqueConstraint on (practitioner_role_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint.
     """
 
     __tablename__ = "practitioner_role_endpoint"
-    __table_args__ = (
-        UniqueConstraint(
-            "practitioner_role_pk",
-            "reference_type",
-            "reference_id",
-            name="uq_practitioner_role_endpoint_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_role_pk = Column(

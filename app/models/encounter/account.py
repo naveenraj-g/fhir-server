@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -23,15 +22,14 @@ from app.models.shared import TenantAuditMixin
 class EncounterAccount(TenantAuditMixin, Base):
     """account[] — the set of accounts that may be used for billing for
     this encounter. Account is not a modeled resource in this system;
-    existence check never attempted."""
+    existence check never attempted.
+
+    No UniqueConstraint on (encounter_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint."""
 
     __tablename__ = "encounter_account"
-    __table_args__ = (
-        UniqueConstraint(
-            "encounter_pk", "reference_type", "reference_id",
-            name="uq_encounter_account_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     encounter_pk = Column(

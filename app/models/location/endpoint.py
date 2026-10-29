@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -27,17 +26,14 @@ class LocationEndpoint(TenantAuditMixin, Base):
     Endpoint is not a modeled resource in this system, so the
     reference_identifier_* columns are in practice the only way to record one
     — same situation and same shape as OrganizationEndpoint.
+
+    No UniqueConstraint on (location_pk, reference_type, reference_id): R4
+    doesn't forbid listing the same reference twice — a deployment that
+    wants that as a rule expresses it as a profile-layer invariant, not a
+    base constraint.
     """
 
     __tablename__ = "location_endpoint"
-    __table_args__ = (
-        UniqueConstraint(
-            "location_pk",
-            "reference_type",
-            "reference_id",
-            name="uq_location_endpoint_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Containment FK — named location_pk, not location_id, so it can never

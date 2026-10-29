@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -28,17 +27,14 @@ class QuestionnaireResponseBasedOn(TenantAuditMixin, Base):
     system, so reference_identifier_* columns are in practice the only
     way to record one — same situation as AppointmentReasonReference /
     AppointmentBasedOn. The existence check is never attempted for this
-    field."""
+    field.
+
+    No UniqueConstraint on (questionnaire_response_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint."""
 
     __tablename__ = "questionnaire_response_based_on"
-    __table_args__ = (
-        UniqueConstraint(
-            "questionnaire_response_pk",
-            "reference_type",
-            "reference_id",
-            name="uq_questionnaire_response_based_on_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     questionnaire_response_pk = Column(

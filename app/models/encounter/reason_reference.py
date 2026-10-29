@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -26,15 +25,14 @@ class EncounterReasonReference(TenantAuditMixin, Base):
     a code/reference. None of Condition/Procedure/Observation/
     ImmunizationRecommendation are modeled resources in this system;
     existence check never attempted — same situation as
-    AppointmentReasonReference."""
+    AppointmentReasonReference.
+
+    No UniqueConstraint on (encounter_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint."""
 
     __tablename__ = "encounter_reason_reference"
-    __table_args__ = (
-        UniqueConstraint(
-            "encounter_pk", "reference_type", "reference_id",
-            name="uq_encounter_reason_reference_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     encounter_pk = Column(

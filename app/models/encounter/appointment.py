@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -26,15 +25,14 @@ class EncounterAppointment(TenantAuditMixin, Base):
     a modeled resource in this system (registered in RESOURCE_REGISTRY —
     see app/core/reference_resolver.py), so this reference's existence
     check is actually enforced, the same as every other resolvable
-    flattened reference in this codebase."""
+    flattened reference in this codebase.
+
+    No UniqueConstraint on (encounter_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint."""
 
     __tablename__ = "encounter_appointment"
-    __table_args__ = (
-        UniqueConstraint(
-            "encounter_pk", "reference_type", "reference_id",
-            name="uq_encounter_appointment_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     encounter_pk = Column(

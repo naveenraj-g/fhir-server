@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -30,17 +29,14 @@ class AppointmentReasonReference(TenantAuditMixin, Base):
     in practice the only way to record one — same situation and same shape
     as HealthcareServiceEndpoint / LocationEndpoint. The existence check is
     never attempted for this field — see
-    app.repository.appointment._shared's docstring."""
+    app.repository.appointment._shared's docstring.
+
+    No UniqueConstraint on (appointment_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment
+    that wants that as a rule expresses it as a profile-layer invariant,
+    not a base constraint."""
 
     __tablename__ = "appointment_reason_reference"
-    __table_args__ = (
-        UniqueConstraint(
-            "appointment_pk",
-            "reference_type",
-            "reference_id",
-            name="uq_appointment_reason_reference_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     appointment_pk = Column(

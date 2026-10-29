@@ -210,9 +210,12 @@ def fhir_hs_referral_method(rm) -> dict:
 
 
 def fhir_hs_available_time(at) -> dict:
+    """`days_of_week` is a real Postgres ARRAY(Enum) column — SQLAlchemy
+    hands back a list of HealthcareServiceDayOfWeek members, so each one
+    goes through fhir_enum() same as any other enum-typed field."""
     entry: dict = {}
     if at.days_of_week:
-        entry["daysOfWeek"] = list(at.days_of_week)
+        entry["daysOfWeek"] = [fhir_enum(d) for d in at.days_of_week]
     if at.all_day is not None:
         entry["allDay"] = at.all_day
     if at.available_start_time:

@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -25,12 +24,13 @@ class SlotIdentifier(TenantAuditMixin, Base):
     type_text stays flattened (sibling of coding[], not part of it);
     type's coding[] is a real 0..* child table (SlotIdentifierTypeCoding,
     below) rather than a single flattened coding — same reasoning as
-    ScheduleIdentifier's own type.coding[] promotion."""
+    ScheduleIdentifier's own type.coding[] promotion.
+
+    No UniqueConstraint on (system, value) and no DB-level CHECK
+    constraints — same reasoning as OrganizationIdentifier, see
+    app/models/organization/identifier.py's docstring."""
 
     __tablename__ = "slot_identifier"
-    __table_args__ = (
-        UniqueConstraint("system", "value", name="uq_slot_identifier_system_value"),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Containment FK — named slot_pk, not slot_id, so it can never be

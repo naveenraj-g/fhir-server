@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -26,12 +25,13 @@ class EncounterIdentifier(TenantAuditMixin, Base):
     type's coding[] is a real 0..* child table
     (EncounterIdentifierTypeCoding, below) rather than a single flattened
     coding — same reasoning as AppointmentIdentifier's own type.coding[]
-    promotion."""
+    promotion.
+
+    No UniqueConstraint on (system, value) and no DB-level CHECK
+    constraints — same reasoning as OrganizationIdentifier, see
+    app/models/organization/identifier.py's docstring."""
 
     __tablename__ = "encounter_identifier"
-    __table_args__ = (
-        UniqueConstraint("system", "value", name="uq_encounter_identifier_system_value"),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Containment FK — named encounter_pk, not encounter_id, so it can

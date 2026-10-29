@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -21,15 +20,14 @@ class DiagnosticReportResultsInterpreter(TenantAuditMixin, Base):
     Practitioner|PractitionerRole|Organization|CareTeam as performer[]
     (see DiagnosticReportActorReferenceType's own docstring); this
     column reuses that same Postgres enum type, `create_type=False`
-    since performer's own table creates it first."""
+    since performer's own table creates it first.
+
+    No UniqueConstraint on (diagnostic_report_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint."""
 
     __tablename__ = "diagnostic_report_results_interpreter"
-    __table_args__ = (
-        UniqueConstraint(
-            "diagnostic_report_pk", "reference_type", "reference_id",
-            name="uq_diagnostic_report_results_interpreter_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)

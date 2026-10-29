@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -20,15 +19,14 @@ class ObservationBasedOn(TenantAuditMixin, Base):
     """basedOn[] — of the six allowed types, only MedicationRequest and
     ServiceRequest are modeled resources — the existence check is only
     ever attempted for that subset (see
-    app.repository.observation._shared._MODELED_BASED_ON_TYPES)."""
+    app.repository.observation._shared._MODELED_BASED_ON_TYPES).
+
+    No UniqueConstraint on (observation_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment that
+    wants that as a rule expresses it as a profile-layer invariant, not a
+    base constraint."""
 
     __tablename__ = "observation_based_on"
-    __table_args__ = (
-        UniqueConstraint(
-            "observation_pk", "reference_type", "reference_id",
-            name="uq_observation_based_on_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)

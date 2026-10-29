@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -20,15 +19,14 @@ class DiagnosticReportPerformer(TenantAuditMixin, Base):
     """performer[] — of the four allowed types, only Practitioner/
     PractitionerRole/Organization are modeled resources — the existence
     check is only ever attempted for that subset (see
-    app.repository.diagnostic_report._shared._MODELED_PERFORMER_TYPES)."""
+    app.repository.diagnostic_report._shared._MODELED_PERFORMER_TYPES).
+
+    No UniqueConstraint on (diagnostic_report_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint."""
 
     __tablename__ = "diagnostic_report_performer"
-    __table_args__ = (
-        UniqueConstraint(
-            "diagnostic_report_pk", "reference_type", "reference_id",
-            name="uq_diagnostic_report_performer_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)

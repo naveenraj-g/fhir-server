@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -19,15 +18,14 @@ from app.models.shared import TenantAuditMixin
 class ObservationDerivedFrom(TenantAuditMixin, Base):
     """derivedFrom[] — self-referential (Observation) plus
     QuestionnaireResponse are the only modeled resources among the six
-    allowed types."""
+    allowed types.
+
+    No UniqueConstraint on (observation_pk, reference_type, reference_id):
+    R4 doesn't forbid listing the same reference twice — a deployment that
+    wants that as a rule expresses it as a profile-layer invariant, not a
+    base constraint."""
 
     __tablename__ = "observation_derived_from"
-    __table_args__ = (
-        UniqueConstraint(
-            "observation_pk", "reference_type", "reference_id",
-            name="uq_observation_derived_from_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)

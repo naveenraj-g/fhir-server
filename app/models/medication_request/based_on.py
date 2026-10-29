@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -20,15 +19,14 @@ class MedicationRequestBasedOn(TenantAuditMixin, Base):
     """basedOn[] — of the four allowed types, MedicationRequest
     (self-referential) and ServiceRequest are modeled resources — the
     existence check is only ever attempted for that subset (see
-    app.repository.medication_request._shared._MODELED_BASED_ON_TYPES)."""
+    app.repository.medication_request._shared._MODELED_BASED_ON_TYPES).
+
+    No UniqueConstraint on (medication_request_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint."""
 
     __tablename__ = "medication_request_based_on"
-    __table_args__ = (
-        UniqueConstraint(
-            "medication_request_pk", "reference_type", "reference_id",
-            name="uq_medication_request_based_on_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_pk = Column(BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True)

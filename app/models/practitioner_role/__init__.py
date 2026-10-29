@@ -3,6 +3,7 @@ from .code import PractitionerRoleCode, PractitionerRoleCodeCoding
 from .core import PractitionerRoleModel, practitioner_role_id_seq
 from .endpoint import PractitionerRoleEndpoint
 from .enums import (
+    PractitionerRoleDayOfWeek,
     PractitionerRoleEndpointReferenceType,
     PractitionerRoleHealthcareServiceReferenceType,
     PractitionerRoleLocationReferenceType,
@@ -18,6 +19,7 @@ __all__ = [
     "PractitionerRoleAvailableTime",
     "PractitionerRoleCode",
     "PractitionerRoleCodeCoding",
+    "PractitionerRoleDayOfWeek",
     "PractitionerRoleEndpoint",
     "PractitionerRoleEndpointReferenceType",
     "PractitionerRoleHealthcareService",

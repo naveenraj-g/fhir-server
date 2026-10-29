@@ -218,9 +218,11 @@ def plain_hs_referral_method(rm) -> dict:
 
 
 def plain_hs_available_time(at) -> dict:
+    """`days_of_week` is a real Postgres ARRAY(Enum) column — each element
+    goes through fhir_enum() same as fhir_hs_available_time."""
     return {
         "id": at.id,
-        "days_of_week": list(at.days_of_week) if at.days_of_week else [],
+        "days_of_week": [fhir_enum(d) for d in at.days_of_week] if at.days_of_week else [],
         "all_day": at.all_day,
         "available_start_time": at.available_start_time.isoformat()
         if at.available_start_time

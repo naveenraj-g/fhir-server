@@ -6,7 +6,6 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -18,15 +17,14 @@ from app.models.shared import TenantAuditMixin
 
 class MedicationRequestInsurance(TenantAuditMixin, Base):
     """insurance[] — neither Coverage nor ClaimResponse is a modeled
-    resource in this system."""
+    resource in this system.
+
+    No UniqueConstraint on (medication_request_pk, reference_type,
+    reference_id): R4 doesn't forbid listing the same reference twice — a
+    deployment that wants that as a rule expresses it as a profile-layer
+    invariant, not a base constraint."""
 
     __tablename__ = "medication_request_insurance"
-    __table_args__ = (
-        UniqueConstraint(
-            "medication_request_pk", "reference_type", "reference_id",
-            name="uq_medication_request_insurance_reference",
-        ),
-    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_pk = Column(BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True)
