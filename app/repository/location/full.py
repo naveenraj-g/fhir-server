@@ -3,7 +3,6 @@ from sqlalchemy import delete, select
 from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
 from app.models.location import (
-    LocationAlias,
     LocationEndpoint,
     LocationHoursOfOperation,
     LocationIdentifier,
@@ -31,7 +30,7 @@ logger = get_logger(__name__)
 
 # Sub-resource list fields on the create/patch payloads. A supplied list (even
 # `[]`) replaces the corresponding rows wholesale; an omitted one is untouched.
-_SUB = {"identifier", "type", "alias", "telecom", "hours_of_operation", "endpoint"}
+_SUB = {"identifier", "type", "telecom", "hours_of_operation", "endpoint"}
 
 
 def _day_values(values: list | None) -> list[str] | None:
@@ -123,6 +122,7 @@ class _FullMixin:
                 operational_status_display=payload.operational_status_display,
                 operational_status_user_selected=payload.operational_status_user_selected,
                 name=payload.name,
+                alias=payload.alias,
                 description=payload.description,
                 # LocationModel's address columns come from FhirAddressMixin
                 # (_address_prefix="address_") — the Python attribute names
@@ -223,17 +223,6 @@ class _FullMixin:
                                     **_coding_kwargs(coding, created_by),
                                 )
                             )
-
-            if payload.alias:
-                for a in payload.alias:
-                    session.add(
-                        LocationAlias(
-                            location_pk=loc.id,
-                            tenant_id=org_id,
-                            value=a.value,
-                            created_by=created_by,
-                        )
-                    )
 
             if payload.telecom:
                 for t in payload.telecom:
@@ -445,20 +434,6 @@ class _FullMixin:
                                     **_coding_kwargs(coding, updated_by),
                                 )
                             )
-
-            if payload.alias is not None:
-                await session.execute(
-                    delete(LocationAlias).where(LocationAlias.location_pk == loc.id)
-                )
-                for a in payload.alias:
-                    session.add(
-                        LocationAlias(
-                            location_pk=loc.id,
-                            tenant_id=loc.tenant_id,
-                            value=a.value,
-                            created_by=updated_by,
-                        )
-                    )
 
             if payload.telecom is not None:
                 await session.execute(

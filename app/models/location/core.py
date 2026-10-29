@@ -12,7 +12,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -124,6 +124,13 @@ class LocationModel(FhirAddressMixin, TenantAuditMixin, Base):
     # ── mode (0..1 code) ─────────────────────────────────────────────────────
 
     mode = Column(Enum(LocationMode, name="location_mode"), nullable=True)
+
+    # alias (0..*) — plain scalar string list, no sub-structure at all, so
+    # it's a flat ARRAY(String) column directly on this row rather than a
+    # child table — see /fhir-db-model's "no comma-Text exception for 0..*
+    # scalar lists" rule. (Previously modeled as a child table, LocationAlias;
+    # fixed to match that rule, same as OrganizationModel.alias.)
+    alias = Column(ARRAY(String), nullable=True)
 
     # ── address (0..1 Address) — via FhirAddressMixin, _address_prefix =
     # "address_" (set above), same pattern as OrganizationContact's
@@ -252,11 +259,6 @@ class LocationModel(FhirAddressMixin, TenantAuditMixin, Base):
 
     identifiers = relationship(
         "LocationIdentifier",
-        back_populates="location",
-        cascade="all, delete-orphan",
-    )
-    aliases = relationship(
-        "LocationAlias",
         back_populates="location",
         cascade="all, delete-orphan",
     )

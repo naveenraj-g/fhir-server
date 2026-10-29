@@ -7,7 +7,6 @@ from app.models.location.enums import LocationMode, LocationStatus
 from app.schemas.datatypes import CodingInput
 from app.schemas.enums import AddressType, AddressUse, IdentifierUse
 
-from .alias import LocationAliasInput
 from .endpoint import LocationEndpointInput
 from .hours_of_operation import LocationHoursOfOperationInput
 from .identifier import LocationIdentifierInput
@@ -106,7 +105,7 @@ class LocationCreateSchema(_PositionMixin):
                         ]
                     }
                 ],
-                "alias": [{"value": "South Wing OR"}],
+                "alias": ["South Wing OR"],
                 "telecom": [{"system": "phone", "value": "2328", "use": "work"}],
                 "hours_of_operation": [
                     {
@@ -362,7 +361,7 @@ class LocationCreateSchema(_PositionMixin):
     type: list[LocationTypeInput] | None = Field(
         None, description="Indicates the type of function performed at the location."
     )
-    alias: list[LocationAliasInput] | None = Field(
+    alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the location is known as, or was known as, in the past.",
     )
@@ -400,7 +399,7 @@ class LocationPatchSchema(_PositionMixin):
                 "status": "suspended",
                 "name": "South Wing, second floor",
                 "description": "Closed for refurbishment until further notice",
-                "alias": [{"value": "South Wing OR"}],
+                "alias": ["South Wing OR"],
                 "telecom": [{"system": "phone", "value": "2328", "use": "work"}],
             }
         },
@@ -593,7 +592,7 @@ class LocationPatchSchema(_PositionMixin):
         None,
         description="Function(s) performed at the location — replaces the full list if supplied.",
     )
-    alias: list[LocationAliasInput] | None = Field(
+    alias: list[str] | None = Field(
         None,
         description="Alternate name(s) for the location — replaces the full list if supplied.",
     )

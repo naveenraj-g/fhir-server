@@ -59,7 +59,7 @@ FULL = {
             ]
         }
     ],
-    "alias": [{"value": "South Wing OR"}],
+    "alias": ["South Wing OR"],
     "telecom": [{"system": "phone", "value": "2328", "use": "work"}],
     "hours_of_operation": [
         {

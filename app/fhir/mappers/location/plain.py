@@ -124,17 +124,6 @@ def plain_location_type(t) -> dict:
     }
 
 
-def plain_location_alias(a) -> dict:
-    """Location.alias → plain snake_case dict. Unlike the FHIR mapper (which
-    collapses the row to a bare string), the plain form keeps the row id so
-    callers can target it with a sub-resource DELETE."""
-    return {
-        "id": a.id,
-        "value": a.value,
-        **_audit_fields(a),
-    }
-
-
 def plain_location_telecom(t) -> dict:
     """Location.telecom (ContactPoint) → plain snake_case dict."""
     return {
@@ -214,7 +203,7 @@ def to_plain_location(loc: LocationModel) -> dict:
         "availability_exceptions": loc.availability_exceptions,
         "identifier": [plain_location_identifier(i) for i in (loc.identifiers or [])],
         "type": [plain_location_type(t) for t in (loc.types or [])],
-        "alias": [plain_location_alias(a) for a in (loc.aliases or [])],
+        "alias": list(loc.alias or []),
         "telecom": [plain_location_telecom(t) for t in (loc.telecoms or [])],
         "hours_of_operation": [
             plain_location_hours_of_operation(h)

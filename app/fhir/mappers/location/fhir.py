@@ -165,12 +165,6 @@ def fhir_location_type(t) -> dict:
     return entry
 
 
-def fhir_location_alias(a) -> str:
-    """Location.alias (string) — the child row collapses to a bare string in
-    FHIR output, same as Organization.alias."""
-    return a.value
-
-
 def fhir_location_telecom(t) -> dict:
     """Location.telecom (ContactPoint) → FHIR camelCase dict."""
     return fhir_telecom(t)
@@ -360,9 +354,8 @@ def to_fhir_location(loc: LocationModel) -> dict:
     if loc.name:
         result["name"] = loc.name
 
-    aliases = [fhir_location_alias(a) for a in (loc.aliases or []) if a.value]
-    if aliases:
-        result["alias"] = aliases
+    if loc.alias:
+        result["alias"] = list(loc.alias)
 
     if loc.description:
         result["description"] = loc.description

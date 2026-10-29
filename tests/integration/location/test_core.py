@@ -69,7 +69,7 @@ async def test_create_full_roundtrips_every_sublist(client):
     assert body["identifier"][0]["value"] == "B1-S.F2"
     assert body["identifier"][0]["assigner_identifier_value"] == "EXTERNAL-1"
     assert body["type"][0]["codings"][0]["code"] == "HOSP"
-    assert body["alias"][0]["value"] == "South Wing OR"
+    assert body["alias"][0] == "South Wing OR"
     assert body["telecom"][0]["value"] == "2328"
     assert body["endpoint"][0]["reference_identifier_value"] == "EP-1"
 
@@ -82,8 +82,10 @@ async def test_create_full_roundtrips_every_sublist(client):
     assert hours["closing_time"] == "17:30:00"
     assert hours["all_day"] is False
 
-    # every sub-resource row exposes its own id, for targeted follow-up
-    for key in ("identifier", "type", "alias", "telecom", "hours_of_operation", "endpoint"):
+    # every sub-resource row exposes its own id, for targeted follow-up —
+    # alias is excluded, since it's a plain list[str] with no row id
+    # (same as Organization.alias).
+    for key in ("identifier", "type", "telecom", "hours_of_operation", "endpoint"):
         assert all("id" in row for row in body[key]), key
 
 
@@ -241,11 +243,11 @@ async def test_patch_scalar_fields(client):
 async def test_patch_replaces_supplied_sublist_only(client):
     loc_id = await create_location(client, FULL)
     resp = await client.patch(
-        f"{BASE}/{loc_id}", json={"alias": [{"value": "New Alias"}]}
+        f"{BASE}/{loc_id}", json={"alias": ["New Alias"]}
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert [a["value"] for a in body["alias"]] == ["New Alias"]
+    assert body["alias"] == ["New Alias"]
     # telecom was not supplied, so it is untouched
     assert len(body["telecom"]) == 1
 
@@ -306,7 +308,7 @@ async def test_list_fhir_bundle(client):
 
 async def test_filter_name_matches_name_or_alias(client):
     await create_location(client, MINIMAL, name="Cardiology Ward")
-    await create_location(client, MINIMAL, name="Radiology", alias=[{"value": "X-Ray Dept"}])
+    await create_location(client, MINIMAL, name="Radiology", alias=["X-Ray Dept"])
 
     by_name = (await client.get(BASE + "/", params={"name": "cardio"})).json()
     assert [d["name"] for d in by_name["data"]] == ["Cardiology Ward"]

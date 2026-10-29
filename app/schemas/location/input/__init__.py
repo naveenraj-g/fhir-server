@@ -1,6 +1,5 @@
 from app.schemas.datatypes import CodingInput
 
-from .alias import LocationAliasInput
 from .core import LocationCreateSchema, LocationPatchSchema
 from .endpoint import LocationEndpointInput
 from .hours_of_operation import LocationHoursOfOperationInput
@@ -14,7 +13,6 @@ __all__ = [
     "LocationPatchSchema",
     "LocationIdentifierInput",
     "LocationTypeInput",
-    "LocationAliasInput",
     "LocationTelecomInput",
     "LocationHoursOfOperationInput",
     "LocationEndpointInput",

@@ -14,7 +14,6 @@ from app.schemas.datatypes import (
     PlainCodingRow,
 )
 
-from .alias import PlainLocationAlias
 from .endpoint import PlainLocationEndpoint
 from .hours_of_operation import PlainLocationHoursOfOperation
 from .identifier import PlainLocationIdentifier
@@ -325,7 +324,7 @@ class PlainLocationResponse(BaseModel):
     type: list[PlainLocationType] | None = Field(
         None, description="Indicates the type of function performed at the location."
     )
-    alias: list[PlainLocationAlias] | None = Field(
+    alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the location is known as, or was known as, in the past.",
     )

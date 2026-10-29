@@ -52,7 +52,6 @@ def _with_relationships(stmt):
             LocationIdentifier.type_codings
         ),
         selectinload(LocationModel.types).selectinload(LocationType.codings),
-        selectinload(LocationModel.aliases),
         selectinload(LocationModel.telecoms),
         selectinload(LocationModel.hours_of_operation),
         selectinload(LocationModel.endpoints),

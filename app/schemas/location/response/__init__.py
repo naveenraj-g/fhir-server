@@ -1,6 +1,5 @@
 from app.schemas.datatypes import PlainCodingRow
 
-from .alias import PlainLocationAlias
 from .core import (
     FHIRLocationBundle,
     FHIRLocationBundleEntry,
@@ -27,7 +26,6 @@ __all__ = [
     "PlainCodingRow",
     "PlainLocationIdentifier",
     "PlainLocationType",
-    "PlainLocationAlias",
     "PlainLocationTelecom",
     "PlainLocationHoursOfOperation",
     "PlainLocationEndpoint",

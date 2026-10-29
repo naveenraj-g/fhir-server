@@ -170,10 +170,6 @@ def payload_type(t: LocationTypeInput) -> dict:
     return entry
 
 
-def payload_alias(a) -> str:
-    return a.value
-
-
 def payload_telecom(t) -> dict:
     entry: dict = {}
     if t.system:
@@ -272,12 +268,14 @@ def payload_operational_status(obj) -> dict:
     }
 
 
-# Every Location field that's a 0..* list, mapped to the builder that
-# renders one of its items — shared by both orchestrators below.
+# Every Location field that's a 0..* list of structured objects, mapped to
+# the builder that renders one of its items — shared by both orchestrators
+# below. `alias` is NOT here — it's a plain list[str] with no per-item
+# transform, so it's handled directly alongside `extension`/`name` instead
+# (see both orchestrators below).
 _LIST_FIELDS = {
     "identifier": payload_identifier,
     "type": payload_type,
-    "alias": payload_alias,
     "telecom": payload_telecom,
     "hours_of_operation": payload_hours_of_operation,
     "endpoint": payload_endpoint,
@@ -285,7 +283,6 @@ _LIST_FIELDS = {
 _LIST_FIELD_TO_FHIR_KEY = {
     "identifier": "identifier",
     "type": "type",
-    "alias": "alias",
     "telecom": "telecom",
     "hours_of_operation": "hoursOfOperation",
     "endpoint": "endpoint",
@@ -342,6 +339,8 @@ def payload_to_fhir_location(payload: LocationCreateSchema) -> dict:
         result["operationalStatus"] = operational_status
     if payload.name:
         result["name"] = payload.name
+    if payload.alias:
+        result["alias"] = list(payload.alias)
     if payload.description:
         result["description"] = payload.description
     if payload.mode:
@@ -401,6 +400,10 @@ def patch_fragment_to_fhir_location(
         touched.add("name")
         if payload.name:
             fragment["name"] = payload.name
+    if "alias" in provided:
+        touched.add("alias")
+        if payload.alias:
+            fragment["alias"] = list(payload.alias)
     if "description" in provided:
         touched.add("description")
         if payload.description:

@@ -10,7 +10,6 @@ import pytest
 
 from app.fhir.mappers.location import to_fhir_location
 from app.models.location import (
-    LocationAlias,
     LocationEndpoint,
     LocationHoursOfOperation,
     LocationIdentifier,
@@ -56,7 +55,7 @@ def _location(**overrides) -> LocationModel:
     fields.update(overrides)
     loc = LocationModel(**fields)
     for attr in (
-        "identifiers", "types", "telecoms", "endpoints", "aliases",
+        "identifiers", "types", "telecoms", "endpoints",
         "hours_of_operation", "physical_type_codings",
     ):
         if getattr(loc, attr, None) is None:
@@ -193,13 +192,7 @@ CASES = {
             created_by="u-test", created_at=D,
         ),
     ),
-    "aliases": _with(
-        "aliases",
-        *[
-            LocationAlias(id=i, tenant_id="org-test", value=v, created_by="u-test", created_at=D)
-            for i, v in enumerate(["South Wing OR", "SW"], 1)
-        ],
-    ),
+    "aliases": _location(alias=["South Wing OR", "SW"]),
     "telecoms_with_rank_and_period": _with(
         "telecoms",
         LocationTelecom(

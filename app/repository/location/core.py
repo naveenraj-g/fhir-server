@@ -6,6 +6,7 @@ from sqlalchemy.future import select
 from app.core.filters import (
     apply_child_exists_filter,
     apply_token_filter,
+    array_contains_ilike,
     parse_reference,
 )
 from app.core.logging import get_logger
@@ -13,7 +14,6 @@ from app.core.pagination import resolve_sort
 from app.errors.domain import BusinessRuleViolationError
 from app.models.enums import OrganizationReferenceType
 from app.models.location import (
-    LocationAlias,
     LocationEndpoint,
     LocationIdentifier,
     LocationModel,
@@ -141,16 +141,15 @@ class _CoreMixin:
 
         if name:
             # Medplum: "name" matches Location.name OR Location.alias — the
-            # same name-or-alias union Organization uses.
+            # same name-or-alias union Organization uses. `alias` is a plain
+            # ARRAY(String) column (no child table), so "any element
+            # matches" uses array_contains_ilike() rather than
+            # apply_child_exists_filter() (which is for real child tables).
             pattern = f"%{name}%"
             stmt = stmt.where(
                 or_(
                     LocationModel.name.ilike(pattern),
-                    LocationModel.id.in_(
-                        select(LocationAlias.location_pk).where(
-                            LocationAlias.value.ilike(pattern)
-                        )
-                    ),
+                    array_contains_ilike(LocationModel.alias, pattern),
                 )
             )
 

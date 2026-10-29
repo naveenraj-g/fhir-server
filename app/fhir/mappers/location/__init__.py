@@ -1,6 +1,5 @@
 from app.fhir.mappers.location.fhir import (
     fhir_location_address,
-    fhir_location_alias,
     fhir_location_endpoint,
     fhir_location_hours_of_operation,
     fhir_location_identifier,
@@ -12,7 +11,6 @@ from app.fhir.mappers.location.fhir import (
     to_fhir_location,
 )
 from app.fhir.mappers.location.plain import (
-    plain_location_alias,
     plain_location_endpoint,
     plain_location_hours_of_operation,
     plain_location_identifier,
@@ -24,7 +22,6 @@ from app.fhir.datatypes import merge_patch_fragment
 from app.fhir.mappers.location.payload import (
     patch_fragment_to_fhir_location,
     payload_address,
-    payload_alias,
     payload_endpoint,
     payload_hours_of_operation,
     payload_identifier,
@@ -40,7 +37,6 @@ __all__ = [
     "merge_patch_fragment",
     "patch_fragment_to_fhir_location",
     "payload_address",
-    "payload_alias",
     "payload_endpoint",
     "payload_hours_of_operation",
     "payload_identifier",
@@ -54,7 +50,6 @@ __all__ = [
     "to_plain_location",
     "fhir_location_identifier",
     "fhir_location_type",
-    "fhir_location_alias",
     "fhir_location_telecom",
     "fhir_location_hours_of_operation",
     "fhir_location_endpoint",
@@ -63,7 +58,6 @@ __all__ = [
     "fhir_location_operational_status",
     "fhir_location_physical_type",
     "plain_location_identifier",
-    "plain_location_alias",
     "plain_location_type",
     "plain_location_telecom",
     "plain_location_hours_of_operation",

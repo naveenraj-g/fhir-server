@@ -1,4 +1,3 @@
-from .alias import LocationAlias
 from .core import LocationModel, LocationPhysicalTypeCoding, location_id_seq
 from .endpoint import LocationEndpoint
 from .enums import (
@@ -14,7 +13,6 @@ from .telecom import LocationTelecom
 from .type import LocationType, LocationTypeCoding
 
 __all__ = [
-    "LocationAlias",
     "LocationDayOfWeek",
     "LocationEndpoint",
     "LocationEndpointReferenceType",
