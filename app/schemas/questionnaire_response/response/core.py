@@ -78,9 +78,6 @@ class PlainQuestionnaireResponseResponse(BaseModel):
     author: PlainQuestionnaireResponseAuthor | None = Field(None, description="Person who received and recorded the answers.")
     source: PlainQuestionnaireResponseSource | None = Field(None, description="The person who answered the questions about the subject.")
     item: list[PlainQuestionnaireResponseItem] | None = Field(None, description="Groups and questions, with their answers.")
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded ID of the end-user this record is scoped to — not a FHIR concept."
-    )
     org_id: str | None = Field(
         None,
         description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept. Internally this column is named tenant_id (see app/models/shared/tenant_audit.py) to avoid ambiguity with the Organization entity itself.",

@@ -208,7 +208,6 @@ class PlainObservationResponse(BaseModel):
     has_member: list[PlainObservationHasMember] | None = Field(None, description="Member resources in a group observation.")
     derived_from: list[PlainObservationDerivedFrom] | None = Field(None, description="Measurements this observation value is derived from.")
     component: list[PlainObservationComponent] | None = Field(None, description="Component observations sharing the same attributes.")
-    user_id: str | None = Field(None, description="Gateway-forwarded end-user ID — not a FHIR concept.")
     org_id: str | None = Field(None, description="Gateway-forwarded tenant/account ID — not a FHIR concept. Internally this column is named tenant_id.")
     created_at: str | None = Field(None, description="When this row was created.")
     updated_at: str | None = Field(None, description="When this row was last updated.")

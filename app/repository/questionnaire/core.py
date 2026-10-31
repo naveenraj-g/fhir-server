@@ -56,7 +56,6 @@ class _CoreMixin:
         self,
         stmt,
         org_id=None,
-        user_id: str | None = None,
         status: QuestionnaireStatus | None = None,
         url: str | None = None,
         name: str | None = None,
@@ -66,8 +65,6 @@ class _CoreMixin:
     ):
         if org_id:
             stmt = stmt.where(QuestionnaireModel.tenant_id == org_id)
-        if user_id:
-            stmt = stmt.where(QuestionnaireModel.user_id == user_id)
         stmt = apply_token_filter(stmt, QuestionnaireModel.status, status)
         stmt = apply_string_filter(stmt, QuestionnaireModel.url, url, exact=True)
         stmt = apply_string_filter(stmt, QuestionnaireModel.name, name)
@@ -86,7 +83,6 @@ class _CoreMixin:
     async def list(
         self,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: QuestionnaireStatus | None = None,
         url: str | None = None,
         name: str | None = None,
@@ -101,7 +97,6 @@ class _CoreMixin:
         async with self.session_factory() as session:
             filter_kwargs = {
                 "org_id": org_id,
-                "user_id": user_id,
                 "status": status,
                 "url": url,
                 "name": name,

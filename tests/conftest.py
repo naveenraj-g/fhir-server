@@ -6,6 +6,7 @@ os.environ.setdefault("FHIR_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 os.environ.setdefault("IAM_ISSUER", "https://test.example.com")
 os.environ.setdefault("IAM_JWKS_URL", "https://test.example.com/.well-known/jwks.json")
+os.environ.setdefault("FHIR_VALIDATION__BACKEND", "native")
 
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -108,7 +109,7 @@ def _jsonb_as_text(element, compiler, **kw):
 # ARRAY-as-TEXT shim already produces, and its own built-in `value` column
 # (unqualified — there's only one FROM source in this EXISTS subquery, so no
 # qualification is needed) holds each array element.
-from app.core.filters import ArrayContainsILike  # noqa: E402
+from app.core.filters import ArrayContains, ArrayContainsILike  # noqa: E402
 
 
 @compiles(ArrayContainsILike, "sqlite")
@@ -116,6 +117,13 @@ def _array_contains_ilike_sqlite(element, compiler, **kw):
     col_sql = compiler.process(element.column, **kw)
     pattern_sql = compiler.process(bindparam(None, element.pattern), **kw)
     return f"EXISTS (SELECT 1 FROM json_each({col_sql}) WHERE value LIKE {pattern_sql})"
+
+
+@compiles(ArrayContains, "sqlite")
+def _array_contains_sqlite(element, compiler, **kw):
+    col_sql = compiler.process(element.column, **kw)
+    val_sql = compiler.process(bindparam(None, element.value), **kw)
+    return f"EXISTS (SELECT 1 FROM json_each({col_sql}) WHERE value = {val_sql})"
 
 # ── Disable rate limiting for tests ───────────────────────────────────────────
 # The in-process sliding-window limiter accumulates across tests when Redis is

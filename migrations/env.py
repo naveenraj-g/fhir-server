@@ -18,16 +18,33 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # still be live but are no longer modeled here. Add a new import line here
 # the same day a deleted resource (or a new one, like Practitioner) gets its
 # model files back.
+import app.models.activity_definition
+import app.models.allergy_intolerance
 import app.models.appointment
 import app.models.appointment_response
+import app.models.care_plan
+import app.models.care_team
+import app.models.communication_request
+import app.models.condition
+import app.models.consent
 import app.models.diagnostic_report
+import app.models.document_reference
 import app.models.encounter
+import app.models.episode_of_care
 import app.models.fhir_profile.fhir_profile
+import app.models.flag
+import app.models.goal
+import app.models.group
 import app.models.healthcare_service
 import app.models.location
 import app.models.medication_request
 import app.models.observation
+import app.models.observation_definition
 import app.models.organization
+import app.models.patient
+import app.models.plan_definition
+import app.models.procedure
+import app.models.related_person
 import app.models.practitioner
 import app.models.practitioner_role
 import app.models.questionnaire
@@ -35,6 +52,8 @@ import app.models.questionnaire_response
 import app.models.schedule
 import app.models.service_request
 import app.models.slot
+import app.models.specimen
+import app.models.task
 import app.models.terminology.terminology  # noqa: F401
 
 # Import FHIRBase so Alembic can see all table metadata

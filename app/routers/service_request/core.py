@@ -52,45 +52,6 @@ async def create_service_request(
     )
 
 
-# ── Me (must come before /{service_request_id}) ─────────────────────────────────
-
-
-@router.get(
-    "/me",
-    operation_id="list_my_service_requests",
-    summary="List ServiceRequest resources owned by the authenticated end-user",
-    description=(
-        "Same filters as `GET /`, always additionally scoped to the authenticated "
-        "end-user's own `user_id`, on top of the caller's own org (from the verified "
-        "token). " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_my_service_requests(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("service_request", "read")),
-    service_request_status: ServiceRequestStatus | None = Query(
-        None, alias="status", description="draft | active | on-hold | revoked | completed | entered-in-error | unknown."
-    ),
-    intent: ServiceRequestIntent | None = Query(None, description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option."),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
-    params: ListParams = Depends(),
-    service_request_service: ServiceRequestService = Depends(get_service_request_service),
-):
-    logger.info("List ServiceRequest resources owned by the authenticated end-user", extra={"event": "route.list_my_service_requests"})
-    items, total = await service_request_service.get_me(
-        user_id=actor.sub, org_id=actor.org_id, status=service_request_status, intent=intent,
-        subject=subject, identifier=identifier, limit=params.limit, offset=params.offset,
-        sort=params.sort, total_mode=params.total_mode,
-    )
-    return format_paginated_response(
-        [service_request_service._to_fhir(sr) for sr in items],
-        [service_request_service._to_plain(sr) for sr in items],
-        total, params.limit, params.offset, request,
-    )
-
-
 # ── Read ───────────────────────────────────────────────────────────────────────
 
 

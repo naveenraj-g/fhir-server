@@ -164,22 +164,41 @@ routes:
   # same list just gates whether each one is included at all, same as any
   # other entry here.
   enabled:
+    - activity_definition
+    - allergy_intolerance
     - appointment
     - appointment_response
+    - care_plan
+    - care_team
+    - condition
+    - consent
     - diagnostic_report
+    - document_reference
     - encounter
+    - episode_of_care
+    - flag
+    - group
     - organization
     - location
     - medication_request
     - observation
+    - observation_definition
     - healthcare_service
+    - patient
+    - plan_definition
     - practitioner
     - practitioner_role
+    - procedure
     - questionnaire
     - questionnaire_response
+    - related_person
     - schedule
     - service_request
     - slot
+    - specimen
+    - task
+    - goal
+    - communication_request
     - terminology
     - fhir_profile
     - fhir_validate

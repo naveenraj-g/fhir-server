@@ -210,7 +210,6 @@ def to_plain_questionnaire_response(qr: QuestionnaireResponseModel) -> dict:
         "author": author,
         "source": source,
         "item": _build_plain_item_tree(qr.items or [], qr.answers or []) or None,
-        "user_id": qr.user_id,
         "org_id": qr.tenant_id,
         "created_at": qr.created_at.isoformat() if qr.created_at else None,
         "updated_at": qr.updated_at.isoformat() if qr.updated_at else None,

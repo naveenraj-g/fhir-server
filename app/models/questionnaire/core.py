@@ -88,7 +88,6 @@ class QuestionnaireModel(TenantAuditMixin, Base):
     # Plain, gateway-forwarded user_id — unlike tenant_id/created_by/
     # updated_by (TenantAuditMixin), this one is NOT derived from the JWT.
     # Same shape as Practitioner's own user_id.
-    user_id = Column(String, nullable=True, index=True)
 
     # ── url (0..1 uri) ─────────────────────────────────────────────────────
     url = Column(String, nullable=True)

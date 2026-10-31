@@ -245,7 +245,6 @@ def to_plain_medication_request(mr: MedicationRequestModel) -> dict:
         "prior_prescription": _plain_reference(mr, "prior_prescription"),
         "detected_issue": [_plain_reference_row(di, di.id) for di in (mr.detected_issues or [])] or None,
         "event_history": [_plain_reference_row(eh, eh.id) for eh in (mr.event_histories or [])] or None,
-        "user_id": mr.user_id,
         "org_id": mr.tenant_id,
         "created_at": mr.created_at.isoformat() if mr.created_at else None,
         "updated_at": mr.updated_at.isoformat() if mr.updated_at else None,

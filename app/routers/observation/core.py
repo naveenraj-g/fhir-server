@@ -50,44 +50,6 @@ async def create_observation(
     )
 
 
-# ── Me (must come before /{observation_id}) ─────────────────────────────────────
-
-
-@router.get(
-    "/me",
-    operation_id="list_my_observations",
-    summary="List Observation resources owned by the authenticated end-user",
-    description=(
-        "Same filters as `GET /`, always additionally scoped to the authenticated "
-        "end-user's own `user_id`, on top of the caller's own org (from the verified "
-        "token). " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_my_observations(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("observation", "read")),
-    observation_status: ObservationStatus | None = Query(
-        None, alias="status", description="registered | preliminary | final | amended | corrected | cancelled | entered-in-error | unknown."
-    ),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
-    params: ListParams = Depends(),
-    observation_service: ObservationService = Depends(get_observation_service),
-):
-    logger.info("List Observation resources owned by the authenticated end-user", extra={"event": "route.list_my_observations"})
-    items, total = await observation_service.get_me(
-        user_id=actor.sub, org_id=actor.org_id, status=observation_status,
-        subject=subject, identifier=identifier, limit=params.limit, offset=params.offset,
-        sort=params.sort, total_mode=params.total_mode,
-    )
-    return format_paginated_response(
-        [observation_service._to_fhir(o) for o in items],
-        [observation_service._to_plain(o) for o in items],
-        total, params.limit, params.offset, request,
-    )
-
-
 # ── Read ───────────────────────────────────────────────────────────────────────
 
 

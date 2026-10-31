@@ -102,7 +102,6 @@ class QuestionnaireResponseModel(TenantAuditMixin, Base):
 
     # Plain, gateway-forwarded user_id — default pattern, not derived from
     # any JWT.
-    user_id = Column(String, nullable=True, index=True)
 
     # ── identifier (0..1 Identifier) — flattened ──────────────────────────
 

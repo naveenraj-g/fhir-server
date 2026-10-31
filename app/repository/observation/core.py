@@ -54,15 +54,12 @@ class _CoreMixin:
         self,
         stmt,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: ObservationStatus | None = None,
         subject: str | None = None,
         identifier: str | None = None,
     ):
         if org_id:
             stmt = stmt.where(ObservationModel.tenant_id == org_id)
-        if user_id:
-            stmt = stmt.where(ObservationModel.user_id == user_id)
         stmt = apply_token_filter(stmt, ObservationModel.status, status)
         if subject:
             stmt = stmt.where(ObservationModel.subject_reference == subject)
@@ -79,7 +76,6 @@ class _CoreMixin:
     async def list(
         self,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: ObservationStatus | None = None,
         subject: str | None = None,
         identifier: str | None = None,
@@ -91,7 +87,6 @@ class _CoreMixin:
         async with self.session_factory() as session:
             filter_kwargs = {
                 "org_id": org_id,
-                "user_id": user_id,
                 "status": status,
                 "subject": subject,
                 "identifier": identifier,
@@ -119,24 +114,6 @@ class _CoreMixin:
             },
         )
         return rows, total
-
-    async def get_me(
-        self,
-        user_id: str,
-        org_id: str | None = None,
-        status: ObservationStatus | None = None,
-        subject: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ObservationModel], int | None]:
-        return await self.list(
-            org_id=org_id, user_id=user_id, status=status,
-            subject=subject, identifier=identifier, limit=limit, offset=offset,
-            sort=sort, total_mode=total_mode,
-        )
 
     async def delete(self, observation_id: int) -> bool:
         """Every sub-resource here is a plain two/three-level

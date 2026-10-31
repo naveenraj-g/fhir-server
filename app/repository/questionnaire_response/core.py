@@ -25,8 +25,8 @@ class _CoreMixin:
     Default (gateway-trusted) pattern — unlike every currently-built,
     auth-rolled-out resource, there is no org-scoped existence check or
     ownership enforcement here at all: `get_by_questionnaire_response_id()`
-    loads by public ID with no filter beyond that, and `list()`/`get_me()`
-    take `tenant_id`/`user_id` as plain, optional filter parameters, never
+    loads by public ID with no filter beyond that, and `list()`
+    takes `tenant_id`/`user_id` as plain, optional filter parameters, never
     derived from a verified token."""
 
     async def get_by_questionnaire_response_id(
@@ -68,7 +68,6 @@ class _CoreMixin:
         self,
         stmt,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: QuestionnaireResponseStatus | None = None,
         questionnaire: str | None = None,
         subject: str | None = None,
@@ -76,8 +75,6 @@ class _CoreMixin:
     ):
         if org_id:
             stmt = stmt.where(QuestionnaireResponseModel.tenant_id == org_id)
-        if user_id:
-            stmt = stmt.where(QuestionnaireResponseModel.user_id == user_id)
         stmt = apply_token_filter(stmt, QuestionnaireResponseModel.status, status)
         if questionnaire:
             stmt = stmt.where(QuestionnaireResponseModel.questionnaire == questionnaire)
@@ -90,7 +87,6 @@ class _CoreMixin:
     async def list(
         self,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: QuestionnaireResponseStatus | None = None,
         questionnaire: str | None = None,
         subject: str | None = None,
@@ -103,7 +99,6 @@ class _CoreMixin:
         async with self.session_factory() as session:
             filter_kwargs = {
                 "org_id": org_id,
-                "user_id": user_id,
                 "status": status,
                 "questionnaire": questionnaire,
                 "subject": subject,
@@ -143,32 +138,6 @@ class _CoreMixin:
             },
         )
         return rows, total
-
-    async def get_me(
-        self,
-        user_id: str,
-        org_id: str | None = None,
-        status: QuestionnaireResponseStatus | None = None,
-        questionnaire: str | None = None,
-        subject: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[QuestionnaireResponseModel], int | None]:
-        return await self.list(
-            org_id=org_id,
-            user_id=user_id,
-            status=status,
-            questionnaire=questionnaire,
-            subject=subject,
-            identifier=identifier,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
-        )
 
     async def delete(self, questionnaire_response_id: int) -> bool:
         """`item` is self-referential (`parent_item_id`) and mutually

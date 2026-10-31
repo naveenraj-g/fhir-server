@@ -27,6 +27,7 @@ build/
 htmlcov/
 coverage.xml
 *.cover
+scratch/
 
 # ── Type checking & linting caches ────────────────────────────────────────────
 .mypy_cache/

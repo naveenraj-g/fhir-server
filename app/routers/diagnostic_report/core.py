@@ -53,44 +53,6 @@ async def create_diagnostic_report(
     )
 
 
-# ── Me (must come before /{diagnostic_report_id}) ────────────────────────────────
-
-
-@router.get(
-    "/me",
-    operation_id="list_my_diagnostic_reports",
-    summary="List DiagnosticReport resources owned by the authenticated end-user",
-    description=(
-        "Same filters as `GET /`, always additionally scoped to the authenticated "
-        "end-user's own `user_id`, on top of the caller's own org (from the verified "
-        "token). " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_my_diagnostic_reports(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("diagnostic_report", "read")),
-    diagnostic_report_status: DiagnosticReportStatus | None = Query(
-        None, alias="status", description="registered | partial | preliminary | final | amended | corrected | appended | cancelled | entered-in-error | unknown."
-    ),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
-    params: ListParams = Depends(),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
-):
-    logger.info("List DiagnosticReport resources owned by the authenticated end-user", extra={"event": "route.list_my_diagnostic_reports"})
-    items, total = await diagnostic_report_service.get_me(
-        user_id=actor.sub, org_id=actor.org_id, status=diagnostic_report_status,
-        subject=subject, identifier=identifier, limit=params.limit, offset=params.offset,
-        sort=params.sort, total_mode=params.total_mode,
-    )
-    return format_paginated_response(
-        [diagnostic_report_service._to_fhir(d) for d in items],
-        [diagnostic_report_service._to_plain(d) for d in items],
-        total, params.limit, params.offset, request,
-    )
-
-
 # ── Read ───────────────────────────────────────────────────────────────────────
 
 

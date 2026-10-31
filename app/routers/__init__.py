@@ -15,41 +15,79 @@ from fastapi import APIRouter
 # tenant_id/coding-list/location_pk-style conventions, one resource at a
 # time, rather than carrying forward drifted code. See git history for the
 # deleted implementations if a past version is ever needed for reference.
+from . import activity_definition as activity_definition
+from . import allergy_intolerance as allergy_intolerance
 from . import appointment as appointment
 from . import appointment_response as appointment_response
+from . import care_plan as care_plan
+from . import care_team as care_team
+from . import condition as condition
+from . import consent as consent
 from . import diagnostic_report as diagnostic_report
+from . import document_reference as document_reference
 from . import encounter as encounter
+from . import episode_of_care as episode_of_care
+from . import flag as flag
+from . import group as group
 from . import healthcare_service as healthcare_service
 from . import location as location
 from . import medication_request as medication_request
 from . import observation as observation
+from . import observation_definition as observation_definition
 from . import organization as organization
+from . import patient as patient
+from . import plan_definition as plan_definition
 from . import practitioner as practitioner
 from . import practitioner_role as practitioner_role
+from . import procedure as procedure
 from . import questionnaire as questionnaire
 from . import questionnaire_response as questionnaire_response
+from . import related_person as related_person
 from . import schedule as schedule
 from . import service_request as service_request
 from . import slot as slot
+from . import specimen as specimen
+from . import task as task
+from . import goal as goal
+from . import communication_request as communication_request
 
 __all__ = [
+    "activity_definition",
+    "allergy_intolerance",
     "appointment",
     "appointment_response",
+    "care_plan",
+    "care_team",
+    "condition",
+    "consent",
     "diagnostic_report",
     "discover_routers",
+    "document_reference",
     "encounter",
+    "episode_of_care",
+    "flag",
+    "group",
     "healthcare_service",
     "location",
     "medication_request",
     "observation",
+    "observation_definition",
     "organization",
+    "patient",
+    "plan_definition",
     "practitioner",
     "practitioner_role",
+    "procedure",
     "questionnaire",
     "questionnaire_response",
+    "related_person",
     "schedule",
     "service_request",
     "slot",
+    "specimen",
+    "communication_request",
+    "goal",
+    "task",
 ]
 
 

@@ -29,9 +29,8 @@ class _CoreMixin:
     Questionnaire: tenant scoping comes from the verified JWT's
     activeOrganizationId claim (actor.org_id), never a client-suppliable
     field, and there's no org-less/super-admin bypass — every operation
-    requires an org-scoped actor. `user_id` is still a plain,
-    gateway-forwarded field, so `get_me()` additionally scopes to the
-    acting end-user."""
+    requires an org-scoped actor. `user_id` is a plain,
+    gateway-forwarded field."""
 
     def __init__(self, repository: QuestionnaireResponseRepository):
         self.repository = repository
@@ -63,38 +62,6 @@ class _CoreMixin:
         if not questionnaire_response:
             raise NotFoundError("QuestionnaireResponse not found")
         return questionnaire_response
-
-    async def get_me(
-        self,
-        user_id: str,
-        org_id: str | None = None,
-        status: QuestionnaireResponseStatus | None = None,
-        questionnaire: str | None = None,
-        subject: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[QuestionnaireResponseModel], int | None]:
-        """Scopes list() to the authenticated end-user's own user_id,
-        always combined with the org-scoped actor's org_id."""
-        if not org_id:
-            raise PermissionDeniedError(
-                "QuestionnaireResponse operation requires an org-scoped token"
-            )
-        return await self.repository.get_me(
-            user_id=user_id,
-            org_id=org_id,
-            status=QuestionnaireResponseStatusModel[status.name] if status else None,
-            questionnaire=questionnaire,
-            subject=subject,
-            identifier=identifier,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
-        )
 
     async def list_questionnaire_responses(
         self,

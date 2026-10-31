@@ -25,7 +25,7 @@ This is a pure CRUD core with no authentication of its own — it is never expos
 | Web framework | FastAPI + Uvicorn |
 | Database | PostgreSQL 15 (async via asyncpg) |
 | ORM | SQLAlchemy 2.0+ (async) |
-| Auth | Every currently-built FHIR resource (Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport) validates JWTs directly via `app/auth/` (`pyjwt` + JWKS), with flat RBAC scopes (see Multi-Tenancy & Ownership) — there's no resource left on the old gateway-trusted pattern. Questionnaire/QuestionnaireResponse/ServiceRequest/MedicationRequest/Observation/DiagnosticReport keep `user_id` like Practitioner — see Standard Columns |
+| Auth | Every currently-built FHIR resource (Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport, Patient, Condition, AllergyIntolerance) validates JWTs directly via `app/auth/` (`pyjwt` + JWKS), with flat RBAC scopes (see Multi-Tenancy & Ownership) — there's no resource left on the old gateway-trusted pattern. `user_id` exists exclusively on `Patient` and `Practitioner` (scoped to individual end-users; `/me` route); all other resources have NO `user_id` — see Standard Columns |
 | Sessions | Redis 7 (server-side) |
 | DI container | dependency-injector |
 | Config | pydantic-settings (.env) |
@@ -113,19 +113,27 @@ Router → Service → Repository → ORM Model
 | InsurancePlan | 360000 |
 | AppointmentResponse | 370000 |
 | Questionnaire | 380000 |
+| CareTeam | 390000 |
 
-**Next available block: 390000.** Pick the next unused 10000-block for any new resource.
+| ObservationDefinition | 400000 |
+| ActivityDefinition | 410000 |
+| PlanDefinition | 420000 |
+| Group | 430000 |
+| Consent | 440000 |
+| Flag | 450000 |
+
+**Next available block: 460000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
 ## Multi-Tenancy & Ownership
 
-**As of this writing, every FHIR resource currently built in this codebase validates JWTs directly and enforces RBAC — there is no more "default/gateway-trusted" resource left.** This wasn't true historically (see "History" below) and may not stay true forever if a new resource is deliberately built against the plain pattern again, so don't assume it without checking `app/routers/<resource>/core.py` for `require_permission(...)` — but today, every one of: Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, and DiagnosticReport (`app/auth/` — JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) follows the exact shape below. `Patient` is mentioned in some older comments/`.env.example` text as the original pilot resource but currently has **no router at all** in `app/routers/` — don't treat it as live.
+**As of this writing, every FHIR resource currently built in this codebase validates JWTs directly and enforces RBAC — there is no more "default/gateway-trusted" resource left.** This wasn't true historically (see "History" below) and may not stay true forever if a new resource is deliberately built against the plain pattern again, so don't assume it without checking `app/routers/<resource>/core.py` for `require_permission(...)` — but today, every one of: Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport, Patient, Condition, Specimen, DocumentReference, CarePlan, CareTeam, EpisodeOfCare, ObservationDefinition, ActivityDefinition, PlanDefinition, Procedure, Group, Consent, and AllergyIntolerance (`app/auth/` — JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) follows the exact shape below.
 
 For every one of the resources above:
 - `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`); `org_id` comes from the verified JWT's `activeOrganizationId` (`actor.org_id`) — **neither is a request body field**. `<Resource>CreateSchema`/`PatchSchema` (and every sub-resource Create/Patch schema that predates its own resource's rollout) don't accept them at all — `extra="forbid"` turns a caller still sending them into a clean 422.
 - **No org-less/super-admin bypass**: a token with no `activeOrganizationId` claim is rejected outright (403) — every operation requires an org-scoped actor. `create`/`create_full` reject a missing `actor.org_id`; `patch`/`patch_full`/`delete`/every sub-resource method 404 (never 403, to avoid leaking whether the resource exists in another org) if the caller's org doesn't match the target's stored `org_id` — enforced via a shared `get_<resource>_scoped()` helper on each service's core mixin plus a `<resource>_belongs_to_org()` repository check.
-- `user_id` is a separate, independent axis from this rollout: Practitioner/Questionnaire/QuestionnaireResponse/ServiceRequest/MedicationRequest/Observation/DiagnosticReport all keep a plain, gateway-forwarded `user_id` input field (so `/me` can scope to the acting end-user on top of `actor.org_id`); Organization/Location/HealthcareService/PractitionerRole/Schedule/Slot/Appointment/AppointmentResponse/Encounter have **no `user_id` column at all** (dropped entirely — shared tenant-level entities, not scoped to an individual end-user; see Standard Columns).
+- `user_id` is a separate, independent axis from this rollout: **`Patient` and `Practitioner` are the ONLY resources that have a `user_id` column and schema field** (as plain, gateway-forwarded input fields; both expose a `/me` route scoped to `user_id`). All other resources have **no `user_id` column or field at all** — dropped entirely end-to-end as shared tenant-level entities scoped strictly by `org_id` (see Standard Columns).
 - No `resolve_<resource>()` dependency exists for any of these — routes call `require_permission("<resource>", "<action>")` directly and the service layer does the org-scoping itself.
 
 **⚠️ A bearer JWT is required on literally every `/api/fhir/v1` route, regardless of resource.** `app/main.py`'s `mount_routers()` wires `dependencies=[Depends(get_current_user), Depends(log_route_entry)]` onto the *entire* `api_router` every mounted resource shares — `get_current_user` (JWKS signature/`iss`/`aud`/`exp` verification, see `app/auth/dependencies.py`) runs once for every request regardless of which resource it's for; `require_permission(...)` on top of that is what's resource-specific. A *future* plain-pattern resource (if one is ever deliberately built that way again — see `/resource-auth-rollout`'s own note that this is now opt-out, not opt-in) would still 401 on a missing/invalid/expired token even with no `require_permission` of its own.
@@ -310,11 +318,11 @@ Location (`test_location_fhir.py`, 24 shapes), HealthcareService (`test_healthca
 
 ## Standard Columns
 
-Every resource row: `id` (PK), `<resource>_id` (sequence), `user_id`, `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`. **Organization, Location, HealthcareService, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, and Encounter are the nine exceptions: none has a `user_id` column at all** — dropped end-to-end (model, migration, schemas, mapper, repository/service/router) since an Organization, a physical Location, a HealthcareService, a PractitionerRole, a Schedule, a Slot, an Appointment, an AppointmentResponse, and an Encounter are all shared tenant-level entities, not scoped to an individual end-user, unlike every other resource.
+Every resource row: `id` (PK), `<resource>_id` (sequence), `org_id`, `created_at`, `updated_at`, `created_by`, `updated_by`. **`Patient` and `Practitioner` are the ONLY two resources that have a `user_id` column** (scoped to an individual end-user, exposing `/me`). All other resources have NO `user_id` column or schema field at all — dropped end-to-end (model, migration, schemas, mapper, repository/service/router) as tenant-level entities scoped strictly by `org_id`.
 
 Every `id` and every sub-resource table's `id` is **`BigInteger`**, as is every `<resource>_id` sequence column, every sub-resource FK back to its parent, and every flattened cross-resource reference `_id`. `org_id`/`user_id` are `String` tenant fields and are not part of that rule.
 - `created_by` / `updated_by` — come from the verified JWT's `sub` for every currently-built resource (see Multi-Tenancy & Ownership) — never a plain gateway-forwarded input field anymore for any of them
-- `org_id` is a **tenant/ownership field**, not a reference to the FHIR Organization resource — it comes from the verified JWT's `activeOrganizationId` for every currently-built resource (see Multi-Tenancy & Ownership), never a client-suppliable field. `user_id` is a separate, independent axis: still a plain, gateway-forwarded field on Practitioner/Questionnaire/QuestionnaireResponse/ServiceRequest/MedicationRequest/Observation/DiagnosticReport; absent entirely on Organization, Location, HealthcareService, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, and Encounter. (Note: on the Organization resource itself, this `org_id` tenant-scoping column is a distinct concept from the Organization *entity* being represented by the row — see `OrganizationCreateSchema`'s docstring.)
+- `org_id` is a **tenant/ownership field**, not a reference to the FHIR Organization resource — it comes from the verified JWT's `activeOrganizationId` for every currently-built resource (see Multi-Tenancy & Ownership), never a client-suppliable field. `user_id` is a separate, independent axis: exclusively present as a gateway-forwarded field on **`Patient`** and **`Practitioner`** (which also expose `/me`); absent entirely on all other resources. (Note: on the Organization resource itself, this `org_id` tenant-scoping column is a distinct concept from the Organization *entity* being represented by the row — see `OrganizationCreateSchema`'s docstring.)
 
 ---
 
@@ -601,7 +609,7 @@ Key invariants (full details in the skill):
 - **Always eager-load** — `_with_relationships()` on every serialized query
 - **Session-per-operation** — never hold a session across multiple repository calls
 - **`model_dump(exclude_unset=True)`** in PATCH to only apply provided fields
-- **`user_id`/`org_id` in `json_schema_extra` example** — required on every CreateSchema
+- **`user_id` in `json_schema_extra` example** — required on `Patient` and `Practitioner` CreateSchema (forbidden on all other resources)
 - **`inline_schema()` at module level** — not inside route handlers
 - **Sub-resource GET + DELETE** — use `/sub-resource-endpoints` skill; every route needs `operation_id`, `summary`, `description`, `responses=` with both content types
 - **Verify `/openapi.json`** after any schema change before marking task done

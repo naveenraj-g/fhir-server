@@ -1,19 +1,6 @@
-"""FHIR R4 Quantity/Range — not in app.schemas.datatypes since Questionnaire
-is the first resource in this codebase needing them as standalone types
-(Encounter's own FHIRDuration, in app.schemas.encounter.response, is the
-closest existing precedent for a Quantity-family type with no shared home)."""
+"""FHIR R4 Quantity/Range — re-exported from app.schemas.datatypes for backward compatibility."""
 
-from pydantic import BaseModel
+from app.schemas.datatypes import FHIRQuantity, FHIRRange
 
+__all__ = ["FHIRQuantity", "FHIRRange"]
 
-class FHIRQuantity(BaseModel):
-    value: float | None = None
-    comparator: str | None = None
-    unit: str | None = None
-    system: str | None = None
-    code: str | None = None
-
-
-class FHIRRange(BaseModel):
-    low: FHIRQuantity | None = None
-    high: FHIRQuantity | None = None

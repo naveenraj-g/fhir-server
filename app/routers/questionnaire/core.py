@@ -67,64 +67,6 @@ async def create_questionnaire(
     )
 
 
-# ── Me (must come before /{questionnaire_id}) ───────────────────────────────────
-
-
-@router.get(
-    "/me",
-    operation_id="list_my_questionnaires",
-    summary="List Questionnaire resources owned by the authenticated end-user",
-    description=(
-        "Same filters as `GET /`, always additionally scoped to the authenticated "
-        "end-user's own `user_id` (from the gateway-forwarded field at create time), on "
-        "top of the caller's own org (from the verified token). " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_my_questionnaires(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("questionnaire", "read")),
-    questionnaire_status: QuestionnaireStatus | None = Query(
-        None, alias="status", description="draft | active | retired | unknown."
-    ),
-    url: str | None = Query(None, description="Exact match on the canonical url."),
-    name: str | None = Query(None, description="Substring match on name."),
-    title: str | None = Query(None, description="Substring match on title."),
-    publisher: str | None = Query(None, description="Substring match on publisher."),
-    identifier: str | None = Query(
-        None, description="Exact match on a business identifier value."
-    ),
-    params: ListParams = Depends(),
-    questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
-):
-    logger.info(
-        "List Questionnaire resources owned by the authenticated end-user",
-        extra={"event": "route.list_my_questionnaires"},
-    )
-    items, total = await questionnaire_service.get_me(
-        user_id=actor.sub,
-        org_id=actor.org_id,
-        status=questionnaire_status,
-        url=url,
-        name=name,
-        title=title,
-        publisher=publisher,
-        identifier=identifier,
-        limit=params.limit,
-        offset=params.offset,
-        sort=params.sort,
-        total_mode=params.total_mode,
-    )
-    return format_paginated_response(
-        [questionnaire_service._to_fhir(q) for q in items],
-        [questionnaire_service._to_plain(q) for q in items],
-        total,
-        params.limit,
-        params.offset,
-        request,
-    )
-
-
 # ── Read ───────────────────────────────────────────────────────────────────────
 
 

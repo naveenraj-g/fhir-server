@@ -28,7 +28,6 @@ from .reference import (
 )
 
 _EXAMPLE = {
-    "user_id": "user-001",
     "status": "active",
     "intent": "order",
     "subject": {"reference": "Patient/10001"},
@@ -58,9 +57,6 @@ class ServiceRequestCreateSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
 
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded ID of the end-user this record is scoped to — not a FHIR concept."
-    )
 
     extension: list[dict] | None = Field(
         None, description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries."

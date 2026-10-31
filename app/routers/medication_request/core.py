@@ -53,45 +53,6 @@ async def create_medication_request(
     )
 
 
-# ── Me (must come before /{medication_request_id}) ──────────────────────────────
-
-
-@router.get(
-    "/me",
-    operation_id="list_my_medication_requests",
-    summary="List MedicationRequest resources owned by the authenticated end-user",
-    description=(
-        "Same filters as `GET /`, always additionally scoped to the authenticated "
-        "end-user's own `user_id`, on top of the caller's own org (from the verified "
-        "token). " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_my_medication_requests(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("medication_request", "read")),
-    medication_request_status: MedicationRequestStatus | None = Query(
-        None, alias="status", description="active | on-hold | cancelled | completed | entered-in-error | stopped | draft | unknown."
-    ),
-    intent: MedicationRequestIntent | None = Query(None, description="proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option."),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
-    params: ListParams = Depends(),
-    medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
-):
-    logger.info("List MedicationRequest resources owned by the authenticated end-user", extra={"event": "route.list_my_medication_requests"})
-    items, total = await medication_request_service.get_me(
-        user_id=actor.sub, org_id=actor.org_id, status=medication_request_status, intent=intent,
-        subject=subject, identifier=identifier, limit=params.limit, offset=params.offset,
-        sort=params.sort, total_mode=params.total_mode,
-    )
-    return format_paginated_response(
-        [medication_request_service._to_fhir(mr) for mr in items],
-        [medication_request_service._to_plain(mr) for mr in items],
-        total, params.limit, params.offset, request,
-    )
-
-
 # ── Read ───────────────────────────────────────────────────────────────────────
 
 

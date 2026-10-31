@@ -234,7 +234,6 @@ class _FullMixin:
         async with self.session_factory() as session:
             q = QuestionnaireModel(
                 tenant_id=org_id,
-                user_id=payload.user_id,
                 created_by=created_by,
                 extension=payload.extension or [],
                 url=payload.url,

@@ -63,8 +63,6 @@ class DiagnosticReportModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    user_id = Column(String, nullable=True, index=True)
-
     # ── status (1..1, required, modifier) ──────────────────────────────────
     status = Column(Enum(DiagnosticReportStatus, name="diagnostic_report_status"), nullable=False)
 

@@ -31,7 +31,6 @@ class QuestionnaireResponseCreateSchema(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "user_id": "user-001",
                 "questionnaire": "https://fhir-server.dev/fhir/Questionnaire/intake-form",
                 "status": "completed",
                 "authored": "2026-01-15T10:30:00Z",
@@ -46,9 +45,6 @@ class QuestionnaireResponseCreateSchema(BaseModel):
         },
     )
 
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded ID of the end-user this record is scoped to — not a FHIR concept."
-    )
 
     extension: list[dict] | None = Field(
         None,

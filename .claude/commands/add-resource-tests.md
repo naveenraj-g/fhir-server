@@ -345,7 +345,7 @@ If the router exposes resource-specific filters, add explicit tests for them.
 
 ### `/me` examples
 
-Only for resources that actually expose `/me`.
+Only for resources that actually expose `/me` (`Patient` and `Practitioner` only).
 
 ```python
 async def test_get_my_<resource>s_found(client):

@@ -27,9 +27,8 @@ class _CoreMixin:
     QuestionnaireResponse/ServiceRequest: tenant scoping comes from the
     verified JWT's activeOrganizationId claim (actor.org_id), never a
     client-suppliable field, and there's no org-less/super-admin bypass —
-    every operation requires an org-scoped actor. `user_id` is still a
-    plain, gateway-forwarded field, so `get_me()` additionally scopes to
-    the acting end-user."""
+    every operation requires an org-scoped actor. `user_id` is a
+    plain, gateway-forwarded field."""
 
     def __init__(self, repository: MedicationRequestRepository):
         self.repository = repository
@@ -55,36 +54,6 @@ class _CoreMixin:
         if not medication_request:
             raise NotFoundError("MedicationRequest not found")
         return medication_request
-
-    async def get_me(
-        self,
-        user_id: str,
-        org_id: str | None = None,
-        status: MedicationRequestStatus | None = None,
-        intent: MedicationRequestIntent | None = None,
-        subject: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[MedicationRequestModel], int | None]:
-        """Scopes list() to the authenticated end-user's own user_id,
-        always combined with the org-scoped actor's org_id."""
-        if not org_id:
-            raise PermissionDeniedError("MedicationRequest operation requires an org-scoped token")
-        return await self.repository.get_me(
-            user_id=user_id,
-            org_id=org_id,
-            status=MedicationRequestStatusModel[status.name] if status else None,
-            intent=MedicationRequestIntentModel[intent.name] if intent else None,
-            subject=subject,
-            identifier=identifier,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
-        )
 
     async def list_medication_requests(
         self,

@@ -1,6 +1,13 @@
 OPENAPI_TAGS: list[dict] = [
     # ── Clinical ──────────────────────────────────────────────────────────────
     {
+        "name": "AllergyIntolerances",
+        "description": (
+            "FHIR R4 AllergyIntolerance resources — risk of harmful or undesirable, "
+            "physiological response unique to an individual and resulting from exposure to a substance."
+        ),
+    },
+    {
         "name": "Patients",
         "description": (
             "FHIR R4 Patient resources — individuals receiving care. "
@@ -32,10 +39,46 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "ObservationDefinitions",
+        "description": (
+            "FHIR R4 ObservationDefinition resources — definitions of observations, cataloguing "
+            "allowable data types, normal/critical qualified intervals, and units for lab and clinical measurements."
+        ),
+    },
+    {
+        "name": "ActivityDefinitions",
+        "description": (
+            "FHIR R4 ActivityDefinition resources — definitional descriptions of activities to be performed, "
+            "such as orders for medications, lab tests, appointments, or procedures, with details on timing, dosage, and requirements."
+        ),
+    },
+    {
+        "name": "PlanDefinitions",
+        "description": (
+            "FHIR R4 PlanDefinition resources — pre-defined templates for clinical decision support rules, "
+            "order sets, and protocols/pathways defining multi-step healthcare workflows."
+        ),
+    },
+    {
         "name": "Procedures",
         "description": (
             "FHIR R4 Procedure resources — clinical actions performed on or for a patient, "
             "including surgical procedures, diagnostic procedures, and therapeutic interventions."
+        ),
+    },
+    {
+        "name": "Consents",
+        "description": (
+            "FHIR R4 Consent resources — record of a healthcare consumer's choices, "
+            "which permits or denies identified recipient(s) or recipient role(s) to perform "
+            "actions within a given policy context."
+        ),
+    },
+    {
+        "name": "Groups",
+        "description": (
+            "FHIR R4 Group resources — defined collections of entities (persons, animals, devices, etc.) "
+            "for administrative or clinical purposes, with support for member inclusion and characteristic criteria."
         ),
     },
     {
@@ -153,6 +196,13 @@ OPENAPI_TAGS: list[dict] = [
         "description": (
             "FHIR R4 CarePlan resources — descriptions of planned and ongoing care for a patient. "
             "Captures goals, activities, and the care team involved."
+        ),
+    },
+    {
+        "name": "CareTeams",
+        "description": (
+            "FHIR R4 CareTeam resources — all the people and organizations who plan to participate "
+            "in the coordination and delivery of care for a patient."
         ),
     },
     {

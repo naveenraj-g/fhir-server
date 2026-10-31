@@ -229,7 +229,6 @@ class _FullMixin:
 
             qr = QuestionnaireResponseModel(
                 tenant_id=org_id,
-                user_id=payload.user_id,
                 created_by=created_by,
                 extension=payload.extension or [],
                 **_identifier_kwargs(payload.identifier),

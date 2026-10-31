@@ -214,6 +214,29 @@ def array_contains_ilike(column, pattern: str) -> ArrayContainsILike:
     return ArrayContainsILike(column, pattern)
 
 
+class ArrayContains(ColumnElement):
+    inherit_cache = True
+
+    def __init__(self, column, value: str):
+        super().__init__()
+        self.column = column
+        self.value = value
+        self.type = Boolean()
+
+
+@compiles(ArrayContains)
+def _array_contains_default(element, compiler, **kw):
+    """Postgres (and the default for any other real dialect)."""
+    col_sql = compiler.process(element.column, **kw)
+    val_sql = compiler.process(bindparam(None, element.value), **kw)
+    return f"{val_sql} = ANY({col_sql})"
+
+
+def array_contains(column, value: str) -> ArrayContains:
+    """Returns a boolean clause checking if value is in array column."""
+    return ArrayContains(column, value)
+
+
 def parse_reference[EnumT: Enum](
     ref: str, ref_type_enum: type[EnumT]
 ) -> tuple[EnumT, int]:

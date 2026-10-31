@@ -33,6 +33,8 @@ from app.schemas.datatypes.plain_human_name_row import PlainHumanNameRow
 from app.schemas.datatypes.plain_identifier import PlainIdentifier
 from app.schemas.datatypes.plain_identifier_type import PlainIdentifierType
 from app.schemas.datatypes.plain_reason_code import PlainReasonCode
+from app.schemas.datatypes.quantity import FHIRQuantity
+from app.schemas.datatypes.range import FHIRRange
 from app.schemas.datatypes.reference import FHIRReference
 
 __all__ = [
@@ -41,7 +43,7 @@ __all__ = [
     "CodingInput",
     "ContactPointInput",
     "FHIRAddress", "FHIRAttachment", "FHIRBundle", "FHIRBundleEntry", "FHIRCoding", "FHIRCodeableConcept",
-    "FHIRContactPoint", "FHIRHumanName", "FHIRIdentifier", "FHIRMeta", "FHIRPeriod", "FHIRReference",
+    "FHIRContactPoint", "FHIRHumanName", "FHIRIdentifier", "FHIRMeta", "FHIRPeriod", "FHIRQuantity", "FHIRRange", "FHIRReference",
     "HumanNameInput",
     "PlainAttachmentRow", "PlainCoding", "PlainCodingRow", "PlainContactPointRow", "PlainHumanNameRow",
     "PlainIdentifier", "PlainIdentifierType", "PlainReasonCode",

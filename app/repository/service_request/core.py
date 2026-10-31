@@ -54,7 +54,6 @@ class _CoreMixin:
         self,
         stmt,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: ServiceRequestStatus | None = None,
         intent: ServiceRequestIntent | None = None,
         subject: str | None = None,
@@ -62,8 +61,6 @@ class _CoreMixin:
     ):
         if org_id:
             stmt = stmt.where(ServiceRequestModel.tenant_id == org_id)
-        if user_id:
-            stmt = stmt.where(ServiceRequestModel.user_id == user_id)
         stmt = apply_token_filter(stmt, ServiceRequestModel.status, status)
         stmt = apply_token_filter(stmt, ServiceRequestModel.intent, intent)
         if subject:
@@ -81,7 +78,6 @@ class _CoreMixin:
     async def list(
         self,
         org_id: str | None = None,
-        user_id: str | None = None,
         status: ServiceRequestStatus | None = None,
         intent: ServiceRequestIntent | None = None,
         subject: str | None = None,
@@ -94,7 +90,6 @@ class _CoreMixin:
         async with self.session_factory() as session:
             filter_kwargs = {
                 "org_id": org_id,
-                "user_id": user_id,
                 "status": status,
                 "intent": intent,
                 "subject": subject,
@@ -123,25 +118,6 @@ class _CoreMixin:
             },
         )
         return rows, total
-
-    async def get_me(
-        self,
-        user_id: str,
-        org_id: str | None = None,
-        status: ServiceRequestStatus | None = None,
-        intent: ServiceRequestIntent | None = None,
-        subject: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ServiceRequestModel], int | None]:
-        return await self.list(
-            org_id=org_id, user_id=user_id, status=status, intent=intent,
-            subject=subject, identifier=identifier, limit=limit, offset=offset,
-            sort=sort, total_mode=total_mode,
-        )
 
     async def delete(self, service_request_id: int) -> bool:
         """No self-referential/mutual-recursion gotcha here (unlike

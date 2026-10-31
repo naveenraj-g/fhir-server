@@ -593,6 +593,17 @@ class ObservationQuantityComparator(str, Enum):
     gt = ">"
 
 
+class ConditionQuantityComparator(str, Enum):
+    """
+    FHIR Duration/Quantity.comparator value set, used by Condition onsetAge and abatementAge.
+    """
+
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
 class DiagnosticReportStatus(str, Enum):
     """
     FHIR DiagnosticReport.status value set (modifier) --
@@ -609,3 +620,177 @@ class DiagnosticReportStatus(str, Enum):
     cancelled = "cancelled"
     entered_in_error = "entered-in-error"
     unknown = "unknown"
+
+
+class SpecimenStatus(str, Enum):
+    """
+    FHIR Specimen.status value set (code, required) --
+    https://www.hl7.org/fhir/R4/valueset-specimen-status.html
+    """
+
+    available = "available"
+    unavailable = "unavailable"
+    unsatisfactory = "unsatisfactory"
+    entered_in_error = "entered-in-error"
+
+
+class SpecimenQuantityComparator(str, Enum):
+    """
+    FHIR Duration/Quantity.comparator value set, used by Specimen collection duration and fastingStatus duration.
+    """
+
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
+class DocumentReferenceStatus(str, Enum):
+    """
+    FHIR DocumentReference.status value set (code, required) --
+    https://www.hl7.org/fhir/R4/valueset-document-reference-status.html
+    """
+
+    current = "current"
+    superseded = "superseded"
+    entered_in_error = "entered-in-error"
+
+
+class DocumentReferenceDocStatus(str, Enum):
+    """
+    FHIR DocumentReference.docStatus value set (code, required) --
+    http://hl7.org/fhir/composition-status
+    """
+
+    preliminary = "preliminary"
+    final = "final"
+    amended = "amended"
+    entered_in_error = "entered-in-error"
+
+
+class DocumentRelationshipType(str, Enum):
+    """
+    FHIR DocumentReference.relatesTo.code value set (code, required) --
+    http://hl7.org/fhir/document-relationship-type
+    """
+
+    replaces = "replaces"
+    transforms = "transforms"
+    signs = "signs"
+    appends = "appends"
+
+
+# CarePlan enums
+
+
+class CarePlanStatus(str, Enum):
+    """
+    FHIR CarePlan.status value set (code, required) --
+    http://hl7.org/fhir/request-status
+    """
+
+    draft = "draft"
+    active = "active"
+    on_hold = "on-hold"
+    revoked = "revoked"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
+
+
+class CarePlanIntent(str, Enum):
+    """
+    FHIR CarePlan.intent value set (code, required) --
+    http://hl7.org/fhir/care-plan-intent
+    """
+
+    proposal = "proposal"
+    plan = "plan"
+    order = "order"
+    option = "option"
+
+
+class CarePlanActivityStatus(str, Enum):
+    """
+    FHIR CarePlan.activity.detail.status value set (code, required) --
+    http://hl7.org/fhir/care-plan-activity-status
+    """
+
+    not_started = "not-started"
+    scheduled = "scheduled"
+    in_progress = "in-progress"
+    on_hold = "on-hold"
+    completed = "completed"
+    cancelled = "cancelled"
+    stopped = "stopped"
+    unknown = "unknown"
+    entered_in_error = "entered-in-error"
+
+
+class CarePlanActivityKind(str, Enum):
+    """
+    FHIR CarePlan.activity.detail.kind value set (code, required) --
+    http://hl7.org/fhir/care-plan-activity-kind
+    """
+
+    Appointment = "Appointment"
+    CommunicationRequest = "CommunicationRequest"
+    DeviceRequest = "DeviceRequest"
+    MedicationRequest = "MedicationRequest"
+    NutritionOrder = "NutritionOrder"
+    Task = "Task"
+    ServiceRequest = "ServiceRequest"
+    VisionPrescription = "VisionPrescription"
+
+
+class CarePlanQuantityComparator(str, Enum):
+    """
+    FHIR CarePlan quantity comparator.
+    """
+
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
+# ---------------------------------------------------------------------------
+# CareTeam enums
+# ---------------------------------------------------------------------------
+
+
+class CareTeamStatus(str, Enum):
+    """
+    FHIR CareTeam.status value set (code, required) --
+    http://hl7.org/fhir/care-team-status
+    """
+
+    proposed = "proposed"
+    active = "active"
+    suspended = "suspended"
+    inactive = "inactive"
+    entered_in_error = "entered-in-error"
+
+
+# ---------------------------------------------------------------------------
+# EpisodeOfCare enums
+# ---------------------------------------------------------------------------
+
+
+class EpisodeOfCareStatus(str, Enum):
+    """
+    FHIR EpisodeOfCare.status value set (code, required) --
+    http://hl7.org/fhir/episode-of-care-status
+    """
+
+    planned = "planned"
+    waitlist = "waitlist"
+    active = "active"
+    onhold = "onhold"
+    finished = "finished"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
+
+
+
+

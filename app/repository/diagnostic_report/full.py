@@ -146,7 +146,6 @@ class _FullMixin:
 
             dr = DiagnosticReportModel(
                 tenant_id=org_id,
-                user_id=payload.user_id,
                 created_by=created_by,
                 extension=payload.extension or [],
                 status=_model_status(payload.status),

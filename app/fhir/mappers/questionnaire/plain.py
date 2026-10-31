@@ -299,7 +299,6 @@ def to_plain_questionnaire(q: QuestionnaireModel) -> dict:
         "use_context": [plain_questionnaire_use_context(uc) for uc in (q.use_contexts or [])],
         "jurisdiction": [plain_questionnaire_jurisdiction(j) for j in (q.jurisdictions or [])],
         "item": _build_plain_item_tree(q.items or []),
-        "user_id": q.user_id,
         "org_id": q.tenant_id,
         "created_at": q.created_at.isoformat() if q.created_at else None,
         "updated_at": q.updated_at.isoformat() if q.updated_at else None,

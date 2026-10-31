@@ -178,7 +178,6 @@ def to_plain_diagnostic_report(dr: DiagnosticReportModel) -> dict:
         ]
         or None,
         "presented_form": [_plain_presented_form(a) for a in (dr.presented_forms or [])] or None,
-        "user_id": dr.user_id,
         "org_id": dr.tenant_id,
         "created_at": dr.created_at.isoformat() if dr.created_at else None,
         "updated_at": dr.updated_at.isoformat() if dr.updated_at else None,

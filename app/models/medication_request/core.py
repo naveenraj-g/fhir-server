@@ -88,8 +88,6 @@ class MedicationRequestModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    user_id = Column(String, nullable=True, index=True)
-
     # ── instantiatesCanonical / instantiatesUri ────────────────────────────
     instantiates_canonical = Column(ARRAY(String), nullable=True)
     instantiates_uri = Column(ARRAY(String), nullable=True)

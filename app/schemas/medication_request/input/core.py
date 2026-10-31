@@ -32,7 +32,6 @@ from .reference import (
 )
 
 _EXAMPLE = {
-    "user_id": "user-001",
     "status": "active",
     "intent": "order",
     "subject": {"reference": "Patient/10001"},
@@ -46,12 +45,9 @@ class MedicationRequestCreateSchema(BaseModel):
     lists atomically in one request. JWT/RBAC auth-rollout pattern — same
     as every other resource now: `org_id`/`created_by` come from the
     verified JWT (`actor.org_id`/`actor.sub`), not the request body — an
-    org-less token is rejected outright (403). `user_id` is unaffected —
-    still a plain, optional, gateway-forwarded field."""
+    org-less token is rejected outright (403)."""
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
-
-    user_id: str | None = Field(None, description="Gateway-forwarded ID of the end-user this record is scoped to.")
 
     extension: list[dict] | None = Field(None, description="Resource-level FHIR extensions.")
 

@@ -111,7 +111,6 @@ class PlainDiagnosticReportResponse(BaseModel):
     conclusion: str | None = Field(None, description="Concise clinical summary/interpretation of the results.")
     conclusion_code: list[PlainDiagnosticReportCodeableConcept] | None = Field(None, description="Codes for the clinical conclusion of this test.")
     presented_form: list[PlainDiagnosticReportPresentedForm] | None = Field(None, description="Full report as issued, e.g. a PDF.")
-    user_id: str | None = Field(None, description="Gateway-forwarded end-user ID — not a FHIR concept.")
     org_id: str | None = Field(None, description="Gateway-forwarded tenant/account ID — not a FHIR concept. Internally this column is named tenant_id.")
     created_at: str | None = Field(None, description="When this row was created.")
     updated_at: str | None = Field(None, description="When this row was last updated.")

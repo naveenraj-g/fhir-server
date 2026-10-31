@@ -81,7 +81,6 @@ class ObservationModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    user_id = Column(String, nullable=True, index=True)
 
     # ── status (1..1, required, modifier) ──────────────────────────────────
     status = Column(Enum(ObservationStatus, name="observation_status"), nullable=False)

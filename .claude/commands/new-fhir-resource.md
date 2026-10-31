@@ -108,8 +108,8 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
 
 15. **Router** — `app/routers/<resource>.py` (or `app/routers/<resource>/` package — `core.py` + `_responses.py` holding the `_SINGLE_200`/etc. constants, see any existing resource for the template)
     - Module-level constants: `_SINGLE_200`, `_SINGLE_201`, `_LIST_200` using `inline_schema()`
-    - Route order: `POST /`, `GET /me`, `GET /{id}`, `PATCH /{id}`, `GET /`, `DELETE /{id}`
-    - `/me` **must** come before `/{id}` to prevent FastAPI treating `me` as a path param. Omit `/me` entirely only if this resource has no `user_id` at all (Organization/Location/HealthcareService/PractitionerRole/Schedule/Slot/Appointment/AppointmentResponse/Encounter dropped it for that reason; a resource that keeps `user_id` keeps `/me`, see step 1).
+    - Route order: `POST /`, `GET /me` (Patient/Practitioner only), `GET /{id}`, `PATCH /{id}`, `GET /`, `DELETE /{id}`
+    - `/me` is **only** exposed for `Patient` and `Practitioner` (where the user represents the clinical actor). For all other resources, omit `/me` entirely. Where `/me` is present, it **must** come before `/{id}` to prevent FastAPI treating `me` as a path param.
     - **Every route takes `actor: AuthUser = Depends(require_permission("<resource>", "create|read|update|delete"))`** (`app/auth/rbac.py`) instead of a bare `Depends(get_current_user)` or a `resolve_<resource>` dependency — `org_id` comes from `actor.org_id`, `created_by`/`updated_by` from `actor.sub`. Drop any `tenant_id`/`user_id` *filter* query params from `GET /` and `GET /me` — org scoping is derived from the token, not client-suppliable; `user_id` scoping (where this resource has one) only happens via `/me`'s own `actor.sub`. Only skip all of this if step 14a's exception applies.
     - If `status` is a query param, rename to `<res>_status` with `alias="status"` to avoid shadowing `fastapi.status`
     - Never use `response_model=` — use inline `responses=` with `inline_schema()` only

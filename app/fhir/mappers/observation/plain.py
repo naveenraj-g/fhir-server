@@ -340,7 +340,6 @@ def to_plain_observation(obs: ObservationModel) -> dict:
         "has_member": [_plain_reference_row(h, h.id) for h in (obs.has_members or [])] or None,
         "derived_from": [_plain_reference_row(d, d.id) for d in (obs.derived_froms or [])] or None,
         "component": [_plain_component(c) for c in (obs.components or [])] or None,
-        "user_id": obs.user_id,
         "org_id": obs.tenant_id,
         "created_at": obs.created_at.isoformat() if obs.created_at else None,
         "updated_at": obs.updated_at.isoformat() if obs.updated_at else None,

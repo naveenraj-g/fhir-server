@@ -18,19 +18,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
+from app.models.activity_definition import ActivityDefinitionModel
+from app.models.allergy_intolerance import AllergyIntoleranceModel
 from app.models.appointment import AppointmentModel
+from app.models.care_plan import CarePlanModel
+from app.models.care_team import CareTeamModel
+from app.models.condition import ConditionModel
+from app.models.consent import ConsentModel
+from app.models.document_reference import DocumentReferenceModel
 from app.models.encounter import EncounterModel
+from app.models.episode_of_care import EpisodeOfCareModel
+from app.models.group import GroupModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
 from app.models.medication_request import MedicationRequestModel
 from app.models.observation import ObservationModel
+from app.models.observation_definition import ObservationDefinitionModel
 from app.models.organization import OrganizationModel
+from app.models.patient import PatientModel
+from app.models.plan_definition import PlanDefinitionModel
+from app.models.procedure import ProcedureModel
+from app.models.flag import FlagModel
+from app.models.related_person import RelatedPersonModel
+from app.models.task import TaskModel
+from app.models.goal import GoalModel
+from app.models.communication_request import CommunicationRequestModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
 from app.models.questionnaire_response import QuestionnaireResponseModel
 from app.models.schedule import ScheduleModel
 from app.models.service_request import ServiceRequestModel
 from app.models.slot import SlotModel
+from app.models.specimen import SpecimenModel
 
 logger = get_logger(__name__)
 
@@ -83,6 +102,27 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # Observation.hasMember/.derivedFrom are self-referential — this entry is
     # what makes that existence check work at all.
     "Observation": (ObservationModel, "observation_id"),
+    # Patient.link.other is self-referential (Patient subset) — also registered
+    # so other resources' Patient references (Appointment, Encounter, etc.) validate.
+    "Patient": (PatientModel, "patient_id"),
+    "Condition": (ConditionModel, "condition_id"),
+    "Specimen": (SpecimenModel, "specimen_id"),
+    "DocumentReference": (DocumentReferenceModel, "document_reference_id"),
+    "CarePlan": (CarePlanModel, "care_plan_id"),
+    "CareTeam": (CareTeamModel, "care_team_id"),
+    "EpisodeOfCare": (EpisodeOfCareModel, "episode_of_care_id"),
+    "ObservationDefinition": (ObservationDefinitionModel, "observation_definition_id"),
+    "ActivityDefinition": (ActivityDefinitionModel, "activity_definition_id"),
+    "PlanDefinition": (PlanDefinitionModel, "plan_definition_id"),
+    "Procedure": (ProcedureModel, "procedure_id"),
+    "Group": (GroupModel, "group_id"),
+    "Consent": (ConsentModel, "consent_id"),
+    "AllergyIntolerance": (AllergyIntoleranceModel, "allergy_intolerance_id"),
+    "Flag": (FlagModel, "flag_id"),
+    "RelatedPerson": (RelatedPersonModel, "related_person_id"),
+    "Task": (TaskModel, "task_id"),
+    "Goal": (GoalModel, "goal_id"),
+    "CommunicationRequest": (CommunicationRequestModel, "communication_request_id"),
 }
 
 

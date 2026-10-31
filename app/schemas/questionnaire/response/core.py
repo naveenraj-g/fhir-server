@@ -99,9 +99,6 @@ class PlainQuestionnaireResponse(BaseModel):
     use_context: list[PlainQuestionnaireUseContext] | None = Field(None, description="Intended usage contexts.")
     jurisdiction: list[PlainQuestionnaireJurisdiction] | None = Field(None, description="Intended jurisdiction.")
     item: list[PlainQuestionnaireItem] | None = Field(None, description="Questions and sections.")
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded ID of the end-user this record is scoped to — not a FHIR concept."
-    )
     org_id: str | None = Field(
         None,
         description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept. Internally this column is named tenant_id (see app/models/shared/tenant_audit.py) to avoid ambiguity with the Organization entity itself; the external field name stays org_id for consistency with every other auth-rollout resource's response contract.",

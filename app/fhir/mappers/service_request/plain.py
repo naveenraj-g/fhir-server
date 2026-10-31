@@ -203,7 +203,6 @@ def to_plain_service_request(sr: ServiceRequestModel) -> dict:
         "note": [_plain_note(n) for n in (sr.notes or [])] or None,
         "patient_instruction": sr.patient_instruction,
         "relevant_history": [_plain_reference_row(rh, rh.id) for rh in (sr.relevant_histories or [])] or None,
-        "user_id": sr.user_id,
         "org_id": sr.tenant_id,
         "created_at": sr.created_at.isoformat() if sr.created_at else None,
         "updated_at": sr.updated_at.isoformat() if sr.updated_at else None,

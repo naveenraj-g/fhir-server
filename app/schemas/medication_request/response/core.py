@@ -199,7 +199,6 @@ class PlainMedicationRequestResponse(BaseModel):
     prior_prescription: PlainMedicationRequestPriorPrescription | None = Field(None, description="The ultimate source of the prescription.")
     detected_issue: list[PlainMedicationRequestDetectedIssue] | None = Field(None, description="Clinical issues notified about.")
     event_history: list[PlainMedicationRequestEventHistory] | None = Field(None, description="Key events in the history of the request.")
-    user_id: str | None = Field(None, description="Gateway-forwarded end-user ID — not a FHIR concept.")
     org_id: str | None = Field(None, description="Gateway-forwarded tenant/account ID — not a FHIR concept. Internally this column is named tenant_id.")
     created_at: str | None = Field(None, description="When this row was created.")
     updated_at: str | None = Field(None, description="When this row was last updated.")

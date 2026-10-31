@@ -188,7 +188,6 @@ class _FullMixin:
 
             sr = ServiceRequestModel(
                 tenant_id=org_id,
-                user_id=payload.user_id,
                 created_by=created_by,
                 extension=payload.extension or [],
                 instantiates_canonical=payload.instantiates_canonical,

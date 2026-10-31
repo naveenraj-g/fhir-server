@@ -1,0 +1,33 @@
+from app.schemas.document_reference.response.core import (
+    FHIRDocumentReferenceBundle,
+    FHIRDocumentReferenceBundleEntry,
+    FHIRDocumentReferenceContent,
+    FHIRDocumentReferenceContext,
+    FHIRDocumentReferenceRelatesTo,
+    FHIRDocumentReferenceSchema,
+    PaginatedDocumentReferenceResponse,
+    PlainCodeableConcept,
+    PlainDocumentReferenceContent,
+    PlainDocumentReferenceContext,
+    PlainDocumentReferenceIdentifier,
+    PlainDocumentReferenceRelatesTo,
+    PlainDocumentReferenceResponse,
+    PlainReference,
+)
+
+__all__ = [
+    "FHIRDocumentReferenceSchema",
+    "FHIRDocumentReferenceBundle",
+    "FHIRDocumentReferenceBundleEntry",
+    "FHIRDocumentReferenceRelatesTo",
+    "FHIRDocumentReferenceContent",
+    "FHIRDocumentReferenceContext",
+    "PlainDocumentReferenceResponse",
+    "PaginatedDocumentReferenceResponse",
+    "PlainCodeableConcept",
+    "PlainReference",
+    "PlainDocumentReferenceIdentifier",
+    "PlainDocumentReferenceRelatesTo",
+    "PlainDocumentReferenceContent",
+    "PlainDocumentReferenceContext",
+]

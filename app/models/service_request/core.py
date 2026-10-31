@@ -99,7 +99,6 @@ class ServiceRequestModel(TenantAuditMixin, Base):
 
     # Plain, gateway-forwarded user_id — default pattern, not derived from
     # any JWT.
-    user_id = Column(String, nullable=True, index=True)
 
     # ── instantiatesCanonical (0..* canonical) / instantiatesUri (0..* uri) ──
     # Plain canonical/uri string arrays, not flattened References — same

@@ -26,8 +26,7 @@ class _CoreMixin:
     actor. Like Practitioner (and unlike Organization/Location/
     HealthcareService/PractitionerRole/Schedule/Slot/Appointment/
     AppointmentResponse/Encounter), Questionnaire also keeps `user_id`
-    (plain, gateway-forwarded), so `get_me()` additionally scopes to the
-    acting end-user."""
+    (plain, gateway-forwarded)."""
 
     def __init__(self, repository: QuestionnaireRepository):
         self.repository = repository
@@ -59,42 +58,6 @@ class _CoreMixin:
         if not questionnaire:
             raise NotFoundError("Questionnaire not found")
         return questionnaire
-
-    async def get_me(
-        self,
-        user_id: str,
-        org_id: str | None = None,
-        status: QuestionnaireStatus | None = None,
-        url: str | None = None,
-        name: str | None = None,
-        title: str | None = None,
-        publisher: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[QuestionnaireModel], int | None]:
-        """Scopes list() to the authenticated end-user's own user_id,
-        always combined with the org-scoped actor's org_id."""
-        if not org_id:
-            raise PermissionDeniedError(
-                "Questionnaire operation requires an org-scoped token"
-            )
-        return await self.repository.list(
-            org_id=org_id,
-            user_id=user_id,
-            status=QuestionnaireStatusModel[status.name] if status else None,
-            url=url,
-            name=name,
-            title=title,
-            publisher=publisher,
-            identifier=identifier,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
-        )
 
     async def list_questionnaires(
         self,

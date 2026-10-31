@@ -23,7 +23,6 @@ from .reference import (
 from .reference_range import ObservationReferenceRangeInput
 
 _EXAMPLE = {
-    "user_id": "user-001",
     "status": "final",
     "code": {"coding": [{"system": "http://loinc.org", "code": "15074-8", "display": "Glucose [Moles/volume] in Blood"}]},
     "subject": {"reference": "Patient/10001"},
@@ -49,7 +48,6 @@ class ObservationCreateSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
 
-    user_id: str | None = Field(None, description="Gateway-forwarded ID of the end-user this record is scoped to.")
 
     extension: list[dict] | None = Field(None, description="Resource-level FHIR extensions.")
 
