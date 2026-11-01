@@ -8,7 +8,8 @@ from app.schemas.care_plan.input.codeable_concept import (
 )
 from app.schemas.care_plan.input.note import CarePlanNoteInput
 from app.schemas.care_plan.input.quantity import CarePlanQuantityInput
-from app.schemas.enums import CarePlanActivityKind, CarePlanActivityStatus
+from app.schemas.care_plan.input.reference import CarePlanReferenceInput
+from app.schemas.enums import CarePlanActivityKind, CarePlanActivityStatus, IdentifierUse
 
 
 class CarePlanActivityDetailInput(BaseModel):
@@ -30,10 +31,10 @@ class CarePlanActivityDetailInput(BaseModel):
     reason_code: list[CarePlanCodeableConceptInput] | None = Field(
         None, description="Why activity should be done or why activity was prohibited."
     )
-    reason_reference: list[str] | None = Field(
+    reason_reference: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Why activity is needed (references)."
     )
-    goal: list[str] | None = Field(
+    goal: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Goals this activity will contribute towards."
     )
     status: CarePlanActivityStatus | None = Field(
@@ -63,7 +64,19 @@ class CarePlanActivityDetailInput(BaseModel):
     location_display: str | None = Field(
         None, description="Display name for location reference."
     )
-    performer: list[str] | None = Field(
+    location_identifier_use: IdentifierUse | None = Field(None)
+    location_identifier_type_system: str | None = Field(None)
+    location_identifier_type_version: str | None = Field(None)
+    location_identifier_type_code: str | None = Field(None)
+    location_identifier_type_display: str | None = Field(None)
+    location_identifier_type_user_selected: bool | None = Field(None)
+    location_identifier_type_text: str | None = Field(None)
+    location_identifier_system: str | None = Field(None)
+    location_identifier_value: str | None = Field(None)
+    location_identifier_period_start: datetime | None = Field(None)
+    location_identifier_period_end: datetime | None = Field(None)
+
+    performer: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Who will be responsible (References)."
     )
     product_codeable_concept: CarePlanCodeableConceptInput | None = Field(
@@ -75,6 +88,18 @@ class CarePlanActivityDetailInput(BaseModel):
     product_display: str | None = Field(
         None, description="Display name for product reference."
     )
+    product_identifier_use: IdentifierUse | None = Field(None)
+    product_identifier_type_system: str | None = Field(None)
+    product_identifier_type_version: str | None = Field(None)
+    product_identifier_type_code: str | None = Field(None)
+    product_identifier_type_display: str | None = Field(None)
+    product_identifier_type_user_selected: bool | None = Field(None)
+    product_identifier_type_text: str | None = Field(None)
+    product_identifier_system: str | None = Field(None)
+    product_identifier_value: str | None = Field(None)
+    product_identifier_period_start: datetime | None = Field(None)
+    product_identifier_period_end: datetime | None = Field(None)
+
     daily_amount: CarePlanQuantityInput | None = Field(
         None, description="How to consume/day."
     )
@@ -93,7 +118,7 @@ class CarePlanActivityInput(BaseModel):
     outcome_codeable_concept: list[CarePlanCodeableConceptInput] | None = Field(
         None, description="Results of the activity (e.g. met, partially met, not met)."
     )
-    outcome_reference: list[str] | None = Field(
+    outcome_reference: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Appointment, Encounter, Procedure, etc."
     )
     progress: list[CarePlanNoteInput] | None = Field(
@@ -105,6 +130,18 @@ class CarePlanActivityInput(BaseModel):
     reference_display: str | None = Field(
         None, description="Display name for reference."
     )
+    reference_identifier_use: IdentifierUse | None = Field(None)
+    reference_identifier_type_system: str | None = Field(None)
+    reference_identifier_type_version: str | None = Field(None)
+    reference_identifier_type_code: str | None = Field(None)
+    reference_identifier_type_display: str | None = Field(None)
+    reference_identifier_type_user_selected: bool | None = Field(None)
+    reference_identifier_type_text: str | None = Field(None)
+    reference_identifier_system: str | None = Field(None)
+    reference_identifier_value: str | None = Field(None)
+    reference_identifier_period_start: datetime | None = Field(None)
+    reference_identifier_period_end: datetime | None = Field(None)
+
     detail: CarePlanActivityDetailInput | None = Field(
         None, description="In-line definition of activity."
     )

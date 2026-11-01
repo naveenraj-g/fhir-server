@@ -322,3 +322,58 @@ async def test_insufficient_permissions(client):
     )
     resp = await client.post(BASE + "/", json=minimal_care_plan(p_id))
     assert resp.status_code == 403
+
+
+async def test_create_care_plan_with_reference_identifier_fallback(client):
+    payload = {
+        "status": "active",
+        "intent": "plan",
+        "title": "Care Plan with Logical Identifier Fallback",
+        "subject_identifier_system": "http://hospital.example.org/patients",
+        "subject_identifier_value": "PAT-9999",
+        "encounter_identifier_system": "http://hospital.example.org/encounters",
+        "encounter_identifier_value": "ENC-8888",
+        "author_identifier_system": "http://hospital.example.org/practitioners",
+        "author_identifier_value": "PRAC-7777",
+        "based_on": [
+            {
+                "display": "External Protocol",
+                "identifier_system": "http://protocols.example.org",
+                "identifier_value": "PROTO-1",
+            }
+        ],
+        "activity": [
+            {
+                "detail": {
+                    "status": "in-progress",
+                    "location_identifier_system": "http://hospital.example.org/locations",
+                    "location_identifier_value": "LOC-123",
+                    "product_identifier_system": "http://pharma.example.org/drugs",
+                    "product_identifier_value": "DRUG-456",
+                }
+            }
+        ],
+    }
+
+    # Test FHIR content negotiation
+    resp = await client.post(BASE + "/", json=payload, headers=FHIR_ACCEPT)
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert_fhir_care_plan(data)
+    assert data["subject"]["identifier"]["value"] == "PAT-9999"
+    assert data["encounter"]["identifier"]["value"] == "ENC-8888"
+    assert data["author"]["identifier"]["value"] == "PRAC-7777"
+    assert data["basedOn"][0]["identifier"]["value"] == "PROTO-1"
+    assert data["activity"][0]["detail"]["location"]["identifier"]["value"] == "LOC-123"
+    assert data["activity"][0]["detail"]["productReference"]["identifier"]["value"] == "DRUG-456"
+
+    # Test plain JSON representation
+    resp2 = await client.get(f"{BASE}/{data['id']}")
+    assert resp2.status_code == 200, resp2.text
+    plain_data = resp2.json()
+    assert plain_data["subject_identifier_value"] == "PAT-9999"
+    assert plain_data["encounter_identifier_value"] == "ENC-8888"
+    assert plain_data["author_identifier_value"] == "PRAC-7777"
+    assert plain_data["based_on"][0]["identifier_value"] == "PROTO-1"
+    assert plain_data["activities"][0]["detail"]["location_identifier_value"] == "LOC-123"
+    assert plain_data["activities"][0]["detail"]["product_identifier_value"] == "DRUG-456"

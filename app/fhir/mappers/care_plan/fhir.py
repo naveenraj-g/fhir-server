@@ -37,47 +37,95 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
-def _fhir_ref(ref_raw: str | None, ref_type, ref_id: int | None, display: str | None) -> dict | None:
-    result: dict = {}
-    if ref_raw:
-        result["reference"] = ref_raw
-    elif ref_type and ref_id:
-        result["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
-    if display:
-        result["display"] = display
-    return result or None
-
-
-def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
     raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
 
+    ref_str = raw_reference or (
+        f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
+    )
+
     entry: dict = {}
-    if raw_reference:
-        entry["reference"] = raw_reference
-    elif ref_type and ref_id:
-        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if ref_str:
+        entry["reference"] = ref_str
     if display:
         entry["display"] = display
 
     id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
-    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_system or id_value or id_type_text:
-        identifier: dict = {}
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
         if id_use:
-            identifier["use"] = fhir_enum(id_use)
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
         if id_system:
-            identifier["system"] = id_system
+            ident["system"] = id_system
         if id_value:
-            identifier["value"] = id_value
-        if id_type_text:
-            identifier["type"] = {"text": id_type_text}
-        entry["identifier"] = identifier
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                p_dict["end"] = fhir_instant(id_period_end)
+            ident["period"] = p_dict
+        entry["identifier"] = ident
 
     return entry or None
 
@@ -100,7 +148,7 @@ def _fhir_identifier(i) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_reference_with_identifier_fallback(i, "assigner")
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -108,12 +156,7 @@ def _fhir_identifier(i) -> dict | None:
 
 def _fhir_annotation(note) -> dict | None:
     entry: dict = {}
-    author_ref = _fhir_ref(
-        getattr(note, "author_reference_reference", None),
-        getattr(note, "author_reference_type", None),
-        getattr(note, "author_reference_id", None),
-        getattr(note, "author_reference_display", None),
-    )
+    author_ref = _fhir_reference(note, "author_reference")
     if author_ref:
         entry["authorReference"] = author_ref
     elif getattr(note, "author_string", None):
@@ -161,6 +204,7 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
         or act.detail_location_type
         or act.detail_location_id
         or act.detail_location_display
+        or act.detail_location_identifier_value
         or getattr(act, "detail_performers", None)
         or act.detail_product_codeable_concept_text
         or getattr(act, "detail_product_codings", None)
@@ -168,6 +212,7 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
         or act.detail_product_type
         or act.detail_product_id
         or act.detail_product_display
+        or act.detail_product_identifier_value
         or act.detail_daily_amount_value is not None
         or act.detail_quantity_value is not None
         or act.detail_description
@@ -198,7 +243,7 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
             detail["reasonCode"] = rc_list
     if getattr(act, "detail_reason_references", None):
         rr_list = [
-            _fhir_ref(rr.reference_reference, rr.reference_type, rr.reference_id, rr.reference_display)
+            _fhir_reference(rr, "reference")
             for rr in act.detail_reason_references
         ]
         rr_list = [rr for rr in rr_list if rr]
@@ -206,7 +251,7 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
             detail["reasonReference"] = rr_list
     if getattr(act, "detail_goals", None):
         goal_list = [
-            _fhir_ref(g.reference_reference, g.reference_type, g.reference_id, g.reference_display)
+            _fhir_reference(g, "reference")
             for g in act.detail_goals
         ]
         goal_list = [g for g in goal_list if g]
@@ -233,17 +278,12 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
         detail["scheduledPeriod"] = period
     if act.detail_scheduled_string:
         detail["scheduledString"] = act.detail_scheduled_string
-    loc = _fhir_ref(
-        act.detail_location_reference,
-        act.detail_location_type,
-        act.detail_location_id,
-        act.detail_location_display,
-    )
+    loc = _fhir_reference(act, "detail_location")
     if loc:
         detail["location"] = loc
     if getattr(act, "detail_performers", None):
         perf_list = [
-            _fhir_ref(p.reference_reference, p.reference_type, p.reference_id, p.reference_display)
+            _fhir_reference(p, "reference")
             for p in act.detail_performers
         ]
         perf_list = [p for p in perf_list if p]
@@ -255,12 +295,7 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
     )
     if prod_cc:
         detail["productCodeableConcept"] = prod_cc
-    prod_ref = _fhir_ref(
-        act.detail_product_reference,
-        act.detail_product_type,
-        act.detail_product_id,
-        act.detail_product_display,
-    )
+    prod_ref = _fhir_reference(act, "detail_product")
     if prod_ref:
         detail["productReference"] = prod_ref
     daily_amount = _fhir_quantity(
@@ -299,7 +334,7 @@ def _fhir_activity(act: CarePlanActivity) -> dict:
             res["outcomeCodeableConcept"] = occ_list
     if getattr(act, "outcome_references", None):
         oref_list = [
-            _fhir_ref(oref.reference_reference, oref.reference_type, oref.reference_id, oref.reference_display)
+            _fhir_reference(oref, "reference")
             for oref in act.outcome_references
         ]
         oref_list = [o for o in oref_list if o]
@@ -310,12 +345,7 @@ def _fhir_activity(act: CarePlanActivity) -> dict:
         prog_list = [p for p in prog_list if p]
         if prog_list:
             res["progress"] = prog_list
-    ref = _fhir_ref(
-        act.reference_reference,
-        act.reference_type,
-        act.reference_id,
-        act.reference_display,
-    )
+    ref = _fhir_reference(act, "reference")
     if ref:
         res["reference"] = ref
     det = _fhir_activity_detail(act)
@@ -326,8 +356,9 @@ def _fhir_activity(act: CarePlanActivity) -> dict:
 
 def _fhir_meta(model: CarePlanModel) -> dict:
     meta: dict = {}
-    if model.updated_at:
-        meta["lastUpdated"] = fhir_instant(model.updated_at)
+    last_updated = model.updated_at or model.created_at
+    if last_updated:
+        meta["lastUpdated"] = fhir_instant(last_updated)
     extensions = []
     if model.created_at:
         extensions.append({
@@ -377,7 +408,7 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
 
     if getattr(model, "based_on", None):
         bo_list = [
-            _fhir_ref(b.reference_reference, b.reference_type, b.reference_id, b.reference_display)
+            _fhir_reference(b, "reference")
             for b in model.based_on
         ]
         bo_list = [b for b in bo_list if b]
@@ -386,7 +417,7 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
 
     if getattr(model, "replaces", None):
         rep_list = [
-            _fhir_ref(r.reference_reference, r.reference_type, r.reference_id, r.reference_display)
+            _fhir_reference(r, "reference")
             for r in model.replaces
         ]
         rep_list = [r for r in rep_list if r]
@@ -395,7 +426,7 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
 
     if getattr(model, "part_of", None):
         po_list = [
-            _fhir_ref(p.reference_reference, p.reference_type, p.reference_id, p.reference_display)
+            _fhir_reference(p, "reference")
             for p in model.part_of
         ]
         po_list = [p for p in po_list if p]
@@ -420,21 +451,11 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
     if model.description:
         res["description"] = model.description
 
-    subj = _fhir_ref(
-        model.subject_reference,
-        model.subject_type,
-        model.subject_id,
-        model.subject_display,
-    )
+    subj = _fhir_reference(model, "subject")
     if subj:
         res["subject"] = subj
 
-    enc = _fhir_ref(
-        model.encounter_reference,
-        model.encounter_type,
-        model.encounter_id,
-        model.encounter_display,
-    )
+    enc = _fhir_reference(model, "encounter")
     if enc:
         res["encounter"] = enc
 
@@ -449,18 +470,13 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
     if model.created:
         res["created"] = fhir_instant(model.created)
 
-    auth = _fhir_ref(
-        model.author_reference,
-        model.author_type,
-        model.author_id,
-        model.author_display,
-    )
+    auth = _fhir_reference(model, "author")
     if auth:
         res["author"] = auth
 
     if getattr(model, "contributors", None):
         cont_list = [
-            _fhir_ref(c.reference_reference, c.reference_type, c.reference_id, c.reference_display)
+            _fhir_reference(c, "reference")
             for c in model.contributors
         ]
         cont_list = [c for c in cont_list if c]
@@ -469,7 +485,7 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
 
     if getattr(model, "care_teams", None):
         ct_list = [
-            _fhir_ref(ct.reference_reference, ct.reference_type, ct.reference_id, ct.reference_display)
+            _fhir_reference(ct, "reference")
             for ct in model.care_teams
         ]
         ct_list = [ct for ct in ct_list if ct]
@@ -478,7 +494,7 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
 
     if getattr(model, "addresses", None):
         addr_list = [
-            _fhir_ref(a.reference_reference, a.reference_type, a.reference_id, a.reference_display)
+            _fhir_reference(a, "reference")
             for a in model.addresses
         ]
         addr_list = [a for a in addr_list if a]
@@ -487,7 +503,7 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
 
     if getattr(model, "goals", None):
         goal_list = [
-            _fhir_ref(g.reference_reference, g.reference_type, g.reference_id, g.reference_display)
+            _fhir_reference(g, "reference")
             for g in model.goals
         ]
         goal_list = [g for g in goal_list if g]

@@ -70,10 +70,23 @@ class PlainCarePlanActivityDetail(BaseModel):
     scheduled_period_start: str | None = None
     scheduled_period_end: str | None = None
     scheduled_string: str | None = None
+
     location_id: int | None = None
     location_type: str | None = None
     location_reference: str | None = None
     location_display: str | None = None
+    location_identifier_use: str | None = None
+    location_identifier_type_system: str | None = None
+    location_identifier_type_version: str | None = None
+    location_identifier_type_code: str | None = None
+    location_identifier_type_display: str | None = None
+    location_identifier_type_user_selected: bool | None = None
+    location_identifier_type_text: str | None = None
+    location_identifier_system: str | None = None
+    location_identifier_value: str | None = None
+    location_identifier_period_start: str | None = None
+    location_identifier_period_end: str | None = None
+
     performers: list[dict[str, Any]] | None = None
     product_codeable_concept_text: str | None = None
     product_codings: list[PlainCodingRow] | None = None
@@ -81,6 +94,18 @@ class PlainCarePlanActivityDetail(BaseModel):
     product_type: str | None = None
     product_reference: str | None = None
     product_display: str | None = None
+    product_identifier_use: str | None = None
+    product_identifier_type_system: str | None = None
+    product_identifier_type_version: str | None = None
+    product_identifier_type_code: str | None = None
+    product_identifier_type_display: str | None = None
+    product_identifier_type_user_selected: bool | None = None
+    product_identifier_type_text: str | None = None
+    product_identifier_system: str | None = None
+    product_identifier_value: str | None = None
+    product_identifier_period_start: str | None = None
+    product_identifier_period_end: str | None = None
+
     daily_amount_value: float | None = None
     daily_amount_comparator: str | None = None
     daily_amount_unit: str | None = None
@@ -103,6 +128,18 @@ class PlainCarePlanActivity(BaseModel):
     reference_type: str | None = None
     reference_reference: str | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
+
     outcome_codeable_concepts: list[dict[str, Any]] | None = None
     outcome_references: list[dict[str, Any]] | None = None
     progress: list[PlainCarePlanNote] | None = None

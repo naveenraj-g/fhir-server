@@ -1,7 +1,16 @@
-from sqlalchemy import BigInteger, Column, Enum, ForeignKey, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.care_plan.enums import (
     CarePlanAddressesReferenceType,
     CarePlanBasedOnReferenceType,
@@ -34,6 +43,19 @@ class CarePlanBasedOn(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="based_on")
 
@@ -58,6 +80,19 @@ class CarePlanReplaces(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="replaces")
 
@@ -82,6 +117,19 @@ class CarePlanPartOf(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="part_of")
 
@@ -106,6 +154,19 @@ class CarePlanContributor(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="contributors")
 
@@ -130,6 +191,19 @@ class CarePlanCareTeam(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="care_teams")
 
@@ -154,6 +228,19 @@ class CarePlanAddresses(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="addresses")
 
@@ -178,5 +265,18 @@ class CarePlanGoal(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     care_plan = relationship("CarePlanModel", back_populates="goals")

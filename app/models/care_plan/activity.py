@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.care_plan.enums import (
     CarePlanActivityDetailPerformerReferenceType,
     CarePlanActivityDetailReasonReferenceType,
@@ -48,6 +49,19 @@ class CarePlanActivity(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # detail (0..1 BackboneElement) flattened
     detail_kind = Column(
@@ -81,6 +95,19 @@ class CarePlanActivity(TenantAuditMixin, Base):
     )
     detail_location_id = Column(BigInteger, nullable=True, index=True)
     detail_location_display = Column(String, nullable=True)
+    detail_location_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    detail_location_identifier_type_system = Column(String, nullable=True)
+    detail_location_identifier_type_version = Column(String, nullable=True)
+    detail_location_identifier_type_code = Column(String, nullable=True)
+    detail_location_identifier_type_display = Column(String, nullable=True)
+    detail_location_identifier_type_user_selected = Column(Boolean, nullable=True)
+    detail_location_identifier_type_text = Column(String, nullable=True)
+    detail_location_identifier_system = Column(String, nullable=True)
+    detail_location_identifier_value = Column(String, nullable=True)
+    detail_location_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    detail_location_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # detail.product[x] (CodeableConcept | Reference)
     detail_product_codeable_concept_text = Column(String, nullable=True)
@@ -94,6 +121,19 @@ class CarePlanActivity(TenantAuditMixin, Base):
     )
     detail_product_id = Column(BigInteger, nullable=True, index=True)
     detail_product_display = Column(String, nullable=True)
+    detail_product_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    detail_product_identifier_type_system = Column(String, nullable=True)
+    detail_product_identifier_type_version = Column(String, nullable=True)
+    detail_product_identifier_type_code = Column(String, nullable=True)
+    detail_product_identifier_type_display = Column(String, nullable=True)
+    detail_product_identifier_type_user_selected = Column(Boolean, nullable=True)
+    detail_product_identifier_type_text = Column(String, nullable=True)
+    detail_product_identifier_system = Column(String, nullable=True)
+    detail_product_identifier_value = Column(String, nullable=True)
+    detail_product_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    detail_product_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # detail.dailyAmount (0..1 Quantity)
     detail_daily_amount_value = Column(Numeric, nullable=True)
@@ -237,6 +277,19 @@ class CarePlanActivityOutcomeReference(TenantAuditMixin, Base):
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     activity = relationship("CarePlanActivity", back_populates="outcome_references")
 
@@ -265,6 +318,19 @@ class CarePlanActivityProgress(TenantAuditMixin, Base):
     )
     author_reference_id = Column(BigInteger, nullable=True)
     author_reference_display = Column(String, nullable=True)
+    author_reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    author_reference_identifier_type_system = Column(String, nullable=True)
+    author_reference_identifier_type_version = Column(String, nullable=True)
+    author_reference_identifier_type_code = Column(String, nullable=True)
+    author_reference_identifier_type_display = Column(String, nullable=True)
+    author_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    author_reference_identifier_type_text = Column(String, nullable=True)
+    author_reference_identifier_system = Column(String, nullable=True)
+    author_reference_identifier_value = Column(String, nullable=True)
+    author_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    author_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     activity = relationship("CarePlanActivity", back_populates="progress")
 
@@ -338,6 +404,19 @@ class CarePlanActivityDetailReasonReference(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     activity = relationship("CarePlanActivity", back_populates="detail_reason_references")
 
@@ -363,6 +442,19 @@ class CarePlanActivityDetailGoal(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     activity = relationship("CarePlanActivity", back_populates="detail_goals")
 
@@ -400,6 +492,19 @@ class CarePlanActivityDetailPerformer(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     activity = relationship("CarePlanActivity", back_populates="detail_performers")
 

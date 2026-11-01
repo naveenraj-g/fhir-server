@@ -8,7 +8,8 @@ from app.schemas.care_plan.input.codeable_concept import (
 )
 from app.schemas.care_plan.input.identifier import CarePlanIdentifierInput
 from app.schemas.care_plan.input.note import CarePlanNoteInput
-from app.schemas.enums import CarePlanIntent, CarePlanStatus
+from app.schemas.care_plan.input.reference import CarePlanReferenceInput
+from app.schemas.enums import CarePlanIntent, CarePlanStatus, IdentifierUse
 
 
 class CarePlanCreateSchema(BaseModel):
@@ -68,13 +69,13 @@ class CarePlanCreateSchema(BaseModel):
     instantiates_uri: list[str] | None = Field(
         None, description="Instantiates external protocol or definition."
     )
-    based_on: list[str] | None = Field(
+    based_on: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Fulfills CarePlan, ServiceRequest, or NutritionOrder."
     )
-    replaces: list[str] | None = Field(
+    replaces: list[CarePlanReferenceInput | str] | None = Field(
         None, description="CarePlan replaced by this CarePlan."
     )
-    part_of: list[str] | None = Field(
+    part_of: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Part of referenced CarePlan."
     )
     status: CarePlanStatus = Field(
@@ -92,18 +93,42 @@ class CarePlanCreateSchema(BaseModel):
     description: str | None = Field(
         None, description="Summary of nature of plan."
     )
-    subject: str = Field(
-        ..., description="Who the care plan is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001')."
+    subject: str | None = Field(
+        None, description="Who the care plan is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001')."
     )
     subject_display: str | None = Field(
         None, description="Display name for subject reference."
     )
+    subject_identifier_use: IdentifierUse | None = Field(None)
+    subject_identifier_type_system: str | None = Field(None)
+    subject_identifier_type_version: str | None = Field(None)
+    subject_identifier_type_code: str | None = Field(None)
+    subject_identifier_type_display: str | None = Field(None)
+    subject_identifier_type_user_selected: bool | None = Field(None)
+    subject_identifier_type_text: str | None = Field(None)
+    subject_identifier_system: str | None = Field(None)
+    subject_identifier_value: str | None = Field(None)
+    subject_identifier_period_start: datetime | None = Field(None)
+    subject_identifier_period_end: datetime | None = Field(None)
+
     encounter: str | None = Field(
         None, description="Encounter created as part of (Reference(Encounter))."
     )
     encounter_display: str | None = Field(
         None, description="Display name for encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(None)
+    encounter_identifier_type_system: str | None = Field(None)
+    encounter_identifier_type_version: str | None = Field(None)
+    encounter_identifier_type_code: str | None = Field(None)
+    encounter_identifier_type_display: str | None = Field(None)
+    encounter_identifier_type_user_selected: bool | None = Field(None)
+    encounter_identifier_type_text: str | None = Field(None)
+    encounter_identifier_system: str | None = Field(None)
+    encounter_identifier_value: str | None = Field(None)
+    encounter_identifier_period_start: datetime | None = Field(None)
+    encounter_identifier_period_end: datetime | None = Field(None)
+
     period_start: datetime | None = Field(
         None, description="Time period plan covers — start."
     )
@@ -119,16 +144,28 @@ class CarePlanCreateSchema(BaseModel):
     author_display: str | None = Field(
         None, description="Display name for author reference."
     )
-    contributor: list[str] | None = Field(
+    author_identifier_use: IdentifierUse | None = Field(None)
+    author_identifier_type_system: str | None = Field(None)
+    author_identifier_type_version: str | None = Field(None)
+    author_identifier_type_code: str | None = Field(None)
+    author_identifier_type_display: str | None = Field(None)
+    author_identifier_type_user_selected: bool | None = Field(None)
+    author_identifier_type_text: str | None = Field(None)
+    author_identifier_system: str | None = Field(None)
+    author_identifier_value: str | None = Field(None)
+    author_identifier_period_start: datetime | None = Field(None)
+    author_identifier_period_end: datetime | None = Field(None)
+
+    contributor: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Who provided the content of the care plan (References)."
     )
-    care_team: list[str] | None = Field(
+    care_team: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Who's involved in plan (References)."
     )
-    addresses: list[str] | None = Field(
+    addresses: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Health issues this plan addresses (Reference(Condition))."
     )
-    goal: list[str] | None = Field(
+    goal: list[CarePlanReferenceInput | str] | None = Field(
         None, description="Desired outcome of plan (Reference(Goal))."
     )
     activity: list[CarePlanActivityInput] | None = Field(
@@ -149,9 +186,9 @@ class CarePlanPatchSchema(BaseModel):
 
     instantiates_canonical: list[str] | None = None
     instantiates_uri: list[str] | None = None
-    based_on: list[str] | None = None
-    replaces: list[str] | None = None
-    part_of: list[str] | None = None
+    based_on: list[CarePlanReferenceInput | str] | None = None
+    replaces: list[CarePlanReferenceInput | str] | None = None
+    part_of: list[CarePlanReferenceInput | str] | None = None
     status: CarePlanStatus | None = None
     intent: CarePlanIntent | None = None
     category: list[CarePlanCodeableConceptInput] | None = None
@@ -159,17 +196,53 @@ class CarePlanPatchSchema(BaseModel):
     description: str | None = None
     subject: str | None = None
     subject_display: str | None = None
+    subject_identifier_use: IdentifierUse | None = None
+    subject_identifier_type_system: str | None = None
+    subject_identifier_type_version: str | None = None
+    subject_identifier_type_code: str | None = None
+    subject_identifier_type_display: str | None = None
+    subject_identifier_type_user_selected: bool | None = None
+    subject_identifier_type_text: str | None = None
+    subject_identifier_system: str | None = None
+    subject_identifier_value: str | None = None
+    subject_identifier_period_start: datetime | None = None
+    subject_identifier_period_end: datetime | None = None
+
     encounter: str | None = None
     encounter_display: str | None = None
+    encounter_identifier_use: IdentifierUse | None = None
+    encounter_identifier_type_system: str | None = None
+    encounter_identifier_type_version: str | None = None
+    encounter_identifier_type_code: str | None = None
+    encounter_identifier_type_display: str | None = None
+    encounter_identifier_type_user_selected: bool | None = None
+    encounter_identifier_type_text: str | None = None
+    encounter_identifier_system: str | None = None
+    encounter_identifier_value: str | None = None
+    encounter_identifier_period_start: datetime | None = None
+    encounter_identifier_period_end: datetime | None = None
+
     period_start: datetime | None = None
     period_end: datetime | None = None
     created: datetime | None = None
     author: str | None = None
     author_display: str | None = None
-    contributor: list[str] | None = None
-    care_team: list[str] | None = None
-    addresses: list[str] | None = None
-    goal: list[str] | None = None
+    author_identifier_use: IdentifierUse | None = None
+    author_identifier_type_system: str | None = None
+    author_identifier_type_version: str | None = None
+    author_identifier_type_code: str | None = None
+    author_identifier_type_display: str | None = None
+    author_identifier_type_user_selected: bool | None = None
+    author_identifier_type_text: str | None = None
+    author_identifier_system: str | None = None
+    author_identifier_value: str | None = None
+    author_identifier_period_start: datetime | None = None
+    author_identifier_period_end: datetime | None = None
+
+    contributor: list[CarePlanReferenceInput | str] | None = None
+    care_team: list[CarePlanReferenceInput | str] | None = None
+    addresses: list[CarePlanReferenceInput | str] | None = None
+    goal: list[CarePlanReferenceInput | str] | None = None
     activity: list[CarePlanActivityInput] | None = None
     note: list[CarePlanNoteInput] | None = None
     identifier: list[CarePlanIdentifierInput] | None = None

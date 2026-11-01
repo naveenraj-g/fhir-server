@@ -41,12 +41,33 @@ class CarePlanIdentifierInput(BaseModel):
     assigner_identifier_use: IdentifierUse | None = Field(
         None, description="Use of assigner identifier."
     )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Type system for assigner identifier."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Type version for assigner identifier."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Type code for assigner identifier."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Type display for assigner identifier."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None, description="Type user_selected for assigner identifier."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Type text for assigner identifier."
+    )
     assigner_identifier_system: str | None = Field(
         None, description="System for assigner identifier."
     )
     assigner_identifier_value: str | None = Field(
         None, description="Value for assigner identifier."
     )
-    assigner_identifier_type_text: str | None = Field(
-        None, description="Type text for assigner identifier."
+    assigner_identifier_period_start: datetime | None = Field(
+        None, description="Validity period start for assigner identifier."
+    )
+    assigner_identifier_period_end: datetime | None = Field(
+        None, description="Validity period end for assigner identifier."
     )

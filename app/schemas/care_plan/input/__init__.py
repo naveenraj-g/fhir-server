@@ -12,6 +12,7 @@ from app.schemas.care_plan.input.core import (
 from app.schemas.care_plan.input.identifier import CarePlanIdentifierInput
 from app.schemas.care_plan.input.note import CarePlanNoteInput
 from app.schemas.care_plan.input.quantity import CarePlanQuantityInput
+from app.schemas.care_plan.input.reference import CarePlanReferenceInput
 
 __all__ = [
     "CarePlanCodeableConceptInput",
@@ -22,4 +23,5 @@ __all__ = [
     "CarePlanActivityInput",
     "CarePlanCreateSchema",
     "CarePlanPatchSchema",
+    "CarePlanReferenceInput",
 ]

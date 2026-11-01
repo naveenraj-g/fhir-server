@@ -32,6 +32,8 @@ from app.models.care_plan import (
 from app.schemas.care_plan import CarePlanCreateSchema, CarePlanPatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_kwargs,
     _parse_activity_detail_location_ref,
     _parse_activity_detail_performer_ref,
     _parse_activity_detail_product_ref,
@@ -49,6 +51,7 @@ from ._shared import (
     _parse_part_of_ref,
     _parse_replaces_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -65,6 +68,15 @@ def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
         "display": coding.display,
         "user_selected": coding.user_selected,
         "created_by": created_by,
+    }
+
+
+def _remap_identifier_kwargs(src_prefix: str, dest_prefix: str, payload) -> dict:
+    if payload is None:
+        return {f"{dest_prefix}_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{dest_prefix}_{s}": getattr(payload, f"{src_prefix}_{s}", None)
+        for s in _IDENTIFIER_FALLBACK_SUFFIXES
     }
 
 
@@ -86,10 +98,7 @@ async def _add_identifiers(session, care_plan_pk: int, org_id: str, identifiers,
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=i.assigner_identifier_use,
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -125,119 +134,133 @@ async def _add_categories(session, care_plan_pk: int, org_id: str, categories, c
 
 
 async def _add_based_on(session, care_plan_pk: int, org_id: str, based_on, created_by: str) -> None:
-    for ref_str in based_on or []:
-        ref_type, ref_id = _parse_based_on_ref(ref_str)
+    for item in based_on or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_based_on_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "basedOn")
         session.add(
             CarePlanBasedOn(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
 
 
 async def _add_replaces(session, care_plan_pk: int, org_id: str, replaces, created_by: str) -> None:
-    for ref_str in replaces or []:
-        ref_type, ref_id = _parse_replaces_ref(ref_str)
+    for item in replaces or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_replaces_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "replaces")
         session.add(
             CarePlanReplaces(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
 
 
 async def _add_part_of(session, care_plan_pk: int, org_id: str, part_of, created_by: str) -> None:
-    for ref_str in part_of or []:
-        ref_type, ref_id = _parse_part_of_ref(ref_str)
+    for item in part_of or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_part_of_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "partOf")
         session.add(
             CarePlanPartOf(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
 
 
 async def _add_contributors(session, care_plan_pk: int, org_id: str, contributors, created_by: str) -> None:
-    for ref_str in contributors or []:
-        ref_type, ref_id = _parse_contributor_ref(ref_str)
+    for item in contributors or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_contributor_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "contributor")
         session.add(
             CarePlanContributor(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
 
 
 async def _add_care_teams(session, care_plan_pk: int, org_id: str, care_teams, created_by: str) -> None:
-    for ref_str in care_teams or []:
-        ref_type, ref_id = _parse_care_team_ref(ref_str)
+    for item in care_teams or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_care_team_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "careTeam")
         session.add(
             CarePlanCareTeam(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
 
 
 async def _add_addresses(session, care_plan_pk: int, org_id: str, addresses, created_by: str) -> None:
-    for ref_str in addresses or []:
-        ref_type, ref_id = _parse_addresses_ref(ref_str)
+    for item in addresses or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_addresses_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "addresses")
         session.add(
             CarePlanAddresses(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
 
 
 async def _add_goals(session, care_plan_pk: int, org_id: str, goals, created_by: str) -> None:
-    for ref_str in goals or []:
-        ref_type, ref_id = _parse_goal_ref(ref_str)
+    for item in goals or []:
+        kwargs = _child_reference_kwargs(item)
+        ref_str = kwargs["reference_reference"]
+        ref_type, ref_id = _parse_goal_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "goal")
         session.add(
             CarePlanGoal(
                 care_plan_pk=care_plan_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=ref_type,
                 reference_id=ref_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
@@ -259,6 +282,7 @@ async def _add_notes(session, care_plan_pk: int, org_id: str, notes, created_by:
                 author_reference_type=a_type,
                 author_reference_id=a_id,
                 author_reference_display=n.author_reference_display,
+                **_prefixed_identifier_kwargs("author_reference", n),
                 created_by=created_by,
             )
         )
@@ -286,6 +310,7 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             reference_type=ref_type,
             reference_id=ref_id,
             reference_display=act.reference_display,
+            **_prefixed_identifier_kwargs("reference", act),
             # detail
             detail_kind=det.kind if det else None,
             detail_instantiates_canonical=det.instantiates_canonical if det else None,
@@ -302,11 +327,13 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             detail_location_type=loc_type,
             detail_location_id=loc_id,
             detail_location_display=det.location_display if det else None,
+            **_remap_identifier_kwargs("location", "detail_location", det),
             detail_product_codeable_concept_text=det.product_codeable_concept.text if (det and det.product_codeable_concept) else None,
             detail_product_reference=det.product_reference if det else None,
             detail_product_type=prod_type,
             detail_product_id=prod_id,
             detail_product_display=det.product_display if det else None,
+            **_remap_identifier_kwargs("product", "detail_product", det),
             detail_daily_amount_value=det.daily_amount.value if (det and det.daily_amount) else None,
             detail_daily_amount_comparator=det.daily_amount.comparator if (det and det.daily_amount) else None,
             detail_daily_amount_unit=det.daily_amount.unit if (det and det.daily_amount) else None,
@@ -346,14 +373,16 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
         # Outcome References
         if act.outcome_reference:
             for oref in act.outcome_reference:
-                _, oref_type, oref_id, _ = _parse_open_ref(oref)
+                oref_kwargs = _child_reference_kwargs(oref)
+                oref_str = oref_kwargs["reference_reference"]
+                _, oref_type, oref_id, _ = _parse_open_ref(oref_str) if oref_str else (None, None, None, None)
                 session.add(
                     CarePlanActivityOutcomeReference(
                         activity_id=activity_row.id,
                         tenant_id=org_id,
-                        reference_reference=oref,
                         reference_type=oref_type,
                         reference_id=oref_id,
+                        **oref_kwargs,
                         created_by=created_by,
                     )
                 )
@@ -375,6 +404,7 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
                         author_reference_type=pa_type,
                         author_reference_id=pa_id,
                         author_reference_display=p.author_reference_display,
+                        **_prefixed_identifier_kwargs("author_reference", p),
                         created_by=created_by,
                     )
                 )
@@ -412,16 +442,18 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
         # Detail reason references
         if det and det.reason_reference:
             for rr in det.reason_reference:
-                rr_type, rr_id = _parse_activity_detail_reason_ref(rr)
+                rr_kwargs = _child_reference_kwargs(rr)
+                rr_str = rr_kwargs["reference_reference"]
+                rr_type, rr_id = _parse_activity_detail_reason_ref(rr_str) if rr_str else (None, None)
                 if rr_type and rr_id:
                     await _validate_ref(session, org_id, rr_type, rr_id, "activity.detail.reasonReference")
                 session.add(
                     CarePlanActivityDetailReasonReference(
                         activity_id=activity_row.id,
                         tenant_id=org_id,
-                        reference_reference=rr,
                         reference_type=rr_type,
                         reference_id=rr_id,
+                        **rr_kwargs,
                         created_by=created_by,
                     )
                 )
@@ -429,16 +461,18 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
         # Detail goals
         if det and det.goal:
             for g in det.goal:
-                g_type, g_id = _parse_goal_ref(g)
+                g_kwargs = _child_reference_kwargs(g)
+                g_str = g_kwargs["reference_reference"]
+                g_type, g_id = _parse_goal_ref(g_str) if g_str else (None, None)
                 if g_type and g_id:
                     await _validate_ref(session, org_id, g_type, g_id, "activity.detail.goal")
                 session.add(
                     CarePlanActivityDetailGoal(
                         activity_id=activity_row.id,
                         tenant_id=org_id,
-                        reference_reference=g,
                         reference_type=g_type,
                         reference_id=g_id,
+                        **g_kwargs,
                         created_by=created_by,
                     )
                 )
@@ -456,16 +490,18 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
         # Detail performers
         if det and det.performer:
             for perf in det.performer:
-                p_type, p_id = _parse_activity_detail_performer_ref(perf)
+                p_kwargs = _child_reference_kwargs(perf)
+                p_str = p_kwargs["reference_reference"]
+                p_type, p_id = _parse_activity_detail_performer_ref(p_str) if p_str else (None, None)
                 if p_type and p_id:
                     await _validate_ref(session, org_id, p_type, p_id, "activity.detail.performer")
                 session.add(
                     CarePlanActivityDetailPerformer(
                         activity_id=activity_row.id,
                         tenant_id=org_id,
-                        reference_reference=perf,
                         reference_type=p_type,
                         reference_id=p_id,
+                        **p_kwargs,
                         created_by=created_by,
                     )
                 )
@@ -481,6 +517,25 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
                 )
 
 
+_SUBJECT_FIELDS = {
+    "subject",
+    "subject_display",
+    *(f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES),
+}
+
+_ENCOUNTER_FIELDS = {
+    "encounter",
+    "encounter_display",
+    *(f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES),
+}
+
+_AUTHOR_FIELDS = {
+    "author",
+    "author_display",
+    *(f"author_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES),
+}
+
+
 class _FullMixin:
     """Full atomic CRUD operations for CarePlan."""
 
@@ -492,8 +547,9 @@ class _FullMixin:
     ) -> CarePlanModel:
         async with self.session_factory() as session:
             # Parse references
-            s_type, s_id = _parse_subject_ref(payload.subject)
-            await _validate_ref(session, org_id, s_type, s_id, "subject")
+            s_type, s_id = _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            if s_type and s_id:
+                await _validate_ref(session, org_id, s_type, s_id, "subject")
 
             e_type, e_id = _parse_encounter_ref(payload.encounter) if payload.encounter else (None, None)
             if e_type and e_id:
@@ -516,10 +572,12 @@ class _FullMixin:
                 subject_type=s_type,
                 subject_id=s_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 encounter_reference=payload.encounter,
                 encounter_type=e_type,
                 encounter_id=e_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 period_start=payload.period_start,
                 period_end=payload.period_end,
                 created=payload.created,
@@ -527,6 +585,7 @@ class _FullMixin:
                 author_type=a_type,
                 author_id=a_id,
                 author_display=payload.author_display,
+                **_prefixed_identifier_kwargs("author", payload),
             )
             session.add(care_plan)
             await session.flush()
@@ -585,47 +644,65 @@ class _FullMixin:
             if "created" in fields_set:
                 care_plan.created = payload.created
 
-            if "subject" in fields_set or "subject_display" in fields_set:
-                if payload.subject:
-                    s_type, s_id = _parse_subject_ref(payload.subject)
-                    await _validate_ref(session, org_id, s_type, s_id, "subject")
-                    care_plan.subject_reference = payload.subject
-                    care_plan.subject_type = s_type
-                    care_plan.subject_id = s_id
-                elif "subject" in fields_set and payload.subject is None:
-                    care_plan.subject_reference = None
-                    care_plan.subject_type = None
-                    care_plan.subject_id = None
+            if fields_set & _SUBJECT_FIELDS:
+                if "subject" in fields_set:
+                    if payload.subject:
+                        s_type, s_id = _parse_subject_ref(payload.subject)
+                        if s_type and s_id:
+                            await _validate_ref(session, org_id, s_type, s_id, "subject")
+                        care_plan.subject_reference = payload.subject
+                        care_plan.subject_type = s_type
+                        care_plan.subject_id = s_id
+                    else:
+                        care_plan.subject_reference = None
+                        care_plan.subject_type = None
+                        care_plan.subject_id = None
                 if "subject_display" in fields_set:
                     care_plan.subject_display = payload.subject_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f = f"subject_{s}"
+                    if f in fields_set:
+                        setattr(care_plan, f, getattr(payload, f, None))
 
-            if "encounter" in fields_set or "encounter_display" in fields_set:
-                if payload.encounter:
-                    e_type, e_id = _parse_encounter_ref(payload.encounter)
-                    await _validate_ref(session, org_id, e_type, e_id, "encounter")
-                    care_plan.encounter_reference = payload.encounter
-                    care_plan.encounter_type = e_type
-                    care_plan.encounter_id = e_id
-                elif "encounter" in fields_set and payload.encounter is None:
-                    care_plan.encounter_reference = None
-                    care_plan.encounter_type = None
-                    care_plan.encounter_id = None
+            if fields_set & _ENCOUNTER_FIELDS:
+                if "encounter" in fields_set:
+                    if payload.encounter:
+                        e_type, e_id = _parse_encounter_ref(payload.encounter)
+                        if e_type and e_id:
+                            await _validate_ref(session, org_id, e_type, e_id, "encounter")
+                        care_plan.encounter_reference = payload.encounter
+                        care_plan.encounter_type = e_type
+                        care_plan.encounter_id = e_id
+                    else:
+                        care_plan.encounter_reference = None
+                        care_plan.encounter_type = None
+                        care_plan.encounter_id = None
                 if "encounter_display" in fields_set:
                     care_plan.encounter_display = payload.encounter_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f = f"encounter_{s}"
+                    if f in fields_set:
+                        setattr(care_plan, f, getattr(payload, f, None))
 
-            if "author" in fields_set or "author_display" in fields_set:
-                if payload.author:
-                    a_type, a_id = _parse_author_ref(payload.author)
-                    await _validate_ref(session, org_id, a_type, a_id, "author")
-                    care_plan.author_reference = payload.author
-                    care_plan.author_type = a_type
-                    care_plan.author_id = a_id
-                elif "author" in fields_set and payload.author is None:
-                    care_plan.author_reference = None
-                    care_plan.author_type = None
-                    care_plan.author_id = None
+            if fields_set & _AUTHOR_FIELDS:
+                if "author" in fields_set:
+                    if payload.author:
+                        a_type, a_id = _parse_author_ref(payload.author)
+                        if a_type and a_id:
+                            await _validate_ref(session, org_id, a_type, a_id, "author")
+                        care_plan.author_reference = payload.author
+                        care_plan.author_type = a_type
+                        care_plan.author_id = a_id
+                    else:
+                        care_plan.author_reference = None
+                        care_plan.author_type = None
+                        care_plan.author_id = None
                 if "author_display" in fields_set:
                     care_plan.author_display = payload.author_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f = f"author_{s}"
+                    if f in fields_set:
+                        setattr(care_plan, f, getattr(payload, f, None))
 
             # Sub-resource replacements
             if "identifier" in fields_set:
