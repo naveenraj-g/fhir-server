@@ -8,6 +8,9 @@ from app.schemas.document_reference.input.core import (
     DocumentReferencePatchSchema,
 )
 from app.schemas.document_reference.input.identifier import DocumentReferenceIdentifierInput
+from app.schemas.document_reference.input.reference import (
+    DocumentReferenceReferenceInput,
+)
 from app.schemas.document_reference.input.relates_to import DocumentReferenceRelatesToInput
 
 __all__ = [
@@ -18,4 +21,5 @@ __all__ = [
     "DocumentReferenceContextInput",
     "DocumentReferenceCreateSchema",
     "DocumentReferencePatchSchema",
+    "DocumentReferenceReferenceInput",
 ]

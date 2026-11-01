@@ -8,7 +8,7 @@ Used by the service layer for pre-write base FHIR R4 validation.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from app.fhir.datatypes import fhir_enum
 
@@ -22,6 +22,119 @@ if TYPE_CHECKING:
         DocumentReferencePatchSchema,
         DocumentReferenceRelatesToInput,
     )
+
+
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    if obj is None:
+        return None
+
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    if raw_reference is None and prefix != "reference":
+        raw_reference = _get(f"{prefix}_reference")
+    display = _get(f"{prefix}_display")
+    if display is None and prefix == "reference":
+        display = _get("display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_user_selected = (
+        _get(f"{prefix}_identifier_type_user_selected")
+        if _get(f"{prefix}_identifier_type_user_selected") is not None
+        else _get("identifier_type_user_selected")
+    )
+    id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
+    id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
+        if id_use:
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
+        if id_system:
+            ident["system"] = id_system
+        if id_value:
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = (
+                    id_period_start.isoformat()
+                    if hasattr(id_period_start, "isoformat")
+                    else str(id_period_start)
+                )
+            if id_period_end:
+                p_dict["end"] = (
+                    id_period_end.isoformat()
+                    if hasattr(id_period_end, "isoformat")
+                    else str(id_period_end)
+                )
+            ident["period"] = p_dict
+        entry["identifier"] = ident
+
+    return entry or None
+
+
+def _child_reference_from_payload(item: Any) -> dict | None:
+    if isinstance(item, str):
+        return {"reference": item}
+    return _reference_from_payload(item, "reference")
 
 
 def _coding_from_payload(c) -> dict:
@@ -90,23 +203,8 @@ def _identifier_from_payload(ident: DocumentReferenceIdentifierInput | None) -> 
         if ident.period_end:
             period["end"] = ident.period_end.isoformat()
         entry["period"] = period
-    if ident.assigner or ident.assigner_display:
-        assigner: dict = {}
-        if ident.assigner:
-            assigner["reference"] = ident.assigner
-        if ident.assigner_display:
-            assigner["display"] = ident.assigner_display
-        if ident.assigner_identifier_system or ident.assigner_identifier_value:
-            assigner["identifier"] = {
-                k: v
-                for k, v in {
-                    "use": fhir_enum(ident.assigner_identifier_use) if ident.assigner_identifier_use else None,
-                    "system": ident.assigner_identifier_system,
-                    "value": ident.assigner_identifier_value,
-                    "type": {"text": ident.assigner_identifier_type_text} if ident.assigner_identifier_type_text else None,
-                }.items()
-                if v is not None
-            }
+    assigner = _reference_from_payload(ident, "assigner")
+    if assigner:
         entry["assigner"] = assigner
     return entry or None
 
@@ -144,7 +242,7 @@ def _context_from_payload(context: DocumentReferenceContextInput | None) -> dict
         return None
     ctx: dict = {}
     if context.encounter:
-        ctx["encounter"] = [{"reference": e} for e in context.encounter if e]
+        ctx["encounter"] = [_child_reference_from_payload(e) for e in context.encounter if e]
     if context.event:
         events = [_codeable_concept_from_payload(e) for e in context.event]
         events = [e for e in events if e]
@@ -165,11 +263,61 @@ def _context_from_payload(context: DocumentReferenceContextInput | None) -> dict
         practice = _codeable_concept_from_payload(context.practice_setting)
         if practice:
             ctx["practiceSetting"] = practice
-    if context.source_patient_info:
-        ctx["sourcePatientInfo"] = {"reference": context.source_patient_info}
+    source_pat = _reference_from_payload(context, "source_patient_info")
+    if source_pat:
+        ctx["sourcePatientInfo"] = source_pat
     if context.related:
-        ctx["related"] = [{"reference": r} for r in context.related if r]
+        ctx["related"] = [_child_reference_from_payload(r) for r in context.related if r]
     return ctx or None
+
+
+_SUBJECT_FIELDS = {
+    "subject",
+    "subject_display",
+    "subject_identifier_use",
+    "subject_identifier_type_system",
+    "subject_identifier_type_version",
+    "subject_identifier_type_code",
+    "subject_identifier_type_display",
+    "subject_identifier_type_user_selected",
+    "subject_identifier_type_text",
+    "subject_identifier_system",
+    "subject_identifier_value",
+    "subject_identifier_period_start",
+    "subject_identifier_period_end",
+}
+
+_AUTHENTICATOR_FIELDS = {
+    "authenticator",
+    "authenticator_display",
+    "authenticator_identifier_use",
+    "authenticator_identifier_type_system",
+    "authenticator_identifier_type_version",
+    "authenticator_identifier_type_code",
+    "authenticator_identifier_type_display",
+    "authenticator_identifier_type_user_selected",
+    "authenticator_identifier_type_text",
+    "authenticator_identifier_system",
+    "authenticator_identifier_value",
+    "authenticator_identifier_period_start",
+    "authenticator_identifier_period_end",
+}
+
+_CUSTODIAN_FIELDS = {
+    "custodian",
+    "custodian_display",
+    "custodian_identifier_use",
+    "custodian_identifier_type_system",
+    "custodian_identifier_type_version",
+    "custodian_identifier_type_code",
+    "custodian_identifier_type_display",
+    "custodian_identifier_type_user_selected",
+    "custodian_identifier_type_text",
+    "custodian_identifier_system",
+    "custodian_identifier_value",
+    "custodian_identifier_period_start",
+    "custodian_identifier_period_end",
+}
 
 
 def payload_to_fhir_document_reference(payload: DocumentReferenceCreateSchema) -> dict:
@@ -205,28 +353,30 @@ def payload_to_fhir_document_reference(payload: DocumentReferenceCreateSchema) -
         if cats:
             res["category"] = cats
 
-    if payload.subject:
-        res["subject"] = {"reference": payload.subject}
+    subj = _reference_from_payload(payload, "subject")
+    if subj:
+        res["subject"] = subj
 
     if payload.date:
         res["date"] = payload.date.isoformat()
 
     if payload.author:
-        res["author"] = [{"reference": a} for a in payload.author if a]
+        res["author"] = [_child_reference_from_payload(a) for a in payload.author if a]
 
-    if payload.authenticator:
-        res["authenticator"] = {"reference": payload.authenticator}
+    auth = _reference_from_payload(payload, "authenticator")
+    if auth:
+        res["authenticator"] = auth
 
-    if payload.custodian:
-        res["custodian"] = {"reference": payload.custodian}
+    cust = _reference_from_payload(payload, "custodian")
+    if cust:
+        res["custodian"] = cust
 
     if payload.relates_to:
         rel_list = []
         for r in payload.relates_to:
-            entry = {"code": fhir_enum(r.code), "target": {"reference": r.target}}
-            if r.target_display:
-                entry["target"]["display"] = r.target_display
-            rel_list.append(entry)
+            tgt = _reference_from_payload(r, "target")
+            if tgt:
+                rel_list.append({"code": fhir_enum(r.code), "target": tgt})
         if rel_list:
             res["relatesTo"] = rel_list
 
@@ -292,10 +442,11 @@ def patch_fragment_to_fhir_document_reference(
                 c for c in [_codeable_concept_from_payload(x) for x in payload.category] if c
             ]
 
-    if "subject" in fields_set:
+    if fields_set & _SUBJECT_FIELDS:
         touched.add("subject")
-        if payload.subject is not None:
-            fragment["subject"] = {"reference": payload.subject}
+        subj = _reference_from_payload(payload, "subject")
+        if subj:
+            fragment["subject"] = subj
 
     if "date" in fields_set:
         touched.add("date")
@@ -305,27 +456,28 @@ def patch_fragment_to_fhir_document_reference(
     if "author" in fields_set:
         touched.add("author")
         if payload.author is not None:
-            fragment["author"] = [{"reference": a} for a in payload.author if a]
+            fragment["author"] = [_child_reference_from_payload(a) for a in payload.author if a]
 
-    if "authenticator" in fields_set:
+    if fields_set & _AUTHENTICATOR_FIELDS:
         touched.add("authenticator")
-        if payload.authenticator is not None:
-            fragment["authenticator"] = {"reference": payload.authenticator}
+        auth = _reference_from_payload(payload, "authenticator")
+        if auth:
+            fragment["authenticator"] = auth
 
-    if "custodian" in fields_set:
+    if fields_set & _CUSTODIAN_FIELDS:
         touched.add("custodian")
-        if payload.custodian is not None:
-            fragment["custodian"] = {"reference": payload.custodian}
+        cust = _reference_from_payload(payload, "custodian")
+        if cust:
+            fragment["custodian"] = cust
 
     if "relates_to" in fields_set:
         touched.add("relatesTo")
         if payload.relates_to is not None:
             rel_list = []
             for r in payload.relates_to:
-                entry = {"code": fhir_enum(r.code), "target": {"reference": r.target}}
-                if r.target_display:
-                    entry["target"]["display"] = r.target_display
-                rel_list.append(entry)
+                tgt = _reference_from_payload(r, "target")
+                if tgt:
+                    rel_list.append({"code": fhir_enum(r.code), "target": tgt})
             fragment["relatesTo"] = rel_list
 
     if "description" in fields_set:

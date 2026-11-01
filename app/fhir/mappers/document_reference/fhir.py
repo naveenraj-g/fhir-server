@@ -37,47 +37,95 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
-def _fhir_ref(ref_raw: str | None, ref_type, ref_id: int | None, display: str | None) -> dict | None:
-    result: dict = {}
-    if ref_raw:
-        result["reference"] = ref_raw
-    elif ref_type and ref_id:
-        result["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
-    if display:
-        result["display"] = display
-    return result or None
-
-
-def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
     raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
 
+    ref_str = raw_reference or (
+        f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
+    )
+
     entry: dict = {}
-    if raw_reference:
-        entry["reference"] = raw_reference
-    elif ref_type and ref_id:
-        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if ref_str:
+        entry["reference"] = ref_str
     if display:
         entry["display"] = display
 
     id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
-    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_system or id_value or id_type_text:
-        identifier: dict = {}
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
         if id_use:
-            identifier["use"] = fhir_enum(id_use)
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
         if id_system:
-            identifier["system"] = id_system
+            ident["system"] = id_system
         if id_value:
-            identifier["value"] = id_value
-        if id_type_text:
-            identifier["type"] = {"text": id_type_text}
-        entry["identifier"] = identifier
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                p_dict["end"] = fhir_instant(id_period_end)
+            ident["period"] = p_dict
+        entry["identifier"] = ident
 
     return entry or None
 
@@ -100,7 +148,7 @@ def _fhir_identifier(i) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_reference_with_identifier_fallback(i, "assigner")
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -118,6 +166,7 @@ def _fhir_master_identifier(model: DocumentReferenceModel) -> dict | None:
         or model.master_identifier_assigner_type
         or model.master_identifier_assigner_id
         or getattr(model, "master_identifier_type_codings", None)
+        or model.master_identifier_assigner_identifier_value
     )
     if not has_any:
         return None
@@ -142,7 +191,7 @@ def _fhir_master_identifier(model: DocumentReferenceModel) -> dict | None:
         if model.master_identifier_period_end:
             period["end"] = fhir_instant(model.master_identifier_period_end)
         entry["period"] = period
-    assigner = _fhir_reference_with_identifier_fallback(model, "master_identifier_assigner")
+    assigner = _fhir_reference(model, "master_identifier_assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -150,8 +199,9 @@ def _fhir_master_identifier(model: DocumentReferenceModel) -> dict | None:
 
 def _fhir_meta(model: DocumentReferenceModel) -> dict:
     meta: dict = {}
-    if model.updated_at:
-        meta["lastUpdated"] = fhir_instant(model.updated_at)
+    last_updated = model.updated_at or model.created_at
+    if last_updated:
+        meta["lastUpdated"] = fhir_instant(last_updated)
     extensions = []
     if model.created_at:
         extensions.append({
@@ -226,7 +276,7 @@ def _fhir_context(model: DocumentReferenceModel) -> dict | None:
     has_practice = model.context_practice_setting_text or bool(getattr(model, "context_practice_setting_codings", None))
     has_patient_info = model.context_source_patient_info_reference or (
         model.context_source_patient_info_type and model.context_source_patient_info_id
-    ) or model.context_source_patient_info_display
+    ) or model.context_source_patient_info_display or model.context_source_patient_info_identifier_value
     has_related = bool(getattr(model, "context_related", None))
 
     if not (
@@ -244,7 +294,7 @@ def _fhir_context(model: DocumentReferenceModel) -> dict | None:
     if has_encounters:
         enc_list = []
         for e in model.context_encounters:
-            ref = _fhir_ref(e.reference_reference, e.reference_type, e.reference_id, e.reference_display)
+            ref = _fhir_reference(e, "reference")
             if ref:
                 enc_list.append(ref)
         if enc_list:
@@ -284,19 +334,14 @@ def _fhir_context(model: DocumentReferenceModel) -> dict | None:
             ctx["practiceSetting"] = practice_cc
 
     if has_patient_info:
-        pat_ref = _fhir_ref(
-            model.context_source_patient_info_reference,
-            model.context_source_patient_info_type,
-            model.context_source_patient_info_id,
-            model.context_source_patient_info_display,
-        )
+        pat_ref = _fhir_reference(model, "context_source_patient_info")
         if pat_ref:
             ctx["sourcePatientInfo"] = pat_ref
 
     if has_related:
         rel_list = []
         for r in model.context_related:
-            ref = _fhir_ref(r.reference_reference, r.reference_type, r.reference_id, r.reference_display)
+            ref = _fhir_reference(r, "reference")
             if ref:
                 rel_list.append(ref)
         if rel_list:
@@ -349,12 +394,7 @@ def to_fhir_document_reference(model: DocumentReferenceModel) -> dict:
         if cat_list:
             res["category"] = cat_list
 
-    subj = _fhir_ref(
-        model.subject_reference,
-        model.subject_type,
-        model.subject_id,
-        model.subject_display,
-    )
+    subj = _fhir_reference(model, "subject")
     if subj:
         res["subject"] = subj
 
@@ -363,40 +403,25 @@ def to_fhir_document_reference(model: DocumentReferenceModel) -> dict:
 
     if getattr(model, "authors", None):
         auth_list = [
-            _fhir_ref(a.author_reference, a.author_type, a.author_id, a.author_display)
+            _fhir_reference(a, "author")
             for a in model.authors
         ]
         auth_list = [a for a in auth_list if a]
         if auth_list:
             res["author"] = auth_list
 
-    auth = _fhir_ref(
-        model.authenticator_reference,
-        model.authenticator_type,
-        model.authenticator_id,
-        model.authenticator_display,
-    )
+    auth = _fhir_reference(model, "authenticator")
     if auth:
         res["authenticator"] = auth
 
-    cust = _fhir_ref(
-        model.custodian_reference,
-        model.custodian_type,
-        model.custodian_id,
-        model.custodian_display,
-    )
+    cust = _fhir_reference(model, "custodian")
     if cust:
         res["custodian"] = cust
 
     if getattr(model, "relates_to", None):
         rel_list = []
         for r in model.relates_to:
-            tgt = _fhir_ref(
-                r.target_reference,
-                r.target_type,
-                r.target_id,
-                r.target_display,
-            )
+            tgt = _fhir_reference(r, "target")
             if tgt:
                 rel_list.append({
                     "code": fhir_enum(r.code),

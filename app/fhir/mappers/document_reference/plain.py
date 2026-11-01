@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from app.fhir.datatypes import fhir_enum
 
@@ -34,14 +34,51 @@ def _plain_codeable_concept(codings, text: str | None) -> dict | None:
     }
 
 
-def _plain_ref(ref_raw: str | None, ref_type, ref_id: int | None, display: str | None) -> dict | None:
-    if not (ref_raw or ref_type or ref_id or display):
+def _plain_ref(obj, prefix: str) -> dict | None:
+    if obj is None:
         return None
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
+    ref_type = getattr(obj, f"{prefix}_type", None)
+    ref_id = getattr(obj, f"{prefix}_id", None)
+    display = getattr(obj, f"{prefix}_display", None)
+
+    id_val = getattr(obj, f"{prefix}_identifier_value", None)
+    has_any = (
+        raw_reference
+        or ref_type
+        or ref_id
+        or display
+        or id_val
+        or getattr(obj, f"{prefix}_identifier_system", None)
+        or getattr(obj, f"{prefix}_identifier_use", None)
+    )
+    if not has_any:
+        return None
+
     return {
-        "reference": ref_raw or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
+        "reference": raw_reference or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
         "type": fhir_enum(ref_type) if ref_type else None,
         "id": ref_id,
         "display": display,
+        "identifier_use": fhir_enum(getattr(obj, f"{prefix}_identifier_use", None)),
+        "identifier_type_system": getattr(obj, f"{prefix}_identifier_type_system", None),
+        "identifier_type_version": getattr(obj, f"{prefix}_identifier_type_version", None),
+        "identifier_type_code": getattr(obj, f"{prefix}_identifier_type_code", None),
+        "identifier_type_display": getattr(obj, f"{prefix}_identifier_type_display", None),
+        "identifier_type_user_selected": getattr(obj, f"{prefix}_identifier_type_user_selected", None),
+        "identifier_type_text": getattr(obj, f"{prefix}_identifier_type_text", None),
+        "identifier_system": getattr(obj, f"{prefix}_identifier_system", None),
+        "identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        "identifier_period_start": (
+            getattr(obj, f"{prefix}_identifier_period_start").isoformat()
+            if getattr(obj, f"{prefix}_identifier_period_start", None)
+            else None
+        ),
+        "identifier_period_end": (
+            getattr(obj, f"{prefix}_identifier_period_end").isoformat()
+            if getattr(obj, f"{prefix}_identifier_period_end", None)
+            else None
+        ),
     }
 
 
@@ -60,9 +97,24 @@ def _plain_identifier(i) -> dict:
         "assigner_id": i.assigner_id,
         "assigner_display": i.assigner_display,
         "assigner_identifier_use": fhir_enum(i.assigner_identifier_use) if i.assigner_identifier_use else None,
+        "assigner_identifier_type_system": i.assigner_identifier_type_system,
+        "assigner_identifier_type_version": i.assigner_identifier_type_version,
+        "assigner_identifier_type_code": i.assigner_identifier_type_code,
+        "assigner_identifier_type_display": i.assigner_identifier_type_display,
+        "assigner_identifier_type_user_selected": i.assigner_identifier_type_user_selected,
+        "assigner_identifier_type_text": i.assigner_identifier_type_text,
         "assigner_identifier_system": i.assigner_identifier_system,
         "assigner_identifier_value": i.assigner_identifier_value,
-        "assigner_identifier_type_text": i.assigner_identifier_type_text,
+        "assigner_identifier_period_start": (
+            i.assigner_identifier_period_start.isoformat()
+            if i.assigner_identifier_period_start
+            else None
+        ),
+        "assigner_identifier_period_end": (
+            i.assigner_identifier_period_end.isoformat()
+            if i.assigner_identifier_period_end
+            else None
+        ),
     }
 
 
@@ -78,6 +130,7 @@ def _plain_master_identifier(model: DocumentReferenceModel) -> dict | None:
         or model.master_identifier_assigner_type
         or model.master_identifier_assigner_id
         or getattr(model, "master_identifier_type_codings", None)
+        or model.master_identifier_assigner_identifier_value
     )
     if not has_any:
         return None
@@ -95,9 +148,24 @@ def _plain_master_identifier(model: DocumentReferenceModel) -> dict | None:
         "assigner_id": model.master_identifier_assigner_id,
         "assigner_display": model.master_identifier_assigner_display,
         "assigner_identifier_use": fhir_enum(model.master_identifier_assigner_identifier_use) if model.master_identifier_assigner_identifier_use else None,
+        "assigner_identifier_type_system": model.master_identifier_assigner_identifier_type_system,
+        "assigner_identifier_type_version": model.master_identifier_assigner_identifier_type_version,
+        "assigner_identifier_type_code": model.master_identifier_assigner_identifier_type_code,
+        "assigner_identifier_type_display": model.master_identifier_assigner_identifier_type_display,
+        "assigner_identifier_type_user_selected": model.master_identifier_assigner_identifier_type_user_selected,
+        "assigner_identifier_type_text": model.master_identifier_assigner_identifier_type_text,
         "assigner_identifier_system": model.master_identifier_assigner_identifier_system,
         "assigner_identifier_value": model.master_identifier_assigner_identifier_value,
-        "assigner_identifier_type_text": model.master_identifier_assigner_identifier_type_text,
+        "assigner_identifier_period_start": (
+            model.master_identifier_assigner_identifier_period_start.isoformat()
+            if model.master_identifier_assigner_identifier_period_start
+            else None
+        ),
+        "assigner_identifier_period_end": (
+            model.master_identifier_assigner_identifier_period_end.isoformat()
+            if model.master_identifier_assigner_identifier_period_end
+            else None
+        ),
     }
 
 
@@ -143,9 +211,12 @@ def _plain_context(model: DocumentReferenceModel) -> dict | None:
     has_period = model.context_period_start or model.context_period_end
     has_facility = model.context_facility_type_text or bool(getattr(model, "context_facility_type_codings", None))
     has_practice = model.context_practice_setting_text or bool(getattr(model, "context_practice_setting_codings", None))
-    has_patient_info = model.context_source_patient_info_reference or (
-        model.context_source_patient_info_type and model.context_source_patient_info_id
-    ) or model.context_source_patient_info_display
+    has_patient_info = (
+        model.context_source_patient_info_reference
+        or (model.context_source_patient_info_type and model.context_source_patient_info_id)
+        or model.context_source_patient_info_display
+        or model.context_source_patient_info_identifier_value
+    )
     has_related = bool(getattr(model, "context_related", None))
 
     if not (
@@ -162,7 +233,7 @@ def _plain_context(model: DocumentReferenceModel) -> dict | None:
     ctx: dict = {}
     if has_encounters:
         ctx["encounter"] = [
-            _plain_ref(e.reference_reference, e.reference_type, e.reference_id, e.reference_display)
+            _plain_ref(e, "reference")
             for e in model.context_encounters
         ]
 
@@ -189,16 +260,11 @@ def _plain_context(model: DocumentReferenceModel) -> dict | None:
         )
 
     if has_patient_info:
-        ctx["source_patient_info"] = _plain_ref(
-            model.context_source_patient_info_reference,
-            model.context_source_patient_info_type,
-            model.context_source_patient_info_id,
-            model.context_source_patient_info_display,
-        )
+        ctx["source_patient_info"] = _plain_ref(model, "context_source_patient_info")
 
     if has_related:
         ctx["related"] = [
-            _plain_ref(r.reference_reference, r.reference_type, r.reference_id, r.reference_display)
+            _plain_ref(r, "reference")
             for r in model.context_related
         ]
 
@@ -223,29 +289,14 @@ def to_plain_document_reference(model: DocumentReferenceModel) -> dict:
             _plain_codeable_concept(getattr(c, "codings", None), c.text)
             for c in getattr(model, "categories", [])
         ] or None,
-        "subject": _plain_ref(
-            model.subject_reference,
-            model.subject_type,
-            model.subject_id,
-            model.subject_display,
-        ),
+        "subject": _plain_ref(model, "subject"),
         "date": model.date,
         "author": [
-            _plain_ref(a.author_reference, a.author_type, a.author_id, a.author_display)
+            _plain_ref(a, "author")
             for a in getattr(model, "authors", [])
         ] or None,
-        "authenticator": _plain_ref(
-            model.authenticator_reference,
-            model.authenticator_type,
-            model.authenticator_id,
-            model.authenticator_display,
-        ),
-        "custodian": _plain_ref(
-            model.custodian_reference,
-            model.custodian_type,
-            model.custodian_id,
-            model.custodian_display,
-        ),
+        "authenticator": _plain_ref(model, "authenticator"),
+        "custodian": _plain_ref(model, "custodian"),
         "relates_to": [
             {
                 "id": getattr(r, "id", None),
@@ -254,6 +305,25 @@ def to_plain_document_reference(model: DocumentReferenceModel) -> dict:
                 "target_type": fhir_enum(r.target_type) if r.target_type else None,
                 "target_id": r.target_id,
                 "target_display": r.target_display,
+                "target_identifier_use": fhir_enum(r.target_identifier_use) if r.target_identifier_use else None,
+                "target_identifier_type_system": r.target_identifier_type_system,
+                "target_identifier_type_version": r.target_identifier_type_version,
+                "target_identifier_type_code": r.target_identifier_type_code,
+                "target_identifier_type_display": r.target_identifier_type_display,
+                "target_identifier_type_user_selected": r.target_identifier_type_user_selected,
+                "target_identifier_type_text": r.target_identifier_type_text,
+                "target_identifier_system": r.target_identifier_system,
+                "target_identifier_value": r.target_identifier_value,
+                "target_identifier_period_start": (
+                    r.target_identifier_period_start.isoformat()
+                    if r.target_identifier_period_start
+                    else None
+                ),
+                "target_identifier_period_end": (
+                    r.target_identifier_period_end.isoformat()
+                    if r.target_identifier_period_end
+                    else None
+                ),
             }
             for r in getattr(model, "relates_to", [])
         ] or None,

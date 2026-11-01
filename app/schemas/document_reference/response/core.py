@@ -91,6 +91,17 @@ class PlainReference(BaseModel):
     type: str | None = None
     id: int | None = None
     display: str | None = None
+    identifier_use: str | None = None
+    identifier_type_system: str | None = None
+    identifier_type_version: str | None = None
+    identifier_type_code: str | None = None
+    identifier_type_display: str | None = None
+    identifier_type_user_selected: bool | None = None
+    identifier_type_text: str | None = None
+    identifier_system: str | None = None
+    identifier_value: str | None = None
+    identifier_period_start: str | None = None
+    identifier_period_end: str | None = None
 
 
 class PlainDocumentReferenceIdentifier(BaseModel):
@@ -107,9 +118,16 @@ class PlainDocumentReferenceIdentifier(BaseModel):
     assigner_id: int | None = None
     assigner_display: str | None = None
     assigner_identifier_use: str | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_type_text: str | None = None
     assigner_identifier_system: str | None = None
     assigner_identifier_value: str | None = None
-    assigner_identifier_type_text: str | None = None
+    assigner_identifier_period_start: str | None = None
+    assigner_identifier_period_end: str | None = None
 
 
 class PlainDocumentReferenceRelatesTo(BaseModel):
@@ -119,6 +137,17 @@ class PlainDocumentReferenceRelatesTo(BaseModel):
     target_type: str | None = None
     target_id: int | None = None
     target_display: str | None = None
+    target_identifier_use: str | None = None
+    target_identifier_type_system: str | None = None
+    target_identifier_type_version: str | None = None
+    target_identifier_type_code: str | None = None
+    target_identifier_type_display: str | None = None
+    target_identifier_type_user_selected: bool | None = None
+    target_identifier_type_text: str | None = None
+    target_identifier_system: str | None = None
+    target_identifier_value: str | None = None
+    target_identifier_period_start: str | None = None
+    target_identifier_period_end: str | None = None
 
 
 class PlainDocumentReferenceContent(BaseModel):

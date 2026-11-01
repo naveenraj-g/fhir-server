@@ -93,6 +93,156 @@ async def test_create_document_reference_fhir_format(client):
     assert data["content"][0]["attachment"]["url"] == "https://example.org/docs/1.pdf"
 
 
+async def test_create_document_reference_with_reference_identifier_fallback(client):
+    payload = {
+        "status": "current",
+        "doc_status": "final",
+        "description": "Document with reference identifier fallback",
+        "subject_display": "External Subject",
+        "subject_identifier_system": "urn:subject:system",
+        "subject_identifier_value": "SUB-123",
+        "subject_identifier_use": "official",
+        "authenticator_display": "External Authenticator",
+        "authenticator_identifier_system": "urn:auth:system",
+        "authenticator_identifier_value": "AUTH-456",
+        "custodian_display": "External Custodian",
+        "custodian_identifier_system": "urn:custodian:system",
+        "custodian_identifier_value": "CUST-789",
+        "master_identifier": {
+            "system": "urn:master:system",
+            "value": "MID-001",
+            "assigner_display": "External Master Assigner",
+            "assigner_identifier_system": "urn:mid:assigner",
+            "assigner_identifier_value": "ASGN-MID",
+        },
+        "identifier": [
+            {
+                "system": "urn:doc:ident",
+                "value": "ID-001",
+                "assigner_display": "External Assigner",
+                "assigner_identifier_system": "urn:ident:assigner",
+                "assigner_identifier_value": "ASGN-001",
+            }
+        ],
+        "author": [
+            {
+                "display": "External Author",
+                "identifier_system": "urn:author:system",
+                "identifier_value": "AUTH-AUTHOR-1",
+            }
+        ],
+        "relates_to": [
+            {
+                "code": "replaces",
+                "target_display": "External Target",
+                "target_identifier_system": "urn:target:system",
+                "target_identifier_value": "TGT-999",
+            }
+        ],
+        "context": {
+            "source_patient_info_display": "External Patient Info",
+            "source_patient_info_identifier_system": "urn:pat:info",
+            "source_patient_info_identifier_value": "PATINFO-1",
+            "encounter": [
+                {
+                    "display": "External Encounter",
+                    "identifier_system": "urn:enc:system",
+                    "identifier_value": "ENC-001",
+                }
+            ],
+            "related": [
+                {
+                    "display": "External Related",
+                    "identifier_system": "urn:rel:system",
+                    "identifier_value": "REL-001",
+                }
+            ],
+        },
+        "content": [
+            {
+                "attachment": {
+                    "url": "https://example.org/docs/test.pdf",
+                    "title": "Fallback Test Document",
+                }
+            }
+        ],
+    }
+
+    # 1. POST JSON (Plain response)
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    doc_id = data["id"]
+    assert data["subject"]["display"] == "External Subject"
+    assert data["subject"]["identifier_system"] == "urn:subject:system"
+    assert data["subject"]["identifier_value"] == "SUB-123"
+    assert data["subject"]["identifier_use"] == "official"
+    assert data["authenticator"]["display"] == "External Authenticator"
+    assert data["authenticator"]["identifier_system"] == "urn:auth:system"
+    assert data["authenticator"]["identifier_value"] == "AUTH-456"
+    assert data["custodian"]["display"] == "External Custodian"
+    assert data["custodian"]["identifier_system"] == "urn:custodian:system"
+    assert data["custodian"]["identifier_value"] == "CUST-789"
+    assert data["master_identifier"]["assigner_display"] == "External Master Assigner"
+    assert data["master_identifier"]["assigner_identifier_system"] == "urn:mid:assigner"
+    assert data["master_identifier"]["assigner_identifier_value"] == "ASGN-MID"
+    assert data["identifier"][0]["assigner_display"] == "External Assigner"
+    assert data["identifier"][0]["assigner_identifier_system"] == "urn:ident:assigner"
+    assert data["identifier"][0]["assigner_identifier_value"] == "ASGN-001"
+    assert data["author"][0]["display"] == "External Author"
+    assert data["author"][0]["identifier_system"] == "urn:author:system"
+    assert data["author"][0]["identifier_value"] == "AUTH-AUTHOR-1"
+    assert data["relates_to"][0]["target_display"] == "External Target"
+    assert data["relates_to"][0]["target_identifier_system"] == "urn:target:system"
+    assert data["relates_to"][0]["target_identifier_value"] == "TGT-999"
+    assert data["context"]["source_patient_info"]["display"] == "External Patient Info"
+    assert data["context"]["source_patient_info"]["identifier_system"] == "urn:pat:info"
+    assert data["context"]["source_patient_info"]["identifier_value"] == "PATINFO-1"
+    assert data["context"]["encounter"][0]["display"] == "External Encounter"
+    assert data["context"]["encounter"][0]["identifier_system"] == "urn:enc:system"
+    assert data["context"]["encounter"][0]["identifier_value"] == "ENC-001"
+    assert data["context"]["related"][0]["display"] == "External Related"
+    assert data["context"]["related"][0]["identifier_system"] == "urn:rel:system"
+    assert data["context"]["related"][0]["identifier_value"] == "REL-001"
+
+    # 2. GET FHIR format
+    fhir_resp = await client.get(f"{BASE}/{doc_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["resourceType"] == "DocumentReference"
+    assert fhir_data["subject"]["display"] == "External Subject"
+    assert fhir_data["subject"]["identifier"]["system"] == "urn:subject:system"
+    assert fhir_data["subject"]["identifier"]["value"] == "SUB-123"
+    assert fhir_data["subject"]["identifier"]["use"] == "official"
+    assert fhir_data["authenticator"]["display"] == "External Authenticator"
+    assert fhir_data["authenticator"]["identifier"]["system"] == "urn:auth:system"
+    assert fhir_data["authenticator"]["identifier"]["value"] == "AUTH-456"
+    assert fhir_data["custodian"]["display"] == "External Custodian"
+    assert fhir_data["custodian"]["identifier"]["system"] == "urn:custodian:system"
+    assert fhir_data["custodian"]["identifier"]["value"] == "CUST-789"
+    assert fhir_data["masterIdentifier"]["assigner"]["display"] == "External Master Assigner"
+    assert fhir_data["masterIdentifier"]["assigner"]["identifier"]["system"] == "urn:mid:assigner"
+    assert fhir_data["masterIdentifier"]["assigner"]["identifier"]["value"] == "ASGN-MID"
+    assert fhir_data["identifier"][0]["assigner"]["display"] == "External Assigner"
+    assert fhir_data["identifier"][0]["assigner"]["identifier"]["system"] == "urn:ident:assigner"
+    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ASGN-001"
+    assert fhir_data["author"][0]["display"] == "External Author"
+    assert fhir_data["author"][0]["identifier"]["system"] == "urn:author:system"
+    assert fhir_data["author"][0]["identifier"]["value"] == "AUTH-AUTHOR-1"
+    assert fhir_data["relatesTo"][0]["target"]["display"] == "External Target"
+    assert fhir_data["relatesTo"][0]["target"]["identifier"]["system"] == "urn:target:system"
+    assert fhir_data["relatesTo"][0]["target"]["identifier"]["value"] == "TGT-999"
+    assert fhir_data["context"]["sourcePatientInfo"]["display"] == "External Patient Info"
+    assert fhir_data["context"]["sourcePatientInfo"]["identifier"]["system"] == "urn:pat:info"
+    assert fhir_data["context"]["sourcePatientInfo"]["identifier"]["value"] == "PATINFO-1"
+    assert fhir_data["context"]["encounter"][0]["display"] == "External Encounter"
+    assert fhir_data["context"]["encounter"][0]["identifier"]["system"] == "urn:enc:system"
+    assert fhir_data["context"]["encounter"][0]["identifier"]["value"] == "ENC-001"
+    assert fhir_data["context"]["related"][0]["display"] == "External Related"
+    assert fhir_data["context"]["related"][0]["identifier"]["system"] == "urn:rel:system"
+    assert fhir_data["context"]["related"][0]["identifier"]["value"] == "REL-001"
+
+
 async def test_create_document_reference_invalid_reference(client):
     payload = minimal_document_reference(999999)  # Non-existent patient
     resp = await client.post(BASE + "/", json=payload)

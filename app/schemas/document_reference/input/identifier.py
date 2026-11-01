@@ -40,12 +40,33 @@ class DocumentReferenceIdentifierInput(BaseModel):
     assigner_identifier_use: IdentifierUse | None = Field(
         None, description="Fallback identifier — its purpose, if known."
     )
+    assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — terminology system."
+    )
+    assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version."
+    )
+    assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — code."
+    )
+    assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display."
+    )
+    assigner_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — user selected."
+    )
+    assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
     assigner_identifier_system: str | None = Field(
         None, description="Fallback identifier — namespace URL for the value."
     )
     assigner_identifier_value: str | None = Field(
         None, description="Fallback identifier — value within the given system."
     )
-    assigner_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
+    assigner_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — validity period start."
+    )
+    assigner_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — validity period end."
     )

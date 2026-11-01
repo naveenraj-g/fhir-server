@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -69,9 +70,16 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     master_identifier_assigner_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    master_identifier_assigner_identifier_type_system = Column(String, nullable=True)
+    master_identifier_assigner_identifier_type_version = Column(String, nullable=True)
+    master_identifier_assigner_identifier_type_code = Column(String, nullable=True)
+    master_identifier_assigner_identifier_type_display = Column(String, nullable=True)
+    master_identifier_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    master_identifier_assigner_identifier_type_text = Column(String, nullable=True)
     master_identifier_assigner_identifier_system = Column(String, nullable=True)
     master_identifier_assigner_identifier_value = Column(String, nullable=True)
-    master_identifier_assigner_identifier_type_text = Column(String, nullable=True)
+    master_identifier_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    master_identifier_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # status (1..1 code)
     status = Column(
@@ -107,6 +115,19 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     )
     subject_id = Column(BigInteger, nullable=True, index=True)
     subject_display = Column(String, nullable=True)
+    subject_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    subject_identifier_type_system = Column(String, nullable=True)
+    subject_identifier_type_version = Column(String, nullable=True)
+    subject_identifier_type_code = Column(String, nullable=True)
+    subject_identifier_type_display = Column(String, nullable=True)
+    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_identifier_type_text = Column(String, nullable=True)
+    subject_identifier_system = Column(String, nullable=True)
+    subject_identifier_value = Column(String, nullable=True)
+    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # date (0..1 instant)
     date = Column(DateTime(timezone=True), nullable=True)
@@ -122,6 +143,19 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     )
     authenticator_id = Column(BigInteger, nullable=True, index=True)
     authenticator_display = Column(String, nullable=True)
+    authenticator_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    authenticator_identifier_type_system = Column(String, nullable=True)
+    authenticator_identifier_type_version = Column(String, nullable=True)
+    authenticator_identifier_type_code = Column(String, nullable=True)
+    authenticator_identifier_type_display = Column(String, nullable=True)
+    authenticator_identifier_type_user_selected = Column(Boolean, nullable=True)
+    authenticator_identifier_type_text = Column(String, nullable=True)
+    authenticator_identifier_system = Column(String, nullable=True)
+    authenticator_identifier_value = Column(String, nullable=True)
+    authenticator_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    authenticator_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # custodian (0..1 Reference(Organization))
     custodian_reference = Column(String, nullable=True)
@@ -135,6 +169,19 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     )
     custodian_id = Column(BigInteger, nullable=True, index=True)
     custodian_display = Column(String, nullable=True)
+    custodian_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    custodian_identifier_type_system = Column(String, nullable=True)
+    custodian_identifier_type_version = Column(String, nullable=True)
+    custodian_identifier_type_code = Column(String, nullable=True)
+    custodian_identifier_type_display = Column(String, nullable=True)
+    custodian_identifier_type_user_selected = Column(Boolean, nullable=True)
+    custodian_identifier_type_text = Column(String, nullable=True)
+    custodian_identifier_system = Column(String, nullable=True)
+    custodian_identifier_value = Column(String, nullable=True)
+    custodian_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    custodian_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # description (0..1 string)
     description = Column(String, nullable=True)
@@ -154,6 +201,19 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     )
     context_source_patient_info_id = Column(BigInteger, nullable=True, index=True)
     context_source_patient_info_display = Column(String, nullable=True)
+    context_source_patient_info_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    context_source_patient_info_identifier_type_system = Column(String, nullable=True)
+    context_source_patient_info_identifier_type_version = Column(String, nullable=True)
+    context_source_patient_info_identifier_type_code = Column(String, nullable=True)
+    context_source_patient_info_identifier_type_display = Column(String, nullable=True)
+    context_source_patient_info_identifier_type_user_selected = Column(Boolean, nullable=True)
+    context_source_patient_info_identifier_type_text = Column(String, nullable=True)
+    context_source_patient_info_identifier_system = Column(String, nullable=True)
+    context_source_patient_info_identifier_value = Column(String, nullable=True)
+    context_source_patient_info_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    context_source_patient_info_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # extension (0..* Extension)
     extension = Column(JSONB, nullable=False, server_default="[]")

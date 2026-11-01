@@ -28,6 +28,8 @@ from app.models.enums import IdentifierUse as IdentifierUseModel
 from app.schemas.document_reference import DocumentReferenceCreateSchema, DocumentReferencePatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_kwargs,
     _parse_authenticator_ref,
     _parse_author_ref,
     _parse_context_encounter_ref,
@@ -36,11 +38,21 @@ from ._shared import (
     _parse_open_ref,
     _parse_subject_ref,
     _parse_target_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
 
 logger = get_logger(__name__)
+
+
+def _remap_identifier_kwargs(src_prefix: str, dest_prefix: str, payload) -> dict:
+    if payload is None:
+        return {f"{dest_prefix}_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{dest_prefix}_{s}": getattr(payload, f"{src_prefix}_{s}", None)
+        for s in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
 
 
 def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
@@ -59,6 +71,9 @@ async def _add_identifiers(session, doc_pk: int, org_id: str, identifiers, creat
     for i in identifiers or []:
         a_type, a_id = _parse_custodian_ref(i.assigner) if i.assigner else (None, None)
         await _validate_ref(session, org_id, a_type, a_id, "identifier.assigner")
+        kwargs = _prefixed_identifier_kwargs("assigner", i)
+        if kwargs.get("assigner_identifier_use") and hasattr(kwargs["assigner_identifier_use"], "name"):
+            kwargs["assigner_identifier_use"] = IdentifierUseModel[kwargs["assigner_identifier_use"].name]
         ident = DocumentReferenceIdentifier(
             document_reference_pk=doc_pk,
             tenant_id=org_id,
@@ -72,14 +87,7 @@ async def _add_identifiers(session, doc_pk: int, org_id: str, identifiers, creat
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=(
-                IdentifierUseModel[i.assigner_identifier_use.name]
-                if i.assigner_identifier_use
-                else None
-            ),
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
+            **kwargs,
             created_by=created_by,
         )
         session.add(ident)
@@ -138,15 +146,20 @@ async def _add_categories(session, doc_pk: int, org_id: str, categories, created
 
 async def _add_authors(session, doc_pk: int, org_id: str, authors, created_by: str) -> None:
     for a in authors or []:
-        a_type, a_id = _parse_author_ref(a)
-        await _validate_ref(session, org_id, a_type, a_id, "author")
+        kwargs = _child_reference_kwargs(a, "author")
+        ref_str = kwargs["author_reference"]
+        a_type, a_id = _parse_author_ref(ref_str) if ref_str else (None, None)
+        if a_type and a_id:
+            await _validate_ref(session, org_id, a_type, a_id, "author")
+        if kwargs.get("author_identifier_use") and hasattr(kwargs["author_identifier_use"], "name"):
+            kwargs["author_identifier_use"] = IdentifierUseModel[kwargs["author_identifier_use"].name]
         session.add(
             DocumentReferenceAuthor(
                 document_reference_pk=doc_pk,
                 tenant_id=org_id,
-                author_reference=a,
                 author_type=a_type,
                 author_id=a_id,
+                **kwargs,
                 created_by=created_by,
             )
         )
@@ -154,17 +167,22 @@ async def _add_authors(session, doc_pk: int, org_id: str, authors, created_by: s
 
 async def _add_relates_to(session, doc_pk: int, org_id: str, relates_to, created_by: str) -> None:
     for r in relates_to or []:
-        t_type, t_id = _parse_target_ref(r.target)
-        await _validate_ref(session, org_id, t_type, t_id, "relates_to.target")
+        kwargs = _child_reference_kwargs(r, "target")
+        ref_str = kwargs["target_reference"]
+        t_type, t_id = _parse_target_ref(ref_str) if ref_str else (None, None)
+        if t_type and t_id:
+            await _validate_ref(session, org_id, t_type, t_id, "relates_to.target")
+        if kwargs.get("target_identifier_use") and hasattr(kwargs["target_identifier_use"], "name"):
+            kwargs["target_identifier_use"] = IdentifierUseModel[kwargs["target_identifier_use"].name]
+        code_val = DocumentRelationshipTypeModel[r.code.name] if hasattr(r.code, "name") else r.code
         session.add(
             DocumentReferenceRelatesTo(
                 document_reference_pk=doc_pk,
                 tenant_id=org_id,
-                code=DocumentRelationshipTypeModel[r.code.name],
-                target_reference=r.target,
+                code=code_val,
                 target_type=t_type,
                 target_id=t_id,
-                target_display=r.target_display,
+                **kwargs,
                 created_by=created_by,
             )
         )
@@ -222,15 +240,20 @@ async def _add_context(session, doc_pk: int, org_id: str, context, created_by: s
 
     if context.encounter:
         for e in context.encounter:
-            e_type, e_id = _parse_context_encounter_ref(e)
-            await _validate_ref(session, org_id, e_type, e_id, "context.encounter")
+            kwargs = _child_reference_kwargs(e, "reference")
+            ref_str = kwargs["reference_reference"]
+            e_type, e_id = _parse_context_encounter_ref(ref_str) if ref_str else (None, None)
+            if e_type and e_id:
+                await _validate_ref(session, org_id, e_type, e_id, "context.encounter")
+            if kwargs.get("reference_identifier_use") and hasattr(kwargs["reference_identifier_use"], "name"):
+                kwargs["reference_identifier_use"] = IdentifierUseModel[kwargs["reference_identifier_use"].name]
             session.add(
                 DocumentReferenceContextEncounter(
                     document_reference_pk=doc_pk,
                     tenant_id=org_id,
-                    reference_reference=e,
                     reference_type=e_type,
                     reference_id=e_id,
+                    **kwargs,
                     created_by=created_by,
                 )
             )
@@ -274,16 +297,20 @@ async def _add_context(session, doc_pk: int, org_id: str, context, created_by: s
 
     if context.related:
         for r in context.related:
-            raw, r_type, r_id, _ = _parse_open_ref(r)
+            kwargs = _child_reference_kwargs(r, "reference")
+            ref_str = kwargs["reference_reference"]
+            raw, r_type, r_id, _ = _parse_open_ref(ref_str)
             if r_type and r_id:
                 await _validate_ref(session, org_id, r_type, r_id, "context.related")
+            if kwargs.get("reference_identifier_use") and hasattr(kwargs["reference_identifier_use"], "name"):
+                kwargs["reference_identifier_use"] = IdentifierUseModel[kwargs["reference_identifier_use"].name]
             session.add(
                 DocumentReferenceContextRelated(
                     document_reference_pk=doc_pk,
                     tenant_id=org_id,
-                    reference_reference=r,
                     reference_type=r_type,
                     reference_id=r_id,
+                    **kwargs,
                     created_by=created_by,
                 )
             )
@@ -326,6 +353,26 @@ class _FullMixin:
             )
             await _validate_ref(session, org_id, mid_a_type, mid_a_id, "master_identifier.assigner")
 
+            mid_kw = _prefixed_identifier_kwargs("assigner", mid) if mid else {f"assigner_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if mid_kw.get("assigner_identifier_use") and hasattr(mid_kw["assigner_identifier_use"], "name"):
+                mid_kw["assigner_identifier_use"] = IdentifierUseModel[mid_kw["assigner_identifier_use"].name]
+
+            subj_kw = _prefixed_identifier_kwargs("subject", payload)
+            if subj_kw.get("subject_identifier_use") and hasattr(subj_kw["subject_identifier_use"], "name"):
+                subj_kw["subject_identifier_use"] = IdentifierUseModel[subj_kw["subject_identifier_use"].name]
+
+            auth_kw = _prefixed_identifier_kwargs("authenticator", payload)
+            if auth_kw.get("authenticator_identifier_use") and hasattr(auth_kw["authenticator_identifier_use"], "name"):
+                auth_kw["authenticator_identifier_use"] = IdentifierUseModel[auth_kw["authenticator_identifier_use"].name]
+
+            cust_kw = _prefixed_identifier_kwargs("custodian", payload)
+            if cust_kw.get("custodian_identifier_use") and hasattr(cust_kw["custodian_identifier_use"], "name"):
+                cust_kw["custodian_identifier_use"] = IdentifierUseModel[cust_kw["custodian_identifier_use"].name]
+
+            pat_kw = _remap_identifier_kwargs("source_patient_info", "context_source_patient_info", payload.context) if payload.context else {f"context_source_patient_info_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if pat_kw.get("context_source_patient_info_identifier_use") and hasattr(pat_kw["context_source_patient_info_identifier_use"], "name"):
+                pat_kw["context_source_patient_info_identifier_use"] = IdentifierUseModel[pat_kw["context_source_patient_info_identifier_use"].name]
+
             doc = DocumentReferenceModel(
                 tenant_id=org_id,
                 created_by=created_by,
@@ -335,13 +382,19 @@ class _FullMixin:
                 subject_reference=payload.subject,
                 subject_type=s_type,
                 subject_id=s_id,
+                subject_display=payload.subject_display,
+                **subj_kw,
                 date=payload.date,
                 authenticator_reference=payload.authenticator,
                 authenticator_type=auth_type,
                 authenticator_id=auth_id,
+                authenticator_display=payload.authenticator_display,
+                **auth_kw,
                 custodian_reference=payload.custodian,
                 custodian_type=cust_type,
                 custodian_id=cust_id,
+                custodian_display=payload.custodian_display,
+                **cust_kw,
                 description=payload.description,
                 # Master identifier
                 master_identifier_use=IdentifierUseModel[mid.use.name] if (mid and mid.use) else None,
@@ -354,14 +407,7 @@ class _FullMixin:
                 master_identifier_assigner_type=mid_a_type,
                 master_identifier_assigner_id=mid_a_id,
                 master_identifier_assigner_display=mid.assigner_display if mid else None,
-                master_identifier_assigner_identifier_use=(
-                    IdentifierUseModel[mid.assigner_identifier_use.name]
-                    if (mid and mid.assigner_identifier_use)
-                    else None
-                ),
-                master_identifier_assigner_identifier_system=mid.assigner_identifier_system if mid else None,
-                master_identifier_assigner_identifier_value=mid.assigner_identifier_value if mid else None,
-                master_identifier_assigner_identifier_type_text=mid.assigner_identifier_type_text if mid else None,
+                **{f"master_identifier_{k}": v for k, v in mid_kw.items()},
                 # Context 0..1 fields
                 context_period_start=payload.context.period_start if payload.context else None,
                 context_period_end=payload.context.period_end if payload.context else None,
@@ -370,6 +416,8 @@ class _FullMixin:
                 context_source_patient_info_reference=payload.context.source_patient_info if payload.context else None,
                 context_source_patient_info_type=pat_type,
                 context_source_patient_info_id=pat_id,
+                context_source_patient_info_display=payload.context.source_patient_info_display if payload.context else None,
+                **pat_kw,
             )
             session.add(doc)
             await session.flush()
@@ -418,30 +466,71 @@ class _FullMixin:
             if "date" in fields_set:
                 doc.date = payload.date
 
-            if "subject" in fields_set:
-                s_type, s_id = _parse_subject_ref(payload.subject) if payload.subject else (None, None)
-                await _validate_ref(session, org_id, s_type, s_id, "subject")
-                doc.subject_reference = payload.subject
-                doc.subject_type = s_type
-                doc.subject_id = s_id
+            subject_fallback_fields = {f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "subject" in fields_set or "subject_display" in fields_set or (fields_set & subject_fallback_fields):
+                if payload.subject:
+                    s_type, s_id = _parse_subject_ref(payload.subject)
+                    await _validate_ref(session, org_id, s_type, s_id, "subject")
+                    doc.subject_reference = payload.subject
+                    doc.subject_type = s_type
+                    doc.subject_id = s_id
+                elif "subject" in fields_set and payload.subject is None:
+                    doc.subject_reference = None
+                    doc.subject_type = None
+                    doc.subject_id = None
+                if "subject_display" in fields_set:
+                    doc.subject_display = payload.subject_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"subject_{s}"
+                    if f_name in fields_set:
+                        val = getattr(payload, f_name)
+                        if s == "identifier_use" and val and hasattr(val, "name"):
+                            val = IdentifierUseModel[val.name]
+                        setattr(doc, f_name, val)
 
-            if "authenticator" in fields_set:
-                auth_type, auth_id = (
-                    _parse_authenticator_ref(payload.authenticator) if payload.authenticator else (None, None)
-                )
-                await _validate_ref(session, org_id, auth_type, auth_id, "authenticator")
-                doc.authenticator_reference = payload.authenticator
-                doc.authenticator_type = auth_type
-                doc.authenticator_id = auth_id
+            authenticator_fallback_fields = {f"authenticator_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "authenticator" in fields_set or "authenticator_display" in fields_set or (fields_set & authenticator_fallback_fields):
+                if payload.authenticator:
+                    auth_type, auth_id = _parse_authenticator_ref(payload.authenticator)
+                    await _validate_ref(session, org_id, auth_type, auth_id, "authenticator")
+                    doc.authenticator_reference = payload.authenticator
+                    doc.authenticator_type = auth_type
+                    doc.authenticator_id = auth_id
+                elif "authenticator" in fields_set and payload.authenticator is None:
+                    doc.authenticator_reference = None
+                    doc.authenticator_type = None
+                    doc.authenticator_id = None
+                if "authenticator_display" in fields_set:
+                    doc.authenticator_display = payload.authenticator_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"authenticator_{s}"
+                    if f_name in fields_set:
+                        val = getattr(payload, f_name)
+                        if s == "identifier_use" and val and hasattr(val, "name"):
+                            val = IdentifierUseModel[val.name]
+                        setattr(doc, f_name, val)
 
-            if "custodian" in fields_set:
-                cust_type, cust_id = (
-                    _parse_custodian_ref(payload.custodian) if payload.custodian else (None, None)
-                )
-                await _validate_ref(session, org_id, cust_type, cust_id, "custodian")
-                doc.custodian_reference = payload.custodian
-                doc.custodian_type = cust_type
-                doc.custodian_id = cust_id
+            custodian_fallback_fields = {f"custodian_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "custodian" in fields_set or "custodian_display" in fields_set or (fields_set & custodian_fallback_fields):
+                if payload.custodian:
+                    cust_type, cust_id = _parse_custodian_ref(payload.custodian)
+                    await _validate_ref(session, org_id, cust_type, cust_id, "custodian")
+                    doc.custodian_reference = payload.custodian
+                    doc.custodian_type = cust_type
+                    doc.custodian_id = cust_id
+                elif "custodian" in fields_set and payload.custodian is None:
+                    doc.custodian_reference = None
+                    doc.custodian_type = None
+                    doc.custodian_id = None
+                if "custodian_display" in fields_set:
+                    doc.custodian_display = payload.custodian_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"custodian_{s}"
+                    if f_name in fields_set:
+                        val = getattr(payload, f_name)
+                        if s == "identifier_use" and val and hasattr(val, "name"):
+                            val = IdentifierUseModel[val.name]
+                        setattr(doc, f_name, val)
 
             # Master identifier
             if "master_identifier" in fields_set:
@@ -449,7 +538,8 @@ class _FullMixin:
                 mid_a_type, mid_a_id = (
                     _parse_custodian_ref(mid.assigner) if (mid and mid.assigner) else (None, None)
                 )
-                await _validate_ref(session, org_id, mid_a_type, mid_a_id, "master_identifier.assigner")
+                if mid_a_type and mid_a_id:
+                    await _validate_ref(session, org_id, mid_a_type, mid_a_id, "master_identifier.assigner")
                 doc.master_identifier_use = IdentifierUseModel[mid.use.name] if (mid and mid.use) else None
                 doc.master_identifier_type_text = mid.type_text if mid else None
                 doc.master_identifier_system = mid.system if mid else None
@@ -460,14 +550,12 @@ class _FullMixin:
                 doc.master_identifier_assigner_type = mid_a_type
                 doc.master_identifier_assigner_id = mid_a_id
                 doc.master_identifier_assigner_display = mid.assigner_display if mid else None
-                doc.master_identifier_assigner_identifier_use = (
-                    IdentifierUseModel[mid.assigner_identifier_use.name]
-                    if (mid and mid.assigner_identifier_use)
-                    else None
-                )
-                doc.master_identifier_assigner_identifier_system = mid.assigner_identifier_system if mid else None
-                doc.master_identifier_assigner_identifier_value = mid.assigner_identifier_value if mid else None
-                doc.master_identifier_assigner_identifier_type_text = mid.assigner_identifier_type_text if mid else None
+                mid_kw = _prefixed_identifier_kwargs("assigner", mid) if mid else {f"assigner_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    val = mid_kw[f"assigner_{s}"]
+                    if s == "identifier_use" and val and hasattr(val, "name"):
+                        val = IdentifierUseModel[val.name]
+                    setattr(doc, f"master_identifier_assigner_{s}", val)
 
                 await session.execute(
                     delete(DocumentReferenceMasterIdentifierTypeCoding).where(
@@ -575,7 +663,8 @@ class _FullMixin:
                     if (ctx and ctx.source_patient_info)
                     else (None, None)
                 )
-                await _validate_ref(session, org_id, pat_type, pat_id, "context.source_patient_info")
+                if pat_type and pat_id:
+                    await _validate_ref(session, org_id, pat_type, pat_id, "context.source_patient_info")
 
                 doc.context_period_start = ctx.period_start if ctx else None
                 doc.context_period_end = ctx.period_end if ctx else None
@@ -584,6 +673,13 @@ class _FullMixin:
                 doc.context_source_patient_info_reference = ctx.source_patient_info if ctx else None
                 doc.context_source_patient_info_type = pat_type
                 doc.context_source_patient_info_id = pat_id
+                doc.context_source_patient_info_display = ctx.source_patient_info_display if ctx else None
+                pat_kw = _remap_identifier_kwargs("source_patient_info", "context_source_patient_info", ctx) if ctx else {f"context_source_patient_info_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    val = pat_kw[f"context_source_patient_info_{s}"]
+                    if s == "identifier_use" and val and hasattr(val, "name"):
+                        val = IdentifierUseModel[val.name]
+                    setattr(doc, f"context_source_patient_info_{s}", val)
 
                 await session.execute(
                     delete(DocumentReferenceContextEventCoding).where(
