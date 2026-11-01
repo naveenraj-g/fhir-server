@@ -30,12 +30,24 @@ def plain_coding(c) -> dict:
 
 
 def _plain_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
     raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
 
-    if not (raw_reference or ref_type or ref_id or display):
+    id_val = getattr(obj, f"{prefix}_identifier_value", None)
+    has_any = (
+        raw_reference
+        or ref_type
+        or ref_id
+        or display
+        or id_val
+        or getattr(obj, f"{prefix}_identifier_system", None)
+        or getattr(obj, f"{prefix}_identifier_use", None)
+    )
+    if not has_any:
         return None
 
     return {
@@ -43,6 +55,49 @@ def _plain_reference(obj, prefix: str) -> dict | None:
         "id": ref_id,
         "type": fhir_enum(ref_type) if ref_type else None,
         "display": display,
+        "identifier_use": fhir_enum(getattr(obj, f"{prefix}_identifier_use", None)),
+        "identifier_type_system": getattr(obj, f"{prefix}_identifier_type_system", None),
+        "identifier_type_version": getattr(obj, f"{prefix}_identifier_type_version", None),
+        "identifier_type_code": getattr(obj, f"{prefix}_identifier_type_code", None),
+        "identifier_type_display": getattr(obj, f"{prefix}_identifier_type_display", None),
+        "identifier_type_user_selected": getattr(obj, f"{prefix}_identifier_type_user_selected", None),
+        "identifier_type_text": getattr(obj, f"{prefix}_identifier_type_text", None),
+        "identifier_system": getattr(obj, f"{prefix}_identifier_system", None),
+        "identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        "identifier_period_start": (
+            getattr(obj, f"{prefix}_identifier_period_start").isoformat()
+            if getattr(obj, f"{prefix}_identifier_period_start", None)
+            else None
+        ),
+        "identifier_period_end": (
+            getattr(obj, f"{prefix}_identifier_period_end").isoformat()
+            if getattr(obj, f"{prefix}_identifier_period_end", None)
+            else None
+        ),
+    }
+
+
+def _plain_assigner_fields(obj, model_prefix: str = "assigner", out_prefix: str = "assigner") -> dict:
+    return {
+        f"{out_prefix}_identifier_use": fhir_enum(getattr(obj, f"{model_prefix}_identifier_use", None)),
+        f"{out_prefix}_identifier_type_system": getattr(obj, f"{model_prefix}_identifier_type_system", None),
+        f"{out_prefix}_identifier_type_version": getattr(obj, f"{model_prefix}_identifier_type_version", None),
+        f"{out_prefix}_identifier_type_code": getattr(obj, f"{model_prefix}_identifier_type_code", None),
+        f"{out_prefix}_identifier_type_display": getattr(obj, f"{model_prefix}_identifier_type_display", None),
+        f"{out_prefix}_identifier_type_user_selected": getattr(obj, f"{model_prefix}_identifier_type_user_selected", None),
+        f"{out_prefix}_identifier_type_text": getattr(obj, f"{model_prefix}_identifier_type_text", None),
+        f"{out_prefix}_identifier_system": getattr(obj, f"{model_prefix}_identifier_system", None),
+        f"{out_prefix}_identifier_value": getattr(obj, f"{model_prefix}_identifier_value", None),
+        f"{out_prefix}_identifier_period_start": (
+            getattr(obj, f"{model_prefix}_identifier_period_start").isoformat()
+            if getattr(obj, f"{model_prefix}_identifier_period_start", None)
+            else None
+        ),
+        f"{out_prefix}_identifier_period_end": (
+            getattr(obj, f"{model_prefix}_identifier_period_end").isoformat()
+            if getattr(obj, f"{model_prefix}_identifier_period_end", None)
+            else None
+        ),
     }
 
 
@@ -62,6 +117,7 @@ def plain_specimen_identifier(i) -> dict:
         "assigner_id": ref_id,
         "assigner_type": fhir_enum(ref_type) if ref_type else None,
         "assigner_display": i.assigner_display,
+        **_plain_assigner_fields(i, "assigner", "assigner"),
         **_audit_fields(i),
     }
 
@@ -75,6 +131,7 @@ def plain_specimen_accession_identifier(model: SpecimenModel) -> dict | None:
         or model.accession_identifier_type_codings
         or model.accession_identifier_assigner_reference
         or model.accession_identifier_assigner_id
+        or model.accession_identifier_assigner_identifier_value
     ):
         return None
 
@@ -90,6 +147,7 @@ def plain_specimen_accession_identifier(model: SpecimenModel) -> dict | None:
         "assigner_id": model.accession_identifier_assigner_id,
         "assigner_type": fhir_enum(model.accession_identifier_assigner_type) if model.accession_identifier_assigner_type else None,
         "assigner_display": model.accession_identifier_assigner_display,
+        **_plain_assigner_fields(model, "accession_identifier_assigner", "assigner"),
     }
 
 
@@ -244,6 +302,17 @@ def plain_specimen_note(n) -> dict:
         "author_id": ref["id"] if ref else None,
         "author_type": ref["type"] if ref else None,
         "author_display": ref["display"] if ref else None,
+        "author_identifier_use": ref["identifier_use"] if ref else None,
+        "author_identifier_type_system": ref["identifier_type_system"] if ref else None,
+        "author_identifier_type_version": ref["identifier_type_version"] if ref else None,
+        "author_identifier_type_code": ref["identifier_type_code"] if ref else None,
+        "author_identifier_type_display": ref["identifier_type_display"] if ref else None,
+        "author_identifier_type_user_selected": ref["identifier_type_user_selected"] if ref else None,
+        "author_identifier_type_text": ref["identifier_type_text"] if ref else None,
+        "author_identifier_system": ref["identifier_system"] if ref else None,
+        "author_identifier_value": ref["identifier_value"] if ref else None,
+        "author_identifier_period_start": ref["identifier_period_start"] if ref else None,
+        "author_identifier_period_end": ref["identifier_period_end"] if ref else None,
         "time": n.time.isoformat() if n.time else None,
         "text": n.text,
         **_audit_fields(n),

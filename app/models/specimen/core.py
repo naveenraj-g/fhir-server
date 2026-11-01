@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -66,9 +67,16 @@ class SpecimenModel(TenantAuditMixin, Base):
     accession_identifier_assigner_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    accession_identifier_assigner_identifier_type_system = Column(String, nullable=True)
+    accession_identifier_assigner_identifier_type_version = Column(String, nullable=True)
+    accession_identifier_assigner_identifier_type_code = Column(String, nullable=True)
+    accession_identifier_assigner_identifier_type_display = Column(String, nullable=True)
+    accession_identifier_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    accession_identifier_assigner_identifier_type_text = Column(String, nullable=True)
     accession_identifier_assigner_identifier_system = Column(String, nullable=True)
     accession_identifier_assigner_identifier_value = Column(String, nullable=True)
-    accession_identifier_assigner_identifier_type_text = Column(String, nullable=True)
+    accession_identifier_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    accession_identifier_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # status (0..1 code)
     status = Column(
@@ -92,9 +100,16 @@ class SpecimenModel(TenantAuditMixin, Base):
     subject_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    subject_identifier_type_system = Column(String, nullable=True)
+    subject_identifier_type_version = Column(String, nullable=True)
+    subject_identifier_type_code = Column(String, nullable=True)
+    subject_identifier_type_display = Column(String, nullable=True)
+    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_identifier_type_text = Column(String, nullable=True)
     subject_identifier_system = Column(String, nullable=True)
     subject_identifier_value = Column(String, nullable=True)
-    subject_identifier_type_text = Column(String, nullable=True)
+    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # receivedTime (0..1 dateTime)
     received_time = Column(DateTime(timezone=True), nullable=True)
@@ -113,9 +128,16 @@ class SpecimenModel(TenantAuditMixin, Base):
     collection_collector_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    collection_collector_identifier_type_system = Column(String, nullable=True)
+    collection_collector_identifier_type_version = Column(String, nullable=True)
+    collection_collector_identifier_type_code = Column(String, nullable=True)
+    collection_collector_identifier_type_display = Column(String, nullable=True)
+    collection_collector_identifier_type_user_selected = Column(Boolean, nullable=True)
+    collection_collector_identifier_type_text = Column(String, nullable=True)
     collection_collector_identifier_system = Column(String, nullable=True)
     collection_collector_identifier_value = Column(String, nullable=True)
-    collection_collector_identifier_type_text = Column(String, nullable=True)
+    collection_collector_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    collection_collector_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # collection.collected[x] (0..1 dateTime | Period)
     collection_collected_date_time = Column(DateTime(timezone=True), nullable=True)

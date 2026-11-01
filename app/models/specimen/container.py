@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -57,9 +58,16 @@ class SpecimenContainer(TenantAuditMixin, Base):
     additive_reference_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    additive_reference_identifier_type_system = Column(String, nullable=True)
+    additive_reference_identifier_type_version = Column(String, nullable=True)
+    additive_reference_identifier_type_code = Column(String, nullable=True)
+    additive_reference_identifier_type_display = Column(String, nullable=True)
+    additive_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    additive_reference_identifier_type_text = Column(String, nullable=True)
     additive_reference_identifier_system = Column(String, nullable=True)
     additive_reference_identifier_value = Column(String, nullable=True)
-    additive_reference_identifier_type_text = Column(String, nullable=True)
+    additive_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    additive_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     specimen = relationship("SpecimenModel", back_populates="containers")
     identifiers = relationship(
@@ -115,9 +123,16 @@ class SpecimenContainerIdentifier(TenantAuditMixin, Base):
     assigner_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    assigner_identifier_type_system = Column(String, nullable=True)
+    assigner_identifier_type_version = Column(String, nullable=True)
+    assigner_identifier_type_code = Column(String, nullable=True)
+    assigner_identifier_type_display = Column(String, nullable=True)
+    assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    assigner_identifier_type_text = Column(String, nullable=True)
     assigner_identifier_system = Column(String, nullable=True)
     assigner_identifier_value = Column(String, nullable=True)
-    assigner_identifier_type_text = Column(String, nullable=True)
+    assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     container = relationship("SpecimenContainer", back_populates="identifiers")
     type_codings = relationship(

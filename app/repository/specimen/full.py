@@ -30,6 +30,8 @@ from app.models.specimen import (
 from app.schemas.specimen import SpecimenCreateSchema, SpecimenPatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_kwargs,
     _parse_additive_ref,
     _parse_collector_ref,
     _parse_note_author_ref,
@@ -37,6 +39,7 @@ from ._shared import (
     _parse_parent_ref,
     _parse_request_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _reference_kwargs,
     _validate_ref,
     _with_relationships,
@@ -60,7 +63,11 @@ def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
 async def _add_identifiers(session, specimen_pk: int, org_id: str, identifiers, created_by: str) -> None:
     for i in identifiers or []:
         a_type, a_id = _parse_org_ref(i.assigner) if i.assigner else (None, None)
-        await _validate_ref(session, org_id, a_type, a_id, "identifier.assigner")
+        if a_type and a_id:
+            await _validate_ref(session, org_id, a_type, a_id, "identifier.assigner")
+        kwargs = _prefixed_identifier_kwargs("assigner", i)
+        if kwargs.get("assigner_identifier_use") and hasattr(kwargs["assigner_identifier_use"], "name"):
+            kwargs["assigner_identifier_use"] = IdentifierUseModel[kwargs["assigner_identifier_use"].name]
         ident = SpecimenIdentifier(
             specimen_pk=specimen_pk,
             tenant_id=org_id,
@@ -74,14 +81,7 @@ async def _add_identifiers(session, specimen_pk: int, org_id: str, identifiers, 
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=(
-                IdentifierUseModel[i.assigner_identifier_use.name]
-                if i.assigner_identifier_use
-                else None
-            ),
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
+            **kwargs,
             created_by=created_by,
         )
         session.add(ident)
@@ -120,24 +120,20 @@ def _add_type_codings(session, specimen_pk: int, org_id: str, type_concept, crea
 
 async def _add_parents(session, specimen_pk: int, org_id: str, parents, created_by: str) -> None:
     for p in parents or []:
-        p_type, p_id = _parse_parent_ref(p.reference) if p.reference else (None, None)
-        await _validate_ref(session, org_id, p_type, p_id, "parent")
+        kwargs = _child_reference_kwargs(p, "reference")
+        ref_str = kwargs["reference_reference"]
+        p_type, p_id = _parse_parent_ref(ref_str) if ref_str else (None, None)
+        if p_type and p_id:
+            await _validate_ref(session, org_id, p_type, p_id, "parent")
+        if kwargs.get("reference_identifier_use") and hasattr(kwargs["reference_identifier_use"], "name"):
+            kwargs["reference_identifier_use"] = IdentifierUseModel[kwargs["reference_identifier_use"].name]
         session.add(
             SpecimenParent(
                 specimen_pk=specimen_pk,
                 tenant_id=org_id,
-                reference_reference=p.reference,
                 reference_type=p_type,
                 reference_id=p_id,
-                reference_display=p.reference_display,
-                reference_identifier_use=(
-                    IdentifierUseModel[p.reference_identifier_use.name]
-                    if p.reference_identifier_use
-                    else None
-                ),
-                reference_identifier_system=p.reference_identifier_system,
-                reference_identifier_value=p.reference_identifier_value,
-                reference_identifier_type_text=p.reference_identifier_type_text,
+                **kwargs,
                 created_by=created_by,
             )
         )
@@ -145,24 +141,20 @@ async def _add_parents(session, specimen_pk: int, org_id: str, parents, created_
 
 async def _add_requests(session, specimen_pk: int, org_id: str, requests, created_by: str) -> None:
     for r in requests or []:
-        r_type, r_id = _parse_request_ref(r.reference) if r.reference else (None, None)
-        await _validate_ref(session, org_id, r_type, r_id, "request")
+        kwargs = _child_reference_kwargs(r, "reference")
+        ref_str = kwargs["reference_reference"]
+        r_type, r_id = _parse_request_ref(ref_str) if ref_str else (None, None)
+        if r_type and r_id:
+            await _validate_ref(session, org_id, r_type, r_id, "request")
+        if kwargs.get("reference_identifier_use") and hasattr(kwargs["reference_identifier_use"], "name"):
+            kwargs["reference_identifier_use"] = IdentifierUseModel[kwargs["reference_identifier_use"].name]
         session.add(
             SpecimenRequest(
                 specimen_pk=specimen_pk,
                 tenant_id=org_id,
-                reference_reference=r.reference,
                 reference_type=r_type,
                 reference_id=r_id,
-                reference_display=r.reference_display,
-                reference_identifier_use=(
-                    IdentifierUseModel[r.reference_identifier_use.name]
-                    if r.reference_identifier_use
-                    else None
-                ),
-                reference_identifier_system=r.reference_identifier_system,
-                reference_identifier_value=r.reference_identifier_value,
-                reference_identifier_type_text=r.reference_identifier_type_text,
+                **kwargs,
                 created_by=created_by,
             )
         )
@@ -222,24 +214,20 @@ async def _add_processings(session, specimen_pk: int, org_id: str, processings, 
                 )
 
         for a in p.additive or []:
-            ad_type, ad_id = _parse_additive_ref(a.reference) if a.reference else (None, None)
-            await _validate_ref(session, org_id, ad_type, ad_id, "processing.additive")
+            kwargs = _child_reference_kwargs(a, "reference")
+            ref_str = kwargs["reference_reference"]
+            ad_type, ad_id = _parse_additive_ref(ref_str) if ref_str else (None, None)
+            if ad_type and ad_id:
+                await _validate_ref(session, org_id, ad_type, ad_id, "processing.additive")
+            if kwargs.get("reference_identifier_use") and hasattr(kwargs["reference_identifier_use"], "name"):
+                kwargs["reference_identifier_use"] = IdentifierUseModel[kwargs["reference_identifier_use"].name]
             session.add(
                 SpecimenProcessingAdditive(
                     specimen_processing_id=proc.id,
                     tenant_id=org_id,
-                    reference_reference=a.reference,
                     reference_type=ad_type,
                     reference_id=ad_id,
-                    reference_display=a.reference_display,
-                    reference_identifier_use=(
-                        IdentifierUseModel[a.reference_identifier_use.name]
-                        if a.reference_identifier_use
-                        else None
-                    ),
-                    reference_identifier_system=a.reference_identifier_system,
-                    reference_identifier_value=a.reference_identifier_value,
-                    reference_identifier_type_text=a.reference_identifier_type_text,
+                    **kwargs,
                     created_by=created_by,
                 )
             )
@@ -247,12 +235,18 @@ async def _add_processings(session, specimen_pk: int, org_id: str, processings, 
 
 async def _add_containers(session, specimen_pk: int, org_id: str, containers, created_by: str) -> None:
     for c in containers or []:
-        ad_type, ad_id = (
-            _parse_additive_ref(c.additive_reference.reference)
-            if c.additive_reference and c.additive_reference.reference
-            else (None, None)
+        add_ref = c.additive_reference
+        add_kw = (
+            _child_reference_kwargs(add_ref, "additive_reference")
+            if add_ref
+            else {f"additive_reference_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES}
         )
-        await _validate_ref(session, org_id, ad_type, ad_id, "container.additiveReference")
+        ref_str = add_kw.get("additive_reference_reference")
+        ad_type, ad_id = _parse_additive_ref(ref_str) if ref_str else (None, None)
+        if ad_type and ad_id:
+            await _validate_ref(session, org_id, ad_type, ad_id, "container.additiveReference")
+        if add_kw.get("additive_reference_identifier_use") and hasattr(add_kw["additive_reference_identifier_use"], "name"):
+            add_kw["additive_reference_identifier_use"] = IdentifierUseModel[add_kw["additive_reference_identifier_use"].name]
 
         cont = SpecimenContainer(
             specimen_pk=specimen_pk,
@@ -270,34 +264,9 @@ async def _add_containers(session, specimen_pk: int, org_id: str, containers, cr
             additive_codeable_concept_text=(
                 c.additive_codeable_concept.text if c.additive_codeable_concept else None
             ),
-            additive_reference_reference=(
-                c.additive_reference.reference if c.additive_reference else None
-            ),
             additive_reference_type=ad_type,
             additive_reference_id=ad_id,
-            additive_reference_display=(
-                c.additive_reference.reference_display if c.additive_reference else None
-            ),
-            additive_reference_identifier_use=(
-                IdentifierUseModel[c.additive_reference.reference_identifier_use.name]
-                if c.additive_reference and c.additive_reference.reference_identifier_use
-                else None
-            ),
-            additive_reference_identifier_system=(
-                c.additive_reference.reference_identifier_system
-                if c.additive_reference
-                else None
-            ),
-            additive_reference_identifier_value=(
-                c.additive_reference.reference_identifier_value
-                if c.additive_reference
-                else None
-            ),
-            additive_reference_identifier_type_text=(
-                c.additive_reference.reference_identifier_type_text
-                if c.additive_reference
-                else None
-            ),
+            **add_kw,
             created_by=created_by,
         )
         session.add(cont)
@@ -323,7 +292,11 @@ async def _add_containers(session, specimen_pk: int, org_id: str, containers, cr
 
         for ci in c.identifier or []:
             a_type, a_id = _parse_org_ref(ci.assigner) if ci.assigner else (None, None)
-            await _validate_ref(session, org_id, a_type, a_id, "container.identifier.assigner")
+            if a_type and a_id:
+                await _validate_ref(session, org_id, a_type, a_id, "container.identifier.assigner")
+            ci_kw = _prefixed_identifier_kwargs("assigner", ci)
+            if ci_kw.get("assigner_identifier_use") and hasattr(ci_kw["assigner_identifier_use"], "name"):
+                ci_kw["assigner_identifier_use"] = IdentifierUseModel[ci_kw["assigner_identifier_use"].name]
             c_ident = SpecimenContainerIdentifier(
                 specimen_container_id=cont.id,
                 tenant_id=org_id,
@@ -337,14 +310,7 @@ async def _add_containers(session, specimen_pk: int, org_id: str, containers, cr
                 assigner_type=a_type,
                 assigner_id=a_id,
                 assigner_display=ci.assigner_display,
-                assigner_identifier_use=(
-                    IdentifierUseModel[ci.assigner_identifier_use.name]
-                    if ci.assigner_identifier_use
-                    else None
-                ),
-                assigner_identifier_system=ci.assigner_identifier_system,
-                assigner_identifier_value=ci.assigner_identifier_value,
-                assigner_identifier_type_text=ci.assigner_identifier_type_text,
+                **ci_kw,
                 created_by=created_by,
             )
             session.add(c_ident)
@@ -381,29 +347,25 @@ async def _add_conditions(session, specimen_pk: int, org_id: str, conditions, cr
 
 async def _add_notes(session, specimen_pk: int, org_id: str, notes, created_by: str) -> None:
     for n in notes or []:
+        kwargs = _child_reference_kwargs(n, "author")
+        ref_str = kwargs["author_reference"]
         a_type, a_id = (
-            _parse_note_author_ref(n.author_reference)
-            if n.author_reference
+            _parse_note_author_ref(ref_str)
+            if ref_str
             else (None, None)
         )
-        await _validate_ref(session, org_id, a_type, a_id, "note.author")
+        if a_type and a_id:
+            await _validate_ref(session, org_id, a_type, a_id, "note.author")
+        if kwargs.get("author_identifier_use") and hasattr(kwargs["author_identifier_use"], "name"):
+            kwargs["author_identifier_use"] = IdentifierUseModel[kwargs["author_identifier_use"].name]
         session.add(
             SpecimenNote(
                 specimen_pk=specimen_pk,
                 tenant_id=org_id,
                 author_string=n.author_string,
-                author_reference=n.author_reference,
                 author_type=a_type,
                 author_id=a_id,
-                author_display=n.author_display,
-                author_identifier_use=(
-                    IdentifierUseModel[n.author_identifier_use.name]
-                    if n.author_identifier_use
-                    else None
-                ),
-                author_identifier_system=n.author_identifier_system,
-                author_identifier_value=n.author_identifier_value,
-                author_identifier_type_text=n.author_identifier_type_text,
+                **kwargs,
                 time=n.time,
                 text=n.text,
                 created_by=created_by,
@@ -472,14 +434,11 @@ class _FullMixin:
                 specimen.accession_identifier_assigner_type = acc_a_type
                 specimen.accession_identifier_assigner_id = acc_a_id
                 specimen.accession_identifier_assigner_display = acc.assigner_display
-                specimen.accession_identifier_assigner_identifier_use = (
-                    IdentifierUseModel[acc.assigner_identifier_use.name]
-                    if acc.assigner_identifier_use
-                    else None
-                )
-                specimen.accession_identifier_assigner_identifier_system = acc.assigner_identifier_system
-                specimen.accession_identifier_assigner_identifier_value = acc.assigner_identifier_value
-                specimen.accession_identifier_assigner_identifier_type_text = acc.assigner_identifier_type_text
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    v = getattr(acc, f"assigner_{s}", None)
+                    if s == "identifier_use" and v and hasattr(v, "name"):
+                        v = IdentifierUseModel[v.name]
+                    setattr(specimen, f"accession_identifier_assigner_{s}", v)
 
             if payload.collection:
                 col = payload.collection
@@ -583,8 +542,12 @@ class _FullMixin:
                 _add_type_codings(session, specimen.id, org_id, payload.type, updated_by)
 
             if "subject" in provided:
-                if payload.subject and payload.subject.reference:
-                    s_type, s_id = _parse_subject_ref(payload.subject.reference)
+                if payload.subject:
+                    s_type, s_id = (
+                        _parse_subject_ref(payload.subject.reference)
+                        if payload.subject.reference
+                        else (None, None)
+                    )
                     await _validate_ref(session, org_id, s_type, s_id, "subject")
                     specimen.subject_reference = payload.subject.reference
                     specimen.subject_type = s_type
@@ -597,6 +560,8 @@ class _FullMixin:
                     specimen.subject_type = None
                     specimen.subject_id = None
                     specimen.subject_display = None
+                    for k, v in _reference_kwargs("subject", None).items():
+                        setattr(specimen, k, v)
 
             if "accession_identifier" in provided:
                 await session.execute(
@@ -620,14 +585,11 @@ class _FullMixin:
                     specimen.accession_identifier_assigner_type = acc_a_type
                     specimen.accession_identifier_assigner_id = acc_a_id
                     specimen.accession_identifier_assigner_display = acc.assigner_display
-                    specimen.accession_identifier_assigner_identifier_use = (
-                        IdentifierUseModel[acc.assigner_identifier_use.name]
-                        if acc.assigner_identifier_use
-                        else None
-                    )
-                    specimen.accession_identifier_assigner_identifier_system = acc.assigner_identifier_system
-                    specimen.accession_identifier_assigner_identifier_value = acc.assigner_identifier_value
-                    specimen.accession_identifier_assigner_identifier_type_text = acc.assigner_identifier_type_text
+                    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                        v = getattr(acc, f"assigner_{s}", None)
+                        if s == "identifier_use" and v and hasattr(v, "name"):
+                            v = IdentifierUseModel[v.name]
+                        setattr(specimen, f"accession_identifier_assigner_{s}", v)
                     _add_accession_type_codings(session, specimen.id, org_id, acc, updated_by)
                 else:
                     specimen.accession_identifier_use = None
@@ -640,10 +602,8 @@ class _FullMixin:
                     specimen.accession_identifier_assigner_type = None
                     specimen.accession_identifier_assigner_id = None
                     specimen.accession_identifier_assigner_display = None
-                    specimen.accession_identifier_assigner_identifier_use = None
-                    specimen.accession_identifier_assigner_identifier_system = None
-                    specimen.accession_identifier_assigner_identifier_value = None
-                    specimen.accession_identifier_assigner_identifier_type_text = None
+                    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                        setattr(specimen, f"accession_identifier_assigner_{s}", None)
 
             if "collection" in provided:
                 await session.execute(
@@ -713,6 +673,8 @@ class _FullMixin:
                     specimen.collection_collector_type = None
                     specimen.collection_collector_id = None
                     specimen.collection_collector_display = None
+                    for k, v in _reference_kwargs("collection_collector", None).items():
+                        setattr(specimen, k, v)
                     specimen.collection_collected_date_time = None
                     specimen.collection_collected_period_start = None
                     specimen.collection_collected_period_end = None

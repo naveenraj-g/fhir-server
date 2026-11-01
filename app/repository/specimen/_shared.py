@@ -18,13 +18,43 @@ from app.models.specimen import (
     SpecimenStatus as SpecimenStatusModel,
     SpecimenSubjectReferenceType,
 )
-
-_IDENTIFIER_FALLBACK_SUFFIXES = (
-    "identifier_use",
-    "identifier_system",
-    "identifier_value",
-    "identifier_type_text",
+from app.repository._reference_shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _prefixed_identifier_kwargs,
 )
+
+
+def _child_reference_kwargs(r, prefix: str = "reference") -> dict:
+    if isinstance(r, str):
+        return {
+            f"{prefix}_reference": r,
+            f"{prefix}_display": None,
+            **{f"{prefix}_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES},
+        }
+    display = (
+        getattr(r, "display", None)
+        or getattr(r, f"{prefix}_display", None)
+        or getattr(r, "reference_display", None)
+    )
+    ref = (
+        getattr(r, "reference", None)
+        or getattr(r, f"{prefix}_reference", None)
+    )
+    kwargs = {
+        f"{prefix}_reference": ref,
+        f"{prefix}_display": display,
+    }
+    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = (
+            getattr(r, s, None)
+            or getattr(r, f"{prefix}_{s}", None)
+            or getattr(r, f"reference_{s}", None)
+        )
+        if s == "identifier_use" and val and hasattr(val, "name"):
+            val = IdentifierUseModel[val.name]
+        kwargs[f"{prefix}_{s}"] = val
+    return kwargs
+
 
 _SORTABLE_FIELDS = {
     "specimen_id": SpecimenModel.specimen_id,
@@ -38,12 +68,17 @@ _SORTABLE_FIELDS = {
 def _reference_kwargs(prefix: str, payload) -> dict:
     """Build {prefix}_identifier_* ORM constructor kwargs from payload."""
     if payload is None:
-        return {}
+        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
     res = {}
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        val = getattr(payload, f"reference_{suffix}", None)
-        if val is not None:
-            res[f"{prefix}_{suffix}"] = val
+        val = (
+            getattr(payload, f"reference_{suffix}", None)
+            or getattr(payload, suffix, None)
+            or getattr(payload, f"{prefix}_{suffix}", None)
+        )
+        if suffix == "identifier_use" and val and hasattr(val, "name"):
+            val = IdentifierUseModel[val.name]
+        res[f"{prefix}_{suffix}"] = val
     return res
 
 

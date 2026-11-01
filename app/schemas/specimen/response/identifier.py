@@ -20,3 +20,14 @@ class PlainSpecimenIdentifier(BaseModel):
     assigner_id: int | None = Field(None, description="Target organization's public sequence ID.")
     assigner_type: str | None = Field(None, description="Target resource type (Organization).")
     assigner_display: str | None = Field(None, description="Narrative display for assigning organization.")
+    assigner_identifier_use: str | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_type_text: str | None = None
+    assigner_identifier_system: str | None = None
+    assigner_identifier_value: str | None = None
+    assigner_identifier_period_start: str | None = None
+    assigner_identifier_period_end: str | None = None

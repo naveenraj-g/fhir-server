@@ -40,10 +40,43 @@ def fhir_specimen_codeable_concept(codings, text: str | None) -> dict | None:
 
 
 def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
     raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
+
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    has_ident = any(
+        [
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected is not None,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        ]
+    )
+
+    if not (raw_reference or (ref_type and ref_id) or display or has_ident):
+        return None
 
     entry: dict = {}
     if raw_reference:
@@ -53,22 +86,53 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     if display:
         entry["display"] = display
 
-    id_use = getattr(obj, f"{prefix}_identifier_use", None)
-    id_system = getattr(obj, f"{prefix}_identifier_system", None)
-    id_value = getattr(obj, f"{prefix}_identifier_value", None)
-    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-
-    if id_use or id_system or id_value or id_type_text:
-        identifier: dict = {}
+    if has_ident:
+        ident: dict = {}
         if id_use:
-            identifier["use"] = fhir_enum(id_use)
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
         if id_system:
-            identifier["system"] = id_system
+            ident["system"] = id_system
         if id_value:
-            identifier["value"] = id_value
-        if id_type_text:
-            identifier["type"] = {"text": id_type_text}
-        entry["identifier"] = identifier
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                p_dict["end"] = fhir_instant(id_period_end)
+            ident["period"] = p_dict
+        entry["identifier"] = ident
 
     return entry or None
 

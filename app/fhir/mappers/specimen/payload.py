@@ -70,7 +70,42 @@ def _reference_from_payload(ref) -> dict | None:
     if not ref:
         return None
     raw_reference = getattr(ref, "reference", None)
-    display = getattr(ref, "reference_display", None)
+    display = getattr(ref, "reference_display", None) or getattr(ref, "display", None)
+
+    id_use = getattr(ref, "reference_identifier_use", None) or getattr(ref, "identifier_use", None)
+    id_type_system = getattr(ref, "reference_identifier_type_system", None) or getattr(ref, "identifier_type_system", None)
+    id_type_version = getattr(ref, "reference_identifier_type_version", None) or getattr(ref, "identifier_type_version", None)
+    id_type_code = getattr(ref, "reference_identifier_type_code", None) or getattr(ref, "identifier_type_code", None)
+    id_type_display = getattr(ref, "reference_identifier_type_display", None) or getattr(ref, "identifier_type_display", None)
+    id_type_user_selected = (
+        getattr(ref, "reference_identifier_type_user_selected", None)
+        if getattr(ref, "reference_identifier_type_user_selected", None) is not None
+        else getattr(ref, "identifier_type_user_selected", None)
+    )
+    id_type_text = getattr(ref, "reference_identifier_type_text", None) or getattr(ref, "identifier_type_text", None)
+    id_system = getattr(ref, "reference_identifier_system", None) or getattr(ref, "identifier_system", None)
+    id_value = getattr(ref, "reference_identifier_value", None) or getattr(ref, "identifier_value", None)
+    id_period_start = getattr(ref, "reference_identifier_period_start", None) or getattr(ref, "identifier_period_start", None)
+    id_period_end = getattr(ref, "reference_identifier_period_end", None) or getattr(ref, "identifier_period_end", None)
+
+    has_ident = any(
+        [
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected is not None,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        ]
+    )
+
+    if not (raw_reference or display or has_ident):
+        return None
 
     entry: dict = {}
     if raw_reference:
@@ -78,22 +113,53 @@ def _reference_from_payload(ref) -> dict | None:
     if display:
         entry["display"] = display
 
-    id_use = getattr(ref, "reference_identifier_use", None)
-    id_system = getattr(ref, "reference_identifier_system", None)
-    id_value = getattr(ref, "reference_identifier_value", None)
-    id_type_text = getattr(ref, "reference_identifier_type_text", None)
-
-    if id_use or id_system or id_value or id_type_text:
-        identifier: dict = {}
+    if has_ident:
+        ident: dict = {}
         if id_use:
-            identifier["use"] = fhir_enum(id_use)
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
         if id_system:
-            identifier["system"] = id_system
+            ident["system"] = id_system
         if id_value:
-            identifier["value"] = id_value
-        if id_type_text:
-            identifier["type"] = {"text": id_type_text}
-        entry["identifier"] = identifier
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = id_period_start.isoformat()
+            if id_period_end:
+                p_dict["end"] = id_period_end.isoformat()
+            ident["period"] = p_dict
+        entry["identifier"] = ident
 
     return entry or None
 
@@ -125,22 +191,86 @@ def _identifier_from_payload(i: SpecimenIdentifierInput) -> dict:
             p["end"] = i.period_end.isoformat()
         entry["period"] = p
 
-    if i.assigner or i.assigner_display or i.assigner_identifier_system or i.assigner_identifier_value:
+    id_use = getattr(i, "assigner_identifier_use", None)
+    id_type_system = getattr(i, "assigner_identifier_type_system", None)
+    id_type_version = getattr(i, "assigner_identifier_type_version", None)
+    id_type_code = getattr(i, "assigner_identifier_type_code", None)
+    id_type_display = getattr(i, "assigner_identifier_type_display", None)
+    id_type_user_selected = getattr(i, "assigner_identifier_type_user_selected", None)
+    id_type_text = getattr(i, "assigner_identifier_type_text", None)
+    id_system = getattr(i, "assigner_identifier_system", None)
+    id_value = getattr(i, "assigner_identifier_value", None)
+    id_period_start = getattr(i, "assigner_identifier_period_start", None)
+    id_period_end = getattr(i, "assigner_identifier_period_end", None)
+
+    has_ident = any(
+        [
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected is not None,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        ]
+    )
+
+    if i.assigner or i.assigner_display or has_ident:
         assigner: dict = {}
         if i.assigner:
             assigner["reference"] = i.assigner
         if i.assigner_display:
             assigner["display"] = i.assigner_display
-        if i.assigner_identifier_system or i.assigner_identifier_value:
+        if has_ident:
             ident: dict = {}
-            if i.assigner_identifier_use:
-                ident["use"] = fhir_enum(i.assigner_identifier_use)
-            if i.assigner_identifier_system:
-                ident["system"] = i.assigner_identifier_system
-            if i.assigner_identifier_value:
-                ident["value"] = i.assigner_identifier_value
-            if i.assigner_identifier_type_text:
-                ident["type"] = {"text": i.assigner_identifier_type_text}
+            if id_use:
+                ident["use"] = fhir_enum(id_use)
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or id_type_text
+                or (id_type_user_selected is not None)
+            ):
+                type_dict: dict = {}
+                if (
+                    id_type_system
+                    or id_type_version
+                    or id_type_code
+                    or id_type_display
+                    or (id_type_user_selected is not None)
+                ):
+                    coding_dict: dict = {}
+                    if id_type_system:
+                        coding_dict["system"] = id_type_system
+                    if id_type_version:
+                        coding_dict["version"] = id_type_version
+                    if id_type_code:
+                        coding_dict["code"] = id_type_code
+                    if id_type_display:
+                        coding_dict["display"] = id_type_display
+                    if id_type_user_selected is not None:
+                        coding_dict["userSelected"] = id_type_user_selected
+                    type_dict["coding"] = [coding_dict]
+                if id_type_text:
+                    type_dict["text"] = id_type_text
+                ident["type"] = type_dict
+            if id_system:
+                ident["system"] = id_system
+            if id_value:
+                ident["value"] = id_value
+            if id_period_start or id_period_end:
+                p_dict: dict = {}
+                if id_period_start:
+                    p_dict["start"] = id_period_start.isoformat()
+                if id_period_end:
+                    p_dict["end"] = id_period_end.isoformat()
+                ident["period"] = p_dict
             assigner["identifier"] = ident
         entry["assigner"] = assigner
 
@@ -299,24 +429,89 @@ def _note_from_payload(n: SpecimenNoteInput) -> dict:
     entry: dict = {}
     if n.author_string:
         entry["authorString"] = n.author_string
-    elif n.author_reference or n.author_display:
-        author_ref: dict = {}
-        if n.author_reference:
-            author_ref["reference"] = n.author_reference
-        if n.author_display:
-            author_ref["display"] = n.author_display
-        if n.author_identifier_system or n.author_identifier_value:
-            ident: dict = {}
-            if n.author_identifier_use:
-                ident["use"] = fhir_enum(n.author_identifier_use)
-            if n.author_identifier_system:
-                ident["system"] = n.author_identifier_system
-            if n.author_identifier_value:
-                ident["value"] = n.author_identifier_value
-            if n.author_identifier_type_text:
-                ident["type"] = {"text": n.author_identifier_type_text}
-            author_ref["identifier"] = ident
-        entry["authorReference"] = author_ref
+    else:
+        id_use = getattr(n, "author_identifier_use", None)
+        id_type_system = getattr(n, "author_identifier_type_system", None)
+        id_type_version = getattr(n, "author_identifier_type_version", None)
+        id_type_code = getattr(n, "author_identifier_type_code", None)
+        id_type_display = getattr(n, "author_identifier_type_display", None)
+        id_type_user_selected = getattr(n, "author_identifier_type_user_selected", None)
+        id_type_text = getattr(n, "author_identifier_type_text", None)
+        id_system = getattr(n, "author_identifier_system", None)
+        id_value = getattr(n, "author_identifier_value", None)
+        id_period_start = getattr(n, "author_identifier_period_start", None)
+        id_period_end = getattr(n, "author_identifier_period_end", None)
+
+        has_ident = any(
+            [
+                id_use,
+                id_type_system,
+                id_type_version,
+                id_type_code,
+                id_type_display,
+                id_type_user_selected is not None,
+                id_type_text,
+                id_system,
+                id_value,
+                id_period_start,
+                id_period_end,
+            ]
+        )
+
+        if n.author_reference or n.author_display or has_ident:
+            author_ref: dict = {}
+            if n.author_reference:
+                author_ref["reference"] = n.author_reference
+            if n.author_display:
+                author_ref["display"] = n.author_display
+            if has_ident:
+                ident: dict = {}
+                if id_use:
+                    ident["use"] = fhir_enum(id_use)
+                if (
+                    id_type_system
+                    or id_type_version
+                    or id_type_code
+                    or id_type_display
+                    or id_type_text
+                    or (id_type_user_selected is not None)
+                ):
+                    type_dict: dict = {}
+                    if (
+                        id_type_system
+                        or id_type_version
+                        or id_type_code
+                        or id_type_display
+                        or (id_type_user_selected is not None)
+                    ):
+                        coding_dict: dict = {}
+                        if id_type_system:
+                            coding_dict["system"] = id_type_system
+                        if id_type_version:
+                            coding_dict["version"] = id_type_version
+                        if id_type_code:
+                            coding_dict["code"] = id_type_code
+                        if id_type_display:
+                            coding_dict["display"] = id_type_display
+                        if id_type_user_selected is not None:
+                            coding_dict["userSelected"] = id_type_user_selected
+                        type_dict["coding"] = [coding_dict]
+                    if id_type_text:
+                        type_dict["text"] = id_type_text
+                    ident["type"] = type_dict
+                if id_system:
+                    ident["system"] = id_system
+                if id_value:
+                    ident["value"] = id_value
+                if id_period_start or id_period_end:
+                    p_dict: dict = {}
+                    if id_period_start:
+                        p_dict["start"] = id_period_start.isoformat()
+                    if id_period_end:
+                        p_dict["end"] = id_period_end.isoformat()
+                    ident["period"] = p_dict
+                author_ref["identifier"] = ident
+            entry["authorReference"] = author_ref
 
     if n.time:
         entry["time"] = n.time.isoformat()
