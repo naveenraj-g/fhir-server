@@ -27,7 +27,9 @@ from app.schemas.communication_request import (
 )
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _SORTABLE_FIELDS,
+    _child_reference_identifier_kwargs,
     _parse_assigner_ref,
     _parse_encounter_ref,
     _parse_generic_ref,
@@ -36,6 +38,7 @@ from ._shared import (
     _parse_requester_ref,
     _parse_sender_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -86,6 +89,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -196,6 +200,7 @@ async def _add_based_on(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(r),
             )
         )
 
@@ -218,6 +223,7 @@ async def _add_replaces(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(r),
             )
         )
 
@@ -240,6 +246,7 @@ async def _add_about(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(r),
             )
         )
 
@@ -262,6 +269,7 @@ async def _add_recipients(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(r),
             )
         )
 
@@ -284,6 +292,7 @@ async def _add_reason_references(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(r),
             )
         )
 
@@ -308,6 +317,7 @@ async def _add_notes(
                 author_type=author_type,
                 author_id=author_id,
                 author_display=n.author_display,
+                **_prefixed_identifier_kwargs("author", n),
                 time=n.time,
                 text=n.text,
             )
@@ -338,6 +348,7 @@ async def _add_payloads(
             content_reference_type=r_type,
             content_reference_id=r_id,
             content_reference_display=c_ref_disp,
+            **_prefixed_identifier_kwargs("content_reference", p),
             content_type=getattr(att, "content_type", None) if att else None,
             language=getattr(att, "language", None) if att else None,
             data=getattr(att, "data", None) if att else None,
@@ -467,14 +478,17 @@ class CommunicationRequestRepository:
                 group_identifier_assigner_type=g_assigner_type,
                 group_identifier_assigner_id=g_assigner_id,
                 group_identifier_assigner_display=payload.group_identifier_assigner_display,
+                **_prefixed_identifier_kwargs("group_identifier_assigner", payload),
                 subject_reference=payload.subject,
                 subject_type=sub_type,
                 subject_id=sub_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 encounter_reference=payload.encounter,
                 encounter_type=enc_type,
                 encounter_id=enc_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 occurrence_date_time=payload.occurrence_date_time,
                 occurrence_period_start=payload.occurrence_period_start,
                 occurrence_period_end=payload.occurrence_period_end,
@@ -483,10 +497,12 @@ class CommunicationRequestRepository:
                 requester_type=req_type,
                 requester_id=req_id,
                 requester_display=payload.requester_display,
+                **_prefixed_identifier_kwargs("requester", payload),
                 sender_reference=payload.sender,
                 sender_type=snd_type,
                 sender_id=snd_id,
                 sender_display=payload.sender_display,
+                **_prefixed_identifier_kwargs("sender", payload),
                 extension=payload.extension or [],
             )
             session.add(model)
@@ -692,6 +708,18 @@ class CommunicationRequestRepository:
                 model.sender_id = snd_id
                 if "sender_display" in provided:
                     model.sender_display = payload.sender_display
+
+            for prefix in (
+                "group_identifier_assigner",
+                "subject",
+                "encounter",
+                "requester",
+                "sender",
+            ):
+                for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    field = f"{prefix}_{suffix}"
+                    if field in provided:
+                        setattr(model, field, getattr(payload, field))
 
             model.updated_by = updated_by
 

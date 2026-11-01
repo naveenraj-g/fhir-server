@@ -1,7 +1,17 @@
-from sqlalchemy import BigInteger, Column, ForeignKey, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.shared import FhirAttachmentMixin, TenantAuditMixin
 
 
@@ -32,6 +42,28 @@ class CommunicationRequestPayload(
     content_reference_type = Column(String, nullable=True)
     content_reference_id = Column(BigInteger, nullable=True, index=True)
     content_reference_display = Column(String, nullable=True)
+
+    # contentReference.identifier fallback
+    content_reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    content_reference_identifier_type_system = Column(String, nullable=True)
+    content_reference_identifier_type_version = Column(String, nullable=True)
+    content_reference_identifier_type_code = Column(String, nullable=True)
+    content_reference_identifier_type_display = Column(String, nullable=True)
+    content_reference_identifier_type_text = Column(String, nullable=True)
+    content_reference_identifier_type_user_selected = Column(
+        Boolean, nullable=True
+    )
+    content_reference_identifier_system = Column(String, nullable=True)
+    content_reference_identifier_value = Column(String, nullable=True)
+    content_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    content_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # contentAttachment fields are provided via FhirAttachmentMixin:
     # content_attachment_content_type

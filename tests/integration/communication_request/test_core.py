@@ -379,3 +379,88 @@ async def test_org_less_actor_rejected(client):
 
     resp = await client.post(BASE + "/", json=minimal_communication_request(p_id))
     assert resp.status_code == 403, resp.text
+
+
+# ── Reference Identifier Fallback ─────────────────────────────────────────
+
+
+async def test_create_communication_request_with_reference_identifier_fallback(client):
+    """Test logical-reference fallback (Reference.identifier) on subject, encounter, requester, sender, and child references."""
+    payload = {
+        "status": "active",
+        "subject_display": "External Patient",
+        "subject_identifier_system": "http://external-system.org/patients",
+        "subject_identifier_value": "EXT-12345",
+        "subject_identifier_use": "official",
+        "encounter_display": "External Hospital Encounter",
+        "encounter_identifier_system": "http://hospital.org/encounters",
+        "encounter_identifier_value": "ENC-999",
+        "requester_display": "External Requester",
+        "requester_identifier_system": "http://clinics.org/requesters",
+        "requester_identifier_value": "REQ-101",
+        "sender_display": "External Clinic",
+        "sender_identifier_system": "http://clinic.org/senders",
+        "sender_identifier_value": "CLINIC-42",
+        "group_identifier_value": "GRP-001",
+        "group_identifier_assigner_display": "External Network",
+        "group_identifier_assigner_identifier_system": "http://network.org/assigners",
+        "group_identifier_assigner_identifier_value": "NET-1",
+        "based_on": [
+            {
+                "display": "External ServiceRequest",
+                "identifier_system": "http://external.org/sr",
+                "identifier_value": "SR-777",
+            }
+        ],
+        "payload": [
+            {
+                "content_reference_display": "External Doc",
+                "content_reference_identifier_system": "http://docs.org/records",
+                "content_reference_identifier_value": "DOC-001",
+            }
+        ],
+        "note": [
+            {
+                "text": "External note",
+                "author_display": "External Author",
+                "author_identifier_system": "http://authors.org/staff",
+                "author_identifier_value": "AUTH-10",
+            }
+        ],
+    }
+
+    # 1. Plain create
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    plain_data = resp.json()
+    assert plain_data["status"] == "active"
+    assert plain_data["subject_identifier_system"] == "http://external-system.org/patients"
+    assert plain_data["subject_identifier_value"] == "EXT-12345"
+    assert plain_data["subject_identifier_use"] == "official"
+    assert plain_data["encounter_identifier_value"] == "ENC-999"
+    assert plain_data["requester_identifier_value"] == "REQ-101"
+    assert plain_data["sender_identifier_value"] == "CLINIC-42"
+    assert plain_data["group_identifier_assigner_identifier_value"] == "NET-1"
+    assert plain_data["based_on"][0]["reference_identifier_value"] == "SR-777"
+    assert plain_data["payload"][0]["content_reference_identifier_value"] == "DOC-001"
+    assert plain_data["note"][0]["author_identifier_value"] == "AUTH-10"
+
+    cr_id = plain_data["id"]
+
+    # 2. FHIR read
+    resp_fhir = await client.get(f"{BASE}/{cr_id}", headers=FHIR_ACCEPT)
+    assert resp_fhir.status_code == 200, resp_fhir.text
+    fhir_data = resp_fhir.json()
+    assert fhir_data["resourceType"] == "CommunicationRequest"
+    assert fhir_data["subject"]["display"] == "External Patient"
+    assert fhir_data["subject"]["identifier"]["system"] == "http://external-system.org/patients"
+    assert fhir_data["subject"]["identifier"]["value"] == "EXT-12345"
+    assert fhir_data["subject"]["identifier"]["use"] == "official"
+
+    assert fhir_data["encounter"]["identifier"]["value"] == "ENC-999"
+    assert fhir_data["requester"]["identifier"]["value"] == "REQ-101"
+    assert fhir_data["sender"]["identifier"]["value"] == "CLINIC-42"
+    assert fhir_data["groupIdentifier"]["assigner"]["identifier"]["value"] == "NET-1"
+    assert fhir_data["basedOn"][0]["identifier"]["value"] == "SR-777"
+    assert fhir_data["payload"][0]["contentReference"]["identifier"]["value"] == "DOC-001"
+    assert fhir_data["note"][0]["authorReference"]["identifier"]["value"] == "AUTH-10"

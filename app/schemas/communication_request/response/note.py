@@ -26,5 +26,16 @@ class PlainCommunicationRequestNote(AuditFields):
     author_type: str | None = None
     author_id: int | None = None
     author_display: str | None = None
+    author_identifier_use: str | None = None
+    author_identifier_type_system: str | None = None
+    author_identifier_type_version: str | None = None
+    author_identifier_type_code: str | None = None
+    author_identifier_type_display: str | None = None
+    author_identifier_type_text: str | None = None
+    author_identifier_type_user_selected: bool | None = None
+    author_identifier_system: str | None = None
+    author_identifier_value: str | None = None
+    author_identifier_period_start: str | None = None
+    author_identifier_period_end: str | None = None
     time: str | None = None
     text: str = Field(..., description="Annotation content.")

@@ -74,6 +74,20 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
         BigInteger, nullable=True, index=True
     )
     group_identifier_assigner_display = Column(String, nullable=True)
+    group_identifier_assigner_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    group_identifier_assigner_identifier_type_system = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_version = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_code = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_display = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_text = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    group_identifier_assigner_identifier_system = Column(String, nullable=True)
+    group_identifier_assigner_identifier_value = Column(String, nullable=True)
+    group_identifier_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # status (1..1 code, binding: request-status)
     status = Column(
@@ -112,6 +126,20 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
     )
     subject_id = Column(BigInteger, nullable=True, index=True)
     subject_display = Column(String, nullable=True)
+    subject_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    subject_identifier_type_system = Column(String, nullable=True)
+    subject_identifier_type_version = Column(String, nullable=True)
+    subject_identifier_type_code = Column(String, nullable=True)
+    subject_identifier_type_display = Column(String, nullable=True)
+    subject_identifier_type_text = Column(String, nullable=True)
+    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_identifier_system = Column(String, nullable=True)
+    subject_identifier_value = Column(String, nullable=True)
+    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # encounter (0..1 Reference(Encounter))
     encounter_reference = Column(String, nullable=True)
@@ -124,6 +152,20 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
     )
     encounter_id = Column(BigInteger, nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
+    encounter_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    encounter_identifier_type_system = Column(String, nullable=True)
+    encounter_identifier_type_version = Column(String, nullable=True)
+    encounter_identifier_type_code = Column(String, nullable=True)
+    encounter_identifier_type_display = Column(String, nullable=True)
+    encounter_identifier_type_text = Column(String, nullable=True)
+    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
+    encounter_identifier_system = Column(String, nullable=True)
+    encounter_identifier_value = Column(String, nullable=True)
+    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # occurrence[x] (0..1 dateTime | Period)
     occurrence_date_time = Column(DateTime(timezone=True), nullable=True)
@@ -144,6 +186,20 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
     )
     requester_id = Column(BigInteger, nullable=True, index=True)
     requester_display = Column(String, nullable=True)
+    requester_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    requester_identifier_type_system = Column(String, nullable=True)
+    requester_identifier_type_version = Column(String, nullable=True)
+    requester_identifier_type_code = Column(String, nullable=True)
+    requester_identifier_type_display = Column(String, nullable=True)
+    requester_identifier_type_text = Column(String, nullable=True)
+    requester_identifier_type_user_selected = Column(Boolean, nullable=True)
+    requester_identifier_system = Column(String, nullable=True)
+    requester_identifier_value = Column(String, nullable=True)
+    requester_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    requester_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # sender (0..1 Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | HealthcareService))
     sender_reference = Column(String, nullable=True)
@@ -156,6 +212,20 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
     )
     sender_id = Column(BigInteger, nullable=True, index=True)
     sender_display = Column(String, nullable=True)
+    sender_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    sender_identifier_type_system = Column(String, nullable=True)
+    sender_identifier_type_version = Column(String, nullable=True)
+    sender_identifier_type_code = Column(String, nullable=True)
+    sender_identifier_type_display = Column(String, nullable=True)
+    sender_identifier_type_text = Column(String, nullable=True)
+    sender_identifier_type_user_selected = Column(Boolean, nullable=True)
+    sender_identifier_system = Column(String, nullable=True)
+    sender_identifier_value = Column(String, nullable=True)
+    sender_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    sender_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # extension (0..* Extension, JSONB)
     extension = Column(JSONB, nullable=False, server_default=text("'[]'"))

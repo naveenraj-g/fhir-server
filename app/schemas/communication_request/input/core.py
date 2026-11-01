@@ -101,6 +101,39 @@ class CommunicationRequestCreateSchema(BaseModel):
     group_identifier_assigner_display: str | None = Field(
         None, description="Group identifier assigner display."
     )
+    group_identifier_assigner_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier purpose."
+    )
+    group_identifier_assigner_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier type system."
+    )
+    group_identifier_assigner_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier type version."
+    )
+    group_identifier_assigner_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier type code."
+    )
+    group_identifier_assigner_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier type display."
+    )
+    group_identifier_assigner_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier type text."
+    )
+    group_identifier_assigner_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier type user selected."
+    )
+    group_identifier_assigner_identifier_system: str | None = Field(
+        None, description="Fallback identifier system."
+    )
+    group_identifier_assigner_identifier_value: str | None = Field(
+        None, description="Fallback identifier value."
+    )
+    group_identifier_assigner_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier period start."
+    )
+    group_identifier_assigner_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier period end."
+    )
     status: CommunicationRequestStatus = Field(
         ...,
         description="draft | active | on-hold | revoked | completed | entered-in-error | unknown.",
@@ -129,6 +162,17 @@ class CommunicationRequestCreateSchema(BaseModel):
     subject_display: str | None = Field(
         None, description="Plain text narrative for subject reference."
     )
+    subject_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
+    subject_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
+    subject_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
+    subject_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
+    subject_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
+    subject_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
+    subject_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
+    subject_identifier_system: str | None = Field(None, description="Fallback identifier system.")
+    subject_identifier_value: str | None = Field(None, description="Fallback identifier value.")
+    subject_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
+    subject_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
     about: list[CommunicationRequestReferenceInput | str] | None = Field(
         None, description="Resources that pertain to this communication request."
     )
@@ -138,6 +182,17 @@ class CommunicationRequestCreateSchema(BaseModel):
     encounter_display: str | None = Field(
         None, description="Plain text narrative for encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
+    encounter_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
+    encounter_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
+    encounter_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
+    encounter_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
+    encounter_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
+    encounter_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
+    encounter_identifier_system: str | None = Field(None, description="Fallback identifier system.")
+    encounter_identifier_value: str | None = Field(None, description="Fallback identifier value.")
+    encounter_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
+    encounter_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
     payload: list[CommunicationRequestPayloadInput] | None = Field(
         None, description="Message payload (string, Attachment, or Reference)."
     )
@@ -159,6 +214,17 @@ class CommunicationRequestCreateSchema(BaseModel):
     requester_display: str | None = Field(
         None, description="Plain text narrative for requester reference."
     )
+    requester_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
+    requester_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
+    requester_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
+    requester_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
+    requester_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
+    requester_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
+    requester_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
+    requester_identifier_system: str | None = Field(None, description="Fallback identifier system.")
+    requester_identifier_value: str | None = Field(None, description="Fallback identifier value.")
+    requester_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
+    requester_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
     recipient: list[CommunicationRequestReferenceInput | str] | None = Field(
         None, description="Message recipient (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | Group | CareTeam | HealthcareService))."
     )
@@ -168,6 +234,17 @@ class CommunicationRequestCreateSchema(BaseModel):
     sender_display: str | None = Field(
         None, description="Plain text narrative for sender reference."
     )
+    sender_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
+    sender_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
+    sender_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
+    sender_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
+    sender_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
+    sender_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
+    sender_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
+    sender_identifier_system: str | None = Field(None, description="Fallback identifier system.")
+    sender_identifier_value: str | None = Field(None, description="Fallback identifier value.")
+    sender_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
+    sender_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
     reason_code: list[CommunicationRequestCategoryInput] | None = Field(
         None, description="Why is communication needed?"
     )
@@ -200,6 +277,17 @@ class CommunicationRequestPatchSchema(BaseModel):
     group_identifier_period_end: datetime | None = None
     group_identifier_assigner: str | None = None
     group_identifier_assigner_display: str | None = None
+    group_identifier_assigner_identifier_use: IdentifierUse | None = None
+    group_identifier_assigner_identifier_type_system: str | None = None
+    group_identifier_assigner_identifier_type_version: str | None = None
+    group_identifier_assigner_identifier_type_code: str | None = None
+    group_identifier_assigner_identifier_type_display: str | None = None
+    group_identifier_assigner_identifier_type_text: str | None = None
+    group_identifier_assigner_identifier_type_user_selected: bool | None = None
+    group_identifier_assigner_identifier_system: str | None = None
+    group_identifier_assigner_identifier_value: str | None = None
+    group_identifier_assigner_identifier_period_start: datetime | None = None
+    group_identifier_assigner_identifier_period_end: datetime | None = None
     status: CommunicationRequestStatus | None = None
     status_reason_coding: list[CodingInput] | None = None
     status_reason_text: str | None = None
@@ -209,9 +297,31 @@ class CommunicationRequestPatchSchema(BaseModel):
     medium: list[CommunicationRequestCategoryInput] | None = None
     subject: str | None = None
     subject_display: str | None = None
+    subject_identifier_use: IdentifierUse | None = None
+    subject_identifier_type_system: str | None = None
+    subject_identifier_type_version: str | None = None
+    subject_identifier_type_code: str | None = None
+    subject_identifier_type_display: str | None = None
+    subject_identifier_type_text: str | None = None
+    subject_identifier_type_user_selected: bool | None = None
+    subject_identifier_system: str | None = None
+    subject_identifier_value: str | None = None
+    subject_identifier_period_start: datetime | None = None
+    subject_identifier_period_end: datetime | None = None
     about: list[CommunicationRequestReferenceInput | str] | None = None
     encounter: str | None = None
     encounter_display: str | None = None
+    encounter_identifier_use: IdentifierUse | None = None
+    encounter_identifier_type_system: str | None = None
+    encounter_identifier_type_version: str | None = None
+    encounter_identifier_type_code: str | None = None
+    encounter_identifier_type_display: str | None = None
+    encounter_identifier_type_text: str | None = None
+    encounter_identifier_type_user_selected: bool | None = None
+    encounter_identifier_system: str | None = None
+    encounter_identifier_value: str | None = None
+    encounter_identifier_period_start: datetime | None = None
+    encounter_identifier_period_end: datetime | None = None
     payload: list[CommunicationRequestPayloadInput] | None = None
     occurrence_date_time: datetime | None = None
     occurrence_period_start: datetime | None = None
@@ -219,9 +329,31 @@ class CommunicationRequestPatchSchema(BaseModel):
     authored_on: datetime | None = None
     requester: str | None = None
     requester_display: str | None = None
+    requester_identifier_use: IdentifierUse | None = None
+    requester_identifier_type_system: str | None = None
+    requester_identifier_type_version: str | None = None
+    requester_identifier_type_code: str | None = None
+    requester_identifier_type_display: str | None = None
+    requester_identifier_type_text: str | None = None
+    requester_identifier_type_user_selected: bool | None = None
+    requester_identifier_system: str | None = None
+    requester_identifier_value: str | None = None
+    requester_identifier_period_start: datetime | None = None
+    requester_identifier_period_end: datetime | None = None
     recipient: list[CommunicationRequestReferenceInput | str] | None = None
     sender: str | None = None
     sender_display: str | None = None
+    sender_identifier_use: IdentifierUse | None = None
+    sender_identifier_type_system: str | None = None
+    sender_identifier_type_version: str | None = None
+    sender_identifier_type_code: str | None = None
+    sender_identifier_type_display: str | None = None
+    sender_identifier_type_text: str | None = None
+    sender_identifier_type_user_selected: bool | None = None
+    sender_identifier_system: str | None = None
+    sender_identifier_value: str | None = None
+    sender_identifier_period_start: datetime | None = None
+    sender_identifier_period_end: datetime | None = None
     reason_code: list[CommunicationRequestCategoryInput] | None = None
     reason_reference: list[CommunicationRequestReferenceInput | str] | None = None
     note: list[CommunicationRequestNoteInput] | None = None
