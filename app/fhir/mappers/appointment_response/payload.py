@@ -98,13 +98,26 @@ def _reference_from_payload(obj, prefix: str) -> dict:
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    has_identifier = any([
+        id_use,
+        id_type_system,
+        id_type_version,
+        id_type_code,
+        id_type_display,
+        id_type_text,
+        id_type_user_selected is not None,
+        id_system,
+        id_value,
+        id_period_start,
+        id_period_end,
+    ])
+    if has_identifier:
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
-        if id_type_system or id_type_code or id_type_text:
+        if id_type_system or id_type_code or id_type_text or id_type_display:
             type_cc: dict = {}
-            if id_type_system or id_type_code:
+            if id_type_system or id_type_code or id_type_display:
                 type_cc["coding"] = [
                     {
                         k: v

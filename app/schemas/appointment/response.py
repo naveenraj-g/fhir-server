@@ -110,6 +110,17 @@ class PlainAppointmentIdentifier(BaseModel):
     assigner_type: str | None = None
     assigner_id: int | None = None
     assigner_display: str | None = None
+    assigner_identifier_use: str | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_text: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_system: str | None = None
+    assigner_identifier_value: str | None = None
+    assigner_identifier_period_start: str | None = None
+    assigner_identifier_period_end: str | None = None
 
 
 class _PlainCodeableConceptRow(BaseModel):
@@ -142,6 +153,17 @@ class _PlainReferenceRow(BaseModel):
     reference_type: str | None = None
     reference_id: int | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
 
 
 class PlainAppointmentReasonReference(_PlainReferenceRow):
@@ -182,6 +204,17 @@ class PlainAppointmentParticipant(BaseModel):
     actor_type: str | None = None
     actor_id: int | None = None
     actor_display: str | None = None
+    actor_identifier_use: str | None = None
+    actor_identifier_type_system: str | None = None
+    actor_identifier_type_version: str | None = None
+    actor_identifier_type_code: str | None = None
+    actor_identifier_type_display: str | None = None
+    actor_identifier_type_text: str | None = None
+    actor_identifier_type_user_selected: bool | None = None
+    actor_identifier_system: str | None = None
+    actor_identifier_value: str | None = None
+    actor_identifier_period_start: str | None = None
+    actor_identifier_period_end: str | None = None
     required: str | None = None
     status: str | None = None
     period_start: str | None = None
