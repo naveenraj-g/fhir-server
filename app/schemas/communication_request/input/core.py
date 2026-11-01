@@ -265,7 +265,14 @@ class CommunicationRequestPatchSchema(BaseModel):
     All fields optional; set to None or omit to leave unchanged.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "completed",
+            }
+        },
+    )
 
     identifier: list[CommunicationRequestIdentifierInput] | None = None
     based_on: list[CommunicationRequestReferenceInput | str] | None = None

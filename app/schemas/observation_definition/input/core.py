@@ -128,7 +128,14 @@ class ObservationDefinitionCreateSchema(BaseModel):
 class ObservationDefinitionPatchSchema(BaseModel):
     """ObservationDefinition patch schema — all fields optional."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "preferred_report_name": "Updated Blood Glucose Panel",
+            }
+        },
+    )
 
     category: list[ObservationDefinitionCodeableConceptInput] | None = Field(
         None, description="General type of observation."

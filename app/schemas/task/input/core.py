@@ -483,6 +483,12 @@ class TaskPatchSchema(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         populate_by_name=True,
+        json_schema_extra={
+            "example": {
+                "status": "completed",
+                "last_modified": "2026-01-02T12:00:00Z",
+            }
+        },
     )
 
     identifier: list[TaskIdentifierInput] | None = None

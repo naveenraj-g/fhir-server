@@ -279,7 +279,14 @@ class ProcedureCreateSchema(BaseModel):
 class ProcedurePatchSchema(BaseModel):
     """Schema for updating a Procedure resource (PATCH /api/fhir/v1/procedures/{id})."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "completed",
+            }
+        },
+    )
 
     instantiates_canonical: list[str] | None = Field(None, description="Instantiates FHIR protocol or definition.")
     instantiates_uri: list[str] | None = Field(None, description="Instantiates external protocol or definition.")

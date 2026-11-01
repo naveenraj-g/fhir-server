@@ -182,7 +182,15 @@ class CarePlanCreateSchema(BaseModel):
 class CarePlanPatchSchema(BaseModel):
     """Payload for PATCH /api/fhir/v1/care-plans/{id}."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "completed",
+                "description": "Care plan completed successfully.",
+            }
+        },
+    )
 
     instantiates_canonical: list[str] | None = None
     instantiates_uri: list[str] | None = None

@@ -217,7 +217,14 @@ class ConsentCreateSchema(BaseModel):
 class ConsentPatchSchema(BaseModel):
     """Payload for PATCH /api/fhir/v1/consents/{consent_id}. All fields optional."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "inactive",
+            }
+        },
+    )
 
     status: ConsentStatus | None = Field(
         None,

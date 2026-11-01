@@ -183,7 +183,15 @@ class ActivityDefinitionCreateSchema(BaseModel):
 class ActivityDefinitionPatchSchema(BaseModel):
     """Request body for updating an ActivityDefinition resource."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "active",
+                "title": "Updated Blood Glucose Monitoring Activity",
+            }
+        },
+    )
 
     url: str | None = Field(None, description="Canonical identifier for this activity definition.")
     identifier: list[ActivityDefinitionIdentifierInput] | None = Field(

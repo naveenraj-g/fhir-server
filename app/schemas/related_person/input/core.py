@@ -191,7 +191,14 @@ class RelatedPersonPatchSchema(BaseModel):
     All fields optional; omitted fields are unchanged; supplied sub-resource lists replace wholesale.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "active": False,
+            }
+        },
+    )
 
     identifier: list[RelatedPersonIdentifierInput] | None = Field(
         None, description="An identifier for this person."

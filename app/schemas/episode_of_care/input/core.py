@@ -178,7 +178,15 @@ class EpisodeOfCareCreateSchema(BaseModel):
 class EpisodeOfCarePatchSchema(BaseModel):
     """Request payload for PATCH /api/fhir/v1/episodes-of-care/{episode_of_care_id}."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "finished",
+                "period_end": "2026-12-31T23:59:59Z",
+            }
+        },
+    )
 
     status: EpisodeOfCareStatus | None = Field(
         None,

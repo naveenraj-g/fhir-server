@@ -62,7 +62,7 @@ class DocumentReferenceCreateSchema(BaseModel):
                 "content": [
                     {
                         "attachment": {
-                            "contentType": "application/pdf",
+                            "content_type": "application/pdf",
                             "language": "en",
                             "url": "http://example.org/documents/note-123.pdf",
                             "title": "Consultation Note PDF",
@@ -178,7 +178,16 @@ class DocumentReferencePatchSchema(BaseModel):
     All fields are optional; omitted fields are left untouched.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "superseded",
+                "doc_status": "final",
+                "description": "Superseded consultation summary note",
+            }
+        },
+    )
 
     master_identifier: DocumentReferenceIdentifierInput | None = Field(
         None, description="Master business identifier."

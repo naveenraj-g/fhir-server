@@ -295,9 +295,9 @@ class EncounterCreateSchema(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "status": "in_progress",
+                "status": "in-progress",
                 "class_coding": {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "AMB", "display": "ambulatory"},
-                "subject": "Patient/999",
+                "subject": "Patient/10001",
                 "period_start": "2026-02-01T09:00:00Z",
                 "participant": [{"individual": "Practitioner/30001"}],
             }

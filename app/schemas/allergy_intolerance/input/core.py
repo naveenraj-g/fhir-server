@@ -372,7 +372,24 @@ class AllergyIntolerancePatchSchema(BaseModel):
     All fields optional. Immutable fields (id, allergy_intolerance_id, created_at, tenant_id, created_by) excluded.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "clinical_status": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+                            "code": "inactive",
+                            "display": "Inactive",
+                        }
+                    ],
+                    "text": "Inactive",
+                },
+                "criticality": "low",
+            }
+        },
+    )
 
     clinical_status: AllergyIntoleranceCodeableConceptInput | None = Field(
         None, description="active | recurrence | relapse | inactive | remission | resolved."

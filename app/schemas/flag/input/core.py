@@ -215,7 +215,15 @@ class FlagPatchSchema(BaseModel):
     All fields optional; excludes immutable fields.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "inactive",
+                "period_end": "2026-12-31T23:59:59Z",
+            }
+        },
+    )
 
     identifier: list[FlagIdentifierInput] | None = Field(
         None, description="Business identifier for each flag."

@@ -244,7 +244,22 @@ class GoalPatchSchema(BaseModel):
     All fields are optional. Excludes immutable fields (id, goal_id, org_id, created_at, created_by).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "lifecycle_status": "completed",
+                "achievement_status_coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/goal-achievement",
+                        "code": "achieved",
+                        "display": "Achieved",
+                    }
+                ],
+                "achievement_status_text": "Achieved",
+            }
+        },
+    )
 
     identifier: list[GoalIdentifierInput] | None = Field(
         None, description="External Ids for this goal."

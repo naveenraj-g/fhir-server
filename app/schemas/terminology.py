@@ -152,7 +152,19 @@ class ConceptMapListResponse(BaseModel):
 
 
 class AddConceptMapRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "source_system": "http://snomed.info/sct",
+                "source_code": "38341003",
+                "target_system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "target_code": "I10",
+                "mapping_type": "equivalent",
+                "confidence": 1.0,
+            }
+        },
+    )
     source_system: str
     source_code: str
     target_system: str
@@ -162,7 +174,17 @@ class AddConceptMapRequest(BaseModel):
 
 
 class CreateConceptRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "code_system_url": "http://example.org/custom-codes",
+                "code": "CUSTOM-01",
+                "display": "Custom Finding",
+                "definition": "Custom clinical finding description",
+            }
+        },
+    )
     code_system_url: str
     code: str
     display: str
@@ -170,7 +192,15 @@ class CreateConceptRequest(BaseModel):
 
 
 class PatchConceptRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "display": "Updated Finding Display",
+                "definition": "Updated clinical finding definition",
+            }
+        },
+    )
     display: str | None = None
     definition: str | None = None
 
@@ -207,7 +237,17 @@ class AuditLogListResponse(BaseModel):
 
 
 class CreateDisplayOverrideRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "system": "http://loinc.org",
+                "code": "15074-8",
+                "display": "Blood Glucose Fasting",
+                "definition": "Clinic override for glucose display",
+            }
+        },
+    )
     system: str
     code: str
     display: str
@@ -215,7 +255,15 @@ class CreateDisplayOverrideRequest(BaseModel):
 
 
 class PatchDisplayOverrideRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "display": "Blood Glucose (Fasting)",
+                "definition": "Updated override definition",
+            }
+        },
+    )
     display: str | None = None
     definition: str | None = None
 

@@ -157,7 +157,15 @@ class PlanDefinitionCreateSchema(BaseModel):
 class PlanDefinitionPatchSchema(BaseModel):
     """Request body for patching a PlanDefinition resource. All fields optional."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "active",
+                "title": "Updated Protocol for Glycemic Control",
+            }
+        },
+    )
 
     status: PlanDefinitionStatus | None = Field(None, description="draft | active | retired | unknown.")
     url: str | None = Field(None, description="Canonical identifier.")

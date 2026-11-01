@@ -202,7 +202,14 @@ class CommunicationPatchSchema(BaseModel):
     All fields are optional; exclude immutable fields.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "completed",
+            }
+        },
+    )
 
     identifier: list[CommunicationIdentifierInput] | None = None
     instantiates_canonical: list[str] | None = None

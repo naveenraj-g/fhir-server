@@ -102,7 +102,14 @@ class SpecimenCreateSchema(BaseModel):
 class SpecimenPatchSchema(BaseModel):
     """Request body for PATCH /api/fhir/v1/specimens/{id}."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "unavailable",
+            }
+        },
+    )
 
     identifier: list[SpecimenIdentifierInput] | None = Field(
         None, description="External identifiers for this specimen."

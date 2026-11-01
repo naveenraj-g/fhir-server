@@ -110,7 +110,15 @@ class GroupCreateSchema(BaseModel):
 class GroupPatchSchema(BaseModel):
     """Schema for updating a Group resource (PATCH /api/fhir/v1/groups/{id})."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "active": False,
+                "quantity": 0,
+            }
+        },
+    )
 
     active: bool | None = Field(
         None, description="Whether this group's record is in active use."

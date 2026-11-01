@@ -240,7 +240,22 @@ class ConditionCreateSchema(BaseModel):
 class ConditionPatchSchema(BaseModel):
     """All fields optional. Fields not passed are left unchanged."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "clinical_status": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "resolved",
+                            "display": "Resolved",
+                        }
+                    ]
+                }
+            }
+        },
+    )
 
     extension: list[dict] | None = Field(
         None, description="Resource-level FHIR extensions."

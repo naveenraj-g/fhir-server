@@ -163,7 +163,15 @@ class CareTeamCreateSchema(BaseModel):
 class CareTeamPatchSchema(BaseModel):
     """Request payload for PATCH /api/fhir/v1/care-teams/{id}. All fields optional."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "status": "inactive",
+                "name": "Disbanded Diabetes Care Team",
+            }
+        },
+    )
 
     status: CareTeamStatus | None = Field(
         None, description="proposed | active | suspended | inactive | entered-in-error."

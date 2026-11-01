@@ -20,7 +20,6 @@ from .reference import (
 )
 
 _EXAMPLE = {
-    "tenant_id": "org-001",
     "status": "final",
     "code": {"coding": [{"system": "http://loinc.org", "code": "58410-2", "display": "Complete blood count panel"}]},
     "subject": {"reference": "Patient/10001"},
