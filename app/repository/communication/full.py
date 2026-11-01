@@ -29,7 +29,9 @@ from app.schemas.communication import (
 )
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _SORTABLE_FIELDS,
+    _child_reference_identifier_kwargs,
     _parse_assigner_ref,
     _parse_encounter_ref,
     _parse_generic_ref,
@@ -38,6 +40,7 @@ from ._shared import (
     _parse_recipient_ref,
     _parse_sender_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -88,6 +91,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -207,6 +211,7 @@ async def _add_based_on(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(b),
             )
         )
 
@@ -229,6 +234,7 @@ async def _add_part_of(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(p),
             )
         )
 
@@ -251,6 +257,7 @@ async def _add_in_response_to(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(r),
             )
         )
 
@@ -273,6 +280,7 @@ async def _add_about(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(a),
             )
         )
 
@@ -295,6 +303,7 @@ async def _add_recipients(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(rec),
             )
         )
 
@@ -317,6 +326,7 @@ async def _add_reason_references(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(rr),
             )
         )
 
@@ -345,6 +355,7 @@ async def _add_payloads(
             content_reference_type=r_type,
             content_reference_id=r_id,
             content_reference_display=c_ref_disp,
+            **_prefixed_identifier_kwargs("content_reference", p),
             content_type=getattr(att, "content_type", None) if att else None,
             language=getattr(att, "language", None) if att else None,
             data=getattr(att, "data", None) if att else None,
@@ -378,6 +389,7 @@ async def _add_notes(
                 author_type=r_type,
                 author_id=r_id,
                 author_display=n.author_display,
+                **_prefixed_identifier_kwargs("author", n),
                 time=n.time,
                 text=n.text,
             )
@@ -430,17 +442,20 @@ class CommunicationRepository:
                 subject_type=s_type,
                 subject_id=s_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 topic_text=payload.topic_text,
                 encounter_reference=payload.encounter,
                 encounter_type=e_type,
                 encounter_id=e_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 sent=payload.sent,
                 received=payload.received,
                 sender_reference=payload.sender,
                 sender_type=snd_type,
                 sender_id=snd_id,
                 sender_display=payload.sender_display,
+                **_prefixed_identifier_kwargs("sender", payload),
                 extension=payload.extension or [],
             )
             session.add(model)
@@ -614,6 +629,12 @@ class CommunicationRepository:
                 row.sender_id = snd_id
                 if "sender_display" in touched:
                     row.sender_display = payload.sender_display
+
+            for prefix in ("subject", "encounter", "sender"):
+                for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    field = f"{prefix}_{suffix}"
+                    if field in touched:
+                        setattr(row, field, getattr(payload, field))
 
             # Child collections replacement if touched
             if "identifier" in touched:

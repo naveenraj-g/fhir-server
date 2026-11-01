@@ -58,13 +58,71 @@ def _fhir_ref(
     return result or None
 
 
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
+    ref_type = getattr(obj, f"{prefix}_type", None)
+    ref_id = getattr(obj, f"{prefix}_id", None)
+    display = getattr(obj, f"{prefix}_display", None)
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    elif ref_type and ref_id:
+        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if display:
+        entry["display"] = display
+
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {"start": fhir_instant(id_period_start), "end": fhir_instant(id_period_end)}.items()
+                if v
+            }
+        entry["identifier"] = identifier
+    return entry or None
+
+
 def _fhir_reference_row(row) -> dict | None:
-    return _fhir_ref(
-        row.reference_reference,
-        row.reference_type,
-        row.reference_id,
-        row.reference_display,
-    )
+    return _fhir_reference(row, "reference")
 
 
 def _fhir_identifier(i: CommunicationIdentifier) -> dict | None:
@@ -85,12 +143,7 @@ def _fhir_identifier(i: CommunicationIdentifier) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        i.assigner_reference,
-        i.assigner_type,
-        i.assigner_id,
-        i.assigner_display,
-    )
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -100,10 +153,8 @@ def _fhir_note(n: CommunicationNote) -> dict | None:
     entry: dict = {}
     if n.author_string:
         entry["authorString"] = n.author_string
-    elif n.author_reference or (n.author_type and n.author_id):
-        author_ref = _fhir_ref(
-            n.author_reference, n.author_type, n.author_id, n.author_display
-        )
+    else:
+        author_ref = _fhir_reference(n, "author")
         if author_ref:
             entry["authorReference"] = author_ref
     if n.time:
@@ -147,13 +198,8 @@ def _fhir_payload(p: CommunicationPayload) -> dict | None:
         att = _fhir_attachment_from_row(p)
         if att:
             entry["contentAttachment"] = att
-    elif p.content_reference_reference or (p.content_reference_type and p.content_reference_id):
-        ref = _fhir_ref(
-            p.content_reference_reference,
-            p.content_reference_type,
-            p.content_reference_id,
-            p.content_reference_display,
-        )
+    else:
+        ref = _fhir_reference(p, "content_reference")
         if ref:
             entry["contentReference"] = ref
     return entry or None
@@ -256,12 +302,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
         if medium:
             result["medium"] = medium
 
-    subject = _fhir_ref(
-        model.subject_reference,
-        model.subject_type,
-        model.subject_id,
-        model.subject_display,
-    )
+    subject = _fhir_reference(model, "subject")
     if subject:
         result["subject"] = subject
 
@@ -280,12 +321,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
         if about:
             result["about"] = about
 
-    encounter = _fhir_ref(
-        model.encounter_reference,
-        model.encounter_type,
-        model.encounter_id,
-        model.encounter_display,
-    )
+    encounter = _fhir_reference(model, "encounter")
     if encounter:
         result["encounter"] = encounter
 
@@ -304,12 +340,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
         if recipients:
             result["recipient"] = recipients
 
-    sender = _fhir_ref(
-        model.sender_reference,
-        model.sender_type,
-        model.sender_id,
-        model.sender_display,
-    )
+    sender = _fhir_reference(model, "sender")
     if sender:
         result["sender"] = sender
 
