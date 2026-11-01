@@ -10,6 +10,7 @@ from app.models.flag import (
     FlagIdentifierTypeCoding,
     FlagModel,
 )
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 from app.schemas.flag import FlagCreateSchema, FlagPatchSchema
 
 from ._shared import (
@@ -18,6 +19,7 @@ from ._shared import (
     _parse_author_ref,
     _parse_encounter_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -58,17 +60,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=i.assigner_identifier_use,
-            assigner_identifier_type_system=i.assigner_identifier_type_system,
-            assigner_identifier_type_version=i.assigner_identifier_type_version,
-            assigner_identifier_type_code=i.assigner_identifier_type_code,
-            assigner_identifier_type_display=i.assigner_identifier_type_display,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
-            assigner_identifier_type_user_selected=i.assigner_identifier_type_user_selected,
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_period_start=i.assigner_identifier_period_start,
-            assigner_identifier_period_end=i.assigner_identifier_period_end,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -156,8 +148,11 @@ class FlagRepository:
         self, payload: FlagCreateSchema, org_id: str, created_by: str
     ) -> FlagModel:
         async with self.session_factory() as session:
-            s_type, s_id = _parse_subject_ref(payload.subject)
-            await _validate_ref(session, org_id, s_type, s_id, "subject")
+            s_type, s_id = (
+                _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            )
+            if s_type and s_id:
+                await _validate_ref(session, org_id, s_type, s_id, "subject")
 
             e_type, e_id = (
                 _parse_encounter_ref(payload.encounter)
@@ -182,16 +177,19 @@ class FlagRepository:
                 subject_type=s_type,
                 subject_id=s_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 period_start=payload.period_start,
                 period_end=payload.period_end,
                 encounter_reference=payload.encounter,
                 encounter_type=e_type,
                 encounter_id=e_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 author_reference=payload.author,
                 author_type=a_type,
                 author_id=a_id,
                 author_display=payload.author_display,
+                **_prefixed_identifier_kwargs("author", payload),
             )
             session.add(model)
             await session.flush()
@@ -237,12 +235,18 @@ class FlagRepository:
             if "code_text" in provided:
                 model.code_text = payload.code_text
 
-            if "subject" in provided and payload.subject:
-                s_type, s_id = _parse_subject_ref(payload.subject)
-                await _validate_ref(session, org_id, s_type, s_id, "subject")
-                model.subject_reference = payload.subject
-                model.subject_type = s_type
-                model.subject_id = s_id
+            if "subject" in provided:
+                if payload.subject:
+                    s_type, s_id = _parse_subject_ref(payload.subject)
+                    if s_type and s_id:
+                        await _validate_ref(session, org_id, s_type, s_id, "subject")
+                    model.subject_reference = payload.subject
+                    model.subject_type = s_type
+                    model.subject_id = s_id
+                else:
+                    model.subject_reference = None
+                    model.subject_type = None
+                    model.subject_id = None
 
             if "subject_display" in provided:
                 model.subject_display = payload.subject_display
@@ -256,7 +260,8 @@ class FlagRepository:
             if "encounter" in provided:
                 if payload.encounter:
                     e_type, e_id = _parse_encounter_ref(payload.encounter)
-                    await _validate_ref(session, org_id, e_type, e_id, "encounter")
+                    if e_type and e_id:
+                        await _validate_ref(session, org_id, e_type, e_id, "encounter")
                     model.encounter_reference = payload.encounter
                     model.encounter_type = e_type
                     model.encounter_id = e_id
@@ -271,7 +276,8 @@ class FlagRepository:
             if "author" in provided:
                 if payload.author:
                     a_type, a_id = _parse_author_ref(payload.author)
-                    await _validate_ref(session, org_id, a_type, a_id, "author")
+                    if a_type and a_id:
+                        await _validate_ref(session, org_id, a_type, a_id, "author")
                     model.author_reference = payload.author
                     model.author_type = a_type
                     model.author_id = a_id
@@ -282,6 +288,12 @@ class FlagRepository:
 
             if "author_display" in provided:
                 model.author_display = payload.author_display
+
+            for prefix in ("subject", "encounter", "author"):
+                for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    field = f"{prefix}_{suffix}"
+                    if field in provided:
+                        setattr(model, field, getattr(payload, field))
 
             model.updated_by = updated_by
 

@@ -281,3 +281,57 @@ async def test_orgless_token_rejected_403(client):
     )
     resp = await client.post(BASE + "/", json=minimal_flag(10001))
     assert resp.status_code == 403
+
+
+async def test_create_flag_with_reference_identifier_fallback(client):
+    payload = {
+        "status": "active",
+        "code_text": "Infection Risk",
+        "code_coding": [
+            {
+                "system": "http://snomed.info/sct",
+                "code": "428371000124100",
+                "display": "High risk for infection",
+            }
+        ],
+        "subject_identifier_system": "http://hospital.example.org/patients",
+        "subject_identifier_value": "MRN-FLAG-999",
+        "subject_display": "Fallback Subject",
+        "encounter_identifier_system": "http://hospital.example.org/encounters",
+        "encounter_identifier_value": "ENC-FLAG-888",
+        "encounter_display": "Fallback Encounter",
+        "author_identifier_system": "http://hospital.example.org/practitioners",
+        "author_identifier_value": "PRAC-FLAG-777",
+        "author_display": "Fallback Author",
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    plain_data = resp.json()
+    fl_id = plain_data["id"]
+    assert plain_data["subject_reference"] is None
+    assert plain_data["subject_identifier_system"] == "http://hospital.example.org/patients"
+    assert plain_data["subject_identifier_value"] == "MRN-FLAG-999"
+    assert plain_data["subject_display"] == "Fallback Subject"
+    assert plain_data["encounter_identifier_value"] == "ENC-FLAG-888"
+    assert plain_data["author_identifier_value"] == "PRAC-FLAG-777"
+
+    # Verify FHIR serialization
+    fhir_resp = await client.get(f"{BASE}/{fl_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["resourceType"] == "Flag"
+    assert "reference" not in fhir_data["subject"]
+    assert fhir_data["subject"]["identifier"]["system"] == "http://hospital.example.org/patients"
+    assert fhir_data["subject"]["identifier"]["value"] == "MRN-FLAG-999"
+    assert fhir_data["subject"]["display"] == "Fallback Subject"
+    assert fhir_data["encounter"]["identifier"]["value"] == "ENC-FLAG-888"
+    assert fhir_data["author"]["identifier"]["value"] == "PRAC-FLAG-777"
+
+    # Patch author fallback identifier
+    patch_resp = await client.patch(
+        f"{BASE}/{fl_id}",
+        json={"author_identifier_value": "PRAC-FLAG-777-UPDATED"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    assert patch_resp.json()["author_identifier_value"] == "PRAC-FLAG-777-UPDATED"
+

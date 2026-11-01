@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.models.enums import IdentifierUse
 from app.models.flag.enums import FlagStatus
 from app.schemas.datatypes import CodingInput
 
@@ -68,12 +69,45 @@ class FlagCreateSchema(BaseModel):
     code_text: str | None = Field(
         None, description="Plain text representation of the flag code."
     )
-    subject: str = Field(
-        ...,
+    subject: str | None = Field(
+        None,
         description="Who/What is the flag about, as a FHIR reference string (e.g. 'Patient/10001').",
     )
     subject_display: str | None = Field(
         None, description="Plain text narrative for the subject reference."
+    )
+    subject_identifier_use: IdentifierUse | None = Field(
+        None, description="Subject identifier use."
+    )
+    subject_identifier_type_system: str | None = Field(
+        None, description="Subject identifier type system."
+    )
+    subject_identifier_type_version: str | None = Field(
+        None, description="Subject identifier type version."
+    )
+    subject_identifier_type_code: str | None = Field(
+        None, description="Subject identifier type code."
+    )
+    subject_identifier_type_display: str | None = Field(
+        None, description="Subject identifier type display."
+    )
+    subject_identifier_type_user_selected: bool | None = Field(
+        None, description="Subject identifier type user selected."
+    )
+    subject_identifier_type_text: str | None = Field(
+        None, description="Subject identifier type text."
+    )
+    subject_identifier_system: str | None = Field(
+        None, description="Subject identifier system."
+    )
+    subject_identifier_value: str | None = Field(
+        None, description="Subject identifier value."
+    )
+    subject_identifier_period_start: datetime | None = Field(
+        None, description="Subject identifier period start."
+    )
+    subject_identifier_period_end: datetime | None = Field(
+        None, description="Subject identifier period end."
     )
     period_start: datetime | None = Field(
         None, description="Start of time period when flag is active."
@@ -88,6 +122,39 @@ class FlagCreateSchema(BaseModel):
     encounter_display: str | None = Field(
         None, description="Plain text narrative for the encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(
+        None, description="Encounter identifier use."
+    )
+    encounter_identifier_type_system: str | None = Field(
+        None, description="Encounter identifier type system."
+    )
+    encounter_identifier_type_version: str | None = Field(
+        None, description="Encounter identifier type version."
+    )
+    encounter_identifier_type_code: str | None = Field(
+        None, description="Encounter identifier type code."
+    )
+    encounter_identifier_type_display: str | None = Field(
+        None, description="Encounter identifier type display."
+    )
+    encounter_identifier_type_user_selected: bool | None = Field(
+        None, description="Encounter identifier type user selected."
+    )
+    encounter_identifier_type_text: str | None = Field(
+        None, description="Encounter identifier type text."
+    )
+    encounter_identifier_system: str | None = Field(
+        None, description="Encounter identifier system."
+    )
+    encounter_identifier_value: str | None = Field(
+        None, description="Encounter identifier value."
+    )
+    encounter_identifier_period_start: datetime | None = Field(
+        None, description="Encounter identifier period start."
+    )
+    encounter_identifier_period_end: datetime | None = Field(
+        None, description="Encounter identifier period end."
+    )
     author: str | None = Field(
         None,
         description="Flag creator, as a FHIR reference string (e.g. 'Practitioner/30001').",
@@ -95,6 +162,51 @@ class FlagCreateSchema(BaseModel):
     author_display: str | None = Field(
         None, description="Plain text narrative for the author reference."
     )
+    author_identifier_use: IdentifierUse | None = Field(
+        None, description="Author identifier use."
+    )
+    author_identifier_type_system: str | None = Field(
+        None, description="Author identifier type system."
+    )
+    author_identifier_type_version: str | None = Field(
+        None, description="Author identifier type version."
+    )
+    author_identifier_type_code: str | None = Field(
+        None, description="Author identifier type code."
+    )
+    author_identifier_type_display: str | None = Field(
+        None, description="Author identifier type display."
+    )
+    author_identifier_type_user_selected: bool | None = Field(
+        None, description="Author identifier type user selected."
+    )
+    author_identifier_type_text: str | None = Field(
+        None, description="Author identifier type text."
+    )
+    author_identifier_system: str | None = Field(
+        None, description="Author identifier system."
+    )
+    author_identifier_value: str | None = Field(
+        None, description="Author identifier value."
+    )
+    author_identifier_period_start: datetime | None = Field(
+        None, description="Author identifier period start."
+    )
+    author_identifier_period_end: datetime | None = Field(
+        None, description="Author identifier period end."
+    )
+
+    @model_validator(mode="after")
+    def validate_required_fields(self) -> "FlagCreateSchema":
+        if not self.code_coding and not self.code_text:
+            raise ValueError(
+                "Flag.code is required (at least code_coding or code_text must be provided)"
+            )
+        if not self.subject and not self.subject_identifier_value and not self.subject_display:
+            raise ValueError(
+                "Flag.subject is required (at least subject reference, identifier, or display must be provided)"
+            )
+        return self
 
 
 class FlagPatchSchema(BaseModel):
@@ -127,6 +239,39 @@ class FlagPatchSchema(BaseModel):
     subject_display: str | None = Field(
         None, description="Plain text narrative for the subject reference."
     )
+    subject_identifier_use: IdentifierUse | None = Field(
+        None, description="Subject identifier use."
+    )
+    subject_identifier_type_system: str | None = Field(
+        None, description="Subject identifier type system."
+    )
+    subject_identifier_type_version: str | None = Field(
+        None, description="Subject identifier type version."
+    )
+    subject_identifier_type_code: str | None = Field(
+        None, description="Subject identifier type code."
+    )
+    subject_identifier_type_display: str | None = Field(
+        None, description="Subject identifier type display."
+    )
+    subject_identifier_type_user_selected: bool | None = Field(
+        None, description="Subject identifier type user selected."
+    )
+    subject_identifier_type_text: str | None = Field(
+        None, description="Subject identifier type text."
+    )
+    subject_identifier_system: str | None = Field(
+        None, description="Subject identifier system."
+    )
+    subject_identifier_value: str | None = Field(
+        None, description="Subject identifier value."
+    )
+    subject_identifier_period_start: datetime | None = Field(
+        None, description="Subject identifier period start."
+    )
+    subject_identifier_period_end: datetime | None = Field(
+        None, description="Subject identifier period end."
+    )
     period_start: datetime | None = Field(
         None, description="Start of time period when flag is active."
     )
@@ -140,10 +285,76 @@ class FlagPatchSchema(BaseModel):
     encounter_display: str | None = Field(
         None, description="Plain text narrative for the encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(
+        None, description="Encounter identifier use."
+    )
+    encounter_identifier_type_system: str | None = Field(
+        None, description="Encounter identifier type system."
+    )
+    encounter_identifier_type_version: str | None = Field(
+        None, description="Encounter identifier type version."
+    )
+    encounter_identifier_type_code: str | None = Field(
+        None, description="Encounter identifier type code."
+    )
+    encounter_identifier_type_display: str | None = Field(
+        None, description="Encounter identifier type display."
+    )
+    encounter_identifier_type_user_selected: bool | None = Field(
+        None, description="Encounter identifier type user selected."
+    )
+    encounter_identifier_type_text: str | None = Field(
+        None, description="Encounter identifier type text."
+    )
+    encounter_identifier_system: str | None = Field(
+        None, description="Encounter identifier system."
+    )
+    encounter_identifier_value: str | None = Field(
+        None, description="Encounter identifier value."
+    )
+    encounter_identifier_period_start: datetime | None = Field(
+        None, description="Encounter identifier period start."
+    )
+    encounter_identifier_period_end: datetime | None = Field(
+        None, description="Encounter identifier period end."
+    )
     author: str | None = Field(
         None,
         description="Flag creator, as a FHIR reference string (e.g. 'Practitioner/30001').",
     )
     author_display: str | None = Field(
         None, description="Plain text narrative for the author reference."
+    )
+    author_identifier_use: IdentifierUse | None = Field(
+        None, description="Author identifier use."
+    )
+    author_identifier_type_system: str | None = Field(
+        None, description="Author identifier type system."
+    )
+    author_identifier_type_version: str | None = Field(
+        None, description="Author identifier type version."
+    )
+    author_identifier_type_code: str | None = Field(
+        None, description="Author identifier type code."
+    )
+    author_identifier_type_display: str | None = Field(
+        None, description="Author identifier type display."
+    )
+    author_identifier_type_user_selected: bool | None = Field(
+        None, description="Author identifier type user selected."
+    )
+    author_identifier_type_text: str | None = Field(
+        None, description="Author identifier type text."
+    )
+    author_identifier_system: str | None = Field(
+        None, description="Author identifier system."
+    )
+    author_identifier_value: str | None = Field(
+        None, description="Author identifier value."
+    )
+    author_identifier_period_start: datetime | None = Field(
+        None, description="Author identifier period start."
+    )
+    author_identifier_period_end: datetime | None = Field(
+        None, description="Author identifier period end."
     )

@@ -10,6 +10,7 @@ from app.schemas.datatypes import (
     FHIRReference,
     PlainCodingRow,
 )
+from app.schemas.enums import IdentifierUse
 
 from .category import PlainFlagCategory
 from .identifier import PlainFlagIdentifier
@@ -74,8 +75,8 @@ class PlainFlagResponse(AuditFields):
     code_codings: list[PlainCodingRow] | None = Field(
         None, description="Codings for flag code."
     )
-    subject_reference: str = Field(
-        ..., description="Raw literal string of subject reference."
+    subject_reference: str | None = Field(
+        None, description="Raw literal string of subject reference."
     )
     subject_type: str | None = Field(
         None, description="Target resource type of subject."
@@ -86,12 +87,25 @@ class PlainFlagResponse(AuditFields):
     subject_display: str | None = Field(
         None, description="Display text for subject reference."
     )
+    subject_identifier_use: IdentifierUse | None = Field(None)
+    subject_identifier_type_system: str | None = Field(None)
+    subject_identifier_type_version: str | None = Field(None)
+    subject_identifier_type_code: str | None = Field(None)
+    subject_identifier_type_display: str | None = Field(None)
+    subject_identifier_type_user_selected: bool | None = Field(None)
+    subject_identifier_type_text: str | None = Field(None)
+    subject_identifier_system: str | None = Field(None)
+    subject_identifier_value: str | None = Field(None)
+    subject_identifier_period_start: str | None = Field(None)
+    subject_identifier_period_end: str | None = Field(None)
+
     period_start: str | None = Field(
         None, description="Start of validity period."
     )
     period_end: str | None = Field(
         None, description="End of validity period."
     )
+
     encounter_reference: str | None = Field(
         None, description="Literal encounter reference string."
     )
@@ -104,6 +118,18 @@ class PlainFlagResponse(AuditFields):
     encounter_display: str | None = Field(
         None, description="Display text for encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(None)
+    encounter_identifier_type_system: str | None = Field(None)
+    encounter_identifier_type_version: str | None = Field(None)
+    encounter_identifier_type_code: str | None = Field(None)
+    encounter_identifier_type_display: str | None = Field(None)
+    encounter_identifier_type_user_selected: bool | None = Field(None)
+    encounter_identifier_type_text: str | None = Field(None)
+    encounter_identifier_system: str | None = Field(None)
+    encounter_identifier_value: str | None = Field(None)
+    encounter_identifier_period_start: str | None = Field(None)
+    encounter_identifier_period_end: str | None = Field(None)
+
     author_reference: str | None = Field(
         None, description="Literal author reference string."
     )
@@ -116,6 +142,18 @@ class PlainFlagResponse(AuditFields):
     author_display: str | None = Field(
         None, description="Display text for author reference."
     )
+    author_identifier_use: IdentifierUse | None = Field(None)
+    author_identifier_type_system: str | None = Field(None)
+    author_identifier_type_version: str | None = Field(None)
+    author_identifier_type_code: str | None = Field(None)
+    author_identifier_type_display: str | None = Field(None)
+    author_identifier_type_user_selected: bool | None = Field(None)
+    author_identifier_type_text: str | None = Field(None)
+    author_identifier_system: str | None = Field(None)
+    author_identifier_value: str | None = Field(None)
+    author_identifier_period_start: str | None = Field(None)
+    author_identifier_period_end: str | None = Field(None)
+
     extension: list[dict] | None = Field(
         None, description="Resource-level FHIR extensions."
     )

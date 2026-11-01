@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.fhir.datatypes import fhir_enum, fhir_instant, merge_patch_fragment
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.schemas.flag.input import (
@@ -20,9 +21,15 @@ if TYPE_CHECKING:
         FlagPatchSchema,
     )
 
-_SUBJECT_FIELDS = {"subject", "subject_display"}
-_ENCOUNTER_FIELDS = {"encounter", "encounter_display"}
-_AUTHOR_FIELDS = {"author", "author_display"}
+_SUBJECT_FIELDS = {"subject", "subject_display"} | {
+    f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {
+    f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_AUTHOR_FIELDS = {"author", "author_display"} | {
+    f"author_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 _PERIOD_FIELDS = {"period_start", "period_end"}
 _CODE_FIELDS = {"code_coding", "code_text"}
 
@@ -53,6 +60,83 @@ def _coding_from_payload(c: Any) -> dict:
     }
 
 
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    if not obj:
+        return None
+
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    display = _get(f"{prefix}_display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected")
+    id_system = _get(f"{prefix}_identifier_system")
+    id_value = _get(f"{prefix}_identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+    return entry or None
+
+
 def _identifier_from_payload(i: FlagIdentifierInput | dict) -> dict | None:
     if isinstance(i, dict):
         entry: dict = {}
@@ -79,12 +163,8 @@ def _identifier_from_payload(i: FlagIdentifierInput | dict) -> dict | None:
             if i.get("period_end"):
                 period["end"] = fhir_instant(i["period_end"])
             entry["period"] = period
-        if i.get("assigner") or i.get("assigner_display"):
-            assigner: dict = {}
-            if i.get("assigner"):
-                assigner["reference"] = i["assigner"]
-            if i.get("assigner_display"):
-                assigner["display"] = i["assigner_display"]
+        assigner = _reference_from_payload(i, "assigner")
+        if assigner:
             entry["assigner"] = assigner
         return entry or None
 
@@ -112,12 +192,8 @@ def _identifier_from_payload(i: FlagIdentifierInput | dict) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    if i.assigner or i.assigner_display:
-        assigner = {}
-        if i.assigner:
-            assigner["reference"] = i.assigner
-        if i.assigner_display:
-            assigner["display"] = i.assigner_display
+    assigner = _reference_from_payload(i, "assigner")
+    if assigner:
         entry["assigner"] = assigner
     return entry or None
 
@@ -177,11 +253,7 @@ def payload_to_fhir_flag(payload: FlagCreateSchema) -> dict:
     if code:
         result["code"] = code
 
-    subject: dict = {}
-    if payload.subject:
-        subject["reference"] = payload.subject
-    if payload.subject_display:
-        subject["display"] = payload.subject_display
+    subject = _reference_from_payload(payload, "subject")
     if subject:
         result["subject"] = subject
 
@@ -193,20 +265,12 @@ def payload_to_fhir_flag(payload: FlagCreateSchema) -> dict:
             period["end"] = fhir_instant(payload.period_end)
         result["period"] = period
 
-    if payload.encounter or payload.encounter_display:
-        encounter: dict = {}
-        if payload.encounter:
-            encounter["reference"] = payload.encounter
-        if payload.encounter_display:
-            encounter["display"] = payload.encounter_display
+    encounter = _reference_from_payload(payload, "encounter")
+    if encounter:
         result["encounter"] = encounter
 
-    if payload.author or payload.author_display:
-        author: dict = {}
-        if payload.author:
-            author["reference"] = payload.author
-        if payload.author_display:
-            author["display"] = payload.author_display
+    author = _reference_from_payload(payload, "author")
+    if author:
         result["author"] = author
 
     return {k: v for k, v in result.items() if v is not None}
@@ -255,11 +319,7 @@ def patch_fragment_to_fhir_flag(
 
     if _SUBJECT_FIELDS & fields_set:
         touched.add("subject")
-        subject: dict = {}
-        if payload.subject is not None:
-            subject["reference"] = payload.subject
-        if payload.subject_display is not None:
-            subject["display"] = payload.subject_display
+        subject = _reference_from_payload(payload, "subject")
         if subject:
             fragment["subject"] = subject
 
@@ -275,21 +335,13 @@ def patch_fragment_to_fhir_flag(
 
     if _ENCOUNTER_FIELDS & fields_set:
         touched.add("encounter")
-        encounter: dict = {}
-        if payload.encounter is not None:
-            encounter["reference"] = payload.encounter
-        if payload.encounter_display is not None:
-            encounter["display"] = payload.encounter_display
+        encounter = _reference_from_payload(payload, "encounter")
         if encounter:
             fragment["encounter"] = encounter
 
     if _AUTHOR_FIELDS & fields_set:
         touched.add("author")
-        author: dict = {}
-        if payload.author is not None:
-            author["reference"] = payload.author
-        if payload.author_display is not None:
-            author["display"] = payload.author_display
+        author = _reference_from_payload(payload, "author")
         if author:
             fragment["author"] = author
 
