@@ -22,6 +22,38 @@ def _plain_ref(ref_raw: str | None, ref_type: Any, ref_id: int | None) -> str | 
     return None
 
 
+def _format_dt(v: Any) -> str | None:
+    if v is None:
+        return None
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    return str(v)
+
+
+def _plain_identifier_fallback(obj, prefix: str) -> dict:
+    return {
+        f"{prefix}_identifier_use": (
+            fhir_enum(v) if (v := getattr(obj, f"{prefix}_identifier_use", None)) else None
+        ),
+        f"{prefix}_identifier_type_system": getattr(obj, f"{prefix}_identifier_type_system", None),
+        f"{prefix}_identifier_type_version": getattr(obj, f"{prefix}_identifier_type_version", None),
+        f"{prefix}_identifier_type_code": getattr(obj, f"{prefix}_identifier_type_code", None),
+        f"{prefix}_identifier_type_display": getattr(obj, f"{prefix}_identifier_type_display", None),
+        f"{prefix}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{prefix}_identifier_type_text": getattr(obj, f"{prefix}_identifier_type_text", None),
+        f"{prefix}_identifier_system": getattr(obj, f"{prefix}_identifier_system", None),
+        f"{prefix}_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        f"{prefix}_identifier_period_start": _format_dt(
+            getattr(obj, f"{prefix}_identifier_period_start", None)
+        ),
+        f"{prefix}_identifier_period_end": _format_dt(
+            getattr(obj, f"{prefix}_identifier_period_end", None)
+        ),
+    }
+
+
 def _plain_codeable_concept(codings, text: str | None) -> dict | None:
     c_list = [
         {
@@ -71,6 +103,7 @@ def _plain_identifier(i: AllergyIntoleranceIdentifier) -> dict:
         "period_end": i.period_end,
         "assigner": _plain_ref(i.assigner_reference, i.assigner_type, i.assigner_id),
         "assigner_display": i.assigner_display,
+        **_plain_identifier_fallback(i, "assigner"),
     }
 
 
@@ -83,11 +116,16 @@ def _plain_annotation(
         "time": note.time,
         "author_string": getattr(note, "author_string", None),
         "author_reference": _plain_ref(
-            None,
+            getattr(note, "author_reference", None),
             getattr(note, "author_reference_type", None),
             getattr(note, "author_reference_id", None),
         ),
+        "author_reference_type": (
+            fhir_enum(v) if (v := getattr(note, "author_reference_type", None)) else None
+        ),
+        "author_reference_id": getattr(note, "author_reference_id", None),
         "author_reference_display": getattr(note, "author_reference_display", None),
+        **_plain_identifier_fallback(note, "author_reference"),
     }
 
 
@@ -145,12 +183,14 @@ def to_plain_allergy_intolerance(model: AllergyIntoleranceModel) -> dict:
         )
         or model.patient_reference,
         "patient_display": model.patient_display,
+        **_plain_identifier_fallback(model, "patient"),
         "encounter": _plain_ref(
             model.encounter_reference,
             model.encounter_type,
             model.encounter_id,
         ),
         "encounter_display": model.encounter_display,
+        **_plain_identifier_fallback(model, "encounter"),
         "onset_date_time": model.onset_date_time,
         "onset_age": model.onset_age,
         "onset_period_start": model.onset_period_start,
@@ -164,12 +204,14 @@ def to_plain_allergy_intolerance(model: AllergyIntoleranceModel) -> dict:
             model.recorder_id,
         ),
         "recorder_display": model.recorder_display,
+        **_plain_identifier_fallback(model, "recorder"),
         "asserter": _plain_ref(
             model.asserter_reference,
             model.asserter_type,
             model.asserter_id,
         ),
         "asserter_display": model.asserter_display,
+        **_plain_identifier_fallback(model, "asserter"),
         "last_occurrence": model.last_occurrence,
         "note": [
             _plain_annotation(n) for n in (getattr(model, "notes", None) or [])

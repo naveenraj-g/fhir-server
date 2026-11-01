@@ -13,13 +13,40 @@ def _plain_reference(obj, prefix: str) -> dict | None:
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
-    if not (ref or ref_type or ref_id or display):
+    id_val = getattr(obj, f"{prefix}_identifier_value", None)
+    has_any = (
+        ref
+        or ref_type
+        or ref_id
+        or display
+        or id_val
+        or getattr(obj, f"{prefix}_identifier_system", None)
+        or getattr(obj, f"{prefix}_identifier_use", None)
+    )
+    if not has_any:
         return None
     return {
         "reference": ref,
         "reference_type": fhir_enum(ref_type) if ref_type else None,
         "reference_id": ref_id,
         "reference_display": display,
+        "reference_identifier_use": (
+            fhir_enum(v) if (v := getattr(obj, f"{prefix}_identifier_use", None)) else None
+        ),
+        "reference_identifier_type_system": getattr(obj, f"{prefix}_identifier_type_system", None),
+        "reference_identifier_type_version": getattr(obj, f"{prefix}_identifier_type_version", None),
+        "reference_identifier_type_code": getattr(obj, f"{prefix}_identifier_type_code", None),
+        "reference_identifier_type_display": getattr(obj, f"{prefix}_identifier_type_display", None),
+        "reference_identifier_type_user_selected": getattr(obj, f"{prefix}_identifier_type_user_selected", None),
+        "reference_identifier_type_text": getattr(obj, f"{prefix}_identifier_type_text", None),
+        "reference_identifier_system": getattr(obj, f"{prefix}_identifier_system", None),
+        "reference_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        "reference_identifier_period_start": (
+            v.isoformat() if (v := getattr(obj, f"{prefix}_identifier_period_start", None)) else None
+        ),
+        "reference_identifier_period_end": (
+            v.isoformat() if (v := getattr(obj, f"{prefix}_identifier_period_end", None)) else None
+        ),
     }
 
 
@@ -30,6 +57,23 @@ def _plain_reference_row(obj, row_id: int) -> dict:
         "reference_type": fhir_enum(obj.reference_type) if obj.reference_type else None,
         "reference_id": obj.reference_id,
         "reference_display": obj.reference_display,
+        "reference_identifier_use": (
+            fhir_enum(v) if (v := getattr(obj, "reference_identifier_use", None)) else None
+        ),
+        "reference_identifier_type_system": getattr(obj, "reference_identifier_type_system", None),
+        "reference_identifier_type_version": getattr(obj, "reference_identifier_type_version", None),
+        "reference_identifier_type_code": getattr(obj, "reference_identifier_type_code", None),
+        "reference_identifier_type_display": getattr(obj, "reference_identifier_type_display", None),
+        "reference_identifier_type_user_selected": getattr(obj, "reference_identifier_type_user_selected", None),
+        "reference_identifier_type_text": getattr(obj, "reference_identifier_type_text", None),
+        "reference_identifier_system": getattr(obj, "reference_identifier_system", None),
+        "reference_identifier_value": getattr(obj, "reference_identifier_value", None),
+        "reference_identifier_period_start": (
+            v.isoformat() if (v := getattr(obj, "reference_identifier_period_start", None)) else None
+        ),
+        "reference_identifier_period_end": (
+            v.isoformat() if (v := getattr(obj, "reference_identifier_period_end", None)) else None
+        ),
     }
 
 
@@ -117,6 +161,23 @@ def _plain_note(n) -> dict:
         "author_reference_type": fhir_enum(n.author_type) if n.author_type else None,
         "author_id": n.author_id,
         "author_display": n.author_display,
+        "author_identifier_use": (
+            fhir_enum(v) if (v := getattr(n, "author_identifier_use", None)) else None
+        ),
+        "author_identifier_type_system": getattr(n, "author_identifier_type_system", None),
+        "author_identifier_type_version": getattr(n, "author_identifier_type_version", None),
+        "author_identifier_type_code": getattr(n, "author_identifier_type_code", None),
+        "author_identifier_type_display": getattr(n, "author_identifier_type_display", None),
+        "author_identifier_type_user_selected": getattr(n, "author_identifier_type_user_selected", None),
+        "author_identifier_type_text": getattr(n, "author_identifier_type_text", None),
+        "author_identifier_system": getattr(n, "author_identifier_system", None),
+        "author_identifier_value": getattr(n, "author_identifier_value", None),
+        "author_identifier_period_start": (
+            v.isoformat() if (v := getattr(n, "author_identifier_period_start", None)) else None
+        ),
+        "author_identifier_period_end": (
+            v.isoformat() if (v := getattr(n, "author_identifier_period_end", None)) else None
+        ),
         "time": n.time.isoformat() if n.time else None,
         "text": n.text,
     }

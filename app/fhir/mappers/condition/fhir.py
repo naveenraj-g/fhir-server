@@ -55,20 +55,72 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
         entry["display"] = display
 
     id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
-    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_system or id_value or id_type_text:
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_user_selected
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
+            type_cc: dict = {}
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
         if id_system:
             identifier["system"] = id_system
         if id_value:
             identifier["value"] = id_value
-        if id_type_text:
-            identifier["type"] = {"text": id_type_text}
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start) if id_period_start else None,
+                    "end": fhir_instant(id_period_end) if id_period_end else None,
+                }.items()
+                if v
+            }
         entry["identifier"] = identifier
 
     return entry
@@ -189,10 +241,9 @@ def fhir_condition_evidence(e) -> dict:
 
 def fhir_condition_note(n) -> dict:
     note_dict: dict = {}
-    if n.author_reference or n.author_id:
-        author_ref = _fhir_reference_with_identifier_fallback(n, "author")
-        if author_ref:
-            note_dict["authorReference"] = author_ref
+    author_ref = _fhir_reference_with_identifier_fallback(n, "author")
+    if author_ref:
+        note_dict["authorReference"] = author_ref
     elif n.author_string:
         note_dict["authorString"] = n.author_string
 

@@ -84,12 +84,36 @@ class PlainAllergyIntoleranceResponse(BaseModel):
     patient_display: str | None = Field(
         None, description="Display text for patient."
     )
+    patient_identifier_use: str | None = None
+    patient_identifier_type_system: str | None = None
+    patient_identifier_type_version: str | None = None
+    patient_identifier_type_code: str | None = None
+    patient_identifier_type_display: str | None = None
+    patient_identifier_type_user_selected: bool | None = None
+    patient_identifier_type_text: str | None = None
+    patient_identifier_system: str | None = None
+    patient_identifier_value: str | None = None
+    patient_identifier_period_start: str | None = None
+    patient_identifier_period_end: str | None = None
+
     encounter: str | None = Field(
         None, description="Encounter when allergy or intolerance was asserted."
     )
     encounter_display: str | None = Field(
         None, description="Display text for encounter."
     )
+    encounter_identifier_use: str | None = None
+    encounter_identifier_type_system: str | None = None
+    encounter_identifier_type_version: str | None = None
+    encounter_identifier_type_code: str | None = None
+    encounter_identifier_type_display: str | None = None
+    encounter_identifier_type_user_selected: bool | None = None
+    encounter_identifier_type_text: str | None = None
+    encounter_identifier_system: str | None = None
+    encounter_identifier_value: str | None = None
+    encounter_identifier_period_start: str | None = None
+    encounter_identifier_period_end: str | None = None
+
     onset_date_time: datetime | None = Field(
         None, description="When allergy or intolerance was identified (dateTime)."
     )
@@ -117,12 +141,36 @@ class PlainAllergyIntoleranceResponse(BaseModel):
     recorder_display: str | None = Field(
         None, description="Display text for recorder."
     )
+    recorder_identifier_use: str | None = None
+    recorder_identifier_type_system: str | None = None
+    recorder_identifier_type_version: str | None = None
+    recorder_identifier_type_code: str | None = None
+    recorder_identifier_type_display: str | None = None
+    recorder_identifier_type_user_selected: bool | None = None
+    recorder_identifier_type_text: str | None = None
+    recorder_identifier_system: str | None = None
+    recorder_identifier_value: str | None = None
+    recorder_identifier_period_start: str | None = None
+    recorder_identifier_period_end: str | None = None
+
     asserter: str | None = Field(
         None, description="Source of the information about the allergy."
     )
     asserter_display: str | None = Field(
         None, description="Display text for asserter."
     )
+    asserter_identifier_use: str | None = None
+    asserter_identifier_type_system: str | None = None
+    asserter_identifier_type_version: str | None = None
+    asserter_identifier_type_code: str | None = None
+    asserter_identifier_type_display: str | None = None
+    asserter_identifier_type_user_selected: bool | None = None
+    asserter_identifier_type_text: str | None = None
+    asserter_identifier_system: str | None = None
+    asserter_identifier_value: str | None = None
+    asserter_identifier_period_start: str | None = None
+    asserter_identifier_period_end: str | None = None
+
     last_occurrence: datetime | None = Field(
         None, description="Date(/time) of last known occurrence of a reaction."
     )

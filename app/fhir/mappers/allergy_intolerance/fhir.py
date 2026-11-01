@@ -43,6 +43,92 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
+def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
+    ref_type = getattr(obj, f"{prefix}_type", None)
+    ref_id = getattr(obj, f"{prefix}_id", None)
+    display = getattr(obj, f"{prefix}_display", None)
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    elif ref_type and ref_id:
+        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if display:
+        entry["display"] = display
+
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_user_selected
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
+            type_cc: dict = {}
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start) if id_period_start else None,
+                    "end": fhir_instant(id_period_end) if id_period_end else None,
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+
+    return entry or None
+
+
 def _fhir_ref(
     ref_raw: str | None,
     ref_type: Any,
@@ -77,12 +163,7 @@ def _fhir_identifier(i: AllergyIntoleranceIdentifier) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        i.assigner_reference,
-        i.assigner_type,
-        i.assigner_id,
-        i.assigner_display,
-    )
+    assigner = _fhir_reference_with_identifier_fallback(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -92,12 +173,7 @@ def _fhir_annotation(
     note: AllergyIntoleranceNote | AllergyIntoleranceReactionNote,
 ) -> dict | None:
     entry: dict = {}
-    author_ref = _fhir_ref(
-        None,
-        getattr(note, "author_reference_type", None),
-        getattr(note, "author_reference_id", None),
-        getattr(note, "author_reference_display", None),
-    )
+    author_ref = _fhir_reference_with_identifier_fallback(note, "author_reference")
     if author_ref:
         entry["authorReference"] = author_ref
     elif getattr(note, "author_string", None):
@@ -202,22 +278,12 @@ def to_fhir_allergy_intolerance(model: AllergyIntoleranceModel) -> dict:
         res["code"] = code_cc
 
     # patient (1..1)
-    patient_ref = _fhir_ref(
-        model.patient_reference,
-        model.patient_type,
-        model.patient_id,
-        model.patient_display,
-    )
+    patient_ref = _fhir_reference_with_identifier_fallback(model, "patient")
     if patient_ref:
         res["patient"] = patient_ref
 
     # encounter (0..1)
-    encounter_ref = _fhir_ref(
-        model.encounter_reference,
-        model.encounter_type,
-        model.encounter_id,
-        model.encounter_display,
-    )
+    encounter_ref = _fhir_reference_with_identifier_fallback(model, "encounter")
     if encounter_ref:
         res["encounter"] = encounter_ref
 
@@ -241,21 +307,11 @@ def to_fhir_allergy_intolerance(model: AllergyIntoleranceModel) -> dict:
     if model.recorded_date:
         res["recordedDate"] = fhir_instant(model.recorded_date)
 
-    recorder_ref = _fhir_ref(
-        model.recorder_reference,
-        model.recorder_type,
-        model.recorder_id,
-        model.recorder_display,
-    )
+    recorder_ref = _fhir_reference_with_identifier_fallback(model, "recorder")
     if recorder_ref:
         res["recorder"] = recorder_ref
 
-    asserter_ref = _fhir_ref(
-        model.asserter_reference,
-        model.asserter_type,
-        model.asserter_id,
-        model.asserter_display,
-    )
+    asserter_ref = _fhir_reference_with_identifier_fallback(model, "asserter")
     if asserter_ref:
         res["asserter"] = asserter_ref
 

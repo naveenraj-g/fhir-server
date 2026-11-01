@@ -546,3 +546,68 @@ def test_full_condition_conforms():
     ]
     out = to_fhir_condition(c)
     assert_valid(condition_pb2.Condition, out)
+
+
+def test_condition_reference_fallback_identifiers():
+    c = _condition(
+        subject_reference=None,
+        subject_type=None,
+        subject_id=None,
+        subject_identifier_system="http://hospital.example.org/patients",
+        subject_identifier_value="PAT-9999",
+        subject_identifier_use=IdentifierUse.official,
+        encounter_reference=None,
+        encounter_type=None,
+        encounter_id=None,
+        encounter_identifier_system="http://hospital.example.org/encounters",
+        encounter_identifier_value="ENC-8888",
+        recorder_reference=None,
+        recorder_type=None,
+        recorder_id=None,
+        recorder_identifier_system="http://hospital.example.org/practitioners",
+        recorder_identifier_value="PRAC-7777",
+        asserter_reference=None,
+        asserter_type=None,
+        asserter_id=None,
+        asserter_identifier_system="http://hospital.example.org/practitioners",
+        asserter_identifier_value="PRAC-6666",
+    )
+    ident = ConditionIdentifier(
+        id=1,
+        condition_pk=1,
+        tenant_id="org-test",
+        use=IdentifierUse.official,
+        system="http://hospital.example.org/conditions",
+        value="COND-12345",
+        assigner_reference=None,
+        assigner_type=None,
+        assigner_id=None,
+        assigner_identifier_system="http://hospital.example.org/orgs",
+        assigner_identifier_value="ORG-1111",
+        created_by="u-test",
+        created_at=D,
+    )
+    c.identifiers = [ident]
+    note = ConditionNote(
+        id=1,
+        condition_pk=1,
+        tenant_id="org-test",
+        text="Clinical note",
+        time=D,
+        author_reference=None,
+        author_type=None,
+        author_id=None,
+        author_identifier_system="http://hospital.example.org/practitioners",
+        author_identifier_value="PRAC-5555",
+        created_by="u-test",
+        created_at=D,
+    )
+    c.notes = [note]
+    out = to_fhir_condition(c)
+    assert out["subject"]["identifier"]["value"] == "PAT-9999"
+    assert out["encounter"]["identifier"]["value"] == "ENC-8888"
+    assert out["recorder"]["identifier"]["value"] == "PRAC-7777"
+    assert out["asserter"]["identifier"]["value"] == "PRAC-6666"
+    assert out["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-1111"
+    assert out["note"][0]["authorReference"]["identifier"]["value"] == "PRAC-5555"
+    assert_valid(condition_pb2.Condition, out)

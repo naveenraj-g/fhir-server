@@ -260,3 +260,65 @@ def test_allergy_intolerance_categories_and_criticalities():
     for crit in AllergyIntoleranceCriticality:
         m = _allergy_intolerance(criticality=crit)
         assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m))
+
+
+def test_allergy_intolerance_reference_fallback_identifiers():
+    ident = AllergyIntoleranceIdentifier(
+        allergy_intolerance_pk=1,
+        tenant_id="org-test",
+        use=IdentifierUse.official,
+        type_text="MRN",
+        system="http://hospital.example.org",
+        value="ALG-001",
+        assigner_reference=None,
+        assigner_type=None,
+        assigner_id=None,
+        assigner_identifier_system="http://hospital.example.org/orgs",
+        assigner_identifier_value="ORG-1111",
+        created_by="u-test",
+    )
+    note = AllergyIntoleranceNote(
+        allergy_intolerance_pk=1,
+        tenant_id="org-test",
+        text="Allergic to peanuts",
+        time=D,
+        author_reference=None,
+        author_reference_type=None,
+        author_reference_id=None,
+        author_reference_identifier_system="http://hospital.example.org/practitioners",
+        author_reference_identifier_value="PRAC-5555",
+        created_by="u-test",
+    )
+    m = _allergy_intolerance(
+        patient_reference=None,
+        patient_type=None,
+        patient_id=None,
+        patient_identifier_system="http://hospital.example.org/patients",
+        patient_identifier_value="PAT-9999",
+        patient_identifier_use=IdentifierUse.official,
+        encounter_reference=None,
+        encounter_type=None,
+        encounter_id=None,
+        encounter_identifier_system="http://hospital.example.org/encounters",
+        encounter_identifier_value="ENC-8888",
+        recorder_reference=None,
+        recorder_type=None,
+        recorder_id=None,
+        recorder_identifier_system="http://hospital.example.org/practitioners",
+        recorder_identifier_value="PRAC-7777",
+        asserter_reference=None,
+        asserter_type=None,
+        asserter_id=None,
+        asserter_identifier_system="http://hospital.example.org/practitioners",
+        asserter_identifier_value="PRAC-6666",
+        identifiers=[ident],
+        notes=[note],
+    )
+    out = to_fhir_allergy_intolerance(m)
+    assert out["patient"]["identifier"]["value"] == "PAT-9999"
+    assert out["encounter"]["identifier"]["value"] == "ENC-8888"
+    assert out["recorder"]["identifier"]["value"] == "PRAC-7777"
+    assert out["asserter"]["identifier"]["value"] == "PRAC-6666"
+    assert out["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-1111"
+    assert out["note"][0]["authorReference"]["identifier"]["value"] == "PRAC-5555"
+    assert_valid(allergy_pb2.AllergyIntolerance, out)

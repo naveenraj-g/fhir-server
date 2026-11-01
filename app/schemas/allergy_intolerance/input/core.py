@@ -21,6 +21,7 @@ from app.schemas.allergy_intolerance.input.note import (
 from app.schemas.allergy_intolerance.input.reaction import (
     AllergyIntoleranceReactionInput,
 )
+from app.schemas.enums import IdentifierUse
 
 _CREATE_EXAMPLE = {
     "clinical_status": {
@@ -167,6 +168,39 @@ class AllergyIntoleranceCreateSchema(BaseModel):
     patient_display: str | None = Field(
         None, description="Display text for patient."
     )
+    patient_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    patient_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    patient_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    patient_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    patient_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    patient_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    patient_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    patient_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    patient_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    patient_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    patient_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
     # Reference(Encounter) - 0..1
     encounter: str | None = Field(
@@ -174,6 +208,39 @@ class AllergyIntoleranceCreateSchema(BaseModel):
     )
     encounter_display: str | None = Field(
         None, description="Display text for encounter."
+    )
+    encounter_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    encounter_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    encounter_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    encounter_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    encounter_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    encounter_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    encounter_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    encounter_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    encounter_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    encounter_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    encounter_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
     )
 
     # Choice onset[x]
@@ -207,6 +274,39 @@ class AllergyIntoleranceCreateSchema(BaseModel):
     recorder_display: str | None = Field(
         None, description="Display text for recorder."
     )
+    recorder_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    recorder_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    recorder_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    recorder_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    recorder_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    recorder_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    recorder_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    recorder_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    recorder_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    recorder_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    recorder_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
     # Reference(asserter) - 0..1
     asserter: str | None = Field(
@@ -214,6 +314,39 @@ class AllergyIntoleranceCreateSchema(BaseModel):
     )
     asserter_display: str | None = Field(
         None, description="Display text for asserter."
+    )
+    asserter_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    asserter_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    asserter_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    asserter_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    asserter_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    asserter_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    asserter_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    asserter_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    asserter_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    asserter_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    asserter_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
     )
 
     last_occurrence: datetime | None = Field(
@@ -265,12 +398,80 @@ class AllergyIntolerancePatchSchema(BaseModel):
     patient_display: str | None = Field(
         None, description="Display text for patient."
     )
+    patient_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    patient_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    patient_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    patient_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    patient_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    patient_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    patient_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    patient_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    patient_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    patient_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    patient_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
+
     encounter: str | None = Field(
         None, description="Encounter when allergy was asserted. Reference(Encounter)"
     )
     encounter_display: str | None = Field(
         None, description="Display text for encounter."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    encounter_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    encounter_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    encounter_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    encounter_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    encounter_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    encounter_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    encounter_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    encounter_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    encounter_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    encounter_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
+
     onset_date_time: datetime | None = Field(
         None, description="When allergy or intolerance was identified (dateTime)."
     )
@@ -292,18 +493,87 @@ class AllergyIntolerancePatchSchema(BaseModel):
     recorded_date: datetime | None = Field(
         None, description="Date first version of the resource was recorded."
     )
+
     recorder: str | None = Field(
         None, description="Who recorded the sensitivity. Reference(Practitioner|PractitionerRole|Patient|RelatedPerson)"
     )
     recorder_display: str | None = Field(
         None, description="Display text for recorder."
     )
+    recorder_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    recorder_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    recorder_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    recorder_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    recorder_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    recorder_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    recorder_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    recorder_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    recorder_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    recorder_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    recorder_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
+
     asserter: str | None = Field(
         None, description="Source of the information about the allergy. Reference(Patient|RelatedPerson|Practitioner|PractitionerRole)"
     )
     asserter_display: str | None = Field(
         None, description="Display text for asserter."
     )
+    asserter_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — its purpose, if known."
+    )
+    asserter_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    asserter_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    asserter_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    asserter_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    asserter_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
+    )
+    asserter_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    asserter_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    asserter_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    asserter_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    asserter_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
+
     last_occurrence: datetime | None = Field(
         None, description="Date(/time) of last known occurrence of a reaction."
     )

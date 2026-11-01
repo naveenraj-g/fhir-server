@@ -22,10 +22,24 @@ if TYPE_CHECKING:
         AllergyIntoleranceReactionInput,
     )
 
-_PATIENT_FIELDS = {"patient", "patient_display"}
-_ENCOUNTER_FIELDS = {"encounter", "encounter_display"}
-_RECORDER_FIELDS = {"recorder", "recorder_display"}
-_ASSERTER_FIELDS = {"asserter", "asserter_display"}
+_IDENTIFIER_FALLBACK_SUFFIXES = [
+    "identifier_use",
+    "identifier_type_system",
+    "identifier_type_version",
+    "identifier_type_code",
+    "identifier_type_display",
+    "identifier_type_user_selected",
+    "identifier_type_text",
+    "identifier_system",
+    "identifier_value",
+    "identifier_period_start",
+    "identifier_period_end",
+]
+
+_PATIENT_FIELDS = {"patient", "patient_display"} | {f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_RECORDER_FIELDS = {"recorder", "recorder_display"} | {f"recorder_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_ASSERTER_FIELDS = {"asserter", "asserter_display"} | {f"asserter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
 _ONSET_PERIOD_FIELDS = {"onset_period_start", "onset_period_end"}
 
 
@@ -77,6 +91,91 @@ def _codeable_concept_from_payload(
     return result or None
 
 
+def _reference_with_identifier_from_payload(payload: Any, prefix: str) -> dict | None:
+    if payload is None:
+        return None
+    ref_val = getattr(payload, prefix, None) if not isinstance(payload, dict) else payload.get(prefix)
+    disp_val = getattr(payload, f"{prefix}_display", None) if not isinstance(payload, dict) else payload.get(f"{prefix}_display")
+
+    entry: dict = {}
+    if ref_val:
+        entry["reference"] = ref_val
+    if disp_val:
+        entry["display"] = disp_val
+
+    def _get(key):
+        return getattr(payload, key, None) if not isinstance(payload, dict) else payload.get(key)
+
+    id_use = _get(f"{prefix}_identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected")
+    id_type_text = _get(f"{prefix}_identifier_type_text")
+    id_system = _get(f"{prefix}_identifier_system")
+    id_value = _get(f"{prefix}_identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_user_selected
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
+            type_cc: dict = {}
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            period: dict = {}
+            if id_period_start:
+                period["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                period["end"] = fhir_instant(id_period_end)
+            identifier["period"] = period
+        entry["identifier"] = identifier
+
+    return entry or None
+
+
 def _identifier_from_payload(
     ident: AllergyIntoleranceIdentifierInput | dict | None,
 ) -> dict | None:
@@ -90,8 +189,6 @@ def _identifier_from_payload(
         value = ident.get("value")
         p_start = ident.get("period_start")
         p_end = ident.get("period_end")
-        assigner = ident.get("assigner")
-        assigner_disp = ident.get("assigner_display")
     else:
         use = ident.use
         type_in = ident.type
@@ -99,8 +196,6 @@ def _identifier_from_payload(
         value = ident.value
         p_start = ident.period_start
         p_end = ident.period_end
-        assigner = ident.assigner
-        assigner_disp = ident.assigner_display
 
     if use:
         entry["use"] = fhir_enum(use)
@@ -118,11 +213,10 @@ def _identifier_from_payload(
         if p_end:
             period["end"] = fhir_instant(p_end)
         entry["period"] = period
+
+    assigner = _reference_with_identifier_from_payload(ident, "assigner")
     if assigner:
-        ref_obj: dict = {"reference": assigner}
-        if assigner_disp:
-            ref_obj["display"] = assigner_disp
-        entry["assigner"] = ref_obj
+        entry["assigner"] = assigner
 
     return entry or None
 
@@ -136,25 +230,20 @@ def _annotation_from_payload(
         text = note.get("text")
         time_val = note.get("time")
         author_str = note.get("author_string")
-        author_ref_str = note.get("author_reference")
-        author_ref_disp = note.get("author_reference_display")
     else:
         text = note.text
         time_val = note.time
         author_str = note.author_string
-        author_ref_str = note.author_reference
-        author_ref_disp = note.author_reference_display
 
     entry: dict = {}
     if text:
         entry["text"] = text
     if time_val:
         entry["time"] = fhir_instant(time_val)
-    if author_ref_str:
-        ref: dict = {"reference": author_ref_str}
-        if author_ref_disp:
-            ref["display"] = author_ref_disp
-        entry["authorReference"] = ref
+
+    author_ref = _reference_with_identifier_from_payload(note, "author_reference")
+    if author_ref:
+        entry["authorReference"] = author_ref
     elif author_str:
         entry["authorString"] = author_str
     return entry or None
@@ -249,15 +338,12 @@ def payload_to_fhir_allergy_intolerance(
         res["code"] = code_cc
 
     # patient (1..1)
-    patient_ref: dict = {"reference": payload.patient}
-    if payload.patient_display:
-        patient_ref["display"] = payload.patient_display
-    res["patient"] = patient_ref
+    patient_ref = _reference_with_identifier_from_payload(payload, "patient")
+    if patient_ref:
+        res["patient"] = patient_ref
 
-    if payload.encounter:
-        encounter_ref: dict = {"reference": payload.encounter}
-        if payload.encounter_display:
-            encounter_ref["display"] = payload.encounter_display
+    encounter_ref = _reference_with_identifier_from_payload(payload, "encounter")
+    if encounter_ref:
         res["encounter"] = encounter_ref
 
     # Choice onset[x]
@@ -280,17 +366,13 @@ def payload_to_fhir_allergy_intolerance(
     if payload.recorded_date:
         res["recordedDate"] = fhir_instant(payload.recorded_date)
 
-    if payload.recorder:
-        rec_ref: dict = {"reference": payload.recorder}
-        if payload.recorder_display:
-            rec_ref["display"] = payload.recorder_display
-        res["recorder"] = rec_ref
+    recorder_ref = _reference_with_identifier_from_payload(payload, "recorder")
+    if recorder_ref:
+        res["recorder"] = recorder_ref
 
-    if payload.asserter:
-        ass_ref: dict = {"reference": payload.asserter}
-        if payload.asserter_display:
-            ass_ref["display"] = payload.asserter_display
-        res["asserter"] = ass_ref
+    asserter_ref = _reference_with_identifier_from_payload(payload, "asserter")
+    if asserter_ref:
+        res["asserter"] = asserter_ref
 
     if payload.last_occurrence:
         res["lastOccurrence"] = fhir_instant(payload.last_occurrence)
@@ -357,25 +439,15 @@ def patch_fragment_to_fhir_allergy_intolerance(
 
     if _PATIENT_FIELDS & fields_set:
         touched.add("patient")
-        if payload.patient is not None or payload.patient_display is not None:
-            ref: dict = {}
-            if payload.patient:
-                ref["reference"] = payload.patient
-            if payload.patient_display:
-                ref["display"] = payload.patient_display
-            if ref:
-                fragment["patient"] = ref
+        ref = _reference_with_identifier_from_payload(payload, "patient")
+        if ref:
+            fragment["patient"] = ref
 
     if _ENCOUNTER_FIELDS & fields_set:
         touched.add("encounter")
-        if payload.encounter is not None or payload.encounter_display is not None:
-            ref: dict = {}
-            if payload.encounter:
-                ref["reference"] = payload.encounter
-            if payload.encounter_display:
-                ref["display"] = payload.encounter_display
-            if ref:
-                fragment["encounter"] = ref
+        ref = _reference_with_identifier_from_payload(payload, "encounter")
+        if ref:
+            fragment["encounter"] = ref
 
     if "onset_date_time" in fields_set:
         touched.add("onsetDateTime")
@@ -414,25 +486,15 @@ def patch_fragment_to_fhir_allergy_intolerance(
 
     if _RECORDER_FIELDS & fields_set:
         touched.add("recorder")
-        if payload.recorder is not None or payload.recorder_display is not None:
-            ref = {}
-            if payload.recorder:
-                ref["reference"] = payload.recorder
-            if payload.recorder_display:
-                ref["display"] = payload.recorder_display
-            if ref:
-                fragment["recorder"] = ref
+        ref = _reference_with_identifier_from_payload(payload, "recorder")
+        if ref:
+            fragment["recorder"] = ref
 
     if _ASSERTER_FIELDS & fields_set:
         touched.add("asserter")
-        if payload.asserter is not None or payload.asserter_display is not None:
-            ref = {}
-            if payload.asserter:
-                ref["reference"] = payload.asserter
-            if payload.asserter_display:
-                ref["display"] = payload.asserter_display
-            if ref:
-                fragment["asserter"] = ref
+        ref = _reference_with_identifier_from_payload(payload, "asserter")
+        if ref:
+            fragment["asserter"] = ref
 
     if "last_occurrence" in fields_set:
         touched.add("lastOccurrence")

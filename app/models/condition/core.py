@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -72,9 +73,16 @@ class ConditionModel(TenantAuditMixin, Base):
     subject_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    subject_identifier_type_system = Column(String, nullable=True)
+    subject_identifier_type_version = Column(String, nullable=True)
+    subject_identifier_type_code = Column(String, nullable=True)
+    subject_identifier_type_display = Column(String, nullable=True)
+    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_identifier_type_text = Column(String, nullable=True)
     subject_identifier_system = Column(String, nullable=True)
     subject_identifier_value = Column(String, nullable=True)
-    subject_identifier_type_text = Column(String, nullable=True)
+    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # encounter (0..1 Reference(Encounter))
     encounter_reference = Column(String, nullable=True)
@@ -89,9 +97,16 @@ class ConditionModel(TenantAuditMixin, Base):
     encounter_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    encounter_identifier_type_system = Column(String, nullable=True)
+    encounter_identifier_type_version = Column(String, nullable=True)
+    encounter_identifier_type_code = Column(String, nullable=True)
+    encounter_identifier_type_display = Column(String, nullable=True)
+    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
+    encounter_identifier_type_text = Column(String, nullable=True)
     encounter_identifier_system = Column(String, nullable=True)
     encounter_identifier_value = Column(String, nullable=True)
-    encounter_identifier_type_text = Column(String, nullable=True)
+    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # onset[x] (0..1 choice: dateTime | Age | Period | Range | string)
     onset_date_time = Column(DateTime(timezone=True), nullable=True)
@@ -153,9 +168,16 @@ class ConditionModel(TenantAuditMixin, Base):
     recorder_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    recorder_identifier_type_system = Column(String, nullable=True)
+    recorder_identifier_type_version = Column(String, nullable=True)
+    recorder_identifier_type_code = Column(String, nullable=True)
+    recorder_identifier_type_display = Column(String, nullable=True)
+    recorder_identifier_type_user_selected = Column(Boolean, nullable=True)
+    recorder_identifier_type_text = Column(String, nullable=True)
     recorder_identifier_system = Column(String, nullable=True)
     recorder_identifier_value = Column(String, nullable=True)
-    recorder_identifier_type_text = Column(String, nullable=True)
+    recorder_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    recorder_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # asserter (0..1 Reference(Practitioner | PractitionerRole | Patient | RelatedPerson))
     asserter_reference = Column(String, nullable=True)
@@ -170,9 +192,16 @@ class ConditionModel(TenantAuditMixin, Base):
     asserter_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    asserter_identifier_type_system = Column(String, nullable=True)
+    asserter_identifier_type_version = Column(String, nullable=True)
+    asserter_identifier_type_code = Column(String, nullable=True)
+    asserter_identifier_type_display = Column(String, nullable=True)
+    asserter_identifier_type_user_selected = Column(Boolean, nullable=True)
+    asserter_identifier_type_text = Column(String, nullable=True)
     asserter_identifier_system = Column(String, nullable=True)
     asserter_identifier_value = Column(String, nullable=True)
-    asserter_identifier_type_text = Column(String, nullable=True)
+    asserter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    asserter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # Identifier fallback columns on Condition
     identifier_system = Column(String, nullable=True)

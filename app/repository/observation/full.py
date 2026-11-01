@@ -331,9 +331,11 @@ class _FullMixin:
             author_kwargs = _ref_kwargs("author", n.author_reference, n.author_reference_display, ObservationNoteAuthorReferenceType)
             if n.author_reference:
                 await _validate_ref(session, tenant_id, "note.author", author_kwargs["author_type"], author_kwargs["author_id"], _MODELED_NOTE_AUTHOR_TYPES)
+            author_fallback = {f"author_identifier_{s}": getattr(n, f"author_identifier_{s}", None) for s in _IDENTIFIER_FALLBACK_SUFFIXES}
             session.add(ObservationNote(
                 observation_pk=obs_pk, tenant_id=tenant_id, created_by=created_by,
                 author_string=n.author_string, author_reference=n.author_reference, **author_kwargs,
+                **author_fallback,
                 time=n.time, text=n.text,
             ))
 

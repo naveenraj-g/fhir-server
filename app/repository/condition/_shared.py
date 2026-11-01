@@ -25,9 +25,16 @@ from app.models.enums import (
 
 _IDENTIFIER_FALLBACK_SUFFIXES = (
     "identifier_use",
+    "identifier_type_system",
+    "identifier_type_version",
+    "identifier_type_code",
+    "identifier_type_display",
+    "identifier_type_user_selected",
+    "identifier_type_text",
     "identifier_system",
     "identifier_value",
-    "identifier_type_text",
+    "identifier_period_start",
+    "identifier_period_end",
 )
 
 _SORTABLE_FIELDS = {
@@ -45,7 +52,9 @@ def _reference_kwargs(prefix: str, payload) -> dict:
     res = {}
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
         val = getattr(payload, f"reference_{suffix}", None)
-        if val is not None:
+        if suffix == "identifier_use" and val is not None:
+            res[f"{prefix}_{suffix}"] = IdentifierUseModel[val.name] if hasattr(val, "name") else val
+        else:
             res[f"{prefix}_{suffix}"] = val
     return res
 

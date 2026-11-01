@@ -60,7 +60,22 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if any(
+        v is not None
+        for v in (
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        )
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -166,7 +181,7 @@ def fhir_observation_note(n) -> dict:
     if n.author_string:
         entry["authorString"] = n.author_string
     else:
-        ref = _fhir_reference(n, "author")
+        ref = _fhir_reference_with_identifier_fallback(n, "author")
         if ref:
             entry["authorReference"] = ref
     if n.time:

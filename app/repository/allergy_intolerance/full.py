@@ -16,12 +16,14 @@ from app.models.allergy_intolerance import (
     AllergyIntoleranceReactionSubstanceCoding,
     AllergyIntoleranceVerificationStatusCoding,
 )
+from app.models.enums import IdentifierUse as IdentifierUseModel
 from app.schemas.allergy_intolerance import (
     AllergyIntoleranceCreateSchema,
     AllergyIntolerancePatchSchema,
 )
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _parse_asserter_ref,
     _parse_assigner_ref,
     _parse_author_ref,
@@ -29,6 +31,7 @@ from ._shared import (
     _parse_patient_ref,
     _parse_reaction_author_ref,
     _parse_recorder_ref,
+    _reference_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -69,6 +72,16 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            assigner_identifier_use=(
+                IdentifierUseModel[i.assigner_identifier_use.name]
+                if getattr(i, "assigner_identifier_use", None)
+                else None
+            ),
+            **{
+                f"assigner_{s}": getattr(i, f"assigner_{s}", None)
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                if s != "identifier_use"
+            },
             created_by=created_by,
         )
         session.add(ident)
@@ -102,9 +115,20 @@ async def _add_notes(
                 text=n.text,
                 time=n.time,
                 author_string=n.author_string,
+                author_reference=n.author_reference,
                 author_reference_type=author_type,
                 author_reference_id=author_id,
                 author_reference_display=n.author_reference_display,
+                author_reference_identifier_use=(
+                    IdentifierUseModel[n.author_reference_identifier_use.name]
+                    if getattr(n, "author_reference_identifier_use", None)
+                    else None
+                ),
+                **{
+                    f"author_reference_{s}": getattr(n, f"author_reference_{s}", None)
+                    for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                    if s != "identifier_use"
+                },
                 created_by=created_by,
             )
         )
@@ -186,9 +210,20 @@ async def _add_reactions(
                         text=rn.text,
                         time=rn.time,
                         author_string=rn.author_string,
+                        author_reference=rn.author_reference,
                         author_reference_type=author_type,
                         author_reference_id=author_id,
                         author_reference_display=rn.author_reference_display,
+                        author_reference_identifier_use=(
+                            IdentifierUseModel[rn.author_reference_identifier_use.name]
+                            if getattr(rn, "author_reference_identifier_use", None)
+                            else None
+                        ),
+                        **{
+                            f"author_reference_{s}": getattr(rn, f"author_reference_{s}", None)
+                            for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                            if s != "identifier_use"
+                        },
                         created_by=created_by,
                     )
                 )
@@ -253,10 +288,12 @@ class _FullMixin:
                 patient_type=p_type,
                 patient_id=p_id,
                 patient_display=payload.patient_display,
+                **_reference_kwargs("patient", payload),
                 encounter_reference=payload.encounter,
                 encounter_type=enc_type,
                 encounter_id=enc_id,
                 encounter_display=payload.encounter_display,
+                **_reference_kwargs("encounter", payload),
                 onset_date_time=payload.onset_date_time,
                 onset_age=payload.onset_age,
                 onset_period_start=payload.onset_period_start,
@@ -268,10 +305,12 @@ class _FullMixin:
                 recorder_type=rec_type,
                 recorder_id=rec_id,
                 recorder_display=payload.recorder_display,
+                **_reference_kwargs("recorder", payload),
                 asserter_reference=payload.asserter,
                 asserter_type=ass_type,
                 asserter_id=ass_id,
                 asserter_display=payload.asserter_display,
+                **_reference_kwargs("asserter", payload),
                 last_occurrence=payload.last_occurrence,
                 extension=payload.extension or [],
             )
@@ -385,6 +424,14 @@ class _FullMixin:
                     model.patient_id = p_id
             if "patient_display" in fields_set:
                 model.patient_display = payload.patient_display
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                if f"patient_{s}" in fields_set:
+                    val = getattr(payload, f"patient_{s}")
+                    setattr(
+                        model,
+                        f"patient_{s}",
+                        IdentifierUseModel[val.name] if s == "identifier_use" and val is not None else val,
+                    )
 
             # Encounter reference
             if "encounter" in fields_set:
@@ -400,6 +447,14 @@ class _FullMixin:
                     model.encounter_id = None
             if "encounter_display" in fields_set:
                 model.encounter_display = payload.encounter_display
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                if f"encounter_{s}" in fields_set:
+                    val = getattr(payload, f"encounter_{s}")
+                    setattr(
+                        model,
+                        f"encounter_{s}",
+                        IdentifierUseModel[val.name] if s == "identifier_use" and val is not None else val,
+                    )
 
             # Recorder reference
             if "recorder" in fields_set:
@@ -415,6 +470,14 @@ class _FullMixin:
                     model.recorder_id = None
             if "recorder_display" in fields_set:
                 model.recorder_display = payload.recorder_display
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                if f"recorder_{s}" in fields_set:
+                    val = getattr(payload, f"recorder_{s}")
+                    setattr(
+                        model,
+                        f"recorder_{s}",
+                        IdentifierUseModel[val.name] if s == "identifier_use" and val is not None else val,
+                    )
 
             # Asserter reference
             if "asserter" in fields_set:
@@ -430,6 +493,14 @@ class _FullMixin:
                     model.asserter_id = None
             if "asserter_display" in fields_set:
                 model.asserter_display = payload.asserter_display
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                if f"asserter_{s}" in fields_set:
+                    val = getattr(payload, f"asserter_{s}")
+                    setattr(
+                        model,
+                        f"asserter_{s}",
+                        IdentifierUseModel[val.name] if s == "identifier_use" and val is not None else val,
+                    )
 
             # Clinical status
             if "clinical_status" in fields_set:

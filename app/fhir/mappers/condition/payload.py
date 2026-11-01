@@ -115,20 +115,72 @@ def _reference_from_payload(obj) -> dict:
         entry["display"] = obj.reference_display
 
     id_use = getattr(obj, "reference_identifier_use", None)
+    id_type_system = getattr(obj, "reference_identifier_type_system", None)
+    id_type_version = getattr(obj, "reference_identifier_type_version", None)
+    id_type_code = getattr(obj, "reference_identifier_type_code", None)
+    id_type_display = getattr(obj, "reference_identifier_type_display", None)
+    id_type_user_selected = getattr(obj, "reference_identifier_type_user_selected", None)
+    id_type_text = getattr(obj, "reference_identifier_type_text", None)
     id_system = getattr(obj, "reference_identifier_system", None)
     id_value = getattr(obj, "reference_identifier_value", None)
-    id_type_text = getattr(obj, "reference_identifier_type_text", None)
+    id_period_start = getattr(obj, "reference_identifier_period_start", None)
+    id_period_end = getattr(obj, "reference_identifier_period_end", None)
 
-    if id_use or id_system or id_value or id_type_text:
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_user_selected
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
+            type_cc: dict = {}
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
         if id_system:
             identifier["system"] = id_system
         if id_value:
             identifier["value"] = id_value
-        if id_type_text:
-            identifier["type"] = {"text": id_type_text}
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": id_period_start.isoformat() if id_period_start else None,
+                    "end": id_period_end.isoformat() if id_period_end else None,
+                }.items()
+                if v
+            }
         entry["identifier"] = identifier
 
     return entry
@@ -162,26 +214,73 @@ def payload_condition_identifier(i: ConditionIdentifierInput) -> dict:
             if v
         }
 
-    if i.assigner or i.assigner_display or i.assigner_identifier_system or i.assigner_identifier_value:
+    a_use = getattr(i, "assigner_identifier_use", None)
+    a_type_system = getattr(i, "assigner_identifier_type_system", None)
+    a_type_version = getattr(i, "assigner_identifier_type_version", None)
+    a_type_code = getattr(i, "assigner_identifier_type_code", None)
+    a_type_display = getattr(i, "assigner_identifier_type_display", None)
+    a_type_user_selected = getattr(i, "assigner_identifier_type_user_selected", None)
+    a_type_text = getattr(i, "assigner_identifier_type_text", None)
+    a_system = getattr(i, "assigner_identifier_system", None)
+    a_value = getattr(i, "assigner_identifier_value", None)
+    a_period_start = getattr(i, "assigner_identifier_period_start", None)
+    a_period_end = getattr(i, "assigner_identifier_period_end", None)
+
+    has_assigner_id = (
+        a_use
+        or a_type_system
+        or a_type_version
+        or a_type_code
+        or a_type_display
+        or a_type_user_selected
+        or a_type_text
+        or a_system
+        or a_value
+        or a_period_start
+        or a_period_end
+    )
+    if i.assigner or i.assigner_display or has_assigner_id:
         assigner: dict = {}
         if i.assigner:
             assigner["reference"] = i.assigner
         if i.assigner_display:
             assigner["display"] = i.assigner_display
-        if i.assigner_identifier_use or i.assigner_identifier_system or i.assigner_identifier_value or i.assigner_identifier_type_text:
+        if has_assigner_id:
             assigner_id: dict = {}
-            if i.assigner_identifier_use:
-                assigner_id["use"] = (
-                    i.assigner_identifier_use.value
-                    if hasattr(i.assigner_identifier_use, "value")
-                    else str(i.assigner_identifier_use)
-                )
-            if i.assigner_identifier_system:
-                assigner_id["system"] = i.assigner_identifier_system
-            if i.assigner_identifier_value:
-                assigner_id["value"] = i.assigner_identifier_value
-            if i.assigner_identifier_type_text:
-                assigner_id["type"] = {"text": i.assigner_identifier_type_text}
+            if a_use:
+                assigner_id["use"] = a_use.value if hasattr(a_use, "value") else str(a_use)
+            if a_type_system or a_type_code or a_type_text or a_type_display or a_type_version or a_type_user_selected:
+                type_cc = {}
+                if a_type_system or a_type_code or a_type_display or a_type_version or a_type_user_selected:
+                    type_cc["coding"] = [
+                        {
+                            k: v
+                            for k, v in {
+                                "system": a_type_system,
+                                "version": a_type_version,
+                                "code": a_type_code,
+                                "display": a_type_display,
+                                "userSelected": a_type_user_selected,
+                            }.items()
+                            if v is not None
+                        }
+                    ]
+                if a_type_text:
+                    type_cc["text"] = a_type_text
+                assigner_id["type"] = type_cc
+            if a_system:
+                assigner_id["system"] = a_system
+            if a_value:
+                assigner_id["value"] = a_value
+            if a_period_start or a_period_end:
+                assigner_id["period"] = {
+                    k: v
+                    for k, v in {
+                        "start": a_period_start.isoformat() if a_period_start else None,
+                        "end": a_period_end.isoformat() if a_period_end else None,
+                    }.items()
+                    if v
+                }
             assigner["identifier"] = assigner_id
         entry["assigner"] = assigner
 
@@ -229,10 +328,74 @@ def payload_condition_evidence(e: ConditionEvidenceInput) -> dict:
 
 def payload_condition_note(n: ConditionNoteInput) -> dict:
     note_dict: dict = {}
-    if n.author_reference:
-        ref: dict = {"reference": n.author_reference}
+    id_use = getattr(n, "author_identifier_use", None)
+    id_type_system = getattr(n, "author_identifier_type_system", None)
+    id_type_version = getattr(n, "author_identifier_type_version", None)
+    id_type_code = getattr(n, "author_identifier_type_code", None)
+    id_type_display = getattr(n, "author_identifier_type_display", None)
+    id_type_user_selected = getattr(n, "author_identifier_type_user_selected", None)
+    id_type_text = getattr(n, "author_identifier_type_text", None)
+    id_system = getattr(n, "author_identifier_system", None)
+    id_value = getattr(n, "author_identifier_value", None)
+    id_period_start = getattr(n, "author_identifier_period_start", None)
+    id_period_end = getattr(n, "author_identifier_period_end", None)
+
+    has_author_id = (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_user_selected
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    )
+    if n.author_reference or getattr(n, "author_reference_display", None) or has_author_id:
+        ref: dict = {}
+        if n.author_reference:
+            ref["reference"] = n.author_reference
         if n.author_reference_display:
             ref["display"] = n.author_reference_display
+        if has_author_id:
+            author_id_dict: dict = {}
+            if id_use:
+                author_id_dict["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+            if id_type_system or id_type_code or id_type_text or id_type_display or id_type_version or id_type_user_selected:
+                type_cc = {}
+                if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+                    type_cc["coding"] = [
+                        {
+                            k: v
+                            for k, v in {
+                                "system": id_type_system,
+                                "version": id_type_version,
+                                "code": id_type_code,
+                                "display": id_type_display,
+                                "userSelected": id_type_user_selected,
+                            }.items()
+                            if v is not None
+                        }
+                    ]
+                if id_type_text:
+                    type_cc["text"] = id_type_text
+                author_id_dict["type"] = type_cc
+            if id_system:
+                author_id_dict["system"] = id_system
+            if id_value:
+                author_id_dict["value"] = id_value
+            if id_period_start or id_period_end:
+                author_id_dict["period"] = {
+                    k: v
+                    for k, v in {
+                        "start": id_period_start.isoformat() if id_period_start else None,
+                        "end": id_period_end.isoformat() if id_period_end else None,
+                    }.items()
+                    if v
+                }
+            ref["identifier"] = author_id_dict
         note_dict["authorReference"] = ref
     elif n.author_string:
         note_dict["authorString"] = n.author_string

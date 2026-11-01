@@ -15,7 +15,21 @@ from app.models.allergy_intolerance import (
     AllergyIntoleranceReactionManifestation,
     AllergyIntoleranceRecorderReferenceType,
 )
-from app.models.enums import OrganizationReferenceType
+from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType
+
+_IDENTIFIER_FALLBACK_SUFFIXES = (
+    "identifier_use",
+    "identifier_type_system",
+    "identifier_type_version",
+    "identifier_type_code",
+    "identifier_type_display",
+    "identifier_type_user_selected",
+    "identifier_type_text",
+    "identifier_system",
+    "identifier_value",
+    "identifier_period_start",
+    "identifier_period_end",
+)
 
 _SORTABLE_FIELDS = {
     "allergy_intolerance_id": AllergyIntoleranceModel.allergy_intolerance_id,
@@ -29,6 +43,20 @@ _SORTABLE_FIELDS = {
     "created_at": AllergyIntoleranceModel.created_at,
     "updated_at": AllergyIntoleranceModel.updated_at,
 }
+
+
+def _reference_kwargs(prefix: str, payload) -> dict:
+    """Build {prefix}_identifier_* ORM constructor kwargs from payload."""
+    if payload is None:
+        return {}
+    res = {}
+    for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = getattr(payload, f"{prefix}_{suffix}", None)
+        if suffix == "identifier_use" and val is not None:
+            res[f"{prefix}_{suffix}"] = IdentifierUseModel[val.name] if hasattr(val, "name") else val
+        else:
+            res[f"{prefix}_{suffix}"] = val
+    return res
 
 
 def _parse_patient_ref(ref: str) -> tuple:

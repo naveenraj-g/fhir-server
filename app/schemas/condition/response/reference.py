@@ -9,6 +9,17 @@ class _PlainReferenceResponse(BaseModel):
     id: int | None = Field(None, description="Target resource public sequence ID.")
     type: str | None = Field(None, description="Target resource type.")
     display: str | None = Field(None, description="Plain text display.")
+    identifier_use: str | None = Field(None, description="Fallback identifier — use.")
+    identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
+    identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
+    identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
+    identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
+    identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user_selected.")
+    identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
+    identifier_system: str | None = Field(None, description="Fallback identifier — system.")
+    identifier_value: str | None = Field(None, description="Fallback identifier — value.")
+    identifier_period_start: str | None = Field(None, description="Fallback identifier — period start.")
+    identifier_period_end: str | None = Field(None, description="Fallback identifier — period end.")
 
 
 class PlainConditionSubject(_PlainReferenceResponse):

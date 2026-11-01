@@ -37,6 +37,7 @@ from app.models.enums import (
 from app.schemas.condition import ConditionCreateSchema, ConditionPatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _parse_asserter_ref,
     _parse_assessment_ref,
     _parse_encounter_ref,
@@ -86,9 +87,11 @@ async def _add_identifiers(session, condition_pk: int, org_id: str, identifiers,
                 if i.assigner_identifier_use
                 else None
             ),
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
+            **{
+                f"assigner_{s}": getattr(i, f"assigner_{s}", None)
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                if s != "identifier_use"
+            },
             created_by=created_by,
         )
         session.add(ident)
@@ -234,9 +237,11 @@ async def _add_stages(session, condition_pk: int, org_id: str, stages, created_b
                             if a.reference_identifier_use
                             else None
                         ),
-                        reference_identifier_system=a.reference_identifier_system,
-                        reference_identifier_value=a.reference_identifier_value,
-                        reference_identifier_type_text=a.reference_identifier_type_text,
+                        **{
+                            f"reference_{s}": getattr(a, f"reference_{s}", None)
+                            for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                            if s != "identifier_use"
+                        },
                         created_by=created_by,
                     )
                 )
@@ -294,9 +299,11 @@ async def _add_evidence(session, condition_pk: int, org_id: str, evidence_list, 
                             if d.reference_identifier_use
                             else None
                         ),
-                        reference_identifier_system=d.reference_identifier_system,
-                        reference_identifier_value=d.reference_identifier_value,
-                        reference_identifier_type_text=d.reference_identifier_type_text,
+                        **{
+                            f"reference_{s}": getattr(d, f"reference_{s}", None)
+                            for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                            if s != "identifier_use"
+                        },
                         created_by=created_by,
                     )
                 )
@@ -319,6 +326,16 @@ async def _add_notes(session, condition_pk: int, org_id: str, notes, created_by:
                 author_type=a_type,
                 author_id=a_id,
                 author_display=n.author_reference_display,
+                author_identifier_use=(
+                    IdentifierUseModel[n.author_identifier_use.name]
+                    if n.author_identifier_use
+                    else None
+                ),
+                **{
+                    f"author_{s}": getattr(n, f"author_identifier_{s}", None)
+                    for s in _IDENTIFIER_FALLBACK_SUFFIXES
+                    if s != "identifier_use"
+                },
                 time=n.time,
                 text=n.text,
                 created_by=created_by,
