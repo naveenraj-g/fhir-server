@@ -30,6 +30,20 @@ if TYPE_CHECKING:
         TaskRestrictionInput,
     )
 
+_IDENTIFIER_SUFFIXES = {
+    "identifier_use",
+    "identifier_type_system",
+    "identifier_type_version",
+    "identifier_type_code",
+    "identifier_type_display",
+    "identifier_type_text",
+    "identifier_type_user_selected",
+    "identifier_system",
+    "identifier_value",
+    "identifier_period_start",
+    "identifier_period_end",
+}
+
 _CODE_FIELDS = {"code_coding", "code_text"}
 _STATUS_REASON_FIELDS = {"status_reason_coding", "status_reason_text"}
 _BUSINESS_STATUS_FIELDS = {"business_status_coding", "business_status_text"}
@@ -42,15 +56,15 @@ _GROUP_IDENTIFIER_FIELDS = {
     "group_identifier_period_end",
     "group_identifier_assigner",
     "group_identifier_assigner_display",
-}
-_FOCUS_FIELDS = {"focus", "focus_display"}
-_FOR_FIELDS = {"for_", "for", "for_display"}
-_ENCOUNTER_FIELDS = {"encounter", "encounter_display"}
+} | {f"group_identifier_assigner_{s}" for s in _IDENTIFIER_SUFFIXES}
+_FOCUS_FIELDS = {"focus", "focus_display"} | {f"focus_{s}" for s in _IDENTIFIER_SUFFIXES}
+_FOR_FIELDS = {"for_", "for", "for_display"} | {f"for_{s}" for s in _IDENTIFIER_SUFFIXES}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {f"encounter_{s}" for s in _IDENTIFIER_SUFFIXES}
 _EXECUTION_PERIOD_FIELDS = {"execution_period_start", "execution_period_end"}
-_REQUESTER_FIELDS = {"requester", "requester_display"}
-_OWNER_FIELDS = {"owner", "owner_display"}
-_LOCATION_FIELDS = {"location", "location_display"}
-_REASON_REF_FIELDS = {"reason_reference", "reason_reference_display"}
+_REQUESTER_FIELDS = {"requester", "requester_display"} | {f"requester_{s}" for s in _IDENTIFIER_SUFFIXES}
+_OWNER_FIELDS = {"owner", "owner_display"} | {f"owner_{s}" for s in _IDENTIFIER_SUFFIXES}
+_LOCATION_FIELDS = {"location", "location_display"} | {f"location_{s}" for s in _IDENTIFIER_SUFFIXES}
+_REASON_REF_FIELDS = {"reason_reference", "reason_reference_display"} | {f"reason_reference_{s}" for s in _IDENTIFIER_SUFFIXES}
 
 
 def _coding_from_payload(c: Any) -> dict:
@@ -91,113 +105,221 @@ def _codeable_concept_from_payload(
     return result or None
 
 
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    if prefix == "for" and raw_reference is None:
+        raw_reference = _get("for_")
+    display = _get(f"{prefix}_display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected")
+    id_system = _get(f"{prefix}_identifier_system")
+    id_value = _get(f"{prefix}_identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end")
+
+    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+    return entry or None
+
+
 def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
     if not ref and not display:
         return None
-    if isinstance(ref, dict):
-        result = {}
-        if ref.get("reference"):
-            result["reference"] = ref["reference"]
-        if ref.get("display") or display:
-            result["display"] = ref.get("display") or display
-        return result or None
-    if hasattr(ref, "reference"):
-        result = {}
-        if getattr(ref, "reference", None):
-            result["reference"] = ref.reference
-        if getattr(ref, "display", None) or display:
-            result["display"] = getattr(ref, "display", None) or display
-        return result or None
+    if isinstance(ref, str):
+        result = {"reference": ref}
+        if display:
+            result["display"] = display
+        return result
+
     result = {}
-    if ref:
-        result["reference"] = str(ref)
-    if display:
-        result["display"] = display
+    r = getattr(ref, "reference", None) if not isinstance(ref, dict) else ref.get("reference")
+    if r:
+        result["reference"] = r
+    d = (getattr(ref, "display", None) if not isinstance(ref, dict) else ref.get("display")) or display
+    if d:
+        result["display"] = d
+
+    def _get(field):
+        return ref.get(field) if isinstance(ref, dict) else getattr(ref, field, None)
+
+    id_use = _get("identifier_use")
+    id_type_system = _get("identifier_type_system")
+    id_type_version = _get("identifier_type_version")
+    id_type_code = _get("identifier_type_code")
+    id_type_display = _get("identifier_type_display")
+    id_type_text = _get("identifier_type_text")
+    id_type_user_selected = _get("identifier_type_user_selected")
+    id_system = _get("identifier_system")
+    id_value = _get("identifier_value")
+    id_period_start = _get("identifier_period_start")
+    id_period_end = _get("identifier_period_end")
+
+    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        result["identifier"] = identifier
+
     return result or None
 
 
 def _identifier_from_payload(i: TaskIdentifierInput | dict) -> dict | None:
-    if isinstance(i, dict):
-        entry: dict = {}
-        if i.get("use"):
-            entry["use"] = fhir_enum(i["use"])
-        type_codings = [
-            _coding_from_payload(c) for c in (i.get("type_coding") or [])
-        ]
-        type_cc: dict = {}
-        if type_codings:
-            type_cc["coding"] = type_codings
-        if i.get("type_text"):
-            type_cc["text"] = i["type_text"]
-        if type_cc:
-            entry["type"] = type_cc
-        if i.get("system"):
-            entry["system"] = i["system"]
-        if i.get("value"):
-            entry["value"] = i["value"]
-        if i.get("period_start") or i.get("period_end"):
-            period: dict = {}
-            if i.get("period_start"):
-                period["start"] = fhir_instant(i["period_start"])
-            if i.get("period_end"):
-                period["end"] = fhir_instant(i["period_end"])
-            entry["period"] = period
-        if i.get("assigner") or i.get("assigner_display"):
-            assigner: dict = {}
-            if i.get("assigner"):
-                assigner["reference"] = i["assigner"]
-            if i.get("assigner_display"):
-                assigner["display"] = i["assigner_display"]
-            entry["assigner"] = assigner
-        return entry or None
-
-    entry = {}
-    if i.use:
-        entry["use"] = fhir_enum(i.use)
+    if not i:
+        return None
+    entry: dict = {}
+    use = getattr(i, "use", None) or (i.get("use") if isinstance(i, dict) else None)
+    if use:
+        entry["use"] = fhir_enum(use)
     type_codings = [
-        _coding_from_payload(c) for c in (i.type_coding or [])
+        _coding_from_payload(c)
+        for c in (
+            (i.get("type_coding") if isinstance(i, dict) else i.type_coding) or []
+        )
     ]
-    type_cc = {}
+    type_cc: dict = {}
     if type_codings:
         type_cc["coding"] = type_codings
-    if i.type_text:
-        type_cc["text"] = i.type_text
+    type_text = getattr(i, "type_text", None) or (
+        i.get("type_text") if isinstance(i, dict) else None
+    )
+    if type_text:
+        type_cc["text"] = type_text
     if type_cc:
         entry["type"] = type_cc
-    if i.system:
-        entry["system"] = i.system
-    if i.value:
-        entry["value"] = i.value
-    if i.period_start or i.period_end:
-        period = {}
-        if i.period_start:
-            period["start"] = fhir_instant(i.period_start)
-        if i.period_end:
-            period["end"] = fhir_instant(i.period_end)
+    system = getattr(i, "system", None) or (
+        i.get("system") if isinstance(i, dict) else None
+    )
+    if system:
+        entry["system"] = system
+    value = getattr(i, "value", None) or (
+        i.get("value") if isinstance(i, dict) else None
+    )
+    if value:
+        entry["value"] = value
+    p_start = getattr(i, "period_start", None) or (
+        i.get("period_start") if isinstance(i, dict) else None
+    )
+    p_end = getattr(i, "period_end", None) or (
+        i.get("period_end") if isinstance(i, dict) else None
+    )
+    if p_start or p_end:
+        period: dict = {}
+        if p_start:
+            period["start"] = fhir_instant(p_start)
+        if p_end:
+            period["end"] = fhir_instant(p_end)
         entry["period"] = period
-    if i.assigner or i.assigner_display:
-        assigner = {}
-        if i.assigner:
-            assigner["reference"] = i.assigner
-        if i.assigner_display:
-            assigner["display"] = i.assigner_display
+    assigner = _reference_from_payload(i, "assigner")
+    if assigner:
         entry["assigner"] = assigner
     return entry or None
 
 
 def _group_identifier_from_payload(payload: Any) -> dict | None:
     entry: dict = {}
-    use = getattr(payload, "group_identifier_use", None)
+    use = getattr(payload, "group_identifier_use", None) or (
+        payload.get("group_identifier_use") if isinstance(payload, dict) else None
+    )
     if use:
         entry["use"] = fhir_enum(use)
-    system = getattr(payload, "group_identifier_system", None)
+    system = getattr(payload, "group_identifier_system", None) or (
+        payload.get("group_identifier_system") if isinstance(payload, dict) else None
+    )
     if system:
         entry["system"] = system
-    value = getattr(payload, "group_identifier_value", None)
+    value = getattr(payload, "group_identifier_value", None) or (
+        payload.get("group_identifier_value") if isinstance(payload, dict) else None
+    )
     if value:
         entry["value"] = value
-    p_start = getattr(payload, "group_identifier_period_start", None)
-    p_end = getattr(payload, "group_identifier_period_end", None)
+    p_start = getattr(payload, "group_identifier_period_start", None) or (
+        payload.get("group_identifier_period_start") if isinstance(payload, dict) else None
+    )
+    p_end = getattr(payload, "group_identifier_period_end", None) or (
+        payload.get("group_identifier_period_end") if isinstance(payload, dict) else None
+    )
     if p_start or p_end:
         period = {}
         if p_start:
@@ -205,14 +327,8 @@ def _group_identifier_from_payload(payload: Any) -> dict | None:
         if p_end:
             period["end"] = fhir_instant(p_end)
         entry["period"] = period
-    assigner_ref = getattr(payload, "group_identifier_assigner", None)
-    assigner_disp = getattr(payload, "group_identifier_assigner_display", None)
-    if assigner_ref or assigner_disp:
-        assigner = {}
-        if assigner_ref:
-            assigner["reference"] = assigner_ref
-        if assigner_disp:
-            assigner["display"] = assigner_disp
+    assigner = _reference_from_payload(payload, "group_identifier_assigner")
+    if assigner:
         entry["assigner"] = assigner
     return entry or None
 
@@ -224,208 +340,150 @@ def _performer_type_from_payload(pt: TaskPerformerTypeInput | dict) -> dict | No
 
 
 def _note_from_payload(n: TaskNoteInput | dict) -> dict | None:
-    if isinstance(n, dict):
-        entry: dict = {}
-        if n.get("author_string"):
-            entry["authorString"] = n["author_string"]
-        elif n.get("author_reference"):
-            author_ref: dict = {"reference": n["author_reference"]}
-            if n.get("author_display"):
-                author_ref["display"] = n["author_display"]
+    if not n:
+        return None
+    entry: dict = {}
+    auth_str = getattr(n, "author_string", None) or (
+        n.get("author_string") if isinstance(n, dict) else None
+    )
+    if auth_str:
+        entry["authorString"] = auth_str
+    else:
+        author_ref = _reference_from_payload(n, "author")
+        if author_ref:
             entry["authorReference"] = author_ref
-        if n.get("time"):
-            entry["time"] = fhir_instant(n["time"])
-        if n.get("text"):
-            entry["text"] = n["text"]
-        return entry or None
-
-    entry = {}
-    if n.author_string:
-        entry["authorString"] = n.author_string
-    elif n.author_reference:
-        author_ref = {"reference": n.author_reference}
-        if n.author_display:
-            author_ref["display"] = n.author_display
-        entry["authorReference"] = author_ref
-    if n.time:
-        entry["time"] = fhir_instant(n.time)
-    if n.text:
-        entry["text"] = n.text
+    time = getattr(n, "time", None) or (
+        n.get("time") if isinstance(n, dict) else None
+    )
+    if time:
+        entry["time"] = fhir_instant(time)
+    text = getattr(n, "text", None) or (
+        n.get("text") if isinstance(n, dict) else None
+    )
+    if text:
+        entry["text"] = text
     return entry or None
 
 
 def _restriction_from_payload(r: TaskRestrictionInput | dict) -> dict | None:
-    if isinstance(r, dict):
-        res: dict = {}
-        if r.get("repetitions") is not None:
-            res["repetitions"] = r["repetitions"]
-        if r.get("period_start") or r.get("period_end"):
-            p: dict = {}
-            if r.get("period_start"):
-                p["start"] = fhir_instant(r["period_start"])
-            if r.get("period_end"):
-                p["end"] = fhir_instant(r["period_end"])
-            res["period"] = p
-        recips = [
-            _ref_from_payload(rec) for rec in (r.get("recipient") or [])
-        ]
-        if recips:
-            res["recipient"] = [x for x in recips if x is not None]
-        return res or None
+    if not r:
+        return None
+    def _get(field):
+        return r.get(field) if isinstance(r, dict) else getattr(r, field, None)
 
-    res = {}
-    if r.repetitions is not None:
-        res["repetitions"] = r.repetitions
-    if r.period_start or r.period_end:
-        p = {}
-        if r.period_start:
-            p["start"] = fhir_instant(r.period_start)
-        if r.period_end:
-            p["end"] = fhir_instant(r.period_end)
+    res: dict = {}
+    reps = _get("repetitions")
+    if reps is not None:
+        res["repetitions"] = reps
+    p_start = _get("period_start")
+    p_end = _get("period_end")
+    if p_start or p_end:
+        p: dict = {}
+        if p_start:
+            p["start"] = fhir_instant(p_start)
+        if p_end:
+            p["end"] = fhir_instant(p_end)
         res["period"] = p
-    recips = [
-        _ref_from_payload(rec) for rec in (r.recipient or [])
-    ]
-    if recips:
+    recip_list = _get("recipient")
+    if recip_list:
+        recips = [_ref_from_payload(rec) for rec in recip_list]
         res["recipient"] = [x for x in recips if x is not None]
     return res or None
 
 
 def _input_from_payload(inp: TaskInputInput | dict) -> dict | None:
-    if isinstance(inp, dict):
-        type_cc = _codeable_concept_from_payload(
-            inp.get("type_coding"), inp.get("type_text")
-        )
-        if not type_cc:
-            return None
-        res: dict = {"type": type_cc}
-        if inp.get("value_string") is not None:
-            res["valueString"] = inp["value_string"]
-        elif inp.get("value_boolean") is not None:
-            res["valueBoolean"] = inp["value_boolean"]
-        elif inp.get("value_integer") is not None:
-            res["valueInteger"] = inp["value_integer"]
-        elif inp.get("value_decimal") is not None:
-            res["valueDecimal"] = float(inp["value_decimal"])
-        elif inp.get("value_date") is not None:
-            res["valueDate"] = _format_date(inp["value_date"])
-        elif inp.get("value_date_time") is not None:
-            res["valueDateTime"] = fhir_instant(inp["value_date_time"])
-        elif inp.get("value_time") is not None:
-            res["valueTime"] = str(inp["value_time"])
-        elif inp.get("value_uri") is not None:
-            res["valueUri"] = inp["value_uri"]
-        elif inp.get("value_code") is not None:
-            res["valueCode"] = inp["value_code"]
-        elif inp.get("value_reference"):
-            ref = _ref_from_payload(
-                inp["value_reference"], inp.get("value_reference_display")
-            )
-            if ref:
-                res["valueReference"] = ref
-        elif inp.get("value_json") is not None:
-            if isinstance(inp["value_json"], dict):
-                res.update(inp["value_json"])
-        return res
+    if not inp:
+        return None
+    def _get(field):
+        return inp.get(field) if isinstance(inp, dict) else getattr(inp, field, None)
 
-    type_cc = _codeable_concept_from_payload(inp.type_coding, inp.type_text)
+    type_codings = _get("type_coding")
+    type_text = _get("type_text")
+    type_cc = _codeable_concept_from_payload(type_codings, type_text)
     if not type_cc:
         return None
-    res = {"type": type_cc}
-    if inp.value_string is not None:
-        res["valueString"] = inp.value_string
-    elif inp.value_boolean is not None:
-        res["valueBoolean"] = inp.value_boolean
-    elif inp.value_integer is not None:
-        res["valueInteger"] = inp.value_integer
-    elif inp.value_decimal is not None:
-        res["valueDecimal"] = float(inp.value_decimal)
-    elif inp.value_date is not None:
-        res["valueDate"] = _format_date(inp.value_date)
-    elif inp.value_date_time is not None:
-        res["valueDateTime"] = fhir_instant(inp.value_date_time)
-    elif inp.value_time is not None:
-        res["valueTime"] = str(inp.value_time)
-    elif inp.value_uri is not None:
-        res["valueUri"] = inp.value_uri
-    elif inp.value_code is not None:
-        res["valueCode"] = inp.value_code
-    elif inp.value_reference:
-        ref = _ref_from_payload(inp.value_reference, inp.value_reference_display)
-        if ref:
-            res["valueReference"] = ref
-    elif inp.value_json is not None:
-        if isinstance(inp.value_json, dict):
-            res.update(inp.value_json)
+    res: dict = {"type": type_cc}
+
+    for k_in, k_fhir, is_dt, is_flt, is_date, is_time in [
+        ("value_string", "valueString", False, False, False, False),
+        ("value_boolean", "valueBoolean", False, False, False, False),
+        ("value_integer", "valueInteger", False, False, False, False),
+        ("value_decimal", "valueDecimal", False, True, False, False),
+        ("value_date", "valueDate", False, False, True, False),
+        ("value_date_time", "valueDateTime", True, False, False, False),
+        ("value_time", "valueTime", False, False, False, True),
+        ("value_uri", "valueUri", False, False, False, False),
+        ("value_code", "valueCode", False, False, False, False),
+    ]:
+        v = _get(k_in)
+        if v is not None:
+            if is_flt:
+                res[k_fhir] = float(v)
+            elif is_date:
+                res[k_fhir] = _format_date(v)
+            elif is_dt:
+                res[k_fhir] = fhir_instant(v)
+            elif is_time:
+                res[k_fhir] = str(v)
+            else:
+                res[k_fhir] = v
+            break
+    else:
+        val_ref = _reference_from_payload(inp, "value_reference")
+        if val_ref:
+            res["valueReference"] = val_ref
+        else:
+            val_json = _get("value_json")
+            if val_json is not None and isinstance(val_json, dict):
+                res.update(val_json)
     return res
 
 
 def _output_from_payload(out: TaskOutputInput | dict) -> dict | None:
-    if isinstance(out, dict):
-        type_cc = _codeable_concept_from_payload(
-            out.get("type_coding"), out.get("type_text")
-        )
-        if not type_cc:
-            return None
-        res: dict = {"type": type_cc}
-        if out.get("value_string") is not None:
-            res["valueString"] = out["value_string"]
-        elif out.get("value_boolean") is not None:
-            res["valueBoolean"] = out["value_boolean"]
-        elif out.get("value_integer") is not None:
-            res["valueInteger"] = out["value_integer"]
-        elif out.get("value_decimal") is not None:
-            res["valueDecimal"] = float(out["value_decimal"])
-        elif out.get("value_date") is not None:
-            res["valueDate"] = _format_date(out["value_date"])
-        elif out.get("value_date_time") is not None:
-            res["valueDateTime"] = fhir_instant(out["value_date_time"])
-        elif out.get("value_time") is not None:
-            res["valueTime"] = str(out["value_time"])
-        elif out.get("value_uri") is not None:
-            res["valueUri"] = out["value_uri"]
-        elif out.get("value_code") is not None:
-            res["valueCode"] = out["value_code"]
-        elif out.get("value_reference"):
-            ref = _ref_from_payload(
-                out["value_reference"], out.get("value_reference_display")
-            )
-            if ref:
-                res["valueReference"] = ref
-        elif out.get("value_json") is not None:
-            if isinstance(out["value_json"], dict):
-                res.update(out["value_json"])
-        return res
+    if not out:
+        return None
+    def _get(field):
+        return out.get(field) if isinstance(out, dict) else getattr(out, field, None)
 
-    type_cc = _codeable_concept_from_payload(out.type_coding, out.type_text)
+    type_codings = _get("type_coding")
+    type_text = _get("type_text")
+    type_cc = _codeable_concept_from_payload(type_codings, type_text)
     if not type_cc:
         return None
-    res = {"type": type_cc}
-    if out.value_string is not None:
-        res["valueString"] = out.value_string
-    elif out.value_boolean is not None:
-        res["valueBoolean"] = out.value_boolean
-    elif out.value_integer is not None:
-        res["valueInteger"] = out.value_integer
-    elif out.value_decimal is not None:
-        res["valueDecimal"] = float(out.value_decimal)
-    elif out.value_date is not None:
-        res["valueDate"] = _format_date(out.value_date)
-    elif out.value_date_time is not None:
-        res["valueDateTime"] = fhir_instant(out.value_date_time)
-    elif out.value_time is not None:
-        res["valueTime"] = str(out.value_time)
-    elif out.value_uri is not None:
-        res["valueUri"] = out.value_uri
-    elif out.value_code is not None:
-        res["valueCode"] = out.value_code
-    elif out.value_reference:
-        ref = _ref_from_payload(out.value_reference, out.value_reference_display)
-        if ref:
-            res["valueReference"] = ref
-    elif out.value_json is not None:
-        if isinstance(out.value_json, dict):
-            res.update(out.value_json)
+    res: dict = {"type": type_cc}
+
+    for k_in, k_fhir, is_dt, is_flt, is_date, is_time in [
+        ("value_string", "valueString", False, False, False, False),
+        ("value_boolean", "valueBoolean", False, False, False, False),
+        ("value_integer", "valueInteger", False, False, False, False),
+        ("value_decimal", "valueDecimal", False, True, False, False),
+        ("value_date", "valueDate", False, False, True, False),
+        ("value_date_time", "valueDateTime", True, False, False, False),
+        ("value_time", "valueTime", False, False, False, True),
+        ("value_uri", "valueUri", False, False, False, False),
+        ("value_code", "valueCode", False, False, False, False),
+    ]:
+        v = _get(k_in)
+        if v is not None:
+            if is_flt:
+                res[k_fhir] = float(v)
+            elif is_date:
+                res[k_fhir] = _format_date(v)
+            elif is_dt:
+                res[k_fhir] = fhir_instant(v)
+            elif is_time:
+                res[k_fhir] = str(v)
+            else:
+                res[k_fhir] = v
+            break
+    else:
+        val_ref = _reference_from_payload(out, "value_reference")
+        if val_ref:
+            res["valueReference"] = val_ref
+        else:
+            val_json = _get("value_json")
+            if val_json is not None and isinstance(val_json, dict):
+                res.update(val_json)
     return res
 
 
@@ -481,16 +539,15 @@ def payload_to_fhir_task(payload: TaskCreateSchema) -> dict:
     if group_id:
         result["groupIdentifier"] = group_id
 
-    focus = _ref_from_payload(payload.focus, payload.focus_display)
+    focus = _reference_from_payload(payload, "focus")
     if focus:
         result["focus"] = focus
 
-    for_val = payload.for_
-    for_ref = _ref_from_payload(for_val, payload.for_display)
+    for_ref = _reference_from_payload(payload, "for")
     if for_ref:
         result["for"] = for_ref
 
-    encounter = _ref_from_payload(payload.encounter, payload.encounter_display)
+    encounter = _reference_from_payload(payload, "encounter")
     if encounter:
         result["encounter"] = encounter
 
@@ -502,21 +559,19 @@ def payload_to_fhir_task(payload: TaskCreateSchema) -> dict:
             period["end"] = fhir_instant(payload.execution_period_end)
         result["executionPeriod"] = period
 
-    requester = _ref_from_payload(payload.requester, payload.requester_display)
+    requester = _reference_from_payload(payload, "requester")
     if requester:
         result["requester"] = requester
 
-    owner = _ref_from_payload(payload.owner, payload.owner_display)
+    owner = _reference_from_payload(payload, "owner")
     if owner:
         result["owner"] = owner
 
-    location = _ref_from_payload(payload.location, payload.location_display)
+    location = _reference_from_payload(payload, "location")
     if location:
         result["location"] = location
 
-    reason_ref = _ref_from_payload(
-        payload.reason_reference, payload.reason_reference_display
-    )
+    reason_ref = _reference_from_payload(payload, "reason_reference")
     if reason_ref:
         result["reasonReference"] = reason_ref
 
@@ -697,20 +752,19 @@ def patch_fragment_to_fhir_task(
 
     if _FOCUS_FIELDS & fields_set:
         touched.add("focus")
-        focus = _ref_from_payload(payload.focus, payload.focus_display)
+        focus = _reference_from_payload(payload, "focus")
         if focus:
             fragment["focus"] = focus
 
     if _FOR_FIELDS & fields_set:
         touched.add("for")
-        for_val = payload.for_
-        for_ref = _ref_from_payload(for_val, payload.for_display)
+        for_ref = _reference_from_payload(payload, "for")
         if for_ref:
             fragment["for"] = for_ref
 
     if _ENCOUNTER_FIELDS & fields_set:
         touched.add("encounter")
-        encounter = _ref_from_payload(payload.encounter, payload.encounter_display)
+        encounter = _reference_from_payload(payload, "encounter")
         if encounter:
             fragment["encounter"] = encounter
 
@@ -726,27 +780,25 @@ def patch_fragment_to_fhir_task(
 
     if _REQUESTER_FIELDS & fields_set:
         touched.add("requester")
-        requester = _ref_from_payload(payload.requester, payload.requester_display)
+        requester = _reference_from_payload(payload, "requester")
         if requester:
             fragment["requester"] = requester
 
     if _OWNER_FIELDS & fields_set:
         touched.add("owner")
-        owner = _ref_from_payload(payload.owner, payload.owner_display)
+        owner = _reference_from_payload(payload, "owner")
         if owner:
             fragment["owner"] = owner
 
     if _LOCATION_FIELDS & fields_set:
         touched.add("location")
-        location = _ref_from_payload(payload.location, payload.location_display)
+        location = _reference_from_payload(payload, "location")
         if location:
             fragment["location"] = location
 
     if _REASON_REF_FIELDS & fields_set:
         touched.add("reasonReference")
-        reason_ref = _ref_from_payload(
-            payload.reason_reference, payload.reason_reference_display
-        )
+        reason_ref = _reference_from_payload(payload, "reason_reference")
         if reason_ref:
             fragment["reasonReference"] = reason_ref
 

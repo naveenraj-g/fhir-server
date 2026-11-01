@@ -73,6 +73,48 @@ async def test_create_task_minimal(client):
     assert data["id"] >= 280000
 
 
+async def test_create_task_with_reference_identifier_fallback(client):
+    p_id = await create_test_patient(client)
+    payload = {
+        "status": "requested",
+        "intent": "order",
+        "for": f"Patient/{p_id}",
+        "focus_display": "External Blood Glucose Meter",
+        "focus_identifier_system": "http://example.org/devices",
+        "focus_identifier_value": "DEV-5544",
+        "requester_display": "External Ordering Doctor",
+        "requester_identifier_system": "http://npi.org",
+        "requester_identifier_value": "NPI-998877",
+        "based_on": [
+            {
+                "display": "External Service Request",
+                "identifier_system": "http://external-system.org/requests",
+                "identifier_value": "SR-443322",
+            }
+        ],
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["focus_display"] == "External Blood Glucose Meter"
+    assert data["focus_identifier_system"] == "http://example.org/devices"
+    assert data["focus_identifier_value"] == "DEV-5544"
+    assert data["requester_identifier_system"] == "http://npi.org"
+    assert data["requester_identifier_value"] == "NPI-998877"
+    assert len(data["based_on_list"]) == 1
+    assert data["based_on_list"][0]["reference_identifier_system"] == "http://external-system.org/requests"
+    assert data["based_on_list"][0]["reference_identifier_value"] == "SR-443322"
+
+    task_id = data["id"]
+    fhir_resp = await client.get(f"{BASE}/{task_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["focus"]["identifier"]["system"] == "http://example.org/devices"
+    assert fhir_data["focus"]["identifier"]["value"] == "DEV-5544"
+    assert fhir_data["requester"]["identifier"]["value"] == "NPI-998877"
+    assert fhir_data["basedOn"][0]["identifier"]["value"] == "SR-443322"
+
+
 async def test_create_task_full(client):
     p_id = await create_test_patient(client)
     enc_id = await create_test_encounter(client, p_id)

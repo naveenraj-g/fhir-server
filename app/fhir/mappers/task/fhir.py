@@ -68,13 +68,75 @@ def _fhir_ref(
     return result or None
 
 
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
+    ref_type = getattr(obj, f"{prefix}_type", None)
+    ref_id = getattr(obj, f"{prefix}_id", None)
+    display = getattr(obj, f"{prefix}_display", None)
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    elif ref_type and ref_id:
+        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if display:
+        entry["display"] = display
+
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+
+    return entry or None
+
+
 def _fhir_reference_row(row) -> dict | None:
-    return _fhir_ref(
-        row.reference_reference,
-        row.reference_type,
-        row.reference_id,
-        row.reference_display,
-    )
+    return _fhir_reference(row, "reference")
 
 
 def _fhir_identifier(i: TaskIdentifier) -> dict | None:
@@ -95,12 +157,7 @@ def _fhir_identifier(i: TaskIdentifier) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        i.assigner_reference,
-        i.assigner_type,
-        i.assigner_id,
-        i.assigner_display,
-    )
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -121,12 +178,7 @@ def _fhir_group_identifier(model: TaskModel) -> dict | None:
         if model.group_identifier_period_end:
             period["end"] = fhir_instant(model.group_identifier_period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        model.group_identifier_assigner_reference,
-        model.group_identifier_assigner_type,
-        model.group_identifier_assigner_id,
-        model.group_identifier_assigner_display,
-    )
+    assigner = _fhir_reference(model, "group_identifier_assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -140,10 +192,8 @@ def _fhir_note(n: TaskNote) -> dict | None:
     entry: dict = {}
     if n.author_string:
         entry["authorString"] = n.author_string
-    elif n.author_reference or (n.author_type and n.author_id):
-        author_ref = _fhir_ref(
-            n.author_reference, n.author_type, n.author_id, n.author_display
-        )
+    else:
+        author_ref = _fhir_reference(n, "author")
         if author_ref:
             entry["authorReference"] = author_ref
     if n.time:
@@ -197,16 +247,11 @@ def _fhir_input(inp: TaskInput) -> dict | None:
         entry["valueUri"] = inp.value_uri
     elif inp.value_code is not None:
         entry["valueCode"] = inp.value_code
-    elif inp.value_reference_reference or (inp.value_reference_type and inp.value_reference_id):
-        ref = _fhir_ref(
-            inp.value_reference_reference,
-            inp.value_reference_type,
-            inp.value_reference_id,
-            inp.value_reference_display,
-        )
+    else:
+        ref = _fhir_reference(inp, "value_reference")
         if ref:
             entry["valueReference"] = ref
-    elif inp.value_json is not None:
+    if inp.value_json is not None:
         if isinstance(inp.value_json, dict):
             entry.update(inp.value_json)
     return entry
@@ -235,16 +280,11 @@ def _fhir_output(out: TaskOutput) -> dict | None:
         entry["valueUri"] = out.value_uri
     elif out.value_code is not None:
         entry["valueCode"] = out.value_code
-    elif out.value_reference_reference or (out.value_reference_type and out.value_reference_id):
-        ref = _fhir_ref(
-            out.value_reference_reference,
-            out.value_reference_type,
-            out.value_reference_id,
-            out.value_reference_display,
-        )
+    else:
+        ref = _fhir_reference(out, "value_reference")
         if ref:
             entry["valueReference"] = ref
-    elif out.value_json is not None:
+    if out.value_json is not None:
         if isinstance(out.value_json, dict):
             entry.update(out.value_json)
     return entry
@@ -340,30 +380,15 @@ def to_fhir_task(model: TaskModel) -> dict:
     if model.description:
         result["description"] = model.description
 
-    focus = _fhir_ref(
-        model.focus_reference,
-        model.focus_type,
-        model.focus_id,
-        model.focus_display,
-    )
+    focus = _fhir_reference(model, "focus")
     if focus:
         result["focus"] = focus
 
-    for_ref = _fhir_ref(
-        model.for_reference,
-        model.for_type,
-        model.for_id,
-        model.for_display,
-    )
+    for_ref = _fhir_reference(model, "for")
     if for_ref:
         result["for"] = for_ref
 
-    encounter = _fhir_ref(
-        model.encounter_reference,
-        model.encounter_type,
-        model.encounter_id,
-        model.encounter_display,
-    )
+    encounter = _fhir_reference(model, "encounter")
     if encounter:
         result["encounter"] = encounter
 
@@ -381,12 +406,7 @@ def to_fhir_task(model: TaskModel) -> dict:
     if model.last_modified:
         result["lastModified"] = fhir_instant(model.last_modified)
 
-    requester = _fhir_ref(
-        model.requester_reference,
-        model.requester_type,
-        model.requester_id,
-        model.requester_display,
-    )
+    requester = _fhir_reference(model, "requester")
     if requester:
         result["requester"] = requester
 
@@ -398,21 +418,11 @@ def to_fhir_task(model: TaskModel) -> dict:
     if performer_types:
         result["performerType"] = performer_types
 
-    owner = _fhir_ref(
-        model.owner_reference,
-        model.owner_type,
-        model.owner_id,
-        model.owner_display,
-    )
+    owner = _fhir_reference(model, "owner")
     if owner:
         result["owner"] = owner
 
-    location = _fhir_ref(
-        model.location_reference,
-        model.location_type,
-        model.location_id,
-        model.location_display,
-    )
+    location = _fhir_reference(model, "location")
     if location:
         result["location"] = location
 
@@ -422,12 +432,7 @@ def to_fhir_task(model: TaskModel) -> dict:
     if reason_code:
         result["reasonCode"] = reason_code
 
-    reason_ref = _fhir_ref(
-        model.reason_reference_reference,
-        model.reason_reference_type,
-        model.reason_reference_id,
-        model.reason_reference_display,
-    )
+    reason_ref = _fhir_reference(model, "reason_reference")
     if reason_ref:
         result["reasonReference"] = reason_ref
 

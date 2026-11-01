@@ -3,6 +3,25 @@ from sqlalchemy.orm import selectinload
 from app.core.filters import parse_reference
 from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
 from app.models.enums import OrganizationReferenceType
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+
+
+def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
+    if payload is None:
+        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
+
+
+def _child_reference_identifier_kwargs(ref_item) -> dict:
+    if isinstance(ref_item, str) or ref_item is None:
+        return {f"reference_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"reference_{suffix}": getattr(ref_item, suffix, None)
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
 from app.models.task import (
     TaskBasedOn,
     TaskBusinessStatusCoding,

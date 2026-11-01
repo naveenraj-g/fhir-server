@@ -37,19 +37,59 @@ def _plain_coding(c) -> dict:
     }
 
 
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
+    ref_type = getattr(obj, f"{prefix}_type", None)
+    ref_id = getattr(obj, f"{prefix}_id", None)
+    computed = raw_reference or (
+        f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
+    )
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+    return {
+        f"{prefix}_reference": raw_reference,
+        prefix: computed,
+        f"{prefix}_type": fhir_enum(ref_type),
+        f"{prefix}_id": ref_id,
+        f"{prefix}_display": getattr(obj, f"{prefix}_display", None),
+        f"{prefix}_identifier_use": fhir_enum(
+            getattr(obj, f"{prefix}_identifier_use", None)
+        ),
+        f"{prefix}_identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        f"{prefix}_identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
+        f"{prefix}_identifier_type_code": getattr(
+            obj, f"{prefix}_identifier_type_code", None
+        ),
+        f"{prefix}_identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        f"{prefix}_identifier_type_text": getattr(
+            obj, f"{prefix}_identifier_type_text", None
+        ),
+        f"{prefix}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{prefix}_identifier_system": getattr(
+            obj, f"{prefix}_identifier_system", None
+        ),
+        f"{prefix}_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        f"{prefix}_identifier_period_start": fhir_instant(id_period_start)
+        if id_period_start
+        else None,
+        f"{prefix}_identifier_period_end": fhir_instant(id_period_end)
+        if id_period_end
+        else None,
+    }
+
+
 def _plain_ref_row(row) -> dict:
-    ref_type = fhir_enum(row.reference_type)
     return {
         "id": row.id,
-        "reference_reference": row.reference_reference,
-        "reference": (
-            f"{ref_type}/{row.reference_id}"
-            if (ref_type and row.reference_id)
-            else row.reference_reference
-        ),
-        "reference_type": ref_type,
-        "reference_id": row.reference_id,
-        "reference_display": row.reference_display,
+        **_plain_reference_fields(row, "reference"),
         "tenant_id": row.tenant_id,
         "created_by": row.created_by,
         "updated_by": row.updated_by,
@@ -68,30 +108,7 @@ def _plain_identifier(i: TaskIdentifier) -> dict:
         "value": i.value,
         "period_start": fhir_instant(i.period_start),
         "period_end": fhir_instant(i.period_end),
-        "assigner_reference": i.assigner_reference,
-        "assigner": (
-            f"Organization/{i.assigner_id}"
-            if (i.assigner_id and fhir_enum(i.assigner_type) == "Organization")
-            else i.assigner_reference
-        ),
-        "assigner_type": fhir_enum(i.assigner_type),
-        "assigner_id": i.assigner_id,
-        "assigner_display": i.assigner_display,
-        "assigner_identifier_use": fhir_enum(i.assigner_identifier_use),
-        "assigner_identifier_type_system": i.assigner_identifier_type_system,
-        "assigner_identifier_type_version": i.assigner_identifier_type_version,
-        "assigner_identifier_type_code": i.assigner_identifier_type_code,
-        "assigner_identifier_type_display": i.assigner_identifier_type_display,
-        "assigner_identifier_type_text": i.assigner_identifier_type_text,
-        "assigner_identifier_type_user_selected": i.assigner_identifier_type_user_selected,
-        "assigner_identifier_system": i.assigner_identifier_system,
-        "assigner_identifier_value": i.assigner_identifier_value,
-        "assigner_identifier_period_start": fhir_instant(
-            i.assigner_identifier_period_start
-        ),
-        "assigner_identifier_period_end": fhir_instant(
-            i.assigner_identifier_period_end
-        ),
+        **_plain_reference_fields(i, "assigner"),
         "tenant_id": i.tenant_id,
         "created_by": i.created_by,
         "updated_by": i.updated_by,
@@ -117,10 +134,7 @@ def _plain_note(n: TaskNote) -> dict:
     return {
         "id": n.id,
         "author_string": n.author_string,
-        "author_reference": n.author_reference,
-        "author_type": n.author_type,
-        "author_id": n.author_id,
-        "author_display": n.author_display,
+        **_plain_reference_fields(n, "author"),
         "time": fhir_instant(n.time),
         "text": n.text,
         "tenant_id": n.tenant_id,
@@ -145,15 +159,7 @@ def _plain_input(inp: TaskInput) -> dict:
         "value_time": str(inp.value_time) if inp.value_time else None,
         "value_uri": inp.value_uri,
         "value_code": inp.value_code,
-        "value_reference_reference": inp.value_reference_reference,
-        "value_reference": (
-            f"{inp.value_reference_type}/{inp.value_reference_id}"
-            if (inp.value_reference_type and inp.value_reference_id)
-            else inp.value_reference_reference
-        ),
-        "value_reference_type": inp.value_reference_type,
-        "value_reference_id": inp.value_reference_id,
-        "value_reference_display": inp.value_reference_display,
+        **_plain_reference_fields(inp, "value_reference"),
         "value_json": inp.value_json,
         "tenant_id": inp.tenant_id,
         "created_by": inp.created_by,
@@ -177,15 +183,7 @@ def _plain_output(out: TaskOutput) -> dict:
         "value_time": str(out.value_time) if out.value_time else None,
         "value_uri": out.value_uri,
         "value_code": out.value_code,
-        "value_reference_reference": out.value_reference_reference,
-        "value_reference": (
-            f"{out.value_reference_type}/{out.value_reference_id}"
-            if (out.value_reference_type and out.value_reference_id)
-            else out.value_reference_reference
-        ),
-        "value_reference_type": out.value_reference_type,
-        "value_reference_id": out.value_reference_id,
-        "value_reference_display": out.value_reference_display,
+        **_plain_reference_fields(out, "value_reference"),
         "value_json": out.value_json,
         "tenant_id": out.tenant_id,
         "created_by": out.created_by,
@@ -197,6 +195,7 @@ def _plain_output(out: TaskOutput) -> dict:
 
 def to_plain_task(model: TaskModel) -> dict:
     """Serialize a TaskModel to plain snake_case dict."""
+    for_dict = _plain_reference_fields(model, "for")
     return {
         "id": model.task_id,
         "status": fhir_enum(model.status),
@@ -221,41 +220,16 @@ def to_plain_task(model: TaskModel) -> dict:
         "reason_code_codings": [
             _plain_coding(c) for c in (model.reason_code_codings or [])
         ],
-        "focus_reference": model.focus_reference,
-        "focus_type": model.focus_type,
-        "focus_id": model.focus_id,
-        "focus_display": model.focus_display,
-        "for_reference": model.for_reference,
-        "for_type": model.for_type,
-        "for_id": model.for_id,
-        "for_display": model.for_display,
-        "for_": (
-            f"{model.for_type}/{model.for_id}"
-            if (model.for_type and model.for_id)
-            else model.for_reference
-        ),
-        "encounter_reference": model.encounter_reference,
-        "encounter_type": fhir_enum(model.encounter_type),
-        "encounter_id": model.encounter_id,
-        "encounter_display": model.encounter_display,
+        **_plain_reference_fields(model, "focus"),
+        **for_dict,
+        "for_": for_dict.get("for"),
+        **_plain_reference_fields(model, "encounter"),
         "execution_period_start": fhir_instant(model.execution_period_start),
         "execution_period_end": fhir_instant(model.execution_period_end),
-        "requester_reference": model.requester_reference,
-        "requester_type": fhir_enum(model.requester_type),
-        "requester_id": model.requester_id,
-        "requester_display": model.requester_display,
-        "owner_reference": model.owner_reference,
-        "owner_type": fhir_enum(model.owner_type),
-        "owner_id": model.owner_id,
-        "owner_display": model.owner_display,
-        "location_reference": model.location_reference,
-        "location_type": fhir_enum(model.location_type),
-        "location_id": model.location_id,
-        "location_display": model.location_display,
-        "reason_reference_reference": model.reason_reference_reference,
-        "reason_reference_type": model.reason_reference_type,
-        "reason_reference_id": model.reason_reference_id,
-        "reason_reference_display": model.reason_reference_display,
+        **_plain_reference_fields(model, "requester"),
+        **_plain_reference_fields(model, "owner"),
+        **_plain_reference_fields(model, "location"),
+        **_plain_reference_fields(model, "reason_reference"),
         "group_identifier_use": fhir_enum(model.group_identifier_use),
         "group_identifier_system": model.group_identifier_system,
         "group_identifier_value": model.group_identifier_value,
@@ -265,12 +239,7 @@ def to_plain_task(model: TaskModel) -> dict:
         "group_identifier_period_end": fhir_instant(
             model.group_identifier_period_end
         ),
-        "group_identifier_assigner_reference": model.group_identifier_assigner_reference,
-        "group_identifier_assigner_type": fhir_enum(
-            model.group_identifier_assigner_type
-        ),
-        "group_identifier_assigner_id": model.group_identifier_assigner_id,
-        "group_identifier_assigner_display": model.group_identifier_assigner_display,
+        **_plain_reference_fields(model, "group_identifier_assigner"),
         "restriction_repetitions": model.restriction_repetitions,
         "restriction_period_start": fhir_instant(model.restriction_period_start),
         "restriction_period_end": fhir_instant(model.restriction_period_end),

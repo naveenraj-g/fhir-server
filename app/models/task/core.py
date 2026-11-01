@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -107,12 +108,38 @@ class TaskModel(TenantAuditMixin, Base):
     focus_type = Column(String, nullable=True)
     focus_id = Column(BigInteger, nullable=True, index=True)
     focus_display = Column(String, nullable=True)
+    focus_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    focus_identifier_type_system = Column(String, nullable=True)
+    focus_identifier_type_version = Column(String, nullable=True)
+    focus_identifier_type_code = Column(String, nullable=True)
+    focus_identifier_type_display = Column(String, nullable=True)
+    focus_identifier_type_user_selected = Column(Boolean, nullable=True)
+    focus_identifier_type_text = Column(String, nullable=True)
+    focus_identifier_system = Column(String, nullable=True)
+    focus_identifier_value = Column(String, nullable=True)
+    focus_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    focus_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # for (0..1 Reference(Any))
     for_reference = Column(String, nullable=True)
     for_type = Column(String, nullable=True)
     for_id = Column(BigInteger, nullable=True, index=True)
     for_display = Column(String, nullable=True)
+    for_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    for_identifier_type_system = Column(String, nullable=True)
+    for_identifier_type_version = Column(String, nullable=True)
+    for_identifier_type_code = Column(String, nullable=True)
+    for_identifier_type_display = Column(String, nullable=True)
+    for_identifier_type_user_selected = Column(Boolean, nullable=True)
+    for_identifier_type_text = Column(String, nullable=True)
+    for_identifier_system = Column(String, nullable=True)
+    for_identifier_value = Column(String, nullable=True)
+    for_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    for_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # encounter (0..1 Reference(Encounter))
     encounter_reference = Column(String, nullable=True)
@@ -122,6 +149,19 @@ class TaskModel(TenantAuditMixin, Base):
     )
     encounter_id = Column(BigInteger, nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
+    encounter_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    encounter_identifier_type_system = Column(String, nullable=True)
+    encounter_identifier_type_version = Column(String, nullable=True)
+    encounter_identifier_type_code = Column(String, nullable=True)
+    encounter_identifier_type_display = Column(String, nullable=True)
+    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
+    encounter_identifier_type_text = Column(String, nullable=True)
+    encounter_identifier_system = Column(String, nullable=True)
+    encounter_identifier_value = Column(String, nullable=True)
+    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # executionPeriod (0..1 Period)
     execution_period_start = Column(DateTime(timezone=True), nullable=True)
@@ -135,6 +175,19 @@ class TaskModel(TenantAuditMixin, Base):
     )
     requester_id = Column(BigInteger, nullable=True, index=True)
     requester_display = Column(String, nullable=True)
+    requester_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    requester_identifier_type_system = Column(String, nullable=True)
+    requester_identifier_type_version = Column(String, nullable=True)
+    requester_identifier_type_code = Column(String, nullable=True)
+    requester_identifier_type_display = Column(String, nullable=True)
+    requester_identifier_type_user_selected = Column(Boolean, nullable=True)
+    requester_identifier_type_text = Column(String, nullable=True)
+    requester_identifier_system = Column(String, nullable=True)
+    requester_identifier_value = Column(String, nullable=True)
+    requester_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    requester_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # owner (0..1 Reference(Practitioner|PractitionerRole|Organization|CareTeam|HealthcareService|Patient|Device|RelatedPerson))
     owner_reference = Column(String, nullable=True)
@@ -144,6 +197,19 @@ class TaskModel(TenantAuditMixin, Base):
     )
     owner_id = Column(BigInteger, nullable=True, index=True)
     owner_display = Column(String, nullable=True)
+    owner_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    owner_identifier_type_system = Column(String, nullable=True)
+    owner_identifier_type_version = Column(String, nullable=True)
+    owner_identifier_type_code = Column(String, nullable=True)
+    owner_identifier_type_display = Column(String, nullable=True)
+    owner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    owner_identifier_type_text = Column(String, nullable=True)
+    owner_identifier_system = Column(String, nullable=True)
+    owner_identifier_value = Column(String, nullable=True)
+    owner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    owner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # location (0..1 Reference(Location))
     location_reference = Column(String, nullable=True)
@@ -153,12 +219,42 @@ class TaskModel(TenantAuditMixin, Base):
     )
     location_id = Column(BigInteger, nullable=True, index=True)
     location_display = Column(String, nullable=True)
+    location_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    location_identifier_type_system = Column(String, nullable=True)
+    location_identifier_type_version = Column(String, nullable=True)
+    location_identifier_type_code = Column(String, nullable=True)
+    location_identifier_type_display = Column(String, nullable=True)
+    location_identifier_type_user_selected = Column(Boolean, nullable=True)
+    location_identifier_type_text = Column(String, nullable=True)
+    location_identifier_system = Column(String, nullable=True)
+    location_identifier_value = Column(String, nullable=True)
+    location_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    location_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # reasonReference (0..1 Reference(Any))
     reason_reference_reference = Column(String, nullable=True)
     reason_reference_type = Column(String, nullable=True)
     reason_reference_id = Column(BigInteger, nullable=True, index=True)
     reason_reference_display = Column(String, nullable=True)
+    reason_reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reason_reference_identifier_type_system = Column(String, nullable=True)
+    reason_reference_identifier_type_version = Column(String, nullable=True)
+    reason_reference_identifier_type_code = Column(String, nullable=True)
+    reason_reference_identifier_type_display = Column(String, nullable=True)
+    reason_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reason_reference_identifier_type_text = Column(String, nullable=True)
+    reason_reference_identifier_system = Column(String, nullable=True)
+    reason_reference_identifier_value = Column(String, nullable=True)
+    reason_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    reason_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # groupIdentifier (0..1 Identifier)
     group_identifier_use = Column(
@@ -180,6 +276,25 @@ class TaskModel(TenantAuditMixin, Base):
     )
     group_identifier_assigner_id = Column(BigInteger, nullable=True)
     group_identifier_assigner_display = Column(String, nullable=True)
+    group_identifier_assigner_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    group_identifier_assigner_identifier_type_system = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_version = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_code = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_display = Column(String, nullable=True)
+    group_identifier_assigner_identifier_type_user_selected = Column(
+        Boolean, nullable=True
+    )
+    group_identifier_assigner_identifier_type_text = Column(String, nullable=True)
+    group_identifier_assigner_identifier_system = Column(String, nullable=True)
+    group_identifier_assigner_identifier_value = Column(String, nullable=True)
+    group_identifier_assigner_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    group_identifier_assigner_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # restriction (0..1 BackboneElement)
     restriction_repetitions = Column(Integer, nullable=True)

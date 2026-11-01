@@ -26,7 +26,9 @@ from app.models.task import (
 from app.schemas.task import TaskCreateSchema, TaskPatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _SORTABLE_FIELDS,
+    _child_reference_identifier_kwargs,
     _parse_assigner_ref,
     _parse_encounter_ref,
     _parse_generic_ref,
@@ -37,6 +39,7 @@ from ._shared import (
     _parse_recipient_ref,
     _parse_relevant_history_ref,
     _parse_requester_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -77,6 +80,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -140,6 +144,7 @@ async def _add_based_on(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=display,
+                **_child_reference_identifier_kwargs(r),
                 created_by=created_by,
             )
         )
@@ -162,6 +167,7 @@ async def _add_part_of(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=display,
+                **_child_reference_identifier_kwargs(r),
                 created_by=created_by,
             )
         )
@@ -184,6 +190,7 @@ async def _add_insurance(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=display,
+                **_child_reference_identifier_kwargs(r),
                 created_by=created_by,
             )
         )
@@ -206,6 +213,7 @@ async def _add_relevant_history(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=display,
+                **_child_reference_identifier_kwargs(r),
                 created_by=created_by,
             )
         )
@@ -228,6 +236,7 @@ async def _add_restriction_recipients(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=display,
+                **_child_reference_identifier_kwargs(r),
                 created_by=created_by,
             )
         )
@@ -249,6 +258,7 @@ def _add_notes(session, task_pk: int, org_id: str, notes, created_by: str) -> No
                 author_type=r_type,
                 author_id=r_id,
                 author_display=n.author_display,
+                **_prefixed_identifier_kwargs("author", n),
                 time=n.time,
                 text=n.text,
                 created_by=created_by,
@@ -282,6 +292,7 @@ async def _add_inputs(
             value_reference_type=r_type,
             value_reference_id=r_id,
             value_reference_display=inp.value_reference_display,
+            **_prefixed_identifier_kwargs("value_reference", inp),
             value_json=inp.value_json,
             created_by=created_by,
         )
@@ -323,6 +334,7 @@ async def _add_outputs(
             value_reference_type=r_type,
             value_reference_id=r_id,
             value_reference_display=out.value_reference_display,
+            **_prefixed_identifier_kwargs("value_reference", out),
             value_json=out.value_json,
             created_by=created_by,
         )
@@ -471,32 +483,39 @@ class TaskRepository:
                 focus_type=foc_type,
                 focus_id=foc_id,
                 focus_display=payload.focus_display,
+                **_prefixed_identifier_kwargs("focus", payload),
                 for_reference=for_val,
                 for_type=for_type,
                 for_id=for_id,
                 for_display=payload.for_display,
+                **_prefixed_identifier_kwargs("for", payload),
                 encounter_reference=payload.encounter,
                 encounter_type=enc_type,
                 encounter_id=enc_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 execution_period_start=payload.execution_period_start,
                 execution_period_end=payload.execution_period_end,
                 requester_reference=payload.requester,
                 requester_type=req_type,
                 requester_id=req_id,
                 requester_display=payload.requester_display,
+                **_prefixed_identifier_kwargs("requester", payload),
                 owner_reference=payload.owner,
                 owner_type=owner_type,
                 owner_id=owner_id,
                 owner_display=payload.owner_display,
+                **_prefixed_identifier_kwargs("owner", payload),
                 location_reference=payload.location,
                 location_type=loc_type,
                 location_id=loc_id,
                 location_display=payload.location_display,
+                **_prefixed_identifier_kwargs("location", payload),
                 reason_reference_reference=payload.reason_reference,
                 reason_reference_type=rr_type,
                 reason_reference_id=rr_id,
                 reason_reference_display=payload.reason_reference_display,
+                **_prefixed_identifier_kwargs("reason_reference", payload),
                 group_identifier_use=payload.group_identifier_use,
                 group_identifier_system=payload.group_identifier_system,
                 group_identifier_value=payload.group_identifier_value,
@@ -506,6 +525,7 @@ class TaskRepository:
                 group_identifier_assigner_type=grp_a_type,
                 group_identifier_assigner_id=grp_a_id,
                 group_identifier_assigner_display=payload.group_identifier_assigner_display,
+                **_prefixed_identifier_kwargs("group_identifier_assigner", payload),
                 restriction_repetitions=restr_rep,
                 restriction_period_start=restr_p_start,
                 restriction_period_end=restr_p_end,
@@ -769,6 +789,21 @@ class TaskRepository:
                             TaskRestrictionRecipient.task_pk == model.id
                         )
                     )
+
+            for prefix in (
+                "group_identifier_assigner",
+                "focus",
+                "for",
+                "encounter",
+                "requester",
+                "owner",
+                "location",
+                "reason_reference",
+            ):
+                for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    field = f"{prefix}_{suffix}"
+                    if field in provided:
+                        setattr(model, field, getattr(payload, field))
 
             model.updated_by = updated_by
 

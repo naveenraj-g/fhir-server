@@ -44,6 +44,17 @@ class PlainTaskInput(AuditFields):
     value_reference_type: str | None = None
     value_reference_id: int | None = None
     value_reference_display: str | None = None
+    value_reference_identifier_use: str | None = None
+    value_reference_identifier_type_system: str | None = None
+    value_reference_identifier_type_version: str | None = None
+    value_reference_identifier_type_code: str | None = None
+    value_reference_identifier_type_display: str | None = None
+    value_reference_identifier_type_user_selected: bool | None = None
+    value_reference_identifier_type_text: str | None = None
+    value_reference_identifier_system: str | None = None
+    value_reference_identifier_value: str | None = None
+    value_reference_identifier_period_start: str | None = None
+    value_reference_identifier_period_end: str | None = None
     value_json: Any | None = None
 
 
@@ -69,4 +80,15 @@ class PlainTaskOutput(AuditFields):
     value_reference_type: str | None = None
     value_reference_id: int | None = None
     value_reference_display: str | None = None
+    value_reference_identifier_use: str | None = None
+    value_reference_identifier_type_system: str | None = None
+    value_reference_identifier_type_version: str | None = None
+    value_reference_identifier_type_code: str | None = None
+    value_reference_identifier_type_display: str | None = None
+    value_reference_identifier_type_user_selected: bool | None = None
+    value_reference_identifier_type_text: str | None = None
+    value_reference_identifier_system: str | None = None
+    value_reference_identifier_value: str | None = None
+    value_reference_identifier_period_start: str | None = None
+    value_reference_identifier_period_end: str | None = None
     value_json: Any | None = None

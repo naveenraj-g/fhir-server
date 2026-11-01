@@ -91,6 +91,39 @@ class TaskCreateSchema(BaseModel):
     group_identifier_assigner_display: str | None = Field(
         None, description="Group identifier assigner display."
     )
+    group_identifier_assigner_identifier_use: IdentifierUse | None = Field(
+        None, description="Group identifier assigner identifier use."
+    )
+    group_identifier_assigner_identifier_type_system: str | None = Field(
+        None, description="Group identifier assigner identifier type system."
+    )
+    group_identifier_assigner_identifier_type_version: str | None = Field(
+        None, description="Group identifier assigner identifier type version."
+    )
+    group_identifier_assigner_identifier_type_code: str | None = Field(
+        None, description="Group identifier assigner identifier type code."
+    )
+    group_identifier_assigner_identifier_type_display: str | None = Field(
+        None, description="Group identifier assigner identifier type display."
+    )
+    group_identifier_assigner_identifier_type_user_selected: bool | None = Field(
+        None, description="Group identifier assigner identifier type user selected."
+    )
+    group_identifier_assigner_identifier_type_text: str | None = Field(
+        None, description="Group identifier assigner identifier type text."
+    )
+    group_identifier_assigner_identifier_system: str | None = Field(
+        None, description="Group identifier assigner identifier system."
+    )
+    group_identifier_assigner_identifier_value: str | None = Field(
+        None, description="Group identifier assigner identifier value."
+    )
+    group_identifier_assigner_identifier_period_start: datetime | None = Field(
+        None, description="Group identifier assigner identifier period start."
+    )
+    group_identifier_assigner_identifier_period_end: datetime | None = Field(
+        None, description="Group identifier assigner identifier period end."
+    )
     part_of: list[TaskReferenceInput | str] | None = Field(
         None, description="Composite task (Reference(Task))."
     )
@@ -132,6 +165,39 @@ class TaskCreateSchema(BaseModel):
     focus_display: str | None = Field(
         None, description="Narrative for focus reference."
     )
+    focus_identifier_use: IdentifierUse | None = Field(
+        None, description="Focus identifier use."
+    )
+    focus_identifier_type_system: str | None = Field(
+        None, description="Focus identifier type system."
+    )
+    focus_identifier_type_version: str | None = Field(
+        None, description="Focus identifier type version."
+    )
+    focus_identifier_type_code: str | None = Field(
+        None, description="Focus identifier type code."
+    )
+    focus_identifier_type_display: str | None = Field(
+        None, description="Focus identifier type display."
+    )
+    focus_identifier_type_user_selected: bool | None = Field(
+        None, description="Focus identifier type user selected."
+    )
+    focus_identifier_type_text: str | None = Field(
+        None, description="Focus identifier type text."
+    )
+    focus_identifier_system: str | None = Field(
+        None, description="Focus identifier system."
+    )
+    focus_identifier_value: str | None = Field(
+        None, description="Focus identifier value."
+    )
+    focus_identifier_period_start: datetime | None = Field(
+        None, description="Focus identifier period start."
+    )
+    focus_identifier_period_end: datetime | None = Field(
+        None, description="Focus identifier period end."
+    )
     for_: str | None = Field(
         None,
         alias="for",
@@ -140,11 +206,77 @@ class TaskCreateSchema(BaseModel):
     for_display: str | None = Field(
         None, description="Narrative for beneficiary reference."
     )
+    for_identifier_use: IdentifierUse | None = Field(
+        None, description="Beneficiary identifier use."
+    )
+    for_identifier_type_system: str | None = Field(
+        None, description="Beneficiary identifier type system."
+    )
+    for_identifier_type_version: str | None = Field(
+        None, description="Beneficiary identifier type version."
+    )
+    for_identifier_type_code: str | None = Field(
+        None, description="Beneficiary identifier type code."
+    )
+    for_identifier_type_display: str | None = Field(
+        None, description="Beneficiary identifier type display."
+    )
+    for_identifier_type_user_selected: bool | None = Field(
+        None, description="Beneficiary identifier type user selected."
+    )
+    for_identifier_type_text: str | None = Field(
+        None, description="Beneficiary identifier type text."
+    )
+    for_identifier_system: str | None = Field(
+        None, description="Beneficiary identifier system."
+    )
+    for_identifier_value: str | None = Field(
+        None, description="Beneficiary identifier value."
+    )
+    for_identifier_period_start: datetime | None = Field(
+        None, description="Beneficiary identifier period start."
+    )
+    for_identifier_period_end: datetime | None = Field(
+        None, description="Beneficiary identifier period end."
+    )
     encounter: str | None = Field(
         None, description="Healthcare event during which task was created (Reference(Encounter))."
     )
     encounter_display: str | None = Field(
         None, description="Narrative for encounter reference."
+    )
+    encounter_identifier_use: IdentifierUse | None = Field(
+        None, description="Encounter identifier use."
+    )
+    encounter_identifier_type_system: str | None = Field(
+        None, description="Encounter identifier type system."
+    )
+    encounter_identifier_type_version: str | None = Field(
+        None, description="Encounter identifier type version."
+    )
+    encounter_identifier_type_code: str | None = Field(
+        None, description="Encounter identifier type code."
+    )
+    encounter_identifier_type_display: str | None = Field(
+        None, description="Encounter identifier type display."
+    )
+    encounter_identifier_type_user_selected: bool | None = Field(
+        None, description="Encounter identifier type user selected."
+    )
+    encounter_identifier_type_text: str | None = Field(
+        None, description="Encounter identifier type text."
+    )
+    encounter_identifier_system: str | None = Field(
+        None, description="Encounter identifier system."
+    )
+    encounter_identifier_value: str | None = Field(
+        None, description="Encounter identifier value."
+    )
+    encounter_identifier_period_start: datetime | None = Field(
+        None, description="Encounter identifier period start."
+    )
+    encounter_identifier_period_end: datetime | None = Field(
+        None, description="Encounter identifier period end."
     )
     execution_period_start: datetime | None = Field(
         None, description="Start of execution period."
@@ -165,6 +297,39 @@ class TaskCreateSchema(BaseModel):
     requester_display: str | None = Field(
         None, description="Narrative for requester reference."
     )
+    requester_identifier_use: IdentifierUse | None = Field(
+        None, description="Requester identifier use."
+    )
+    requester_identifier_type_system: str | None = Field(
+        None, description="Requester identifier type system."
+    )
+    requester_identifier_type_version: str | None = Field(
+        None, description="Requester identifier type version."
+    )
+    requester_identifier_type_code: str | None = Field(
+        None, description="Requester identifier type code."
+    )
+    requester_identifier_type_display: str | None = Field(
+        None, description="Requester identifier type display."
+    )
+    requester_identifier_type_user_selected: bool | None = Field(
+        None, description="Requester identifier type user selected."
+    )
+    requester_identifier_type_text: str | None = Field(
+        None, description="Requester identifier type text."
+    )
+    requester_identifier_system: str | None = Field(
+        None, description="Requester identifier system."
+    )
+    requester_identifier_value: str | None = Field(
+        None, description="Requester identifier value."
+    )
+    requester_identifier_period_start: datetime | None = Field(
+        None, description="Requester identifier period start."
+    )
+    requester_identifier_period_end: datetime | None = Field(
+        None, description="Requester identifier period end."
+    )
     performer_type: list[TaskPerformerTypeInput] | None = Field(
         None, description="Requested performer normal role."
     )
@@ -175,11 +340,77 @@ class TaskCreateSchema(BaseModel):
     owner_display: str | None = Field(
         None, description="Narrative for owner reference."
     )
+    owner_identifier_use: IdentifierUse | None = Field(
+        None, description="Owner identifier use."
+    )
+    owner_identifier_type_system: str | None = Field(
+        None, description="Owner identifier type system."
+    )
+    owner_identifier_type_version: str | None = Field(
+        None, description="Owner identifier type version."
+    )
+    owner_identifier_type_code: str | None = Field(
+        None, description="Owner identifier type code."
+    )
+    owner_identifier_type_display: str | None = Field(
+        None, description="Owner identifier type display."
+    )
+    owner_identifier_type_user_selected: bool | None = Field(
+        None, description="Owner identifier type user selected."
+    )
+    owner_identifier_type_text: str | None = Field(
+        None, description="Owner identifier type text."
+    )
+    owner_identifier_system: str | None = Field(
+        None, description="Owner identifier system."
+    )
+    owner_identifier_value: str | None = Field(
+        None, description="Owner identifier value."
+    )
+    owner_identifier_period_start: datetime | None = Field(
+        None, description="Owner identifier period start."
+    )
+    owner_identifier_period_end: datetime | None = Field(
+        None, description="Owner identifier period end."
+    )
     location: str | None = Field(
         None, description="Where task occurs (Reference(Location))."
     )
     location_display: str | None = Field(
         None, description="Narrative for location reference."
+    )
+    location_identifier_use: IdentifierUse | None = Field(
+        None, description="Location identifier use."
+    )
+    location_identifier_type_system: str | None = Field(
+        None, description="Location identifier type system."
+    )
+    location_identifier_type_version: str | None = Field(
+        None, description="Location identifier type version."
+    )
+    location_identifier_type_code: str | None = Field(
+        None, description="Location identifier type code."
+    )
+    location_identifier_type_display: str | None = Field(
+        None, description="Location identifier type display."
+    )
+    location_identifier_type_user_selected: bool | None = Field(
+        None, description="Location identifier type user selected."
+    )
+    location_identifier_type_text: str | None = Field(
+        None, description="Location identifier type text."
+    )
+    location_identifier_system: str | None = Field(
+        None, description="Location identifier system."
+    )
+    location_identifier_value: str | None = Field(
+        None, description="Location identifier value."
+    )
+    location_identifier_period_start: datetime | None = Field(
+        None, description="Location identifier period start."
+    )
+    location_identifier_period_end: datetime | None = Field(
+        None, description="Location identifier period end."
     )
     reason_code_coding: list[CodingInput] | None = Field(
         None, description="Why task is needed codings."
@@ -192,6 +423,39 @@ class TaskCreateSchema(BaseModel):
     )
     reason_reference_display: str | None = Field(
         None, description="Narrative for reason reference."
+    )
+    reason_reference_identifier_use: IdentifierUse | None = Field(
+        None, description="Reason reference identifier use."
+    )
+    reason_reference_identifier_type_system: str | None = Field(
+        None, description="Reason reference identifier type system."
+    )
+    reason_reference_identifier_type_version: str | None = Field(
+        None, description="Reason reference identifier type version."
+    )
+    reason_reference_identifier_type_code: str | None = Field(
+        None, description="Reason reference identifier type code."
+    )
+    reason_reference_identifier_type_display: str | None = Field(
+        None, description="Reason reference identifier type display."
+    )
+    reason_reference_identifier_type_user_selected: bool | None = Field(
+        None, description="Reason reference identifier type user selected."
+    )
+    reason_reference_identifier_type_text: str | None = Field(
+        None, description="Reason reference identifier type text."
+    )
+    reason_reference_identifier_system: str | None = Field(
+        None, description="Reason reference identifier system."
+    )
+    reason_reference_identifier_value: str | None = Field(
+        None, description="Reason reference identifier value."
+    )
+    reason_reference_identifier_period_start: datetime | None = Field(
+        None, description="Reason reference identifier period start."
+    )
+    reason_reference_identifier_period_end: datetime | None = Field(
+        None, description="Reason reference identifier period end."
     )
     insurance: list[TaskReferenceInput | str] | None = Field(
         None, description="Associated insurance coverage (Reference(Coverage|ClaimResponse))."
@@ -232,6 +496,17 @@ class TaskPatchSchema(BaseModel):
     group_identifier_period_end: datetime | None = None
     group_identifier_assigner: str | None = None
     group_identifier_assigner_display: str | None = None
+    group_identifier_assigner_identifier_use: IdentifierUse | None = None
+    group_identifier_assigner_identifier_type_system: str | None = None
+    group_identifier_assigner_identifier_type_version: str | None = None
+    group_identifier_assigner_identifier_type_code: str | None = None
+    group_identifier_assigner_identifier_type_display: str | None = None
+    group_identifier_assigner_identifier_type_user_selected: bool | None = None
+    group_identifier_assigner_identifier_type_text: str | None = None
+    group_identifier_assigner_identifier_system: str | None = None
+    group_identifier_assigner_identifier_value: str | None = None
+    group_identifier_assigner_identifier_period_start: datetime | None = None
+    group_identifier_assigner_identifier_period_end: datetime | None = None
     part_of: list[TaskReferenceInput | str] | None = None
     status: TaskStatus | None = None
     status_reason_coding: list[CodingInput] | None = None
@@ -245,25 +520,102 @@ class TaskPatchSchema(BaseModel):
     description: str | None = None
     focus: str | None = None
     focus_display: str | None = None
+    focus_identifier_use: IdentifierUse | None = None
+    focus_identifier_type_system: str | None = None
+    focus_identifier_type_version: str | None = None
+    focus_identifier_type_code: str | None = None
+    focus_identifier_type_display: str | None = None
+    focus_identifier_type_user_selected: bool | None = None
+    focus_identifier_type_text: str | None = None
+    focus_identifier_system: str | None = None
+    focus_identifier_value: str | None = None
+    focus_identifier_period_start: datetime | None = None
+    focus_identifier_period_end: datetime | None = None
     for_: str | None = Field(None, alias="for")
     for_display: str | None = None
+    for_identifier_use: IdentifierUse | None = None
+    for_identifier_type_system: str | None = None
+    for_identifier_type_version: str | None = None
+    for_identifier_type_code: str | None = None
+    for_identifier_type_display: str | None = None
+    for_identifier_type_user_selected: bool | None = None
+    for_identifier_type_text: str | None = None
+    for_identifier_system: str | None = None
+    for_identifier_value: str | None = None
+    for_identifier_period_start: datetime | None = None
+    for_identifier_period_end: datetime | None = None
     encounter: str | None = None
     encounter_display: str | None = None
+    encounter_identifier_use: IdentifierUse | None = None
+    encounter_identifier_type_system: str | None = None
+    encounter_identifier_type_version: str | None = None
+    encounter_identifier_type_code: str | None = None
+    encounter_identifier_type_display: str | None = None
+    encounter_identifier_type_user_selected: bool | None = None
+    encounter_identifier_type_text: str | None = None
+    encounter_identifier_system: str | None = None
+    encounter_identifier_value: str | None = None
+    encounter_identifier_period_start: datetime | None = None
+    encounter_identifier_period_end: datetime | None = None
     execution_period_start: datetime | None = None
     execution_period_end: datetime | None = None
     authored_on: datetime | None = None
     last_modified: datetime | None = None
     requester: str | None = None
     requester_display: str | None = None
+    requester_identifier_use: IdentifierUse | None = None
+    requester_identifier_type_system: str | None = None
+    requester_identifier_type_version: str | None = None
+    requester_identifier_type_code: str | None = None
+    requester_identifier_type_display: str | None = None
+    requester_identifier_type_user_selected: bool | None = None
+    requester_identifier_type_text: str | None = None
+    requester_identifier_system: str | None = None
+    requester_identifier_value: str | None = None
+    requester_identifier_period_start: datetime | None = None
+    requester_identifier_period_end: datetime | None = None
     performer_type: list[TaskPerformerTypeInput] | None = None
     owner: str | None = None
     owner_display: str | None = None
+    owner_identifier_use: IdentifierUse | None = None
+    owner_identifier_type_system: str | None = None
+    owner_identifier_type_version: str | None = None
+    owner_identifier_type_code: str | None = None
+    owner_identifier_type_display: str | None = None
+    owner_identifier_type_user_selected: bool | None = None
+    owner_identifier_type_text: str | None = None
+    owner_identifier_system: str | None = None
+    owner_identifier_value: str | None = None
+    owner_identifier_period_start: datetime | None = None
+    owner_identifier_period_end: datetime | None = None
     location: str | None = None
     location_display: str | None = None
+    location_identifier_use: IdentifierUse | None = None
+    location_identifier_type_system: str | None = None
+    location_identifier_type_version: str | None = None
+    location_identifier_type_code: str | None = None
+    location_identifier_type_display: str | None = None
+    location_identifier_type_user_selected: bool | None = None
+    location_identifier_type_text: str | None = None
+    location_identifier_system: str | None = None
+    location_identifier_value: str | None = None
+    location_identifier_period_start: datetime | None = None
+    location_identifier_period_end: datetime | None = None
     reason_code_coding: list[CodingInput] | None = None
     reason_code_text: str | None = None
     reason_reference: str | None = None
     reason_reference_display: str | None = None
+    reason_reference_identifier_use: IdentifierUse | None = None
+    reason_reference_identifier_type_system: str | None = None
+    reason_reference_identifier_type_version: str | None = None
+    reason_reference_identifier_type_code: str | None = None
+    reason_reference_identifier_type_display: str | None = None
+    reason_reference_identifier_type_user_selected: bool | None = None
+    reason_reference_identifier_type_text: str | None = None
+    reason_reference_identifier_system: str | None = None
+    reason_reference_identifier_value: str | None = None
+    reason_reference_identifier_period_start: datetime | None = None
+    reason_reference_identifier_period_end: datetime | None = None
     insurance: list[TaskReferenceInput | str] | None = None
     note: list[TaskNoteInput] | None = None
     relevant_history: list[TaskReferenceInput | str] | None = None
