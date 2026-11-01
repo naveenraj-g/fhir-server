@@ -125,10 +125,21 @@ class PlainGoalResponse(AuditFields):
     description: PlainGoalCategory | None = Field(
         None, description="Description concept."
     )
-    subject: str = Field(..., description="Computed subject reference string.")
+    subject: str | None = Field(None, description="Computed subject reference string.")
     subject_display: str | None = Field(None, description="Subject display text.")
     subject_type: str | None = Field(None, description="Subject resource type.")
     subject_id: int | None = Field(None, description="Subject public ID.")
+    subject_identifier_use: str | None = None
+    subject_identifier_type_system: str | None = None
+    subject_identifier_type_version: str | None = None
+    subject_identifier_type_code: str | None = None
+    subject_identifier_type_display: str | None = None
+    subject_identifier_type_user_selected: bool | None = None
+    subject_identifier_type_text: str | None = None
+    subject_identifier_system: str | None = None
+    subject_identifier_value: str | None = None
+    subject_identifier_period_start: str | None = None
+    subject_identifier_period_end: str | None = None
     start_date: str | None = Field(None, description="Start date.")
     start_codeable_concept: PlainGoalCategory | None = Field(
         None, description="Start codeable concept."
@@ -150,6 +161,17 @@ class PlainGoalResponse(AuditFields):
     expressed_by_id: int | None = Field(
         None, description="ExpressedBy public ID."
     )
+    expressed_by_identifier_use: str | None = None
+    expressed_by_identifier_type_system: str | None = None
+    expressed_by_identifier_type_version: str | None = None
+    expressed_by_identifier_type_code: str | None = None
+    expressed_by_identifier_type_display: str | None = None
+    expressed_by_identifier_type_user_selected: bool | None = None
+    expressed_by_identifier_type_text: str | None = None
+    expressed_by_identifier_system: str | None = None
+    expressed_by_identifier_value: str | None = None
+    expressed_by_identifier_period_start: str | None = None
+    expressed_by_identifier_period_end: str | None = None
     addresses: list[PlainGoalReference] | None = Field(
         None, description="Addresses references."
     )

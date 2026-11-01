@@ -24,12 +24,15 @@ from app.models.goal import (
 from app.schemas.goal import GoalCreateSchema, GoalPatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _SORTABLE_FIELDS,
+    _child_reference_identifier_kwargs,
     _parse_assigner_ref,
     _parse_expressed_by_ref,
     _parse_generic_ref,
     _parse_outcome_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -80,6 +83,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -225,6 +229,7 @@ async def _add_addresses(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(a),
                 created_by=created_by,
             )
         )
@@ -247,6 +252,7 @@ async def _add_outcome_references(
                 reference_type=r_type,
                 reference_id=r_id,
                 reference_display=disp,
+                **_child_reference_identifier_kwargs(o),
                 created_by=created_by,
             )
         )
@@ -284,6 +290,7 @@ async def _add_notes(
                     author_type=auth_type,
                     author_id=auth_id,
                     author_display=n.author_display,
+                    **_prefixed_identifier_kwargs("author", n),
                     time=n.time,
                     text=n.text,
                     created_by=created_by,
@@ -332,7 +339,9 @@ class GoalRepository:
     ) -> GoalModel:
         async with self.session_factory() as session:
             # Validate subject
-            sub_type, sub_id = _parse_subject_ref(payload.subject)
+            sub_type, sub_id = (
+                _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            )
             if sub_type and sub_id:
                 await _validate_ref(session, org_id, sub_type, sub_id, "subject")
 
@@ -358,6 +367,7 @@ class GoalRepository:
                 subject_type=sub_type,
                 subject_id=sub_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 start_date=payload.start_date,
                 start_codeable_concept_text=payload.start_codeable_concept_text,
                 status_date=payload.status_date,
@@ -366,6 +376,7 @@ class GoalRepository:
                 expressed_by_type=exp_type,
                 expressed_by_id=exp_id,
                 expressed_by_display=payload.expressed_by_display,
+                **_prefixed_identifier_kwargs("expressed_by", payload),
                 extension=payload.extension or [],
             )
             session.add(model)
@@ -480,7 +491,9 @@ class GoalRepository:
 
             if "subject" in provided or "subject_display" in provided:
                 sub_ref = payload.subject or model.subject_reference
-                sub_type, sub_id = _parse_subject_ref(sub_ref)
+                sub_type, sub_id = (
+                    _parse_subject_ref(sub_ref) if sub_ref else (None, None)
+                )
                 if sub_type and sub_id:
                     await _validate_ref(session, org_id, sub_type, sub_id, "subject")
                 model.subject_reference = sub_ref
@@ -503,6 +516,12 @@ class GoalRepository:
                 model.expressed_by_id = exp_id
                 if "expressed_by_display" in provided:
                     model.expressed_by_display = payload.expressed_by_display
+
+            for prefix in ("subject", "expressed_by"):
+                for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    field = f"{prefix}_{suffix}"
+                    if field in provided:
+                        setattr(model, field, getattr(payload, field))
 
             model.updated_by = updated_by
 

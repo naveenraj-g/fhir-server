@@ -1,7 +1,9 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     Date,
+    DateTime,
     Enum,
     Sequence,
     String,
@@ -11,6 +13,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.goal.enums import (
     GoalExpressedByReferenceType,
     GoalLifecycleStatus,
@@ -64,13 +67,26 @@ class GoalModel(TenantAuditMixin, Base):
     description_text = Column(String, nullable=True)
 
     # subject (1..1 Reference(Patient|Group|Organization))
-    subject_reference = Column(String, nullable=False)
+    subject_reference = Column(String, nullable=True)
     subject_type = Column(
         Enum(GoalSubjectReferenceType, name="goal_subject_reference_type"),
-        nullable=False,
+        nullable=True,
     )
     subject_id = Column(BigInteger, nullable=True, index=True)
     subject_display = Column(String, nullable=True)
+    subject_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    subject_identifier_type_system = Column(String, nullable=True)
+    subject_identifier_type_version = Column(String, nullable=True)
+    subject_identifier_type_code = Column(String, nullable=True)
+    subject_identifier_type_display = Column(String, nullable=True)
+    subject_identifier_type_text = Column(String, nullable=True)
+    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_identifier_system = Column(String, nullable=True)
+    subject_identifier_value = Column(String, nullable=True)
+    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # start[x] (0..1 date | CodeableConcept)
     start_date = Column(Date, nullable=True)
@@ -93,6 +109,19 @@ class GoalModel(TenantAuditMixin, Base):
     )
     expressed_by_id = Column(BigInteger, nullable=True, index=True)
     expressed_by_display = Column(String, nullable=True)
+    expressed_by_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    expressed_by_identifier_type_system = Column(String, nullable=True)
+    expressed_by_identifier_type_version = Column(String, nullable=True)
+    expressed_by_identifier_type_code = Column(String, nullable=True)
+    expressed_by_identifier_type_display = Column(String, nullable=True)
+    expressed_by_identifier_type_text = Column(String, nullable=True)
+    expressed_by_identifier_type_user_selected = Column(Boolean, nullable=True)
+    expressed_by_identifier_system = Column(String, nullable=True)
+    expressed_by_identifier_value = Column(String, nullable=True)
+    expressed_by_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    expressed_by_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # extension (0..* Extension, JSONB)
     extension = Column(JSONB, nullable=False, server_default=text("'[]'"))

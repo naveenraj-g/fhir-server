@@ -60,11 +60,53 @@ def _plain_ref_str(
     return None
 
 
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    if obj is None:
+        return {}
+    p_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    p_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+    return {
+        f"{prefix}_identifier_use": fhir_enum(
+            getattr(obj, f"{prefix}_identifier_use", None)
+        ),
+        f"{prefix}_identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        f"{prefix}_identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
+        f"{prefix}_identifier_type_code": getattr(
+            obj, f"{prefix}_identifier_type_code", None
+        ),
+        f"{prefix}_identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        f"{prefix}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{prefix}_identifier_type_text": getattr(
+            obj, f"{prefix}_identifier_type_text", None
+        ),
+        f"{prefix}_identifier_system": getattr(
+            obj, f"{prefix}_identifier_system", None
+        ),
+        f"{prefix}_identifier_value": getattr(
+            obj, f"{prefix}_identifier_value", None
+        ),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start)
+        if p_start
+        else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end)
+        if p_end
+        else None,
+    }
+
+
 def _plain_reference_row(row) -> dict:
     computed = _plain_ref_str(
         row.reference_reference, row.reference_type, row.reference_id
     )
-    return {
+    res = {
         "id": row.id,
         "reference_reference": row.reference_reference,
         "reference": computed,
@@ -77,17 +119,19 @@ def _plain_reference_row(row) -> dict:
         "updated_by": getattr(row, "updated_by", None),
         "tenant_id": getattr(row, "tenant_id", None),
     }
+    res.update(_plain_reference_fields(row, "reference"))
+    return res
 
 
 def _plain_identifier(i: GoalIdentifier) -> dict:
     computed_assigner = _plain_ref_str(
         i.assigner_reference, i.assigner_type, i.assigner_id
     )
-    return {
+    res = {
         "id": i.id,
         "use": fhir_enum(i.use),
         "type_text": i.type_text,
-        "type_codings": _plain_coding_list(getattr(i, "codings", None)),
+        "type_codings": _plain_coding_list(getattr(i, "type_codings", None)),
         "system": i.system,
         "value": i.value,
         "period_start": fhir_instant(i.period_start) if i.period_start else None,
@@ -103,6 +147,8 @@ def _plain_identifier(i: GoalIdentifier) -> dict:
         "updated_by": getattr(i, "updated_by", None),
         "tenant_id": getattr(i, "tenant_id", None),
     }
+    res.update(_plain_reference_fields(i, "assigner"))
+    return res
 
 
 def _plain_category(c: GoalCategory | GoalOutcomeCode) -> dict:
@@ -122,7 +168,7 @@ def _plain_note(n: GoalNote) -> dict:
     computed_author = _plain_ref_str(
         n.author_reference, n.author_type, n.author_id
     )
-    return {
+    res = {
         "id": n.id,
         "author_string": n.author_string,
         "author_reference": n.author_reference,
@@ -138,6 +184,8 @@ def _plain_note(n: GoalNote) -> dict:
         "updated_by": getattr(n, "updated_by", None),
         "tenant_id": getattr(n, "tenant_id", None),
     }
+    res.update(_plain_reference_fields(n, "author"))
+    return res
 
 
 def _plain_target(t: GoalTarget) -> dict:
@@ -195,7 +243,7 @@ def to_plain_goal(model: GoalModel) -> dict:
         model.expressed_by_id,
     )
 
-    return {
+    res = {
         "id": model.goal_id,
         "lifecycle_status": fhir_enum(model.lifecycle_status),
         "achievement_status": _plain_codeable_concept(
@@ -245,3 +293,6 @@ def to_plain_goal(model: GoalModel) -> dict:
         "updated_by": model.updated_by,
         "tenant_id": model.tenant_id,
     }
+    res.update(_plain_reference_fields(model, "subject"))
+    res.update(_plain_reference_fields(model, "expressed_by"))
+    return res

@@ -70,6 +70,52 @@ async def test_create_goal_minimal(client):
     assert data["id"] >= 460000
 
 
+async def test_create_goal_with_reference_identifier_fallback(client):
+    p_id = await create_test_patient(client)
+    payload = {
+        "lifecycle_status": "active",
+        "description_text": "Reduce cholesterol",
+        "subject": f"Patient/{p_id}",
+        "expressed_by_display": "External Caregiver",
+        "expressed_by_identifier_system": "http://example.org/caregivers",
+        "expressed_by_identifier_value": "CG-987",
+        "addresses": [
+            {
+                "display": "External Lab Observation",
+                "identifier_system": "http://lab.example.org/panels",
+                "identifier_value": "LAB-4433",
+            }
+        ],
+        "outcome_reference": [
+            {
+                "display": "External Followup Observation",
+                "identifier_system": "http://lab.example.org/panels",
+                "identifier_value": "LAB-9988",
+            }
+        ],
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["expressed_by_display"] == "External Caregiver"
+    assert data["expressed_by_identifier_system"] == "http://example.org/caregivers"
+    assert data["expressed_by_identifier_value"] == "CG-987"
+    assert len(data["addresses"]) == 1
+    assert data["addresses"][0]["reference_identifier_system"] == "http://lab.example.org/panels"
+    assert data["addresses"][0]["reference_identifier_value"] == "LAB-4433"
+    assert len(data["outcome_reference"]) == 1
+    assert data["outcome_reference"][0]["reference_identifier_system"] == "http://lab.example.org/panels"
+    assert data["outcome_reference"][0]["reference_identifier_value"] == "LAB-9988"
+
+    goal_id = data["id"]
+    fhir_resp = await client.get(f"{BASE}/{goal_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["expressedBy"]["identifier"]["value"] == "CG-987"
+    assert fhir_data["addresses"][0]["identifier"]["value"] == "LAB-4433"
+    assert fhir_data["outcomeReference"][0]["identifier"]["value"] == "LAB-9988"
+
+
 async def test_create_goal_full(client):
     p_id = await create_test_patient(client)
     pr_id = await create_test_practitioner(client)

@@ -30,12 +30,18 @@ def _format_date(d) -> str | None:
     return d.isoformat() if hasattr(d, "isoformat") else str(d)
 
 
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+
 _ACHIEVEMENT_STATUS_FIELDS = {"achievement_status_coding", "achievement_status_text"}
 _PRIORITY_FIELDS = {"priority_coding", "priority_text"}
 _DESCRIPTION_FIELDS = {"description_coding", "description_text"}
-_SUBJECT_FIELDS = {"subject", "subject_display"}
+_SUBJECT_FIELDS = {"subject", "subject_display"} | {
+    f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 _START_CC_FIELDS = {"start_codeable_concept_coding", "start_codeable_concept_text"}
-_EXPRESSED_BY_FIELDS = {"expressed_by", "expressed_by_display"}
+_EXPRESSED_BY_FIELDS = {"expressed_by", "expressed_by_display"} | {
+    f"expressed_by_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 
 
 def _coding_from_payload(c: Any) -> dict:
@@ -76,29 +82,140 @@ def _codeable_concept_from_payload(
     return result or None
 
 
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    display = _get(f"{prefix}_display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected")
+    id_system = _get(f"{prefix}_identifier_system")
+    id_value = _get(f"{prefix}_identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end")
+
+    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+    return entry or None
+
+
 def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
     if not ref and not display:
         return None
-    if isinstance(ref, dict):
-        result = {}
-        if ref.get("reference"):
-            result["reference"] = ref["reference"]
-        disp = ref.get("display") or display
-        if disp:
-            result["display"] = disp
-        return result or None
     if isinstance(ref, str):
         result = {"reference": ref}
         if display:
             result["display"] = display
         return result
+
     result = {}
-    ref_val = getattr(ref, "reference", None)
-    if ref_val:
-        result["reference"] = ref_val
-    disp = getattr(ref, "display", None) or display
-    if disp:
-        result["display"] = disp
+    r = getattr(ref, "reference", None) if not isinstance(ref, dict) else ref.get("reference")
+    if r:
+        result["reference"] = r
+    d = (getattr(ref, "display", None) if not isinstance(ref, dict) else ref.get("display")) or display
+    if d:
+        result["display"] = d
+
+    def _get(field):
+        return ref.get(field) if isinstance(ref, dict) else getattr(ref, field, None)
+
+    id_use = _get("identifier_use")
+    id_type_system = _get("identifier_type_system")
+    id_type_version = _get("identifier_type_version")
+    id_type_code = _get("identifier_type_code")
+    id_type_display = _get("identifier_type_display")
+    id_type_text = _get("identifier_type_text")
+    id_type_user_selected = _get("identifier_type_user_selected")
+    id_system = _get("identifier_system")
+    id_value = _get("identifier_value")
+    id_period_start = _get("identifier_period_start")
+    id_period_end = _get("identifier_period_end")
+
+    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        result["identifier"] = identifier
     return result or None
 
 
@@ -113,8 +230,6 @@ def _identifier_from_payload(i: Any) -> dict | None:
         value = i.get("value")
         p_start = i.get("period_start")
         p_end = i.get("period_end")
-        assigner = i.get("assigner")
-        assigner_disp = i.get("assigner_display")
     else:
         use = getattr(i, "use", None)
         type_coding = getattr(i, "type_coding", None)
@@ -123,8 +238,6 @@ def _identifier_from_payload(i: Any) -> dict | None:
         value = getattr(i, "value", None)
         p_start = getattr(i, "period_start", None)
         p_end = getattr(i, "period_end", None)
-        assigner = getattr(i, "assigner", None)
-        assigner_disp = getattr(i, "assigner_display", None)
 
     entry: dict = {}
     if use:
@@ -143,10 +256,9 @@ def _identifier_from_payload(i: Any) -> dict | None:
         if p_end:
             period["end"] = fhir_instant(p_end)
         entry["period"] = period
-    if assigner or assigner_disp:
-        assigner_ref = _ref_from_payload(assigner, assigner_disp)
-        if assigner_ref:
-            entry["assigner"] = assigner_ref
+    assigner_ref = _reference_from_payload(i, "assigner")
+    if assigner_ref:
+        entry["assigner"] = assigner_ref
     return entry or None
 
 
@@ -169,8 +281,8 @@ def _note_from_payload(n: Any) -> dict | None:
         entry: dict = {}
         if n.get("author_string"):
             entry["authorString"] = n["author_string"]
-        elif n.get("author_reference"):
-            ref = _ref_from_payload(n["author_reference"], n.get("author_display"))
+        else:
+            ref = _reference_from_payload(n, "author")
             if ref:
                 entry["authorReference"] = ref
         if n.get("time"):
@@ -181,8 +293,8 @@ def _note_from_payload(n: Any) -> dict | None:
     entry = {}
     if getattr(n, "author_string", None):
         entry["authorString"] = n.author_string
-    elif getattr(n, "author_reference", None):
-        ref = _ref_from_payload(n.author_reference, getattr(n, "author_display", None))
+    else:
+        ref = _reference_from_payload(n, "author")
         if ref:
             entry["authorReference"] = ref
     if getattr(n, "time", None):
@@ -471,7 +583,7 @@ def payload_to_fhir_goal(payload: GoalCreateSchema) -> dict:
     if description:
         result["description"] = description
 
-    subject = _ref_from_payload(payload.subject, payload.subject_display)
+    subject = _reference_from_payload(payload, "subject")
     if subject:
         result["subject"] = subject
 
@@ -499,9 +611,7 @@ def payload_to_fhir_goal(payload: GoalCreateSchema) -> dict:
     if payload.status_reason:
         result["statusReason"] = payload.status_reason
 
-    expressed_by = _ref_from_payload(
-        payload.expressed_by, payload.expressed_by_display
-    )
+    expressed_by = _reference_from_payload(payload, "expressed_by")
     if expressed_by:
         result["expressedBy"] = expressed_by
 
@@ -595,7 +705,7 @@ def patch_fragment_to_fhir_goal(
 
     if _SUBJECT_FIELDS & fields_set:
         touched.add("subject")
-        subject = _ref_from_payload(payload.subject, payload.subject_display)
+        subject = _reference_from_payload(payload, "subject")
         if subject:
             fragment["subject"] = subject
 
@@ -633,9 +743,7 @@ def patch_fragment_to_fhir_goal(
 
     if _EXPRESSED_BY_FIELDS & fields_set:
         touched.add("expressedBy")
-        expressed_by = _ref_from_payload(
-            payload.expressed_by, payload.expressed_by_display
-        )
+        expressed_by = _reference_from_payload(payload, "expressed_by")
         if expressed_by:
             fragment["expressedBy"] = expressed_by
 
