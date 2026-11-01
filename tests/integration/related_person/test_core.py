@@ -253,3 +253,51 @@ async def test_orgless_token_rejected_403(client):
     )
     resp = await client.post(BASE + "/", json=minimal_related_person(10001))
     assert resp.status_code == 403
+
+
+async def test_create_related_person_with_reference_identifier_fallback(client):
+    payload = {
+        "active": True,
+        "patient_identifier_system": "http://hospital.example.org/patients",
+        "patient_identifier_value": "MRN-RP-999",
+        "patient_display": "Fallback Patient",
+        "relationship": [
+            {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                        "code": "MTH",
+                        "display": "Mother",
+                    }
+                ],
+                "text": "Mother",
+            }
+        ],
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    plain_data = resp.json()
+    rp_id = plain_data["id"]
+    assert plain_data["patient_reference"] is None
+    assert plain_data["patient_identifier_system"] == "http://hospital.example.org/patients"
+    assert plain_data["patient_identifier_value"] == "MRN-RP-999"
+    assert plain_data["patient_display"] == "Fallback Patient"
+
+    # Verify FHIR serialization
+    fhir_resp = await client.get(f"{BASE}/{rp_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["resourceType"] == "RelatedPerson"
+    assert "reference" not in fhir_data["patient"]
+    assert fhir_data["patient"]["identifier"]["system"] == "http://hospital.example.org/patients"
+    assert fhir_data["patient"]["identifier"]["value"] == "MRN-RP-999"
+    assert fhir_data["patient"]["display"] == "Fallback Patient"
+
+    # Patch patient fallback identifier
+    patch_resp = await client.patch(
+        f"{BASE}/{rp_id}",
+        json={"patient_identifier_value": "MRN-RP-999-UPDATED"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    assert patch_resp.json()["patient_identifier_value"] == "MRN-RP-999-UPDATED"
+

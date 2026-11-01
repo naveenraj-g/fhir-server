@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.related_person.enums import RelatedPersonPatientReferenceType
 from app.models.shared import TenantAuditMixin
 from app.schemas.enums import AdministrativeGender
@@ -46,17 +47,33 @@ class RelatedPersonModel(TenantAuditMixin, Base):
     active = Column(Boolean, nullable=True)
 
     # patient (1..1 Reference(Patient))
-    patient_reference = Column(String, nullable=False)
+    patient_reference = Column(String, nullable=True)
     patient_type = Column(
         Enum(
             RelatedPersonPatientReferenceType,
             name="related_person_patient_reference_type",
         ),
-        nullable=False,
+        nullable=True,
         default=RelatedPersonPatientReferenceType.Patient,
     )
     patient_id = Column(BigInteger, nullable=True, index=True)
     patient_display = Column(String, nullable=True)
+
+    # patient.identifier fallback
+    patient_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    patient_identifier_type_system = Column(String, nullable=True)
+    patient_identifier_type_version = Column(String, nullable=True)
+    patient_identifier_type_code = Column(String, nullable=True)
+    patient_identifier_type_display = Column(String, nullable=True)
+    patient_identifier_type_text = Column(String, nullable=True)
+    patient_identifier_type_user_selected = Column(Boolean, nullable=True)
+    patient_identifier_system = Column(String, nullable=True)
+    patient_identifier_value = Column(String, nullable=True)
+    patient_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    patient_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # gender (0..1 code, AdministrativeGender)
     gender = Column(

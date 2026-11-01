@@ -48,20 +48,76 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
-def _fhir_ref(
-    ref_raw: str | None,
-    ref_type: Any,
-    ref_id: int | None,
-    display: str | None,
-) -> dict | None:
-    result: dict = {}
-    if ref_raw:
-        result["reference"] = ref_raw
-    elif ref_type and ref_id:
-        result["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
-    if display:
-        result["display"] = display
-    return result or None
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
+    ref = getattr(obj, f"{prefix}_reference", None)
+    rtype = getattr(obj, f"{prefix}_type", None)
+    rid = getattr(obj, f"{prefix}_id", None)
+    disp = getattr(obj, f"{prefix}_display", None)
+
+    out: dict[str, Any] = {}
+    if ref:
+        out["reference"] = ref
+    elif rtype and rid:
+        type_str = fhir_enum(rtype)
+        out["reference"] = f"{type_str}/{rid}"
+    if disp:
+        out["display"] = disp
+
+    use = getattr(obj, f"{prefix}_identifier_use", None)
+    val = getattr(obj, f"{prefix}_identifier_value", None)
+    sys = getattr(obj, f"{prefix}_identifier_system", None)
+    type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    p_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    p_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if (
+        use
+        or val
+        or sys
+        or type_code
+        or p_start
+        or p_end
+        or getattr(obj, f"{prefix}_identifier_type_text", None)
+    ):
+        ident: dict[str, Any] = {}
+        if use:
+            ident["use"] = fhir_enum(use)
+        if sys:
+            ident["system"] = sys
+        if val:
+            ident["value"] = val
+        if type_code or getattr(obj, f"{prefix}_identifier_type_text", None):
+            coding: dict[str, Any] = {}
+            if getattr(obj, f"{prefix}_identifier_type_system", None):
+                coding["system"] = getattr(obj, f"{prefix}_identifier_type_system")
+            if getattr(obj, f"{prefix}_identifier_type_version", None):
+                coding["version"] = getattr(obj, f"{prefix}_identifier_type_version")
+            if type_code:
+                coding["code"] = type_code
+            if getattr(obj, f"{prefix}_identifier_type_display", None):
+                coding["display"] = getattr(obj, f"{prefix}_identifier_type_display")
+            if getattr(obj, f"{prefix}_identifier_type_user_selected", None) is not None:
+                coding["userSelected"] = getattr(obj, f"{prefix}_identifier_type_user_selected")
+
+            type_dict: dict[str, Any] = {}
+            if coding:
+                type_dict["coding"] = [coding]
+            if getattr(obj, f"{prefix}_identifier_type_text", None):
+                type_dict["text"] = getattr(obj, f"{prefix}_identifier_type_text")
+            if type_dict:
+                ident["type"] = type_dict
+        if p_start or p_end:
+            period: dict[str, Any] = {}
+            if p_start:
+                period["start"] = fhir_instant(p_start)
+            if p_end:
+                period["end"] = fhir_instant(p_end)
+            ident["period"] = period
+        out["identifier"] = ident
+
+    return out or None
 
 
 def _fhir_identifier(i: RelatedPersonIdentifier) -> dict | None:
@@ -82,12 +138,7 @@ def _fhir_identifier(i: RelatedPersonIdentifier) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        i.assigner_reference,
-        i.assigner_type,
-        i.assigner_id,
-        i.assigner_display,
-    )
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -262,12 +313,7 @@ def to_fhir_related_person(model: RelatedPersonModel) -> dict:
     if model.active is not None:
         result["active"] = model.active
 
-    patient_ref = _fhir_ref(
-        model.patient_reference,
-        model.patient_type,
-        model.patient_id,
-        model.patient_display,
-    )
+    patient_ref = _fhir_reference(model, "patient")
     if patient_ref:
         result["patient"] = patient_ref
 

@@ -1,8 +1,9 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.schemas.enums import AdministrativeGender
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+from app.schemas.enums import AdministrativeGender, IdentifierUse
 
 from .address import RelatedPersonAddressInput
 from .communication import RelatedPersonCommunicationInput
@@ -75,7 +76,8 @@ class RelatedPersonCreateSchema(BaseModel):
     """Request body for POST /api/fhir/v1/related_persons.
 
     RelatedPerson is an org-scoped entity and has no user_id.
-    patient is required (1..1 Reference(Patient)).
+    patient is required (1..1 Reference(Patient)) — either patient literal URL,
+    patient_identifier_* fallback, or patient_display must be provided.
     """
 
     model_config = ConfigDict(
@@ -89,13 +91,47 @@ class RelatedPersonCreateSchema(BaseModel):
     active: bool | None = Field(
         None, description="Whether this related person's record is in active use."
     )
-    patient: str = Field(
-        ...,
+    patient: str | None = Field(
+        None,
         description="The patient this person is related to, as a FHIR reference string (e.g. 'Patient/10001').",
     )
     patient_display: str | None = Field(
         None, description="Plain text display for the patient reference."
     )
+    patient_identifier_use: IdentifierUse | None = Field(
+        None, description="Patient identifier use."
+    )
+    patient_identifier_type_system: str | None = Field(
+        None, description="Patient identifier type system."
+    )
+    patient_identifier_type_version: str | None = Field(
+        None, description="Patient identifier type version."
+    )
+    patient_identifier_type_code: str | None = Field(
+        None, description="Patient identifier type code."
+    )
+    patient_identifier_type_display: str | None = Field(
+        None, description="Patient identifier type display."
+    )
+    patient_identifier_type_user_selected: bool | None = Field(
+        None, description="Patient identifier type user selected."
+    )
+    patient_identifier_type_text: str | None = Field(
+        None, description="Patient identifier type text."
+    )
+    patient_identifier_system: str | None = Field(
+        None, description="Patient identifier system."
+    )
+    patient_identifier_value: str | None = Field(
+        None, description="Patient identifier value."
+    )
+    patient_identifier_period_start: datetime | None = Field(
+        None, description="Patient identifier period start."
+    )
+    patient_identifier_period_end: datetime | None = Field(
+        None, description="Patient identifier period end."
+    )
+
     relationship: list[RelatedPersonRelationshipInput] | None = Field(
         None,
         description="The nature of the relationship between a patient and the related person.",
@@ -134,6 +170,20 @@ class RelatedPersonCreateSchema(BaseModel):
         None, description="Resource-level FHIR extensions."
     )
 
+    @model_validator(mode="after")
+    def validate_patient(self) -> "RelatedPersonCreateSchema":
+        has_ref = bool(self.patient)
+        has_ident = any(
+            getattr(self, f"patient_{suffix}") is not None
+            for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+        )
+        has_display = bool(self.patient_display)
+        if not (has_ref or has_ident or has_display):
+            raise ValueError(
+                "Either patient (reference URL) or at least one patient_identifier_* field or patient_display must be provided."
+            )
+        return self
+
 
 class RelatedPersonPatchSchema(BaseModel):
     """Request body for PATCH /api/fhir/v1/related_persons/{id}.
@@ -156,6 +206,40 @@ class RelatedPersonPatchSchema(BaseModel):
     patient_display: str | None = Field(
         None, description="Plain text display for the patient reference."
     )
+    patient_identifier_use: IdentifierUse | None = Field(
+        None, description="Patient identifier use."
+    )
+    patient_identifier_type_system: str | None = Field(
+        None, description="Patient identifier type system."
+    )
+    patient_identifier_type_version: str | None = Field(
+        None, description="Patient identifier type version."
+    )
+    patient_identifier_type_code: str | None = Field(
+        None, description="Patient identifier type code."
+    )
+    patient_identifier_type_display: str | None = Field(
+        None, description="Patient identifier type display."
+    )
+    patient_identifier_type_user_selected: bool | None = Field(
+        None, description="Patient identifier type user selected."
+    )
+    patient_identifier_type_text: str | None = Field(
+        None, description="Patient identifier type text."
+    )
+    patient_identifier_system: str | None = Field(
+        None, description="Patient identifier system."
+    )
+    patient_identifier_value: str | None = Field(
+        None, description="Patient identifier value."
+    )
+    patient_identifier_period_start: datetime | None = Field(
+        None, description="Patient identifier period start."
+    )
+    patient_identifier_period_end: datetime | None = Field(
+        None, description="Patient identifier period end."
+    )
+
     relationship: list[RelatedPersonRelationshipInput] | None = Field(
         None,
         description="The nature of the relationship between a patient and the related person.",

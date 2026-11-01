@@ -14,6 +14,7 @@ from app.models.related_person import (
     RelatedPersonRelationshipCoding,
     RelatedPersonTelecom,
 )
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 from app.schemas.related_person import (
     RelatedPersonCreateSchema,
     RelatedPersonPatchSchema,
@@ -22,6 +23,7 @@ from app.schemas.related_person import (
 from ._shared import (
     _parse_assigner_ref,
     _parse_patient_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -62,17 +64,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=i.assigner_identifier_use,
-            assigner_identifier_type_system=i.assigner_identifier_type_system,
-            assigner_identifier_type_version=i.assigner_identifier_type_version,
-            assigner_identifier_type_code=i.assigner_identifier_type_code,
-            assigner_identifier_type_display=i.assigner_identifier_type_display,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
-            assigner_identifier_type_user_selected=i.assigner_identifier_type_user_selected,
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_period_start=i.assigner_identifier_period_start,
-            assigner_identifier_period_end=i.assigner_identifier_period_end,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -122,9 +114,9 @@ async def _add_names(
                 use=n.use,
                 text=n.text,
                 family=n.family,
-                given=n.given,
-                prefix=n.prefix,
-                suffix=n.suffix,
+                given=n.given or [],
+                prefix=n.prefix or [],
+                suffix=n.suffix or [],
                 period_start=n.period_start,
                 period_end=n.period_end,
                 created_by=created_by,
@@ -162,7 +154,7 @@ async def _add_addresses(
                 use=a.use,
                 type=a.type,
                 text=a.text,
-                line=a.line,
+                line=a.line or [],
                 city=a.city,
                 district=a.district,
                 state=a.state,
@@ -230,8 +222,11 @@ class _FullMixin:
         created_by: str,
     ) -> RelatedPersonModel:
         async with self.session_factory() as session:
-            p_type, p_id = _parse_patient_ref(payload.patient)
-            await _validate_ref(session, org_id, p_type, p_id, "patient")
+            p_type, p_id = (
+                _parse_patient_ref(payload.patient) if payload.patient else (None, None)
+            )
+            if p_type and p_id:
+                await _validate_ref(session, org_id, p_type, p_id, "patient")
 
             model = RelatedPersonModel(
                 tenant_id=org_id,
@@ -241,6 +236,7 @@ class _FullMixin:
                 patient_type=p_type,
                 patient_id=p_id,
                 patient_display=payload.patient_display,
+                **_prefixed_identifier_kwargs("patient", payload),
                 gender=payload.gender,
                 birth_date=payload.birth_date,
                 period_start=payload.period_start,
@@ -298,17 +294,28 @@ class _FullMixin:
             if "active" in provided:
                 model.active = payload.active
 
-            if "patient" in provided and payload.patient:
-                p_type, p_id = _parse_patient_ref(payload.patient)
-                await _validate_ref(
-                    session, model.tenant_id, p_type, p_id, "patient"
-                )
-                model.patient_reference = payload.patient
-                model.patient_type = p_type
-                model.patient_id = p_id
+            if "patient" in provided:
+                if payload.patient:
+                    p_type, p_id = _parse_patient_ref(payload.patient)
+                    if p_type and p_id:
+                        await _validate_ref(
+                            session, model.tenant_id, p_type, p_id, "patient"
+                        )
+                    model.patient_reference = payload.patient
+                    model.patient_type = p_type
+                    model.patient_id = p_id
+                else:
+                    model.patient_reference = None
+                    model.patient_type = None
+                    model.patient_id = None
 
             if "patient_display" in provided:
                 model.patient_display = payload.patient_display
+
+            for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+                field = f"patient_{suffix}"
+                if field in provided:
+                    setattr(model, field, getattr(payload, field))
 
             if "gender" in provided:
                 model.gender = payload.gender
@@ -376,9 +383,7 @@ class _FullMixin:
                         RelatedPersonName.related_person_pk == model.id
                     )
                 )
-                await _add_names(
-                    session, model.id, effective_org_id, payload.name, updated_by
-                )
+                await _add_names(session, model.id, effective_org_id, payload.name, updated_by)
 
             if "telecom" in provided:
                 await session.execute(
@@ -406,9 +411,7 @@ class _FullMixin:
                         RelatedPersonPhoto.related_person_pk == model.id
                     )
                 )
-                await _add_photos(
-                    session, model.id, effective_org_id, payload.photo, updated_by
-                )
+                await _add_photos(session, model.id, effective_org_id, payload.photo, updated_by)
 
             if "communication" in provided:
                 # Delete grandchildren first

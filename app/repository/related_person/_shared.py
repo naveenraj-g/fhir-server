@@ -17,6 +17,17 @@ from app.models.related_person import (
     RelatedPersonRelationshipCoding,
     RelatedPersonTelecom,
 )
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+
+
+def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
+    if payload is None:
+        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
+
 
 _SORTABLE_FIELDS = {
     "related_person_id": RelatedPersonModel.related_person_id,

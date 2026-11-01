@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.fhir.datatypes import fhir_enum, fhir_instant, merge_patch_fragment
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.schemas.related_person.input import (
@@ -25,7 +26,9 @@ if TYPE_CHECKING:
         RelatedPersonTelecomInput,
     )
 
-_PATIENT_FIELDS = {"patient", "patient_display"}
+_PATIENT_FIELDS = {"patient", "patient_display"} | {
+    f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 _PERIOD_FIELDS = {"period_start", "period_end"}
 
 
@@ -75,6 +78,83 @@ def _codeable_concept_from_payload(concept: Any) -> dict | None:
     return result or None
 
 
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    if not obj:
+        return None
+
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    display = _get(f"{prefix}_display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected")
+    id_system = _get(f"{prefix}_identifier_system")
+    id_value = _get(f"{prefix}_identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+    return entry or None
+
+
 def _identifier_from_payload(i: RelatedPersonIdentifierInput) -> dict | None:
     entry: dict = {}
     if i.use:
@@ -101,12 +181,8 @@ def _identifier_from_payload(i: RelatedPersonIdentifierInput) -> dict | None:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
 
-    if i.assigner or i.assigner_display:
-        assigner: dict = {}
-        if i.assigner:
-            assigner["reference"] = i.assigner
-        if i.assigner_display:
-            assigner["display"] = i.assigner_display
+    assigner = _reference_from_payload(i, "assigner")
+    if assigner:
         entry["assigner"] = assigner
 
     return entry or None
@@ -208,24 +284,25 @@ def _photo_from_payload(p: RelatedPersonPhotoInput) -> dict | None:
 
 
 def _communication_from_payload(c: RelatedPersonCommunicationInput) -> dict | None:
-    lang_codings = [_coding_from_payload(cd) for cd in (c.language_coding or [])]
-    lang_codings = [cd for cd in lang_codings if cd]
-    lang_cc: dict = {}
-    if lang_codings:
-        lang_cc["coding"] = lang_codings
+    entry: dict = {}
+    lang: dict = {}
+    if c.language_coding:
+        codings = [_coding_from_payload(cd) for cd in c.language_coding]
+        codings = [cd for cd in codings if cd]
+        if codings:
+            lang["coding"] = codings
     if c.language_text:
-        lang_cc["text"] = c.language_text
-    if not lang_cc:
-        return None
-    entry: dict = {"language": lang_cc}
+        lang["text"] = c.language_text
+    if lang:
+        entry["language"] = lang
     if c.preferred is not None:
         entry["preferred"] = c.preferred
-    return entry
+    return entry or None
 
 
 def payload_to_fhir_related_person(payload: RelatedPersonCreateSchema) -> dict:
-    """Convert RelatedPersonCreateSchema payload to a FHIR R4 JSON dict."""
-    result: dict = {
+    """Convert a validated RelatedPersonCreateSchema to a FHIR R4 RelatedPerson dict."""
+    result: dict[str, Any] = {
         "resourceType": "RelatedPerson",
     }
 
@@ -241,10 +318,8 @@ def payload_to_fhir_related_person(payload: RelatedPersonCreateSchema) -> dict:
     if payload.active is not None:
         result["active"] = payload.active
 
-    if payload.patient:
-        pat_ref: dict = {"reference": payload.patient}
-        if payload.patient_display:
-            pat_ref["display"] = payload.patient_display
+    pat_ref = _reference_from_payload(payload, "patient")
+    if pat_ref:
         result["patient"] = pat_ref
 
     if payload.relationship:
@@ -328,10 +403,8 @@ def patch_fragment_to_fhir_related_person(
 
     if provided & _PATIENT_FIELDS:
         touched.add("patient")
-        if payload.patient:
-            pat_ref: dict = {"reference": payload.patient}
-            if payload.patient_display:
-                pat_ref["display"] = payload.patient_display
+        pat_ref = _reference_from_payload(payload, "patient")
+        if pat_ref:
             fragment["patient"] = pat_ref
 
     if "relationship" in provided:

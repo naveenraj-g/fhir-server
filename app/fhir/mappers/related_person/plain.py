@@ -33,8 +33,50 @@ def _plain_coding(c) -> dict:
     }
 
 
-def _plain_identifier(i: RelatedPersonIdentifier) -> dict:
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    if obj is None:
+        return {}
+    p_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    p_end = getattr(obj, f"{prefix}_identifier_period_end", None)
     return {
+        f"{prefix}_identifier_use": fhir_enum(
+            getattr(obj, f"{prefix}_identifier_use", None)
+        ),
+        f"{prefix}_identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        f"{prefix}_identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
+        f"{prefix}_identifier_type_code": getattr(
+            obj, f"{prefix}_identifier_type_code", None
+        ),
+        f"{prefix}_identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        f"{prefix}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{prefix}_identifier_type_text": getattr(
+            obj, f"{prefix}_identifier_type_text", None
+        ),
+        f"{prefix}_identifier_system": getattr(
+            obj, f"{prefix}_identifier_system", None
+        ),
+        f"{prefix}_identifier_value": getattr(
+            obj, f"{prefix}_identifier_value", None
+        ),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start)
+        if p_start
+        else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end)
+        if p_end
+        else None,
+    }
+
+
+def _plain_identifier(i: RelatedPersonIdentifier) -> dict:
+    res = {
         "id": i.id,
         "use": fhir_enum(i.use),
         "type_text": i.type_text,
@@ -52,27 +94,14 @@ def _plain_identifier(i: RelatedPersonIdentifier) -> dict:
         "assigner_type": fhir_enum(i.assigner_type),
         "assigner_id": i.assigner_id,
         "assigner_display": i.assigner_display,
-        "assigner_identifier_use": fhir_enum(i.assigner_identifier_use),
-        "assigner_identifier_type_system": i.assigner_identifier_type_system,
-        "assigner_identifier_type_version": i.assigner_identifier_type_version,
-        "assigner_identifier_type_code": i.assigner_identifier_type_code,
-        "assigner_identifier_type_display": i.assigner_identifier_type_display,
-        "assigner_identifier_type_text": i.assigner_identifier_type_text,
-        "assigner_identifier_type_user_selected": i.assigner_identifier_type_user_selected,
-        "assigner_identifier_system": i.assigner_identifier_system,
-        "assigner_identifier_value": i.assigner_identifier_value,
-        "assigner_identifier_period_start": fhir_instant(
-            i.assigner_identifier_period_start
-        ),
-        "assigner_identifier_period_end": fhir_instant(
-            i.assigner_identifier_period_end
-        ),
         "tenant_id": i.tenant_id,
         "created_by": i.created_by,
         "updated_by": i.updated_by,
         "created_at": i.created_at,
         "updated_at": i.updated_at,
     }
+    res.update(_plain_reference_fields(i, "assigner"))
+    return res
 
 
 def _plain_relationship(r: RelatedPersonRelationship) -> dict:
@@ -181,7 +210,7 @@ def _plain_communication(c: RelatedPersonCommunication) -> dict:
 
 def to_plain_related_person(model: RelatedPersonModel) -> dict:
     """Serialize a RelatedPersonModel to plain snake_case dict."""
-    return {
+    res = {
         "id": model.related_person_id,
         "active": model.active,
         "patient_reference": model.patient_reference,
@@ -210,3 +239,5 @@ def to_plain_related_person(model: RelatedPersonModel) -> dict:
             _plain_communication(c) for c in (model.communications or [])
         ],
     }
+    res.update(_plain_reference_fields(model, "patient"))
+    return res

@@ -15,6 +15,7 @@ from app.schemas.datatypes import (
     FHIRPeriod,
     FHIRReference,
 )
+from app.schemas.enums import IdentifierUse
 
 from .address import PlainRelatedPersonAddress
 from .communication import (
@@ -100,8 +101,8 @@ class PlainRelatedPersonResponse(AuditFields):
     active: bool | None = Field(
         None, description="Whether this related person's record is in active use."
     )
-    patient_reference: str = Field(
-        ..., description="Raw literal string of patient reference."
+    patient_reference: str | None = Field(
+        None, description="Raw literal string of patient reference."
     )
     patient_type: str | None = Field(
         None, description="Target resource type (always 'Patient')."
@@ -112,6 +113,18 @@ class PlainRelatedPersonResponse(AuditFields):
     patient_display: str | None = Field(
         None, description="Display text for the patient reference."
     )
+    patient_identifier_use: IdentifierUse | None = Field(None)
+    patient_identifier_type_system: str | None = Field(None)
+    patient_identifier_type_version: str | None = Field(None)
+    patient_identifier_type_code: str | None = Field(None)
+    patient_identifier_type_display: str | None = Field(None)
+    patient_identifier_type_user_selected: bool | None = Field(None)
+    patient_identifier_type_text: str | None = Field(None)
+    patient_identifier_system: str | None = Field(None)
+    patient_identifier_value: str | None = Field(None)
+    patient_identifier_period_start: str | None = Field(None)
+    patient_identifier_period_end: str | None = Field(None)
+
     gender: str | None = Field(
         None, description="Administrative Gender — male|female|other|unknown."
     )
