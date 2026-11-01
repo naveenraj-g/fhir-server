@@ -19,9 +19,9 @@ class OrganizationCreateSchema(BaseModel):
     create split like Patient/Practitioner, since it's set once at onboarding
     rather than built up incrementally. org_id and created_by both come from
     the verified JWT (actor.org_id / actor.sub) — neither is a request body
-    field. Unlike every other resource, Organization has no user_id field at
-    all — it's a shared tenant-level entity, not scoped to an individual
-    end-user."""
+    field. Like other tenant-level resources (and unlike Patient/Practitioner
+    which have a /me route), Organization has no user_id field at all —
+    it's a shared tenant-level entity, not scoped to an individual end-user."""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -36,6 +36,8 @@ class OrganizationCreateSchema(BaseModel):
                         "value": "12345",
                         "system": "http://example.org/facility-ids",
                         "use": "official",
+                        "assigner": "Organization/190001",
+                        "assigner_display": "State Health Department",
                     }
                 ],
                 "type": [
@@ -80,7 +82,12 @@ class OrganizationCreateSchema(BaseModel):
                         "telecom": [{"system": "phone", "value": "555-0001"}],
                     }
                 ],
-                "endpoint": [],
+                "endpoint": [
+                    {
+                        "reference": "Endpoint/1",
+                        "reference_display": "EHR FHIR Gateway",
+                    }
+                ],
             }
         },
     )
@@ -188,10 +195,9 @@ class OrganizationPatchSchema(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "active": True,
-                "name": "General Hospital",
-                "alias": ["Gen Hosp"],
-                "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
+                "name": "General Hospital Health System",
+                "alias": ["Gen Hosp", "GHHS"],
+                "telecom": [{"system": "phone", "value": "555-9999", "use": "work"}],
             }
         },
     )
