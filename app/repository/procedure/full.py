@@ -34,6 +34,8 @@ from app.models.procedure import (
 from app.schemas.procedure import ProcedureCreateSchema, ProcedurePatchSchema
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_kwargs,
     _parse_asserter_ref,
     _parse_assigner_ref,
     _parse_author_ref,
@@ -50,6 +52,7 @@ from ._shared import (
     _parse_report_ref,
     _parse_subject_ref,
     _parse_used_reference_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
 )
 
@@ -73,11 +76,12 @@ async def _add_identifiers(session, procedure_pk: int, org_id: str, identifiers,
         a_type, a_id = _parse_assigner_ref(i.assigner) if i.assigner else (None, None)
         if a_type and a_id:
             await _validate_ref(session, org_id, a_type, a_id, "identifier.assigner")
+        type_text = getattr(i, "type_text", None) or (i.type.text if getattr(i, "type", None) else None)
         ident = ProcedureIdentifier(
             procedure_pk=procedure_pk,
             tenant_id=org_id,
             use=i.use,
-            type_text=i.type.text if i.type else None,
+            type_text=type_text,
             system=i.system,
             value=i.value,
             period_start=i.period_start,
@@ -86,12 +90,14 @@ async def _add_identifiers(session, procedure_pk: int, org_id: str, identifiers,
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
         await session.flush()
-        if i.type and i.type.coding:
-            for c in i.type.coding:
+        type_codings = getattr(i, "type_coding", None) or (i.type.coding if getattr(i, "type", None) else None)
+        if type_codings:
+            for c in type_codings:
                 session.add(
                     ProcedureIdentifierTypeCoding(
                         identifier_id=ident.id,
@@ -102,34 +108,44 @@ async def _add_identifiers(session, procedure_pk: int, org_id: str, identifiers,
 
 async def _add_based_on(session, procedure_pk: int, org_id: str, based_on, created_by: str) -> None:
     for b in based_on or []:
-        b_type, b_id = _parse_based_on_ref(b)
+        ref_kwargs = _child_reference_kwargs(b)
+        b_type, b_id = (
+            _parse_based_on_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if b_type and b_id:
             await _validate_ref(session, org_id, b_type, b_id, "based_on")
         session.add(
             ProcedureBasedOn(
                 procedure_pk=procedure_pk,
                 tenant_id=org_id,
-                reference_reference=b,
                 reference_type=b_type,
                 reference_id=b_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
 
 async def _add_part_of(session, procedure_pk: int, org_id: str, part_of, created_by: str) -> None:
     for p in part_of or []:
-        p_type, p_id = _parse_part_of_ref(p)
+        ref_kwargs = _child_reference_kwargs(p)
+        p_type, p_id = (
+            _parse_part_of_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if p_type and p_id:
             await _validate_ref(session, org_id, p_type, p_id, "part_of")
         session.add(
             ProcedurePartOf(
                 procedure_pk=procedure_pk,
                 tenant_id=org_id,
-                reference_reference=p,
                 reference_type=p_type,
                 reference_id=p_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
@@ -176,8 +192,9 @@ async def _add_outcome_codings(session, procedure_pk: int, org_id: str, codings,
 
 async def _add_performers(session, procedure_pk: int, org_id: str, performers, created_by: str) -> None:
     for p in performers or []:
-        a_type, a_id = _parse_performer_actor_ref(p.actor)
-        await _validate_ref(session, org_id, a_type, a_id, "performer.actor")
+        a_type, a_id = _parse_performer_actor_ref(p.actor) if p.actor else (None, None)
+        if a_type and a_id:
+            await _validate_ref(session, org_id, a_type, a_id, "performer.actor")
 
         ob_type, ob_id = _parse_performer_on_behalf_of_ref(p.on_behalf_of) if p.on_behalf_of else (None, None)
         if ob_type and ob_id:
@@ -196,6 +213,8 @@ async def _add_performers(session, procedure_pk: int, org_id: str, performers, c
             on_behalf_of_id=ob_id,
             on_behalf_of_display=p.on_behalf_of_display,
             created_by=created_by,
+            **_prefixed_identifier_kwargs("actor", p),
+            **_prefixed_identifier_kwargs("on_behalf_of", p),
         )
         session.add(perf)
         await session.flush()
@@ -232,17 +251,22 @@ async def _add_reason_codes(session, procedure_pk: int, org_id: str, reason_code
 
 async def _add_reason_references(session, procedure_pk: int, org_id: str, reason_references, created_by: str) -> None:
     for rr in reason_references or []:
-        rr_type, rr_id = _parse_reason_reference_ref(rr)
+        ref_kwargs = _child_reference_kwargs(rr)
+        rr_type, rr_id = (
+            _parse_reason_reference_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if rr_type and rr_id:
             await _validate_ref(session, org_id, rr_type, rr_id, "reason_reference")
         session.add(
             ProcedureReasonReference(
                 procedure_pk=procedure_pk,
                 tenant_id=org_id,
-                reference_reference=rr,
                 reference_type=rr_type,
                 reference_id=rr_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
@@ -269,17 +293,22 @@ async def _add_body_sites(session, procedure_pk: int, org_id: str, body_sites, c
 
 async def _add_reports(session, procedure_pk: int, org_id: str, reports, created_by: str) -> None:
     for r in reports or []:
-        r_type, r_id = _parse_report_ref(r)
+        ref_kwargs = _child_reference_kwargs(r)
+        r_type, r_id = (
+            _parse_report_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if r_type and r_id:
             await _validate_ref(session, org_id, r_type, r_id, "report")
         session.add(
             ProcedureReport(
                 procedure_pk=procedure_pk,
                 tenant_id=org_id,
-                reference_reference=r,
                 reference_type=r_type,
                 reference_id=r_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
@@ -306,17 +335,22 @@ async def _add_complications(session, procedure_pk: int, org_id: str, complicati
 
 async def _add_complication_details(session, procedure_pk: int, org_id: str, complication_details, created_by: str) -> None:
     for cd in complication_details or []:
-        cd_type, cd_id = _parse_complication_detail_ref(cd)
+        ref_kwargs = _child_reference_kwargs(cd)
+        cd_type, cd_id = (
+            _parse_complication_detail_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if cd_type and cd_id:
             await _validate_ref(session, org_id, cd_type, cd_id, "complication_detail")
         session.add(
             ProcedureComplicationDetail(
                 procedure_pk=procedure_pk,
                 tenant_id=org_id,
-                reference_reference=cd,
                 reference_type=cd_type,
                 reference_id=cd_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
@@ -364,8 +398,13 @@ async def _add_notes(session, procedure_pk: int, org_id: str, notes, created_by:
 
 async def _add_focal_devices(session, procedure_pk: int, org_id: str, focal_devices, created_by: str) -> None:
     for d in focal_devices or []:
-        m_type, m_id = _parse_focal_device_manipulated_ref(d.manipulated)
-        await _validate_ref(session, org_id, m_type, m_id, "focal_device.manipulated")
+        m_type, m_id = (
+            _parse_focal_device_manipulated_ref(d.manipulated)
+            if d.manipulated
+            else (None, None)
+        )
+        if m_type and m_id:
+            await _validate_ref(session, org_id, m_type, m_id, "focal_device.manipulated")
 
         row = ProcedureFocalDevice(
             procedure_pk=procedure_pk,
@@ -376,6 +415,7 @@ async def _add_focal_devices(session, procedure_pk: int, org_id: str, focal_devi
             manipulated_id=m_id,
             manipulated_display=d.manipulated_display,
             created_by=created_by,
+            **_prefixed_identifier_kwargs("manipulated", d),
         )
         session.add(row)
         await session.flush()
@@ -392,17 +432,22 @@ async def _add_focal_devices(session, procedure_pk: int, org_id: str, focal_devi
 
 async def _add_used_references(session, procedure_pk: int, org_id: str, used_references, created_by: str) -> None:
     for ur in used_references or []:
-        ur_type, ur_id = _parse_used_reference_ref(ur)
+        ref_kwargs = _child_reference_kwargs(ur)
+        ur_type, ur_id = (
+            _parse_used_reference_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if ur_type and ur_id:
             await _validate_ref(session, org_id, ur_type, ur_id, "used_reference")
         session.add(
             ProcedureUsedReference(
                 procedure_pk=procedure_pk,
                 tenant_id=org_id,
-                reference_reference=ur,
                 reference_type=ur_type,
                 reference_id=ur_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
@@ -437,8 +482,13 @@ class _FullMixin:
         created_by: str,
     ) -> ProcedureModel:
         async with self.session_factory() as session:
-            s_type, s_id = _parse_subject_ref(payload.subject)
-            await _validate_ref(session, org_id, s_type, s_id, "subject")
+            s_type, s_id = (
+                _parse_subject_ref(payload.subject)
+                if payload.subject
+                else (None, None)
+            )
+            if s_type and s_id:
+                await _validate_ref(session, org_id, s_type, s_id, "subject")
 
             e_type, e_id = _parse_encounter_ref(payload.encounter) if payload.encounter else (None, None)
             if e_type and e_id:
@@ -469,10 +519,12 @@ class _FullMixin:
                 subject_type=s_type,
                 subject_id=s_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 encounter_reference=payload.encounter,
                 encounter_type=e_type,
                 encounter_id=e_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 performed_date_time=payload.performed_date_time,
                 performed_period_start=payload.performed_period_start,
                 performed_period_end=payload.performed_period_end,
@@ -483,14 +535,17 @@ class _FullMixin:
                 recorder_type=rec_type,
                 recorder_id=rec_id,
                 recorder_display=payload.recorder_display,
+                **_prefixed_identifier_kwargs("recorder", payload),
                 asserter_reference=payload.asserter,
                 asserter_type=ass_type,
                 asserter_id=ass_id,
                 asserter_display=payload.asserter_display,
+                **_prefixed_identifier_kwargs("asserter", payload),
                 location_reference=payload.location,
                 location_type=loc_type,
                 location_id=loc_id,
                 location_display=payload.location_display,
+                **_prefixed_identifier_kwargs("location", payload),
                 outcome_text=payload.outcome.text if payload.outcome else None,
                 extension=payload.extension,
             )
@@ -573,7 +628,8 @@ class _FullMixin:
             if "performed_range" in fields_set:
                 procedure.performed_range = payload.performed_range
 
-            if "subject" in fields_set or "subject_display" in fields_set:
+            subject_fallback_fields = {f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "subject" in fields_set or "subject_display" in fields_set or (fields_set & subject_fallback_fields):
                 if payload.subject:
                     s_type, s_id = _parse_subject_ref(payload.subject)
                     await _validate_ref(session, org_id, s_type, s_id, "subject")
@@ -586,8 +642,13 @@ class _FullMixin:
                     procedure.subject_id = None
                 if "subject_display" in fields_set:
                     procedure.subject_display = payload.subject_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"subject_{s}"
+                    if f_name in fields_set:
+                        setattr(procedure, f_name, getattr(payload, f_name))
 
-            if "encounter" in fields_set or "encounter_display" in fields_set:
+            encounter_fallback_fields = {f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "encounter" in fields_set or "encounter_display" in fields_set or (fields_set & encounter_fallback_fields):
                 if payload.encounter:
                     e_type, e_id = _parse_encounter_ref(payload.encounter)
                     await _validate_ref(session, org_id, e_type, e_id, "encounter")
@@ -600,8 +661,13 @@ class _FullMixin:
                     procedure.encounter_id = None
                 if "encounter_display" in fields_set:
                     procedure.encounter_display = payload.encounter_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"encounter_{s}"
+                    if f_name in fields_set:
+                        setattr(procedure, f_name, getattr(payload, f_name))
 
-            if "recorder" in fields_set or "recorder_display" in fields_set:
+            recorder_fallback_fields = {f"recorder_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "recorder" in fields_set or "recorder_display" in fields_set or (fields_set & recorder_fallback_fields):
                 if payload.recorder:
                     rec_type, rec_id = _parse_recorder_ref(payload.recorder)
                     await _validate_ref(session, org_id, rec_type, rec_id, "recorder")
@@ -614,8 +680,13 @@ class _FullMixin:
                     procedure.recorder_id = None
                 if "recorder_display" in fields_set:
                     procedure.recorder_display = payload.recorder_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"recorder_{s}"
+                    if f_name in fields_set:
+                        setattr(procedure, f_name, getattr(payload, f_name))
 
-            if "asserter" in fields_set or "asserter_display" in fields_set:
+            asserter_fallback_fields = {f"asserter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "asserter" in fields_set or "asserter_display" in fields_set or (fields_set & asserter_fallback_fields):
                 if payload.asserter:
                     ass_type, ass_id = _parse_asserter_ref(payload.asserter)
                     await _validate_ref(session, org_id, ass_type, ass_id, "asserter")
@@ -628,8 +699,13 @@ class _FullMixin:
                     procedure.asserter_id = None
                 if "asserter_display" in fields_set:
                     procedure.asserter_display = payload.asserter_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"asserter_{s}"
+                    if f_name in fields_set:
+                        setattr(procedure, f_name, getattr(payload, f_name))
 
-            if "location" in fields_set or "location_display" in fields_set:
+            location_fallback_fields = {f"location_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "location" in fields_set or "location_display" in fields_set or (fields_set & location_fallback_fields):
                 if payload.location:
                     loc_type, loc_id = _parse_location_ref(payload.location)
                     await _validate_ref(session, org_id, loc_type, loc_id, "location")
@@ -642,6 +718,10 @@ class _FullMixin:
                     procedure.location_id = None
                 if "location_display" in fields_set:
                     procedure.location_display = payload.location_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"location_{s}"
+                    if f_name in fields_set:
+                        setattr(procedure, f_name, getattr(payload, f_name))
 
             # 0..1 Concept fields
             if "status_reason" in fields_set:

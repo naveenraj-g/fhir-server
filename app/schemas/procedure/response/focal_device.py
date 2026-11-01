@@ -23,3 +23,14 @@ class PlainProcedureFocalDevice(BaseModel):
     action: PlainProcedureSingleConcept | None = None
     manipulated: str | None = None
     manipulated_display: str | None = None
+    manipulated_identifier_use: str | None = None
+    manipulated_identifier_type_system: str | None = None
+    manipulated_identifier_type_version: str | None = None
+    manipulated_identifier_type_code: str | None = None
+    manipulated_identifier_type_display: str | None = None
+    manipulated_identifier_type_text: str | None = None
+    manipulated_identifier_type_user_selected: bool | None = None
+    manipulated_identifier_system: str | None = None
+    manipulated_identifier_value: str | None = None
+    manipulated_identifier_period_start: str | None = None
+    manipulated_identifier_period_end: str | None = None

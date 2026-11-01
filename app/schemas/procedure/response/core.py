@@ -25,6 +25,7 @@ from app.schemas.procedure.response.performer import (
     FHIRProcedurePerformer,
     PlainProcedurePerformer,
 )
+from app.schemas.procedure.response.reference import PlainProcedureReference
 
 
 class FHIRProcedureSchema(BaseModel):
@@ -78,40 +79,101 @@ class PlainProcedureResponse(BaseModel):
     id: int
     instantiates_canonical: list[str] | None = None
     instantiates_uri: list[str] | None = None
-    based_on: list[str] | None = None
-    part_of: list[str] | None = None
+    based_on: list[PlainProcedureReference | str] | None = None
+    part_of: list[PlainProcedureReference | str] | None = None
     status: str
     status_reason: PlainProcedureSingleConcept | None = None
     category: PlainProcedureSingleConcept | None = None
     code: PlainProcedureSingleConcept | None = None
-    subject: str
+    subject: str | None = None
     subject_display: str | None = None
+    subject_identifier_use: str | None = None
+    subject_identifier_type_system: str | None = None
+    subject_identifier_type_version: str | None = None
+    subject_identifier_type_code: str | None = None
+    subject_identifier_type_display: str | None = None
+    subject_identifier_type_text: str | None = None
+    subject_identifier_type_user_selected: bool | None = None
+    subject_identifier_system: str | None = None
+    subject_identifier_value: str | None = None
+    subject_identifier_period_start: str | None = None
+    subject_identifier_period_end: str | None = None
+
     encounter: str | None = None
     encounter_display: str | None = None
+    encounter_identifier_use: str | None = None
+    encounter_identifier_type_system: str | None = None
+    encounter_identifier_type_version: str | None = None
+    encounter_identifier_type_code: str | None = None
+    encounter_identifier_type_display: str | None = None
+    encounter_identifier_type_text: str | None = None
+    encounter_identifier_type_user_selected: bool | None = None
+    encounter_identifier_system: str | None = None
+    encounter_identifier_value: str | None = None
+    encounter_identifier_period_start: str | None = None
+    encounter_identifier_period_end: str | None = None
+
     performed_date_time: datetime | None = None
     performed_period_start: datetime | None = None
     performed_period_end: datetime | None = None
     performed_string: str | None = None
     performed_age: dict[str, Any] | None = None
     performed_range: dict[str, Any] | None = None
+
     recorder: str | None = None
     recorder_display: str | None = None
+    recorder_identifier_use: str | None = None
+    recorder_identifier_type_system: str | None = None
+    recorder_identifier_type_version: str | None = None
+    recorder_identifier_type_code: str | None = None
+    recorder_identifier_type_display: str | None = None
+    recorder_identifier_type_text: str | None = None
+    recorder_identifier_type_user_selected: bool | None = None
+    recorder_identifier_system: str | None = None
+    recorder_identifier_value: str | None = None
+    recorder_identifier_period_start: str | None = None
+    recorder_identifier_period_end: str | None = None
+
     asserter: str | None = None
     asserter_display: str | None = None
+    asserter_identifier_use: str | None = None
+    asserter_identifier_type_system: str | None = None
+    asserter_identifier_type_version: str | None = None
+    asserter_identifier_type_code: str | None = None
+    asserter_identifier_type_display: str | None = None
+    asserter_identifier_type_text: str | None = None
+    asserter_identifier_type_user_selected: bool | None = None
+    asserter_identifier_system: str | None = None
+    asserter_identifier_value: str | None = None
+    asserter_identifier_period_start: str | None = None
+    asserter_identifier_period_end: str | None = None
+
     performer: list[PlainProcedurePerformer] | None = None
     location: str | None = None
     location_display: str | None = None
+    location_identifier_use: str | None = None
+    location_identifier_type_system: str | None = None
+    location_identifier_type_version: str | None = None
+    location_identifier_type_code: str | None = None
+    location_identifier_type_display: str | None = None
+    location_identifier_type_text: str | None = None
+    location_identifier_type_user_selected: bool | None = None
+    location_identifier_system: str | None = None
+    location_identifier_value: str | None = None
+    location_identifier_period_start: str | None = None
+    location_identifier_period_end: str | None = None
+
     reason_code: list[PlainProcedureConcept] | None = None
-    reason_reference: list[str] | None = None
+    reason_reference: list[PlainProcedureReference | str] | None = None
     body_site: list[PlainProcedureConcept] | None = None
     outcome: PlainProcedureSingleConcept | None = None
-    report: list[str] | None = None
+    report: list[PlainProcedureReference | str] | None = None
     complication: list[PlainProcedureConcept] | None = None
-    complication_detail: list[str] | None = None
+    complication_detail: list[PlainProcedureReference | str] | None = None
     follow_up: list[PlainProcedureConcept] | None = None
     note: list[PlainProcedureNote] | None = None
     focal_device: list[PlainProcedureFocalDevice] | None = None
-    used_reference: list[str] | None = None
+    used_reference: list[PlainProcedureReference | str] | None = None
     used_code: list[PlainProcedureConcept] | None = None
     identifier: list[PlainProcedureIdentifier] | None = None
     created_at: datetime | None = None

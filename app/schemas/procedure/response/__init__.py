@@ -10,6 +10,7 @@ from .focal_device import FHIRProcedureFocalDevice, PlainProcedureFocalDevice
 from .identifier import PlainProcedureIdentifier
 from .note import PlainProcedureNote
 from .performer import FHIRProcedurePerformer, PlainProcedurePerformer
+from .reference import PlainProcedureReference
 
 __all__ = [
     "PlainProcedureConcept",
@@ -20,6 +21,7 @@ __all__ = [
     "FHIRProcedureFocalDevice",
     "PlainProcedureFocalDevice",
     "PlainProcedureNote",
+    "PlainProcedureReference",
     "FHIRProcedureSchema",
     "PlainProcedureResponse",
     "PaginatedProcedureResponse",

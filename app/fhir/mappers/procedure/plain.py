@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from app.fhir.datatypes import fhir_enum
+from app.fhir.datatypes import fhir_enum, fhir_instant
 
 if TYPE_CHECKING:
     from app.models.procedure import (
@@ -20,6 +20,74 @@ def _plain_ref(ref_raw: str | None, ref_type: Any, ref_id: int | None) -> str | 
     if ref_type and ref_id:
         return f"{fhir_enum(ref_type)}/{ref_id}"
     return None
+
+
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    if obj is None:
+        return {}
+    p_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    p_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+    return {
+        f"{prefix}_identifier_use": fhir_enum(
+            getattr(obj, f"{prefix}_identifier_use", None)
+        ),
+        f"{prefix}_identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        f"{prefix}_identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
+        f"{prefix}_identifier_type_code": getattr(
+            obj, f"{prefix}_identifier_type_code", None
+        ),
+        f"{prefix}_identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        f"{prefix}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{prefix}_identifier_type_text": getattr(
+            obj, f"{prefix}_identifier_type_text", None
+        ),
+        f"{prefix}_identifier_system": getattr(
+            obj, f"{prefix}_identifier_system", None
+        ),
+        f"{prefix}_identifier_value": getattr(
+            obj, f"{prefix}_identifier_value", None
+        ),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start)
+        if p_start
+        else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end)
+        if p_end
+        else None,
+    }
+
+
+def _plain_child_reference(row) -> str | dict | None:
+    if row is None:
+        return None
+    raw_reference = getattr(row, "reference_reference", None)
+    ref_type = getattr(row, "reference_type", None)
+    ref_id = getattr(row, "reference_id", None)
+    computed = _plain_ref(raw_reference, ref_type, ref_id)
+    display = getattr(row, "reference_display", None)
+
+    ref_fields = _plain_reference_fields(row, "reference")
+    has_fallback = any(v is not None for v in ref_fields.values())
+
+    if not has_fallback and computed:
+        return computed
+
+    res: dict[str, Any] = {
+        "id": row.id,
+        "reference": computed,
+        "display": display,
+    }
+    for k, v in ref_fields.items():
+        res[k.removeprefix("reference_")] = v
+        res[k] = v
+    return res
 
 
 def _plain_single_concept(codings, text: str | None) -> dict | None:
@@ -79,7 +147,7 @@ def _plain_identifier(i: ProcedureIdentifier) -> dict:
             ]
             or None,
         }
-    return {
+    res = {
         "id": i.id,
         "use": fhir_enum(i.use) if i.use else None,
         "type": type_obj,
@@ -90,10 +158,12 @@ def _plain_identifier(i: ProcedureIdentifier) -> dict:
         "assigner": _plain_ref(i.assigner_reference, i.assigner_type, i.assigner_id),
         "assigner_display": i.assigner_display,
     }
+    res.update(_plain_reference_fields(i, "assigner"))
+    return res
 
 
 def _plain_performer(p: ProcedurePerformer) -> dict:
-    return {
+    res = {
         "id": p.id,
         "function": _plain_single_concept(getattr(p, "function_codings", None), p.function_text),
         "actor": _plain_ref(p.actor_reference, p.actor_type, p.actor_id),
@@ -101,15 +171,20 @@ def _plain_performer(p: ProcedurePerformer) -> dict:
         "on_behalf_of": _plain_ref(p.on_behalf_of_reference, p.on_behalf_of_type, p.on_behalf_of_id),
         "on_behalf_of_display": p.on_behalf_of_display,
     }
+    res.update(_plain_reference_fields(p, "actor"))
+    res.update(_plain_reference_fields(p, "on_behalf_of"))
+    return res
 
 
 def _plain_focal_device(d: ProcedureFocalDevice) -> dict:
-    return {
+    res = {
         "id": d.id,
         "action": _plain_single_concept(getattr(d, "action_codings", None), d.action_text),
         "manipulated": _plain_ref(d.manipulated_reference, d.manipulated_type, d.manipulated_id),
         "manipulated_display": d.manipulated_display,
     }
+    res.update(_plain_reference_fields(d, "manipulated"))
+    return res
 
 
 def _plain_note(n: ProcedureNote) -> dict:
@@ -130,42 +205,42 @@ def _plain_note(n: ProcedureNote) -> dict:
 def to_plain_procedure(model: ProcedureModel) -> dict:
     """Map ProcedureModel ORM instance to plain snake_case dictionary."""
     based_on = [
-        _plain_ref(b.reference_reference, b.reference_type, b.reference_id)
+        _plain_child_reference(b)
         for b in getattr(model, "based_on", []) or []
     ]
-    based_on = [b for b in based_on if b]
+    based_on = [b for b in based_on if b is not None]
 
     part_of = [
-        _plain_ref(p.reference_reference, p.reference_type, p.reference_id)
+        _plain_child_reference(p)
         for p in getattr(model, "part_of", []) or []
     ]
-    part_of = [p for p in part_of if p]
+    part_of = [p for p in part_of if p is not None]
 
     reason_reference = [
-        _plain_ref(rr.reference_reference, rr.reference_type, rr.reference_id)
+        _plain_child_reference(rr)
         for rr in getattr(model, "reason_references", []) or []
     ]
-    reason_reference = [rr for rr in reason_reference if rr]
+    reason_reference = [rr for rr in reason_reference if rr is not None]
 
     report = [
-        _plain_ref(r.reference_reference, r.reference_type, r.reference_id)
+        _plain_child_reference(r)
         for r in getattr(model, "reports", []) or []
     ]
-    report = [r for r in report if r]
+    report = [r for r in report if r is not None]
 
     complication_detail = [
-        _plain_ref(cd.reference_reference, cd.reference_type, cd.reference_id)
+        _plain_child_reference(cd)
         for cd in getattr(model, "complication_details", []) or []
     ]
-    complication_detail = [cd for cd in complication_detail if cd]
+    complication_detail = [cd for cd in complication_detail if cd is not None]
 
     used_reference = [
-        _plain_ref(ur.reference_reference, ur.reference_type, ur.reference_id)
+        _plain_child_reference(ur)
         for ur in getattr(model, "used_references", []) or []
     ]
-    used_reference = [ur for ur in used_reference if ur]
+    used_reference = [ur for ur in used_reference if ur is not None]
 
-    return {
+    res: dict[str, Any] = {
         "id": model.procedure_id,
         "instantiates_canonical": model.instantiates_canonical,
         "instantiates_uri": model.instantiates_uri,
@@ -274,3 +349,11 @@ def to_plain_procedure(model: ProcedureModel) -> dict:
         "created_at": model.created_at,
         "updated_at": model.updated_at,
     }
+
+    res.update(_plain_reference_fields(model, "subject"))
+    res.update(_plain_reference_fields(model, "encounter"))
+    res.update(_plain_reference_fields(model, "recorder"))
+    res.update(_plain_reference_fields(model, "asserter"))
+    res.update(_plain_reference_fields(model, "location"))
+
+    return res

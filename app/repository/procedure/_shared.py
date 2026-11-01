@@ -7,6 +7,46 @@ from app.models.enums import (
     LocationReferenceType,
     OrganizationReferenceType,
 )
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+
+
+def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
+    if payload is None:
+        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
+
+
+def _child_reference_kwargs(item) -> dict:
+    if isinstance(item, str):
+        return {
+            "reference_reference": item,
+            "reference_display": None,
+            **{f"reference_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES},
+        }
+    if item is None:
+        return {
+            "reference_reference": None,
+            "reference_display": None,
+            **{f"reference_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES},
+        }
+    ref_val = getattr(item, "reference", None) if not isinstance(item, dict) else item.get("reference")
+    disp_val = getattr(item, "display", None) if not isinstance(item, dict) else item.get("display")
+
+    res = {
+        "reference_reference": ref_val,
+        "reference_display": disp_val,
+    }
+    for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = None
+        if isinstance(item, dict):
+            val = item.get(suffix, item.get(f"reference_{suffix}"))
+        else:
+            val = getattr(item, suffix, getattr(item, f"reference_{suffix}", None))
+        res[f"reference_{suffix}"] = val
+    return res
 from app.models.procedure import (
     ProcedureAsserterReferenceType,
     ProcedureAuthorReferenceType,

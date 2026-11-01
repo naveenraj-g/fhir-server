@@ -4,6 +4,7 @@ from .focal_device import ProcedureFocalDeviceInput
 from .identifier import ProcedureIdentifierInput
 from .note import ProcedureNoteInput
 from .performer import ProcedurePerformerInput
+from .reference import ProcedureReferenceInput
 
 __all__ = [
     "ProcedureCodeableConceptInput",
@@ -11,6 +12,7 @@ __all__ = [
     "ProcedurePerformerInput",
     "ProcedureFocalDeviceInput",
     "ProcedureNoteInput",
+    "ProcedureReferenceInput",
     "ProcedureCreateSchema",
     "ProcedurePatchSchema",
 ]

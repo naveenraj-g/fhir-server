@@ -6,6 +6,7 @@ from .input import (
     ProcedureNoteInput,
     ProcedurePatchSchema,
     ProcedurePerformerInput,
+    ProcedureReferenceInput,
 )
 from .response import (
     FHIRProcedureBundle,
@@ -19,6 +20,7 @@ from .response import (
     PlainProcedureIdentifier,
     PlainProcedureNote,
     PlainProcedurePerformer,
+    PlainProcedureReference,
     PlainProcedureResponse,
     PlainProcedureSingleConcept,
 )
@@ -30,6 +32,7 @@ __all__ = [
     "ProcedurePerformerInput",
     "ProcedureFocalDeviceInput",
     "ProcedureNoteInput",
+    "ProcedureReferenceInput",
     "ProcedureCreateSchema",
     "ProcedurePatchSchema",
     # Response
@@ -41,6 +44,7 @@ __all__ = [
     "FHIRProcedureFocalDevice",
     "PlainProcedureFocalDevice",
     "PlainProcedureNote",
+    "PlainProcedureReference",
     "FHIRProcedureSchema",
     "PlainProcedureResponse",
     "PaginatedProcedureResponse",

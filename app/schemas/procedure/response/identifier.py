@@ -20,3 +20,14 @@ class PlainProcedureIdentifier(BaseModel):
     period_end: datetime | None = None
     assigner: str | None = None
     assigner_display: str | None = None
+    assigner_identifier_use: str | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_text: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_system: str | None = None
+    assigner_identifier_value: str | None = None
+    assigner_identifier_period_start: str | None = None
+    assigner_identifier_period_end: str | None = None

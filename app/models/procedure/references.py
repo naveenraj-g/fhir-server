@@ -1,7 +1,8 @@
-from sqlalchemy import BigInteger, Column, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.procedure.enums import (
     ProcedureBasedOnReferenceType,
     ProcedureComplicationDetailReferenceType,
@@ -26,10 +27,23 @@ class ProcedureBasedOn(TenantAuditMixin, Base):
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(ProcedureBasedOnReferenceType, name="procedure_based_on_reference_type"),
-        nullable=False,
+        nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="based_on")
 
@@ -47,10 +61,23 @@ class ProcedurePartOf(TenantAuditMixin, Base):
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(ProcedurePartOfReferenceType, name="procedure_part_of_reference_type"),
-        nullable=False,
+        nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="part_of")
 
@@ -71,10 +98,23 @@ class ProcedureReasonReference(TenantAuditMixin, Base):
             ProcedureReasonReferenceReferenceType,
             name="procedure_reason_reference_reference_type",
         ),
-        nullable=False,
+        nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="reason_references")
 
@@ -92,10 +132,23 @@ class ProcedureReport(TenantAuditMixin, Base):
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(ProcedureReportReferenceType, name="procedure_report_reference_type"),
-        nullable=False,
+        nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="reports")
 
@@ -116,10 +169,23 @@ class ProcedureComplicationDetail(TenantAuditMixin, Base):
             ProcedureComplicationDetailReferenceType,
             name="procedure_complication_detail_reference_type",
         ),
-        nullable=False,
+        nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="complication_details")
 
@@ -140,9 +206,22 @@ class ProcedureUsedReference(TenantAuditMixin, Base):
             ProcedureUsedReferenceReferenceType,
             name="procedure_used_reference_reference_type",
         ),
-        nullable=False,
+        nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="used_references")

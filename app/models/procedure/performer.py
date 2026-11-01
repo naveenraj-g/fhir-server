@@ -1,8 +1,8 @@
-from sqlalchemy import BigInteger, Column, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType
+from app.models.enums import IdentifierUse, OrganizationReferenceType
 from app.models.procedure.enums import ProcedurePerformerActorReferenceType
 from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
@@ -25,10 +25,23 @@ class ProcedurePerformer(TenantAuditMixin, Base):
             ProcedurePerformerActorReferenceType,
             name="procedure_performer_actor_reference_type",
         ),
-        nullable=False,
+        nullable=True,
     )
     actor_id = Column(BigInteger, nullable=True, index=True)
     actor_display = Column(String, nullable=True)
+    actor_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    actor_identifier_type_system = Column(String, nullable=True)
+    actor_identifier_type_version = Column(String, nullable=True)
+    actor_identifier_type_code = Column(String, nullable=True)
+    actor_identifier_type_display = Column(String, nullable=True)
+    actor_identifier_type_text = Column(String, nullable=True)
+    actor_identifier_type_user_selected = Column(Boolean, nullable=True)
+    actor_identifier_system = Column(String, nullable=True)
+    actor_identifier_value = Column(String, nullable=True)
+    actor_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    actor_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     on_behalf_of_reference = Column(String, nullable=True)
     on_behalf_of_type = Column(
@@ -41,6 +54,19 @@ class ProcedurePerformer(TenantAuditMixin, Base):
     )
     on_behalf_of_id = Column(BigInteger, nullable=True, index=True)
     on_behalf_of_display = Column(String, nullable=True)
+    on_behalf_of_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    on_behalf_of_identifier_type_system = Column(String, nullable=True)
+    on_behalf_of_identifier_type_version = Column(String, nullable=True)
+    on_behalf_of_identifier_type_code = Column(String, nullable=True)
+    on_behalf_of_identifier_type_display = Column(String, nullable=True)
+    on_behalf_of_identifier_type_text = Column(String, nullable=True)
+    on_behalf_of_identifier_type_user_selected = Column(Boolean, nullable=True)
+    on_behalf_of_identifier_system = Column(String, nullable=True)
+    on_behalf_of_identifier_value = Column(String, nullable=True)
+    on_behalf_of_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    on_behalf_of_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="performers")
     function_codings = relationship(

@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -11,7 +12,11 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import EncounterReferenceType, LocationReferenceType
+from app.models.enums import (
+    EncounterReferenceType,
+    IdentifierUse,
+    LocationReferenceType,
+)
 from app.models.procedure.enums import (
     ProcedureAsserterReferenceType,
     ProcedureRecorderReferenceType,
@@ -66,16 +71,29 @@ class ProcedureModel(TenantAuditMixin, Base):
     code_text = Column(String, nullable=True)
 
     # subject (1..1 Reference(Patient | Group))
-    subject_reference = Column(String, nullable=False)
+    subject_reference = Column(String, nullable=True)
     subject_type = Column(
         Enum(
             ProcedureSubjectReferenceType,
             name="procedure_subject_reference_type",
         ),
-        nullable=False,
+        nullable=True,
     )
     subject_id = Column(BigInteger, nullable=True, index=True)
     subject_display = Column(String, nullable=True)
+    subject_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    subject_identifier_type_system = Column(String, nullable=True)
+    subject_identifier_type_version = Column(String, nullable=True)
+    subject_identifier_type_code = Column(String, nullable=True)
+    subject_identifier_type_display = Column(String, nullable=True)
+    subject_identifier_type_text = Column(String, nullable=True)
+    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_identifier_system = Column(String, nullable=True)
+    subject_identifier_value = Column(String, nullable=True)
+    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # encounter (0..1 Reference(Encounter))
     encounter_reference = Column(String, nullable=True)
@@ -89,6 +107,19 @@ class ProcedureModel(TenantAuditMixin, Base):
     )
     encounter_id = Column(BigInteger, nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
+    encounter_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    encounter_identifier_type_system = Column(String, nullable=True)
+    encounter_identifier_type_version = Column(String, nullable=True)
+    encounter_identifier_type_code = Column(String, nullable=True)
+    encounter_identifier_type_display = Column(String, nullable=True)
+    encounter_identifier_type_text = Column(String, nullable=True)
+    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
+    encounter_identifier_system = Column(String, nullable=True)
+    encounter_identifier_value = Column(String, nullable=True)
+    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # performed[x] (0..1 dateTime | Period | string | Age | Range)
     performed_date_time = Column(DateTime(timezone=True), nullable=True)
@@ -109,6 +140,19 @@ class ProcedureModel(TenantAuditMixin, Base):
     )
     recorder_id = Column(BigInteger, nullable=True, index=True)
     recorder_display = Column(String, nullable=True)
+    recorder_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    recorder_identifier_type_system = Column(String, nullable=True)
+    recorder_identifier_type_version = Column(String, nullable=True)
+    recorder_identifier_type_code = Column(String, nullable=True)
+    recorder_identifier_type_display = Column(String, nullable=True)
+    recorder_identifier_type_text = Column(String, nullable=True)
+    recorder_identifier_type_user_selected = Column(Boolean, nullable=True)
+    recorder_identifier_system = Column(String, nullable=True)
+    recorder_identifier_value = Column(String, nullable=True)
+    recorder_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    recorder_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # asserter (0..1 Reference(Patient | RelatedPerson | Practitioner | PractitionerRole))
     asserter_reference = Column(String, nullable=True)
@@ -121,6 +165,19 @@ class ProcedureModel(TenantAuditMixin, Base):
     )
     asserter_id = Column(BigInteger, nullable=True, index=True)
     asserter_display = Column(String, nullable=True)
+    asserter_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    asserter_identifier_type_system = Column(String, nullable=True)
+    asserter_identifier_type_version = Column(String, nullable=True)
+    asserter_identifier_type_code = Column(String, nullable=True)
+    asserter_identifier_type_display = Column(String, nullable=True)
+    asserter_identifier_type_text = Column(String, nullable=True)
+    asserter_identifier_type_user_selected = Column(Boolean, nullable=True)
+    asserter_identifier_system = Column(String, nullable=True)
+    asserter_identifier_value = Column(String, nullable=True)
+    asserter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    asserter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # location (0..1 Reference(Location))
     location_reference = Column(String, nullable=True)
@@ -134,6 +191,19 @@ class ProcedureModel(TenantAuditMixin, Base):
     )
     location_id = Column(BigInteger, nullable=True, index=True)
     location_display = Column(String, nullable=True)
+    location_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    location_identifier_type_system = Column(String, nullable=True)
+    location_identifier_type_version = Column(String, nullable=True)
+    location_identifier_type_code = Column(String, nullable=True)
+    location_identifier_type_display = Column(String, nullable=True)
+    location_identifier_type_text = Column(String, nullable=True)
+    location_identifier_type_user_selected = Column(Boolean, nullable=True)
+    location_identifier_system = Column(String, nullable=True)
+    location_identifier_value = Column(String, nullable=True)
+    location_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    location_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # outcome (0..1 CodeableConcept)
     outcome_text = Column(String, nullable=True)

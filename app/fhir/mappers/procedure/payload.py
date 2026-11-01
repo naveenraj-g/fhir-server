@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from app.fhir.datatypes import fhir_enum
+from app.fhir.datatypes import fhir_enum, merge_patch_fragment
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.schemas.procedure.input import (
@@ -21,7 +22,24 @@ if TYPE_CHECKING:
         ProcedureNoteInput,
         ProcedurePatchSchema,
         ProcedurePerformerInput,
+        ProcedureReferenceInput,
     )
+
+_SUBJECT_FIELDS = {"subject", "subject_display"} | {
+    f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {
+    f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_RECORDER_FIELDS = {"recorder", "recorder_display"} | {
+    f"recorder_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_ASSERTER_FIELDS = {"asserter", "asserter_display"} | {
+    f"asserter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_LOCATION_FIELDS = {"location", "location_display"} | {
+    f"location_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 
 
 def _coding_from_payload(c: Any) -> dict:
@@ -72,6 +90,117 @@ def _codeable_concept_from_payload(
     return result or None
 
 
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    if not obj:
+        return None
+
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    if raw_reference is None and prefix != "reference":
+        raw_reference = _get(f"{prefix}_reference")
+    display = _get(f"{prefix}_display")
+    if display is None and prefix == "reference":
+        display = _get("display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected") if _get(f"{prefix}_identifier_type_user_selected") is not None else _get("identifier_type_user_selected")
+    id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
+    id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
+        if id_use:
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
+        if id_system:
+            ident["system"] = id_system
+        if id_value:
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = (
+                    id_period_start.isoformat()
+                    if hasattr(id_period_start, "isoformat")
+                    else str(id_period_start)
+                )
+            if id_period_end:
+                p_dict["end"] = (
+                    id_period_end.isoformat()
+                    if hasattr(id_period_end, "isoformat")
+                    else str(id_period_end)
+                )
+            ident["period"] = p_dict
+        entry["identifier"] = ident
+
+    return entry or None
+
+
+def _child_reference_from_payload(r: Any) -> dict | None:
+    if not r:
+        return None
+    if isinstance(r, str):
+        return {"reference": r}
+    return _reference_from_payload(r, "reference")
+
+
 def _identifier_from_payload(
     ident: ProcedureIdentifierInput | dict | None,
 ) -> dict | None:
@@ -80,22 +209,22 @@ def _identifier_from_payload(
     entry: dict = {}
     if isinstance(ident, dict):
         use = ident.get("use")
+        type_coding = ident.get("type_coding")
+        type_text = ident.get("type_text")
         type_in = ident.get("type")
         system = ident.get("system")
         value = ident.get("value")
         p_start = ident.get("period_start")
         p_end = ident.get("period_end")
-        assigner = ident.get("assigner")
-        assigner_disp = ident.get("assigner_display")
     else:
         use = ident.use
-        type_in = ident.type
+        type_coding = getattr(ident, "type_coding", None)
+        type_text = getattr(ident, "type_text", None)
+        type_in = getattr(ident, "type", None)
         system = ident.system
         value = ident.value
         p_start = ident.period_start
         p_end = ident.period_end
-        assigner = ident.assigner
-        assigner_disp = ident.assigner_display
 
     if use:
         entry["use"] = fhir_enum(use)
@@ -103,6 +232,14 @@ def _identifier_from_payload(
         type_cc = _codeable_concept_from_payload(type_in)
         if type_cc:
             entry["type"] = type_cc
+    elif type_coding or type_text:
+        cc: dict = {}
+        if type_coding:
+            cc["coding"] = [_coding_from_payload(c) for c in type_coding if _coding_from_payload(c)]
+        if type_text:
+            cc["text"] = type_text
+        if cc:
+            entry["type"] = cc
     if system:
         entry["system"] = system
     if value:
@@ -114,13 +251,10 @@ def _identifier_from_payload(
         if p_end:
             period["end"] = p_end.isoformat() if hasattr(p_end, "isoformat") else str(p_end)
         entry["period"] = period
-    if assigner or assigner_disp:
-        ass_entry: dict = {}
-        if assigner:
-            ass_entry["reference"] = assigner
-        if assigner_disp:
-            ass_entry["display"] = assigner_disp
-        entry["assigner"] = ass_entry
+
+    assigner = _reference_from_payload(ident, "assigner")
+    if assigner:
+        entry["assigner"] = assigner
     return entry or None
 
 
@@ -131,35 +265,21 @@ def _performer_from_payload(
         return None
     if isinstance(p, dict):
         fn = p.get("function")
-        actor = p.get("actor")
-        actor_disp = p.get("actor_display")
-        on_behalf = p.get("on_behalf_of")
-        on_behalf_disp = p.get("on_behalf_of_display")
     else:
         fn = p.function
-        actor = p.actor
-        actor_disp = p.actor_display
-        on_behalf = p.on_behalf_of
-        on_behalf_disp = p.on_behalf_of_display
 
     entry: dict = {}
     fn_cc = _codeable_concept_from_payload(fn)
     if fn_cc:
         entry["function"] = fn_cc
-    if actor or actor_disp:
-        actor_dict: dict = {}
-        if actor:
-            actor_dict["reference"] = actor
-        if actor_disp:
-            actor_dict["display"] = actor_disp
-        entry["actor"] = actor_dict
-    if on_behalf or on_behalf_disp:
-        ob_dict: dict = {}
-        if on_behalf:
-            ob_dict["reference"] = on_behalf
-        if on_behalf_disp:
-            ob_dict["display"] = on_behalf_disp
-        entry["onBehalfOf"] = ob_dict
+
+    actor = _reference_from_payload(p, "actor")
+    if actor:
+        entry["actor"] = actor
+
+    on_behalf = _reference_from_payload(p, "on_behalf_of")
+    if on_behalf:
+        entry["onBehalfOf"] = on_behalf
     return entry or None
 
 
@@ -170,24 +290,17 @@ def _focal_device_from_payload(
         return None
     if isinstance(d, dict):
         act = d.get("action")
-        man = d.get("manipulated")
-        man_disp = d.get("manipulated_display")
     else:
         act = d.action
-        man = d.manipulated
-        man_disp = d.manipulated_display
 
     entry: dict = {}
     act_cc = _codeable_concept_from_payload(act)
     if act_cc:
         entry["action"] = act_cc
-    if man or man_disp:
-        man_dict: dict = {}
-        if man:
-            man_dict["reference"] = man
-        if man_disp:
-            man_dict["display"] = man_disp
-        entry["manipulated"] = man_dict
+
+    manipulated = _reference_from_payload(d, "manipulated")
+    if manipulated:
+        entry["manipulated"] = manipulated
     return entry or None
 
 
@@ -247,10 +360,12 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
         res["instantiatesUri"] = list(payload.instantiates_uri)
 
     if payload.based_on:
-        res["basedOn"] = [{"reference": r} for r in payload.based_on if r]
+        b_list = [_child_reference_from_payload(r) for r in payload.based_on]
+        res["basedOn"] = [b for b in b_list if b]
 
     if payload.part_of:
-        res["partOf"] = [{"reference": r} for r in payload.part_of if r]
+        p_list = [_child_reference_from_payload(r) for r in payload.part_of]
+        res["partOf"] = [p for p in p_list if p]
 
     if payload.status:
         res["status"] = fhir_enum(payload.status)
@@ -270,19 +385,13 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
         if code:
             res["code"] = code
 
-    if payload.subject:
-        subj: dict = {"reference": payload.subject}
-        if payload.subject_display:
-            subj["display"] = payload.subject_display
-        res["subject"] = subj
+    subject = _reference_from_payload(payload, "subject")
+    if subject:
+        res["subject"] = subject
 
-    if payload.encounter or payload.encounter_display:
-        enc: dict = {}
-        if payload.encounter:
-            enc["reference"] = payload.encounter
-        if payload.encounter_display:
-            enc["display"] = payload.encounter_display
-        res["encounter"] = enc
+    encounter = _reference_from_payload(payload, "encounter")
+    if encounter:
+        res["encounter"] = encounter
 
     if payload.performed_date_time:
         res["performedDateTime"] = (
@@ -312,21 +421,13 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
     elif payload.performed_range:
         res["performedRange"] = payload.performed_range
 
-    if payload.recorder or payload.recorder_display:
-        rec: dict = {}
-        if payload.recorder:
-            rec["reference"] = payload.recorder
-        if payload.recorder_display:
-            rec["display"] = payload.recorder_display
-        res["recorder"] = rec
+    recorder = _reference_from_payload(payload, "recorder")
+    if recorder:
+        res["recorder"] = recorder
 
-    if payload.asserter or payload.asserter_display:
-        ass: dict = {}
-        if payload.asserter:
-            ass["reference"] = payload.asserter
-        if payload.asserter_display:
-            ass["display"] = payload.asserter_display
-        res["asserter"] = ass
+    asserter = _reference_from_payload(payload, "asserter")
+    if asserter:
+        res["asserter"] = asserter
 
     if payload.performer:
         perf_list = [_performer_from_payload(p) for p in payload.performer]
@@ -334,13 +435,9 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
         if perf_list:
             res["performer"] = perf_list
 
-    if payload.location or payload.location_display:
-        loc: dict = {}
-        if payload.location:
-            loc["reference"] = payload.location
-        if payload.location_display:
-            loc["display"] = payload.location_display
-        res["location"] = loc
+    location = _reference_from_payload(payload, "location")
+    if location:
+        res["location"] = location
 
     if payload.reason_code:
         rc_list = [_codeable_concept_from_payload(rc) for rc in payload.reason_code]
@@ -349,7 +446,8 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
             res["reasonCode"] = rc_list
 
     if payload.reason_reference:
-        res["reasonReference"] = [{"reference": r} for r in payload.reason_reference if r]
+        rr_list = [_child_reference_from_payload(r) for r in payload.reason_reference]
+        res["reasonReference"] = [rr for rr in rr_list if rr]
 
     if payload.body_site:
         bs_list = [_codeable_concept_from_payload(bs) for bs in payload.body_site]
@@ -363,7 +461,8 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
             res["outcome"] = out
 
     if payload.report:
-        res["report"] = [{"reference": r} for r in payload.report if r]
+        rep_list = [_child_reference_from_payload(r) for r in payload.report]
+        res["report"] = [r for r in rep_list if r]
 
     if payload.complication:
         comp_list = [_codeable_concept_from_payload(c) for c in payload.complication]
@@ -372,7 +471,8 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
             res["complication"] = comp_list
 
     if payload.complication_detail:
-        res["complicationDetail"] = [{"reference": r} for r in payload.complication_detail if r]
+        cd_list = [_child_reference_from_payload(r) for r in payload.complication_detail]
+        res["complicationDetail"] = [cd for cd in cd_list if cd]
 
     if payload.follow_up:
         fu_list = [_codeable_concept_from_payload(fu) for fu in payload.follow_up]
@@ -393,7 +493,8 @@ def payload_to_fhir_procedure(payload: ProcedureCreateSchema) -> dict:
             res["focalDevice"] = fd_list
 
     if payload.used_reference:
-        res["usedReference"] = [{"reference": r} for r in payload.used_reference if r]
+        ur_list = [_child_reference_from_payload(r) for r in payload.used_reference]
+        res["usedReference"] = [ur for ur in ur_list if ur]
 
     if payload.used_code:
         uc_list = [_codeable_concept_from_payload(uc) for uc in payload.used_code]
@@ -435,12 +536,16 @@ def patch_fragment_to_fhir_procedure(
     if "based_on" in fields_set:
         touched.add("basedOn")
         if payload.based_on is not None:
-            fragment["basedOn"] = [{"reference": r} for r in payload.based_on if r]
+            fragment["basedOn"] = [
+                b for b in [_child_reference_from_payload(r) for r in payload.based_on] if b
+            ]
 
     if "part_of" in fields_set:
         touched.add("partOf")
         if payload.part_of is not None:
-            fragment["partOf"] = [{"reference": r} for r in payload.part_of if r]
+            fragment["partOf"] = [
+                p for p in [_child_reference_from_payload(r) for r in payload.part_of] if p
+            ]
 
     if "status" in fields_set:
         touched.add("status")
@@ -462,25 +567,18 @@ def patch_fragment_to_fhir_procedure(
         if payload.code is not None:
             fragment["code"] = _codeable_concept_from_payload(payload.code)
 
-    if "subject" in fields_set or "subject_display" in fields_set:
+    if fields_set & _SUBJECT_FIELDS:
         touched.add("subject")
-        if payload.subject is not None:
-            subj: dict = {"reference": payload.subject}
-            if payload.subject_display:
-                subj["display"] = payload.subject_display
+        subj = _reference_from_payload(payload, "subject")
+        if subj:
             fragment["subject"] = subj
 
-    if "encounter" in fields_set or "encounter_display" in fields_set:
+    if fields_set & _ENCOUNTER_FIELDS:
         touched.add("encounter")
-        if payload.encounter is not None or payload.encounter_display is not None:
-            enc: dict = {}
-            if payload.encounter:
-                enc["reference"] = payload.encounter
-            if payload.encounter_display:
-                enc["display"] = payload.encounter_display
+        enc = _reference_from_payload(payload, "encounter")
+        if enc:
             fragment["encounter"] = enc
 
-    # performed[x] fields
     performed_keys = {
         "performed_date_time",
         "performed_period_start",
@@ -527,24 +625,16 @@ def patch_fragment_to_fhir_procedure(
         elif payload.performed_range is not None:
             fragment["performedRange"] = payload.performed_range
 
-    if "recorder" in fields_set or "recorder_display" in fields_set:
+    if fields_set & _RECORDER_FIELDS:
         touched.add("recorder")
-        if payload.recorder is not None or payload.recorder_display is not None:
-            rec: dict = {}
-            if payload.recorder:
-                rec["reference"] = payload.recorder
-            if payload.recorder_display:
-                rec["display"] = payload.recorder_display
+        rec = _reference_from_payload(payload, "recorder")
+        if rec:
             fragment["recorder"] = rec
 
-    if "asserter" in fields_set or "asserter_display" in fields_set:
+    if fields_set & _ASSERTER_FIELDS:
         touched.add("asserter")
-        if payload.asserter is not None or payload.asserter_display is not None:
-            ass: dict = {}
-            if payload.asserter:
-                ass["reference"] = payload.asserter
-            if payload.asserter_display:
-                ass["display"] = payload.asserter_display
+        ass = _reference_from_payload(payload, "asserter")
+        if ass:
             fragment["asserter"] = ass
 
     if "performer" in fields_set:
@@ -554,14 +644,10 @@ def patch_fragment_to_fhir_procedure(
                 p for p in [_performer_from_payload(x) for x in payload.performer] if p
             ]
 
-    if "location" in fields_set or "location_display" in fields_set:
+    if fields_set & _LOCATION_FIELDS:
         touched.add("location")
-        if payload.location is not None or payload.location_display is not None:
-            loc: dict = {}
-            if payload.location:
-                loc["reference"] = payload.location
-            if payload.location_display:
-                loc["display"] = payload.location_display
+        loc = _reference_from_payload(payload, "location")
+        if loc:
             fragment["location"] = loc
 
     if "reason_code" in fields_set:
@@ -575,7 +661,7 @@ def patch_fragment_to_fhir_procedure(
         touched.add("reasonReference")
         if payload.reason_reference is not None:
             fragment["reasonReference"] = [
-                {"reference": r} for r in payload.reason_reference if r
+                rr for rr in [_child_reference_from_payload(r) for r in payload.reason_reference] if rr
             ]
 
     if "body_site" in fields_set:
@@ -593,7 +679,9 @@ def patch_fragment_to_fhir_procedure(
     if "report" in fields_set:
         touched.add("report")
         if payload.report is not None:
-            fragment["report"] = [{"reference": r} for r in payload.report if r]
+            fragment["report"] = [
+                rep for rep in [_child_reference_from_payload(r) for r in payload.report] if rep
+            ]
 
     if "complication" in fields_set:
         touched.add("complication")
@@ -606,7 +694,7 @@ def patch_fragment_to_fhir_procedure(
         touched.add("complicationDetail")
         if payload.complication_detail is not None:
             fragment["complicationDetail"] = [
-                {"reference": r} for r in payload.complication_detail if r
+                cd for cd in [_child_reference_from_payload(r) for r in payload.complication_detail] if cd
             ]
 
     if "follow_up" in fields_set:
@@ -634,7 +722,7 @@ def patch_fragment_to_fhir_procedure(
         touched.add("usedReference")
         if payload.used_reference is not None:
             fragment["usedReference"] = [
-                {"reference": r} for r in payload.used_reference if r
+                ur for ur in [_child_reference_from_payload(r) for r in payload.used_reference] if ur
             ]
 
     if "used_code" in fields_set:

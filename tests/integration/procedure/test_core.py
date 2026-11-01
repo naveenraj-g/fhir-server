@@ -328,3 +328,148 @@ async def test_procedure_org_less_token_rejected(client):
         app.dependency_overrides[get_current_user] = make_test_user(
             permissions=PROCEDURE_PERMS
         )
+
+
+async def test_create_procedure_with_reference_identifier_fallback(client):
+    """Procedure created with Reference.identifier fallback columns end-to-end."""
+    payload = {
+        "status": "completed",
+        "subject_identifier_system": "http://hospital.example.org/patients",
+        "subject_identifier_value": "MRN-PROC-999",
+        "subject_display": "Fallback Subject",
+        "encounter_identifier_system": "http://hospital.example.org/encounters",
+        "encounter_identifier_value": "ENC-PROC-999",
+        "encounter_display": "Fallback Encounter",
+        "recorder_identifier_system": "http://hospital.example.org/practitioners",
+        "recorder_identifier_value": "REC-PROC-999",
+        "recorder_display": "Fallback Recorder",
+        "asserter_identifier_system": "http://hospital.example.org/practitioners",
+        "asserter_identifier_value": "ASS-PROC-999",
+        "asserter_display": "Fallback Asserter",
+        "location_identifier_system": "http://hospital.example.org/locations",
+        "location_identifier_value": "LOC-PROC-999",
+        "location_display": "Fallback Location",
+        "identifier": [
+            {
+                "system": "http://hospital.example.org/procedures",
+                "value": "PROC-001",
+                "assigner_identifier_system": "http://hospital.example.org/orgs",
+                "assigner_identifier_value": "ORG-ASSIGNER-1",
+            }
+        ],
+        "based_on": [
+            {
+                "identifier_system": "http://hospital.example.org/plans",
+                "identifier_value": "PLAN-FALLBACK-1",
+                "display": "CarePlan Fallback",
+            }
+        ],
+        "part_of": [
+            {
+                "identifier_system": "http://hospital.example.org/procedures",
+                "identifier_value": "PROC-FALLBACK-1",
+                "display": "Parent Procedure Fallback",
+            }
+        ],
+        "performer": [
+            {
+                "actor_identifier_system": "http://hospital.example.org/practitioners",
+                "actor_identifier_value": "PRAC-ACTOR-1",
+                "actor_display": "Actor Practitioner",
+                "on_behalf_of_identifier_system": "http://hospital.example.org/orgs",
+                "on_behalf_of_identifier_value": "ORG-ONBEHALF-1",
+                "on_behalf_of_display": "On Behalf Of Org",
+            }
+        ],
+        "reason_reference": [
+            {
+                "identifier_system": "http://hospital.example.org/conditions",
+                "identifier_value": "COND-FALLBACK-1",
+                "display": "Condition Fallback",
+            }
+        ],
+        "report": [
+            {
+                "identifier_system": "http://hospital.example.org/reports",
+                "identifier_value": "REPORT-FALLBACK-1",
+                "display": "Report Fallback",
+            }
+        ],
+        "complication_detail": [
+            {
+                "identifier_system": "http://hospital.example.org/conditions",
+                "identifier_value": "COMP-FALLBACK-1",
+                "display": "Complication Fallback",
+            }
+        ],
+        "focal_device": [
+            {
+                "manipulated_identifier_system": "http://hospital.example.org/devices",
+                "manipulated_identifier_value": "DEV-FALLBACK-1",
+                "manipulated_display": "Device Fallback",
+            }
+        ],
+        "used_reference": [
+            {
+                "identifier_system": "http://hospital.example.org/devices",
+                "identifier_value": "USED-FALLBACK-1",
+                "display": "Used Fallback",
+            }
+        ],
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    plain_data = resp.json()
+    proc_id = plain_data["id"]
+
+    assert plain_data["subject"] is None
+    assert plain_data["subject_identifier_system"] == "http://hospital.example.org/patients"
+    assert plain_data["subject_identifier_value"] == "MRN-PROC-999"
+    assert plain_data["subject_display"] == "Fallback Subject"
+
+    assert plain_data["encounter"] is None
+    assert plain_data["encounter_identifier_value"] == "ENC-PROC-999"
+    assert plain_data["recorder_identifier_value"] == "REC-PROC-999"
+    assert plain_data["asserter_identifier_value"] == "ASS-PROC-999"
+    assert plain_data["location_identifier_value"] == "LOC-PROC-999"
+
+    assert plain_data["identifier"][0]["assigner_identifier_value"] == "ORG-ASSIGNER-1"
+    assert plain_data["based_on"][0]["identifier_value"] == "PLAN-FALLBACK-1"
+    assert plain_data["part_of"][0]["identifier_value"] == "PROC-FALLBACK-1"
+    assert plain_data["performer"][0]["actor_identifier_value"] == "PRAC-ACTOR-1"
+    assert plain_data["performer"][0]["on_behalf_of_identifier_value"] == "ORG-ONBEHALF-1"
+    assert plain_data["reason_reference"][0]["identifier_value"] == "COND-FALLBACK-1"
+    assert plain_data["report"][0]["identifier_value"] == "REPORT-FALLBACK-1"
+    assert plain_data["complication_detail"][0]["identifier_value"] == "COMP-FALLBACK-1"
+    assert plain_data["focal_device"][0]["manipulated_identifier_value"] == "DEV-FALLBACK-1"
+    assert plain_data["used_reference"][0]["identifier_value"] == "USED-FALLBACK-1"
+
+    # Verify FHIR serialization
+    fhir_resp = await client.get(f"{BASE}/{proc_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["resourceType"] == "Procedure"
+    assert "reference" not in fhir_data["subject"]
+    assert fhir_data["subject"]["identifier"]["value"] == "MRN-PROC-999"
+    assert fhir_data["encounter"]["identifier"]["value"] == "ENC-PROC-999"
+    assert fhir_data["recorder"]["identifier"]["value"] == "REC-PROC-999"
+    assert fhir_data["asserter"]["identifier"]["value"] == "ASS-PROC-999"
+    assert fhir_data["location"]["identifier"]["value"] == "LOC-PROC-999"
+    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-ASSIGNER-1"
+    assert fhir_data["basedOn"][0]["identifier"]["value"] == "PLAN-FALLBACK-1"
+    assert fhir_data["partOf"][0]["identifier"]["value"] == "PROC-FALLBACK-1"
+    assert fhir_data["performer"][0]["actor"]["identifier"]["value"] == "PRAC-ACTOR-1"
+    assert fhir_data["performer"][0]["onBehalfOf"]["identifier"]["value"] == "ORG-ONBEHALF-1"
+    assert fhir_data["reasonReference"][0]["identifier"]["value"] == "COND-FALLBACK-1"
+    assert fhir_data["report"][0]["identifier"]["value"] == "REPORT-FALLBACK-1"
+    assert fhir_data["complicationDetail"][0]["identifier"]["value"] == "COMP-FALLBACK-1"
+    assert fhir_data["focalDevice"][0]["manipulated"]["identifier"]["value"] == "DEV-FALLBACK-1"
+    assert fhir_data["usedReference"][0]["identifier"]["value"] == "USED-FALLBACK-1"
+
+    # Patch subject fallback identifier
+    patch_resp = await client.patch(
+        f"{BASE}/{proc_id}",
+        json={"subject_identifier_value": "MRN-PROC-999-UPDATED"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    assert patch_resp.json()["subject_identifier_value"] == "MRN-PROC-999-UPDATED"

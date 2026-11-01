@@ -38,3 +38,14 @@ class ProcedureIdentifierInput(BaseModel):
     assigner_display: str | None = Field(
         None, description="Plain text narrative identifying the assigning organization."
     )
+    assigner_identifier_use: IdentifierUse | None = Field(None)
+    assigner_identifier_type_system: str | None = Field(None)
+    assigner_identifier_type_version: str | None = Field(None)
+    assigner_identifier_type_code: str | None = Field(None)
+    assigner_identifier_type_display: str | None = Field(None)
+    assigner_identifier_type_text: str | None = Field(None)
+    assigner_identifier_type_user_selected: bool | None = Field(None)
+    assigner_identifier_system: str | None = Field(None)
+    assigner_identifier_value: str | None = Field(None)
+    assigner_identifier_period_start: datetime | None = Field(None)
+    assigner_identifier_period_end: datetime | None = Field(None)

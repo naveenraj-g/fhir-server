@@ -59,6 +59,99 @@ def _fhir_ref(
     return result or None
 
 
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
+    raw_reference = getattr(obj, f"{prefix}_reference", None)
+    ref_type = getattr(obj, f"{prefix}_type", None)
+    ref_id = getattr(obj, f"{prefix}_id", None)
+    display = getattr(obj, f"{prefix}_display", None)
+
+    ref_str = raw_reference or (
+        f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
+    )
+
+    entry: dict = {}
+    if ref_str:
+        entry["reference"] = ref_str
+    if display:
+        entry["display"] = display
+
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
+        if id_use:
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
+        if id_system:
+            ident["system"] = id_system
+        if id_value:
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                p_dict["end"] = fhir_instant(id_period_end)
+            ident["period"] = p_dict
+        entry["identifier"] = ident
+
+    return entry or None
+
+
 def _fhir_identifier(i: ProcedureIdentifier) -> dict | None:
     entry: dict = {}
     if i.use:
@@ -77,12 +170,7 @@ def _fhir_identifier(i: ProcedureIdentifier) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        i.assigner_reference,
-        i.assigner_type,
-        i.assigner_id,
-        i.assigner_display,
-    )
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -93,15 +181,10 @@ def _fhir_performer(p: ProcedurePerformer) -> dict | None:
     fn_cc = _fhir_codeable_concept(getattr(p, "function_codings", None), p.function_text)
     if fn_cc:
         entry["function"] = fn_cc
-    actor = _fhir_ref(p.actor_reference, p.actor_type, p.actor_id, p.actor_display)
+    actor = _fhir_reference(p, "actor")
     if actor:
         entry["actor"] = actor
-    on_behalf = _fhir_ref(
-        p.on_behalf_of_reference,
-        p.on_behalf_of_type,
-        p.on_behalf_of_id,
-        p.on_behalf_of_display,
-    )
+    on_behalf = _fhir_reference(p, "on_behalf_of")
     if on_behalf:
         entry["onBehalfOf"] = on_behalf
     return entry or None
@@ -112,12 +195,7 @@ def _fhir_focal_device(d: ProcedureFocalDevice) -> dict | None:
     action_cc = _fhir_codeable_concept(getattr(d, "action_codings", None), d.action_text)
     if action_cc:
         entry["action"] = action_cc
-    manipulated = _fhir_ref(
-        d.manipulated_reference,
-        d.manipulated_type,
-        d.manipulated_id,
-        d.manipulated_display,
-    )
+    manipulated = _fhir_reference(d, "manipulated")
     if manipulated:
         entry["manipulated"] = manipulated
     return entry or None
@@ -169,7 +247,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
 
     if getattr(model, "based_on", None):
         based_list = [
-            _fhir_ref(b.reference_reference, b.reference_type, b.reference_id, b.reference_display)
+            _fhir_reference(b, "reference")
             for b in model.based_on
         ]
         based_list = [b for b in based_list if b]
@@ -178,7 +256,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
 
     if getattr(model, "part_of", None):
         part_list = [
-            _fhir_ref(p.reference_reference, p.reference_type, p.reference_id, p.reference_display)
+            _fhir_reference(p, "reference")
             for p in model.part_of
         ]
         part_list = [p for p in part_list if p]
@@ -209,21 +287,11 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
     if code:
         res["code"] = code
 
-    subject = _fhir_ref(
-        model.subject_reference,
-        model.subject_type,
-        model.subject_id,
-        model.subject_display,
-    )
+    subject = _fhir_reference(model, "subject")
     if subject:
         res["subject"] = subject
 
-    encounter = _fhir_ref(
-        model.encounter_reference,
-        model.encounter_type,
-        model.encounter_id,
-        model.encounter_display,
-    )
+    encounter = _fhir_reference(model, "encounter")
     if encounter:
         res["encounter"] = encounter
 
@@ -243,21 +311,11 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
     elif model.performed_range:
         res["performedRange"] = model.performed_range
 
-    recorder = _fhir_ref(
-        model.recorder_reference,
-        model.recorder_type,
-        model.recorder_id,
-        model.recorder_display,
-    )
+    recorder = _fhir_reference(model, "recorder")
     if recorder:
         res["recorder"] = recorder
 
-    asserter = _fhir_ref(
-        model.asserter_reference,
-        model.asserter_type,
-        model.asserter_id,
-        model.asserter_display,
-    )
+    asserter = _fhir_reference(model, "asserter")
     if asserter:
         res["asserter"] = asserter
 
@@ -267,12 +325,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
         if perf_list:
             res["performer"] = perf_list
 
-    location = _fhir_ref(
-        model.location_reference,
-        model.location_type,
-        model.location_id,
-        model.location_display,
-    )
+    location = _fhir_reference(model, "location")
     if location:
         res["location"] = location
 
@@ -287,7 +340,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
 
     if getattr(model, "reason_references", None):
         rr_list = [
-            _fhir_ref(rr.reference_reference, rr.reference_type, rr.reference_id, rr.reference_display)
+            _fhir_reference(rr, "reference")
             for rr in model.reason_references
         ]
         rr_list = [rr for rr in rr_list if rr]
@@ -312,7 +365,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
 
     if getattr(model, "reports", None):
         rep_list = [
-            _fhir_ref(r.reference_reference, r.reference_type, r.reference_id, r.reference_display)
+            _fhir_reference(r, "reference")
             for r in model.reports
         ]
         rep_list = [r for r in rep_list if r]
@@ -330,7 +383,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
 
     if getattr(model, "complication_details", None):
         cd_list = [
-            _fhir_ref(cd.reference_reference, cd.reference_type, cd.reference_id, cd.reference_display)
+            _fhir_reference(cd, "reference")
             for cd in model.complication_details
         ]
         cd_list = [cd for cd in cd_list if cd]
@@ -360,7 +413,7 @@ def to_fhir_procedure(model: ProcedureModel) -> dict:
 
     if getattr(model, "used_references", None):
         ur_list = [
-            _fhir_ref(ur.reference_reference, ur.reference_type, ur.reference_id, ur.reference_display)
+            _fhir_reference(ur, "reference")
             for ur in model.used_references
         ]
         ur_list = [ur for ur in ur_list if ur]
