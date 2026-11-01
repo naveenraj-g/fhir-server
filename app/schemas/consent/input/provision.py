@@ -1,15 +1,17 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.consent.enums import (
     ConsentDataMeaning,
     ConsentProvisionType,
 )
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 from app.schemas.consent.input.codeable_concept import (
     ConsentCodeableConceptInput,
     ConsentCodingInput,
 )
+from app.schemas.enums import IdentifierUse
 
 
 class ConsentProvisionActorInput(BaseModel):
@@ -20,13 +22,38 @@ class ConsentProvisionActorInput(BaseModel):
     role: ConsentCodeableConceptInput = Field(
         ..., description="How the actor is involved."
     )
-    reference: str = Field(
-        ...,
+    reference: str | None = Field(
+        None,
         description="Resource for the actor (Device | Group | CareTeam | Organization | Patient | Practitioner | RelatedPerson | PractitionerRole, e.g. 'Practitioner/30001').",
     )
     reference_display: str | None = Field(
         None, description="Plain text display for actor reference."
     )
+    reference_identifier_use: IdentifierUse | None = Field(None)
+    reference_identifier_type_system: str | None = Field(None)
+    reference_identifier_type_version: str | None = Field(None)
+    reference_identifier_type_code: str | None = Field(None)
+    reference_identifier_type_display: str | None = Field(None)
+    reference_identifier_type_text: str | None = Field(None)
+    reference_identifier_type_user_selected: bool | None = Field(None)
+    reference_identifier_system: str | None = Field(None)
+    reference_identifier_value: str | None = Field(None)
+    reference_identifier_period_start: datetime | None = Field(None)
+    reference_identifier_period_end: datetime | None = Field(None)
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> "ConsentProvisionActorInput":
+        has_ref = bool(self.reference)
+        has_ident = any(
+            getattr(self, f"reference_{suffix}") is not None
+            for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+        )
+        has_display = bool(self.reference_display)
+        if not (has_ref or has_ident or has_display):
+            raise ValueError(
+                "Either reference (URL), reference_display, or at least one reference_identifier_* field must be provided."
+            )
+        return self
 
 
 class ConsentProvisionDataInput(BaseModel):
@@ -37,13 +64,38 @@ class ConsentProvisionDataInput(BaseModel):
     meaning: ConsentDataMeaning = Field(
         ..., description="instance | related | dependents | authoredby."
     )
-    reference: str = Field(
-        ...,
+    reference: str | None = Field(
+        None,
         description="The actual data reference (e.g. 'Observation/160001').",
     )
     reference_display: str | None = Field(
         None, description="Plain text display for data reference."
     )
+    reference_identifier_use: IdentifierUse | None = Field(None)
+    reference_identifier_type_system: str | None = Field(None)
+    reference_identifier_type_version: str | None = Field(None)
+    reference_identifier_type_code: str | None = Field(None)
+    reference_identifier_type_display: str | None = Field(None)
+    reference_identifier_type_text: str | None = Field(None)
+    reference_identifier_type_user_selected: bool | None = Field(None)
+    reference_identifier_system: str | None = Field(None)
+    reference_identifier_value: str | None = Field(None)
+    reference_identifier_period_start: datetime | None = Field(None)
+    reference_identifier_period_end: datetime | None = Field(None)
+
+    @model_validator(mode="after")
+    def validate_reference(self) -> "ConsentProvisionDataInput":
+        has_ref = bool(self.reference)
+        has_ident = any(
+            getattr(self, f"reference_{suffix}") is not None
+            for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+        )
+        has_display = bool(self.reference_display)
+        if not (has_ref or has_ident or has_display):
+            raise ValueError(
+                "Either reference (URL), reference_display, or at least one reference_identifier_* field must be provided."
+            )
+        return self
 
 
 class ConsentProvisionInput(BaseModel):

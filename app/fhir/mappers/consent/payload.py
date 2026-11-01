@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.fhir.datatypes import fhir_enum, fhir_instant, merge_patch_fragment
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.schemas.consent.input import (
@@ -26,8 +27,12 @@ if TYPE_CHECKING:
         ConsentVerificationInput,
     )
 
-_PATIENT_FIELDS = {"patient", "patient_display"}
-_SOURCE_REF_FIELDS = {"source_reference", "source_reference_display"}
+_PATIENT_FIELDS = {"patient", "patient_display"} | {
+    f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_SOURCE_REF_FIELDS = {"source_reference", "source_reference_display"} | {
+    f"source_reference_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 
 
 def _coding_from_payload(c: Any) -> dict:
@@ -78,6 +83,87 @@ def _codeable_concept_from_payload(
     return result or None
 
 
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    if not obj:
+        return None
+
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    if raw_reference is None and prefix != "reference":
+        raw_reference = _get(f"{prefix}_reference")
+    display = _get(f"{prefix}_display")
+    if display is None and prefix == "reference":
+        display = _get("display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected") if _get(f"{prefix}_identifier_type_user_selected") is not None else _get("identifier_type_user_selected")
+    id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
+    id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        identifier: dict = {}
+        if id_use:
+            identifier["use"] = fhir_enum(id_use)
+        if id_type_system or id_type_code or id_type_text:
+            type_cc: dict = {}
+            if id_type_system or id_type_code:
+                type_cc["coding"] = [
+                    {
+                        k: v
+                        for k, v in {
+                            "system": id_type_system,
+                            "version": id_type_version,
+                            "code": id_type_code,
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
+                        }.items()
+                        if v is not None
+                    }
+                ]
+            if id_type_text:
+                type_cc["text"] = id_type_text
+            identifier["type"] = type_cc
+        if id_system:
+            identifier["system"] = id_system
+        if id_value:
+            identifier["value"] = id_value
+        if id_period_start or id_period_end:
+            identifier["period"] = {
+                k: v
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
+                if v
+            }
+        entry["identifier"] = identifier
+    return entry or None
+
+
 def _identifier_from_payload(
     ident: ConsentIdentifierInput | dict | None,
 ) -> dict | None:
@@ -91,8 +177,6 @@ def _identifier_from_payload(
         value = ident.get("value")
         p_start = ident.get("period_start")
         p_end = ident.get("period_end")
-        assigner = ident.get("assigner")
-        assigner_disp = ident.get("assigner_display")
     else:
         use = ident.use
         type_in = ident.type
@@ -100,8 +184,6 @@ def _identifier_from_payload(
         value = ident.value
         p_start = ident.period_start
         p_end = ident.period_end
-        assigner = ident.assigner
-        assigner_disp = ident.assigner_display
 
     if use:
         entry["use"] = fhir_enum(use)
@@ -119,14 +201,10 @@ def _identifier_from_payload(
         if p_end:
             period["end"] = fhir_instant(p_end)
         entry["period"] = period
-    if assigner or assigner_disp:
-        asg: dict = {}
-        if assigner:
-            asg["reference"] = assigner
-        if assigner_disp:
-            asg["display"] = assigner_disp
-        if asg:
-            entry["assigner"] = asg
+
+    assigner = _reference_from_payload(ident, "assigner")
+    if assigner:
+        entry["assigner"] = assigner
     return entry or None
 
 
@@ -157,24 +235,15 @@ def _verification_from_payload(
     entry: dict = {}
     if isinstance(v, dict):
         verified = v.get("verified")
-        verified_with = v.get("verified_with")
-        verified_with_disp = v.get("verified_with_display")
         v_date = v.get("verification_date")
     else:
         verified = v.verified
-        verified_with = v.verified_with
-        verified_with_disp = v.verified_with_display
         v_date = v.verification_date
 
     entry["verified"] = bool(verified)
-    if verified_with or verified_with_disp:
-        ref: dict = {}
-        if verified_with:
-            ref["reference"] = verified_with
-        if verified_with_disp:
-            ref["display"] = verified_with_disp
-        if ref:
-            entry["verifiedWith"] = ref
+    verified_with = _reference_from_payload(v, "verified_with")
+    if verified_with:
+        entry["verifiedWith"] = verified_with
     if v_date:
         entry["verificationDate"] = fhir_instant(v_date)
     return entry
@@ -187,19 +256,11 @@ def _provision_actor_from_payload(
         return None
     if isinstance(a, dict):
         role_in = a.get("role")
-        ref_in = a.get("reference")
-        disp_in = a.get("reference_display")
     else:
         role_in = a.role
-        ref_in = a.reference
-        disp_in = a.reference_display
 
     role = _codeable_concept_from_payload(role_in)
-    ref: dict = {}
-    if ref_in:
-        ref["reference"] = ref_in
-    if disp_in:
-        ref["display"] = disp_in
+    ref = _reference_from_payload(a, "reference")
     if not role or not ref:
         return None
     return {"role": role, "reference": ref}
@@ -212,18 +273,10 @@ def _provision_data_from_payload(
         return None
     if isinstance(d, dict):
         meaning = d.get("meaning")
-        ref_in = d.get("reference")
-        disp_in = d.get("reference_display")
     else:
         meaning = d.meaning
-        ref_in = d.reference
-        disp_in = d.reference_display
 
-    ref: dict = {}
-    if ref_in:
-        ref["reference"] = ref_in
-    if disp_in:
-        ref["display"] = disp_in
+    ref = _reference_from_payload(d, "reference")
     if not meaning or not ref:
         return None
     return {
@@ -260,7 +313,7 @@ def _provision_from_payload(
         actions = p.action
         sec_labels = p.security_label
         purposes = p.purpose
-        classes = getattr(p, "class_", None)
+        classes = p.class_
         codes = p.code
         dp_start = p.data_period_start
         dp_end = p.data_period_end
@@ -290,22 +343,22 @@ def _provision_from_payload(
             res["action"] = act_res
 
     if sec_labels:
-        sec_res = [_coding_from_payload(s) for s in sec_labels]
-        sec_res = [s for s in sec_res if s]
-        if sec_res:
-            res["securityLabel"] = sec_res
+        sec = [_coding_from_payload(s) for s in sec_labels]
+        sec = [s for s in sec if s]
+        if sec:
+            res["securityLabel"] = sec
 
     if purposes:
-        purp_res = [_coding_from_payload(pr) for pr in purposes]
-        purp_res = [pr for pr in purp_res if pr]
-        if purp_res:
-            res["purpose"] = purp_res
+        purp = [_coding_from_payload(pr) for pr in purposes]
+        purp = [pr for pr in purp if pr]
+        if purp:
+            res["purpose"] = purp
 
     if classes:
-        cls_res = [_coding_from_payload(cl) for cl in classes]
-        cls_res = [cl for cl in cls_res if cl]
-        if cls_res:
-            res["class"] = cls_res
+        cls_list = [_coding_from_payload(cl) for cl in classes]
+        cls_list = [cl for cl in cls_list if cl]
+        if cls_list:
+            res["class"] = cls_list
 
     if codes:
         cd_res = [_codeable_concept_from_payload(cd) for cd in codes]
@@ -337,20 +390,7 @@ def _provision_from_payload(
 
 
 def _ref_from_payload(ref: ConsentReferenceInput | dict | None) -> dict | None:
-    if not ref:
-        return None
-    if isinstance(ref, dict):
-        r = ref.get("reference")
-        d = ref.get("display")
-    else:
-        r = ref.reference
-        d = ref.display
-    entry: dict = {}
-    if r:
-        entry["reference"] = r
-    if d:
-        entry["display"] = d
-    return entry or None
+    return _reference_from_payload(ref, "reference")
 
 
 def payload_to_fhir_consent(payload: ConsentCreateSchema) -> dict:
@@ -370,14 +410,9 @@ def payload_to_fhir_consent(payload: ConsentCreateSchema) -> dict:
         if cats:
             res["category"] = cats
 
-    if payload.patient or payload.patient_display:
-        pat: dict = {}
-        if payload.patient:
-            pat["reference"] = payload.patient
-        if payload.patient_display:
-            pat["display"] = payload.patient_display
-        if pat:
-            res["patient"] = pat
+    patient = _reference_from_payload(payload, "patient")
+    if patient:
+        res["patient"] = patient
 
     if payload.date_time:
         res["dateTime"] = fhir_instant(payload.date_time)
@@ -396,12 +431,8 @@ def payload_to_fhir_consent(payload: ConsentCreateSchema) -> dict:
 
     if payload.source_attachment is not None:
         res["sourceAttachment"] = payload.source_attachment
-    elif payload.source_reference or payload.source_reference_display:
-        s_ref: dict = {}
-        if payload.source_reference:
-            s_ref["reference"] = payload.source_reference
-        if payload.source_reference_display:
-            s_ref["display"] = payload.source_reference_display
+    else:
+        s_ref = _reference_from_payload(payload, "source_reference")
         if s_ref:
             res["sourceReference"] = s_ref
 
@@ -470,14 +501,9 @@ def patch_fragment_to_fhir_consent(
 
     if _PATIENT_FIELDS & fields_set:
         touched.add("patient")
-        if payload.patient is not None or payload.patient_display is not None:
-            ref: dict = {}
-            if payload.patient:
-                ref["reference"] = payload.patient
-            if payload.patient_display:
-                ref["display"] = payload.patient_display
-            if ref:
-                fragment["patient"] = ref
+        pat = _reference_from_payload(payload, "patient")
+        if pat:
+            fragment["patient"] = pat
 
     if "date_time" in fields_set:
         touched.add("dateTime")
@@ -509,17 +535,9 @@ def patch_fragment_to_fhir_consent(
 
     if _SOURCE_REF_FIELDS & fields_set:
         touched.add("sourceReference")
-        if (
-            payload.source_reference is not None
-            or payload.source_reference_display is not None
-        ):
-            ref = {}
-            if payload.source_reference:
-                ref["reference"] = payload.source_reference
-            if payload.source_reference_display:
-                ref["display"] = payload.source_reference_display
-            if ref:
-                fragment["sourceReference"] = ref
+        s_ref = _reference_from_payload(payload, "source_reference")
+        if s_ref:
+            fragment["sourceReference"] = s_ref
 
     if "policy" in fields_set:
         touched.add("policy")

@@ -275,3 +275,134 @@ async def test_org_less_token_rejected(client):
     app.dependency_overrides[get_current_user] = make_test_user(
         permissions=CONSENT_PERMS
     )
+
+
+async def test_create_consent_with_reference_identifier_fallback(client):
+    payload = {
+        "status": "active",
+        "scope": {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/consentscope",
+                    "code": "patient-privacy",
+                    "display": "Privacy Consent",
+                }
+            ],
+            "text": "Privacy Consent",
+        },
+        "category": [
+            {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                        "code": "INFA",
+                        "display": "information access",
+                    }
+                ],
+                "text": "Information Access",
+            }
+        ],
+        "patient_identifier_system": "http://hospital.example.org/patients",
+        "patient_identifier_value": "MRN-CONSENT-999",
+        "patient_display": "Fallback Patient",
+        "source_reference_identifier_system": "http://hospital.example.org/docs",
+        "source_reference_identifier_value": "DOC-REF-111",
+        "source_reference_display": "Fallback Source Doc",
+        "identifier": [
+            {
+                "system": "http://example.org/consents",
+                "value": "C-FALLBACK-001",
+                "assigner_identifier_system": "http://hospital.example.org/orgs",
+                "assigner_identifier_value": "ORG-ASSIGNER-1",
+            }
+        ],
+        "performer": [
+            {
+                "identifier_system": "http://hospital.example.org/practitioners",
+                "identifier_value": "PRAC-PERFORMER-1",
+                "display": "Fallback Performer",
+            }
+        ],
+        "organization": [
+            {
+                "identifier_system": "http://hospital.example.org/orgs",
+                "identifier_value": "ORG-CONSENT-1",
+                "display": "Fallback Organization",
+            }
+        ],
+        "verification": [
+            {
+                "verified": True,
+                "verified_with_identifier_system": "http://hospital.example.org/patients",
+                "verified_with_identifier_value": "VERIFIER-1",
+                "verified_with_display": "Fallback Verifier",
+            }
+        ],
+        "provision": {
+            "type": "permit",
+            "actor": [
+                {
+                    "role": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                "code": "PRCP",
+                                "display": "primary recipient",
+                            }
+                        ]
+                    },
+                    "reference_identifier_system": "http://hospital.example.org/actors",
+                    "reference_identifier_value": "ACTOR-FALLBACK-1",
+                    "reference_display": "Fallback Actor",
+                }
+            ],
+            "data": [
+                {
+                    "meaning": "instance",
+                    "reference_identifier_system": "http://hospital.example.org/data",
+                    "reference_identifier_value": "DATA-FALLBACK-1",
+                    "reference_display": "Fallback Data",
+                }
+            ],
+        },
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    plain_data = resp.json()
+    c_id = plain_data["id"]
+    assert plain_data["patient"] is None
+    assert plain_data["patient_identifier_system"] == "http://hospital.example.org/patients"
+    assert plain_data["patient_identifier_value"] == "MRN-CONSENT-999"
+    assert plain_data["patient_display"] == "Fallback Patient"
+    assert plain_data["source_reference"] is None
+    assert plain_data["source_reference_identifier_value"] == "DOC-REF-111"
+    assert plain_data["identifier"][0]["assigner_identifier_value"] == "ORG-ASSIGNER-1"
+    assert plain_data["performer"][0]["identifier_value"] == "PRAC-PERFORMER-1"
+    assert plain_data["organization"][0]["identifier_value"] == "ORG-CONSENT-1"
+    assert plain_data["verification"][0]["verified_with_identifier_value"] == "VERIFIER-1"
+    assert plain_data["provision"]["actor"][0]["reference_identifier_value"] == "ACTOR-FALLBACK-1"
+    assert plain_data["provision"]["data"][0]["reference_identifier_value"] == "DATA-FALLBACK-1"
+
+    # Verify FHIR serialization
+    fhir_resp = await client.get(f"{BASE}/{c_id}", headers=FHIR_ACCEPT)
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["resourceType"] == "Consent"
+    assert "reference" not in fhir_data["patient"]
+    assert fhir_data["patient"]["identifier"]["value"] == "MRN-CONSENT-999"
+    assert fhir_data["sourceReference"]["identifier"]["value"] == "DOC-REF-111"
+    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-ASSIGNER-1"
+    assert fhir_data["performer"][0]["identifier"]["value"] == "PRAC-PERFORMER-1"
+    assert fhir_data["organization"][0]["identifier"]["value"] == "ORG-CONSENT-1"
+    assert fhir_data["verification"][0]["verifiedWith"]["identifier"]["value"] == "VERIFIER-1"
+    assert fhir_data["provision"]["actor"][0]["reference"]["identifier"]["value"] == "ACTOR-FALLBACK-1"
+    assert fhir_data["provision"]["data"][0]["reference"]["identifier"]["value"] == "DATA-FALLBACK-1"
+
+    # Patch patient fallback identifier
+    patch_resp = await client.patch(
+        f"{BASE}/{c_id}",
+        json={"patient_identifier_value": "MRN-CONSENT-999-UPDATED"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    assert patch_resp.json()["patient_identifier_value"] == "MRN-CONSENT-999-UPDATED"
+

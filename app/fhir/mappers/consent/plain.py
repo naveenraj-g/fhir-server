@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from app.fhir.datatypes import fhir_enum
+from app.fhir.datatypes import fhir_enum, fhir_instant
 
 if TYPE_CHECKING:
     from app.models.consent import (
@@ -22,6 +22,48 @@ def _plain_ref(ref_raw: str | None, ref_type: Any, ref_id: int | None) -> str | 
     if ref_type and ref_id:
         return f"{fhir_enum(ref_type)}/{ref_id}"
     return None
+
+
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    if obj is None:
+        return {}
+    p_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    p_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+    return {
+        f"{prefix}_identifier_use": fhir_enum(
+            getattr(obj, f"{prefix}_identifier_use", None)
+        ),
+        f"{prefix}_identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        f"{prefix}_identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
+        f"{prefix}_identifier_type_code": getattr(
+            obj, f"{prefix}_identifier_type_code", None
+        ),
+        f"{prefix}_identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        f"{prefix}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{prefix}_identifier_type_text": getattr(
+            obj, f"{prefix}_identifier_type_text", None
+        ),
+        f"{prefix}_identifier_system": getattr(
+            obj, f"{prefix}_identifier_system", None
+        ),
+        f"{prefix}_identifier_value": getattr(
+            obj, f"{prefix}_identifier_value", None
+        ),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start)
+        if p_start
+        else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end)
+        if p_end
+        else None,
+    }
 
 
 def _plain_coding_list(codings) -> list[dict]:
@@ -51,7 +93,7 @@ def _plain_codeable_concept(codings, text: str | None) -> dict | None:
 
 
 def _plain_identifier(i: ConsentIdentifier) -> dict:
-    return {
+    res = {
         "id": i.id,
         "use": fhir_enum(i.use) if i.use else None,
         "type": _plain_codeable_concept(getattr(i, "type_codings", None), i.type_text),
@@ -62,6 +104,8 @@ def _plain_identifier(i: ConsentIdentifier) -> dict:
         "assigner": _plain_ref(i.assigner_reference, i.assigner_type, i.assigner_id),
         "assigner_display": i.assigner_display,
     }
+    res.update(_plain_reference_fields(i, "assigner"))
+    return res
 
 
 def _plain_policy(p: ConsentPolicy) -> dict:
@@ -73,7 +117,7 @@ def _plain_policy(p: ConsentPolicy) -> dict:
 
 
 def _plain_verification(v: ConsentVerification) -> dict:
-    return {
+    res = {
         "id": v.id,
         "verified": v.verified,
         "verified_with": _plain_ref(
@@ -84,10 +128,12 @@ def _plain_verification(v: ConsentVerification) -> dict:
         "verified_with_display": v.verified_with_display,
         "verification_date": v.verification_date,
     }
+    res.update(_plain_reference_fields(v, "verified_with"))
+    return res
 
 
 def _plain_provision_actor(a: ConsentProvisionActor) -> dict:
-    return {
+    res = {
         "id": a.id,
         "role": _plain_codeable_concept(getattr(a, "role_codings", None), a.role_text),
         "reference": _plain_ref(
@@ -97,10 +143,12 @@ def _plain_provision_actor(a: ConsentProvisionActor) -> dict:
         ),
         "reference_display": a.reference_display,
     }
+    res.update(_plain_reference_fields(a, "reference"))
+    return res
 
 
 def _plain_provision_data(d: ConsentProvisionData) -> dict:
-    return {
+    res = {
         "id": d.id,
         "meaning": fhir_enum(d.meaning),
         "reference": _plain_ref(
@@ -110,6 +158,8 @@ def _plain_provision_data(d: ConsentProvisionData) -> dict:
         ),
         "reference_display": d.reference_display,
     }
+    res.update(_plain_reference_fields(d, "reference"))
+    return res
 
 
 def _plain_provision(p: ConsentProvision) -> dict:
@@ -157,6 +207,20 @@ def _plain_provision(p: ConsentProvision) -> dict:
 
 def to_plain_consent(model: ConsentModel) -> dict:
     """Map ConsentModel to plain snake_case dict."""
+    def _plain_child_ref(row):
+        item = {
+            "id": row.id,
+            "reference": _plain_ref(
+                row.reference_reference,
+                row.reference_type,
+                row.reference_id,
+            ),
+            "display": row.reference_display,
+        }
+        for k, v in _plain_reference_fields(row, "reference").items():
+            item[k.removeprefix("reference_")] = v
+        return item
+
     res: dict[str, Any] = {
         "id": model.consent_id,
         "status": fhir_enum(model.status),
@@ -176,30 +240,12 @@ def to_plain_consent(model: ConsentModel) -> dict:
         "patient_display": model.patient_display,
         "date_time": model.date_time,
         "performer": [
-            {
-                "id": p.id,
-                "reference": _plain_ref(
-                    p.reference_reference,
-                    p.reference_type,
-                    p.reference_id,
-                ),
-                "display": p.reference_display,
-            }
-            for p in (model.performers or [])
+            _plain_child_ref(p) for p in (model.performers or [])
         ]
         if getattr(model, "performers", None)
         else None,
         "organization": [
-            {
-                "id": o.id,
-                "reference": _plain_ref(
-                    o.reference_reference,
-                    o.reference_type,
-                    o.reference_id,
-                ),
-                "display": o.reference_display,
-            }
-            for o in (model.organizations or [])
+            _plain_child_ref(o) for o in (model.organizations or [])
         ]
         if getattr(model, "organizations", None)
         else None,
@@ -231,6 +277,9 @@ def to_plain_consent(model: ConsentModel) -> dict:
         else None,
         "extension": model.extension if model.extension else None,
     }
+
+    res.update(_plain_reference_fields(model, "patient"))
+    res.update(_plain_reference_fields(model, "source_reference"))
 
     if getattr(model, "provisions", None):
         top_provision = next(

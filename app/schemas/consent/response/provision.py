@@ -30,8 +30,19 @@ class PlainConsentProvisionActor(BaseModel):
 
     id: int | None = Field(None, description="Internal DB ID.")
     role: PlainConsentCodeableConcept
-    reference: str
+    reference: str | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
 
 
 class FHIRConsentProvisionData(BaseModel):
@@ -50,8 +61,19 @@ class PlainConsentProvisionData(BaseModel):
 
     id: int | None = Field(None, description="Internal DB ID.")
     meaning: str
-    reference: str
+    reference: str | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
 
 
 class FHIRConsentProvision(BaseModel):
@@ -70,9 +92,6 @@ class FHIRConsentProvision(BaseModel):
     dataPeriod: FHIRPeriod | None = None
     data: list[FHIRConsentProvisionData] | None = None
     provision: list["FHIRConsentProvision"] | None = None
-
-
-FHIRConsentProvision.model_rebuild()
 
 
 class PlainConsentProvision(BaseModel):
@@ -96,4 +115,5 @@ class PlainConsentProvision(BaseModel):
     provision: list["PlainConsentProvision"] | None = None
 
 
+FHIRConsentProvision.model_rebuild()
 PlainConsentProvision.model_rebuild()

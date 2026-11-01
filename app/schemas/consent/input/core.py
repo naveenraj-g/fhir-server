@@ -14,6 +14,7 @@ from app.schemas.consent.input.policy import (
 )
 from app.schemas.consent.input.provision import ConsentProvisionInput
 from app.schemas.consent.input.verification import ConsentVerificationInput
+from app.schemas.enums import IdentifierUse
 
 
 class ConsentCreateSchema(BaseModel):
@@ -150,6 +151,18 @@ class ConsentCreateSchema(BaseModel):
     patient_display: str | None = Field(
         None, description="Display name for patient reference."
     )
+    patient_identifier_use: IdentifierUse | None = Field(None)
+    patient_identifier_type_system: str | None = Field(None)
+    patient_identifier_type_version: str | None = Field(None)
+    patient_identifier_type_code: str | None = Field(None)
+    patient_identifier_type_display: str | None = Field(None)
+    patient_identifier_type_text: str | None = Field(None)
+    patient_identifier_type_user_selected: bool | None = Field(None)
+    patient_identifier_system: str | None = Field(None)
+    patient_identifier_value: str | None = Field(None)
+    patient_identifier_period_start: datetime | None = Field(None)
+    patient_identifier_period_end: datetime | None = Field(None)
+
     date_time: datetime | None = Field(
         None, description="When this Consent was created or indexed."
     )
@@ -169,6 +182,18 @@ class ConsentCreateSchema(BaseModel):
     source_reference_display: str | None = Field(
         None, description="Display name for source reference."
     )
+    source_reference_identifier_use: IdentifierUse | None = Field(None)
+    source_reference_identifier_type_system: str | None = Field(None)
+    source_reference_identifier_type_version: str | None = Field(None)
+    source_reference_identifier_type_code: str | None = Field(None)
+    source_reference_identifier_type_display: str | None = Field(None)
+    source_reference_identifier_type_text: str | None = Field(None)
+    source_reference_identifier_type_user_selected: bool | None = Field(None)
+    source_reference_identifier_system: str | None = Field(None)
+    source_reference_identifier_value: str | None = Field(None)
+    source_reference_identifier_period_start: datetime | None = Field(None)
+    source_reference_identifier_period_end: datetime | None = Field(None)
+
     policy: list[ConsentPolicyInput] | None = Field(
         None, description="Policies that this consent's rule conforms to."
     )
@@ -213,6 +238,18 @@ class ConsentPatchSchema(BaseModel):
     patient_display: str | None = Field(
         None, description="Display name for patient reference."
     )
+    patient_identifier_use: IdentifierUse | None = Field(None)
+    patient_identifier_type_system: str | None = Field(None)
+    patient_identifier_type_version: str | None = Field(None)
+    patient_identifier_type_code: str | None = Field(None)
+    patient_identifier_type_display: str | None = Field(None)
+    patient_identifier_type_text: str | None = Field(None)
+    patient_identifier_type_user_selected: bool | None = Field(None)
+    patient_identifier_system: str | None = Field(None)
+    patient_identifier_value: str | None = Field(None)
+    patient_identifier_period_start: datetime | None = Field(None)
+    patient_identifier_period_end: datetime | None = Field(None)
+
     date_time: datetime | None = Field(
         None, description="When this Consent was created or indexed."
     )
@@ -232,6 +269,18 @@ class ConsentPatchSchema(BaseModel):
     source_reference_display: str | None = Field(
         None, description="Display name for source reference."
     )
+    source_reference_identifier_use: IdentifierUse | None = Field(None)
+    source_reference_identifier_type_system: str | None = Field(None)
+    source_reference_identifier_type_version: str | None = Field(None)
+    source_reference_identifier_type_code: str | None = Field(None)
+    source_reference_identifier_type_display: str | None = Field(None)
+    source_reference_identifier_type_text: str | None = Field(None)
+    source_reference_identifier_type_user_selected: bool | None = Field(None)
+    source_reference_identifier_system: str | None = Field(None)
+    source_reference_identifier_value: str | None = Field(None)
+    source_reference_identifier_period_start: datetime | None = Field(None)
+    source_reference_identifier_period_end: datetime | None = Field(None)
+
     policy: list[ConsentPolicyInput] | None = Field(
         None, description="Policies that this consent's rule conforms to."
     )

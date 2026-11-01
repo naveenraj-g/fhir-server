@@ -30,5 +30,16 @@ class PlainConsentReference(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: int | None = Field(None, description="Internal DB ID.")
-    reference: str = Field(..., description="Target reference string.")
+    reference: str | None = Field(None, description="Target reference string.")
     display: str | None = Field(None, description="Display text for reference.")
+    identifier_use: str | None = None
+    identifier_type_system: str | None = None
+    identifier_type_version: str | None = None
+    identifier_type_code: str | None = None
+    identifier_type_display: str | None = None
+    identifier_type_user_selected: bool | None = None
+    identifier_type_text: str | None = None
+    identifier_system: str | None = None
+    identifier_value: str | None = None
+    identifier_period_start: str | None = None
+    identifier_period_end: str | None = None

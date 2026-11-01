@@ -14,7 +14,7 @@ from app.models.consent.enums import (
     ConsentPerformerReferenceType,
     ConsentVerifiedWithReferenceType,
 )
-from app.models.enums import OrganizationReferenceType
+from app.models.enums import IdentifierUse, OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 
 
@@ -28,7 +28,7 @@ class ConsentPerformer(TenantAuditMixin, Base):
         BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    reference_reference = Column(String, nullable=False)
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(
             ConsentPerformerReferenceType,
@@ -39,6 +39,22 @@ class ConsentPerformer(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True)
     reference_display = Column(String, nullable=True)
+
+    # reference.identifier fallback
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     consent = relationship("ConsentModel", back_populates="performers")
 
@@ -53,7 +69,7 @@ class ConsentOrganization(TenantAuditMixin, Base):
         BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    reference_reference = Column(String, nullable=False)
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(
             OrganizationReferenceType,
@@ -65,6 +81,22 @@ class ConsentOrganization(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True)
     reference_display = Column(String, nullable=True)
+
+    # reference.identifier fallback
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     consent = relationship("ConsentModel", back_populates="organizations")
 
@@ -107,6 +139,23 @@ class ConsentVerification(TenantAuditMixin, Base):
     )
     verified_with_id = Column(BigInteger, nullable=True)
     verified_with_display = Column(String, nullable=True)
+
+    # verified_with.identifier fallback
+    verified_with_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    verified_with_identifier_type_system = Column(String, nullable=True)
+    verified_with_identifier_type_version = Column(String, nullable=True)
+    verified_with_identifier_type_code = Column(String, nullable=True)
+    verified_with_identifier_type_display = Column(String, nullable=True)
+    verified_with_identifier_type_text = Column(String, nullable=True)
+    verified_with_identifier_type_user_selected = Column(Boolean, nullable=True)
+    verified_with_identifier_system = Column(String, nullable=True)
+    verified_with_identifier_value = Column(String, nullable=True)
+    verified_with_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    verified_with_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+
     verification_date = Column(DateTime(timezone=True), nullable=True)
 
     consent = relationship("ConsentModel", back_populates="verifications")

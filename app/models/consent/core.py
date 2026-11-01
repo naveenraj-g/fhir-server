@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -15,6 +16,7 @@ from app.models.consent.enums import (
     ConsentSourceReferenceType,
     ConsentStatus,
 )
+from app.models.enums import IdentifierUse
 from app.models.shared import TenantAuditMixin
 
 
@@ -59,6 +61,22 @@ class ConsentModel(TenantAuditMixin, Base):
     patient_id = Column(BigInteger, nullable=True)
     patient_display = Column(String, nullable=True)
 
+    # patient.identifier fallback
+    patient_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    patient_identifier_type_system = Column(String, nullable=True)
+    patient_identifier_type_version = Column(String, nullable=True)
+    patient_identifier_type_code = Column(String, nullable=True)
+    patient_identifier_type_display = Column(String, nullable=True)
+    patient_identifier_type_text = Column(String, nullable=True)
+    patient_identifier_type_user_selected = Column(Boolean, nullable=True)
+    patient_identifier_system = Column(String, nullable=True)
+    patient_identifier_value = Column(String, nullable=True)
+    patient_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    patient_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+
     date_time = Column(DateTime(timezone=True), nullable=True)
 
     # Choice source[x]: sourceAttachment vs sourceReference
@@ -73,6 +91,23 @@ class ConsentModel(TenantAuditMixin, Base):
     )
     source_reference_id = Column(BigInteger, nullable=True)
     source_reference_display = Column(String, nullable=True)
+
+    # source_reference.identifier fallback
+    source_reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    source_reference_identifier_type_system = Column(String, nullable=True)
+    source_reference_identifier_type_version = Column(String, nullable=True)
+    source_reference_identifier_type_code = Column(String, nullable=True)
+    source_reference_identifier_type_display = Column(String, nullable=True)
+    source_reference_identifier_type_text = Column(String, nullable=True)
+    source_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    source_reference_identifier_system = Column(String, nullable=True)
+    source_reference_identifier_value = Column(String, nullable=True)
+    source_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    source_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+
     source_attachment = Column(JSONB, nullable=True)
 
     policy_rule_text = Column(String, nullable=True)

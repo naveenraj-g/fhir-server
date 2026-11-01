@@ -73,6 +73,17 @@ class PlainConsentResponse(BaseModel):
     patient_display: str | None = Field(
         None, description="Plain text display for patient reference."
     )
+    patient_identifier_use: str | None = None
+    patient_identifier_type_system: str | None = None
+    patient_identifier_type_version: str | None = None
+    patient_identifier_type_code: str | None = None
+    patient_identifier_type_display: str | None = None
+    patient_identifier_type_user_selected: bool | None = None
+    patient_identifier_type_text: str | None = None
+    patient_identifier_system: str | None = None
+    patient_identifier_value: str | None = None
+    patient_identifier_period_start: str | None = None
+    patient_identifier_period_end: str | None = None
     date_time: datetime | None = Field(
         None, description="When this Consent was created or indexed."
     )
@@ -91,6 +102,17 @@ class PlainConsentResponse(BaseModel):
     source_reference_display: str | None = Field(
         None, description="Display name for source reference."
     )
+    source_reference_identifier_use: str | None = None
+    source_reference_identifier_type_system: str | None = None
+    source_reference_identifier_type_version: str | None = None
+    source_reference_identifier_type_code: str | None = None
+    source_reference_identifier_type_display: str | None = None
+    source_reference_identifier_type_user_selected: bool | None = None
+    source_reference_identifier_type_text: str | None = None
+    source_reference_identifier_system: str | None = None
+    source_reference_identifier_value: str | None = None
+    source_reference_identifier_period_start: str | None = None
+    source_reference_identifier_period_end: str | None = None
     policy: list[PlainConsentPolicy] | None = Field(
         None, description="Policies that this consent's rule conforms to."
     )

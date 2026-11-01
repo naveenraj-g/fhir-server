@@ -32,6 +32,8 @@ from app.schemas.consent import (
 )
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_identifier_kwargs,
     _parse_actor_ref,
     _parse_assigner_ref,
     _parse_generic_ref,
@@ -40,6 +42,7 @@ from ._shared import (
     _parse_performer_ref,
     _parse_source_ref,
     _parse_verified_with_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
 )
 
@@ -79,6 +82,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -133,7 +137,7 @@ async def _add_performers(
     session, consent_pk: int, org_id: str, performers, created_by: str
 ) -> None:
     for p in performers or []:
-        p_type, p_id = _parse_performer_ref(p.reference)
+        p_type, p_id = _parse_performer_ref(p.reference) if p.reference else (None, None)
         if p_type and p_id:
             await _validate_ref(session, org_id, p_type, p_id, "performer")
         session.add(
@@ -144,6 +148,7 @@ async def _add_performers(
                 reference_type=p_type,
                 reference_id=p_id,
                 reference_display=p.display,
+                **_child_reference_identifier_kwargs(p),
                 created_by=created_by,
             )
         )
@@ -153,7 +158,7 @@ async def _add_organizations(
     session, consent_pk: int, org_id: str, organizations, created_by: str
 ) -> None:
     for o in organizations or []:
-        o_type, o_id = _parse_organization_ref(o.reference)
+        o_type, o_id = _parse_organization_ref(o.reference) if o.reference else (None, None)
         if o_type and o_id:
             await _validate_ref(session, org_id, o_type, o_id, "organization")
         session.add(
@@ -164,6 +169,7 @@ async def _add_organizations(
                 reference_type=o_type,
                 reference_id=o_id,
                 reference_display=o.display,
+                **_child_reference_identifier_kwargs(o),
                 created_by=created_by,
             )
         )
@@ -220,6 +226,7 @@ async def _add_verifications(
                 verified_with_id=vw_id,
                 verified_with_display=v.verified_with_display,
                 verification_date=v.verification_date,
+                **_prefixed_identifier_kwargs("verified_with", v),
                 created_by=created_by,
             )
         )
@@ -249,7 +256,7 @@ async def _add_provision_tree(
 
     if prov_input.actor:
         for a in prov_input.actor:
-            a_type, a_id = _parse_actor_ref(a.reference)
+            a_type, a_id = _parse_actor_ref(a.reference) if a.reference else (None, None)
             if a_type and a_id:
                 await _validate_ref(
                     session, org_id, a_type, a_id, "provision.actor.reference"
@@ -262,6 +269,7 @@ async def _add_provision_tree(
                 reference_type=a_type,
                 reference_id=a_id,
                 reference_display=a.reference_display,
+                **_prefixed_identifier_kwargs("reference", a),
                 created_by=created_by,
             )
             session.add(actor_row)
@@ -346,7 +354,7 @@ async def _add_provision_tree(
 
     if prov_input.data:
         for dt in prov_input.data:
-            dt_type, dt_id = _parse_generic_ref(dt.reference)
+            dt_type, dt_id = _parse_generic_ref(dt.reference) if dt.reference else (None, None)
             if dt_type and dt_id:
                 await _validate_ref(
                     session, org_id, dt_type, dt_id, "provision.data.reference"
@@ -359,6 +367,7 @@ async def _add_provision_tree(
                 reference_type=dt_type,
                 reference_id=dt_id,
                 reference_display=dt.reference_display,
+                **_prefixed_identifier_kwargs("reference", dt),
                 created_by=created_by,
             )
             session.add(data_row)
@@ -405,11 +414,13 @@ class _FullMixin:
                 patient_type=pat_type,
                 patient_id=pat_id,
                 patient_display=payload.patient_display,
+                **_prefixed_identifier_kwargs("patient", payload),
                 date_time=payload.date_time,
                 source_reference_reference=payload.source_reference,
                 source_reference_type=src_type,
                 source_reference_id=src_id,
                 source_reference_display=payload.source_reference_display,
+                **_prefixed_identifier_kwargs("source_reference", payload),
                 source_attachment=payload.source_attachment,
                 policy_rule_text=payload.policy_rule.text
                 if payload.policy_rule
@@ -496,7 +507,8 @@ class _FullMixin:
             if "extension" in fields_set:
                 consent.extension = payload.extension or []
 
-            if "patient" in fields_set or "patient_display" in fields_set:
+            patient_fallback_fields = {f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "patient" in fields_set or "patient_display" in fields_set or (fields_set & patient_fallback_fields):
                 if payload.patient:
                     pat_type, pat_id = _parse_patient_ref(payload.patient)
                     await _validate_ref(
@@ -511,10 +523,16 @@ class _FullMixin:
                     consent.patient_id = None
                 if "patient_display" in fields_set:
                     consent.patient_display = payload.patient_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"patient_{s}"
+                    if f_name in fields_set:
+                        setattr(consent, f_name, getattr(payload, f_name))
 
+            source_ref_fallback_fields = {f"source_reference_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
             if (
                 "source_reference" in fields_set
                 or "source_reference_display" in fields_set
+                or (fields_set & source_ref_fallback_fields)
             ):
                 if payload.source_reference:
                     src_type, src_id = _parse_source_ref(
@@ -539,6 +557,10 @@ class _FullMixin:
                     consent.source_reference_display = (
                         payload.source_reference_display
                     )
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"source_reference_{s}"
+                    if f_name in fields_set:
+                        setattr(consent, f_name, getattr(payload, f_name))
 
             if "scope" in fields_set:
                 await session.execute(

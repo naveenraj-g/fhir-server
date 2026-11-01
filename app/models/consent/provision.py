@@ -1,5 +1,6 @@
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -14,6 +15,7 @@ from app.models.consent.enums import (
     ConsentProvisionActorReferenceType,
     ConsentProvisionType,
 )
+from app.models.enums import IdentifierUse
 from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 
@@ -110,7 +112,7 @@ class ConsentProvisionActor(TenantAuditMixin, Base):
     )
 
     role_text = Column(String, nullable=True)
-    reference_reference = Column(String, nullable=False)
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(
         Enum(
             ConsentProvisionActorReferenceType,
@@ -121,6 +123,22 @@ class ConsentProvisionActor(TenantAuditMixin, Base):
     )
     reference_id = Column(BigInteger, nullable=True)
     reference_display = Column(String, nullable=True)
+
+    # reference.identifier fallback
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     provision = relationship("ConsentProvision", back_populates="actors")
     role_codings = relationship(
@@ -296,9 +314,25 @@ class ConsentProvisionData(TenantAuditMixin, Base):
         ),
         nullable=False,
     )
-    reference_reference = Column(String, nullable=False)
+    reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)
     reference_display = Column(String, nullable=True)
+
+    # reference.identifier fallback
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False),
+        nullable=True,
+    )
+    reference_identifier_type_system = Column(String, nullable=True)
+    reference_identifier_type_version = Column(String, nullable=True)
+    reference_identifier_type_code = Column(String, nullable=True)
+    reference_identifier_type_display = Column(String, nullable=True)
+    reference_identifier_type_text = Column(String, nullable=True)
+    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     provision = relationship("ConsentProvision", back_populates="data_entries")

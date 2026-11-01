@@ -46,20 +46,76 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
-def _fhir_ref(
-    ref_raw: str | None,
-    ref_type: Any,
-    ref_id: int | None,
-    display: str | None,
-) -> dict | None:
-    result: dict = {}
-    if ref_raw:
-        result["reference"] = ref_raw
-    elif ref_type and ref_id:
-        result["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
-    if display:
-        result["display"] = display
-    return result or None
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
+    ref = getattr(obj, f"{prefix}_reference", None)
+    rtype = getattr(obj, f"{prefix}_type", None)
+    rid = getattr(obj, f"{prefix}_id", None)
+    disp = getattr(obj, f"{prefix}_display", None)
+
+    out: dict[str, Any] = {}
+    if ref:
+        out["reference"] = ref
+    elif rtype and rid:
+        type_str = fhir_enum(rtype)
+        out["reference"] = f"{type_str}/{rid}"
+    if disp:
+        out["display"] = disp
+
+    use = getattr(obj, f"{prefix}_identifier_use", None)
+    val = getattr(obj, f"{prefix}_identifier_value", None)
+    sys = getattr(obj, f"{prefix}_identifier_system", None)
+    type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    p_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    p_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if (
+        use
+        or val
+        or sys
+        or type_code
+        or p_start
+        or p_end
+        or getattr(obj, f"{prefix}_identifier_type_text", None)
+    ):
+        ident: dict[str, Any] = {}
+        if use:
+            ident["use"] = fhir_enum(use)
+        if sys:
+            ident["system"] = sys
+        if val:
+            ident["value"] = val
+        if type_code or getattr(obj, f"{prefix}_identifier_type_text", None):
+            coding: dict[str, Any] = {}
+            if getattr(obj, f"{prefix}_identifier_type_system", None):
+                coding["system"] = getattr(obj, f"{prefix}_identifier_type_system")
+            if getattr(obj, f"{prefix}_identifier_type_version", None):
+                coding["version"] = getattr(obj, f"{prefix}_identifier_type_version")
+            if type_code:
+                coding["code"] = type_code
+            if getattr(obj, f"{prefix}_identifier_type_display", None):
+                coding["display"] = getattr(obj, f"{prefix}_identifier_type_display")
+            if getattr(obj, f"{prefix}_identifier_type_user_selected", None) is not None:
+                coding["userSelected"] = getattr(obj, f"{prefix}_identifier_type_user_selected")
+
+            type_dict: dict[str, Any] = {}
+            if coding:
+                type_dict["coding"] = [coding]
+            if getattr(obj, f"{prefix}_identifier_type_text", None):
+                type_dict["text"] = getattr(obj, f"{prefix}_identifier_type_text")
+            if type_dict:
+                ident["type"] = type_dict
+        if p_start or p_end:
+            period: dict[str, Any] = {}
+            if p_start:
+                period["start"] = fhir_instant(p_start)
+            if p_end:
+                period["end"] = fhir_instant(p_end)
+            ident["period"] = period
+        out["identifier"] = ident
+
+    return out or None
 
 
 def _fhir_identifier(i: ConsentIdentifier) -> dict | None:
@@ -80,12 +136,7 @@ def _fhir_identifier(i: ConsentIdentifier) -> dict | None:
         if i.period_end:
             period["end"] = fhir_instant(i.period_end)
         entry["period"] = period
-    assigner = _fhir_ref(
-        i.assigner_reference,
-        i.assigner_type,
-        i.assigner_id,
-        i.assigner_display,
-    )
+    assigner = _fhir_reference(i, "assigner")
     if assigner:
         entry["assigner"] = assigner
     return entry or None
@@ -102,12 +153,7 @@ def _fhir_policy(p: ConsentPolicy) -> dict | None:
 
 def _fhir_verification(v: ConsentVerification) -> dict:
     res: dict = {"verified": v.verified}
-    verified_with = _fhir_ref(
-        v.verified_with_reference,
-        v.verified_with_type,
-        v.verified_with_id,
-        v.verified_with_display,
-    )
+    verified_with = _fhir_reference(v, "verified_with")
     if verified_with:
         res["verifiedWith"] = verified_with
     if v.verification_date:
@@ -117,24 +163,14 @@ def _fhir_verification(v: ConsentVerification) -> dict:
 
 def _fhir_provision_actor(a: ConsentProvisionActor) -> dict | None:
     role = _fhir_codeable_concept(getattr(a, "role_codings", None), a.role_text)
-    ref = _fhir_ref(
-        a.reference_reference,
-        a.reference_type,
-        a.reference_id,
-        a.reference_display,
-    )
+    ref = _fhir_reference(a, "reference")
     if not role or not ref:
         return None
     return {"role": role, "reference": ref}
 
 
 def _fhir_provision_data(d: ConsentProvisionData) -> dict | None:
-    ref = _fhir_ref(
-        d.reference_reference,
-        d.reference_type,
-        d.reference_id,
-        d.reference_display,
-    )
+    ref = _fhir_reference(d, "reference")
     if not ref:
         return None
     return {
@@ -247,12 +283,7 @@ def to_fhir_consent(model: ConsentModel) -> dict:
         if cats:
             res["category"] = cats
 
-    patient = _fhir_ref(
-        model.patient_reference,
-        model.patient_type,
-        model.patient_id,
-        model.patient_display,
-    )
+    patient = _fhir_reference(model, "patient")
     if patient:
         res["patient"] = patient
 
@@ -261,12 +292,7 @@ def to_fhir_consent(model: ConsentModel) -> dict:
 
     if getattr(model, "performers", None):
         perfs = [
-            _fhir_ref(
-                p.reference_reference,
-                p.reference_type,
-                p.reference_id,
-                p.reference_display,
-            )
+            _fhir_reference(p, "reference")
             for p in model.performers
         ]
         perfs = [p for p in perfs if p]
@@ -275,12 +301,7 @@ def to_fhir_consent(model: ConsentModel) -> dict:
 
     if getattr(model, "organizations", None):
         orgs = [
-            _fhir_ref(
-                o.reference_reference,
-                o.reference_type,
-                o.reference_id,
-                o.reference_display,
-            )
+            _fhir_reference(o, "reference")
             for o in model.organizations
         ]
         orgs = [o for o in orgs if o]
@@ -291,12 +312,7 @@ def to_fhir_consent(model: ConsentModel) -> dict:
     if model.source_attachment is not None:
         res["sourceAttachment"] = model.source_attachment
     else:
-        source_ref = _fhir_ref(
-            model.source_reference_reference,
-            model.source_reference_type,
-            model.source_reference_id,
-            model.source_reference_display,
-        )
+        source_ref = _fhir_reference(model, "source_reference")
         if source_ref:
             res["sourceReference"] = source_ref
 
