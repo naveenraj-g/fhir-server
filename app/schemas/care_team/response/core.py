@@ -105,6 +105,17 @@ class PlainCareTeamReference(BaseModel):
     type: str | None = None
     reference_id: int | None = None
     display: str | None = None
+    identifier_use: str | None = None
+    identifier_type_system: str | None = None
+    identifier_type_version: str | None = None
+    identifier_type_code: str | None = None
+    identifier_type_display: str | None = None
+    identifier_type_user_selected: bool | None = None
+    identifier_type_text: str | None = None
+    identifier_system: str | None = None
+    identifier_value: str | None = None
+    identifier_period_start: datetime | None = None
+    identifier_period_end: datetime | None = None
 
 
 class PlainCareTeamResponse(AuditFields):
@@ -119,10 +130,34 @@ class PlainCareTeamResponse(AuditFields):
     subject_id: int | None = None
     subject_type: str | None = None
     subject_display: str | None = None
+    subject_identifier_use: str | None = None
+    subject_identifier_type_system: str | None = None
+    subject_identifier_type_version: str | None = None
+    subject_identifier_type_code: str | None = None
+    subject_identifier_type_display: str | None = None
+    subject_identifier_type_user_selected: bool | None = None
+    subject_identifier_type_text: str | None = None
+    subject_identifier_system: str | None = None
+    subject_identifier_value: str | None = None
+    subject_identifier_period_start: datetime | None = None
+    subject_identifier_period_end: datetime | None = None
+
     encounter: str | None = None
     encounter_id: int | None = None
     encounter_type: str | None = None
     encounter_display: str | None = None
+    encounter_identifier_use: str | None = None
+    encounter_identifier_type_system: str | None = None
+    encounter_identifier_type_version: str | None = None
+    encounter_identifier_type_code: str | None = None
+    encounter_identifier_type_display: str | None = None
+    encounter_identifier_type_user_selected: bool | None = None
+    encounter_identifier_type_text: str | None = None
+    encounter_identifier_system: str | None = None
+    encounter_identifier_value: str | None = None
+    encounter_identifier_period_start: datetime | None = None
+    encounter_identifier_period_end: datetime | None = None
+
     period_start: datetime | None = None
     period_end: datetime | None = None
 

@@ -48,38 +48,95 @@ def _fhir_ref(ref_raw: str | None, ref_type, ref_id: int | None, display: str | 
     return result or None
 
 
-def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
     raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
 
+    ref_str = raw_reference or (
+        f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
+    )
+
     entry: dict = {}
-    if raw_reference:
-        entry["reference"] = raw_reference
-    elif ref_type and ref_id:
-        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if ref_str:
+        entry["reference"] = ref_str
     if display:
         entry["display"] = display
 
-    # Logical identifier fallback
-    ident_system = getattr(obj, f"{prefix}_identifier_system", None)
-    ident_value = getattr(obj, f"{prefix}_identifier_value", None)
-    ident_use = getattr(obj, f"{prefix}_identifier_use", None)
-    ident_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    identifier: dict = {}
-    if ident_use:
-        identifier["use"] = fhir_enum(ident_use)
-    if ident_system:
-        identifier["system"] = ident_system
-    if ident_value:
-        identifier["value"] = ident_value
-    if ident_type_text:
-        identifier["type"] = {"text": ident_type_text}
-
-    if identifier:
-        entry["identifier"] = identifier
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
+        if id_use:
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
+        if id_system:
+            ident["system"] = id_system
+        if id_value:
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                p_dict["end"] = fhir_instant(id_period_end)
+            ident["period"] = p_dict
+        entry["identifier"] = ident
 
     return entry or None
 
@@ -100,10 +157,10 @@ def _fhir_participant(p: CareTeamParticipant) -> dict:
         roles_fhir = [r for r in roles_fhir if r]
         if roles_fhir:
             result["role"] = roles_fhir
-    member = _fhir_ref(p.member_reference, p.member_type, p.member_id, p.member_display)
+    member = _fhir_reference(p, "member")
     if member:
         result["member"] = member
-    on_behalf_of = _fhir_ref(p.on_behalf_of_reference, p.on_behalf_of_type, p.on_behalf_of_id, p.on_behalf_of_display)
+    on_behalf_of = _fhir_reference(p, "on_behalf_of")
     if on_behalf_of:
         result["onBehalfOf"] = on_behalf_of
     period = _fhir_period(p.period_start, p.period_end)
@@ -128,25 +185,24 @@ def _fhir_telecom(t) -> dict:
     return result
 
 
-def _fhir_meta(model: CareTeamModel) -> dict:
-    meta: dict[str, Any] = {}
-    last_updated = model.updated_at or model.created_at
-    if last_updated:
-        meta["lastUpdated"] = fhir_instant(last_updated)
-    return meta
-
-
-def to_fhir_care_team(model: CareTeamModel) -> dict:
-    """Convert CareTeamModel to full FHIR R4 CareTeam resource JSON."""
+def to_fhir_care_team(model: CareTeamModel) -> dict[str, Any]:
+    """Serialize a CareTeamModel instance to FHIR R4 CareTeam JSON dict."""
     fhir: dict[str, Any] = {
         "resourceType": "CareTeam",
         "id": str(model.care_team_id),
     }
 
-    meta = _fhir_meta(model)
-    if meta:
-        fhir["meta"] = meta
+    # Meta
+    meta: dict[str, Any] = {
+        "versionId": str(model.version_id) if hasattr(model, "version_id") and model.version_id else "1",
+    }
+    if model.updated_at:
+        meta["lastUpdated"] = fhir_instant(model.updated_at)
+    elif model.created_at:
+        meta["lastUpdated"] = fhir_instant(model.created_at)
+    fhir["meta"] = meta
 
+    # Extension
     if model.extension:
         fhir["extension"] = model.extension
 
@@ -159,12 +215,12 @@ def to_fhir_care_team(model: CareTeamModel) -> dict:
         fhir["name"] = model.name
 
     # subject
-    subject = _fhir_ref(model.subject_reference, model.subject_type, model.subject_id, model.subject_display)
+    subject = _fhir_reference(model, "subject")
     if subject:
         fhir["subject"] = subject
 
     # encounter
-    encounter = _fhir_ref(model.encounter_reference, model.encounter_type, model.encounter_id, model.encounter_display)
+    encounter = _fhir_reference(model, "encounter")
     if encounter:
         fhir["encounter"] = encounter
 
@@ -196,14 +252,14 @@ def to_fhir_care_team(model: CareTeamModel) -> dict:
 
     # reasonReference
     if model.reason_references:
-        rr = [_fhir_ref(r.reference_reference, r.reference_type, r.reference_id, r.reference_display) for r in model.reason_references]
+        rr = [_fhir_reference(r, "reference") for r in model.reason_references]
         rr = [r for r in rr if r]
         if rr:
             fhir["reasonReference"] = rr
 
     # managingOrganization
     if model.managing_organizations:
-        mo = [_fhir_ref(m.reference_reference, m.reference_type, m.reference_id, m.reference_display) for m in model.managing_organizations]
+        mo = [_fhir_reference(m, "reference") for m in model.managing_organizations]
         mo = [m for m in mo if m]
         if mo:
             fhir["managingOrganization"] = mo
@@ -248,7 +304,7 @@ def to_fhir_care_team(model: CareTeamModel) -> dict:
             p = _fhir_period(i.period_start, i.period_end)
             if p:
                 ident_obj["period"] = p
-            assigner = _fhir_reference_with_identifier_fallback(i, "assigner")
+            assigner = _fhir_reference(i, "assigner")
             if assigner:
                 ident_obj["assigner"] = assigner
             if ident_obj:

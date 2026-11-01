@@ -30,6 +30,8 @@ from app.schemas.care_team import (
 from app.schemas.enums import ContactPointSystem, ContactPointUse
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_kwargs,
     _parse_assigner_ref,
     _parse_encounter_ref,
     _parse_managing_org_ref,
@@ -38,6 +40,7 @@ from ._shared import (
     _parse_on_behalf_of_ref,
     _parse_reason_ref,
     _parse_subject_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
 )
 
@@ -74,11 +77,12 @@ async def _add_identifiers(session, care_team_pk: int, org_id: str, identifiers,
         a_type, a_id = _parse_assigner_ref(i.assigner) if i.assigner else (None, None)
         if a_type and a_id:
             await _validate_ref(session, org_id, a_type, a_id, "identifier.assigner")
+        type_text = getattr(i, "type_text", None) or (i.type.text if getattr(i, "type", None) else None)
         ident = CareTeamIdentifier(
             care_team_pk=care_team_pk,
             tenant_id=org_id,
             use=IdentifierUse(i.use.value) if i.use else None,
-            type_text=i.type.text if i.type else None,
+            type_text=type_text,
             system=i.system,
             value=i.value,
             period_start=i.period_start,
@@ -87,16 +91,14 @@ async def _add_identifiers(session, care_team_pk: int, org_id: str, identifiers,
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=IdentifierUse(i.assigner_identifier_use.value) if i.assigner_identifier_use else None,
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
         await session.flush()
-        if i.type and i.type.coding:
-            for c in i.type.coding:
+        type_codings = getattr(i, "type_coding", None) or (i.type.coding if getattr(i, "type", None) else None)
+        if type_codings:
+            for c in type_codings:
                 session.add(
                     CareTeamIdentifierTypeCoding(
                         identifier_id=ident.id,
@@ -141,10 +143,12 @@ async def _add_participants(session, care_team_pk: int, org_id: str, participant
             member_type=m_type,
             member_id=m_id,
             member_display=p.member_display,
+            **_prefixed_identifier_kwargs("member", p),
             on_behalf_of_reference=p.on_behalf_of,
             on_behalf_of_type=ob_type,
             on_behalf_of_id=ob_id,
             on_behalf_of_display=p.on_behalf_of_display,
+            **_prefixed_identifier_kwargs("on_behalf_of", p),
             period_start=p.period_start,
             period_end=p.period_end,
             created_by=created_by,
@@ -193,35 +197,45 @@ async def _add_reason_codes(session, care_team_pk: int, org_id: str, reason_code
 
 
 async def _add_reason_references(session, care_team_pk: int, org_id: str, reason_references, created_by: str) -> None:
-    for ref_str in reason_references or []:
-        r_type, r_id = _parse_reason_ref(ref_str)
+    for ref_item in reason_references or []:
+        ref_kwargs = _child_reference_kwargs(ref_item)
+        r_type, r_id = (
+            _parse_reason_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if r_type and r_id:
             await _validate_ref(session, org_id, r_type, r_id, "reason_reference")
         session.add(
             CareTeamReasonReference(
                 care_team_pk=care_team_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=r_type,
                 reference_id=r_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
 
 async def _add_managing_organizations(session, care_team_pk: int, org_id: str, managing_organizations, created_by: str) -> None:
-    for ref_str in managing_organizations or []:
-        m_type, m_id = _parse_managing_org_ref(ref_str)
+    for ref_item in managing_organizations or []:
+        ref_kwargs = _child_reference_kwargs(ref_item)
+        m_type, m_id = (
+            _parse_managing_org_ref(ref_kwargs["reference_reference"])
+            if ref_kwargs["reference_reference"]
+            else (None, None)
+        )
         if m_type and m_id:
             await _validate_ref(session, org_id, m_type, m_id, "managing_organization")
         session.add(
             CareTeamManagingOrganization(
                 care_team_pk=care_team_pk,
                 tenant_id=org_id,
-                reference_reference=ref_str,
                 reference_type=m_type,
                 reference_id=m_id,
                 created_by=created_by,
+                **ref_kwargs,
             )
         )
 
@@ -303,10 +317,12 @@ class _FullMixin:
                 subject_type=s_type,
                 subject_id=s_id,
                 subject_display=payload.subject_display,
+                **_prefixed_identifier_kwargs("subject", payload),
                 encounter_reference=payload.encounter,
                 encounter_type=e_type,
                 encounter_id=e_id,
                 encounter_display=payload.encounter_display,
+                **_prefixed_identifier_kwargs("encounter", payload),
                 period_start=payload.period_start,
                 period_end=payload.period_end,
             )
@@ -357,7 +373,8 @@ class _FullMixin:
             if "period_end" in fields_set:
                 care_team.period_end = payload.period_end
 
-            if "subject" in fields_set or "subject_display" in fields_set:
+            subject_fallback_fields = {f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "subject" in fields_set or "subject_display" in fields_set or (fields_set & subject_fallback_fields):
                 if payload.subject:
                     s_type, s_id = _parse_subject_ref(payload.subject)
                     await _validate_ref(session, org_id, s_type, s_id, "subject")
@@ -370,8 +387,13 @@ class _FullMixin:
                     care_team.subject_id = None
                 if "subject_display" in fields_set:
                     care_team.subject_display = payload.subject_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"subject_{s}"
+                    if f_name in fields_set:
+                        setattr(care_team, f_name, getattr(payload, f_name))
 
-            if "encounter" in fields_set or "encounter_display" in fields_set:
+            encounter_fallback_fields = {f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            if "encounter" in fields_set or "encounter_display" in fields_set or (fields_set & encounter_fallback_fields):
                 if payload.encounter:
                     e_type, e_id = _parse_encounter_ref(payload.encounter)
                     await _validate_ref(session, org_id, e_type, e_id, "encounter")
@@ -384,6 +406,10 @@ class _FullMixin:
                     care_team.encounter_id = None
                 if "encounter_display" in fields_set:
                     care_team.encounter_display = payload.encounter_display
+                for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                    f_name = f"encounter_{s}"
+                    if f_name in fields_set:
+                        setattr(care_team, f_name, getattr(payload, f_name))
 
             # Sub-resource replacements
             if "identifier" in fields_set:

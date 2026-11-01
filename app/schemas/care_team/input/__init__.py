@@ -8,11 +8,13 @@ from app.schemas.care_team.input.core import (
 from app.schemas.care_team.input.identifier import CareTeamIdentifierInput
 from app.schemas.care_team.input.note import CareTeamNoteInput
 from app.schemas.care_team.input.participant import CareTeamParticipantInput
+from app.schemas.care_team.input.reference import CareTeamReferenceInput
 
 __all__ = [
     "CareTeamCodeableConceptInput",
     "CareTeamIdentifierInput",
     "CareTeamParticipantInput",
+    "CareTeamReferenceInput",
     "CareTeamNoteInput",
     "CareTeamCreateSchema",
     "CareTeamPatchSchema",

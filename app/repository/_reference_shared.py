@@ -31,6 +31,15 @@ _IDENTIFIER_FALLBACK_SUFFIXES = (
 )
 
 
+def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
+    if payload is None:
+        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
+
+
 def _reference_kwargs(prefix: str, payload) -> dict:
     """Build `{prefix}_identifier_*` ORM constructor kwargs from a payload's
     matching fields — the logical-reference fallback used alongside every

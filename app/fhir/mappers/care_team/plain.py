@@ -3,9 +3,26 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.fhir.datatypes import fhir_enum
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.models.care_team import CareTeamModel
+
+
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    d = {}
+    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = getattr(obj, f"{prefix}_{s}", None)
+        if val is not None:
+            if hasattr(val, "isoformat"):
+                d[f"{prefix}_{s}"] = val.isoformat()
+            elif hasattr(val, "value"):
+                d[f"{prefix}_{s}"] = val.value
+            else:
+                d[f"{prefix}_{s}"] = val
+        else:
+            d[f"{prefix}_{s}"] = None
+    return d
 
 
 def _plain_coding_list(codings) -> list[dict]:
@@ -24,7 +41,7 @@ def _plain_coding_list(codings) -> list[dict]:
 
 
 def _plain_identifier(i) -> dict:
-    return {
+    d = {
         "id": i.id,
         "use": fhir_enum(i.use) if i.use else None,
         "type_text": i.type_text,
@@ -32,12 +49,14 @@ def _plain_identifier(i) -> dict:
         "value": i.value,
         "period_start": i.period_start.isoformat() if i.period_start else None,
         "period_end": i.period_end.isoformat() if i.period_end else None,
-        "assigner_reference": i.assigner_reference,
+        "assigner": i.assigner_reference,
         "assigner_type": fhir_enum(i.assigner_type) if i.assigner_type else None,
         "assigner_id": i.assigner_id,
         "assigner_display": i.assigner_display,
         "type_codings": _plain_coding_list(getattr(i, "type_codings", None)),
     }
+    d.update(_plain_reference_fields(i, "assigner"))
+    return d
 
 
 def _plain_category(c) -> dict:
@@ -57,7 +76,7 @@ def _plain_participant_role(r) -> dict:
 
 
 def _plain_participant(p) -> dict:
-    return {
+    d = {
         "id": p.id,
         "roles": [_plain_participant_role(r) for r in getattr(p, "roles", []) or []],
         "member": p.member_reference,
@@ -71,6 +90,9 @@ def _plain_participant(p) -> dict:
         "period_start": p.period_start.isoformat() if p.period_start else None,
         "period_end": p.period_end.isoformat() if p.period_end else None,
     }
+    d.update(_plain_reference_fields(p, "member"))
+    d.update(_plain_reference_fields(p, "on_behalf_of"))
+    return d
 
 
 def _plain_reason_code(r) -> dict:
@@ -82,13 +104,25 @@ def _plain_reason_code(r) -> dict:
 
 
 def _plain_ref_row(r) -> dict:
-    return {
+    d = {
         "id": r.id,
         "reference": r.reference_reference,
         "type": fhir_enum(r.reference_type) if r.reference_type else None,
         "reference_id": r.reference_id,
         "display": r.reference_display,
     }
+    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = getattr(r, f"reference_{s}", None)
+        if val is not None:
+            if hasattr(val, "isoformat"):
+                d[s] = val.isoformat()
+            elif hasattr(val, "value"):
+                d[s] = val.value
+            else:
+                d[s] = val
+        else:
+            d[s] = None
+    return d
 
 
 def _plain_telecom(t) -> dict:
@@ -118,7 +152,7 @@ def _plain_note(n) -> dict:
 
 def to_plain_care_team(model: CareTeamModel) -> dict:
     """Convert CareTeamModel to snake_case plain dictionary."""
-    return {
+    d = {
         "id": model.care_team_id,
         "status": fhir_enum(model.status) if model.status else None,
         "name": model.name,
@@ -146,3 +180,6 @@ def to_plain_care_team(model: CareTeamModel) -> dict:
         "created_at": model.created_at.isoformat() if model.created_at else None,
         "updated_at": model.updated_at.isoformat() if model.updated_at else None,
     }
+    d.update(_plain_reference_fields(model, "subject"))
+    d.update(_plain_reference_fields(model, "encounter"))
+    return d

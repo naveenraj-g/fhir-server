@@ -8,8 +8,9 @@ from app.schemas.care_team.input.codeable_concept import (
 from app.schemas.care_team.input.identifier import CareTeamIdentifierInput
 from app.schemas.care_team.input.note import CareTeamNoteInput
 from app.schemas.care_team.input.participant import CareTeamParticipantInput
+from app.schemas.care_team.input.reference import CareTeamReferenceInput
 from app.schemas.datatypes import ContactPointInput
-from app.schemas.enums import CareTeamStatus
+from app.schemas.enums import CareTeamStatus, IdentifierUse
 
 
 class CareTeamCreateSchema(BaseModel):
@@ -100,12 +101,36 @@ class CareTeamCreateSchema(BaseModel):
     subject_display: str | None = Field(
         None, description="Display name for subject reference."
     )
+    subject_identifier_use: IdentifierUse | None = Field(None)
+    subject_identifier_type_system: str | None = Field(None)
+    subject_identifier_type_version: str | None = Field(None)
+    subject_identifier_type_code: str | None = Field(None)
+    subject_identifier_type_display: str | None = Field(None)
+    subject_identifier_type_user_selected: bool | None = Field(None)
+    subject_identifier_type_text: str | None = Field(None)
+    subject_identifier_system: str | None = Field(None)
+    subject_identifier_value: str | None = Field(None)
+    subject_identifier_period_start: datetime | None = Field(None)
+    subject_identifier_period_end: datetime | None = Field(None)
+
     encounter: str | None = Field(
         None, description="Encounter created as part of (Reference(Encounter))."
     )
     encounter_display: str | None = Field(
         None, description="Display name for encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(None)
+    encounter_identifier_type_system: str | None = Field(None)
+    encounter_identifier_type_version: str | None = Field(None)
+    encounter_identifier_type_code: str | None = Field(None)
+    encounter_identifier_type_display: str | None = Field(None)
+    encounter_identifier_type_user_selected: bool | None = Field(None)
+    encounter_identifier_type_text: str | None = Field(None)
+    encounter_identifier_system: str | None = Field(None)
+    encounter_identifier_value: str | None = Field(None)
+    encounter_identifier_period_start: datetime | None = Field(None)
+    encounter_identifier_period_end: datetime | None = Field(None)
+
     period_start: datetime | None = Field(
         None, description="Time period team covers — start."
     )
@@ -118,10 +143,10 @@ class CareTeamCreateSchema(BaseModel):
     reason_code: list[CareTeamCodeableConceptInput] | None = Field(
         None, description="Why the care team exists."
     )
-    reason_reference: list[str] | None = Field(
+    reason_reference: list[CareTeamReferenceInput | str] | None = Field(
         None, description="Why the care team exists (Reference(Condition))."
     )
-    managing_organization: list[str] | None = Field(
+    managing_organization: list[CareTeamReferenceInput | str] | None = Field(
         None, description="Organization responsible for the care team (Reference(Organization))."
     )
     telecom: list[ContactPointInput] | None = Field(
@@ -155,12 +180,36 @@ class CareTeamPatchSchema(BaseModel):
     subject_display: str | None = Field(
         None, description="Display name for subject reference."
     )
+    subject_identifier_use: IdentifierUse | None = Field(None)
+    subject_identifier_type_system: str | None = Field(None)
+    subject_identifier_type_version: str | None = Field(None)
+    subject_identifier_type_code: str | None = Field(None)
+    subject_identifier_type_display: str | None = Field(None)
+    subject_identifier_type_user_selected: bool | None = Field(None)
+    subject_identifier_type_text: str | None = Field(None)
+    subject_identifier_system: str | None = Field(None)
+    subject_identifier_value: str | None = Field(None)
+    subject_identifier_period_start: datetime | None = Field(None)
+    subject_identifier_period_end: datetime | None = Field(None)
+
     encounter: str | None = Field(
         None, description="Encounter created as part of (Reference(Encounter))."
     )
     encounter_display: str | None = Field(
         None, description="Display name for encounter reference."
     )
+    encounter_identifier_use: IdentifierUse | None = Field(None)
+    encounter_identifier_type_system: str | None = Field(None)
+    encounter_identifier_type_version: str | None = Field(None)
+    encounter_identifier_type_code: str | None = Field(None)
+    encounter_identifier_type_display: str | None = Field(None)
+    encounter_identifier_type_user_selected: bool | None = Field(None)
+    encounter_identifier_type_text: str | None = Field(None)
+    encounter_identifier_system: str | None = Field(None)
+    encounter_identifier_value: str | None = Field(None)
+    encounter_identifier_period_start: datetime | None = Field(None)
+    encounter_identifier_period_end: datetime | None = Field(None)
+
     period_start: datetime | None = Field(
         None, description="Time period team covers — start."
     )
@@ -173,10 +222,10 @@ class CareTeamPatchSchema(BaseModel):
     reason_code: list[CareTeamCodeableConceptInput] | None = Field(
         None, description="Why the care team exists."
     )
-    reason_reference: list[str] | None = Field(
+    reason_reference: list[CareTeamReferenceInput | str] | None = Field(
         None, description="Why the care team exists (Reference(Condition))."
     )
-    managing_organization: list[str] | None = Field(
+    managing_organization: list[CareTeamReferenceInput | str] | None = Field(
         None, description="Organization responsible for the care team (Reference(Organization))."
     )
     telecom: list[ContactPointInput] | None = Field(

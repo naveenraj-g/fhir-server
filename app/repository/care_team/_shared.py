@@ -27,6 +27,29 @@ from app.models.care_team import (
     CareTeamTelecom,
 )
 from app.models.enums import OrganizationReferenceType
+from app.repository._reference_shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _prefixed_identifier_kwargs,
+)
+
+
+def _child_reference_kwargs(r) -> dict:
+    if isinstance(r, str):
+        return {
+            "reference_reference": r,
+            "reference_display": None,
+            **{f"reference_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES},
+        }
+    display = getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
+    ref = getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    kwargs = {
+        "reference_reference": ref,
+        "reference_display": display,
+    }
+    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = getattr(r, s, None) if not isinstance(r, dict) else r.get(s)
+        kwargs[f"reference_{s}"] = val
+    return kwargs
 
 _SORTABLE_FIELDS = {
     "care_team_id": CareTeamModel.care_team_id,
