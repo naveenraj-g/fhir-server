@@ -58,6 +58,17 @@ class PlainQuestionnaireResponseAnswer(BaseModel):
     value_reference_type: str | None = Field(None, description="Resolved reference target type.")
     value_reference_id: int | None = Field(None, description="Internal ID of the resolved target, if any.")
     value_reference_display: str | None = Field(None, description="value[x]: Reference — plain text display.")
+    value_reference_identifier_use: str | None = Field(None, description="Fallback identifier — use.")
+    value_reference_identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
+    value_reference_identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
+    value_reference_identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
+    value_reference_identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
+    value_reference_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user_selected.")
+    value_reference_identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
+    value_reference_identifier_system: str | None = Field(None, description="Fallback identifier — system.")
+    value_reference_identifier_value: str | None = Field(None, description="Fallback identifier — value.")
+    value_reference_identifier_period_start: str | None = Field(None, description="Fallback identifier — period start.")
+    value_reference_identifier_period_end: str | None = Field(None, description="Fallback identifier — period end.")
 
     item: list["PlainQuestionnaireResponseItem"] | None = Field(
         None, description="Nested items under this specific answer."

@@ -13,23 +13,80 @@ def _plain_reference(obj, prefix: str) -> dict | None:
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
-    if not (ref or ref_type or ref_id or display):
+
+    use = getattr(obj, f"{prefix}_identifier_use", None)
+    type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    system = getattr(obj, f"{prefix}_identifier_system", None)
+    value = getattr(obj, f"{prefix}_identifier_value", None)
+    period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if not any(
+        v is not None
+        for v in (
+            ref,
+            ref_type,
+            ref_id,
+            display,
+            use,
+            type_system,
+            type_version,
+            type_code,
+            type_display,
+            type_user_selected,
+            type_text,
+            system,
+            value,
+            period_start,
+            period_end,
+        )
+    ):
         return None
     return {
         "reference": ref,
         "reference_type": fhir_enum(ref_type) if ref_type else None,
         "reference_id": ref_id,
         "reference_display": display,
+        "reference_identifier_use": fhir_enum(use) if use else None,
+        "reference_identifier_type_system": type_system,
+        "reference_identifier_type_version": type_version,
+        "reference_identifier_type_code": type_code,
+        "reference_identifier_type_display": type_display,
+        "reference_identifier_type_user_selected": type_user_selected,
+        "reference_identifier_type_text": type_text,
+        "reference_identifier_system": system,
+        "reference_identifier_value": value,
+        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
+        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
     }
 
 
 def _plain_reference_row(obj, row_id: int) -> dict:
+    use = getattr(obj, "reference_identifier_use", None)
+    period_start = getattr(obj, "reference_identifier_period_start", None)
+    period_end = getattr(obj, "reference_identifier_period_end", None)
     return {
         "id": row_id,
         "reference": obj.reference_reference,
         "reference_type": fhir_enum(obj.reference_type) if obj.reference_type else None,
         "reference_id": obj.reference_id,
         "reference_display": obj.reference_display,
+        "reference_identifier_use": fhir_enum(use) if use else None,
+        "reference_identifier_type_system": getattr(obj, "reference_identifier_type_system", None),
+        "reference_identifier_type_version": getattr(obj, "reference_identifier_type_version", None),
+        "reference_identifier_type_code": getattr(obj, "reference_identifier_type_code", None),
+        "reference_identifier_type_display": getattr(obj, "reference_identifier_type_display", None),
+        "reference_identifier_type_user_selected": getattr(obj, "reference_identifier_type_user_selected", None),
+        "reference_identifier_type_text": getattr(obj, "reference_identifier_type_text", None),
+        "reference_identifier_system": getattr(obj, "reference_identifier_system", None),
+        "reference_identifier_value": getattr(obj, "reference_identifier_value", None),
+        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
+        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
     }
 
 
@@ -117,6 +174,21 @@ def _plain_note(n) -> dict:
         "author_reference_type": fhir_enum(n.author_type) if n.author_type else None,
         "author_id": n.author_id,
         "author_display": n.author_display,
+        "author_identifier_use": fhir_enum(n.author_identifier_use) if n.author_identifier_use else None,
+        "author_identifier_type_system": n.author_identifier_type_system,
+        "author_identifier_type_version": n.author_identifier_type_version,
+        "author_identifier_type_code": n.author_identifier_type_code,
+        "author_identifier_type_display": n.author_identifier_type_display,
+        "author_identifier_type_user_selected": n.author_identifier_type_user_selected,
+        "author_identifier_type_text": n.author_identifier_type_text,
+        "author_identifier_system": n.author_identifier_system,
+        "author_identifier_value": n.author_identifier_value,
+        "author_identifier_period_start": n.author_identifier_period_start.isoformat()
+        if n.author_identifier_period_start
+        else None,
+        "author_identifier_period_end": n.author_identifier_period_end.isoformat()
+        if n.author_identifier_period_end
+        else None,
         "time": n.time.isoformat() if n.time else None,
         "text": n.text,
     }

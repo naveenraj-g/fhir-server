@@ -12,6 +12,17 @@ class _PlainReferenceRow(BaseModel):
     reference_type: str | None = None
     reference_id: int | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
 
 
 class PlainServiceRequestBasedOn(_PlainReferenceRow):
@@ -59,6 +70,17 @@ class _PlainSingleReferenceRow(BaseModel):
     reference_type: str | None = None
     reference_id: int | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
 
 
 class PlainServiceRequestSubject(_PlainSingleReferenceRow):

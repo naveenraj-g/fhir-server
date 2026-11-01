@@ -194,6 +194,17 @@ async def _insert_items(
                 **_any_ref_kwargs(
                     "value_reference", ans_payload.value_reference, ans_payload.value_reference_display
                 ),
+                value_reference_identifier_use=ans_payload.value_reference_identifier_use,
+                value_reference_identifier_type_system=ans_payload.value_reference_identifier_type_system,
+                value_reference_identifier_type_version=ans_payload.value_reference_identifier_type_version,
+                value_reference_identifier_type_code=ans_payload.value_reference_identifier_type_code,
+                value_reference_identifier_type_display=ans_payload.value_reference_identifier_type_display,
+                value_reference_identifier_type_user_selected=ans_payload.value_reference_identifier_type_user_selected,
+                value_reference_identifier_type_text=ans_payload.value_reference_identifier_type_text,
+                value_reference_identifier_system=ans_payload.value_reference_identifier_system,
+                value_reference_identifier_value=ans_payload.value_reference_identifier_value,
+                value_reference_identifier_period_start=ans_payload.value_reference_identifier_period_start,
+                value_reference_identifier_period_end=ans_payload.value_reference_identifier_period_end,
             )
             session.add(answer)
             await session.flush()

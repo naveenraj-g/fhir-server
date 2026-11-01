@@ -5,7 +5,7 @@ from datetime import date, datetime, time
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.datatypes import AttachmentInput
-from app.schemas.enums import QuestionnaireResponseQuantityComparator
+from app.schemas.enums import IdentifierUse, QuestionnaireResponseQuantityComparator
 
 
 class QuestionnaireResponseAnswerInput(BaseModel):
@@ -53,6 +53,39 @@ class QuestionnaireResponseAnswerInput(BaseModel):
         None, description="value[x]: Reference(Any), as a FHIR reference string."
     )
     value_reference_display: str | None = Field(None, description="value[x]: Reference — plain text display.")
+    value_reference_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — identifies its purpose, if known."
+    )
+    value_reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    value_reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    value_reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    value_reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    value_reference_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether its type was user-selected."
+    )
+    value_reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    value_reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    value_reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    value_reference_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    value_reference_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
     item: list["QuestionnaireResponseItemInput"] | None = Field(
         None, description="Nested items under this specific answer."

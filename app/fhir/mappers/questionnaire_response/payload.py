@@ -63,7 +63,22 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
     id_period_start = getattr(obj, "reference_identifier_period_start", None)
     id_period_end = getattr(obj, "reference_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if any(
+        v is not None
+        for v in (
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        )
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = id_use.value if hasattr(id_use, "value") else id_use
@@ -197,10 +212,90 @@ def payload_questionnaire_response_answer(a: QuestionnaireResponseAnswerInput) -
             }.items()
             if v is not None
         }
-    elif a.value_reference:
-        ref: dict = {"reference": a.value_reference}
+    elif (
+        a.value_reference
+        or any(
+            getattr(a, f"value_reference_identifier_{attr}", None) is not None
+            for attr in (
+                "use",
+                "type_system",
+                "type_version",
+                "type_code",
+                "type_display",
+                "type_user_selected",
+                "type_text",
+                "system",
+                "value",
+                "period_start",
+                "period_end",
+            )
+        )
+    ):
+        ref: dict = {}
+        if a.value_reference:
+            ref["reference"] = a.value_reference
         if a.value_reference_display:
             ref["display"] = a.value_reference_display
+
+        id_use = a.value_reference_identifier_use
+        id_type_system = a.value_reference_identifier_type_system
+        id_type_version = a.value_reference_identifier_type_version
+        id_type_code = a.value_reference_identifier_type_code
+        id_type_display = a.value_reference_identifier_type_display
+        id_type_user_selected = a.value_reference_identifier_type_user_selected
+        id_type_text = a.value_reference_identifier_type_text
+        id_system = a.value_reference_identifier_system
+        id_value = a.value_reference_identifier_value
+        id_period_start = a.value_reference_identifier_period_start
+        id_period_end = a.value_reference_identifier_period_end
+
+        if any(
+            v is not None
+            for v in (
+                id_use,
+                id_type_system,
+                id_type_version,
+                id_type_code,
+                id_type_display,
+                id_type_user_selected,
+                id_type_text,
+                id_system,
+                id_value,
+                id_period_start,
+                id_period_end,
+            )
+        ):
+            identifier: dict = {}
+            if id_use:
+                identifier["use"] = id_use.value if hasattr(id_use, "value") else id_use
+            if id_type_system or id_type_code or id_type_text:
+                type_cc: dict = {}
+                if id_type_system or id_type_code:
+                    type_cc["coding"] = [
+                        {
+                            k: v
+                            for k, v in {
+                                "system": id_type_system,
+                                "version": id_type_version,
+                                "code": id_type_code,
+                                "display": id_type_display,
+                                "userSelected": id_type_user_selected,
+                            }.items()
+                            if v is not None
+                        }
+                    ]
+                if id_type_text:
+                    type_cc["text"] = id_type_text
+                identifier["type"] = type_cc
+            if id_system:
+                identifier["system"] = id_system
+            if id_value:
+                identifier["value"] = id_value
+            period = _period(id_period_start, id_period_end)
+            if period:
+                identifier["period"] = period
+            ref["identifier"] = identifier
+
         entry["valueReference"] = ref
 
     if a.item:

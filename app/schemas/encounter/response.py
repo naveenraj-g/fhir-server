@@ -126,6 +126,17 @@ class PlainEncounterIdentifier(BaseModel):
     assigner_type: str | None = None
     assigner_id: int | None = None
     assigner_display: str | None = None
+    assigner_identifier_use: str | None = None
+    assigner_identifier_type_system: str | None = None
+    assigner_identifier_type_version: str | None = None
+    assigner_identifier_type_code: str | None = None
+    assigner_identifier_type_display: str | None = None
+    assigner_identifier_type_text: str | None = None
+    assigner_identifier_type_user_selected: bool | None = None
+    assigner_identifier_system: str | None = None
+    assigner_identifier_value: str | None = None
+    assigner_identifier_period_start: str | None = None
+    assigner_identifier_period_end: str | None = None
 
 
 class PlainEncounterStatusHistory(BaseModel):
@@ -186,6 +197,17 @@ class _PlainReferenceRow(BaseModel):
     reference_type: str | None = None
     reference_id: int | None = None
     reference_display: str | None = None
+    reference_identifier_use: str | None = None
+    reference_identifier_type_system: str | None = None
+    reference_identifier_type_version: str | None = None
+    reference_identifier_type_code: str | None = None
+    reference_identifier_type_display: str | None = None
+    reference_identifier_type_text: str | None = None
+    reference_identifier_type_user_selected: bool | None = None
+    reference_identifier_system: str | None = None
+    reference_identifier_value: str | None = None
+    reference_identifier_period_start: str | None = None
+    reference_identifier_period_end: str | None = None
 
 
 class PlainEncounterEpisodeOfCare(_PlainReferenceRow):
@@ -218,6 +240,17 @@ class PlainEncounterParticipant(BaseModel):
     individual_type: str | None = None
     individual_id: int | None = None
     individual_display: str | None = None
+    individual_identifier_use: str | None = None
+    individual_identifier_type_system: str | None = None
+    individual_identifier_type_version: str | None = None
+    individual_identifier_type_code: str | None = None
+    individual_identifier_type_display: str | None = None
+    individual_identifier_type_text: str | None = None
+    individual_identifier_type_user_selected: bool | None = None
+    individual_identifier_system: str | None = None
+    individual_identifier_value: str | None = None
+    individual_identifier_period_start: str | None = None
+    individual_identifier_period_end: str | None = None
 
 
 class PlainEncounterDiagnosis(BaseModel):
@@ -227,6 +260,17 @@ class PlainEncounterDiagnosis(BaseModel):
     condition_type: str | None = None
     condition_id: int | None = None
     condition_display: str | None = None
+    condition_identifier_use: str | None = None
+    condition_identifier_type_system: str | None = None
+    condition_identifier_type_version: str | None = None
+    condition_identifier_type_code: str | None = None
+    condition_identifier_type_display: str | None = None
+    condition_identifier_type_text: str | None = None
+    condition_identifier_type_user_selected: bool | None = None
+    condition_identifier_system: str | None = None
+    condition_identifier_value: str | None = None
+    condition_identifier_period_start: str | None = None
+    condition_identifier_period_end: str | None = None
     use_codings: list[PlainCodingRow] | None = None
     use_text: str | None = None
     rank: int | None = None
@@ -243,11 +287,35 @@ class PlainEncounterHospitalization(BaseModel):
     pre_admission_identifier_period_start: str | None = None
     pre_admission_identifier_period_end: str | None = None
     pre_admission_identifier_assigner: str | None = None
+    pre_admission_identifier_assigner_type: str | None = None
+    pre_admission_identifier_assigner_id: int | None = None
     pre_admission_identifier_assigner_display: str | None = None
+    pre_admission_identifier_assigner_identifier_use: str | None = None
+    pre_admission_identifier_assigner_identifier_type_system: str | None = None
+    pre_admission_identifier_assigner_identifier_type_version: str | None = None
+    pre_admission_identifier_assigner_identifier_type_code: str | None = None
+    pre_admission_identifier_assigner_identifier_type_display: str | None = None
+    pre_admission_identifier_assigner_identifier_type_text: str | None = None
+    pre_admission_identifier_assigner_identifier_type_user_selected: bool | None = None
+    pre_admission_identifier_assigner_identifier_system: str | None = None
+    pre_admission_identifier_assigner_identifier_value: str | None = None
+    pre_admission_identifier_assigner_identifier_period_start: str | None = None
+    pre_admission_identifier_assigner_identifier_period_end: str | None = None
     origin: str | None = None
     origin_type: str | None = None
     origin_id: int | None = None
     origin_display: str | None = None
+    origin_identifier_use: str | None = None
+    origin_identifier_type_system: str | None = None
+    origin_identifier_type_version: str | None = None
+    origin_identifier_type_code: str | None = None
+    origin_identifier_type_display: str | None = None
+    origin_identifier_type_text: str | None = None
+    origin_identifier_type_user_selected: bool | None = None
+    origin_identifier_system: str | None = None
+    origin_identifier_value: str | None = None
+    origin_identifier_period_start: str | None = None
+    origin_identifier_period_end: str | None = None
     admit_source_codings: list[PlainCodingRow] | None = None
     admit_source_text: str | None = None
     re_admission_codings: list[PlainCodingRow] | None = None
@@ -259,6 +327,17 @@ class PlainEncounterHospitalization(BaseModel):
     destination_type: str | None = None
     destination_id: int | None = None
     destination_display: str | None = None
+    destination_identifier_use: str | None = None
+    destination_identifier_type_system: str | None = None
+    destination_identifier_type_version: str | None = None
+    destination_identifier_type_code: str | None = None
+    destination_identifier_type_display: str | None = None
+    destination_identifier_type_text: str | None = None
+    destination_identifier_type_user_selected: bool | None = None
+    destination_identifier_system: str | None = None
+    destination_identifier_value: str | None = None
+    destination_identifier_period_start: str | None = None
+    destination_identifier_period_end: str | None = None
     discharge_disposition_codings: list[PlainCodingRow] | None = None
     discharge_disposition_text: str | None = None
 
@@ -270,6 +349,17 @@ class PlainEncounterLocation(BaseModel):
     location_type: str | None = None
     location_id: int | None = None
     location_display: str | None = None
+    location_identifier_use: str | None = None
+    location_identifier_type_system: str | None = None
+    location_identifier_type_version: str | None = None
+    location_identifier_type_code: str | None = None
+    location_identifier_type_display: str | None = None
+    location_identifier_type_text: str | None = None
+    location_identifier_type_user_selected: bool | None = None
+    location_identifier_system: str | None = None
+    location_identifier_value: str | None = None
+    location_identifier_period_start: str | None = None
+    location_identifier_period_end: str | None = None
     status: str | None = None
     physical_type_codings: list[PlainCodingRow] | None = None
     physical_type_text: str | None = None
@@ -295,6 +385,17 @@ class PlainEncounterResponse(BaseModel):
     subject_type: str | None = None
     subject_id: int | None = None
     subject_display: str | None = None
+    subject_identifier_use: str | None = None
+    subject_identifier_type_system: str | None = None
+    subject_identifier_type_version: str | None = None
+    subject_identifier_type_code: str | None = None
+    subject_identifier_type_display: str | None = None
+    subject_identifier_type_text: str | None = None
+    subject_identifier_type_user_selected: bool | None = None
+    subject_identifier_system: str | None = None
+    subject_identifier_value: str | None = None
+    subject_identifier_period_start: str | None = None
+    subject_identifier_period_end: str | None = None
     period_start: str | None = None
     period_end: str | None = None
     length_value: str | None = None
@@ -306,10 +407,32 @@ class PlainEncounterResponse(BaseModel):
     service_provider_type: str | None = None
     service_provider_id: int | None = None
     service_provider_display: str | None = None
+    service_provider_identifier_use: str | None = None
+    service_provider_identifier_type_system: str | None = None
+    service_provider_identifier_type_version: str | None = None
+    service_provider_identifier_type_code: str | None = None
+    service_provider_identifier_type_display: str | None = None
+    service_provider_identifier_type_text: str | None = None
+    service_provider_identifier_type_user_selected: bool | None = None
+    service_provider_identifier_system: str | None = None
+    service_provider_identifier_value: str | None = None
+    service_provider_identifier_period_start: str | None = None
+    service_provider_identifier_period_end: str | None = None
     part_of: str | None = None
     part_of_type: str | None = None
     part_of_id: int | None = None
     part_of_display: str | None = None
+    part_of_identifier_use: str | None = None
+    part_of_identifier_type_system: str | None = None
+    part_of_identifier_type_version: str | None = None
+    part_of_identifier_type_code: str | None = None
+    part_of_identifier_type_display: str | None = None
+    part_of_identifier_type_text: str | None = None
+    part_of_identifier_type_user_selected: bool | None = None
+    part_of_identifier_system: str | None = None
+    part_of_identifier_value: str | None = None
+    part_of_identifier_period_start: str | None = None
+    part_of_identifier_period_end: str | None = None
     identifier: list[PlainEncounterIdentifier] | None = None
     status_history: list[PlainEncounterStatusHistory] | None = None
     class_history: list[PlainEncounterClassHistory] | None = None

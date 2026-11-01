@@ -62,11 +62,32 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
     entry = _reference_from_payload(obj)
     id_use = getattr(obj, "reference_identifier_use", None)
     id_type_system = getattr(obj, "reference_identifier_type_system", None)
+    id_type_version = getattr(obj, "reference_identifier_type_version", None)
     id_type_code = getattr(obj, "reference_identifier_type_code", None)
+    id_type_display = getattr(obj, "reference_identifier_type_display", None)
+    id_type_user_selected = getattr(obj, "reference_identifier_type_user_selected", None)
     id_type_text = getattr(obj, "reference_identifier_type_text", None)
     id_system = getattr(obj, "reference_identifier_system", None)
     id_value = getattr(obj, "reference_identifier_value", None)
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    id_period_start = getattr(obj, "reference_identifier_period_start", None)
+    id_period_end = getattr(obj, "reference_identifier_period_end", None)
+
+    if any(
+        v is not None
+        for v in (
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        )
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = id_use.value if hasattr(id_use, "value") else id_use
@@ -78,10 +99,10 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
                         k: v
                         for k, v in {
                             "system": id_type_system,
-                            "version": getattr(obj, "reference_identifier_type_version", None),
+                            "version": id_type_version,
                             "code": id_type_code,
-                            "display": getattr(obj, "reference_identifier_type_display", None),
-                            "userSelected": getattr(obj, "reference_identifier_type_user_selected", None),
+                            "display": id_type_display,
+                            "userSelected": id_type_user_selected,
                         }.items()
                         if v is not None
                     }
@@ -93,10 +114,7 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
             identifier["system"] = id_system
         if id_value:
             identifier["value"] = id_value
-        period = _period(
-            getattr(obj, "reference_identifier_period_start", None),
-            getattr(obj, "reference_identifier_period_end", None),
-        )
+        period = _period(id_period_start, id_period_end)
         if period:
             identifier["period"] = period
         entry["identifier"] = identifier
@@ -144,11 +162,92 @@ def payload_medication_request_note(n: MedicationRequestNoteInput) -> dict:
     entry: dict = {}
     if n.author_string:
         entry["authorString"] = n.author_string
-    elif n.author_reference:
-        ref: dict = {"reference": n.author_reference}
+    elif (
+        n.author_reference
+        or any(
+            getattr(n, f"author_identifier_{attr}", None) is not None
+            for attr in (
+                "use",
+                "type_system",
+                "type_version",
+                "type_code",
+                "type_display",
+                "type_user_selected",
+                "type_text",
+                "system",
+                "value",
+                "period_start",
+                "period_end",
+            )
+        )
+    ):
+        ref: dict = {}
+        if n.author_reference:
+            ref["reference"] = n.author_reference
         if n.author_reference_display:
             ref["display"] = n.author_reference_display
+
+        id_use = n.author_identifier_use
+        id_type_system = n.author_identifier_type_system
+        id_type_version = n.author_identifier_type_version
+        id_type_code = n.author_identifier_type_code
+        id_type_display = n.author_identifier_type_display
+        id_type_user_selected = n.author_identifier_type_user_selected
+        id_type_text = n.author_identifier_type_text
+        id_system = n.author_identifier_system
+        id_value = n.author_identifier_value
+        id_period_start = n.author_identifier_period_start
+        id_period_end = n.author_identifier_period_end
+
+        if any(
+            v is not None
+            for v in (
+                id_use,
+                id_type_system,
+                id_type_version,
+                id_type_code,
+                id_type_display,
+                id_type_user_selected,
+                id_type_text,
+                id_system,
+                id_value,
+                id_period_start,
+                id_period_end,
+            )
+        ):
+            identifier: dict = {}
+            if id_use:
+                identifier["use"] = id_use.value if hasattr(id_use, "value") else id_use
+            if id_type_system or id_type_code or id_type_text:
+                type_cc: dict = {}
+                if id_type_system or id_type_code:
+                    type_cc["coding"] = [
+                        {
+                            k: v
+                            for k, v in {
+                                "system": id_type_system,
+                                "version": id_type_version,
+                                "code": id_type_code,
+                                "display": id_type_display,
+                                "userSelected": id_type_user_selected,
+                            }.items()
+                            if v is not None
+                        }
+                    ]
+                if id_type_text:
+                    type_cc["text"] = id_type_text
+                identifier["type"] = type_cc
+            if id_system:
+                identifier["system"] = id_system
+            if id_value:
+                identifier["value"] = id_value
+            period = _period(id_period_start, id_period_end)
+            if period:
+                identifier["period"] = period
+            ref["identifier"] = identifier
+
         entry["authorReference"] = ref
+
     if n.time:
         entry["time"] = n.time.isoformat()
     if n.text:

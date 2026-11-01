@@ -52,7 +52,22 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if any(
+        v is not None
+        for v in (
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        )
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -206,8 +221,27 @@ def _fhir_answer_value(a: QuestionnaireResponseAnswer) -> dict:
         }
     elif a.value_quantity_value is not None or a.value_quantity_unit or a.value_quantity_system or a.value_quantity_code:
         entry["valueQuantity"] = _fhir_quantity(a, "value_quantity")
-    elif a.value_reference_reference or (a.value_reference_type and a.value_reference_id):
-        ref = _fhir_reference(a, "value_reference")
+    elif (
+        a.value_reference_reference
+        or (a.value_reference_type and a.value_reference_id)
+        or any(
+            getattr(a, f"value_reference_identifier_{attr}", None) is not None
+            for attr in (
+                "use",
+                "type_system",
+                "type_version",
+                "type_code",
+                "type_display",
+                "type_user_selected",
+                "type_text",
+                "system",
+                "value",
+                "period_start",
+                "period_end",
+            )
+        )
+    ):
+        ref = _fhir_reference_with_identifier_fallback(a, "value_reference")
         if ref:
             entry["valueReference"] = ref
 

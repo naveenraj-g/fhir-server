@@ -397,6 +397,7 @@ class _FullMixin:
             session.add(ServiceRequestNote(
                 service_request_pk=sr_pk, tenant_id=tenant_id, created_by=created_by,
                 author_string=n.author_string, author_reference=n.author_reference, **author_kwargs,
+                **{f"author_{s}": getattr(n, f"author_{s}") for s in _IDENTIFIER_FALLBACK_SUFFIXES},
                 time=n.time, text=n.text,
             ))
 

@@ -14,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import IdentifierUse
 from app.models.questionnaire_response.enums import QuestionnaireResponseQuantityComparator
 from app.models.shared import FhirAttachmentMixin, FhirCodingMixin, TenantAuditMixin
 
@@ -88,6 +89,19 @@ class QuestionnaireResponseAnswer(FhirCodingMixin, FhirAttachmentMixin, TenantAu
     value_reference_type = Column(String, nullable=True)
     value_reference_id = Column(BigInteger, nullable=True, index=True)
     value_reference_display = Column(String, nullable=True)
+    value_reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
+    value_reference_identifier_type_system = Column(String, nullable=True)
+    value_reference_identifier_type_version = Column(String, nullable=True)
+    value_reference_identifier_type_code = Column(String, nullable=True)
+    value_reference_identifier_type_display = Column(String, nullable=True)
+    value_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    value_reference_identifier_type_text = Column(String, nullable=True)
+    value_reference_identifier_system = Column(String, nullable=True)
+    value_reference_identifier_value = Column(String, nullable=True)
+    value_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    value_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     questionnaire_response = relationship("QuestionnaireResponseModel", back_populates="answers")
     item = relationship(

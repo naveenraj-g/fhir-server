@@ -13,21 +13,60 @@ if TYPE_CHECKING:
 
 
 def _plain_reference(obj, prefix: str) -> dict | None:
-    """Plain (snake_case) rendering of a `{prefix}_*` flattened Reference
-    group — no identifier-fallback detail in the plain form, same
-    convention as app.schemas.appointment.response's own actor_*/
-    reference_* plain rows."""
     ref = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
-    if not (ref or ref_type or ref_id or display):
+
+    use = getattr(obj, f"{prefix}_identifier_use", None)
+    type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    system = getattr(obj, f"{prefix}_identifier_system", None)
+    value = getattr(obj, f"{prefix}_identifier_value", None)
+    period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
+
+    if not any(
+        v is not None
+        for v in (
+            ref,
+            ref_type,
+            ref_id,
+            display,
+            use,
+            type_system,
+            type_version,
+            type_code,
+            type_display,
+            type_user_selected,
+            type_text,
+            system,
+            value,
+            period_start,
+            period_end,
+        )
+    ):
         return None
     return {
         "reference": ref,
         "reference_type": fhir_enum(ref_type) if ref_type else None,
         "reference_id": ref_id,
         "reference_display": display,
+        "reference_identifier_use": fhir_enum(use) if use else None,
+        "reference_identifier_type_system": type_system,
+        "reference_identifier_type_version": type_version,
+        "reference_identifier_type_code": type_code,
+        "reference_identifier_type_display": type_display,
+        "reference_identifier_type_user_selected": type_user_selected,
+        "reference_identifier_type_text": type_text,
+        "reference_identifier_system": system,
+        "reference_identifier_value": value,
+        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
+        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
     }
 
 
@@ -89,22 +128,50 @@ def plain_questionnaire_response_identifier(qr: QuestionnaireResponseModel) -> d
 
 
 def plain_questionnaire_response_based_on(b) -> dict:
+    use = getattr(b, "reference_identifier_use", None)
+    period_start = getattr(b, "reference_identifier_period_start", None)
+    period_end = getattr(b, "reference_identifier_period_end", None)
     return {
         "id": b.id,
         "reference": b.reference_reference,
         "reference_type": fhir_enum(b.reference_type) if b.reference_type else None,
         "reference_id": b.reference_id,
         "reference_display": b.reference_display,
+        "reference_identifier_use": fhir_enum(use) if use else None,
+        "reference_identifier_type_system": getattr(b, "reference_identifier_type_system", None),
+        "reference_identifier_type_version": getattr(b, "reference_identifier_type_version", None),
+        "reference_identifier_type_code": getattr(b, "reference_identifier_type_code", None),
+        "reference_identifier_type_display": getattr(b, "reference_identifier_type_display", None),
+        "reference_identifier_type_user_selected": getattr(b, "reference_identifier_type_user_selected", None),
+        "reference_identifier_type_text": getattr(b, "reference_identifier_type_text", None),
+        "reference_identifier_system": getattr(b, "reference_identifier_system", None),
+        "reference_identifier_value": getattr(b, "reference_identifier_value", None),
+        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
+        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
     }
 
 
 def plain_questionnaire_response_part_of(p) -> dict:
+    use = getattr(p, "reference_identifier_use", None)
+    period_start = getattr(p, "reference_identifier_period_start", None)
+    period_end = getattr(p, "reference_identifier_period_end", None)
     return {
         "id": p.id,
         "reference": p.reference_reference,
         "reference_type": fhir_enum(p.reference_type) if p.reference_type else None,
         "reference_id": p.reference_id,
         "reference_display": p.reference_display,
+        "reference_identifier_use": fhir_enum(use) if use else None,
+        "reference_identifier_type_system": getattr(p, "reference_identifier_type_system", None),
+        "reference_identifier_type_version": getattr(p, "reference_identifier_type_version", None),
+        "reference_identifier_type_code": getattr(p, "reference_identifier_type_code", None),
+        "reference_identifier_type_display": getattr(p, "reference_identifier_type_display", None),
+        "reference_identifier_type_user_selected": getattr(p, "reference_identifier_type_user_selected", None),
+        "reference_identifier_type_text": getattr(p, "reference_identifier_type_text", None),
+        "reference_identifier_system": getattr(p, "reference_identifier_system", None),
+        "reference_identifier_value": getattr(p, "reference_identifier_value", None),
+        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
+        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
     }
 
 
@@ -145,6 +212,23 @@ def _plain_answer_value(a: QuestionnaireResponseAnswer) -> dict:
         "value_reference_type": a.value_reference_type,
         "value_reference_id": a.value_reference_id,
         "value_reference_display": a.value_reference_display,
+        "value_reference_identifier_use": fhir_enum(a.value_reference_identifier_use)
+        if a.value_reference_identifier_use
+        else None,
+        "value_reference_identifier_type_system": a.value_reference_identifier_type_system,
+        "value_reference_identifier_type_version": a.value_reference_identifier_type_version,
+        "value_reference_identifier_type_code": a.value_reference_identifier_type_code,
+        "value_reference_identifier_type_display": a.value_reference_identifier_type_display,
+        "value_reference_identifier_type_user_selected": a.value_reference_identifier_type_user_selected,
+        "value_reference_identifier_type_text": a.value_reference_identifier_type_text,
+        "value_reference_identifier_system": a.value_reference_identifier_system,
+        "value_reference_identifier_value": a.value_reference_identifier_value,
+        "value_reference_identifier_period_start": a.value_reference_identifier_period_start.isoformat()
+        if a.value_reference_identifier_period_start
+        else None,
+        "value_reference_identifier_period_end": a.value_reference_identifier_period_end.isoformat()
+        if a.value_reference_identifier_period_end
+        else None,
     }
 
 
