@@ -189,10 +189,7 @@ async def _add_general_practitioner(
             reference_type=ref_type,
             reference_id=ref_id,
             reference_display=gp.display,
-            reference_identifier_system=gp.reference_identifier_system,
-            reference_identifier_value=gp.reference_identifier_value,
-            reference_identifier_use=gp.reference_identifier_use,
-            reference_identifier_type_text=gp.reference_identifier_type_text,
+            **_reference_kwargs("reference", gp),
             created_by=created_by,
         )
     )
@@ -213,10 +210,7 @@ async def _add_link(session, patient_pk, org_id, lk, created_by) -> None:
             other_type=other_type,
             other_id=other_id,
             other_display=lk.other_display,
-            other_identifier_system=lk.other_identifier_system,
-            other_identifier_value=lk.other_identifier_value,
-            other_identifier_use=lk.other_identifier_use,
-            other_identifier_type_text=lk.other_identifier_type_text,
+            **_reference_kwargs("other", lk),
             type=lk.type,
             created_by=created_by,
         )

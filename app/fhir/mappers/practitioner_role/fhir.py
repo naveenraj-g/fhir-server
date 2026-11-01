@@ -42,17 +42,29 @@ def _fhir_reference(obj, prefix: str) -> dict:
     if (
         id_use
         or id_type_system
+        or id_type_version
         or id_type_code
+        or id_type_display
+        or id_type_user_selected
         or id_type_text
         or id_system
         or id_value
+        or id_period_start
+        or id_period_end
     ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
-        if id_type_system or id_type_code or id_type_text:
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
             type_cc: dict = {}
-            if id_type_system or id_type_code:
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
                 type_cc["coding"] = [
                     {
                         k: v

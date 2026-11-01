@@ -226,11 +226,6 @@ def plain_patient_link(l) -> dict:
 
 
 def to_plain_patient(p: PatientModel) -> dict:
-    ref_type = p.managing_organization_type
-    ref_id = p.managing_organization_id
-    id_start = p.managing_organization_identifier_period_start if hasattr(p, "managing_organization_identifier_period_start") else None
-    id_end = p.managing_organization_identifier_period_end if hasattr(p, "managing_organization_identifier_period_end") else None
-
     return {
         "id": p.patient_id,
         "user_id": p.user_id,
@@ -247,19 +242,7 @@ def to_plain_patient(p: PatientModel) -> dict:
         ],
         "multiple_birth_boolean": p.multiple_birth_boolean,
         "multiple_birth_integer": p.multiple_birth_integer,
-        "managing_organization_reference": p.managing_organization_reference,
-        "managing_organization": (
-            f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
-        ),
-        "managing_organization_type": fhir_enum(ref_type),
-        "managing_organization_id": ref_id,
-        "managing_organization_display": p.managing_organization_display,
-        "managing_organization_identifier_system": p.managing_organization_identifier_system,
-        "managing_organization_identifier_value": p.managing_organization_identifier_value,
-        "managing_organization_identifier_use": fhir_enum(
-            p.managing_organization_identifier_use
-        ),
-        "managing_organization_identifier_type_text": p.managing_organization_identifier_type_text,
+        **_plain_reference_fields(p, "managing_organization"),
         "identifier": [plain_patient_identifier(i) for i in (p.identifiers or [])],
         "name": [plain_patient_name(n) for n in (p.names or [])],
         "telecom": [plain_patient_telecom(t) for t in (p.telecoms or [])],

@@ -400,3 +400,76 @@ def test_contacts():
     assert out["contact"][0]["relationship"][0]["coding"][0]["code"] == "N"
     assert out["contact"][0]["telecom"][0]["value"] == "+1-555-987-6543"
     assert_valid(patient_pb2.Patient, out)
+
+
+def test_patient_reference_fallback_identifiers():
+    ident = PatientIdentifier(
+        id=1,
+        patient_pk=1,
+        tenant_id="org-test",
+        use=IdentifierUse.official,
+        system="http://hospital.example.org",
+        value="PAT-001",
+        assigner_reference=None,
+        assigner_type=None,
+        assigner_id=None,
+        assigner_identifier_system="http://hospital.example.org/orgs",
+        assigner_identifier_value="ORG-1111",
+        created_by="u-test",
+        created_at=D,
+    )
+    contact = PatientContact(
+        id=1,
+        patient_pk=1,
+        tenant_id="org-test",
+        organization_reference=None,
+        organization_type=None,
+        organization_id=None,
+        organization_identifier_system="http://hospital.example.org/orgs",
+        organization_identifier_value="ORG-2222",
+        created_by="u-test",
+        created_at=D,
+    )
+    gp = PatientGeneralPractitioner(
+        id=1,
+        patient_pk=1,
+        tenant_id="org-test",
+        reference_reference=None,
+        reference_type=None,
+        reference_id=None,
+        reference_identifier_system="http://hospital.example.org/practitioners",
+        reference_identifier_value="PRAC-3333",
+        created_by="u-test",
+        created_at=D,
+    )
+    link = PatientLink(
+        id=1,
+        patient_pk=1,
+        tenant_id="org-test",
+        other_reference=None,
+        other_type=None,
+        other_id=None,
+        other_identifier_system="http://hospital.example.org/patients",
+        other_identifier_value="PAT-4444",
+        type=PatientLinkType.seealso,
+        created_by="u-test",
+        created_at=D,
+    )
+    p = _patient(
+        managing_organization_reference=None,
+        managing_organization_type=None,
+        managing_organization_id=None,
+        managing_organization_identifier_system="http://hospital.example.org/orgs",
+        managing_organization_identifier_value="ORG-5555",
+        identifiers=[ident],
+        contacts=[contact],
+        general_practitioners=[gp],
+        links=[link],
+    )
+    out = to_fhir_patient(p)
+    assert out["managingOrganization"]["identifier"]["value"] == "ORG-5555"
+    assert out["contact"][0]["organization"]["identifier"]["value"] == "ORG-2222"
+    assert out["generalPractitioner"][0]["identifier"]["value"] == "PRAC-3333"
+    assert out["link"][0]["other"]["identifier"]["value"] == "PAT-4444"
+    assert out["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-1111"
+    assert_valid(patient_pb2.Patient, out)

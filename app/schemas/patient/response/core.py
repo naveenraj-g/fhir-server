@@ -132,10 +132,17 @@ class PlainPatientResponse(BaseModel):
     managing_organization_type: str | None = Field(None, description="Always 'Organization'.")
     managing_organization_id: int | None = Field(None, description="Public organization_id.")
     managing_organization_display: str | None = Field(None, description="Managing organization display text.")
+    managing_organization_identifier_use: str | None = Field(None, description="Fallback identifier use.")
+    managing_organization_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
+    managing_organization_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
+    managing_organization_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
+    managing_organization_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
+    managing_organization_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
+    managing_organization_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
     managing_organization_identifier_system: str | None = Field(None, description="Fallback identifier system.")
     managing_organization_identifier_value: str | None = Field(None, description="Fallback identifier value.")
-    managing_organization_identifier_use: str | None = Field(None, description="Fallback identifier use.")
-    managing_organization_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
+    managing_organization_identifier_period_start: str | None = Field(None, description="Fallback identifier period start.")
+    managing_organization_identifier_period_end: str | None = Field(None, description="Fallback identifier period end.")
 
     identifier: list[PlainPatientIdentifier] | None = Field(
         None, description="An identifier for this patient."

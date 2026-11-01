@@ -64,17 +64,29 @@ def _fhir_reference(obj, prefix: str) -> dict:
     if (
         id_use
         or id_type_system
+        or id_type_version
         or id_type_code
+        or id_type_display
+        or id_type_user_selected
         or id_type_text
         or id_system
         or id_value
+        or id_period_start
+        or id_period_end
     ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
-        if id_type_system or id_type_code or id_type_text:
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
             type_cc: dict = {}
-            if id_type_system or id_type_code:
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
                 type_cc["coding"] = [
                     {
                         k: v
@@ -99,8 +111,8 @@ def _fhir_reference(obj, prefix: str) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": fhir_instant(id_period_start),
-                    "end": fhir_instant(id_period_end),
+                    "start": fhir_instant(id_period_start) if id_period_start else None,
+                    "end": fhir_instant(id_period_end) if id_period_end else None,
                 }.items()
                 if v
             }

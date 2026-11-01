@@ -79,12 +79,19 @@ class PatientModel(TenantAuditMixin, Base):
     )
     managing_organization_id = Column(BigInteger, nullable=True, index=True)
     managing_organization_display = Column(String, nullable=True)
-    managing_organization_identifier_system = Column(String, nullable=True)
-    managing_organization_identifier_value = Column(String, nullable=True)
     managing_organization_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    managing_organization_identifier_type_system = Column(String, nullable=True)
+    managing_organization_identifier_type_version = Column(String, nullable=True)
+    managing_organization_identifier_type_code = Column(String, nullable=True)
+    managing_organization_identifier_type_display = Column(String, nullable=True)
+    managing_organization_identifier_type_user_selected = Column(Boolean, nullable=True)
     managing_organization_identifier_type_text = Column(String, nullable=True)
+    managing_organization_identifier_system = Column(String, nullable=True)
+    managing_organization_identifier_value = Column(String, nullable=True)
+    managing_organization_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    managing_organization_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # Mandatory resource-level extension column
     extension = Column(JSONB, nullable=False, server_default=text("'[]'"))

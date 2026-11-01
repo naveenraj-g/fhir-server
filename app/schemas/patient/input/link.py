@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.patient.enums import PatientLinkOtherType, PatientLinkType
@@ -21,17 +23,38 @@ class PatientLinkInput(BaseModel):
     other_display: str | None = Field(
         None, description="Plain text display narrative for other resource."
     )
+    other_identifier_use: IdentifierUse | None = Field(
+        None, description="Logical-reference fallback — identifier use."
+    )
+    other_identifier_type_system: str | None = Field(
+        None, description="Logical-reference fallback — identifier type system."
+    )
+    other_identifier_type_version: str | None = Field(
+        None, description="Logical-reference fallback — identifier type version."
+    )
+    other_identifier_type_code: str | None = Field(
+        None, description="Logical-reference fallback — identifier type code."
+    )
+    other_identifier_type_display: str | None = Field(
+        None, description="Logical-reference fallback — identifier type display."
+    )
+    other_identifier_type_user_selected: bool | None = Field(
+        None, description="Logical-reference fallback — identifier type user selected."
+    )
+    other_identifier_type_text: str | None = Field(
+        None, description="Logical-reference fallback — identifier type text."
+    )
     other_identifier_system: str | None = Field(
         None, description="Logical-reference fallback — identifier namespace URL."
     )
     other_identifier_value: str | None = Field(
         None, description="Logical-reference fallback — identifier value."
     )
-    other_identifier_use: IdentifierUse | None = Field(
-        None, description="Logical-reference fallback — identifier use."
+    other_identifier_period_start: datetime | None = Field(
+        None, description="Logical-reference fallback — identifier period start."
     )
-    other_identifier_type_text: str | None = Field(
-        None, description="Logical-reference fallback — identifier type text."
+    other_identifier_period_end: datetime | None = Field(
+        None, description="Logical-reference fallback — identifier period end."
     )
     type: PatientLinkType | None = Field(
         None, description="Type of link — replaced_by|replaces|refer|seealso."

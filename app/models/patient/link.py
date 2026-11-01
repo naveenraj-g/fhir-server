@@ -1,4 +1,12 @@
-from sqlalchemy import BigInteger, Column, Enum, ForeignKey, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -26,12 +34,19 @@ class PatientLink(TenantAuditMixin, Base):
     other_id = Column(BigInteger, nullable=True, index=True)
     other_display = Column(String, nullable=True)
 
-    other_identifier_system = Column(String, nullable=True)
-    other_identifier_value = Column(String, nullable=True)
     other_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
     )
+    other_identifier_type_system = Column(String, nullable=True)
+    other_identifier_type_version = Column(String, nullable=True)
+    other_identifier_type_code = Column(String, nullable=True)
+    other_identifier_type_display = Column(String, nullable=True)
+    other_identifier_type_user_selected = Column(Boolean, nullable=True)
     other_identifier_type_text = Column(String, nullable=True)
+    other_identifier_system = Column(String, nullable=True)
+    other_identifier_value = Column(String, nullable=True)
+    other_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    other_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     type = Column(
         Enum(PatientLinkType, name="patient_link_type"),

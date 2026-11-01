@@ -78,17 +78,29 @@ def _reference_from_payload(obj, prefix: str) -> dict:
     if (
         id_use
         or id_type_system
+        or id_type_version
         or id_type_code
+        or id_type_display
+        or id_type_user_selected
         or id_type_text
         or id_system
         or id_value
+        or id_period_start
+        or id_period_end
     ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
-        if id_type_system or id_type_code or id_type_text:
+        if (
+            id_type_system
+            or id_type_code
+            or id_type_text
+            or id_type_display
+            or id_type_version
+            or id_type_user_selected
+        ):
             type_cc: dict = {}
-            if id_type_system or id_type_code:
+            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
                 type_cc["coding"] = [
                     {
                         k: v
@@ -456,10 +468,17 @@ def patch_fragment_to_fhir_patient(
     managing_org_fields = {
         "managing_organization",
         "managing_organization_display",
+        "managing_organization_identifier_use",
+        "managing_organization_identifier_type_system",
+        "managing_organization_identifier_type_version",
+        "managing_organization_identifier_type_code",
+        "managing_organization_identifier_type_display",
+        "managing_organization_identifier_type_user_selected",
+        "managing_organization_identifier_type_text",
         "managing_organization_identifier_system",
         "managing_organization_identifier_value",
-        "managing_organization_identifier_use",
-        "managing_organization_identifier_type_text",
+        "managing_organization_identifier_period_start",
+        "managing_organization_identifier_period_end",
     }
     if any(f in provided for f in managing_org_fields):
         touched.add("managingOrganization")

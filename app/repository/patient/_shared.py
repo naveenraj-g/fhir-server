@@ -19,10 +19,17 @@ from app.repository._reference_shared import (
 )
 
 _IDENTIFIER_FALLBACK_SUFFIXES = (
+    "identifier_use",
+    "identifier_type_system",
+    "identifier_type_version",
+    "identifier_type_code",
+    "identifier_type_display",
+    "identifier_type_user_selected",
+    "identifier_type_text",
     "identifier_system",
     "identifier_value",
-    "identifier_use",
-    "identifier_type_text",
+    "identifier_period_start",
+    "identifier_period_end",
 )
 
 

@@ -94,20 +94,44 @@ def _reference_from_payload(obj, prefix: str) -> dict:
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if (
-        id_use
-        or id_type_system
-        or id_type_code
-        or id_type_text
-        or id_system
-        or id_value
+    if any(
+        (
+            id_use,
+            id_type_system,
+            id_type_version,
+            id_type_code,
+            id_type_display,
+            id_type_user_selected,
+            id_type_text,
+            id_system,
+            id_value,
+            id_period_start,
+            id_period_end,
+        )
     ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
-        if id_type_system or id_type_code or id_type_text:
+        if any(
+            (
+                id_type_system,
+                id_type_version,
+                id_type_code,
+                id_type_display,
+                id_type_user_selected,
+                id_type_text,
+            )
+        ):
             type_cc: dict = {}
-            if id_type_system or id_type_code:
+            if any(
+                (
+                    id_type_system,
+                    id_type_version,
+                    id_type_code,
+                    id_type_display,
+                    id_type_user_selected,
+                )
+            ):
                 type_cc["coding"] = [
                     {
                         k: v
@@ -391,5 +415,3 @@ def patch_fragment_to_fhir_organization(
                 fragment[field] = items
 
     return fragment, touched
-
-
