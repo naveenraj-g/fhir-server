@@ -26,6 +26,8 @@ from app.schemas.episode_of_care import (
 )
 
 from ._shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _child_reference_kwargs,
     _parse_account_ref,
     _parse_assigner_ref,
     _parse_care_manager_ref,
@@ -34,6 +36,7 @@ from ._shared import (
     _parse_patient_ref,
     _parse_referral_request_ref,
     _parse_team_ref,
+    _prefixed_identifier_kwargs,
     _validate_ref,
     _with_relationships,
 )
@@ -87,16 +90,7 @@ async def _add_identifiers(
             assigner_type=a_type,
             assigner_id=a_id,
             assigner_display=i.assigner_display,
-            assigner_identifier_use=(
-                IdentifierUse(i.assigner_identifier_use.value)
-                if (i.assigner_identifier_use and hasattr(i.assigner_identifier_use, "value"))
-                else IdentifierUse(i.assigner_identifier_use)
-                if i.assigner_identifier_use
-                else None
-            ),
-            assigner_identifier_system=i.assigner_identifier_system,
-            assigner_identifier_value=i.assigner_identifier_value,
-            assigner_identifier_type_text=i.assigner_identifier_type_text,
+            **_prefixed_identifier_kwargs("assigner", i),
             created_by=created_by,
         )
         session.add(ident)
@@ -166,6 +160,7 @@ async def _add_diagnoses(
             condition_type=c_type,
             condition_id=c_id,
             condition_display=d.condition_display,
+            **_prefixed_identifier_kwargs("condition", d),
             role_text=d.role.text if d.role else None,
             rank=d.rank,
             created_by=created_by,
@@ -186,17 +181,19 @@ async def _add_referral_requests(
     session, episode_of_care_pk: int, org_id: str, referrals, created_by: str
 ) -> None:
     for r in referrals or []:
-        ref_type, ref_id = _parse_referral_request_ref(r) if r else (None, None)
+        kwargs = _child_reference_kwargs(r)
+        ref_str = kwargs.get("reference_reference")
+        ref_type, ref_id = _parse_referral_request_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "referralRequest")
         session.add(
             EpisodeOfCareReferralRequest(
                 episode_of_care_pk=episode_of_care_pk,
                 tenant_id=org_id,
-                reference_reference=r,
                 reference_type=ref_type,
                 reference_id=ref_id,
                 created_by=created_by,
+                **kwargs,
             )
         )
 
@@ -205,17 +202,19 @@ async def _add_teams(
     session, episode_of_care_pk: int, org_id: str, teams, created_by: str
 ) -> None:
     for t in teams or []:
-        ref_type, ref_id = _parse_team_ref(t) if t else (None, None)
+        kwargs = _child_reference_kwargs(t)
+        ref_str = kwargs.get("reference_reference")
+        ref_type, ref_id = _parse_team_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "team")
         session.add(
             EpisodeOfCareTeam(
                 episode_of_care_pk=episode_of_care_pk,
                 tenant_id=org_id,
-                reference_reference=t,
                 reference_type=ref_type,
                 reference_id=ref_id,
                 created_by=created_by,
+                **kwargs,
             )
         )
 
@@ -224,17 +223,19 @@ async def _add_accounts(
     session, episode_of_care_pk: int, org_id: str, accounts, created_by: str
 ) -> None:
     for a in accounts or []:
-        ref_type, ref_id = _parse_account_ref(a) if a else (None, None)
+        kwargs = _child_reference_kwargs(a)
+        ref_str = kwargs.get("reference_reference")
+        ref_type, ref_id = _parse_account_ref(ref_str) if ref_str else (None, None)
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "account")
         session.add(
             EpisodeOfCareAccount(
                 episode_of_care_pk=episode_of_care_pk,
                 tenant_id=org_id,
-                reference_reference=a,
                 reference_type=ref_type,
                 reference_id=ref_id,
                 created_by=created_by,
+                **kwargs,
             )
         )
 
@@ -282,16 +283,19 @@ class _FullMixin:
                 patient_type=p_type,
                 patient_id=p_id,
                 patient_display=payload.patient_display,
+                **_prefixed_identifier_kwargs("patient", payload),
                 managing_organization_reference=payload.managing_organization,
                 managing_organization_type=mo_type,
                 managing_organization_id=mo_id,
                 managing_organization_display=payload.managing_organization_display,
+                **_prefixed_identifier_kwargs("managing_organization", payload),
                 period_start=payload.period_start,
                 period_end=payload.period_end,
                 care_manager_reference=payload.care_manager,
                 care_manager_type=cm_type,
                 care_manager_id=cm_id,
                 care_manager_display=payload.care_manager_display,
+                **_prefixed_identifier_kwargs("care_manager", payload),
                 created_by=created_by,
             )
             session.add(eoc)
@@ -407,6 +411,11 @@ class _FullMixin:
             if "patient_display" in fields_set:
                 eoc.patient_display = payload.patient_display
 
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                field = f"patient_{s}"
+                if field in fields_set:
+                    setattr(eoc, field, getattr(payload, field))
+
             if "managing_organization" in fields_set:
                 if payload.managing_organization:
                     mo_type, mo_id = _parse_managing_org_ref(payload.managing_organization)
@@ -422,6 +431,11 @@ class _FullMixin:
 
             if "managing_organization_display" in fields_set:
                 eoc.managing_organization_display = payload.managing_organization_display
+
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                field = f"managing_organization_{s}"
+                if field in fields_set:
+                    setattr(eoc, field, getattr(payload, field))
 
             if "period_start" in fields_set:
                 eoc.period_start = payload.period_start
@@ -444,6 +458,11 @@ class _FullMixin:
 
             if "care_manager_display" in fields_set:
                 eoc.care_manager_display = payload.care_manager_display
+
+            for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+                field = f"care_manager_{s}"
+                if field in fields_set:
+                    setattr(eoc, field, getattr(payload, field))
 
             # Sub-resources atomic replacement
             if "identifier" in fields_set:

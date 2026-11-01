@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.fhir.datatypes import fhir_enum
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.schemas.episode_of_care.input import (
@@ -21,6 +22,119 @@ if TYPE_CHECKING:
         EpisodeOfCarePatchSchema,
         EpisodeOfCareStatusHistoryInput,
     )
+
+
+def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
+    if not obj:
+        return None
+
+    def _get(field):
+        return obj.get(field) if isinstance(obj, dict) else getattr(obj, field, None)
+
+    raw_reference = _get(prefix)
+    if raw_reference is None and prefix != "reference":
+        raw_reference = _get(f"{prefix}_reference")
+    display = _get(f"{prefix}_display")
+    if display is None and prefix == "reference":
+        display = _get("display")
+
+    entry: dict = {}
+    if raw_reference:
+        entry["reference"] = raw_reference
+    if display:
+        entry["display"] = display
+
+    id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_user_selected = (
+        _get(f"{prefix}_identifier_type_user_selected")
+        if _get(f"{prefix}_identifier_type_user_selected") is not None
+        else _get("identifier_type_user_selected")
+    )
+    id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
+    id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
+        if id_use:
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
+        if id_system:
+            ident["system"] = id_system
+        if id_value:
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = (
+                    id_period_start.isoformat()
+                    if hasattr(id_period_start, "isoformat")
+                    else str(id_period_start)
+                )
+            if id_period_end:
+                p_dict["end"] = (
+                    id_period_end.isoformat()
+                    if hasattr(id_period_end, "isoformat")
+                    else str(id_period_end)
+                )
+            ident["period"] = p_dict
+        entry["identifier"] = ident
+
+    return entry or None
+
+
+def _child_reference_from_payload(item: Any) -> dict | None:
+    if isinstance(item, str):
+        return {"reference": item}
+    return _reference_from_payload(item, "reference")
 
 
 def _coding_from_payload(c) -> dict:
@@ -78,10 +192,8 @@ def _status_history_from_payload(h: EpisodeOfCareStatusHistoryInput) -> dict:
 
 def _diagnosis_from_payload(d: EpisodeOfCareDiagnosisInput) -> dict:
     diag: dict[str, Any] = {}
-    if d.condition:
-        cond: dict[str, Any] = {"reference": d.condition}
-        if d.condition_display:
-            cond["display"] = d.condition_display
+    cond = _reference_from_payload(d, "condition")
+    if cond:
         diag["condition"] = cond
     if d.role:
         role = _codeable_concept_from_payload(d.role)
@@ -119,10 +231,8 @@ def _identifier_from_payload(i: EpisodeOfCareIdentifierInput) -> dict:
     if period:
         ident["period"] = period
 
-    if i.assigner:
-        assigner: dict[str, Any] = {"reference": i.assigner}
-        if i.assigner_display:
-            assigner["display"] = i.assigner_display
+    assigner = _reference_from_payload(i, "assigner")
+    if assigner:
         ident["assigner"] = assigner
 
     return ident
@@ -135,17 +245,13 @@ def payload_to_fhir_episode_of_care(payload: EpisodeOfCareCreateSchema) -> dict[
         "status": fhir_enum(payload.status),
     }
 
-    if payload.patient:
-        pat: dict[str, Any] = {"reference": payload.patient}
-        if payload.patient_display:
-            pat["display"] = payload.patient_display
-        fhir["patient"] = pat
+    patient = _reference_from_payload(payload, "patient")
+    if patient:
+        fhir["patient"] = patient
 
-    if payload.managing_organization:
-        org: dict[str, Any] = {"reference": payload.managing_organization}
-        if payload.managing_organization_display:
-            org["display"] = payload.managing_organization_display
-        fhir["managingOrganization"] = org
+    managing_org = _reference_from_payload(payload, "managing_organization")
+    if managing_org:
+        fhir["managingOrganization"] = managing_org
 
     p: dict[str, Any] = {}
     if payload.period_start:
@@ -155,11 +261,9 @@ def payload_to_fhir_episode_of_care(payload: EpisodeOfCareCreateSchema) -> dict[
     if p:
         fhir["period"] = p
 
-    if payload.care_manager:
-        cm: dict[str, Any] = {"reference": payload.care_manager}
-        if payload.care_manager_display:
-            cm["display"] = payload.care_manager_display
-        fhir["careManager"] = cm
+    care_manager = _reference_from_payload(payload, "care_manager")
+    if care_manager:
+        fhir["careManager"] = care_manager
 
     if payload.status_history:
         history = [_status_history_from_payload(h) for h in payload.status_history]
@@ -179,13 +283,22 @@ def payload_to_fhir_episode_of_care(payload: EpisodeOfCareCreateSchema) -> dict[
             fhir["diagnosis"] = diagnoses
 
     if payload.referral_request:
-        fhir["referralRequest"] = [{"reference": r} for r in payload.referral_request if r]
+        rr = [_child_reference_from_payload(r) for r in payload.referral_request]
+        rr = [r for r in rr if r]
+        if rr:
+            fhir["referralRequest"] = rr
 
     if payload.team:
-        fhir["team"] = [{"reference": t} for t in payload.team if t]
+        teams = [_child_reference_from_payload(t) for t in payload.team]
+        teams = [t for t in teams if t]
+        if teams:
+            fhir["team"] = teams
 
     if payload.account:
-        fhir["account"] = [{"reference": a} for a in payload.account if a]
+        accounts = [_child_reference_from_payload(a) for a in payload.account]
+        accounts = [a for a in accounts if a]
+        if accounts:
+            fhir["account"] = accounts
 
     if payload.identifier:
         identifiers = [_identifier_from_payload(i) for i in payload.identifier]
@@ -194,6 +307,11 @@ def payload_to_fhir_episode_of_care(payload: EpisodeOfCareCreateSchema) -> dict[
             fhir["identifier"] = identifiers
 
     return fhir
+
+
+_PATIENT_FIELDS = {"patient", "patient_display"} | {f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_MANAGING_ORG_FIELDS = {"managing_organization", "managing_organization_display"} | {f"managing_organization_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_CARE_MANAGER_FIELDS = {"care_manager", "care_manager_display"} | {f"care_manager_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
 
 
 def patch_fragment_to_fhir_episode_of_care(
@@ -209,20 +327,16 @@ def patch_fragment_to_fhir_episode_of_care(
         if payload.status is not None:
             fragment["status"] = fhir_enum(payload.status)
 
-    if "patient" in fields_set or "patient_display" in fields_set:
+    if fields_set & _PATIENT_FIELDS:
         touched.add("patient")
-        if payload.patient is not None:
-            pat: dict[str, Any] = {"reference": payload.patient}
-            if payload.patient_display:
-                pat["display"] = payload.patient_display
+        pat = _reference_from_payload(payload, "patient")
+        if pat:
             fragment["patient"] = pat
 
-    if "managing_organization" in fields_set or "managing_organization_display" in fields_set:
+    if fields_set & _MANAGING_ORG_FIELDS:
         touched.add("managingOrganization")
-        if payload.managing_organization is not None:
-            org: dict[str, Any] = {"reference": payload.managing_organization}
-            if payload.managing_organization_display:
-                org["display"] = payload.managing_organization_display
+        org = _reference_from_payload(payload, "managing_organization")
+        if org:
             fragment["managingOrganization"] = org
 
     if "period_start" in fields_set or "period_end" in fields_set:
@@ -235,12 +349,10 @@ def patch_fragment_to_fhir_episode_of_care(
         if p:
             fragment["period"] = p
 
-    if "care_manager" in fields_set or "care_manager_display" in fields_set:
+    if fields_set & _CARE_MANAGER_FIELDS:
         touched.add("careManager")
-        if payload.care_manager is not None:
-            cm: dict[str, Any] = {"reference": payload.care_manager}
-            if payload.care_manager_display:
-                cm["display"] = payload.care_manager_display
+        cm = _reference_from_payload(payload, "care_manager")
+        if cm:
             fragment["careManager"] = cm
 
     if "status_history" in fields_set:
@@ -267,17 +379,29 @@ def patch_fragment_to_fhir_episode_of_care(
     if "referral_request" in fields_set:
         touched.add("referralRequest")
         if payload.referral_request is not None:
-            fragment["referralRequest"] = [{"reference": r} for r in payload.referral_request if r]
+            fragment["referralRequest"] = [
+                _child_reference_from_payload(r)
+                for r in payload.referral_request
+                if _child_reference_from_payload(r)
+            ]
 
     if "team" in fields_set:
         touched.add("team")
         if payload.team is not None:
-            fragment["team"] = [{"reference": t} for t in payload.team if t]
+            fragment["team"] = [
+                _child_reference_from_payload(t)
+                for t in payload.team
+                if _child_reference_from_payload(t)
+            ]
 
     if "account" in fields_set:
         touched.add("account")
         if payload.account is not None:
-            fragment["account"] = [{"reference": a} for a in payload.account if a]
+            fragment["account"] = [
+                _child_reference_from_payload(a)
+                for a in payload.account
+                if _child_reference_from_payload(a)
+            ]
 
     if "identifier" in fields_set:
         touched.add("identifier")

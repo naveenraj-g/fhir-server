@@ -326,3 +326,101 @@ async def test_missing_permission_rejected(client):
     )
     resp = await client.post(BASE + "/", json=minimal_episode_of_care(p_id))
     assert resp.status_code == 403, resp.text
+
+
+async def test_create_episode_of_care_with_reference_identifier_fallback(client):
+    payload = {
+        "status": "active",
+        "patient_identifier_system": "http://hospital.example.org/patients",
+        "patient_identifier_value": "MRN-EOC-1",
+        "patient_display": "Fallback Patient",
+        "managing_organization_identifier_system": "http://hospital.example.org/orgs",
+        "managing_organization_identifier_value": "ORG-EOC-1",
+        "managing_organization_display": "Fallback Managing Org",
+        "care_manager_identifier_system": "http://hospital.example.org/practitioners",
+        "care_manager_identifier_value": "PRAC-EOC-1",
+        "care_manager_display": "Fallback Care Manager",
+        "identifier": [
+            {
+                "system": "http://hospital.example.org/eoc",
+                "value": "EOC-12345",
+                "assigner_identifier_system": "http://hospital.example.org/assigners",
+                "assigner_identifier_value": "ORG-ASSIGNER-EOC-1",
+            }
+        ],
+        "diagnosis": [
+            {
+                "condition_identifier_system": "http://hospital.example.org/conditions",
+                "condition_identifier_value": "COND-EOC-1",
+                "condition_display": "Condition Fallback",
+                "rank": 1,
+            }
+        ],
+        "referral_request": [
+            {
+                "identifier_system": "http://hospital.example.org/referrals",
+                "identifier_value": "REF-EOC-1",
+                "display": "Referral Request Fallback",
+            }
+        ],
+        "team": [
+            {
+                "identifier_system": "http://hospital.example.org/teams",
+                "identifier_value": "TEAM-EOC-1",
+                "display": "Team Fallback",
+            }
+        ],
+        "account": [
+            {
+                "identifier_system": "http://hospital.example.org/accounts",
+                "identifier_value": "ACCT-EOC-1",
+                "display": "Account Fallback",
+            }
+        ],
+    }
+    resp = await client.post(BASE + "/", json=payload)
+    assert resp.status_code == 201, resp.text
+    plain_data = resp.json()
+    eoc_id = plain_data["id"]
+
+    assert plain_data["patient"] is None
+    assert plain_data["patient_identifier_system"] == "http://hospital.example.org/patients"
+    assert plain_data["patient_identifier_value"] == "MRN-EOC-1"
+    assert plain_data["patient_display"] == "Fallback Patient"
+
+    assert plain_data["managing_organization"] is None
+    assert plain_data["managing_organization_identifier_value"] == "ORG-EOC-1"
+
+    assert plain_data["care_manager"] is None
+    assert plain_data["care_manager_identifier_value"] == "PRAC-EOC-1"
+
+    assert plain_data["identifiers"][0]["assigner_identifier_value"] == "ORG-ASSIGNER-EOC-1"
+    assert plain_data["diagnoses"][0]["condition_identifier_value"] == "COND-EOC-1"
+    assert plain_data["referral_requests"][0]["identifier_value"] == "REF-EOC-1"
+    assert plain_data["teams"][0]["identifier_value"] == "TEAM-EOC-1"
+    assert plain_data["accounts"][0]["identifier_value"] == "ACCT-EOC-1"
+
+    # Verify FHIR serialization
+    fhir_resp = await client.get(f"{BASE}/{eoc_id}", headers={"Accept": "application/fhir+json"})
+    assert fhir_resp.status_code == 200, fhir_resp.text
+    fhir_data = fhir_resp.json()
+    assert fhir_data["resourceType"] == "EpisodeOfCare"
+    assert "reference" not in fhir_data["patient"]
+    assert fhir_data["patient"]["identifier"]["value"] == "MRN-EOC-1"
+    assert fhir_data["managingOrganization"]["identifier"]["value"] == "ORG-EOC-1"
+    assert fhir_data["careManager"]["identifier"]["value"] == "PRAC-EOC-1"
+    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-ASSIGNER-EOC-1"
+    assert fhir_data["diagnosis"][0]["condition"]["identifier"]["value"] == "COND-EOC-1"
+    assert fhir_data["referralRequest"][0]["identifier"]["value"] == "REF-EOC-1"
+    assert fhir_data["team"][0]["identifier"]["value"] == "TEAM-EOC-1"
+    assert fhir_data["account"][0]["identifier"]["value"] == "ACCT-EOC-1"
+
+    # Patch patient fallback identifier
+    patch_resp = await client.patch(
+        f"{BASE}/{eoc_id}",
+        json={"patient_identifier_value": "MRN-EOC-1-UPDATED"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+    assert patch_resp.json()["patient_identifier_value"] == "MRN-EOC-1-UPDATED"
+
+

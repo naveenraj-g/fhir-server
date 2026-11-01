@@ -41,49 +41,95 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
-def _fhir_ref(ref_raw: str | None, ref_type, ref_id: int | None, display: str | None) -> dict | None:
-    result: dict = {}
-    if ref_raw:
-        result["reference"] = ref_raw
-    elif ref_type and ref_id:
-        result["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
-    if display:
-        result["display"] = display
-    return result or None
-
-
-def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
+def _fhir_reference(obj, prefix: str) -> dict | None:
+    if obj is None:
+        return None
     raw_reference = getattr(obj, f"{prefix}_reference", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
     ref_id = getattr(obj, f"{prefix}_id", None)
     display = getattr(obj, f"{prefix}_display", None)
 
+    ref_str = raw_reference or (
+        f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None
+    )
+
     entry: dict = {}
-    if raw_reference:
-        entry["reference"] = raw_reference
-    elif ref_type and ref_id:
-        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if ref_str:
+        entry["reference"] = ref_str
     if display:
         entry["display"] = display
 
-    # Logical identifier fallback
-    ident_system = getattr(obj, f"{prefix}_identifier_system", None)
-    ident_value = getattr(obj, f"{prefix}_identifier_value", None)
-    ident_use = getattr(obj, f"{prefix}_identifier_use", None)
-    ident_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_use = getattr(obj, f"{prefix}_identifier_use", None)
+    id_type_system = getattr(obj, f"{prefix}_identifier_type_system", None)
+    id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
+    id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
+    id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
+    id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
+    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_system = getattr(obj, f"{prefix}_identifier_system", None)
+    id_value = getattr(obj, f"{prefix}_identifier_value", None)
+    id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
+    id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    identifier: dict = {}
-    if ident_use:
-        identifier["use"] = fhir_enum(ident_use)
-    if ident_system:
-        identifier["system"] = ident_system
-    if ident_value:
-        identifier["value"] = ident_value
-    if ident_type_text:
-        identifier["type"] = {"text": ident_type_text}
-
-    if identifier:
-        entry["identifier"] = identifier
+    if (
+        id_use
+        or id_type_system
+        or id_type_version
+        or id_type_code
+        or id_type_display
+        or id_type_text
+        or (id_type_user_selected is not None)
+        or id_system
+        or id_value
+        or id_period_start
+        or id_period_end
+    ):
+        ident: dict = {}
+        if id_use:
+            ident["use"] = fhir_enum(id_use)
+        if (
+            id_type_system
+            or id_type_version
+            or id_type_code
+            or id_type_display
+            or id_type_text
+            or (id_type_user_selected is not None)
+        ):
+            type_dict: dict = {}
+            if (
+                id_type_system
+                or id_type_version
+                or id_type_code
+                or id_type_display
+                or (id_type_user_selected is not None)
+            ):
+                coding_dict: dict = {}
+                if id_type_system:
+                    coding_dict["system"] = id_type_system
+                if id_type_version:
+                    coding_dict["version"] = id_type_version
+                if id_type_code:
+                    coding_dict["code"] = id_type_code
+                if id_type_display:
+                    coding_dict["display"] = id_type_display
+                if id_type_user_selected is not None:
+                    coding_dict["userSelected"] = id_type_user_selected
+                type_dict["coding"] = [coding_dict]
+            if id_type_text:
+                type_dict["text"] = id_type_text
+            ident["type"] = type_dict
+        if id_system:
+            ident["system"] = id_system
+        if id_value:
+            ident["value"] = id_value
+        if id_period_start or id_period_end:
+            p_dict: dict = {}
+            if id_period_start:
+                p_dict["start"] = fhir_instant(id_period_start)
+            if id_period_end:
+                p_dict["end"] = fhir_instant(id_period_end)
+            ident["period"] = p_dict
+        entry["identifier"] = ident
 
     return entry or None
 
@@ -113,7 +159,7 @@ def _fhir_identifiers(identifiers) -> list[dict]:
         period = _fhir_period(ident.period_start, ident.period_end)
         if period:
             entry["period"] = period
-        assigner = _fhir_reference_with_identifier_fallback(ident, "assigner")
+        assigner = _fhir_reference(ident, "assigner")
         if assigner:
             entry["assigner"] = assigner
         if entry:
@@ -164,7 +210,7 @@ def _fhir_diagnoses(diagnoses: list[EpisodeOfCareDiagnosis]) -> list[dict]:
     result = []
     for d in diagnoses or []:
         entry: dict[str, Any] = {}
-        cond = _fhir_ref(d.condition_reference, d.condition_type, d.condition_id, d.condition_display)
+        cond = _fhir_reference(d, "condition")
         if cond:
             entry["condition"] = cond
         role = _fhir_codeable_concept(d.role_codings, d.role_text)
@@ -211,18 +257,11 @@ def to_fhir_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
         if diags:
             fhir["diagnosis"] = diags
 
-    patient_ref = _fhir_ref(
-        model.patient_reference, model.patient_type, model.patient_id, model.patient_display
-    )
+    patient_ref = _fhir_reference(model, "patient")
     if patient_ref:
         fhir["patient"] = patient_ref
 
-    managing_org_ref = _fhir_ref(
-        model.managing_organization_reference,
-        model.managing_organization_type,
-        model.managing_organization_id,
-        model.managing_organization_display,
-    )
+    managing_org_ref = _fhir_reference(model, "managing_organization")
     if managing_org_ref:
         fhir["managingOrganization"] = managing_org_ref
 
@@ -232,25 +271,20 @@ def to_fhir_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
 
     if model.referral_requests:
         referrals = [
-            _fhir_ref(r.reference_reference, r.reference_type, r.reference_id, r.reference_display)
+            _fhir_reference(r, "reference")
             for r in model.referral_requests
         ]
         referrals = [r for r in referrals if r]
         if referrals:
             fhir["referralRequest"] = referrals
 
-    care_manager_ref = _fhir_ref(
-        model.care_manager_reference,
-        model.care_manager_type,
-        model.care_manager_id,
-        model.care_manager_display,
-    )
+    care_manager_ref = _fhir_reference(model, "care_manager")
     if care_manager_ref:
         fhir["careManager"] = care_manager_ref
 
     if model.teams:
         teams = [
-            _fhir_ref(t.reference_reference, t.reference_type, t.reference_id, t.reference_display)
+            _fhir_reference(t, "reference")
             for t in model.teams
         ]
         teams = [t for t in teams if t]
@@ -259,7 +293,7 @@ def to_fhir_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
 
     if model.accounts:
         accounts = [
-            _fhir_ref(a.reference_reference, a.reference_type, a.reference_id, a.reference_display)
+            _fhir_reference(a, "reference")
             for a in model.accounts
         ]
         accounts = [a for a in accounts if a]

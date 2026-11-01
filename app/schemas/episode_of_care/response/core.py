@@ -42,7 +42,20 @@ class PlainEpisodeOfCareReference(AuditFields, BaseModel):
 
     id: int
     reference: str | None = None
+    reference_type: str | None = None
+    reference_id: int | None = None
     display: str | None = None
+    identifier_use: str | None = None
+    identifier_type_system: str | None = None
+    identifier_type_version: str | None = None
+    identifier_type_code: str | None = None
+    identifier_type_display: str | None = None
+    identifier_type_user_selected: bool | None = None
+    identifier_type_text: str | None = None
+    identifier_system: str | None = None
+    identifier_value: str | None = None
+    identifier_period_start: datetime | None = None
+    identifier_period_end: datetime | None = None
 
 
 # ── FHIR Schema ───────────────────────────────────────────────────────────────
@@ -80,14 +93,56 @@ class PlainEpisodeOfCareResponse(AuditFields, BaseModel):
 
     id: int
     status: str
-    patient: str
+    patient: str | None = None
+    patient_id: int | None = None
+    patient_type: str | None = None
     patient_display: str | None = None
+    patient_identifier_use: str | None = None
+    patient_identifier_type_system: str | None = None
+    patient_identifier_type_version: str | None = None
+    patient_identifier_type_code: str | None = None
+    patient_identifier_type_display: str | None = None
+    patient_identifier_type_user_selected: bool | None = None
+    patient_identifier_type_text: str | None = None
+    patient_identifier_system: str | None = None
+    patient_identifier_value: str | None = None
+    patient_identifier_period_start: datetime | None = None
+    patient_identifier_period_end: datetime | None = None
+
     managing_organization: str | None = None
+    managing_organization_id: int | None = None
+    managing_organization_type: str | None = None
     managing_organization_display: str | None = None
+    managing_organization_identifier_use: str | None = None
+    managing_organization_identifier_type_system: str | None = None
+    managing_organization_identifier_type_version: str | None = None
+    managing_organization_identifier_type_code: str | None = None
+    managing_organization_identifier_type_display: str | None = None
+    managing_organization_identifier_type_user_selected: bool | None = None
+    managing_organization_identifier_type_text: str | None = None
+    managing_organization_identifier_system: str | None = None
+    managing_organization_identifier_value: str | None = None
+    managing_organization_identifier_period_start: datetime | None = None
+    managing_organization_identifier_period_end: datetime | None = None
+
     period_start: datetime | None = None
     period_end: datetime | None = None
+
     care_manager: str | None = None
+    care_manager_id: int | None = None
+    care_manager_type: str | None = None
     care_manager_display: str | None = None
+    care_manager_identifier_use: str | None = None
+    care_manager_identifier_type_system: str | None = None
+    care_manager_identifier_type_version: str | None = None
+    care_manager_identifier_type_code: str | None = None
+    care_manager_identifier_type_display: str | None = None
+    care_manager_identifier_type_user_selected: bool | None = None
+    care_manager_identifier_type_text: str | None = None
+    care_manager_identifier_system: str | None = None
+    care_manager_identifier_value: str | None = None
+    care_manager_identifier_period_start: datetime | None = None
+    care_manager_identifier_period_end: datetime | None = None
 
     identifiers: list[PlainEpisodeOfCareIdentifier] = []
     status_history: list[PlainEpisodeOfCareStatusHistory] = []

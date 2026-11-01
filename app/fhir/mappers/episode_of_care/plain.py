@@ -3,9 +3,53 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.fhir.datatypes import fhir_enum
+from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
 
 if TYPE_CHECKING:
     from app.models.episode_of_care import EpisodeOfCareModel
+
+
+def _plain_reference_fields(obj, prefix: str) -> dict:
+    d = {}
+    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = getattr(obj, f"{prefix}_{s}", None)
+        if val is not None:
+            if hasattr(val, "isoformat"):
+                d[f"{prefix}_{s}"] = val.isoformat()
+            elif hasattr(val, "value"):
+                d[f"{prefix}_{s}"] = val.value
+            else:
+                d[f"{prefix}_{s}"] = val
+        else:
+            d[f"{prefix}_{s}"] = None
+    return d
+
+
+def _plain_ref_row(r) -> dict:
+    d = {
+        "id": r.id,
+        "reference": _plain_ref(r.reference_reference, r.reference_type, r.reference_id),
+        "reference_type": fhir_enum(r.reference_type) if r.reference_type else None,
+        "reference_id": r.reference_id,
+        "display": r.reference_display,
+        "tenant_id": r.tenant_id,
+        "created_by": r.created_by,
+        "updated_by": r.updated_by,
+        "created_at": r.created_at,
+        "updated_at": r.updated_at,
+    }
+    for s in _IDENTIFIER_FALLBACK_SUFFIXES:
+        val = getattr(r, f"reference_{s}", None)
+        if val is not None:
+            if hasattr(val, "isoformat"):
+                d[s] = val.isoformat()
+            elif hasattr(val, "value"):
+                d[s] = val.value
+            else:
+                d[s] = val
+        else:
+            d[s] = None
+    return d
 
 
 def _plain_codings(codings) -> list[dict]:
@@ -37,16 +81,20 @@ def _plain_ref(ref_raw: str | None, ref_type, ref_id: int | None) -> str | None:
 
 def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
     """Convert an EpisodeOfCareModel to a plain snake_case dict."""
-    return {
+    d = {
         "id": model.episode_of_care_id,
         "status": fhir_enum(model.status) if model.status else None,
         "patient": _plain_ref(model.patient_reference, model.patient_type, model.patient_id),
+        "patient_id": model.patient_id,
+        "patient_type": fhir_enum(model.patient_type) if model.patient_type else None,
         "patient_display": model.patient_display,
         "managing_organization": _plain_ref(
             model.managing_organization_reference,
             model.managing_organization_type,
             model.managing_organization_id,
         ),
+        "managing_organization_id": model.managing_organization_id,
+        "managing_organization_type": fhir_enum(model.managing_organization_type) if model.managing_organization_type else None,
         "managing_organization_display": model.managing_organization_display,
         "period_start": model.period_start,
         "period_end": model.period_end,
@@ -55,6 +103,8 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
             model.care_manager_type,
             model.care_manager_id,
         ),
+        "care_manager_id": model.care_manager_id,
+        "care_manager_type": fhir_enum(model.care_manager_type) if model.care_manager_type else None,
         "care_manager_display": model.care_manager_display,
         "tenant_id": model.tenant_id,
         "created_by": model.created_by,
@@ -80,6 +130,7 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
                 "updated_by": ident.updated_by,
                 "created_at": ident.created_at,
                 "updated_at": ident.updated_at,
+                **_plain_reference_fields(ident, "assigner"),
             }
             for ident in (model.identifiers or [])
         ],
@@ -114,6 +165,8 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
             {
                 "id": d.id,
                 "condition": _plain_ref(d.condition_reference, d.condition_type, d.condition_id),
+                "condition_id": d.condition_id,
+                "condition_type": fhir_enum(d.condition_type) if d.condition_type else None,
                 "condition_display": d.condition_display,
                 "role_text": d.role_text,
                 "role_codings": _plain_codings(d.role_codings),
@@ -123,46 +176,15 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
                 "updated_by": d.updated_by,
                 "created_at": d.created_at,
                 "updated_at": d.updated_at,
+                **_plain_reference_fields(d, "condition"),
             }
             for d in (model.diagnoses or [])
         ],
-        "referral_requests": [
-            {
-                "id": r.id,
-                "reference": _plain_ref(r.reference_reference, r.reference_type, r.reference_id),
-                "display": r.reference_display,
-                "tenant_id": r.tenant_id,
-                "created_by": r.created_by,
-                "updated_by": r.updated_by,
-                "created_at": r.created_at,
-                "updated_at": r.updated_at,
-            }
-            for r in (model.referral_requests or [])
-        ],
-        "teams": [
-            {
-                "id": t.id,
-                "reference": _plain_ref(t.reference_reference, t.reference_type, t.reference_id),
-                "display": t.reference_display,
-                "tenant_id": t.tenant_id,
-                "created_by": t.created_by,
-                "updated_by": t.updated_by,
-                "created_at": t.created_at,
-                "updated_at": t.updated_at,
-            }
-            for t in (model.teams or [])
-        ],
-        "accounts": [
-            {
-                "id": a.id,
-                "reference": _plain_ref(a.reference_reference, a.reference_type, a.reference_id),
-                "display": a.reference_display,
-                "tenant_id": a.tenant_id,
-                "created_by": a.created_by,
-                "updated_by": a.updated_by,
-                "created_at": a.created_at,
-                "updated_at": a.updated_at,
-            }
-            for a in (model.accounts or [])
-        ],
+        "referral_requests": [_plain_ref_row(r) for r in (model.referral_requests or [])],
+        "teams": [_plain_ref_row(t) for t in (model.teams or [])],
+        "accounts": [_plain_ref_row(a) for a in (model.accounts or [])],
     }
+    d.update(_plain_reference_fields(model, "patient"))
+    d.update(_plain_reference_fields(model, "managing_organization"))
+    d.update(_plain_reference_fields(model, "care_manager"))
+    return d
