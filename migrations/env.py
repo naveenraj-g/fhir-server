@@ -24,6 +24,7 @@ import app.models.appointment
 import app.models.appointment_response
 import app.models.care_plan
 import app.models.care_team
+import app.models.communication
 import app.models.communication_request
 import app.models.condition
 import app.models.consent

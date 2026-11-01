@@ -42,6 +42,7 @@ from app.models.flag import FlagModel
 from app.models.related_person import RelatedPersonModel
 from app.models.task import TaskModel
 from app.models.goal import GoalModel
+from app.models.communication import CommunicationModel
 from app.models.communication_request import CommunicationRequestModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
@@ -123,6 +124,7 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "Task": (TaskModel, "task_id"),
     "Goal": (GoalModel, "goal_id"),
     "CommunicationRequest": (CommunicationRequestModel, "communication_request_id"),
+    "Communication": (CommunicationModel, "communication_id"),
 }
 
 

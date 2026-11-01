@@ -49,6 +49,7 @@ from . import slot as slot
 from . import specimen as specimen
 from . import task as task
 from . import goal as goal
+from . import communication as communication
 from . import communication_request as communication_request
 
 __all__ = [
@@ -58,6 +59,7 @@ __all__ = [
     "appointment_response",
     "care_plan",
     "care_team",
+    "communication",
     "condition",
     "consent",
     "diagnostic_report",

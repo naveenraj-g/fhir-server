@@ -34,6 +34,7 @@ from .specimen import SpecimenContainer
 from .terminology import TerminologyContainer
 from .task import TaskContainer
 from .goal import GoalContainer
+from .communication import CommunicationContainer
 from .communication_request import CommunicationRequestContainer
 
 __all__ = [
@@ -43,6 +44,7 @@ __all__ = [
     "AppointmentResponseContainer",
     "CarePlanContainer",
     "CareTeamContainer",
+    "CommunicationContainer",
     "ConditionContainer",
     "ConsentContainer",
     "DiagnosticReportContainer",

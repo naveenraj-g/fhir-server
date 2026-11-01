@@ -198,6 +198,7 @@ routes:
     - specimen
     - task
     - goal
+    - communication
     - communication_request
     - terminology
     - fhir_profile

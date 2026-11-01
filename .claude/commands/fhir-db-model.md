@@ -50,9 +50,29 @@ Give each resource its own `<resource>_day_of_week` Postgres type and Python enu
 `FhirCodingMixin` provides `system`/`version`/`code`/`display`/`user_selected` (all nullable). Never hand-write these five columns — mix it in.
 
 ### Reference (0..1 or 0..*) — the pattern to use for new work
-Flattened columns, **no `ForeignKey`, no relationship** — **four** columns, not three: `<field>_reference` (String — the raw literal string exactly as received, relative or an absolute URL to another system entirely, kept regardless of whether it resolves locally) + `<field>_type` (Enum if closed-set, String if open) + `<field>_id` (the resolved target's **public** id, populated only when `<field>_reference` resolves to a local row) + `<field>_display` (String) — for 0..* wrap the same four in a child table (fixed column names `reference_reference`/`reference_type`/`reference_id`/`reference_display`, regardless of the FHIR field name — e.g. `Encounter.participant.actor` lives on `encounter_participant.reference_reference`/`.reference_type`/`.reference_id`/`.reference_display`, not `actor_reference`/etc.; use the field-specific prefix only for a flat 0..1 column on the main table).
+Flattened columns, **no `ForeignKey`, no relationship** — **15 columns total** (4 core reference columns + 11 logical `Reference.identifier` fallback columns):
+1. **Core Reference columns (4 columns)**:
+   - `<field>_reference` (String — the raw literal string exactly as received, relative or an absolute URL to another system entirely, kept regardless of whether it resolves locally)
+   - `<field>_type` (Enum if closed-set, String if open)
+   - `<field>_id` (BigInteger, nullable, index=True — the resolved target's **public** id, populated only when `<field>_reference` resolves to a local row)
+   - `<field>_display` (String — plain text display)
+2. **Logical Reference fallback columns (`Reference.identifier` — 11 columns)**:
+   Populated instead of or alongside `<field>_id` when the referenced resource isn't a local instance in this system ("no requirement that Reference.identifier point to something actually exposed as a FHIR instance" — FHIR R4 Reference spec). See `app/models/organization/core.py` (`partof_identifier_*`) and `app/models/organization/identifier.py` (`assigner_identifier_*`):
+   - `<field>_identifier_use` (`Enum(IdentifierUse, name="identifier_use")`)
+   - `<field>_identifier_type_system` (`String`)
+   - `<field>_identifier_type_version` (`String`)
+   - `<field>_identifier_type_code` (`String`)
+   - `<field>_identifier_type_display` (`String`)
+   - `<field>_identifier_type_user_selected` (`Boolean`)
+   - `<field>_identifier_type_text` (`String`)
+   - `<field>_identifier_system` (`String`)
+   - `<field>_identifier_value` (`String`)
+   - `<field>_identifier_period_start` (`DateTime(timezone=True)`)
+   - `<field>_identifier_period_end` (`DateTime(timezone=True)`)
 
-**`<field>_reference` is the column most likely to get dropped by mistake** — the mapper's FHIR output comes from `<field>_type`/`<field>_id` (`f"{type}/{id}"`), never from `<field>_reference` directly, so it's easy to model the other three and skip this one without anything visibly breaking. It still has to exist: it's the only place an absolute URL to an *external* system survives at all — `<field>_id` has nothing to resolve to for it, and `<field>_identifier_*` is a structured business `Identifier`, not a URL. Confirmed missing-by-omission once already (Location's `managingOrganization`/`partOf`/`identifier.assigner`/`endpoint` all shipped without it) — every Reference field gets all four columns, every time, no exceptions.
+For **0..* Reference lists**, wrap the exact same 15 columns in a dedicated child table using the fixed column prefix `reference_` (e.g. `reference_reference`, `reference_type`, `reference_id`, `reference_display`, `reference_identifier_use`, `reference_identifier_type_system`, ..., `reference_identifier_period_end` — see `app/models/appointment/based_on.py` as canonical example). Use the field-specific prefix only for a flat 0..1 reference column on the main table.
+
+**`<field>_reference` is the column most likely to get dropped by mistake** — the mapper's FHIR output comes from `<field>_type`/`<field>_id` (`f"{type}/{id}"`), never from `<field>_reference` directly, so it's easy to model the other three and skip this one without anything visibly breaking. It still has to exist: it's the only place an absolute URL to an *external* system survives at all — `<field>_id` has nothing to resolve to for it, and `<field>_identifier_*` is a structured business `Identifier`, not a URL. Confirmed missing-by-omission once already (Location's `managingOrganization`/`partOf`/`identifier.assigner`/`endpoint` all shipped without it) — every Reference field gets all 15 columns (4 core + 11 identifier fallback), every time, no exceptions.
 
 **`<field>_id` stores the target's PUBLIC `<resource>_id` value — never the internal PK — and there is deliberately no FK column at all.** The target table varies per row by `<field>_type`, so a real FK is impossible for a genuinely polymorphic reference, and this project applies the same no-FK/public-ID shape uniformly even to references whose allowed type happens to be a single, fixed resource (e.g. every `*_organization_id`/`partof_id`/`assigner_id` in `app/models/organization/core.py` and `identifier.py`) — one pattern for every cross-resource reference, rather than real FKs for the single-target cases and flattened columns for the rest. Existence is checked at **write time**, not via a DB constraint, by `ensure_resource_exists()` (`app/core/reference_resolver.py`) against `RESOURCE_REGISTRY` — register the target type there or every reference to it is rejected. The mapper emits `f"{type}/{id}"` directly off the stored public id (no relationship to navigate). Even when only **one resource type** is allowed, still use a single-value Enum for `<field>_type` (never a bare Integer column) — keeps the pattern uniform and the allowed type self-documenting.
 
