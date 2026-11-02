@@ -173,6 +173,7 @@ routes:
     - clinical_impression
     - condition
     - consent
+    - detected_issue
     - diagnostic_report
     - document_reference
     - encounter

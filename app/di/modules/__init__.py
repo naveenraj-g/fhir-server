@@ -7,6 +7,7 @@ from .care_team import CareTeamContainer
 from .clinical_impression import ClinicalImpressionContainer
 from .condition import ConditionContainer
 from .consent import ConsentContainer
+from .detected_issue import DetectedIssueContainer
 from .diagnostic_report import DiagnosticReportContainer
 from .document_reference import DocumentReferenceContainer
 from .encounter import EncounterContainer
@@ -54,6 +55,7 @@ __all__ = [
     "CommunicationContainer",
     "ConditionContainer",
     "ConsentContainer",
+    "DetectedIssueContainer",
     "DiagnosticReportContainer",
     "DocumentReferenceContainer",
     "EncounterContainer",

@@ -128,14 +128,15 @@ Router → Service → Repository → ORM Model
 | ImmunizationRecommendation | 510000 |
 | RiskAssessment        | 520000 |
 | ClinicalImpression    | 530000 |
+| DetectedIssue         | 540000 |
 
-**Next available block: 540000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 550000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
 ## Multi-Tenancy & Ownership
 
-**As of this writing, every FHIR resource currently built in this codebase validates JWTs directly and enforces RBAC — there is no more "default/gateway-trusted" resource left.** This wasn't true historically (see "History" below) and may not stay true forever if a new resource is deliberately built against the plain pattern again, so don't assume it without checking `app/routers/<resource>/core.py` for `require_permission(...)` — but today, every one of: Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport, Patient, Condition, Specimen, DocumentReference, CarePlan, CareTeam, EpisodeOfCare, ObservationDefinition, ActivityDefinition, PlanDefinition, Procedure, Group, Consent, Goal, CommunicationRequest, Communication, AllergyIntolerance, FamilyMemberHistory, MedicationStatement, Immunization, ImmunizationRecommendation, RiskAssessment, and ClinicalImpression (`app/auth/` — JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) follows the exact shape below.
+**As of this writing, every FHIR resource currently built in this codebase validates JWTs directly and enforces RBAC — there is no more "default/gateway-trusted" resource left.** This wasn't true historically (see "History" below) and may not stay true forever if a new resource is deliberately built against the plain pattern again, so don't assume it without checking `app/routers/<resource>/core.py` for `require_permission(...)` — but today, every one of: Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport, Patient, Condition, Specimen, DocumentReference, CarePlan, CareTeam, EpisodeOfCare, ObservationDefinition, ActivityDefinition, PlanDefinition, Procedure, Group, Consent, Goal, CommunicationRequest, Communication, AllergyIntolerance, FamilyMemberHistory, MedicationStatement, Immunization, ImmunizationRecommendation, RiskAssessment, ClinicalImpression, and DetectedIssue (`app/auth/` — JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) follows the exact shape below.
 
 For every one of the resources above:
 

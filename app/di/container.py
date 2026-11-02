@@ -13,6 +13,7 @@ from app.di.modules import (
     CommunicationRequestContainer,
     ConditionContainer,
     ConsentContainer,
+    DetectedIssueContainer,
     DiagnosticReportContainer,
     DocumentReferenceContainer,
     EncounterContainer,
@@ -91,6 +92,11 @@ class Container(containers.DeclarativeContainer):
 
     consent = providers.Container(
         ConsentContainer,
+        core=core,
+    )
+
+    detected_issue = providers.Container(
+        DetectedIssueContainer,
         core=core,
     )
 

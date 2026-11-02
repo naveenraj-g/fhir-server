@@ -24,6 +24,7 @@ from . import care_team as care_team
 from . import clinical_impression as clinical_impression
 from . import condition as condition
 from . import consent as consent
+from . import detected_issue as detected_issue
 from . import diagnostic_report as diagnostic_report
 from . import document_reference as document_reference
 from . import encounter as encounter
@@ -69,6 +70,7 @@ __all__ = [
     "communication",
     "condition",
     "consent",
+    "detected_issue",
     "diagnostic_report",
     "discover_routers",
     "document_reference",

@@ -51,6 +51,7 @@ from app.models.immunization_recommendation import (
 )
 from app.models.risk_assessment import RiskAssessmentModel
 from app.models.clinical_impression import ClinicalImpressionModel
+from app.models.detected_issue import DetectedIssueModel
 from app.models.medication_statement import MedicationStatementModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
@@ -142,6 +143,7 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     ),
     "RiskAssessment": (RiskAssessmentModel, "risk_assessment_id"),
     "ClinicalImpression": (ClinicalImpressionModel, "clinical_impression_id"),
+    "DetectedIssue": (DetectedIssueModel, "detected_issue_id"),
 }
 
 

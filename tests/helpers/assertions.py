@@ -729,3 +729,25 @@ def assert_fhir_clinical_impression(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_detected_issue(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) detected_issue response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected detected_issue.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_detected_issue(data: dict, **expected) -> None:
+    """Assert fields on a FHIR detected_issue response."""
+    assert data.get("resourceType") == "DetectedIssue", (
+        f"expected resourceType=DetectedIssue, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected detected_issue.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+
