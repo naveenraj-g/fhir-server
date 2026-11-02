@@ -178,6 +178,7 @@ routes:
     - episode_of_care
     - flag
     - group
+    - immunization
     - organization
     - location
     - medication_request

@@ -15,6 +15,7 @@ from .fhir_profile import FhirProfileContainer
 from .flag import FlagContainer
 from .group import GroupContainer
 from .healthcare_service import HealthcareServiceContainer
+from .immunization import ImmunizationContainer
 from .location import LocationContainer
 from .medication_request import MedicationRequestContainer
 from .medication_statement import MedicationStatementContainer
@@ -58,6 +59,7 @@ __all__ = [
     "FlagContainer",
     "GroupContainer",
     "HealthcareServiceContainer",
+    "ImmunizationContainer",
     "LocationContainer",
     "MedicationRequestContainer",
     "MedicationStatementContainer",

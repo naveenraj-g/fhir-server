@@ -38,6 +38,7 @@ import app.models.flag
 import app.models.goal
 import app.models.group
 import app.models.healthcare_service
+import app.models.immunization
 import app.models.location
 import app.models.medication_request
 import app.models.medication_statement

@@ -643,3 +643,24 @@ def assert_fhir_medication_statement(data: dict, **expected) -> None:
         assert data.get(field) == value, (
             f"expected medication_statement.{field}={value!r}, got {data.get(field)!r}"
         )
+
+
+def assert_plain_immunization(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) immunization response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected immunization.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_immunization(data: dict, **expected) -> None:
+    """Assert fields on a FHIR immunization response."""
+    assert data.get("resourceType") == "Immunization", (
+        f"expected resourceType=Immunization, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected immunization.{field}={value!r}, got {data.get(field)!r}"
+        )

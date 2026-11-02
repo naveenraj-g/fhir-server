@@ -841,6 +841,23 @@ class MedicationStatementStatus(str, Enum):
     not_taken = "not-taken"
 
 
+# ---------------------------------------------------------------------------
+# Immunization enums
+# ---------------------------------------------------------------------------
+
+
+class ImmunizationStatus(str, Enum):
+    """
+    FHIR Immunization.status value set (code, required) --
+    https://www.hl7.org/fhir/R4/valueset-immunization-status.html
+    """
+
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    not_done = "not-done"
+
+
+
 
 
 

@@ -31,6 +31,7 @@ from . import family_member_history as family_member_history
 from . import flag as flag
 from . import group as group
 from . import healthcare_service as healthcare_service
+from . import immunization as immunization
 from . import location as location
 from . import medication_request as medication_request
 from . import medication_statement as medication_statement
@@ -73,6 +74,7 @@ __all__ = [
     "flag",
     "group",
     "healthcare_service",
+    "immunization",
     "location",
     "medication_request",
     "medication_statement",
