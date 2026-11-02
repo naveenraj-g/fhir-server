@@ -857,6 +857,34 @@ class ImmunizationStatus(str, Enum):
     not_done = "not-done"
 
 
+# ---------------------------------------------------------------------------
+# SpecimenDefinition enums
+# ---------------------------------------------------------------------------
+
+
+class SpecimenDefinitionPreference(str, Enum):
+    """Specimen preference: preferred | alternate."""
+
+    preferred = "preferred"
+    alternate = "alternate"
+
+
+class SpecimenDefinitionQuantityComparator(str, Enum):
+    """FHIR Quantity.comparator value set for SpecimenDefinition (< | <= | >= | >)."""
+
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
+class SpecimenDefinitionAdditiveReferenceType(str, Enum):
+    """FHIR R4 target types for SpecimenDefinition additive reference."""
+
+    Substance = "Substance"
+
+
+
 
 
 

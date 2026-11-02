@@ -38,6 +38,7 @@ from .schedule import ScheduleContainer
 from .service_request import ServiceRequestContainer
 from .slot import SlotContainer
 from .specimen import SpecimenContainer
+from .specimen_definition import SpecimenDefinitionContainer
 from .terminology import TerminologyContainer
 from .task import TaskContainer
 from .goal import GoalContainer
@@ -86,6 +87,7 @@ __all__ = [
     "ServiceRequestContainer",
     "SlotContainer",
     "SpecimenContainer",
+    "SpecimenDefinitionContainer",
     "TerminologyContainer",
     "TaskContainer",
     "GoalContainer",

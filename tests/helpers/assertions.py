@@ -750,4 +750,26 @@ def assert_fhir_detected_issue(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_specimen_definition(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) specimen_definition response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected specimen_definition.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_specimen_definition(data: dict, **expected) -> None:
+    """Assert fields on a FHIR specimen_definition response."""
+    assert data.get("resourceType") == "SpecimenDefinition", (
+        f"expected resourceType=SpecimenDefinition, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected specimen_definition.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+
 

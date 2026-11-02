@@ -202,6 +202,7 @@ routes:
     - service_request
     - slot
     - specimen
+    - specimen_definition
     - task
     - goal
     - communication

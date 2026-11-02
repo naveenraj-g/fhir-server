@@ -45,6 +45,7 @@ from app.di.modules import (
     ServiceRequestContainer,
     SlotContainer,
     SpecimenContainer,
+    SpecimenDefinitionContainer,
     TaskContainer,
     TerminologyContainer,
 )
@@ -237,6 +238,11 @@ class Container(containers.DeclarativeContainer):
 
     specimen = providers.Container(
         SpecimenContainer,
+        core=core,
+    )
+
+    specimen_definition = providers.Container(
+        SpecimenDefinitionContainer,
         core=core,
     )
 

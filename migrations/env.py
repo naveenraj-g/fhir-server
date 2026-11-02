@@ -61,6 +61,7 @@ import app.models.schedule
 import app.models.service_request
 import app.models.slot
 import app.models.specimen
+import app.models.specimen_definition
 import app.models.task
 import app.models.terminology.terminology  # noqa: F401
 

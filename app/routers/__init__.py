@@ -54,6 +54,7 @@ from . import schedule as schedule
 from . import service_request as service_request
 from . import slot as slot
 from . import specimen as specimen
+from . import specimen_definition as specimen_definition
 from . import task as task
 from . import goal as goal
 from . import communication as communication
@@ -101,6 +102,7 @@ __all__ = [
     "service_request",
     "slot",
     "specimen",
+    "specimen_definition",
     "communication_request",
     "goal",
     "task",
