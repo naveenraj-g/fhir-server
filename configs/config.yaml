@@ -179,6 +179,7 @@ routes:
     - flag
     - group
     - immunization
+    - immunization_recommendation
     - organization
     - location
     - medication_request
