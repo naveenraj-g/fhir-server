@@ -8,6 +8,7 @@ from app.di.modules import (
     AppointmentResponseContainer,
     CarePlanContainer,
     CareTeamContainer,
+    ClinicalImpressionContainer,
     CommunicationContainer,
     CommunicationRequestContainer,
     ConditionContainer,
@@ -140,6 +141,11 @@ class Container(containers.DeclarativeContainer):
 
     risk_assessment = providers.Container(
         RiskAssessmentContainer,
+        core=core,
+    )
+
+    clinical_impression = providers.Container(
+        ClinicalImpressionContainer,
         core=core,
     )
 

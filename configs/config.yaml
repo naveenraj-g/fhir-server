@@ -170,6 +170,7 @@ routes:
     - appointment_response
     - care_plan
     - care_team
+    - clinical_impression
     - condition
     - consent
     - diagnostic_report

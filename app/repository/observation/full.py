@@ -8,6 +8,7 @@ from app.models.observation import (
     ObservationBodySiteCoding,
     ObservationCategory,
     ObservationCategoryCoding,
+    ObservationCodeCoding,
     ObservationComponent,
     ObservationComponentCodeCoding,
     ObservationComponentDataAbsentReasonCoding,

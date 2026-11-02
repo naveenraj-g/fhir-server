@@ -21,6 +21,7 @@ from . import appointment as appointment
 from . import appointment_response as appointment_response
 from . import care_plan as care_plan
 from . import care_team as care_team
+from . import clinical_impression as clinical_impression
 from . import condition as condition
 from . import consent as consent
 from . import diagnostic_report as diagnostic_report
@@ -64,6 +65,7 @@ __all__ = [
     "appointment_response",
     "care_plan",
     "care_team",
+    "clinical_impression",
     "communication",
     "condition",
     "consent",

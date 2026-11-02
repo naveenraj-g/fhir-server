@@ -707,3 +707,25 @@ def assert_fhir_risk_assessment(data: dict, **expected) -> None:
             f"expected risk_assessment.{field}={value!r}, got {data.get(field)!r}"
         )
 
+
+def assert_plain_clinical_impression(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) clinical_impression response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected clinical_impression.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_clinical_impression(data: dict, **expected) -> None:
+    """Assert fields on a FHIR clinical_impression response."""
+    assert data.get("resourceType") == "ClinicalImpression", (
+        f"expected resourceType=ClinicalImpression, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected clinical_impression.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+

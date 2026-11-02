@@ -4,6 +4,7 @@ from .appointment import AppointmentContainer
 from .appointment_response import AppointmentResponseContainer
 from .care_plan import CarePlanContainer
 from .care_team import CareTeamContainer
+from .clinical_impression import ClinicalImpressionContainer
 from .condition import ConditionContainer
 from .consent import ConsentContainer
 from .diagnostic_report import DiagnosticReportContainer
@@ -49,6 +50,7 @@ __all__ = [
     "AppointmentResponseContainer",
     "CarePlanContainer",
     "CareTeamContainer",
+    "ClinicalImpressionContainer",
     "CommunicationContainer",
     "ConditionContainer",
     "ConsentContainer",
