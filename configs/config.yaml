@@ -200,6 +200,7 @@ routes:
     - goal
     - communication
     - communication_request
+    - family_member_history
     - terminology
     - fhir_profile
     - fhir_validate

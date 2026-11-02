@@ -603,3 +603,22 @@ def assert_fhir_communication(data: dict, **expected) -> None:
             f"expected communication.{field}={value!r}, got {data.get(field)!r}"
         )
 
+def assert_plain_family_member_history(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) family_member_history response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected family_member_history.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_family_member_history(data: dict, **expected) -> None:
+    """Assert fields on a FHIR family_member_history response."""
+    assert data.get("resourceType") == "FamilyMemberHistory", (
+        f"expected resourceType=FamilyMemberHistory, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected family_member_history.{field}={value!r}, got {data.get(field)!r}"
+        )

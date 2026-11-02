@@ -10,6 +10,7 @@ from .diagnostic_report import DiagnosticReportContainer
 from .document_reference import DocumentReferenceContainer
 from .encounter import EncounterContainer
 from .episode_of_care import EpisodeOfCareContainer
+from .family_member_history import FamilyMemberHistoryContainer
 from .fhir_profile import FhirProfileContainer
 from .flag import FlagContainer
 from .group import GroupContainer
@@ -51,6 +52,7 @@ __all__ = [
     "DocumentReferenceContainer",
     "EncounterContainer",
     "EpisodeOfCareContainer",
+    "FamilyMemberHistoryContainer",
     "FhirProfileContainer",
     "FlagContainer",
     "GroupContainer",

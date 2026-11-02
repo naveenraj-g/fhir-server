@@ -27,6 +27,7 @@ from . import diagnostic_report as diagnostic_report
 from . import document_reference as document_reference
 from . import encounter as encounter
 from . import episode_of_care as episode_of_care
+from . import family_member_history as family_member_history
 from . import flag as flag
 from . import group as group
 from . import healthcare_service as healthcare_service
@@ -67,6 +68,7 @@ __all__ = [
     "document_reference",
     "encounter",
     "episode_of_care",
+    "family_member_history",
     "flag",
     "group",
     "healthcare_service",

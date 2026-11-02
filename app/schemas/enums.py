@@ -792,5 +792,34 @@ class EpisodeOfCareStatus(str, Enum):
     entered_in_error = "entered-in-error"
 
 
+# ---------------------------------------------------------------------------
+# FamilyMemberHistory enums
+# ---------------------------------------------------------------------------
+
+
+class FamilyMemberHistoryStatus(str, Enum):
+    """
+    FHIR FamilyMemberHistory.status value set (code, required) --
+    https://www.hl7.org/fhir/R4/valueset-history-status.html
+    """
+
+    partial = "partial"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    health_unknown = "health-unknown"
+
+
+class FamilyMemberHistoryQuantityComparator(str, Enum):
+    """
+    FHIR Duration/Quantity.comparator value set, used by FamilyMemberHistory age and onsetAge.
+    """
+
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
+
 
 

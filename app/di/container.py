@@ -16,6 +16,7 @@ from app.di.modules import (
     DocumentReferenceContainer,
     EncounterContainer,
     EpisodeOfCareContainer,
+    FamilyMemberHistoryContainer,
     FhirProfileContainer,
     FlagContainer,
     GoalContainer,
@@ -95,6 +96,11 @@ class Container(containers.DeclarativeContainer):
 
     episode_of_care = providers.Container(
         EpisodeOfCareContainer,
+        core=core,
+    )
+
+    family_member_history = providers.Container(
+        FamilyMemberHistoryContainer,
         core=core,
     )
 

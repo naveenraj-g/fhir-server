@@ -32,6 +32,7 @@ import app.models.diagnostic_report
 import app.models.document_reference
 import app.models.encounter
 import app.models.episode_of_care
+import app.models.family_member_history
 import app.models.fhir_profile.fhir_profile
 import app.models.flag
 import app.models.goal
