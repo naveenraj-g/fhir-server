@@ -45,6 +45,7 @@ from app.models.goal import GoalModel
 from app.models.communication import CommunicationModel
 from app.models.communication_request import CommunicationRequestModel
 from app.models.family_member_history import FamilyMemberHistoryModel
+from app.models.medication_statement import MedicationStatementModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
 from app.models.questionnaire_response import QuestionnaireResponseModel
@@ -127,6 +128,7 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "CommunicationRequest": (CommunicationRequestModel, "communication_request_id"),
     "Communication": (CommunicationModel, "communication_id"),
     "FamilyMemberHistory": (FamilyMemberHistoryModel, "family_member_history_id"),
+    "MedicationStatement": (MedicationStatementModel, "medication_statement_id"),
 }
 
 

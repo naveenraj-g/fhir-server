@@ -24,6 +24,7 @@ from app.di.modules import (
     HealthcareServiceContainer,
     LocationContainer,
     MedicationRequestContainer,
+    MedicationStatementContainer,
     ObservationContainer,
     ObservationDefinitionContainer,
     OrganizationContainer,
@@ -174,6 +175,11 @@ class Container(containers.DeclarativeContainer):
         core=core,
     )
 
+    medication_statement = providers.Container(
+        MedicationStatementContainer,
+        core=core,
+    )
+
     questionnaire = providers.Container(
         QuestionnaireContainer,
         core=core,
@@ -246,25 +252,14 @@ class Container(containers.DeclarativeContainer):
 
 
 # The one process-wide Container instance. Lives here, not in app/main.py,
-
 # specifically so non-request-scoped internal modules (e.g.
-
 # app/fhir/validation/java_validator.py, which isn't wired through FastAPI's
-
 # Depends chain at all) can import this exact instance directly —
-
 # `from app.di.container import container` — without reaching through
-
 # app.main and creating a circular import (app.main already imports deep
-
 # into app.routers -> ... -> java_validator.py). app/main.py imports this
-
 # same object rather than constructing its own, so there is still only ever
-
 # one Container (and therefore one core.database Singleton) per process;
-
 # tests rely on that too (tests/conftest.py's `container.core.database.override(...)`
-
 # must override the exact instance every code path actually reads from).
-
 container = Container()

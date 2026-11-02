@@ -33,6 +33,7 @@ from . import group as group
 from . import healthcare_service as healthcare_service
 from . import location as location
 from . import medication_request as medication_request
+from . import medication_statement as medication_statement
 from . import observation as observation
 from . import observation_definition as observation_definition
 from . import organization as organization
@@ -74,6 +75,7 @@ __all__ = [
     "healthcare_service",
     "location",
     "medication_request",
+    "medication_statement",
     "observation",
     "observation_definition",
     "organization",

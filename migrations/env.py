@@ -40,6 +40,7 @@ import app.models.group
 import app.models.healthcare_service
 import app.models.location
 import app.models.medication_request
+import app.models.medication_statement
 import app.models.observation
 import app.models.observation_definition
 import app.models.organization

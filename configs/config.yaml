@@ -181,6 +181,7 @@ routes:
     - organization
     - location
     - medication_request
+    - medication_statement
     - observation
     - observation_definition
     - healthcare_service

@@ -124,14 +124,15 @@ Router → Service → Repository → ORM Model
 | CommunicationRequest  | 470000 |
 | Communication         | 480000 |
 | FamilyMemberHistory   | 490000 |
+| MedicationStatement   | 500000 |
 
-**Next available block: 500000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 510000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
 ## Multi-Tenancy & Ownership
 
-**As of this writing, every FHIR resource currently built in this codebase validates JWTs directly and enforces RBAC — there is no more "default/gateway-trusted" resource left.** This wasn't true historically (see "History" below) and may not stay true forever if a new resource is deliberately built against the plain pattern again, so don't assume it without checking `app/routers/<resource>/core.py` for `require_permission(...)` — but today, every one of: Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport, Patient, Condition, Specimen, DocumentReference, CarePlan, CareTeam, EpisodeOfCare, ObservationDefinition, ActivityDefinition, PlanDefinition, Procedure, Group, Consent, Goal, CommunicationRequest, Communication, AllergyIntolerance, and FamilyMemberHistory (`app/auth/` — JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) follows the exact shape below.
+**As of this writing, every FHIR resource currently built in this codebase validates JWTs directly and enforces RBAC — there is no more "default/gateway-trusted" resource left.** This wasn't true historically (see "History" below) and may not stay true forever if a new resource is deliberately built against the plain pattern again, so don't assume it without checking `app/routers/<resource>/core.py` for `require_permission(...)` — but today, every one of: Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport, Patient, Condition, Specimen, DocumentReference, CarePlan, CareTeam, EpisodeOfCare, ObservationDefinition, ActivityDefinition, PlanDefinition, Procedure, Group, Consent, Goal, CommunicationRequest, Communication, AllergyIntolerance, FamilyMemberHistory, and MedicationStatement (`app/auth/` — JWKS-based verification via `pyjwt`'s `PyJWKClient`, flat `resource:action` RBAC scopes read off the JWT's `permissions` claim) follows the exact shape below.
 
 For every one of the resources above:
 

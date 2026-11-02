@@ -17,6 +17,7 @@ from .group import GroupContainer
 from .healthcare_service import HealthcareServiceContainer
 from .location import LocationContainer
 from .medication_request import MedicationRequestContainer
+from .medication_statement import MedicationStatementContainer
 from .observation import ObservationContainer
 from .observation_definition import ObservationDefinitionContainer
 from .organization import OrganizationContainer
@@ -59,6 +60,7 @@ __all__ = [
     "HealthcareServiceContainer",
     "LocationContainer",
     "MedicationRequestContainer",
+    "MedicationStatementContainer",
     "ObservationContainer",
     "ObservationDefinitionContainer",
     "OrganizationContainer",

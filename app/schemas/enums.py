@@ -820,6 +820,28 @@ class FamilyMemberHistoryQuantityComparator(str, Enum):
     gt = ">"
 
 
+# ---------------------------------------------------------------------------
+# MedicationStatement enums
+# ---------------------------------------------------------------------------
+
+
+class MedicationStatementStatus(str, Enum):
+    """
+    FHIR MedicationStatement.status value set (code, required) --
+    https://www.hl7.org/fhir/R4/valueset-medication-statement-status.html
+    """
+
+    active = "active"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    intended = "intended"
+    stopped = "stopped"
+    on_hold = "on-hold"
+    unknown = "unknown"
+    not_taken = "not-taken"
+
+
+
 
 
 
