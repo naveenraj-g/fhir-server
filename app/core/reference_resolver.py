@@ -49,6 +49,7 @@ from app.models.immunization import ImmunizationModel
 from app.models.immunization_recommendation import (
     ImmunizationRecommendationModel,
 )
+from app.models.risk_assessment import RiskAssessmentModel
 from app.models.medication_statement import MedicationStatementModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
@@ -138,6 +139,7 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
         ImmunizationRecommendationModel,
         "immunization_recommendation_id",
     ),
+    "RiskAssessment": (RiskAssessmentModel, "risk_assessment_id"),
 }
 
 

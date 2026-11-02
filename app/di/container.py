@@ -38,6 +38,7 @@ from app.di.modules import (
     QuestionnaireContainer,
     QuestionnaireResponseContainer,
     RelatedPersonContainer,
+    RiskAssessmentContainer,
     ScheduleContainer,
     ServiceRequestContainer,
     SlotContainer,
@@ -134,6 +135,11 @@ class Container(containers.DeclarativeContainer):
 
     immunization_recommendation = providers.Container(
         ImmunizationRecommendationContainer,
+        core=core,
+    )
+
+    risk_assessment = providers.Container(
+        RiskAssessmentContainer,
         core=core,
     )
 

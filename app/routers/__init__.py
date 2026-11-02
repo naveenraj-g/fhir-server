@@ -47,6 +47,7 @@ from . import procedure as procedure
 from . import questionnaire as questionnaire
 from . import questionnaire_response as questionnaire_response
 from . import related_person as related_person
+from . import risk_assessment as risk_assessment
 from . import schedule as schedule
 from . import service_request as service_request
 from . import slot as slot
@@ -91,6 +92,7 @@ __all__ = [
     "questionnaire",
     "questionnaire_response",
     "related_person",
+    "risk_assessment",
     "schedule",
     "service_request",
     "slot",
