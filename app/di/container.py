@@ -27,6 +27,7 @@ from app.di.modules import (
     ImmunizationContainer,
     ImmunizationRecommendationContainer,
     LocationContainer,
+    MeasureContainer,
     MedicationRequestContainer,
     MedicationStatementContainer,
     ObservationContainer,
@@ -128,6 +129,11 @@ class Container(containers.DeclarativeContainer):
 
     location = providers.Container(
         LocationContainer,
+        core=core,
+    )
+
+    measure = providers.Container(
+        MeasureContainer,
         core=core,
     )
 
