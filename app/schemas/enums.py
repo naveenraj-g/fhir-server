@@ -1155,6 +1155,40 @@ class MedicationDispenseNoteAuthorReferenceType(str, Enum):
     Organization = "Organization"
 
 
+# ── Medication Enums ────────────────────────────────────────────────────────
+
+
+class MedicationStatus(str, Enum):
+    """FHIR Medication.status value set (code) —
+    http://hl7.org/fhir/R4/valueset-medication-status.html
+    """
+
+    active = "active"
+    inactive = "inactive"
+    entered_in_error = "entered-in-error"
+
+
+class MedicationManufacturerReferenceType(str, Enum):
+    Organization = "Organization"
+
+
+class MedicationIngredientItemReferenceType(str, Enum):
+    Substance = "Substance"
+    Medication = "Medication"
+
+
+class MedicationIdentifierAssignerReferenceType(str, Enum):
+    Organization = "Organization"
+
+
+class MedicationQuantityComparator(str, Enum):
+    lt = "<"
+    le = "<="
+    ge = ">="
+    gt = ">"
+
+
+
 
 
 

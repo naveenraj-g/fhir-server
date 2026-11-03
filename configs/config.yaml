@@ -186,6 +186,7 @@ routes:
     - location
     - measure
     - measure_report
+    - medication
     - medication_administration
     - medication_dispense
     - medication_request

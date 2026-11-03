@@ -31,6 +31,7 @@ from app.models.episode_of_care import EpisodeOfCareModel
 from app.models.group import GroupModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
+from app.models.medication import MedicationModel
 from app.models.medication_administration import MedicationAdministrationModel
 from app.models.medication_dispense import MedicationDispenseModel
 from app.models.medication_request import MedicationRequestModel
@@ -152,6 +153,10 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "SpecimenDefinition": (SpecimenDefinitionModel, "specimen_definition_id"),
     "Measure": (MeasureModel, "measure_id"),
     "MeasureReport": (MeasureReportModel, "measure_report_id"),
+    "Medication": (
+        MedicationModel,
+        "medication_id",
+    ),
     "MedicationAdministration": (
         MedicationAdministrationModel,
         "medication_administration_id",

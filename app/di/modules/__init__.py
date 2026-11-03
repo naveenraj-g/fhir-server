@@ -23,6 +23,7 @@ from .risk_assessment import RiskAssessmentContainer
 from .location import LocationContainer
 from .measure import MeasureContainer
 from .measure_report import MeasureReportContainer
+from .medication import MedicationContainer
 from .medication_administration import MedicationAdministrationContainer
 from .medication_dispense import MedicationDispenseContainer
 from .medication_request import MedicationRequestContainer
@@ -75,6 +76,7 @@ __all__ = [
     "LocationContainer",
     "MeasureContainer",
     "MeasureReportContainer",
+    "MedicationContainer",
     "MedicationAdministrationContainer",
     "MedicationDispenseContainer",
     "MedicationRequestContainer",

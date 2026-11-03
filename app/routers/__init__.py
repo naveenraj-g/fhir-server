@@ -38,6 +38,7 @@ from . import immunization_recommendation as immunization_recommendation
 from . import location as location
 from . import measure as measure
 from . import measure_report as measure_report
+from . import medication as medication
 from . import medication_administration as medication_administration
 from . import medication_dispense as medication_dispense
 from . import medication_request as medication_request
@@ -90,6 +91,7 @@ __all__ = [
     "location",
     "measure",
     "measure_report",
+    "medication",
     "medication_administration",
     "medication_dispense",
     "medication_request",
