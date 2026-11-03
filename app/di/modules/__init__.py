@@ -26,6 +26,7 @@ from .measure_report import MeasureReportContainer
 from .medication import MedicationContainer
 from .medication_administration import MedicationAdministrationContainer
 from .medication_dispense import MedicationDispenseContainer
+from .medication_knowledge import MedicationKnowledgeContainer
 from .medication_request import MedicationRequestContainer
 from .medication_statement import MedicationStatementContainer
 from .observation import ObservationContainer
@@ -79,6 +80,7 @@ __all__ = [
     "MedicationContainer",
     "MedicationAdministrationContainer",
     "MedicationDispenseContainer",
+    "MedicationKnowledgeContainer",
     "MedicationRequestContainer",
     "MedicationStatementContainer",
     "ObservationContainer",

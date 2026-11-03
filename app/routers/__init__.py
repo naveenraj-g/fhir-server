@@ -41,6 +41,7 @@ from . import measure_report as measure_report
 from . import medication as medication
 from . import medication_administration as medication_administration
 from . import medication_dispense as medication_dispense
+from . import medication_knowledge as medication_knowledge
 from . import medication_request as medication_request
 from . import medication_statement as medication_statement
 from . import observation as observation
@@ -94,6 +95,7 @@ __all__ = [
     "medication",
     "medication_administration",
     "medication_dispense",
+    "medication_knowledge",
     "medication_request",
     "medication_statement",
     "observation",

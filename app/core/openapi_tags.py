@@ -119,6 +119,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "MedicationKnowledge",
+        "description": (
+            "FHIR R4 MedicationKnowledge resources — information about a medication that is used "
+            "to support knowledge, clinical decision support, and medication catalog definitions."
+        ),
+    },
+    {
         "name": "MedicationRequests",
         "description": (
             "FHIR R4 MedicationRequest resources — prescriptions and medication orders for patients. "

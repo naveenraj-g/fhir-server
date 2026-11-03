@@ -189,6 +189,7 @@ routes:
     - medication
     - medication_administration
     - medication_dispense
+    - medication_knowledge
     - medication_request
     - medication_statement
     - observation

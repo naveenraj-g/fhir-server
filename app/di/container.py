@@ -32,6 +32,7 @@ from app.di.modules import (
     MedicationContainer,
     MedicationAdministrationContainer,
     MedicationDispenseContainer,
+    MedicationKnowledgeContainer,
     MedicationRequestContainer,
     MedicationStatementContainer,
     ObservationContainer,
@@ -158,6 +159,11 @@ class Container(containers.DeclarativeContainer):
 
     medication_dispense = providers.Container(
         MedicationDispenseContainer,
+        core=core,
+    )
+
+    medication_knowledge = providers.Container(
+        MedicationKnowledgeContainer,
         core=core,
     )
 

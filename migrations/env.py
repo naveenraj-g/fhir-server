@@ -47,6 +47,7 @@ import app.models.location
 import app.models.medication
 import app.models.medication_administration
 import app.models.medication_dispense
+import app.models.medication_knowledge
 import app.models.medication_request
 import app.models.medication_statement
 import app.models.measure
