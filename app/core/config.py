@@ -96,7 +96,7 @@ class FhirProfileCacheConfig(BaseModel):
     doesn't hit Postgres on every request. Covers all three scope levels in
     the base -> country -> organization chain (app/services/fhir_profile/core.py):
     base profiles (immutable — no admin write path exists for them, see
-    app/fhir/profiling/README.md — so once cached, never invalidated), and
+    scripts/data/profiling/README.md — so once cached, never invalidated), and
     country/organization profiles (evict on write once each one's admin
     edit path exists — FhirProfileService already has both
     invalidate_country_profile() and invalidate_organization_profile()
@@ -169,7 +169,7 @@ class FhirValidationConfig(BaseModel):
     # country is one config edit + redeploy, not a runtime lookup. Only
     # consulted when backend is "java_validator"; "native" has no concept of
     # profiles at all. Only takes effect for a resource_type that actually
-    # has an `app/fhir/profiling/<resource_type>/country_<code>.json` file —
+    # has a `scripts/data/profiling/resources/<resource_type>/country_<code>.json` file —
     # falls back to base R4 for any resource_type that doesn't yet.
     country: str | None = None
 

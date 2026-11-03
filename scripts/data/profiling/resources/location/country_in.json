@@ -1,0 +1,89 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "in-location",
+  "url": "https://fhir-server.dev/fhir/StructureDefinition/in-location",
+  "name": "INLocation",
+  "title": "India Location Profile",
+  "status": "draft",
+  "description": "Country-layer profile for Location under Indian jurisdiction. Authored by this project, NOT an official NRCES/ABDM-published profile — the identifier-system URI below is a project-chosen placeholder; swap in the real NRCES/ABDM canonical URL if/when integrating with India's official ABDM FHIR Implementation Guide. Requires a physical address with state and a valid 6-digit Indian PIN code on every Location, plus an optional Health Facility Registry (HFR) identifier (Ayushman Bharat Digital Mission) for Locations that are themselves a registered physical healthcare facility — mirrors in-organization's own hfr-id slice, but placed here instead since ABDM's Health Facility Registry registers physical premises, which map to Location, not the legal provider entity (Organization). Extensions are deliberately disallowed (Location.extension narrowed to max=0 below) since none are defined yet — same governance decision as in-organization.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "Location",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Location",
+  "derivation": "constraint",
+  "_comment_element_order": "Same two validator-version quirks documented in country_in.json for Organization (org.hl7.fhir.validation 6.5.18) apply here too: (1) within the hfr-id slice, .use must be listed BEFORE .system (the slicing discriminator's own target sub-element), or the discriminator fails to resolve. (2) the Location.extension max=0 constraint must be listed BEFORE the Location.identifier slicing block, not after, or the hfr-id required/format checks silently stop being enforced. Neither failure is visible at /profiles registration time, only at /validate. Not a real StructureDefinition field — a note for whoever edits this file next.",
+  "differential": {
+    "element": [
+      {
+        "id": "Location.extension",
+        "path": "Location.extension",
+        "max": "0",
+        "comment": "No custom extensions are defined for this profile yet, so max is narrowed to 0 — same reasoning and same validator-ordering requirement (must stay BEFORE the Location.identifier block below) as Organization's own in-organization profile — see _comment_element_order above."
+      },
+      {
+        "id": "Location.address",
+        "path": "Location.address",
+        "min": 1,
+        "comment": "Base R4 Location.address is 0..1 — legally narrowed to 1..1 here. A physical address is required for any Location registered under this profile; a Location with no address at all can't carry a PIN code or state, both required below."
+      },
+      {
+        "id": "Location.address.state",
+        "path": "Location.address.state",
+        "min": 1,
+        "comment": "Required for Indian facility addresses — used for state-level regulatory/administrative classification (e.g. state health department reporting), not enforced at the base R4 layer."
+      },
+      {
+        "id": "Location.address.postalCode",
+        "path": "Location.address.postalCode",
+        "min": 1,
+        "constraint": [
+          {
+            "key": "in-loc-1",
+            "severity": "error",
+            "human": "postalCode must be a valid 6-digit Indian PIN code (first digit 1-9, no leading zero).",
+            "expression": "value.matches('^[1-9][0-9]{5}$')"
+          }
+        ]
+      },
+      {
+        "id": "Location.identifier",
+        "path": "Location.identifier",
+        "slicing": {
+          "discriminator": [
+            { "type": "value", "path": "system" }
+          ],
+          "rules": "open",
+          "description": "Slices Location.identifier by system to separately track the India-specific HFR registry identifier alongside any other identifiers a location may carry — 'open' so unrelated identifiers (internal references, etc.) are still allowed."
+        }
+      },
+      {
+        "id": "Location.identifier:hfr-id",
+        "path": "Location.identifier",
+        "sliceName": "hfr-id",
+        "short": "ABDM Health Facility Registry ID",
+        "min": 0,
+        "max": "1",
+        "comment": "0..1 at this generic country layer since not every Location using this profile is itself a registered physical healthcare facility (e.g. a ward or room sub-Location under a registered site). A tenant-layer (organization-scope) profile for an actual registered site Location would tighten this to 1..1 — narrowing an already-allowed 0..1 down to 1..1 is a legal profile-of-a-profile per the narrowing rule (see docs/structure-definitions/05-cardinality-and-multiplicity.md).",
+        "constraint": [
+          {
+            "key": "in-loc-2",
+            "severity": "error",
+            "human": "HFR ID identifier's use must be 'official' or 'temp'.",
+            "expression": "use = 'official' or use = 'temp'"
+          }
+        ]
+      },
+      {
+        "id": "Location.identifier:hfr-id.use",
+        "path": "Location.identifier.use",
+        "min": 1
+      },
+      {
+        "id": "Location.identifier:hfr-id.system",
+        "path": "Location.identifier.system",
+        "fixedUri": "https://fhir-server.dev/fhir/identifier-system/hfr-id"
+      }
+    ]
+  }
+}

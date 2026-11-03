@@ -7,7 +7,7 @@ from app.models.fhir_profile.fhir_profile import FhirProfile
 class _CoreMixin:
     """Plain reads, plus the draft -> active -> retired write path for the
     country/organization layers (base is seeded once, never admin-editable
-    — see app/fhir_profile/seed_base_profiles.py)."""
+    — see scripts/profiling/seed_base_profiles.py)."""
 
     async def get_base(self, resource_type: str) -> FhirProfile | None:
         """No status filter, deliberately — base has no draft/active/

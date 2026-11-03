@@ -122,10 +122,10 @@ fhir_validation:
   # deployment serves one country (same model as a single-hospital rollout
   # or a single-country SaaS deployment) — not resolved per-request/tenant;
   # see app/fhir/validation/dispatch.py's module docstring for why. Only
-  # takes effect for a resource_type that has an
-  # app/fhir/profiling/<resource_type>/country_<code>.json file — falls
-  # back to base R4 for any resource_type that doesn't yet (today, only
-  # Organization has one).
+  # takes effect for a resource_type that has a
+  # scripts/data/profiling/resources/<resource_type>/country_<code>.json file — falls
+  # back to base R4 for any resource_type that doesn't yet (today,
+  # Organization and Location each have one).
   country: IN
   java_validator:
     # Host-mapped port from docker-compose.dev.yml (API runs on the host,
@@ -164,57 +164,57 @@ routes:
   # same list just gates whether each one is included at all, same as any
   # other entry here.
   enabled:
-    - activity_definition
-    - allergy_intolerance
-    - appointment
-    - appointment_response
-    - care_plan
-    - care_team
-    - clinical_impression
-    - condition
-    - consent
-    - detected_issue
-    - diagnostic_report
-    - document_reference
-    - encounter
-    - episode_of_care
-    - flag
-    - group
-    - immunization
-    - immunization_evaluation
-    - immunization_recommendation
+    # - activity_definition
+    # - allergy_intolerance
+    # - appointment
+    # - appointment_response
+    # - care_plan
+    # - care_team
+    # - clinical_impression
+    # - condition
+    # - consent
+    # - detected_issue
+    # - diagnostic_report
+    # - document_reference
+    # - encounter
+    # - episode_of_care
+    # - flag
+    # - group
+    # - immunization
+    # - immunization_evaluation
+    # - immunization_recommendation
     - organization
-    - location
-    - measure
-    - measure_report
-    - medication
-    - medication_administration
-    - medication_dispense
-    - medication_knowledge
-    - medication_request
-    - medication_statement
-    - observation
-    - observation_definition
-    - healthcare_service
-    - patient
-    - plan_definition
-    - practitioner
-    - practitioner_role
-    - procedure
-    - questionnaire
-    - questionnaire_response
-    - related_person
-    - risk_assessment
-    - schedule
-    - service_request
-    - slot
-    - specimen
-    - specimen_definition
-    - task
-    - goal
-    - communication
-    - communication_request
-    - family_member_history
-    - terminology
+    # - location
+    # - measure
+    # - measure_report
+    # - medication
+    # - medication_administration
+    # - medication_dispense
+    # - medication_knowledge
+    # - medication_request
+    # - medication_statement
+    # - observation
+    # - observation_definition
+    # - healthcare_service
+    # - patient
+    # - plan_definition
+    # - practitioner
+    # - practitioner_role
+    # - procedure
+    # - questionnaire
+    # - questionnaire_response
+    # - related_person
+    # - risk_assessment
+    # - schedule
+    # - service_request
+    # - slot
+    # - specimen
+    # - specimen_definition
+    # - task
+    # - goal
+    # - communication
+    # - communication_request
+    # - family_member_history
+    # - terminology
     - fhir_profile
     - fhir_validate

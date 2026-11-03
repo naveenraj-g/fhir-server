@@ -20,7 +20,7 @@ from app.models.fhir_profile.enums import FhirProfileScopeLevel, FhirProfileStat
 class FhirProfile(FHIRBase):
     """One row per profile layer in the base -> country -> organization
     chain — the database-backed registry this project's file-based
-    app/fhir/profiling/ stands in for today (see that folder's README).
+    scripts/data/profiling/ stands in for today (see that folder's README).
     Each row's `structure_definition` is a real, complete FHIR
     `StructureDefinition` document — the same shape as the files already
     committed there — not a trimmed custom shape; registering a row with
@@ -51,7 +51,7 @@ class FhirProfile(FHIRBase):
         Index("ix_fhir_profile_scope_id", "scope_id"),
         # Base rows have no draft -> active -> retired lifecycle at all —
         # there is exactly one HL7-published StructureDefinition per
-        # resource_type (see app/fhir_profile/seed_base_profiles.py), and
+        # resource_type (see scripts/profiling/seed_base_profiles.py), and
         # its own `status` is HL7's real published maturity for that
         # resource (confirmed: Organization's is genuinely "draft" in
         # HL7's own R4 bundle, not an authoring mistake here) — unrelated

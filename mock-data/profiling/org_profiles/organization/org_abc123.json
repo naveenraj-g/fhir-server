@@ -1,0 +1,32 @@
+{
+  "resource_type": "Organization",
+  "scope_level": "organization",
+  "scope_id": "org_abc123",
+  "structure_definition": {
+    "resourceType": "StructureDefinition",
+    "id": "org-abc123-organization",
+    "url": "https://fhir-server.dev/fhir/StructureDefinition/org-abc123-organization",
+    "name": "OrgAbc123Organization",
+    "title": "Org Abc123 (Sample Hospital) Organization Profile",
+    "status": "draft",
+    "description": "Tenant-layer profile for org_abc123, a sample registered hospital. Narrows the India country profile (in-organization) one step further: this tenant IS a registered ABDM healthcare facility, so the hfr-id identifier slice — optional (0..1) at the generic country layer, since not every Organization under that profile is itself a facility — is tightened to required (1..1) here.",
+    "fhirVersion": "4.0.1",
+    "kind": "resource",
+    "abstract": false,
+    "type": "Organization",
+    "baseDefinition": "https://fhir-server.dev/fhir/StructureDefinition/in-organization",
+    "derivation": "constraint",
+    "differential": {
+      "element": [
+        {
+          "id": "Organization.identifier:hfr-id",
+          "path": "Organization.identifier",
+          "sliceName": "hfr-id",
+          "short": "ABDM Health Facility Registry ID (required for this tenant)",
+          "min": 1,
+          "max": "1"
+        }
+      ]
+    }
+  }
+}

@@ -19,7 +19,7 @@ async def test_create_rejects_naive_datetime_period(client):
     catch it before anything is written.
 
     Uses a real identifier.system (the India country-layer profile's GSTIN
-    URI, see app/fhir/profiling/organization/country_in.json) rather than
+    URI, see scripts/data/profiling/resources/organization/country_in.json) rather than
     an http://example.org placeholder — the java validator sidecar flags
     example.org/example.com URLs as "not allowed in this context" in any
     profile, which would otherwise fail before the period check under test

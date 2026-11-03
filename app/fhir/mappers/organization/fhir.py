@@ -314,7 +314,7 @@ def fhir_org_endpoint(e: OrganizationEndpoint) -> dict:
 
 
 # Base URL for this server's own, not-yet-formally-registered extensions —
-# same convention as app/fhir/profiling/organization/country_in.json's
+# same convention as scripts/data/profiling/resources/organization/country_in.json's
 # StructureDefinition URLs.
 _EXT_BASE = "https://fhir-server.dev/fhir/StructureDefinition"
 

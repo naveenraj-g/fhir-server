@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
+from app.auth.models import AuthUser
+from app.auth.rbac import require_permission
 from app.di.dependencies.fhir_profile import get_fhir_profile_service
 from app.schemas.fhir_profile import (
-    FhirProfileActivateSchema,
     FhirProfileCreateSchema,
     FhirProfileListResponse,
     FhirProfilePatchSchema,
@@ -40,14 +41,20 @@ router = APIRouter()
 )
 async def create_fhir_profile(
     body: FhirProfileCreateSchema,
+    actor: AuthUser = Depends(require_permission("fhir_profile", "create")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
+    """created_by comes from the verified JWT's sub (actor.sub), not the
+    request body — same convention as every other currently-built
+    resource (see CLAUDE.md's Multi-Tenancy & Ownership). FhirProfile has
+    no org_id column (it's a system-level config table, not tenant data),
+    so there's no org-scoping check here, only the RBAC permission gate."""
     profile = await service.create_profile(
         resource_type=body.resource_type,
         scope_level=body.scope_level,
         scope_id=body.scope_id,
         structure_definition=body.structure_definition,
-        created_by=body.created_by,
+        created_by=actor.sub,
     )
     return JSONResponse(
         content=jsonable_encoder(FhirProfileResponse.model_validate(profile)),
@@ -73,6 +80,7 @@ async def list_fhir_profiles(
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    actor: AuthUser = Depends(require_permission("fhir_profile", "read")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
     total, rows = await service.list_profiles(
@@ -95,6 +103,7 @@ async def list_fhir_profiles(
 )
 async def get_fhir_profile(
     profile_id: int,
+    actor: AuthUser = Depends(require_permission("fhir_profile", "read")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
     profile = await service.get_profile(profile_id)
@@ -120,10 +129,13 @@ async def get_fhir_profile(
 async def patch_fhir_profile(
     profile_id: int,
     body: FhirProfilePatchSchema,
+    actor: AuthUser = Depends(require_permission("fhir_profile", "update")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
+    """updated_by comes from the verified JWT's sub (actor.sub), not the
+    request body — same convention as create_fhir_profile above."""
     profile = await service.update_draft_profile(
-        profile_id, body.structure_definition, body.updated_by
+        profile_id, body.structure_definition, actor.sub
     )
     return JSONResponse(
         content=jsonable_encoder(FhirProfileResponse.model_validate(profile))
@@ -148,10 +160,12 @@ async def patch_fhir_profile(
 )
 async def activate_fhir_profile(
     profile_id: int,
-    body: FhirProfileActivateSchema,
+    actor: AuthUser = Depends(require_permission("fhir_profile", "update")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
-    profile = await service.activate_profile(profile_id, body.updated_by)
+    """No request body — updated_by comes from the verified JWT's sub
+    (actor.sub), and there's nothing else for this action to accept."""
+    profile = await service.activate_profile(profile_id, actor.sub)
     return JSONResponse(
         content=jsonable_encoder(FhirProfileResponse.model_validate(profile))
     )
@@ -170,6 +184,7 @@ async def activate_fhir_profile(
 )
 async def delete_fhir_profile(
     profile_id: int,
+    actor: AuthUser = Depends(require_permission("fhir_profile", "delete")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
     await service.delete_profile(profile_id)

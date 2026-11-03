@@ -103,8 +103,11 @@ def mount_routers(app: FastAPI) -> None:
     ASGITransport doesn't run the ASGI lifespan protocol on its own.
     get_current_user runs once for every route mounted here — decodes the
     JWT and sets request.state.user. Individual routes add
-    require_permission(...) on top for fine-grained access control
-    (currently wired for Patient/Practitioner/Organization only).
+    require_permission(...) on top for fine-grained access control — every
+    currently-built FHIR resource under the shared api_router has this
+    wired (see CLAUDE.md's Multi-Tenancy & Ownership), and fhir_profile
+    (one of the own-prefix routers below) now does too; terminology and
+    fhir_validate don't yet.
 
     One `enabled_routes` set, computed once here, is the only thing either
     group checks — deliberately not two separate checks living in two

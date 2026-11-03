@@ -10,7 +10,7 @@ class CreatableProfileScopeLevel(str, Enum):
     """scope_level values valid for FhirProfileCreateSchema — deliberately
     narrower than app.models.fhir_profile.enums.FhirProfileScopeLevel,
     which also has 'base'. Base profiles are seeded from the HL7 bundle
-    (see app/fhir_profile/seed_base_profiles.py), never created through
+    (see scripts/profiling/seed_base_profiles.py), never created through
     this endpoint — FhirProfileService.create_profile() already rejects
     'base' with a 422 at runtime, but narrowing the type here means a bad
     value (a typo, or 'base' itself) gets a clean Pydantic validation
@@ -25,7 +25,7 @@ class CreatableProfileScopeLevel(str, Enum):
 
 class FhirProfileCreateSchema(BaseModel):
     """Create a country or organization profile — never base, which is
-    seeded once from the HL7 bundle (see app/fhir_profile/seed_base_profiles.py)
+    seeded once from the HL7 bundle (see scripts/profiling/seed_base_profiles.py)
     and has no write path here. `scope_id` is the country code for
     scope_level='country' or the org's public org_id for
     scope_level='organization'; required for both.
@@ -34,7 +34,11 @@ class FhirProfileCreateSchema(BaseModel):
     organization -> the active country profile for this deployment's
     configured country if one exists, else base) and overwrites whatever
     `structure_definition['baseDefinition']` the caller sent to match —
-    the chain is enforced server-side, not trusted from the request."""
+    the chain is enforced server-side, not trusted from the request.
+
+    `created_by` is NOT a field here — same as every other currently-built
+    resource (see CLAUDE.md's Multi-Tenancy & Ownership), it comes from the
+    verified JWT's `sub` at the router layer, not the request body."""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -53,7 +57,6 @@ class FhirProfileCreateSchema(BaseModel):
                     "type": "Organization",
                     "differential": {"element": []},
                 },
-                "created_by": "user_42",
             }
         },
     )
@@ -62,13 +65,15 @@ class FhirProfileCreateSchema(BaseModel):
     scope_level: CreatableProfileScopeLevel
     scope_id: str
     structure_definition: dict
-    created_by: str
 
 
 class FhirProfilePatchSchema(BaseModel):
     """Replaces a draft profile's structure_definition wholesale — only
     valid while status='draft'; an active or retired row is immutable
-    history (create a new version via FhirProfileCreateSchema instead)."""
+    history (create a new version via FhirProfileCreateSchema instead).
+
+    `updated_by` is NOT a field here — comes from the verified JWT's `sub`
+    at the router layer, same as every other currently-built resource."""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -78,21 +83,11 @@ class FhirProfilePatchSchema(BaseModel):
                     "resourceType": "StructureDefinition",
                     "differential": {"element": []},
                 },
-                "updated_by": "user_42",
             }
         },
     )
 
     structure_definition: dict
-    updated_by: str
-
-
-class FhirProfileActivateSchema(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid", json_schema_extra={"example": {"updated_by": "user_42"}}
-    )
-
-    updated_by: str
 
 
 class FhirProfileResponse(BaseModel):

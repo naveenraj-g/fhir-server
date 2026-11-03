@@ -6,7 +6,7 @@ Repository: all DB I/O).
 Covers all three scope levels in the base -> country -> organization chain,
 matching configs/cache.yaml's fhir_profile_cache design:
   - base profiles: never invalidated — no admin write path exists for them
-    (seeded once from the HL7 bundle, see app/fhir_profile/seed_base_profiles.py).
+    (seeded once from the HL7 bundle, see scripts/profiling/seed_base_profiles.py).
   - country profiles: cached the same way, but invalidate_country_profile()
     below exists for the future super-admin edit path to call —
     evict-on-write, not update-in-place, so the next read repopulates from
@@ -145,7 +145,7 @@ class _CoreMixin:
     # ── Write path: draft -> active -> retired ──────────────────────────
     #
     # Base profiles are never created here (seeded once from the HL7
-    # bundle, see app/fhir_profile/seed_base_profiles.py). Country and
+    # bundle, see scripts/profiling/seed_base_profiles.py). Country and
     # organization profiles go through create_profile() -> (optionally
     # update_draft_profile() while still a draft) -> activate_profile(),
     # which is the only path to status='active' and is what retires

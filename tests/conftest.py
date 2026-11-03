@@ -311,10 +311,10 @@ def _register_sqlite_math(dbapi_conn, _connection_record) -> None:
 # check it (GSTIN/PAN enforcement in test_core.py, test_base_r4_validation.py)
 # would stop testing anything real while still reporting green. Seeded from
 # the exact same committed JSON the real DB is seeded from
-# (app/fhir/profiling/, see its README and app/fhir_profile/seed_*.py) so
-# there's one source of truth, not a hand-rolled test fixture that can drift.
+# (scripts/data/profiling/, see its README and scripts/profiling/seed_*.py)
+# so there's one source of truth, not a hand-rolled test fixture that can drift.
 
-_PROFILING_ROOT = Path(__file__).resolve().parent.parent / "app" / "fhir" / "profiling"
+_PROFILING_ROOT = Path(__file__).resolve().parent.parent / "scripts" / "data" / "profiling"
 
 
 async def _seed_fhir_profiles(engine) -> None:
@@ -322,10 +322,10 @@ async def _seed_fhir_profiles(engine) -> None:
     from app.models.fhir_profile.fhir_profile import FhirProfile
 
     base_sd = json.loads(
-        (_PROFILING_ROOT / "organization" / "base_fhir_r4.json").read_text(encoding="utf-8")
+        (_PROFILING_ROOT / "base_fhir_r4.json").read_text(encoding="utf-8")
     )
     country_sd = json.loads(
-        (_PROFILING_ROOT / "organization" / "country_in.json").read_text(encoding="utf-8")
+        (_PROFILING_ROOT / "resources" / "organization" / "country_in.json").read_text(encoding="utf-8")
     )
 
     session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

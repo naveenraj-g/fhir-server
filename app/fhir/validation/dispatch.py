@@ -20,7 +20,7 @@ The country-layer StructureDefinition itself comes from the fhir_profile DB
 table, through FhirProfileService's cache-aside read (base: never
 invalidated; country: invalidated on write once an admin edit path exists —
 see that service's own docstring) — not from the file-based
-app/fhir/profiling/ convention that stood in for it before that table
+scripts/data/profiling/ convention that stood in for it before that table
 existed. This module is the only caller that resolves it, so
 java_validator.py's registration path stays a plain "register this dict"
 step with no DB/cache concerns of its own.
@@ -41,7 +41,7 @@ logger = get_logger(__name__)
 _BASE_PROFILE_URL = "http://hl7.org/fhir/StructureDefinition/{resource_type}"
 
 # Country-layer profiles are this project's own, not HL7-published — see
-# app/fhir/profiling/README.md. URL and registration-cache layer name both
+# scripts/data/profiling/README.md. URL and registration-cache layer name both
 # derive from (country, resource_type) by this one convention; nothing
 # fetches a profile just to discover its own URL — though the row's own
 # "url" field (from FhirProfileService) is used verbatim when present, since
