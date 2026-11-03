@@ -185,6 +185,7 @@ routes:
     - organization
     - location
     - measure
+    - measure_report
     - medication_request
     - medication_statement
     - observation

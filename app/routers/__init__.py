@@ -37,6 +37,7 @@ from . import immunization as immunization
 from . import immunization_recommendation as immunization_recommendation
 from . import location as location
 from . import measure as measure
+from . import measure_report as measure_report
 from . import medication_request as medication_request
 from . import medication_statement as medication_statement
 from . import observation as observation
@@ -86,6 +87,7 @@ __all__ = [
     "immunization_recommendation",
     "location",
     "measure",
+    "measure_report",
     "medication_request",
     "medication_statement",
     "observation",

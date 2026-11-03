@@ -53,6 +53,7 @@ from app.models.risk_assessment import RiskAssessmentModel
 from app.models.clinical_impression import ClinicalImpressionModel
 from app.models.detected_issue import DetectedIssueModel
 from app.models.measure import MeasureModel
+from app.models.measure_report import MeasureReportModel
 from app.models.specimen_definition import SpecimenDefinitionModel
 from app.models.medication_statement import MedicationStatementModel
 from app.models.practitioner import PractitionerModel
@@ -148,6 +149,7 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "DetectedIssue": (DetectedIssueModel, "detected_issue_id"),
     "SpecimenDefinition": (SpecimenDefinitionModel, "specimen_definition_id"),
     "Measure": (MeasureModel, "measure_id"),
+    "MeasureReport": (MeasureReportModel, "measure_report_id"),
 }
 
 

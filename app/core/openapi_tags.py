@@ -294,6 +294,19 @@ OPENAPI_TAGS: list[dict] = [
             "Coding, date, etc.)."
         ),
     },
+    # ── Quality Reporting ─────────────────────────────────────────────────────
+    {
+        "name": "Measures",
+        "description": (
+            "FHIR R4 Measure resources — quality measure or clinical quality measure definitions."
+        ),
+    },
+    {
+        "name": "MeasureReports",
+        "description": (
+            "FHIR R4 MeasureReport resources — results of the calculation of quality measures."
+        ),
+    },
     # ── Terminology ───────────────────────────────────────────────────────────
     {
         "name": "Terminology",
