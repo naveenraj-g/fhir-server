@@ -18,6 +18,7 @@ from .flag import FlagContainer
 from .group import GroupContainer
 from .healthcare_service import HealthcareServiceContainer
 from .immunization import ImmunizationContainer
+from .immunization_evaluation import ImmunizationEvaluationContainer
 from .immunization_recommendation import ImmunizationRecommendationContainer
 from .risk_assessment import RiskAssessmentContainer
 from .location import LocationContainer
@@ -73,6 +74,7 @@ __all__ = [
     "GroupContainer",
     "HealthcareServiceContainer",
     "ImmunizationContainer",
+    "ImmunizationEvaluationContainer",
     "ImmunizationRecommendationContainer",
     "LocationContainer",
     "MeasureContainer",

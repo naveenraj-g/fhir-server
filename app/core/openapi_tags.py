@@ -104,6 +104,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "ImmunizationEvaluations",
+        "description": (
+            "FHIR R4 ImmunizationEvaluation resources — evaluation results of a vaccine administration "
+            "event against published recommendations or protocols."
+        ),
+    },
+    {
         "name": "Specimens",
         "description": (
             "FHIR R4 Specimen resources — biological material collected from a patient for "

@@ -1242,6 +1242,24 @@ class MedicationKnowledgeQuantityComparator(str, Enum):
     gt = ">"
 
 
+class ImmunizationEvaluationStatus(str, Enum):
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+
+
+class ImmunizationEvaluationPatientReferenceType(str, Enum):
+    Patient = "Patient"
+
+
+class ImmunizationEvaluationAuthorityReferenceType(str, Enum):
+    Organization = "Organization"
+
+
+class ImmunizationEvaluationImmunizationEventReferenceType(str, Enum):
+    Immunization = "Immunization"
+
+
+
 
 
 

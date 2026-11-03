@@ -181,6 +181,7 @@ routes:
     - flag
     - group
     - immunization
+    - immunization_evaluation
     - immunization_recommendation
     - organization
     - location

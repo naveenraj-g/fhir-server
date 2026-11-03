@@ -34,6 +34,7 @@ from . import flag as flag
 from . import group as group
 from . import healthcare_service as healthcare_service
 from . import immunization as immunization
+from . import immunization_evaluation as immunization_evaluation
 from . import immunization_recommendation as immunization_recommendation
 from . import location as location
 from . import measure as measure
@@ -88,6 +89,7 @@ __all__ = [
     "group",
     "healthcare_service",
     "immunization",
+    "immunization_evaluation",
     "immunization_recommendation",
     "location",
     "measure",

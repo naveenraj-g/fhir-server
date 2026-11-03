@@ -50,6 +50,7 @@ from app.models.communication import CommunicationModel
 from app.models.communication_request import CommunicationRequestModel
 from app.models.family_member_history import FamilyMemberHistoryModel
 from app.models.immunization import ImmunizationModel
+from app.models.immunization_evaluation import ImmunizationEvaluationModel
 from app.models.immunization_recommendation import (
     ImmunizationRecommendationModel,
 )
@@ -144,6 +145,10 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "FamilyMemberHistory": (FamilyMemberHistoryModel, "family_member_history_id"),
     "MedicationStatement": (MedicationStatementModel, "medication_statement_id"),
     "Immunization": (ImmunizationModel, "immunization_id"),
+    "ImmunizationEvaluation": (
+        ImmunizationEvaluationModel,
+        "immunization_evaluation_id",
+    ),
     "ImmunizationRecommendation": (
         ImmunizationRecommendationModel,
         "immunization_recommendation_id",

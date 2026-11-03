@@ -39,6 +39,7 @@ import app.models.goal
 import app.models.group
 import app.models.healthcare_service
 import app.models.immunization
+import app.models.immunization_evaluation
 import app.models.immunization_recommendation
 import app.models.risk_assessment
 import app.models.clinical_impression
