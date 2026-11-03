@@ -32,6 +32,7 @@ from app.models.group import GroupModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.location import LocationModel
 from app.models.medication_administration import MedicationAdministrationModel
+from app.models.medication_dispense import MedicationDispenseModel
 from app.models.medication_request import MedicationRequestModel
 from app.models.observation import ObservationModel
 from app.models.observation_definition import ObservationDefinitionModel
@@ -154,6 +155,10 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "MedicationAdministration": (
         MedicationAdministrationModel,
         "medication_administration_id",
+    ),
+    "MedicationDispense": (
+        MedicationDispenseModel,
+        "medication_dispense_id",
     ),
 }
 

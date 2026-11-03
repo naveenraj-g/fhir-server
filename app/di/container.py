@@ -30,6 +30,7 @@ from app.di.modules import (
     MeasureContainer,
     MeasureReportContainer,
     MedicationAdministrationContainer,
+    MedicationDispenseContainer,
     MedicationRequestContainer,
     MedicationStatementContainer,
     ObservationContainer,
@@ -146,6 +147,11 @@ class Container(containers.DeclarativeContainer):
 
     medication_administration = providers.Container(
         MedicationAdministrationContainer,
+        core=core,
+    )
+
+    medication_dispense = providers.Container(
+        MedicationDispenseContainer,
         core=core,
     )
 

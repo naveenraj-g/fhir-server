@@ -24,6 +24,7 @@ from .location import LocationContainer
 from .measure import MeasureContainer
 from .measure_report import MeasureReportContainer
 from .medication_administration import MedicationAdministrationContainer
+from .medication_dispense import MedicationDispenseContainer
 from .medication_request import MedicationRequestContainer
 from .medication_statement import MedicationStatementContainer
 from .observation import ObservationContainer
@@ -75,6 +76,7 @@ __all__ = [
     "MeasureContainer",
     "MeasureReportContainer",
     "MedicationAdministrationContainer",
+    "MedicationDispenseContainer",
     "MedicationRequestContainer",
     "MedicationStatementContainer",
     "ObservationContainer",

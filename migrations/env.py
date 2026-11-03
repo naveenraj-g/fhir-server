@@ -45,6 +45,7 @@ import app.models.clinical_impression
 import app.models.detected_issue
 import app.models.location
 import app.models.medication_administration
+import app.models.medication_dispense
 import app.models.medication_request
 import app.models.medication_statement
 import app.models.measure

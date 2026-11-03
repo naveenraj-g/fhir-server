@@ -313,6 +313,12 @@ OPENAPI_TAGS: list[dict] = [
             "FHIR R4 MedicationAdministration resources — event of a patient consuming or being administered a medication."
         ),
     },
+    {
+        "name": "MedicationDispenses",
+        "description": (
+            "FHIR R4 MedicationDispense resources — supply of a medication to a patient or consumer, along with instructions for use."
+        ),
+    },
     # ── Terminology ───────────────────────────────────────────────────────────
     {
         "name": "Terminology",
