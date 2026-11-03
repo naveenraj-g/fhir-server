@@ -307,6 +307,12 @@ OPENAPI_TAGS: list[dict] = [
             "FHIR R4 MeasureReport resources — results of the calculation of quality measures."
         ),
     },
+    {
+        "name": "MedicationAdministrations",
+        "description": (
+            "FHIR R4 MedicationAdministration resources — event of a patient consuming or being administered a medication."
+        ),
+    },
     # ── Terminology ───────────────────────────────────────────────────────────
     {
         "name": "Terminology",

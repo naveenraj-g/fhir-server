@@ -813,6 +813,28 @@ def assert_fhir_measure_report(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_medication_administration(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) medication_administration response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected medication_administration.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_medication_administration(data: dict, **expected) -> None:
+    """Assert fields on a FHIR medication_administration response."""
+    assert data.get("resourceType") == "MedicationAdministration", (
+        f"expected resourceType=MedicationAdministration, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected medication_administration.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+
 
 
 
