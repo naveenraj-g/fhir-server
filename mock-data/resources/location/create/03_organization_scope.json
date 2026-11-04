@@ -1,0 +1,22 @@
+{
+  "status": "active",
+  "name": "Sunrise Diagnostics - Bengaluru Branch (Main Site)",
+  "mode": "instance",
+  "address_use": "work",
+  "address_type": "both",
+  "address_line": ["No. 22, MG Road"],
+  "address_city": "Bengaluru",
+  "address_state": "Karnataka",
+  "address_postal_code": "560001",
+  "address_country": "IN",
+  "telecom": [
+    { "system": "phone", "value": "+91-80-45678901", "use": "work" }
+  ],
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/hfr-id",
+      "value": "IN2024HF00778899"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/hfr-id",
+      "value": "IN2024HF00998877"
+    }
+  ]
+}

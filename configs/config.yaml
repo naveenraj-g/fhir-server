@@ -127,6 +127,15 @@ fhir_validation:
   # back to base R4 for any resource_type that doesn't yet (today,
   # Organization and Location each have one).
   country: IN
+  # This deployment's own public base URL for canonical URLs it mints
+  # itself — country/organization profile URLs
+  # (app/fhir/validation/dispatch.py's _COUNTRY_PROFILE_URL/
+  # _ORGANIZATION_PROFILE_URL) are built as
+  # f"{canonical_base_url}/fhir/StructureDefinition/...". Change this if
+  # this server is ever hosted under a different domain — not the same
+  # thing as java_validator.base_url below (that's where to *reach* the
+  # sidecar, not what domain our own canonical URLs live under).
+  canonical_base_url: https://fhir-server.dev
   java_validator:
     # Host-mapped port from docker-compose.dev.yml (API runs on the host,
     # validator runs in Docker). Override via
@@ -158,11 +167,13 @@ routes:
   # every other resource was deleted to rebuild from scratch, one at a
   # time, against the now-settled tenant_id/coding-list conventions.
   #
-  # terminology, fhir_profile, and fhir_validate are each mounted in
-  # app/main.py directly instead, under their OWN distinct prefix
-  # (/api/v1/terminology, /api/v1/fhir-profiles, /api/v1/validate) — this
-  # same list just gates whether each one is included at all, same as any
-  # other entry here.
+  # terminology and fhir_validate are each mounted in app/main.py directly
+  # instead, under their OWN distinct prefix (/api/v1/terminology,
+  # /api/v1/validate) — this same list just gates whether each one is
+  # included at all, same as any other entry here. fhir_profile is mounted
+  # through the shared /api/fhir/v1 mechanism like every other resource
+  # (it manages real FHIR StructureDefinition documents), so it lives at
+  # /api/fhir/v1/fhir-profiles, not its own prefix.
   enabled:
     # - activity_definition
     # - allergy_intolerance
@@ -184,7 +195,7 @@ routes:
     # - immunization_evaluation
     # - immunization_recommendation
     - organization
-    # - location
+    - location
     # - measure
     # - measure_report
     # - medication

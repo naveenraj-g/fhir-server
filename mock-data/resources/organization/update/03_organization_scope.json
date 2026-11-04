@@ -1,0 +1,19 @@
+{
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+      "value": "29AAFCS1234N1Z5"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/pan",
+      "value": "AAFCS1234N"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/hfr-id",
+      "value": "IN2024HF00778899"
+    }
+  ]
+}

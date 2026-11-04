@@ -1,0 +1,122 @@
+{
+  "status": "active",
+  "name": "Kolkata Branch - Main Diagnostic Center",
+  "description": "Primary diagnostic imaging and pathology center for the Kolkata branch",
+  "mode": "instance",
+  "operational_status_system": "http://terminology.hl7.org/CodeSystem/v2-0116",
+  "operational_status_version": "2.9",
+  "operational_status_code": "O",
+  "operational_status_display": "Occupied",
+  "operational_status_user_selected": true,
+  "address_use": "work",
+  "address_type": "both",
+  "address_text": "4th Floor, Diamond Plaza, Park Street, Kolkata, West Bengal 700001, India",
+  "address_line": ["4th Floor, Diamond Plaza", "Park Street"],
+  "address_city": "Kolkata",
+  "address_district": "Kolkata",
+  "address_state": "West Bengal",
+  "address_postal_code": "700001",
+  "address_country": "IN",
+  "address_period_start": "2018-07-01T00:00:00Z",
+  "address_period_end": "2099-12-31T00:00:00Z",
+  "physical_type_coding": [
+    {
+      "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+      "version": "4.0.1",
+      "code": "bu",
+      "display": "Building",
+      "user_selected": true
+    }
+  ],
+  "physical_type_text": "Standalone Diagnostic Building",
+  "position_longitude": "88.3515213",
+  "position_latitude": "22.5529317",
+  "position_altitude": "11.5",
+  "managing_organization": "Organization/190002",
+  "managing_organization_display": "Meridian Healthcare - Kolkata Branch",
+  "part_of_identifier_use": "official",
+  "part_of_identifier_type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+  "part_of_identifier_type_version": "2.9",
+  "part_of_identifier_type_code": "XX",
+  "part_of_identifier_type_display": "Organization identifier",
+  "part_of_identifier_type_text": "Legacy facility registry ID",
+  "part_of_identifier_type_user_selected": false,
+  "part_of_identifier_system": "https://fhir-server.dev/fhir/identifier-system/legacy-facility-id",
+  "part_of_identifier_value": "LEGACY-KOL-DIAG-01",
+  "part_of_identifier_period_start": "2018-07-01T00:00:00Z",
+  "part_of_identifier_period_end": "2099-12-31T00:00:00Z",
+  "availability_exceptions": "Reduced services on public holidays; emergency desk remains open 24/7",
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/hfr-id",
+      "value": "IN2024HF00778899"
+    },
+    {
+      "use": "secondary",
+      "type_coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+          "version": "2.9",
+          "code": "XX",
+          "display": "Organization identifier",
+          "user_selected": false
+        }
+      ],
+      "type_text": "Facility Registration Number",
+      "system": "https://fhir-server.dev/fhir/identifier-system/facility-reg",
+      "value": "FRN-WB-0078123",
+      "period_start": "2018-07-01T00:00:00Z",
+      "period_end": "2099-12-31T00:00:00Z",
+      "assigner": "Organization/190002",
+      "assigner_display": "Meridian Healthcare - Kolkata Branch"
+    }
+  ],
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+          "version": "2018-08-12",
+          "code": "DX",
+          "display": "Diagnostics or therapeutics unit",
+          "user_selected": true
+        }
+      ],
+      "text": "Diagnostic Center"
+    }
+  ],
+  "alias": ["Kolkata Diagnostics", "Park Street Diagnostic Center"],
+  "telecom": [
+    { "system": "phone", "value": "+91-33-40120022", "use": "work", "rank": 1 },
+    { "system": "email", "value": "diagnostics.kolkata@meridianhealth.in", "use": "work", "rank": 2 }
+  ],
+  "hours_of_operation": [
+    {
+      "days_of_week": ["mon", "tue", "wed", "thu", "fri"],
+      "all_day": false,
+      "opening_time": "08:00:00",
+      "closing_time": "20:00:00"
+    },
+    {
+      "days_of_week": ["sat", "sun"],
+      "all_day": true
+    }
+  ],
+  "endpoint": [
+    {
+      "reference_display": "Kolkata Diagnostic Center FHIR Gateway",
+      "reference_identifier_use": "official",
+      "reference_identifier_type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "reference_identifier_type_version": "2.9",
+      "reference_identifier_type_code": "XX",
+      "reference_identifier_type_display": "Organization identifier",
+      "reference_identifier_type_text": "Endpoint registry ID",
+      "reference_identifier_type_user_selected": false,
+      "reference_identifier_system": "https://fhir-server.dev/fhir/identifier-system/endpoint-id",
+      "reference_identifier_value": "EP-MHG-KOL-DIAG-001",
+      "reference_identifier_period_start": "2022-01-01T00:00:00Z",
+      "reference_identifier_period_end": "2099-12-31T00:00:00Z"
+    }
+  ]
+}

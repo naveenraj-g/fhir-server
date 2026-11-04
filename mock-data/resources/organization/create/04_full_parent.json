@@ -1,0 +1,136 @@
+{
+  "active": true,
+  "name": "Meridian Healthcare Group",
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+      "value": "27AABCU9603R1Z5"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/pan",
+      "value": "AABCU9603R"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/hfr-id",
+      "value": "IN2024HF00112233"
+    },
+    {
+      "use": "secondary",
+      "type_coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+          "version": "2.9",
+          "code": "XX",
+          "display": "Organization identifier",
+          "user_selected": false
+        }
+      ],
+      "type_text": "Corporate Registration Number",
+      "system": "https://fhir-server.dev/fhir/identifier-system/corp-reg",
+      "value": "CRN-MH-0098231",
+      "period_start": "2010-04-01T00:00:00Z",
+      "period_end": "2035-03-31T00:00:00Z",
+      "assigner_display": "Registrar of Companies, Maharashtra",
+      "assigner_identifier_use": "official",
+      "assigner_identifier_type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "assigner_identifier_type_version": "2.9",
+      "assigner_identifier_type_code": "XX",
+      "assigner_identifier_type_display": "Organization identifier",
+      "assigner_identifier_type_text": "Government Registrar",
+      "assigner_identifier_type_user_selected": false,
+      "assigner_identifier_system": "https://www.mca.gov.in/registrar-ids",
+      "assigner_identifier_value": "ROC-MH-1956",
+      "assigner_identifier_period_start": "1956-01-01T00:00:00Z",
+      "assigner_identifier_period_end": "2099-12-31T00:00:00Z"
+    }
+  ],
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "version": "4.0.1",
+          "code": "prov",
+          "display": "Healthcare Provider",
+          "user_selected": true
+        }
+      ],
+      "text": "Multi-specialty Hospital Group"
+    }
+  ],
+  "alias": ["Meridian Health", "MHG"],
+  "telecom": [
+    { "system": "phone", "value": "+91-22-61230000", "use": "work", "rank": 1 },
+    { "system": "email", "value": "info@meridianhealth.in", "use": "work", "rank": 2 },
+    { "system": "url", "value": "https://www.meridianhealth.in", "use": "work" }
+  ],
+  "address": [
+    {
+      "use": "work",
+      "type": "both",
+      "text": "12th Floor, Meridian Tower, Nariman Point, Mumbai, Maharashtra 400001, India",
+      "line": ["12th Floor, Meridian Tower", "Nariman Point"],
+      "city": "Mumbai",
+      "district": "Mumbai City",
+      "state": "Maharashtra",
+      "postal_code": "400001",
+      "country": "IN",
+      "period_start": "2010-04-01T00:00:00Z",
+      "period_end": "2099-12-31T00:00:00Z"
+    }
+  ],
+  "contact": [
+    {
+      "purpose_coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+          "code": "ADMIN",
+          "display": "Administrative"
+        }
+      ],
+      "purpose_text": "Administrative Contact",
+      "name_use": "official",
+      "name_text": "Dr. Ananya Rao",
+      "name_family": "Rao",
+      "name_given": ["Ananya"],
+      "name_prefix": ["Dr."],
+      "name_suffix": ["MD"],
+      "name_period_start": "2015-01-01T00:00:00Z",
+      "name_period_end": "2099-12-31T00:00:00Z",
+      "address_use": "work",
+      "address_type": "both",
+      "address_text": "Same as registered office",
+      "address_line": ["12th Floor, Meridian Tower"],
+      "address_city": "Mumbai",
+      "address_district": "Mumbai City",
+      "address_state": "Maharashtra",
+      "address_postal_code": "400001",
+      "address_country": "IN",
+      "address_period_start": "2015-01-01T00:00:00Z",
+      "address_period_end": "2099-12-31T00:00:00Z",
+      "telecom": [
+        { "system": "phone", "value": "+91-22-61230011", "use": "work", "rank": 1 },
+        { "system": "email", "value": "ananya.rao@meridianhealth.in", "use": "work" }
+      ]
+    }
+  ],
+  "endpoint": [
+    {
+      "reference_display": "Meridian EHR FHIR Gateway",
+      "reference_identifier_use": "official",
+      "reference_identifier_type_system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+      "reference_identifier_type_version": "2.9",
+      "reference_identifier_type_code": "XX",
+      "reference_identifier_type_display": "Organization identifier",
+      "reference_identifier_type_text": "Endpoint registry ID",
+      "reference_identifier_type_user_selected": false,
+      "reference_identifier_system": "https://fhir-server.dev/fhir/identifier-system/endpoint-id",
+      "reference_identifier_value": "EP-MHG-001",
+      "reference_identifier_period_start": "2022-01-01T00:00:00Z",
+      "reference_identifier_period_end": "2099-12-31T00:00:00Z"
+    }
+  ]
+}

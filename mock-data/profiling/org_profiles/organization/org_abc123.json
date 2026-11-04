@@ -1,11 +1,8 @@
 {
   "resource_type": "Organization",
   "scope_level": "organization",
-  "scope_id": "org_abc123",
   "structure_definition": {
     "resourceType": "StructureDefinition",
-    "id": "org-abc123-organization",
-    "url": "https://fhir-server.dev/fhir/StructureDefinition/org-abc123-organization",
     "name": "OrgAbc123Organization",
     "title": "Org Abc123 (Sample Hospital) Organization Profile",
     "status": "draft",
@@ -14,7 +11,6 @@
     "kind": "resource",
     "abstract": false,
     "type": "Organization",
-    "baseDefinition": "https://fhir-server.dev/fhir/StructureDefinition/in-organization",
     "derivation": "constraint",
     "differential": {
       "element": [

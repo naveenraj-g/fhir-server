@@ -1,0 +1,42 @@
+{
+  "active": true,
+  "name": "Sunrise Diagnostics Pvt Ltd",
+  "identifier": [
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+      "value": "29AAFCS1234N1Z5"
+    },
+    {
+      "use": "official",
+      "system": "https://fhir-server.dev/fhir/identifier-system/pan",
+      "value": "AAFCS1234N"
+    }
+  ],
+  "type": [
+    {
+      "coding": [
+        {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov",
+          "display": "Healthcare Provider"
+        }
+      ],
+      "text": "Diagnostic Lab"
+    }
+  ],
+  "telecom": [
+    { "system": "phone", "value": "+91-80-45678901", "use": "work" }
+  ],
+  "address": [
+    {
+      "use": "work",
+      "type": "both",
+      "line": ["No. 22, MG Road"],
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "postal_code": "560001",
+      "country": "IN"
+    }
+  ]
+}

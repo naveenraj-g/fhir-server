@@ -30,6 +30,7 @@ from . import document_reference as document_reference
 from . import encounter as encounter
 from . import episode_of_care as episode_of_care
 from . import family_member_history as family_member_history
+from . import fhir_profile as fhir_profile
 from . import flag as flag
 from . import group as group
 from . import healthcare_service as healthcare_service
@@ -85,6 +86,7 @@ __all__ = [
     "encounter",
     "episode_of_care",
     "family_member_history",
+    "fhir_profile",
     "flag",
     "group",
     "healthcare_service",

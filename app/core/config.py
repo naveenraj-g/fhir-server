@@ -173,6 +173,18 @@ class FhirValidationConfig(BaseModel):
     # falls back to base R4 for any resource_type that doesn't yet.
     country: str | None = None
 
+    # This deployment's own public base URL for canonical URLs it mints
+    # itself — country/organization profile URLs (app/fhir/validation/
+    # dispatch.py's _COUNTRY_PROFILE_URL/_ORGANIZATION_PROFILE_URL) are
+    # built as f"{canonical_base_url}/fhir/StructureDefinition/...". NOT
+    # the same thing as java_validator.base_url below (that's "where do I
+    # reach the sidecar"; this is "what domain do MY OWN canonical URLs
+    # live under") — change this if this server is ever hosted somewhere
+    # other than fhir-server.dev. Never used for base R4's own URLs
+    # (_BASE_PROFILE_URL is HL7's real http://hl7.org/fhir/StructureDefinition/
+    # namespace, not ours, and must never change).
+    canonical_base_url: str = "https://fhir-server.dev"
+
     backend: Literal["native", "java_validator"] = "native"
     java_validator: JavaValidatorConfig = Field(default_factory=JavaValidatorConfig)
 

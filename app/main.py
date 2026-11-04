@@ -30,7 +30,6 @@ from app.middleware import (
     request_context_middleware,
 )
 from app.routers import discover_routers
-from app.routers.fhir_profile import router as fhir_profile_router
 from app.routers.fhir_validate import router as fhir_validate_router
 from app.routers.terminology import router as terminology_router
 
@@ -72,21 +71,26 @@ _ALWAYS_ON_TAGS = {"Health"}
 
 
 # Mounted via mount_routers() under their OWN distinct prefix, not merged
-# into the shared /api/fhir/v1 api_router below — they aren't FHIR
-# resources with public sequence IDs, so folding them into that generic
-# mechanism would also move their URLs under /api/fhir/v1. Still driven by
-# the exact same routes.enabled set as everything else, computed once in
-# mount_routers() — see that function's own docstring for why this used to
-# be a second, separate module-level check instead, and why that was
-# actually a real bug (duplicate-mounted routes, confirmed via duplicate-
-# operation-id warnings at startup).
+# into the shared /api/fhir/v1 api_router below — they aren't FHIR resource
+# types with public sequence IDs (terminology import jobs, and a generic
+# ad-hoc "validate anything" endpoint), so folding them into that generic
+# mechanism would also move their URLs under /api/fhir/v1 for no benefit.
+# fhir_profile is NOT here — it manages real FHIR StructureDefinition
+# documents, so it's mounted through discover_routers()/the shared
+# api_router below instead, same as every other resource (see
+# app/routers/__init__.py's __all__); it lives at
+# /api/fhir/v1/fhir-profiles, not /api/v1/fhir-profiles, as of that move.
+# Still driven by the exact same routes.enabled set as everything else,
+# computed once in mount_routers() — see that function's own docstring for
+# why this used to be a second, separate module-level check instead, and
+# why that was actually a real bug (duplicate-mounted routes, confirmed via
+# duplicate-operation-id warnings at startup).
 _OWN_PREFIX_ROUTERS: tuple[tuple[str, APIRouter, dict], ...] = (
     (
         "terminology",
         terminology_router,
         {"prefix": "/api/v1/terminology", "tags": ["Terminology"]},
     ),
-    ("fhir_profile", fhir_profile_router, {"prefix": "/api/v1"}),
     ("fhir_validate", fhir_validate_router, {"prefix": "/api/v1"}),
 )
 
@@ -105,9 +109,10 @@ def mount_routers(app: FastAPI) -> None:
     JWT and sets request.state.user. Individual routes add
     require_permission(...) on top for fine-grained access control — every
     currently-built FHIR resource under the shared api_router has this
-    wired (see CLAUDE.md's Multi-Tenancy & Ownership), and fhir_profile
-    (one of the own-prefix routers below) now does too; terminology and
-    fhir_validate don't yet.
+    wired (see CLAUDE.md's Multi-Tenancy & Ownership), including
+    fhir_profile now that it's mounted through this same shared group;
+    terminology and fhir_validate (the two still-own-prefix routers below)
+    don't yet.
 
     One `enabled_routes` set, computed once here, is the only thing either
     group checks — deliberately not two separate checks living in two

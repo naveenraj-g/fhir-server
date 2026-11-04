@@ -46,8 +46,11 @@ StructureDefinition JSON here.
   there's no per-country subfolder: one `country_<code>.json` per resource is enough.
 
 **Both the file's on-disk name and its canonical `url` field follow one fixed convention**
-(`dispatch.py`'s `_COUNTRY_PROFILE_URL`): `https://fhir-server.dev/fhir/StructureDefinition/<code>-<resource_type>`,
-all lowercase (e.g. `.../in-organization`). Nothing reads a file just to discover its own URL —
+(`dispatch.py`'s `_COUNTRY_PROFILE_URL`): `<fhir_validation.canonical_base_url>/fhir/StructureDefinition/<code>-<resource_type>`
+— `https://fhir-server.dev` by default (`app/core/config.py`'s `FhirValidationConfig.canonical_base_url`),
+change that one setting if this deployment is ever hosted under a different domain, rather than
+hand-editing every profile file's `"url"` — all lowercase (e.g. `.../in-organization`). Nothing
+reads a file just to discover its own URL —
 the URL is derived from `(country, resource_type)` the same way the base URL is derived from
 just `resource_type`. Keep a new country file's own `"url"` field consistent with this
 convention, or `dispatch.py` will ask the sidecar for a URL that doesn't match what got

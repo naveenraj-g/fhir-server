@@ -12,9 +12,12 @@ matching configs/cache.yaml's fhir_profile_cache design:
     evict-on-write, not update-in-place, so the next read repopulates from
     the DB instead of serving stale data.
   - organization profiles: same shape again, with its own
-    invalidate_organization_profile() — no seeding or write path exists for
-    this scope at all yet, so both the read and invalidate methods are
-    unused today, same status get_base_profile() already had.
+    invalidate_organization_profile() — create_profile()/update_draft_profile()
+    below ARE the write path for this scope (via POST/PATCH
+    /api/fhir/v1/fhir-profiles, RBAC-gated, scope_id always the caller's
+    own org_id from the verified JWT — see app/routers/fhir_profile/core.py);
+    activate_profile() already evicts the matching cache entry on
+    activation, same as it does for country.
 
 A cached "not found" is stored too (as JSON null), not just cache hits —
 most resource_types have no country/organization profile at all today, and
@@ -24,12 +27,14 @@ the DB"; a cached value that decodes to None means "confirmed: no such
 profile"."""
 
 import json
+import uuid
 
 from app.core.cache.base import CacheBackend
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError, NotFoundError
 from app.errors.validation import FhirValidationError
+from app.fhir.profile_urls import organization_profile_url
 from app.fhir.validation.java_validator import check_profile_registers
 from app.models.fhir_profile.enums import FhirProfileScopeLevel, FhirProfileStatus
 from app.models.fhir_profile.fhir_profile import FhirProfile
@@ -110,12 +115,12 @@ class _CoreMixin:
     ) -> dict | None:
         """Returns the organization layer's structure_definition dict for
         (resource_type, org_id), or None if none exists — same cache-aside
-        and negative-caching behavior as get_country_profile(). Not yet
-        consumed anywhere: dispatch.py only resolves base/country today, and
-        there's no seeding or admin write path for organization-scope
-        profiles yet either (FhirProfileRepository.get_organization() has
-        nothing to return until one exists) — this exists so the layer is
-        complete end-to-end for whenever both of those are built."""
+        and negative-caching behavior as get_country_profile(). Consumed by
+        dispatch.py's validate_resource() (checked before country, as the
+        most specific layer) and written by create_profile()/
+        update_draft_profile() below, via POST/PATCH /api/fhir/v1/fhir-profiles
+        — org_id there is always the caller's own, from the verified JWT,
+        never a client-suppliable value."""
         key = _ORGANIZATION_KEY.format(resource_type=resource_type, org_id=org_id)
         cached = await self.cache_backend.get(key)
         if cached is not None:
@@ -129,8 +134,9 @@ class _CoreMixin:
     async def invalidate_organization_profile(
         self, resource_type: str, org_id: str
     ) -> None:
-        """Same evict-on-write role as invalidate_country_profile(), for the
-        future org-admin edit path. No caller exists yet."""
+        """Same evict-on-write role as invalidate_country_profile() — called
+        by activate_profile() below on activation of an organization-scope
+        profile."""
         key = _ORGANIZATION_KEY.format(resource_type=resource_type, org_id=org_id)
         await self.cache_backend.delete(key)
         logger.info(
@@ -195,7 +201,30 @@ class _CoreMixin:
         doesn't support or a missing scope_id, FhirValidationError (422,
         same shape every other FHIR validation failure uses) if the
         sidecar objects — see check_profile_registers()'s own docstring
-        for what that check does and doesn't guarantee."""
+        for what that check does and doesn't guarantee.
+
+        baseDefinition is resolved by `_resolve_parent()`, which already
+        does exactly what you'd want from "auto-derive the base URL": for
+        scope_level='organization' it links to the active country profile
+        for this deployment's configured country IF one exists for this
+        resource_type, and falls back to base R4 otherwise — re-checked
+        fresh on every call (see that method's own docstring), never
+        assumed from a prior write. For scope_level='organization', `url`
+        is ALSO auto-derived and unconditionally overwritten (same
+        convention app.fhir.validation.dispatch falls back to when a
+        row's own url is missing) — never trusted from the request, since
+        it's fully determined by (scope_id, resource_type) and a
+        client-supplied value could drift from that identity or collide
+        with another org's profile. scope_level='country' keeps `url`
+        client-supplied, since a country profile may need to match a real
+        externally-published canonical URL someday.
+
+        `structure_definition.id` (the base FHIR Resource.id, distinct
+        from `url` — nothing in this pipeline reads or relies on it today,
+        see mock-data/profiling/org_profiles/organization/README.md) is
+        ALWAYS server-generated (a fresh UUID4), for every scope_level —
+        a client-supplied value is silently overwritten, never trusted or
+        required, so there's never a reason to reject a request over it."""
         if scope_level == FhirProfileScopeLevel.base:
             raise BusinessRuleViolationError(
                 "Base profiles come from the HL7 bundle seed, not this endpoint."
@@ -213,9 +242,12 @@ class _CoreMixin:
             )
 
         candidate = dict(structure_definition)
+        candidate["id"] = str(uuid.uuid4())
         candidate["baseDefinition"] = parent.canonical_url
         candidate.setdefault("derivation", "constraint")
         candidate.setdefault("type", resource_type)
+        if scope_level == FhirProfileScopeLevel.organization:
+            candidate["url"] = organization_profile_url(scope_id, resource_type)
         canonical_url = candidate.get("url")
         if not canonical_url:
             raise BusinessRuleViolationError("structure_definition.url is required.")
@@ -282,7 +314,26 @@ class _CoreMixin:
         """Only a status='draft' row can be edited — an active or retired
         profile is immutable history; create a new version instead. Re-runs
         the same sidecar check create_profile() does, since the edit could
-        just as easily introduce whatever that check does catch."""
+        just as easily introduce whatever that check does catch.
+
+        baseDefinition is RE-RESOLVED fresh via `_resolve_parent()`, the
+        same call create_profile() makes — not reused from whatever was
+        stored when this draft was first created. A draft can sit around
+        being edited for a while; if the deployment's country config (or
+        whether a country profile exists for this resource_type) changes
+        in the meantime, the next edit should reflect that, not keep
+        pointing at a parent that's no longer the right one. For
+        scope_level='organization', `url` is likewise re-derived and
+        unconditionally overwritten every time (never trusted from the
+        request) — same reasoning as create_profile(). scope_level='country'
+        keeps `url` defaulting to whatever's already stored if the edit
+        doesn't supply one, same as before.
+
+        `structure_definition.id` keeps the SAME value this draft already
+        has (never regenerated on edit, unlike `url`/`baseDefinition` for
+        organization scope) — a PATCH mutates this row's own differential,
+        it doesn't replace the row, so its own id shouldn't change just
+        because its content did. Still never trusted from the request."""
         profile = await self.repository.get_by_id(profile_id)
         if profile is None:
             raise NotFoundError("FHIR profile not found")
@@ -291,11 +342,24 @@ class _CoreMixin:
                 f"Only a draft profile can be edited (this one is {profile.status})."
             )
 
+        parent = await self._resolve_parent(profile.resource_type, profile.scope_level)
+        if parent is None:
+            raise BusinessRuleViolationError(
+                f"No base profile exists for resource_type={profile.resource_type!r} "
+                "anymore — this draft can't be edited until one is re-seeded."
+            )
+
         candidate = dict(structure_definition)
-        candidate["baseDefinition"] = profile.structure_definition.get("baseDefinition")
+        candidate["id"] = profile.structure_definition.get("id") or str(uuid.uuid4())
+        candidate["baseDefinition"] = parent.canonical_url
         candidate.setdefault("derivation", "constraint")
         candidate.setdefault("type", profile.resource_type)
-        candidate.setdefault("url", profile.canonical_url)
+        if profile.scope_level == FhirProfileScopeLevel.organization:
+            candidate["url"] = organization_profile_url(
+                profile.scope_id, profile.resource_type
+            )
+        else:
+            candidate.setdefault("url", profile.canonical_url)
 
         errors = await check_profile_registers(candidate)
         if errors:

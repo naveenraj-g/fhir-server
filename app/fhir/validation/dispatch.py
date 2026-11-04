@@ -30,6 +30,7 @@ from fastapi.encoders import jsonable_encoder
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.fhir.profile_urls import country_profile_url, organization_profile_url
 from app.fhir.validation.base_r4 import validate_base_r4
 from app.fhir.validation.java_validator import validate_via_java
 
@@ -40,19 +41,14 @@ logger = get_logger(__name__)
 # preloaded (confirmed via its own GET /profiles).
 _BASE_PROFILE_URL = "http://hl7.org/fhir/StructureDefinition/{resource_type}"
 
-# Country-layer profiles are this project's own, not HL7-published — see
-# scripts/data/profiling/README.md. URL and registration-cache layer name both
-# derive from (country, resource_type) by this one convention; nothing
-# fetches a profile just to discover its own URL — though the row's own
-# "url" field (from FhirProfileService) is used verbatim when present, since
-# it's the authoritative value, this convention is just the fallback/check.
-_COUNTRY_PROFILE_URL = "https://fhir-server.dev/fhir/StructureDefinition/{country}-{resource_type}"
-
-# Organization-layer profiles follow the same convention, one level more
-# specific than country — see _organization_structure_definition() below.
-_ORGANIZATION_PROFILE_URL = (
-    "https://fhir-server.dev/fhir/StructureDefinition/org-{org_id}-{resource_type}"
-)
+# Country/organization-layer profile URLs are this project's own, not
+# HL7-published — see scripts/data/profiling/README.md and
+# app.fhir.profile_urls (shared with app.services.fhir_profile.core, which
+# auto-derives the same organization-layer URL at profile-creation/edit
+# time). Nothing fetches a profile just to discover its own URL — though
+# the row's own "url" field (from FhirProfileService) is used verbatim when
+# present, since it's the authoritative value; these functions are just
+# the fallback/check below.
 
 
 def _country_layer(country: str) -> str:
@@ -150,9 +146,7 @@ async def validate_resource(
             if structure_definition is not None:
                 profile_url = structure_definition.get(
                     "url"
-                ) or _ORGANIZATION_PROFILE_URL.format(
-                    org_id=org_id, resource_type=resource_type.lower()
-                )
+                ) or organization_profile_url(org_id, resource_type)
                 layer = _organization_layer(org_id)
 
         if structure_definition is None and country:
@@ -160,9 +154,9 @@ async def validate_resource(
                 resource_type, country
             )
             if structure_definition is not None:
-                profile_url = structure_definition.get("url") or _COUNTRY_PROFILE_URL.format(
-                    country=country.lower(), resource_type=resource_type.lower()
-                )
+                profile_url = structure_definition.get(
+                    "url"
+                ) or country_profile_url(country, resource_type)
                 layer = _country_layer(country)
 
         if structure_definition is None:

@@ -5,7 +5,9 @@ from fastapi.responses import JSONResponse, Response
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
 from app.di.dependencies.fhir_profile import get_fhir_profile_service
+from app.errors.auth import PermissionDeniedError
 from app.schemas.fhir_profile import (
+    CreatableProfileScopeLevel,
     FhirProfileCreateSchema,
     FhirProfileListResponse,
     FhirProfilePatchSchema,
@@ -46,13 +48,29 @@ async def create_fhir_profile(
 ):
     """created_by comes from the verified JWT's sub (actor.sub), not the
     request body — same convention as every other currently-built
-    resource (see CLAUDE.md's Multi-Tenancy & Ownership). FhirProfile has
-    no org_id column (it's a system-level config table, not tenant data),
-    so there's no org-scoping check here, only the RBAC permission gate."""
+    resource (see CLAUDE.md's Multi-Tenancy & Ownership).
+
+    For scope_level='organization', scope_id is ALSO derived from the
+    verified JWT (actor.org_id) rather than the request body —
+    FhirProfileCreateSchema's own validator rejects a client-supplied
+    scope_id for that scope_level outright, so this is the only place an
+    organization-scope profile's scope_id ever comes from. A token with no
+    activeOrganizationId claim can't create one at all (403) — a caller
+    can only ever create a profile for their OWN org, never one named in
+    the request body. scope_level='country' is unaffected: scope_id there
+    is a plain client-supplied country code, with no JWT equivalent."""
+    scope_id = body.scope_id
+    if body.scope_level == CreatableProfileScopeLevel.organization:
+        if not actor.org_id:
+            raise PermissionDeniedError(
+                "Creating an organization-scope FHIR profile requires an org-scoped token"
+            )
+        scope_id = actor.org_id
+
     profile = await service.create_profile(
         resource_type=body.resource_type,
         scope_level=body.scope_level,
-        scope_id=body.scope_id,
+        scope_id=scope_id,
         structure_definition=body.structure_definition,
         created_by=actor.sub,
     )
