@@ -1,0 +1,28 @@
+{
+  "resource_type": "Location",
+  "scope_level": "organization",
+  "structure_definition": {
+    "resourceType": "StructureDefinition",
+    "name": "OrgAbc123Location",
+    "title": "Org Abc123 (Sample Hospital) Location Profile",
+    "status": "draft",
+    "description": "Tenant-layer profile for org_abc123, a sample registered hospital. Narrows the India country profile (in-location) one step further: this tenant's Location record IS the registered ABDM physical healthcare facility itself (not a ward/room sub-Location under one), so the hfr-id identifier slice — optional (0..1) at the generic country layer, since not every Location under that profile is itself a registered site — is tightened to required (1..1) here. Exactly the narrowing in-location's own hfr-id comment anticipates for a tenant-layer profile of a registered site.",
+    "fhirVersion": "4.0.1",
+    "kind": "resource",
+    "abstract": false,
+    "type": "Location",
+    "derivation": "constraint",
+    "differential": {
+      "element": [
+        {
+          "id": "Location.identifier:hfr-id",
+          "path": "Location.identifier",
+          "sliceName": "hfr-id",
+          "short": "ABDM Health Facility Registry ID (required for this tenant's registered site)",
+          "min": 1,
+          "max": "1"
+        }
+      ]
+    }
+  }
+}

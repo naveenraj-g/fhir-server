@@ -97,7 +97,9 @@ async def application_error_handler(request: Request, exc: ApplicationError):
                 "issue": [
                     _issue(
                         "error",
-                        error.get("issue_type", InputValidationError.DEFAULT_ISSUE_TYPE),
+                        error.get(
+                            "issue_type", InputValidationError.DEFAULT_ISSUE_TYPE
+                        ),
                         diagnostics=error["message"],
                         expression=[error["field"]],
                         details=error.get("details"),
@@ -230,7 +232,11 @@ async def response_validation_exception_handler(
         status_code=500,
         content={
             "resourceType": "OperationOutcome",
-            "issue": [_issue("error", IssueType.EXCEPTION, diagnostics="Internal server error")],
+            "issue": [
+                _issue(
+                    "error", IssueType.EXCEPTION, diagnostics="Internal server error"
+                )
+            ],
         },
         headers=({"X-Request-ID": request_id} if request_id else None),
     )
@@ -259,7 +265,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={
             "resourceType": "OperationOutcome",
-            "issue": [_issue("error", IssueType.EXCEPTION, diagnostics="Internal server error")],
+            "issue": [
+                _issue(
+                    "error", IssueType.EXCEPTION, diagnostics="Internal server error"
+                )
+            ],
         },
         headers=({"X-Request-ID": request_id} if request_id else None),
     )
@@ -302,7 +312,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "issue": [
                 _issue(
                     "error",
-                    _HTTP_STATUS_TO_ISSUE_TYPE.get(exc.status_code, IssueType.PROCESSING),
+                    _HTTP_STATUS_TO_ISSUE_TYPE.get(
+                        exc.status_code, IssueType.PROCESSING
+                    ),
                     diagnostics=exc.detail,
                 )
             ],

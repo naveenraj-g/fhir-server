@@ -39,6 +39,11 @@ Read in this order if you're new to the subsystem:
 7. **[07-org-concepts-and-display-overrides.md](07-org-concepts-and-display-overrides.md)**
    — the two org-scoped customization mechanisms, how they differ, and the
    shared audit log both write to.
+8. **[08-fhir-r4-standard-compliance-gap-analysis.md](08-fhir-r4-standard-compliance-gap-analysis.md)**
+   — how far this subsystem is from the actual FHIR R4 terminology-module
+   spec (resources, `$lookup`/`$validate-code`/`$expand`/`$translate`/
+   `$subsumes` operations, `CapabilityStatement`), item by item, with a
+   suggested remediation order.
 
 ## Why this exists as a separate service-shaped thing
 

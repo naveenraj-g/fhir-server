@@ -66,7 +66,10 @@ and Location each have a seeded country row (India).
 `app/fhir/spec/profiles-resources.json` (HL7's own complete bundle — see that folder's README),
 not from this folder's own `base_fhir_r4.json`, since the bundle already has all 147 base
 resources and is guaranteed to never drift from this file (which was itself originally
-extracted from that exact bundle). Country-layer seeding
+extracted from that exact bundle). `tests/conftest.py`'s `_seed_fhir_profiles()` fixture reads
+from that same bundle now too, for the same reason — reading only this folder's single
+Organization-only `base_fhir_r4.json` meant every test's base layer only ever covered
+Organization, even though production seeds a real base row for all 147 resources. Country-layer seeding
 (`scripts/profiling/seed_country_profiles.py`) still reads from here —
 `country_<code>.json` files are this project's own, not HL7's, so there's no equivalent bundle
 to source them from. Edit a `country_<code>.json` file here and re-run

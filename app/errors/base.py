@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Any
 
 from app.errors.fhir_codes import IssueSeverity, IssueType
 
@@ -13,9 +13,9 @@ class ApplicationError(Exception):
         code: str = "APPLICATION_ERROR",
         issue_type: IssueType = IssueType.EXCEPTION,
         severity: IssueSeverity = IssueSeverity.ERROR,
-        details: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        cause: Optional[Exception] = None,
+        details: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        cause: Exception | None = None,
         is_operational: bool = True,
     ):
         """`code` stays this project's own internal identifier (logged, never

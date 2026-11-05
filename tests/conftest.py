@@ -1,3 +1,4 @@
+import functools
 import math
 import os
 
@@ -313,35 +314,77 @@ def _register_sqlite_math(dbapi_conn, _connection_record) -> None:
 # the exact same committed JSON the real DB is seeded from
 # (scripts/data/profiling/, see its README and scripts/profiling/seed_*.py)
 # so there's one source of truth, not a hand-rolled test fixture that can drift.
+#
+# Base layer specifically reads app/fhir/spec/profiles-resources.json — the
+# same HL7 bundle scripts/profiling/seed_base_profiles.py seeds the real DB
+# from — rather than scripts/data/profiling/base_fhir_r4.json (a single,
+# Organization-only reference copy of one entry from that same bundle, kept
+# there purely for humans to read, per that folder's own README; nothing
+# executable has read it since seed_base_profiles.py moved onto the bundle).
+# Reading only that one-resource file here meant every test only ever got a
+# base-layer row for Organization — base-layer profile validation for every
+# other resource type silently had nothing to match against in tests, even
+# though production seeds a real base row for all 147 resources. Sourcing
+# from the bundle instead makes every resource's base layer available here
+# too, matching production exactly.
 
 _PROFILING_ROOT = Path(__file__).resolve().parent.parent / "scripts" / "data" / "profiling"
+_SPEC_ROOT = Path(__file__).resolve().parent.parent / "app" / "fhir" / "spec"
+
+
+@functools.lru_cache(maxsize=1)
+def _discover_base_structure_definitions() -> tuple[dict, ...]:
+    """Same discovery rule as seed_base_profiles.py's own
+    _discover_base_profiles() — kind == "resource" and
+    derivation == "specialization" — kept in sync by hand rather than
+    imported from that script, since importing a standalone seed script's
+    module from test infra would be its own layering oddity. Cached at
+    module scope: the bundle is ~35MB and this fixture reruns for every
+    single test in the suite (via the per-test `_engine` fixture below) —
+    parsing it fresh every time would make the whole suite unusably slow."""
+    with (_SPEC_ROOT / "profiles-resources.json").open(encoding="utf-8") as f:
+        bundle = json.load(f)
+    return tuple(
+        entry["resource"]
+        for entry in bundle["entry"]
+        if entry["resource"].get("resourceType") == "StructureDefinition"
+        and entry["resource"].get("kind") == "resource"
+        and entry["resource"].get("derivation") == "specialization"
+    )
 
 
 async def _seed_fhir_profiles(engine) -> None:
     from app.models.fhir_profile.enums import FhirProfileScopeLevel, FhirProfileStatus
     from app.models.fhir_profile.fhir_profile import FhirProfile
 
-    base_sd = json.loads(
-        (_PROFILING_ROOT / "base_fhir_r4.json").read_text(encoding="utf-8")
-    )
     country_sd = json.loads(
         (_PROFILING_ROOT / "resources" / "organization" / "country_in.json").read_text(encoding="utf-8")
     )
 
     session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     async with session_maker() as session:
-        base_row = FhirProfile(
-            resource_type="Organization",
-            scope_level=FhirProfileScopeLevel.base,
-            scope_id=None,
-            canonical_url=base_sd["url"],
-            version=base_sd.get("version", "1"),
-            status=FhirProfileStatus(base_sd.get("status", "active")),
-            structure_definition=base_sd,
-            created_by="system:test_seed",
-            updated_by="system:test_seed",
-        )
-        session.add(base_row)
+        base_rows = {}
+        for sd in _discover_base_structure_definitions():
+            row = FhirProfile(
+                resource_type=sd["type"],
+                scope_level=FhirProfileScopeLevel.base,
+                scope_id=None,
+                canonical_url=sd["url"],
+                version=sd.get("version", "1"),
+                # Hardcoded, not read off the StructureDefinition's own
+                # "status" — same reasoning as seed_base_profiles.py's
+                # `status = "active"`: that field is HL7's own
+                # publication-maturity declaration (genuinely "draft" for
+                # Organization's real R4 entry), a different concept from
+                # "is this profile layer in effect" — for base, it always
+                # is (see FhirProfileStatus's own docstring).
+                status=FhirProfileStatus.active,
+                structure_definition=sd,
+                created_by="system:test_seed",
+                updated_by="system:test_seed",
+            )
+            session.add(row)
+            base_rows[sd["type"]] = row
         await session.flush()
 
         session.add(
@@ -349,7 +392,7 @@ async def _seed_fhir_profiles(engine) -> None:
                 resource_type="Organization",
                 scope_level=FhirProfileScopeLevel.country,
                 scope_id="IN",
-                parent_profile_id=base_row.id,
+                parent_profile_id=base_rows["Organization"].id,
                 canonical_url=country_sd["url"],
                 version=country_sd.get("version", "1"),
                 status=FhirProfileStatus(country_sd.get("status", "draft")),
