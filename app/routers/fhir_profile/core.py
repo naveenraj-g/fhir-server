@@ -7,7 +7,6 @@ from app.auth.rbac import require_permission
 from app.di.dependencies.fhir_profile import get_fhir_profile_service
 from app.errors.auth import PermissionDeniedError
 from app.schemas.fhir_profile import (
-    CreatableProfileScopeLevel,
     FhirProfileCreateSchema,
     FhirProfileListResponse,
     FhirProfilePatchSchema,
@@ -23,21 +22,23 @@ router = APIRouter()
 @router.post(
     "/",
     operation_id="create_fhir_profile",
-    summary="Create a country or organization FHIR profile (as a draft)",
+    summary="Create an organization FHIR profile (as a draft)",
     description=(
-        "Creates a scope_level='country' or 'organization' profile row, always as "
-        "status='draft'. The parent is resolved automatically — country profiles "
-        "link to this resource_type's base profile; organization profiles link to "
-        "this deployment's configured country's profile for this resource_type if "
-        "one exists, else to base. The candidate structure_definition is run past "
-        "the Java validator sidecar's registration check before being persisted; "
-        "a rejection returns 422 with the sidecar's own errors. Use the activate "
-        "endpoint to make a draft take effect — this endpoint never does."
+        "Creates a scope_level='organization' profile row, always as "
+        "status='draft'. Country and base profiles have no write path here — "
+        "see CreatableProfileScopeLevel's own docstring (app/schemas/fhir_profile.py) "
+        "for why country was locked out of this endpoint too. The parent is "
+        "resolved automatically: this resource_type's active country profile "
+        "for this deployment's configured country if one exists, else base. "
+        "The candidate structure_definition is run past the Java validator "
+        "sidecar's registration check before being persisted; a rejection "
+        "returns 422 with the sidecar's own errors. Use the activate endpoint "
+        "to make a draft take effect — this endpoint never does."
     ),
     responses={
         **_SINGLE_201,
         422: {
-            "description": "Unsupported scope_level, missing scope_id/url, or the sidecar rejected the profile"
+            "description": "Missing scope_id/url, or the sidecar rejected the profile"
         },
     },
 )
@@ -50,27 +51,22 @@ async def create_fhir_profile(
     request body — same convention as every other currently-built
     resource (see CLAUDE.md's Multi-Tenancy & Ownership).
 
-    For scope_level='organization', scope_id is ALSO derived from the
-    verified JWT (actor.org_id) rather than the request body —
-    FhirProfileCreateSchema's own validator rejects a client-supplied
-    scope_id for that scope_level outright, so this is the only place an
-    organization-scope profile's scope_id ever comes from. A token with no
+    scope_id is ALWAYS derived from the verified JWT (actor.org_id)
+    rather than the request body — FhirProfileCreateSchema's own
+    validator rejects a client-supplied scope_id outright, so this is the
+    only place a profile's scope_id ever comes from. A token with no
     activeOrganizationId claim can't create one at all (403) — a caller
     can only ever create a profile for their OWN org, never one named in
-    the request body. scope_level='country' is unaffected: scope_id there
-    is a plain client-supplied country code, with no JWT equivalent."""
-    scope_id = body.scope_id
-    if body.scope_level == CreatableProfileScopeLevel.organization:
-        if not actor.org_id:
-            raise PermissionDeniedError(
-                "Creating an organization-scope FHIR profile requires an org-scoped token"
-            )
-        scope_id = actor.org_id
+    the request body."""
+    if not actor.org_id:
+        raise PermissionDeniedError(
+            "Creating an organization-scope FHIR profile requires an org-scoped token"
+        )
 
     profile = await service.create_profile(
         resource_type=body.resource_type,
         scope_level=body.scope_level,
-        scope_id=scope_id,
+        scope_id=actor.org_id,
         structure_definition=body.structure_definition,
         created_by=actor.sub,
     )

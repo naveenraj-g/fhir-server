@@ -24,6 +24,7 @@ from app.errors.handlers import (
     response_validation_exception_handler,
     unhandled_exception_handler,
 )
+from app.fhir.validation.dispatch import register_configured_country_profiles
 from app.middleware import (
     AccessLogMiddleware,
     RateLimitMiddleware,
@@ -209,6 +210,9 @@ async def lifespan(app: FastAPI):
             extra={"event": "startup.redis_disabled"},
         )
         app.state.redis = None
+
+    await register_configured_country_profiles()
+
     yield
 
     logger.info("🔴 Shutting down application...", extra={"event": "shutdown.begin"})

@@ -7,60 +7,66 @@ from app.models.fhir_profile.enums import FhirProfileScopeLevel, FhirProfileStat
 
 
 class CreatableProfileScopeLevel(str, Enum):
-    """scope_level values valid for FhirProfileCreateSchema — deliberately
-    narrower than app.models.fhir_profile.enums.FhirProfileScopeLevel,
-    which also has 'base'. Base profiles are seeded from the HL7 bundle
-    (see scripts/profiling/seed_base_profiles.py), never created through
-    this endpoint — FhirProfileService.create_profile() already rejects
-    'base' with a 422 at runtime, but narrowing the type here means a bad
-    value (a typo, or 'base' itself) gets a clean Pydantic validation
-    error before the request reaches the service at all, not a
-    BusinessRuleViolationError from a runtime check. The service's own
-    check stays as defense-in-depth for any caller that doesn't go through
-    this schema."""
+    """The only scope_level value valid for FhirProfileCreateSchema —
+    deliberately narrower than app.models.fhir_profile.enums.FhirProfileScopeLevel,
+    which also has 'base' and 'country'.
 
-    country = "country"
+    'base' is seeded once from the HL7 bundle (see scripts/profiling/
+    seed_base_profiles.py), never created through this endpoint.
+
+    'country' is EXCLUDED here too (this endpoint used to allow it) —
+    a country profile is a deployment-wide, rarely-changing decision with
+    its own dedicated write path (scripts/profiling/seed_country_profiles.py,
+    reading scripts/data/profiling/resources/<type>/country_<code>.json
+    straight into the DB as 'active', bypassing this schema/service
+    entirely), and app.fhir.validation.dispatch.register_configured_country_profiles()
+    now eagerly loads + registers every active country profile with the
+    Java validator sidecar once, at application startup. Exposing live
+    create/update of a country profile through this HTTP endpoint would
+    let it drift out of step with that startup-time registration — an
+    edit here wouldn't be picked up by the sidecar until the next
+    restart, and this endpoint has no code to re-run the startup preload
+    on demand. Re-seed via the script above (then restart the process) to
+    change a country profile instead.
+
+    FhirProfileService.create_profile() rejects both 'base' and 'country'
+    with a 422 at runtime as defense-in-depth for any caller that doesn't
+    go through this schema — narrowing the type here just means a bad
+    value (a typo, or either excluded value) gets a clean Pydantic
+    validation error before the request reaches the service at all."""
+
     organization = "organization"
 
 
 class FhirProfileCreateSchema(BaseModel):
-    """Create a country or organization profile — never base, which is
-    seeded once from the HL7 bundle (see scripts/profiling/seed_base_profiles.py)
-    and has no write path here.
+    """Create an organization profile — never base or country, neither of
+    which have a write path here (see CreatableProfileScopeLevel's own
+    docstring for why country was removed from this endpoint too).
 
-    `scope_id` means different things per scope_level, and is validated
-    accordingly (see `_scope_id_matches_scope_level` below):
-      - scope_level='country': a client-supplied country code (e.g. 'IN') —
-        required, since there's no JWT claim a country code could come from.
-      - scope_level='organization': must be OMITTED here entirely — the
-        router derives it from the verified JWT's activeOrganizationId
-        claim (actor.org_id) instead, same as every org-scoped resource in
-        this codebase (see CLAUDE.md's Multi-Tenancy & Ownership). A caller
-        can only ever create an organization-scope profile for their OWN
-        org, never one named in the request body.
+    `scope_id` must be OMITTED here entirely — the router derives it from
+    the verified JWT's activeOrganizationId claim (actor.org_id) instead,
+    same as every org-scoped resource in this codebase (see CLAUDE.md's
+    Multi-Tenancy & Ownership). A caller can only ever create an
+    organization-scope profile for their OWN org, never one named in the
+    request body.
 
-    The service resolves this profile's parent itself (country -> base;
-    organization -> the active country profile for this deployment's
-    configured country if one exists for this resource_type, else base —
-    re-checked fresh on every write, not assumed from a prior one) and
-    overwrites whatever `structure_definition['baseDefinition']` the caller
-    sent to match — the chain is enforced server-side, not trusted from
-    the request.
+    The service resolves this profile's parent itself (the active country
+    profile for this deployment's configured country if one exists for
+    this resource_type, else base — re-checked fresh on every write, not
+    assumed from a prior one) and overwrites whatever
+    `structure_definition['baseDefinition']` the caller sent to match —
+    the chain is enforced server-side, not trusted from the request.
 
-    `structure_definition['url']` is handled the same way for
-    scope_level='organization': always auto-derived (from `scope_id` +
-    `resource_type`, the same convention app.fhir.validation.dispatch
+    `structure_definition['url']` is always auto-derived (from `scope_id`
+    + `resource_type`, the same convention app.fhir.validation.dispatch
     falls back to) and unconditionally overwritten, never trusted from the
     request — a client-supplied value could drift from the real identity
     this profile is scoped to, or collide with another org's profile.
-    scope_level='country' keeps `url` client-supplied, since a country
-    profile may need to match a real externally-published canonical URL
-    someday.
 
     `structure_definition['id']` (the base FHIR Resource.id, distinct from
     `url` — nothing in this pipeline reads or relies on it) is ALWAYS
-    server-generated as a fresh UUID4, for every scope_level — a
-    client-supplied value is silently overwritten, never required.
+    server-generated as a fresh UUID4 — a client-supplied value is
+    silently overwritten, never required.
 
     `created_by` is NOT a field here — same as every other currently-built
     resource (see CLAUDE.md's Multi-Tenancy & Ownership), it comes from the
@@ -90,27 +96,20 @@ class FhirProfileCreateSchema(BaseModel):
     scope_id: str | None = Field(
         None,
         description=(
-            "A country code (e.g. 'IN') — required for scope_level='country'. "
-            "Must be omitted for scope_level='organization': the org_id is "
-            "derived from the verified JWT (activeOrganizationId) instead, "
-            "never from this field."
+            "Must be omitted — the org_id is derived from the verified JWT "
+            "(activeOrganizationId) instead, never from this field."
         ),
     )
     structure_definition: dict
 
     @model_validator(mode="after")
-    def _scope_id_matches_scope_level(self) -> "FhirProfileCreateSchema":
-        if self.scope_level == CreatableProfileScopeLevel.organization:
-            if self.scope_id is not None:
-                raise ValueError(
-                    "scope_id must be omitted for scope_level='organization' — "
-                    "the org_id is derived from the verified JWT, not the request body."
-                )
-        elif self.scope_level == CreatableProfileScopeLevel.country:
-            if not self.scope_id:
-                raise ValueError(
-                    "scope_id (a country code) is required for scope_level='country'."
-                )
+    def _scope_id_must_be_omitted(self) -> "FhirProfileCreateSchema":
+        if self.scope_id is not None:
+            raise ValueError(
+                "scope_id must be omitted — this endpoint only creates "
+                "organization-scope profiles, and the org_id is derived from "
+                "the verified JWT, not the request body."
+            )
         return self
 
 

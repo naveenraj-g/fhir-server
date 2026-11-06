@@ -229,6 +229,13 @@ class _CoreMixin:
             raise BusinessRuleViolationError(
                 "Base profiles come from the HL7 bundle seed, not this endpoint."
             )
+        if scope_level == FhirProfileScopeLevel.country:
+            raise BusinessRuleViolationError(
+                "Country profiles come from scripts/profiling/seed_country_profiles.py, "
+                "not this endpoint — see app.fhir.validation.dispatch."
+                "register_configured_country_profiles() for how a seeded country "
+                "profile gets registered with the Java validator sidecar at startup."
+            )
         if not scope_id:
             raise BusinessRuleViolationError(
                 f"scope_id is required for a {scope_level} profile."

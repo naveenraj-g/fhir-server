@@ -32,7 +32,11 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.fhir.profile_urls import country_profile_url, organization_profile_url
 from app.fhir.validation.base_r4 import validate_base_r4
-from app.fhir.validation.java_validator import validate_via_java
+from app.fhir.validation.java_validator import (
+    ensure_profile_registered,
+    validate_via_java,
+)
+from app.models.fhir_profile.enums import FhirProfileScopeLevel, FhirProfileStatus
 
 logger = get_logger(__name__)
 
@@ -82,6 +86,150 @@ async def _organization_structure_definition(
 
     service = container.fhir_profile.fhir_profile_service()
     return await service.get_organization_profile(resource_type, org_id)
+
+
+async def register_configured_country_profiles() -> None:
+    """Called once from app/main.py's lifespan() at application startup —
+    NOT from validate_resource() or anywhere per-request.
+
+    Eagerly warms FhirProfileService's cache-aside layer AND proactively
+    registers with the Java validator sidecar every resource_type's
+    active country profile for this deployment's single configured
+    country (settings.fhir_validation.country). This closes a real
+    cold-start race: without it, whichever resource_type happens to get
+    validated first after a fresh boot decides what gets registered with
+    the sidecar — and an organization profile validated before its own
+    country parent is registered produces a permanent
+    "... has no snapshot ..." failure for the rest of that process's
+    lifetime, since _ensure_registered() never retries a key it already
+    marked registered (confirmed empirically: a cold start that resolved
+    straight to an org profile before its country parent was ever
+    registered). Registering country first, for every resource_type, at
+    startup removes the race entirely — country is always registered
+    before any request (which could resolve straight to the org layer)
+    is ever handled.
+
+    Deliberately does NOT touch base profiles — the sidecar already ships
+    every base R4 definition preloaded (confirmed via its own GET
+    /profiles), so there's nothing to register there; base's own cache
+    entry is left unwarmed for a future "build our own validation engine"
+    consumer instead (see FhirProfileService.get_base_profile()'s
+    docstring) rather than being used here.
+
+    Deliberately does NOT touch organization profiles either — those
+    stay lazy/progressive, registered the first time validate_resource()
+    below actually needs one for a real request, exactly as before this
+    function existed. Only the country layer needs eager startup
+    treatment, since it's the one layer every organization profile's own
+    baseDefinition can point at.
+
+    Best-effort: a DB or sidecar failure here is logged, never raised —
+    this is a startup warmup, not a precondition for the app to serve
+    traffic. If it fails (or finds nothing, e.g. no country configured),
+    the lazy per-request path in validate_resource() is still exactly the
+    fallback it always was, with the same cold-start race as before for
+    whichever profile didn't get warmed here."""
+    country = settings.fhir_validation.country
+    if not country:
+        logger.info(
+            "No fhir_validation.country configured — skipping country profile preload",
+            extra={"event": "fhir_validation.country_preload_skipped"},
+        )
+        return
+
+    from app.di.container import container
+
+    service = container.fhir_profile.fhir_profile_service()
+
+    try:
+        total, rows = await service.list_profiles(
+            resource_type=None,
+            scope_level=FhirProfileScopeLevel.country,
+            scope_id=country,
+            status=FhirProfileStatus.active,
+            limit=1000,
+            offset=0,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to list active country profiles for startup preload — "
+            "falling back entirely to the lazy per-request registration path",
+            extra={
+                "event": "fhir_validation.country_preload_list_failed",
+                "country": country,
+            },
+        )
+        return
+
+    logger.info(
+        "Preloading country profiles for configured country",
+        extra={
+            "event": "fhir_validation.country_preload_started",
+            "country": country,
+            "count": total,
+        },
+    )
+
+    registered = 0
+    failed = 0
+    for row in rows:
+        resource_type = row.resource_type
+        structure_definition = await service.get_country_profile(resource_type, country)
+        if structure_definition is None:
+            # Can't happen in practice (we just listed this exact row as
+            # active) — but get_country_profile() is the cache-aside
+            # source of truth other callers rely on, so trust IT, not the
+            # row already in hand, and don't register something it says
+            # doesn't exist.
+            logger.warning(
+                "Listed country profile vanished before cache warm — skipping",
+                extra={
+                    "event": "fhir_validation.country_preload_vanished",
+                    "resource_type": resource_type,
+                    "country": country,
+                },
+            )
+            continue
+
+        layer = _country_layer(country)
+        try:
+            await ensure_profile_registered(resource_type, layer, structure_definition)
+        except Exception:
+            failed += 1
+            logger.exception(
+                "Failed to register country profile with Java validator sidecar "
+                "at startup — will retry lazily on the first real request for "
+                "this resource_type instead",
+                extra={
+                    "event": "fhir_validation.country_preload_register_failed",
+                    "resource_type": resource_type,
+                    "country": country,
+                    "url": structure_definition.get("url"),
+                },
+            )
+            continue
+
+        registered += 1
+        logger.info(
+            "Registered country profile with Java validator sidecar at startup",
+            extra={
+                "event": "fhir_validation.country_preload_registered",
+                "resource_type": resource_type,
+                "country": country,
+                "url": structure_definition.get("url"),
+            },
+        )
+
+    logger.info(
+        "Country profile preload complete",
+        extra={
+            "event": "fhir_validation.country_preload_complete",
+            "country": country,
+            "registered": registered,
+            "failed": failed,
+            "total": total,
+        },
+    )
 
 
 async def validate_resource(

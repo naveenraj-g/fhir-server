@@ -57,6 +57,21 @@ async def _ensure_registered(
     )
 
 
+async def ensure_profile_registered(
+    resource_type: str, layer: str, structure_definition: dict
+) -> None:
+    """Public entrypoint onto _ensure_registered() above, for a caller
+    that wants to proactively register a profile outside the normal
+    per-request validate_via_java() path — specifically,
+    app.fhir.validation.dispatch.register_configured_country_profiles(),
+    called once at application startup. Shares the exact same
+    `_registered` idempotency cache: a profile registered here is seen as
+    already-registered by the very first real request that would
+    otherwise have triggered _ensure_registered() lazily, so nothing gets
+    double-POSTed."""
+    await _ensure_registered(resource_type, layer, structure_definition)
+
+
 def _issues_to_errors(operation_outcome: dict) -> list[dict]:
     """Converts the sidecar's OperationOutcome into this project's own
     {"field", "message", "issue_type", "details"} shape — the same shape
