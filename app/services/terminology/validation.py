@@ -63,7 +63,7 @@ class _ValidationMixin:
         translations = [
             TranslationResult(
                 concept=_concept_response(tgt_concept, tgt_cs),
-                mapping_type=cm.mapping_type,
+                equivalence=cm.equivalence,
                 confidence=cm.confidence,
             )
             for cm, tgt_concept, tgt_cs in rows

@@ -6,6 +6,8 @@ Usage examples:
   uv run python -m app.terminology.import_.cli --source rxnorm --file terminology_data/rrf/RXNCONSO.RRF
   uv run python -m app.terminology.import_.cli --source loinc --file terminology_data/LoincTableCore.csv
   uv run python -m app.terminology.import_.cli --source snomed --dir terminology_data/SnomedCT_USEdition/Snapshot/Terminology/
+  uv run python -m app.terminology.import_.cli --source snomed-icd10cm-map --file terminology_data/SNOMED_CT_to_ICD-10-CM_Resources_20260301/tls_Icd10cmHumanReadableMap_US1000124_20260301.tsv
+    # (run --source snomed and --source icd10cm first — this one resolves against both)
 """
 import argparse
 import asyncio
@@ -22,7 +24,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--source",
         required=True,
-        choices=["fhir-r4", "loinc", "icd10cm", "rxnorm", "snomed", "all"],
+        choices=[
+            "fhir-r4",
+            "loinc",
+            "icd10cm",
+            "rxnorm",
+            "snomed",
+            "snomed-icd10cm-map",
+            "all",
+        ],
         help="Which terminology to import",
     )
     p.add_argument("--file", help="Input file path (fhir-r4 / loinc / icd10cm / rxnorm)")
@@ -69,6 +79,13 @@ async def run(args: argparse.Namespace) -> None:
         _require(args.dir, "--dir", source)
         from app.terminology.import_.loaders.snomed import SnomedLoader
         tasks.append((SnomedLoader, args.dir))
+
+    elif source == "snomed-icd10cm-map":
+        _require(args.file, "--file", source)
+        from app.terminology.import_.loaders.snomed_icd10cm_map import (
+            SnomedIcd10cmMapLoader,
+        )
+        tasks.append((SnomedIcd10cmMapLoader, args.file))
 
     elif source == "all":
         if args.fhir_r4_file:

@@ -2,12 +2,9 @@ from fastapi import HTTPException, Request
 
 from app.core.schema_utils import inline_schema
 from app.schemas.terminology import (
-    AuditLogListResponse,
     CodeSystemListResponse,
     ConceptMapListResponse,
     ConceptsForFieldResponse,
-    DisplayOverrideListResponse,
-    DisplayOverrideResponse,
     LookupBatchResponse,
     LookupResult,
     OrgConceptListResponse,
@@ -21,8 +18,8 @@ from app.schemas.terminology import (
 
 
 def _require_org_id(request: Request) -> str:
-    """Shared by every org-scoped route (org-concepts, display-overrides)
-    — both need the caller's org from the verified JWT, 403 if absent."""
+    """Used by every org-scoped route (today, just org-concepts) — needs
+    the caller's org from the verified JWT, 403 if absent."""
     org_id = request.state.user.get("activeOrganizationId")
     if not org_id:
         raise HTTPException(
@@ -135,33 +132,6 @@ _ORG_CONCEPT_SINGLE_200 = {
         "content": {
             "application/json": {
                 "schema": inline_schema(OrgConceptResponse.model_json_schema())
-            }
-        }
-    }
-}
-_AUDIT_LOG_200 = {
-    200: {
-        "content": {
-            "application/json": {
-                "schema": inline_schema(AuditLogListResponse.model_json_schema())
-            }
-        }
-    }
-}
-_DISPLAY_OVERRIDE_200 = {
-    200: {
-        "content": {
-            "application/json": {
-                "schema": inline_schema(DisplayOverrideListResponse.model_json_schema())
-            }
-        }
-    }
-}
-_DISPLAY_OVERRIDE_SINGLE_200 = {
-    200: {
-        "content": {
-            "application/json": {
-                "schema": inline_schema(DisplayOverrideResponse.model_json_schema())
             }
         }
     }

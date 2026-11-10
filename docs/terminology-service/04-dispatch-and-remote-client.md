@@ -13,18 +13,20 @@ designed to run either in-process or as a separate HTTP service, decided by
 one config flag. This file covers the three pieces that make that swap
 possible without the caller ever knowing which backend it's talking to.
 
-## `app/terminology/client.py` — the `TerminologyClient` Protocol (124 lines)
+## `app/terminology/client.py` — the `TerminologyClient` Protocol
 
 A `typing.Protocol` (structural typing — no explicit `class X(TerminologyClient)`
-inheritance required anywhere) declaring the full 17-method contract both
+inheritance required anywhere) declaring the full 16-method contract both
 implementations below satisfy: code-system/value-set listing and lookup,
 concept search/lookup, `validate()`/`translate()`, concept-map list/add, and
-the full org-concept + display-override CRUD surface. Because it's
+the full org-concept CRUD surface. (A display-override CRUD surface lived
+here too, until that feature was removed — see
+[07-org-concepts.md](07-org-concepts.md).) Because it's
 structural, `TerminologyService` (the embedded implementation) satisfies it
 automatically just by having matching method signatures — it doesn't
 `import` or reference `TerminologyClient` at all.
 
-## `app/terminology/dispatch.py` (31 lines)
+## `app/terminology/dispatch.py`
 
 ```python
 def get_terminology_client(embedded_service: TerminologyClient) -> TerminologyClient:
@@ -39,11 +41,11 @@ caller — anything that depends on `get_terminology_client()` via DI, see
 below — always gets back something satisfying `TerminologyClient`, and never
 branches on which one it got.
 
-## `app/terminology/remote_client.py` (324 lines)
+## `app/terminology/remote_client.py`
 
 `RemoteTerminologyClient.__init__(base_url, timeout_seconds=30.0)`.
 `_client()` builds an `httpx.AsyncClient` with `base_url=<base_url>/api/v1/terminology`
-and the configured timeout. Each of the 17 `TerminologyClient` methods makes
+and the configured timeout. Each of the 16 `TerminologyClient` methods makes
 exactly one HTTP call against this server's own terminology routes (see
 [03-api-routes.md](03-api-routes.md)) and `model_validate()`s the JSON
 response straight into the matching `app/schemas/terminology.py` response
@@ -53,7 +55,7 @@ multiple FHIR-server instances each ran with `backend: remote` pointed at
 one shared terminology instance.
 
 **Auth is an explicitly unsolved placeholder here.** The org-scoped methods
-(create/patch/delete on org-concepts and display-overrides) forward
+(create/patch/delete on org-concepts) forward
 `X-Org-Id`/`X-User-Id` headers on the outgoing request. The module's own
 docstring flags this directly: the *receiving* router doesn't read those
 headers at all — it authenticates via `request.state.user`, populated by

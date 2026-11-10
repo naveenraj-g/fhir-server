@@ -33,6 +33,30 @@ class _ValueSetsMixin:
         async with self.session_factory() as session:
             return await session.get(TerminologyValueSet, value_set_id)
 
+    async def get_value_set_by_url(
+        self, url: str, version: str | None = None
+    ) -> TerminologyValueSet | None:
+        """Canonical-URL addressing — the form `$expand`/`$validate-code`
+        actually need (see docs/terminology-service/08-fhir-r4-standard-
+        compliance-gap-analysis.md §1). `TerminologyValueSet.canonical_url`
+        is unique, so this schema stores exactly one version per URL —
+        there's no multi-version history to pick from. When `version` is
+        given, it's checked against the one stored row rather than used to
+        select among several; a mismatch means "not found," not "found a
+        different version." """
+        async with self.session_factory() as session:
+            row = await session.execute(
+                select(TerminologyValueSet).where(
+                    TerminologyValueSet.canonical_url == url
+                )
+            )
+            vs = row.scalar_one_or_none()
+            if vs is None:
+                return None
+            if version is not None and vs.version != version:
+                return None
+            return vs
+
     async def expand_value_set(
         self, value_set_id: int, q: str | None, limit: int, offset: int
     ) -> tuple[int, list[tuple]]:

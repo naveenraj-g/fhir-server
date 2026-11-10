@@ -4,10 +4,9 @@ Uses asyncpg directly (not SQLAlchemy) for bulk-insert performance.
 Batches of BATCH_SIZE rows, idempotent via ON CONFLICT DO NOTHING.
 """
 import time
-from typing import Sequence
+from collections.abc import Sequence
 
 import asyncpg
-
 
 BATCH_SIZE = 2000
 
@@ -122,6 +121,30 @@ class BaseLoader:
                     (parent_concept_id, child_concept_id, relationship_type)
                 VALUES ($1, $2, $3)
                 ON CONFLICT DO NOTHING
+                """,
+                batch,
+            )
+        return len(records)
+
+    async def bulk_insert_concept_maps(
+        self, records: Sequence[tuple]  # (source_concept_db_id, target_concept_db_id, equivalence, confidence)
+    ) -> int:
+        """`equivalence` must be one of the real `ConceptMapEquivalence`
+        string values (app/models/terminology/enums.py) — this loader
+        inserts via raw SQL, so Postgres's own enum type
+        (`concept_map_equivalence`) is what actually validates it, not
+        Python. `ON CONFLICT` matches `TerminologyConceptMap`'s
+        `UniqueConstraint(source_concept_id, target_concept_id, equivalence)`
+        exactly, same "match the real constraint, not just the column
+        list" rule every other bulk-insert method here already follows."""
+        for i in range(0, len(records), BATCH_SIZE):
+            batch = records[i : i + BATCH_SIZE]
+            await self.conn.executemany(
+                """
+                INSERT INTO terminology_concept_map
+                    (source_concept_id, target_concept_id, equivalence, confidence)
+                VALUES ($1, $2, $3::concept_map_equivalence, $4)
+                ON CONFLICT (source_concept_id, target_concept_id, equivalence) DO NOTHING
                 """,
                 batch,
             )

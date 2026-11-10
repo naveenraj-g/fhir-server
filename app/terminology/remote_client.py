@@ -7,7 +7,7 @@ copy of this same codebase, so the HTTP contract here is already real and
 already exercised by this app's own test suite, not speculative.
 
 Service-to-service identity for the org-scoped methods (create/get/patch/
-delete/list org concepts and display overrides) is a known simplification,
+delete/list org concepts) is a known simplification,
 not a solved problem: the receiving router today reads org_id/user_id from
 the caller's own verified JWT (request.state.user), not from a header a
 server-to-server caller could set on its own authority. Forwarded here as
@@ -20,16 +20,20 @@ status."""
 
 import httpx
 
+from app.fhir.parameters import (
+    build_parameters,
+    param_boolean,
+    param_coding,
+    param_integer,
+    param_part,
+    param_string,
+)
 from app.schemas.terminology import (
     AddConceptMapRequest,
-    AuditLogListResponse,
     CodeSystemListResponse,
     ConceptMapListResponse,
     ConceptsForFieldResponse,
     CreateConceptRequest,
-    CreateDisplayOverrideRequest,
-    DisplayOverrideListResponse,
-    DisplayOverrideResponse,
     LookupBatchRequest,
     LookupBatchResponse,
     LookupRequest,
@@ -37,7 +41,6 @@ from app.schemas.terminology import (
     OrgConceptListResponse,
     OrgConceptResponse,
     PatchConceptRequest,
-    PatchDisplayOverrideRequest,
     SearchResponse,
     TranslateRequest,
     TranslateResponse,
@@ -231,93 +234,218 @@ class RemoteTerminologyClient:
             resp.raise_for_status()
             return OrgConceptListResponse.model_validate(resp.json())
 
-    async def list_audit_log(
-        self,
-        action: str | None,
-        performed_by: str | None,
-        concept_id: int | None,
-        limit: int,
-        offset: int,
-    ) -> AuditLogListResponse:
-        async with self._client() as client:
-            resp = await client.get(
-                "/audit-log",
-                params={
-                    "action": action,
-                    "performed_by": performed_by,
-                    "concept_id": concept_id,
-                    "limit": limit,
-                    "offset": offset,
-                },
-            )
-            resp.raise_for_status()
-            return AuditLogListResponse.model_validate(resp.json())
-
     async def validate(self, req: ValidateRequest) -> ValidateResponse:
         async with self._client() as client:
             resp = await client.post("/validate", json=req.model_dump())
             resp.raise_for_status()
             return ValidateResponse.model_validate(resp.json())
 
-    async def create_display_override(
-        self, req: CreateDisplayOverrideRequest, org_id: str, user_id: str | None
-    ) -> DisplayOverrideResponse | None:
+    # ------------------------------------------------------------------
+    # Real FHIR R4 `$`-operations — see
+    # docs/terminology-service/09-fhir-r4-terminology-standard-reference.md.
+    # Every one POSTs a `Parameters` body (app/fhir/parameters.py) to the
+    # matching route in app/routers/terminology/{codesystem,valueset,
+    # conceptmap}_operations.py and returns the raw JSON dict — same "plain
+    # dict, not a Pydantic model" shape the embedded TerminologyService
+    # itself returns for these, so this is a pure pass-through.
+    # ------------------------------------------------------------------
+
+    async def lookup_operation(
+        self,
+        *,
+        system: str | None,
+        code: str | None,
+        coding: dict | None,
+        properties: list[str] | None,
+    ) -> dict:
         async with self._client() as client:
-            headers = {"X-Org-Id": org_id}
-            if user_id:
-                headers["X-User-Id"] = user_id
             resp = await client.post(
-                "/display-overrides", json=req.model_dump(), headers=headers
+                "/CodeSystem/$lookup",
+                json=build_parameters(
+                    param_string("system", system),
+                    param_string("code", code),
+                    param_coding("coding", coding),
+                    *[param_string("property", p) for p in (properties or [])],
+                ),
             )
-            if resp.status_code == 404:
-                return None
             resp.raise_for_status()
-            return DisplayOverrideResponse.model_validate(resp.json())
+            return resp.json()
 
-    async def get_display_override(
-        self, override_id: int, org_id: str
-    ) -> DisplayOverrideResponse | None:
+    async def validate_code_on_codesystem_operation(
+        self,
+        *,
+        url: str | None,
+        code: str | None,
+        version: str | None,
+        display: str | None,
+        coding: dict | None,
+        codeable_concept: dict | None,
+    ) -> dict:
         async with self._client() as client:
-            resp = await client.get(
-                f"/display-overrides/{override_id}", headers={"X-Org-Id": org_id}
+            resp = await client.post(
+                "/CodeSystem/$validate-code",
+                json=build_parameters(
+                    param_string("url", url),
+                    param_string("code", code),
+                    param_string("version", version),
+                    param_string("display", display),
+                    param_coding("coding", coding),
+                    (
+                        {"name": "codeableConcept", "valueCodeableConcept": codeable_concept}
+                        if codeable_concept
+                        else None
+                    ),
+                ),
             )
-            if resp.status_code == 404:
-                return None
             resp.raise_for_status()
-            return DisplayOverrideResponse.model_validate(resp.json())
+            return resp.json()
 
-    async def patch_display_override(
-        self, override_id: int, req: PatchDisplayOverrideRequest, org_id: str
-    ) -> DisplayOverrideResponse | None:
+    async def subsumes_operation(
+        self,
+        *,
+        code_a: str | None,
+        code_b: str | None,
+        system: str | None,
+        coding_a: dict | None,
+        coding_b: dict | None,
+    ) -> dict:
         async with self._client() as client:
-            resp = await client.patch(
-                f"/display-overrides/{override_id}",
-                json=req.model_dump(exclude_unset=True),
-                headers={"X-Org-Id": org_id},
+            resp = await client.post(
+                "/CodeSystem/$subsumes",
+                json=build_parameters(
+                    param_string("codeA", code_a),
+                    param_string("codeB", code_b),
+                    param_string("system", system),
+                    param_coding("codingA", coding_a),
+                    param_coding("codingB", coding_b),
+                ),
             )
-            if resp.status_code == 404:
-                return None
             resp.raise_for_status()
-            return DisplayOverrideResponse.model_validate(resp.json())
+            return resp.json()
 
-    async def delete_display_override(self, override_id: int, org_id: str) -> bool:
+    async def find_matches_operation(
+        self,
+        *,
+        system: str | None,
+        version: str | None,
+        properties: list[dict],
+        exact: bool | None,
+        compositional: bool | None,
+    ) -> dict:
         async with self._client() as client:
-            resp = await client.delete(
-                f"/display-overrides/{override_id}", headers={"X-Org-Id": org_id}
+            resp = await client.post(
+                "/CodeSystem/$find-matches",
+                json=build_parameters(
+                    param_string("system", system),
+                    param_string("version", version),
+                    param_boolean("exact", exact),
+                    param_boolean("compositional", compositional),
+                    *[
+                        param_part(
+                            "property",
+                            param_string("code", p.get("code")),
+                            param_string("value", p.get("value")),
+                        )
+                        for p in properties
+                    ],
+                ),
             )
-            if resp.status_code == 404:
-                return False
             resp.raise_for_status()
-            return True
+            return resp.json()
 
-    async def list_display_overrides(
-        self, org_id: str, limit: int, offset: int
-    ) -> DisplayOverrideListResponse:
+    async def expand_operation(
+        self,
+        *,
+        value_set_id: int | None,
+        url: str | None,
+        value_set_version: str | None,
+        filter_text: str | None,
+        offset: int,
+        count: int,
+    ) -> dict:
         async with self._client() as client:
-            resp = await client.get(
-                "/display-overrides",
-                params={"limit": limit, "offset": offset},
-                headers={"X-Org-Id": org_id},
+            if value_set_id is not None:
+                resp = await client.get(
+                    f"/ValueSet/{value_set_id}/$expand",
+                    params={"filter": filter_text, "offset": offset, "count": count},
+                )
+            else:
+                resp = await client.post(
+                    "/ValueSet/$expand",
+                    json=build_parameters(
+                        param_string("url", url),
+                        param_string("valueSetVersion", value_set_version),
+                        param_string("filter", filter_text),
+                        param_integer("offset", offset),
+                        param_integer("count", count),
+                    ),
+                )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def validate_code_on_valueset_operation(
+        self,
+        *,
+        value_set_id: int | None,
+        url: str | None,
+        value_set_version: str | None,
+        code: str | None,
+        system: str | None,
+        display: str | None,
+    ) -> dict:
+        async with self._client() as client:
+            if value_set_id is not None:
+                resp = await client.get(
+                    f"/ValueSet/{value_set_id}/$validate-code",
+                    params={"code": code, "system": system, "display": display},
+                )
+            else:
+                resp = await client.post(
+                    "/ValueSet/$validate-code",
+                    json=build_parameters(
+                        param_string("url", url),
+                        param_string("valueSetVersion", value_set_version),
+                        param_string("code", code),
+                        param_string("system", system),
+                        param_string("display", display),
+                    ),
+                )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def translate_operation(
+        self, system: str, code: str, targetsystem: str | None, reverse: bool
+    ) -> dict:
+        async with self._client() as client:
+            resp = await client.post(
+                "/ConceptMap/$translate",
+                json=build_parameters(
+                    param_string("system", system),
+                    param_string("code", code),
+                    param_string("targetsystem", targetsystem),
+                    param_boolean("reverse", reverse),
+                ),
             )
             resp.raise_for_status()
-            return DisplayOverrideListResponse.model_validate(resp.json())
+            return resp.json()
+
+    async def closure_operation(
+        self, name: str, concepts: list[dict], version: str | None
+    ) -> dict:
+        async with self._client() as client:
+            resp = await client.post(
+                "/$closure",
+                json=build_parameters(
+                    param_string("name", name),
+                    param_string("version", version),
+                    *[param_coding("concept", c) for c in concepts],
+                ),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def get_terminology_capabilities(self) -> dict:
+        async with self._client() as client:
+            resp = await client.get("/metadata")
+            resp.raise_for_status()
+            return resp.json()

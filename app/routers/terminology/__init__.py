@@ -1,14 +1,16 @@
 from fastapi import APIRouter
 
 from . import (
-    audit_log,
+    capabilities,
     code_systems,
+    codesystem_operations,
     concept_maps,
+    conceptmap_operations,
     concepts,
-    display_overrides,
     org_concepts,
     validation,
     value_sets,
+    valueset_operations,
 )
 
 # No prefix/tags here — app/main.py sets prefix="/api/v1/terminology",
@@ -26,7 +28,9 @@ for _module in (
     validation,
     concept_maps,
     org_concepts,
-    display_overrides,
-    audit_log,
+    codesystem_operations,
+    valueset_operations,
+    conceptmap_operations,
+    capabilities,
 ):
     router.include_router(_module.router)

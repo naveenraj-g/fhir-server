@@ -10,7 +10,7 @@ constraint on each table exists. If you haven't read 00 yet, the terms
 know what they mean conceptually; this file is only about how they're
 stored.
 
-Source: `app/models/terminology/terminology.py` (343 lines). All 11 tables
+Source: `app/models/terminology/terminology.py`. All 9 tables
 live here — the terminology subsystem doesn't follow the
 one-package-per-resource model layout the rest of the codebase uses, since
 there's no single "primary resource" to name a package after.
@@ -34,7 +34,7 @@ One code within exactly one CodeSystem. The interesting part is the two
 - `(code_system_id, code, org_id)` unique **where `org_id IS NOT NULL`** —
   the same `(system, code)` pair can additionally exist once *per org*, for
   org-added custom concepts (see
-  [07-org-concepts-and-display-overrides.md](07-org-concepts-and-display-overrides.md)).
+  [07-org-concepts.md](07-org-concepts.md)).
 
 This is why `app/terminology/import_/base.py`'s bulk insert uses
 `ON CONFLICT (code_system_id, code) WHERE org_id IS NULL DO NOTHING` — it has
@@ -46,10 +46,8 @@ to this same table — used by the FHIR R4 loader's hierarchy, see
 [05](05-seeding-and-external-loaders.md)), `search_vector` (`TSVECTOR`,
 populated via raw `to_tsvector('english', ...)` SQL by every loader/writer,
 never by SQLAlchemy/ORM-level computation). Relationships to synonyms,
-translations, embedding, and display_overrides are all `cascade="all,
-delete-orphan"` — deleting a Concept takes its synonyms/translations/
-embedding/display-overrides with it. (Contrast with `TerminologyAuditLog`
-below, which deliberately survives concept deletion.)
+translations, and embedding are all `cascade="all, delete-orphan"` —
+deleting a Concept takes its synonyms/translations/embedding with it.
 
 ## `TerminologyConceptSynonym`
 
@@ -111,22 +109,6 @@ ranking; `search_concepts()` ranks by trigram `similarity()` instead, see
 a planned migration to a real `pgvector` column; as of this read, that
 migration hasn't happened — it's still `JSONB`.
 
-## `TerminologyAuditLog`
-
-Append-only record of every org-scoped write (both org-concept and
-display-override create/update/delete — see
-[07](07-org-concepts-and-display-overrides.md)). Three FK columns —
-`concept_id`, `value_set_id`, `display_override_id` — are all
-**`ondelete="SET NULL"`**, documented inline in the model's own docstring:
-
-> this table's job is to preserve a historical record... even after the
-> thing itself is deleted — the audit row must survive deleting its subject,
-> not block the delete
-
-This is deliberate and already correct: `old_value`/`new_value` on the audit
-row already snapshot the data the FK would otherwise point at, so losing the
-FK target doesn't lose any information the audit row needs.
-
 ## `TerminologyConceptMap`
 
 A separate, parallel translation layer from ValueSet/FieldBinding —
@@ -136,17 +118,6 @@ cross-system concept-to-concept mappings (`source_concept_id` →
 independent FK'd relationships to `TerminologyConcept`, each disambiguated
 via SQLAlchemy's `foreign_keys=[...]` (both FKs point at the same table, so
 the relationship direction has to be told explicitly which column to use).
-
-## `TerminologyDisplayOverride`
-
-Org-scoped relabeling of an *existing* concept's `display`/`definition` text
-— not a new code, just a presentation override. `UniqueConstraint(concept_id,
-org_id)` — one override per concept per org. The model's docstring spells out
-explicitly why this is a different thing from an org-added
-`TerminologyConcept` with `org_id` set: that path invents a brand-new code,
-this path only relabels a code that already exists canonically. See
-[07-org-concepts-and-display-overrides.md](07-org-concepts-and-display-overrides.md)
-for the full distinction and both write paths side by side.
 
 ## BigInteger / reference-style note
 

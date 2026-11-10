@@ -1,5 +1,17 @@
 # FHIR R4 Terminology Module — Standard Compliance Gap Analysis
 
+> **⚠️ Point-in-time snapshot — most of this list is now closed.** This
+> doc captured the gap *before* the rebuild it motivated. For current
+> status, read
+> [10-fhir-r4-standard-operations-implemented.md](10-fhir-r4-standard-operations-implemented.md)
+> instead — it says precisely what's real now vs. what's still open (it's
+> narrower than this list: `$subsumes`, `$closure`, `$lookup`/`$validate-code`
+> ×2/`$expand`/`$translate`, `ConceptMap.equivalence`, `OperationOutcome`
+> routing, and `TerminologyCapabilities` — items 1-8 below — are all now
+> done). This doc is kept as the original audit, not updated item-by-item,
+> since rewriting "missing" to "done" throughout would erase the record of
+> what was actually found before the rebuild.
+
 This file answers one question: **if an external, standards-compliant FHIR
 client pointed itself at this server's terminology subsystem, how much of
 what it expects would actually be there?** It assumes you've already read
@@ -61,11 +73,11 @@ FHIR resource shapes:
 | `POST /validate` | resource+field+system+code → valid/invalid | `$validate-code` — scoped to this app's own `TerminologyFieldBinding` (resource+field), not a ValueSet URL; no `Coding`/`CodeableConcept` input |
 | `POST /translate`, `GET/POST /concept-maps` | system+code+target → stored mappings | `$translate` / `ConceptMap` — `mapping_type` is a free-text string, not FHIR's required `equivalence` enum |
 | `GET/POST/PATCH/DELETE /org-concepts` | Org-scoped custom codes | No FHIR equivalent — closest is a `CodeSystem` with `content=supplement` plus a `NamingSystem`, not modeled that way here |
-| `/display-overrides` | Org-scoped relabeling of existing codes | No real FHIR equivalent (closest: a `CodeSystem.concept.designation` override) |
-| `/audit-log` | Governance trail | Not part of the terminology module at all — internal-only, fine as-is |
 | *(none)* | **No `$subsumes`**, despite `TerminologyRelationship` (an IS-A hierarchy table, `app/models/terminology/terminology.py:139-154`) already existing and populated | Missing entirely |
 | *(none)* | **No `$closure`** | Missing entirely |
-| *(none)* | **No `CapabilityStatement`** entry for terminology operations | Missing entirely |
+| *(none)* | **No `TerminologyCapabilities`** resource for this server's terminology operations | Missing entirely — see [09-fhir-r4-terminology-standard-reference.md §6](09-fhir-r4-terminology-standard-reference.md#6-terminologycapabilities) for why this, not a generic `CapabilityStatement` entry, is the actual terminology-specific gap |
+
+`/display-overrides` and `/audit-log` (org-scoped relabeling of existing codes, and a governance trail) used to be listed here — both were removed outright (not just deferred) rather than carried forward half-built while this rebuild is underway. See [09-fhir-r4-terminology-standard-reference.md](09-fhir-r4-terminology-standard-reference.md) for the standard this rebuild follows, and `app/repository/terminology/__init__.py`'s docstring for why audit logging specifically needs an app-wide design, not a terminology-only one.
 
 ## Core gaps, concretely
 
@@ -103,8 +115,12 @@ FHIR resource shapes:
    (`TerminologyRelationship`, IS-A edges) already exists in the DB — this
    is the cheapest gap to close, since the storage layer is already there
    and only an operation needs to be built on top of it.
-7. **No `CapabilityStatement` entry** for terminology — a real FHIR client
-   (or a conformance tester) has no way to discover what's supported here.
+7. **No `TerminologyCapabilities` resource** for terminology — a real FHIR
+   client (or a conformance tester) has no way to discover what's
+   supported here. Not the same gap as a generic `CapabilityStatement`
+   entry (every mounted resource needs one of those regardless of
+   terminology) — see
+   [09-fhir-r4-terminology-standard-reference.md §6](09-fhir-r4-terminology-standard-reference.md#6-terminologycapabilities).
 8. **Designations/properties not exposed.**
    `TerminologyConceptSynonym`/`TerminologyConceptTranslation`
    (`app/models/terminology/terminology.py:109-136`) exist in the DB but
@@ -114,9 +130,8 @@ FHIR resource shapes:
 ## Bottom line
 
 What exists today is a **working, useful internal terminology service** —
-code systems, value sets, lookup, translate, org-scoped custom codes, and
-an audit trail genuinely more governance-oriented than a bare FHIR
-terminology server usually ships with. But it is **not FHIR R4
+code systems, value sets, lookup, translate, and org-scoped custom codes.
+But it is **not FHIR R4
 terminology-module compliant** in any formal sense: it doesn't expose
 `CodeSystem`/`ValueSet`/`ConceptMap` as FHIR resources, doesn't address by
 canonical URL, doesn't implement the standard `$lookup`/`$validate-code`/
@@ -147,6 +162,6 @@ supports:
 4. **`OperationOutcome` on error** — route terminology errors through the
    same `ApplicationError` hierarchy every other resource already uses.
 5. **Full `CodeSystem`/`ValueSet`/`ConceptMap` resource CRUD +
-   `CapabilityStatement` entries** — the bigger lift; only worth it once
-   an actual external-FHIR-client consumer is in scope, as opposed to this
-   server's own internal validator being the only caller.
+   a `TerminologyCapabilities` resource** — the bigger lift; only worth it
+   once an actual external-FHIR-client consumer is in scope, as opposed to
+   this server's own internal validator being the only caller.

@@ -8,7 +8,7 @@ shapes the raw rows into the response format an API caller gets back (see
 the root `CLAUDE.md`'s "Layered Architecture" section for why the split
 exists at all, across every resource in this server, not just
 terminology). If a term here — CodeSystem, Concept, ValueSet, binding,
-ConceptMap, org concept, display override — is unfamiliar, see
+ConceptMap, org concept — is unfamiliar, see
 [00-what-is-terminology.md](00-what-is-terminology.md) first.
 
 Both layers follow the same package-per-resource-but-split-into-mixins
@@ -24,8 +24,7 @@ this exact order:
 ```python
 class TerminologyRepository(
     _CodeSystemsMixin, _ValueSetsMixin, _ConceptsMixin, _ValidationMixin,
-    _ConceptMapsMixin, _OrgConceptsMixin, _DisplayOverridesMixin,
-    _AuditLogMixin, BaseRepository,
+    _ConceptMapsMixin, _OrgConceptsMixin, BaseRepository,
 ):
 ```
 
@@ -36,8 +35,8 @@ sort_desc, limit, offset, total_mode="accurate")` helper.
 
 **None of the terminology mixins actually call `_execute_paginated()`.**
 Every one of `list_value_sets`, `search_concepts`, `list_org_concepts`,
-`list_display_overrides`, `list_audit_log`, and `list_concept_maps` inlines
-its own count-query + rows-query pair inside one `async with
+and `list_concept_maps` inlines its own count-query + rows-query pair
+inside one `async with
 self.session_factory() as session:` block instead. Worth knowing if you're
 extending one of these methods: there's no shared pagination helper actually
 wired up in this subsystem despite one existing on the base class — follow
@@ -102,17 +101,12 @@ query) rather than relying purely on `ON CONFLICT` — the model's
 still the actual DB-level guarantee, the pre-check just lets the method
 return `False` cleanly on a duplicate instead of raising an integrity error.
 
-### `org_concepts.py` (192 lines) and `display_overrides.py` (138 lines)
-Structurally identical five-method shape (`create_`, `get_`, `patch_`,
-`delete_`, `list_`), each logging a `TerminologyAuditLog` row on every
-mutation. Covered in full in
-[07-org-concepts-and-display-overrides.md](07-org-concepts-and-display-overrides.md)
-since the interesting content here is the *distinction* between the two,
-not either one in isolation.
-
-### `audit_log.py` (32 lines)
-`list_audit_log(action, performed_by, concept_id, limit, offset)` — the one
-read path over the table both of the above write to.
+### `org_concepts.py`
+Five-method shape (`create_`, `get_`, `patch_`, `delete_`, `list_`).
+Covered in full in [07-org-concepts.md](07-org-concepts.md). (A sibling
+`display_overrides.py` mixin — and a shared `TerminologyAuditLog` both
+wrote to on every mutation — existed here before being removed; see that
+doc and [01-data-model.md](01-data-model.md) for why.)
 
 ## Service: `app/services/terminology/`
 
@@ -123,7 +117,6 @@ Same mixin-composition pattern, same ordering concept, composed in
 class TerminologyService(
     _CoreMixin, _CodeSystemsMixin, _ValueSetsMixin, _ConceptsMixin,
     _ValidationMixin, _ConceptMapsMixin, _OrgConceptsMixin,
-    _DisplayOverridesMixin, _AuditLogMixin,
 ):
 ```
 
@@ -132,25 +125,19 @@ class TerminologyService(
 resource row here, so there's no "core" business logic to host, unlike
 every other resource's `_CoreMixin`.
 
-`_shared.py` (89 lines) holds the response-shaping helpers every other
+`_shared.py` holds the response-shaping helpers every other
 service mixin calls into, so the FHIR-shape-vs-plain-shape logic lives in
 one place:
 
 - `_cs_response(cs)`, `_vs_response(vs)`, `_concept_response(concept, cs)`
 - `_org_concept_response(concept, cs)` — same as `_concept_response` plus
   `user_id`/`org_id`/`created_at`.
-- `_display_override_response(override, concept, cs)` — pulls
-  `code`/`system`/`system_name` from the *joined concept + code system*, but
-  `display`/`definition`/`org_id`/`user_id`/`created_at` from the override
-  row itself. This split (identity fields from the concept, content fields
-  from the override) is exactly the override/concept relationship
-  [07](07-org-concepts-and-display-overrides.md) explains.
 
 Every other service mixin (`code_systems.py`, `value_sets.py`,
-`concepts.py`, `validation.py`, `concept_maps.py`, `audit_log.py`) is a thin
+`concepts.py`, `validation.py`, `concept_maps.py`) is a thin
 pass-through: call the matching repository method, wrap the result in the
 matching Pydantic response schema from `app/schemas/terminology.py`
-(29 schema classes total — see the schemas reference in
+(24 schema classes total — see the schemas reference in
 [03-api-routes.md](03-api-routes.md)). `validation.py` is the one service
 mixin with real branching logic in it — see
 [06-validation-and-field-bindings.md](06-validation-and-field-bindings.md)

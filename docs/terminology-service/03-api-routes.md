@@ -3,14 +3,14 @@
 **What this file is:** the HTTP surface — every URL path a client (or the
 MCP tool layer, see the root `CLAUDE.md`'s "OpenAPI Spec = MCP Contract")
 can actually call to read or write a code system, concept, value set,
-concept map, org concept, or display override. If those words aren't
+concept map, or org concept. If those words aren't
 familiar yet, read
 [00-what-is-terminology.md](00-what-is-terminology.md) first — this file
 assumes you already know what each one means and is only about how to
 reach it over HTTP.
 
-Source: `app/routers/terminology/` — 8 sub-routers composed in
-`__init__.py`, plus `_responses.py` (169 lines) for the shared OpenAPI
+Source: `app/routers/terminology/` — 6 sub-routers composed in
+`__init__.py`, plus `_responses.py` for the shared OpenAPI
 response-schema constants and the org-scoping helper. All terminology
 routes live under a single mount point; see `app/main.py`'s
 `mount_routers()` / `configs/config.yaml`'s `routes.enabled` list (root
@@ -23,7 +23,7 @@ this order:
 
 ```
 code_systems, value_sets, concepts, validation, concept_maps,
-org_concepts, display_overrides, audit_log
+org_concepts
 ```
 
 This mirrors the repository/service mixin order from
@@ -33,8 +33,8 @@ per mixin, same name.
 
 ## `_responses.py` — the two shared building blocks
 
-1. **`_require_org_id(request)`** — every org-scoped route (org-concepts,
-   display-overrides) calls this first. It reads
+1. **`_require_org_id(request)`** — every org-scoped route (today, just
+   org-concepts) calls this first. It reads
    `request.state.user.get("activeOrganizationId")` and raises **403** if
    absent. This is the terminology subsystem's own, independent
    org-scoping check — it does **not** route through `app/auth/`'s
@@ -58,7 +58,7 @@ per mixin, same name.
    the way it does for the 8 auth-rollout resources; terminology's schemas
    don't follow that FHIR/plain split at all (see below).
 
-## Schemas: `app/schemas/terminology.py` (240 lines, 29 classes)
+## Schemas: `app/schemas/terminology.py` (24 classes)
 
 Unlike every other resource (which has a `FHIR<Resource>Schema` /
 `Plain<Resource>Response` pair per the root `CLAUDE.md`'s "Schema
@@ -68,13 +68,18 @@ because none of these rows is a FHIR resource with its own canonical FHIR
 JSON shape. Representative classes: `CodeSystemResponse`,
 `CodeSystemListResponse`, `ValueSetResponse`, `ConceptResponse`,
 `ValidateResponse`, `TranslationResult`/`TranslateResponse`,
-`OrgConceptResponse`, `OrgConceptListResponse`, `DisplayOverrideResponse`,
-`DisplayOverrideListResponse`, `AuditLogRecord`/`AuditLogListResponse`,
+`OrgConceptResponse`, `OrgConceptListResponse`,
 `ConceptMapResponse`/`ConceptMapListResponse`. All use
 `model_config = ConfigDict(extra="forbid")` on inputs, matching the
 convention described in the root `CLAUDE.md`.
 
-## `org_concepts.py` router (153 lines, 5 endpoints)
+(`DisplayOverrideResponse`/`DisplayOverrideListResponse` and
+`AuditLogRecord`/`AuditLogListResponse` existed here too, until the
+display-override and terminology-specific audit-log features were
+removed — see [07-org-concepts.md](07-org-concepts.md) and
+[01-data-model.md](01-data-model.md).)
+
+## `org_concepts.py` router (5 endpoints)
 
 | Method | Path | Notes |
 |---|---|---|
@@ -83,14 +88,6 @@ convention described in the root `CLAUDE.md`.
 | GET | `/org-concepts/{concept_id}` | 404 if not found |
 | PATCH | `/org-concepts/{concept_id}` | 404 if not found |
 | DELETE | `/org-concepts/{concept_id}` | 404 if not found |
-
-## `display_overrides.py` router (144 lines, 5 endpoints)
-
-Structurally identical to `org_concepts.py` — same five-endpoint shape, same
-403/404 pattern, POST targets `/display-overrides` keyed by `(system, code)`
-instead of inventing a new concept directly (see
-[07](07-org-concepts-and-display-overrides.md) for why the create payload
-differs even though the router shape doesn't).
 
 ## `concept_maps.py` router
 
@@ -109,8 +106,8 @@ Every other write/read handler that returns a Pydantic model wraps it as
 `JSONResponse(content=jsonable_encoder(response_model))`, not
 `JSONResponse(content=response_model.model_dump())`. This matters
 specifically because several of these response schemas carry `datetime`
-fields (`created_at`, `updated_at` on org-concepts/display-overrides/audit
-records) — `model_dump()` leaves those as Python `datetime` objects, which
+fields (`created_at`, `updated_at` on org-concepts) — `model_dump()`
+leaves those as Python `datetime` objects, which
 `JSONResponse`'s default encoder can't serialize, and `jsonable_encoder`
 converts them to ISO-8601 strings first. This was a real, previously-shipped
 bug in this subsystem; it's why `concept_maps.py`'s dict-returning

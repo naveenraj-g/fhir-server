@@ -119,42 +119,32 @@ Translation (concept maps) and validation (value sets + bindings) are two
 different jobs that happen to share the same underlying dictionary of
 codes and concepts.
 
-## This project's own twist: org-scoped customization
+## This project's own twist: org-owned concepts
 
 Standard code systems (LOINC, SNOMED, etc.) are maintained by outside
 standards bodies — nobody using this server gets to edit them. But real
 hospital networks ("orgs," in this codebase's terms — see the root
-`CLAUDE.md`'s Multi-Tenancy section) sometimes need something a little
-different:
+`CLAUDE.md`'s Multi-Tenancy section) sometimes have their own internal
+code for something that doesn't have a standard equivalent yet (an
+internal department code, a locally-invented procedure variant, …). This
+subsystem lets an org add its own brand-new concept to an existing code
+system, scoped so it's only visible/usable for that org — without
+touching or colliding with the canonical, standards-body-maintained
+codes. See [07-org-concepts.md](07-org-concepts.md) for exactly how
+that's implemented.
 
-- **An org-owned concept** — sometimes a hospital network has its own
-  internal code for something that doesn't have a standard equivalent yet
-  (an internal department code, a locally-invented procedure variant, …).
-  This subsystem lets an org add its own brand-new concept to an existing
-  code system, scoped so it's only visible/usable for that org — without
-  touching or colliding with the canonical, standards-body-maintained
-  codes.
-- **A display override** — sometimes the *code* is right (a hospital does
-  want to use the standard LOINC code for a lab test) but the org wants a
-  different human-readable label shown for it — maybe their clinicians
-  are used to different phrasing, or a different language's wording. A
-  display override doesn't invent a new code; it just relabels the display
-  text of a code that already exists, for that org only.
-
-These are two deliberately different operations — one invents a new code,
-the other relabels an existing one — and this project keeps them as two
-separate mechanisms rather than one, because conflating them would make it
-impossible to tell, later, which codes in the system are "real" (standard,
-portable, meaningful to any other system reading this data) versus purely
-local labeling. See
-[07-org-concepts-and-display-overrides.md](07-org-concepts-and-display-overrides.md)
-for exactly how that distinction is implemented.
+A per-org *display override* on an existing canonical code (relabeling
+without inventing a new code) was explored here too, but was removed
+before it shipped — it goes back on the list once this subsystem's
+rebuild toward the real FHIR R4 terminology module (see
+[08-fhir-r4-standard-compliance-gap-analysis.md](08-fhir-r4-standard-compliance-gap-analysis.md))
+has settled.
 
 ## Where to go next
 
-With those six ideas — code system, concept, value set, binding, concept
-map, and this project's org-scoped additions — you have everything you
-need to read the rest of this folder. Go to the [README](README.md) for
-the implementation-level map of how all of this is actually built: which
-database tables, which API routes, which background scripts load the real
-LOINC/SNOMED/ICD-10/RxNorm/FHIR data in.
+With those five ideas — code system, concept, value set, binding, and
+concept map — plus this project's org-owned-concept addition, you have
+everything you need to read the rest of this folder. Go to the
+[README](README.md) for the implementation-level map of how all of this
+is actually built: which database tables, which API routes, which
+background scripts load the real LOINC/SNOMED/ICD-10/RxNorm/FHIR data in.

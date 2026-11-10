@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.terminology.enums import ConceptMapEquivalence
+
 
 class CodeSystemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -116,7 +118,7 @@ class ValidateResponse(BaseModel):
 
 class TranslationResult(BaseModel):
     concept: ConceptResponse
-    mapping_type: str | None = None
+    equivalence: ConceptMapEquivalence
     confidence: float | None = None
 
 
@@ -140,7 +142,7 @@ class ConceptMapRecord(BaseModel):
     id: int
     source_concept: ConceptResponse
     target_concept: ConceptResponse
-    mapping_type: str | None = None
+    equivalence: ConceptMapEquivalence
     confidence: float | None = None
 
 
@@ -160,7 +162,7 @@ class AddConceptMapRequest(BaseModel):
                 "source_code": "38341003",
                 "target_system": "http://hl7.org/fhir/sid/icd-10-cm",
                 "target_code": "I10",
-                "mapping_type": "equivalent",
+                "equivalence": "equivalent",
                 "confidence": 1.0,
             }
         },
@@ -169,7 +171,7 @@ class AddConceptMapRequest(BaseModel):
     source_code: str
     target_system: str
     target_code: str
-    mapping_type: str | None = "equivalent"
+    equivalence: ConceptMapEquivalence = ConceptMapEquivalence.equivalent
     confidence: float | None = None
 
 
@@ -218,70 +220,3 @@ class OrgConceptListResponse(BaseModel):
     data: list[OrgConceptResponse]
 
 
-class AuditLogRecord(BaseModel):
-    id: int
-    action: str
-    concept_id: int | None = None
-    value_set_id: int | None = None
-    performed_by: str | None = None
-    old_value: dict | None = None
-    new_value: dict | None = None
-    created_at: datetime | None = None
-
-
-class AuditLogListResponse(BaseModel):
-    total: int
-    limit: int
-    offset: int
-    data: list[AuditLogRecord]
-
-
-class CreateDisplayOverrideRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "system": "http://loinc.org",
-                "code": "15074-8",
-                "display": "Blood Glucose Fasting",
-                "definition": "Clinic override for glucose display",
-            }
-        },
-    )
-    system: str
-    code: str
-    display: str
-    definition: str | None = None
-
-
-class PatchDisplayOverrideRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "display": "Blood Glucose (Fasting)",
-                "definition": "Updated override definition",
-            }
-        },
-    )
-    display: str | None = None
-    definition: str | None = None
-
-
-class DisplayOverrideResponse(BaseModel):
-    id: int
-    code: str
-    system: str
-    system_name: str
-    display: str
-    definition: str | None = None
-    org_id: str | None = None
-    user_id: str | None = None
-    created_at: datetime | None = None
-
-
-class DisplayOverrideListResponse(BaseModel):
-    total: int
-    limit: int
-    offset: int
-    data: list[DisplayOverrideResponse]

@@ -23,7 +23,7 @@ class _ConceptMapsMixin:
                 id=cm.id,
                 source_concept=_concept_response(src_concept, src_cs),
                 target_concept=_concept_response(tgt_concept, tgt_cs),
-                mapping_type=cm.mapping_type,
+                equivalence=cm.equivalence,
                 confidence=cm.confidence,
             )
             for cm, src_concept, src_cs, tgt_concept, tgt_cs in rows
@@ -50,12 +50,12 @@ class _ConceptMapsMixin:
                 "error": f"Target concept not found: {req.target_system}|{req.target_code}",
             }
         inserted = await self.repository.add_concept_map(
-            src_concept.id, tgt_concept.id, req.mapping_type, req.confidence
+            src_concept.id, tgt_concept.id, req.equivalence, req.confidence
         )
         return {
             "inserted": inserted,
             "source": _concept_response(src_concept, src_cs).model_dump(),
             "target": _concept_response(tgt_concept, tgt_cs).model_dump(),
-            "mapping_type": req.mapping_type,
+            "equivalence": req.equivalence.value,
             "confidence": req.confidence,
         }

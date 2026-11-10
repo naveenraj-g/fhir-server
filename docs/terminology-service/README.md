@@ -1,8 +1,8 @@
 # Terminology Service
 
 A FHIR R4 terminology subsystem: CodeSystems, ValueSets, Concepts, cross-system
-ConceptMaps, per-resource field bindings, and two org-scoped customization
-mechanisms (org-owned concepts, display overrides) — all behind a single
+ConceptMaps, per-resource field bindings, and an org-scoped customization
+mechanism (org-owned concepts) — all behind a single
 `TerminologyClient` Protocol that the rest of the server (and, if
 `terminology.backend: remote`, other services) calls without caring whether
 the implementation is in-process or over HTTP.
@@ -36,14 +36,24 @@ Read in this order if you're new to the subsystem:
    — what `validate()`/`translate()` actually check, and the real semantics
    of FHIR binding strength in this codebase (hint: it's narrower than the
    spec implies).
-7. **[07-org-concepts-and-display-overrides.md](07-org-concepts-and-display-overrides.md)**
-   — the two org-scoped customization mechanisms, how they differ, and the
-   shared audit log both write to.
+7. **[07-org-concepts.md](07-org-concepts.md)**
+   — this project's one org-scoped customization mechanism (a display-override
+   mechanism and a terminology-specific audit log existed alongside it at
+   one point; both were removed — see that doc for why).
 8. **[08-fhir-r4-standard-compliance-gap-analysis.md](08-fhir-r4-standard-compliance-gap-analysis.md)**
    — how far this subsystem is from the actual FHIR R4 terminology-module
    spec (resources, `$lookup`/`$validate-code`/`$expand`/`$translate`/
-   `$subsumes` operations, `CapabilityStatement`), item by item, with a
+   `$subsumes` operations, `TerminologyCapabilities`), item by item, with a
    suggested remediation order.
+9. **[09-fhir-r4-terminology-standard-reference.md](09-fhir-r4-terminology-standard-reference.md)**
+   — the primary-source reference this rebuild follows: every resource's
+   full element structure and every standard operation's exact parameters
+   and response shape, pulled directly from the spec.
+10. **[10-fhir-r4-standard-operations-implemented.md](10-fhir-r4-standard-operations-implemented.md)**
+   — the closing report: every `$`-operation now actually implemented
+   (routes, backing code, verification performed), and the honest list of
+   what's still pending. Read this one if you just want to know "is X
+   built yet."
 
 ## Why this exists as a separate service-shaped thing
 
@@ -66,7 +76,7 @@ FHIR-server instances need to agree on the same code systems.
 TerminologyCodeSystem  (one named vocabulary, e.g. "http://loinc.org")
         │ 1-to-many
         ▼
-TerminologyConcept      (one code; synonyms, translations, embedding, display_overrides hang off it)
+TerminologyConcept      (one code; synonyms, translations, embedding hang off it)
         │ many-to-many (via TerminologyValueSetConcept)
         ▼
 TerminologyValueSet     (curated subset of concepts, can span multiple CodeSystems)
@@ -75,8 +85,6 @@ TerminologyValueSet     (curated subset of concepts, can span multiple CodeSyste
 TerminologyFieldBinding (wires one resource_type.field_name to one governing ValueSet)
 
 TerminologyConceptMap   (separate, parallel: concept -> concept translation across systems)
-TerminologyDisplayOverride (org-scoped relabel of an existing concept's display text)
-TerminologyAuditLog     (append-only record of every org-scoped write, from both of the above)
 ```
 
 Full column-level detail for every one of these is in
@@ -86,17 +94,24 @@ Full column-level detail for every one of these is in
 
 | Layer | Path |
 |---|---|
-| Models | `app/models/terminology/terminology.py` |
-| Repository | `app/repository/terminology/` (9-mixin package) |
-| Service | `app/services/terminology/` (9-mixin package) |
+| Models | `app/models/terminology/terminology.py`, `app/models/terminology/enums.py` |
+| Repository | `app/repository/terminology/` (11-mixin package — see below) |
+| Service | `app/services/terminology/` (10-mixin package — see below) |
 | Schemas | `app/schemas/terminology.py` |
-| Routers | `app/routers/terminology/` (8 sub-routers + `_responses.py`) |
+| Routers | `app/routers/terminology/` (9 sub-routers + `_responses.py`) |
+| Generic FHIR `Parameters` helper | `app/fhir/parameters.py` — shared by every `$`-operation route, not terminology-specific |
 | Client protocol + dispatch | `app/terminology/client.py`, `app/terminology/dispatch.py` |
 | Remote HTTP client | `app/terminology/remote_client.py` |
 | DI wiring | `app/di/modules/terminology.py`, `app/di/dependencies/terminology.py` |
 | Bulk import CLI + loaders | `app/terminology/import_/` |
 | Field-binding seed scripts | `app/terminology/seed_field_bindings.py`, `app/terminology/seed_field_bindings_r4.py` |
 | Config | `app/core/config.py` — `TerminologyConfig`/`TerminologyRemoteConfig` |
+
+The 3 extra mixins each in Repository/Service, and the 3 extra sub-routers
+(`codesystem_operations.py`/`valueset_operations.py`/`conceptmap_operations.py`
+at each layer), back the real FHIR `$`-operations — see
+[10-fhir-r4-standard-operations-implemented.md](10-fhir-r4-standard-operations-implemented.md)
+for the full breakdown of what each one does.
 
 Note: none of the ~34 terminology tables/routes currently have the
 `@trace_methods` structured-logging instrumentation described in the root

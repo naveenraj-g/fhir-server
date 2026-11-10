@@ -1,13 +1,11 @@
 from app.models.terminology.terminology import (
     TerminologyCodeSystem,
     TerminologyConcept,
-    TerminologyDisplayOverride,
     TerminologyValueSet,
 )
 from app.schemas.terminology import (
     CodeSystemResponse,
     ConceptResponse,
-    DisplayOverrideResponse,
     OrgConceptResponse,
     ValueSetResponse,
 )
@@ -67,22 +65,4 @@ def _org_concept_response(
         user_id=concept.user_id,
         org_id=concept.org_id,
         created_at=concept.created_at,
-    )
-
-
-def _display_override_response(
-    override: TerminologyDisplayOverride,
-    concept: TerminologyConcept,
-    cs: TerminologyCodeSystem,
-) -> DisplayOverrideResponse:
-    return DisplayOverrideResponse(
-        id=override.id,
-        code=concept.code,
-        system=cs.canonical_url,
-        system_name=cs.name,
-        display=override.display,
-        definition=override.definition,
-        org_id=override.org_id,
-        user_id=override.user_id,
-        created_at=override.created_at,
     )

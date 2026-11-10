@@ -49,6 +49,11 @@ terminology-loinc FILE="terminology_data/LoincTableCore.csv":
 terminology-snomed DIR="terminology_data/SnomedCT_USEdition/Snapshot/Terminology":
     uv run python -m app.terminology.import_.cli --source snomed --dir {{DIR}}
 
+# SNOMED CT -> ICD-10-CM concept map — requires terminology-snomed AND terminology-icd10cm first
+# Download: same UMLS/NLM account as terminology-snomed, "SNOMED CT to ICD-10-CM Resources" package
+terminology-snomed-icd10cm-map FILE="terminology_data/SNOMED_CT_to_ICD-10-CM_Resources_20260301/tls_Icd10cmHumanReadableMap_US1000124_20260301.tsv":
+    uv run python -m app.terminology.import_.cli --source snomed-icd10cm-map --file {{FILE}}
+
 # FHIR R4 built-in code systems (already loaded — re-run to pick up HL7 spec updates)
 # Download: curl -L https://hl7.org/fhir/R4/definitions.json.zip -o fhir-r4.zip
 #   unzip fhir-r4.zip valuesets.json v3-codesystems.json v2-tables.json
@@ -71,7 +76,7 @@ terminology-seed-bindings-r4:
     uv run python -m app.terminology.seed_field_bindings_r4
 
 # Load all terminologies in order (each is idempotent — safe to re-run)
-terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings-r4
+terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-snomed-icd10cm-map terminology-seed-bindings-r4
 
 # ── FHIR Profiles ─────────────────────────────────────────────────────────────
 # Seeds scripts/data/profiling/ (see its README) into the fhir_profile table —

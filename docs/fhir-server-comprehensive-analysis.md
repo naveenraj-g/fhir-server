@@ -315,7 +315,6 @@ These have all 8 required layers: Model, Repository, Service, Router, FHIR Mappe
 | `terminology_field_binding` | ~130 | Maps `resource_type.field_name` → ValueSet |
 | `terminology_concept_map` | varies | Cross-system code translations |
 | `terminology_concept_embedding` | planned | JSONB vector embeddings for semantic search (pgvector migration target) |
-| `terminology_audit_log` | grows | Governance trail for terminology changes |
 
 ### 5.2 Import Loaders
 
@@ -363,7 +362,6 @@ This resolves "include all descendants of code X" in ValueSet `compose.include[]
 | `GET /concept-maps` | List concept maps |
 | `PATCH /concept-maps/{id}` | Update concept map |
 | `GET/POST/PATCH/DELETE /org-concepts` | Organization-scoped custom concepts |
-| `GET /audit-log` | Terminology governance audit trail |
 
 ### 5.5 Field Binding System
 

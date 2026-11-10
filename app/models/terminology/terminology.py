@@ -2,6 +2,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum,
     Float,
     ForeignKey,
     Index,
@@ -17,6 +18,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase
+from app.models.terminology.enums import ConceptMapEquivalence
 
 
 class TerminologyCodeSystem(FHIRBase):
@@ -97,11 +99,6 @@ class TerminologyConcept(FHIRBase):
         "TerminologyConceptEmbedding",
         back_populates="concept",
         uselist=False,
-        cascade="all, delete-orphan",
-    )
-    display_overrides = relationship(
-        "TerminologyDisplayOverride",
-        back_populates="concept",
         cascade="all, delete-orphan",
     )
 
@@ -246,52 +243,20 @@ class TerminologyConceptEmbedding(FHIRBase):
     concept = relationship("TerminologyConcept", back_populates="embedding")
 
 
-class TerminologyAuditLog(FHIRBase):
-    """Governance trail for all terminology changes.
-
-    Every concept_id/value_set_id/display_override_id FK below is
-    ondelete="SET NULL" deliberately: this table's job is to preserve a
-    historical record (old_value/new_value already snapshot what changed)
-    even after the thing itself is deleted — the audit row must survive
-    deleting its subject, not block the delete. Without SET NULL, the
-    default RESTRICT means nothing referencing one of these could ever be
-    deleted at all, since creating something always logs an audit row
-    pointing at it first."""
-
-    __tablename__ = "terminology_audit_log"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    action = Column(String, nullable=False, index=True)
-    concept_id = Column(
-        Integer,
-        ForeignKey("terminology_concept.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    value_set_id = Column(
-        Integer,
-        ForeignKey("terminology_value_set.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    display_override_id = Column(
-        Integer,
-        ForeignKey("terminology_display_override.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    performed_by = Column(String, nullable=True)
-    old_value = Column(JSONB, nullable=True)
-    new_value = Column(JSONB, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-
 class TerminologyConceptMap(FHIRBase):
-    """Cross-system concept mappings — e.g. ICD-10 ↔ SNOMED, LOINC ↔ local lab codes."""
+    """Cross-system concept mappings — e.g. ICD-10 ↔ SNOMED, LOINC ↔ local lab codes.
+    Backs ConceptMap.group.element.target (see
+    docs/terminology-service/09-fhir-r4-terminology-standard-reference.md §4.1)
+    — one row per (source, target) pair, not a full ConceptMap resource (no
+    canonical url/version/status of its own; building that is a separate,
+    larger, deliberately-deferred item — see
+    docs/terminology-service/08-fhir-r4-standard-compliance-gap-analysis.md
+    remediation item 5). `$translate` therefore always resolves by
+    source+target system/code, never by a ConceptMap canonical URL."""
 
     __tablename__ = "terminology_concept_map"
     __table_args__ = (
-        UniqueConstraint("source_concept_id", "target_concept_id", "mapping_type"),
+        UniqueConstraint("source_concept_id", "target_concept_id", "equivalence"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -301,7 +266,14 @@ class TerminologyConceptMap(FHIRBase):
     target_concept_id = Column(
         Integer, ForeignKey("terminology_concept.id"), nullable=False, index=True
     )
-    mapping_type = Column(String, nullable=True)
+    equivalence = Column(
+        Enum(
+            ConceptMapEquivalence,
+            name="concept_map_equivalence",
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=False,
+    )
     confidence = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -313,30 +285,56 @@ class TerminologyConceptMap(FHIRBase):
     )
 
 
-class TerminologyDisplayOverride(FHIRBase):
-    """Org-scoped display/definition override for an EXISTING concept —
-    distinct from org_id on TerminologyConcept, which adds a brand-new
-    code. This relabels a fixed, already-loaded code (e.g. one of HL7's
-    own required-binding status codes) per-org, without changing the code
-    itself: concept_id always points at the same canonical row every org
-    shares, org_id scopes which org's label this particular row supplies.
-    Resolving which display to show (this override if one exists for the
-    caller's org, the concept's own canonical display otherwise) is a read
-    concern for a later change, not implemented yet — this table and its
-    CRUD are the only thing built so far."""
+class TerminologyClosureTable(FHIRBase):
+    """Backs the `$closure` operation's server-side state — see
+    docs/terminology-service/09-fhir-r4-terminology-standard-reference.md §4.4.
+    `$closure` is the one operation in this module that is NOT idempotent:
+    a named closure table accumulates members across calls, and each call
+    either (re)initializes it, adds members (returning the new subsumption
+    relationships against everything already in the table), or resyncs a
+    client from a given version. `name` is client-chosen (the client
+    decides what to call its own closure context) — this table just makes
+    that name durable across calls.
 
-    __tablename__ = "terminology_display_override"
-    __table_args__ = (UniqueConstraint("concept_id", "org_id"),)
+    `version` is a plain incrementing counter, bumped once per call that
+    actually adds at least one new member — NOT a semantic version string.
+    TerminologyClosureConcept.added_at_version lets a resync (`$closure`
+    called with a `version` parameter) answer "what's been added since
+    then" with a simple `> version` filter."""
+
+    __tablename__ = "terminology_closure_table"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    concept_id = Column(
-        Integer, ForeignKey("terminology_concept.id"), nullable=False, index=True
-    )
-    org_id = Column(String, nullable=False, index=True)
-    display = Column(String, nullable=False)
-    definition = Column(Text, nullable=True)
-    user_id = Column(String, nullable=True)
+    name = Column(String, nullable=False, unique=True, index=True)
+    version = Column(Integer, nullable=False, default=0, server_default=text("0"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    concept = relationship("TerminologyConcept", back_populates="display_overrides")
+    members = relationship(
+        "TerminologyClosureConcept",
+        back_populates="closure_table",
+        cascade="all, delete-orphan",
+    )
+
+
+class TerminologyClosureConcept(FHIRBase):
+    """One concept that has been added to a named closure table (see
+    TerminologyClosureTable above), and the table version it was added at."""
+
+    __tablename__ = "terminology_closure_concept"
+    __table_args__ = (UniqueConstraint("closure_table_id", "concept_id"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    closure_table_id = Column(
+        Integer,
+        ForeignKey("terminology_closure_table.id"),
+        nullable=False,
+        index=True,
+    )
+    concept_id = Column(
+        Integer, ForeignKey("terminology_concept.id"), nullable=False, index=True
+    )
+    added_at_version = Column(Integer, nullable=False, index=True)
+
+    closure_table = relationship("TerminologyClosureTable", back_populates="members")
+    concept = relationship("TerminologyConcept")

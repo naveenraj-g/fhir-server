@@ -1,7 +1,12 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import aliased
 
-from app.models.terminology.terminology import TerminologyCodeSystem, TerminologyConcept, TerminologyConceptMap
+from app.models.terminology.enums import ConceptMapEquivalence
+from app.models.terminology.terminology import (
+    TerminologyCodeSystem,
+    TerminologyConcept,
+    TerminologyConceptMap,
+)
 
 
 class _ConceptMapsMixin:
@@ -42,7 +47,7 @@ class _ConceptMapsMixin:
         self,
         source_concept_id: int,
         target_concept_id: int,
-        mapping_type: str | None,
+        equivalence: ConceptMapEquivalence,
         confidence: float | None,
     ) -> bool:
         """Returns True if inserted, False if already exists."""
@@ -52,7 +57,7 @@ class _ConceptMapsMixin:
                 .select_from(TerminologyConceptMap)
                 .where(TerminologyConceptMap.source_concept_id == source_concept_id)
                 .where(TerminologyConceptMap.target_concept_id == target_concept_id)
-                .where(TerminologyConceptMap.mapping_type == mapping_type)
+                .where(TerminologyConceptMap.equivalence == equivalence)
             )
             if exists:
                 return False
@@ -60,7 +65,7 @@ class _ConceptMapsMixin:
                 TerminologyConceptMap(
                     source_concept_id=source_concept_id,
                     target_concept_id=target_concept_id,
-                    mapping_type=mapping_type,
+                    equivalence=equivalence,
                     confidence=confidence,
                 )
             )

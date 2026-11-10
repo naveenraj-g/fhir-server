@@ -9,14 +9,10 @@ from typing import Protocol
 
 from app.schemas.terminology import (
     AddConceptMapRequest,
-    AuditLogListResponse,
     CodeSystemListResponse,
     ConceptMapListResponse,
     ConceptsForFieldResponse,
     CreateConceptRequest,
-    CreateDisplayOverrideRequest,
-    DisplayOverrideListResponse,
-    DisplayOverrideResponse,
     LookupBatchRequest,
     LookupBatchResponse,
     LookupRequest,
@@ -24,7 +20,6 @@ from app.schemas.terminology import (
     OrgConceptListResponse,
     OrgConceptResponse,
     PatchConceptRequest,
-    PatchDisplayOverrideRequest,
     SearchResponse,
     TranslateRequest,
     TranslateResponse,
@@ -93,31 +88,84 @@ class TerminologyClient(Protocol):
         offset: int,
     ) -> OrgConceptListResponse: ...
 
-    async def list_audit_log(
-        self,
-        action: str | None,
-        performed_by: str | None,
-        concept_id: int | None,
-        limit: int,
-        offset: int,
-    ) -> AuditLogListResponse: ...
-
-    async def create_display_override(
-        self, req: CreateDisplayOverrideRequest, org_id: str, user_id: str | None
-    ) -> DisplayOverrideResponse | None: ...
-
-    async def get_display_override(
-        self, override_id: int, org_id: str
-    ) -> DisplayOverrideResponse | None: ...
-
-    async def patch_display_override(
-        self, override_id: int, req: PatchDisplayOverrideRequest, org_id: str
-    ) -> DisplayOverrideResponse | None: ...
-
-    async def delete_display_override(self, override_id: int, org_id: str) -> bool: ...
-
-    async def list_display_overrides(
-        self, org_id: str, limit: int, offset: int
-    ) -> DisplayOverrideListResponse: ...
-
     async def validate(self, req: ValidateRequest) -> ValidateResponse: ...
+
+    # ------------------------------------------------------------------
+    # Real FHIR R4 `$`-operations — see
+    # docs/terminology-service/09-fhir-r4-terminology-standard-reference.md.
+    # Every one returns a plain dict already shaped as the operation's
+    # FHIR `Parameters`/`ValueSet`/`ConceptMap` response body (see
+    # app/fhir/parameters.py for why there's no Pydantic model here).
+    # ------------------------------------------------------------------
+
+    async def lookup_operation(
+        self,
+        *,
+        system: str | None,
+        code: str | None,
+        coding: dict | None,
+        properties: list[str] | None,
+    ) -> dict: ...
+
+    async def validate_code_on_codesystem_operation(
+        self,
+        *,
+        url: str | None,
+        code: str | None,
+        version: str | None,
+        display: str | None,
+        coding: dict | None,
+        codeable_concept: dict | None,
+    ) -> dict: ...
+
+    async def subsumes_operation(
+        self,
+        *,
+        code_a: str | None,
+        code_b: str | None,
+        system: str | None,
+        coding_a: dict | None,
+        coding_b: dict | None,
+    ) -> dict: ...
+
+    async def find_matches_operation(
+        self,
+        *,
+        system: str | None,
+        version: str | None,
+        properties: list[dict],
+        exact: bool | None,
+        compositional: bool | None,
+    ) -> dict: ...
+
+    async def expand_operation(
+        self,
+        *,
+        value_set_id: int | None,
+        url: str | None,
+        value_set_version: str | None,
+        filter_text: str | None,
+        offset: int,
+        count: int,
+    ) -> dict: ...
+
+    async def validate_code_on_valueset_operation(
+        self,
+        *,
+        value_set_id: int | None,
+        url: str | None,
+        value_set_version: str | None,
+        code: str | None,
+        system: str | None,
+        display: str | None,
+    ) -> dict: ...
+
+    async def translate_operation(
+        self, system: str, code: str, targetsystem: str | None, reverse: bool
+    ) -> dict: ...
+
+    async def closure_operation(
+        self, name: str, concepts: list[dict], version: str | None
+    ) -> dict: ...
+
+    async def get_terminology_capabilities(self) -> dict: ...

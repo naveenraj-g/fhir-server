@@ -10,19 +10,21 @@ use them. This file explains the scripts that do that loading, one per
 source format, plus the two scripts that decide which fields are bound to
 which value sets afterward.
 
-This is the subsystem's data-ingestion half: one CLI with five source-format
+This is the subsystem's data-ingestion half: one CLI with six source-format
 loaders feeding the tables from [01-data-model.md](01-data-model.md), plus
 two independent scripts that populate `TerminologyFieldBinding` afterward.
 Everything here uses **raw `asyncpg`, not SQLAlchemy** — deliberately, for
 bulk-insert performance (`app/terminology/import_/base.py`'s own framing).
 
-## The CLI: `app/terminology/import_/cli.py` (114 lines)
+## The CLI: `app/terminology/import_/cli.py`
 
 Argparse entry point, `--source` one of `fhir-r4 | loinc | icd10cm | rxnorm
-| snomed | all`, plus `--file`/`--dir` (or source-specific flags when
-`--source all`: `--fhir-r4-file`, `--icd10cm-file`, `--rxnorm-file`,
-`--loinc-file`, `--snomed-dir`). `run()` maps `--source` to a loader class
-and does:
+| snomed | snomed-icd10cm-map | all`, plus `--file`/`--dir` (or
+source-specific flags when `--source all`: `--fhir-r4-file`,
+`--icd10cm-file`, `--rxnorm-file`, `--loinc-file`, `--snomed-dir` —
+`snomed-icd10cm-map` isn't in `--source all`'s own flag set, see its own
+section below for why it's invoked as a separate step instead). `run()`
+maps `--source` to a loader class and does:
 
 ```python
 async with loader_cls(db_url) as loader:
@@ -139,6 +141,56 @@ SNOMED's poly-hierarchy (a concept can have more than one IS-A parent) is
 exactly why it can't use the single-`parent_concept_id`-column shape the
 FHIR R4 loader relies on.
 
+### `snomed_icd10cm_map.py` — SNOMED CT → ICD-10-CM concept map
+
+**Requires `snomed.py` and `icd10cm.py` to already have run** — every row
+resolves a SNOMED `concept_id` and an ICD-10-CM code against concepts that
+must already exist (raises if either CodeSystem isn't found in the DB at
+all; a row whose specific code doesn't resolve is skipped-and-counted, not
+a hard failure).
+
+Input is SNOMED's own "Human-Readable Map" / Extended Map TSV release
+(`tls_Icd10cmHumanReadableMap_<module>_<date>.tsv`) — a genuinely
+**rule-based** map, not a plain 1:1 table: one SNOMED concept can carry
+several candidate ICD-10-CM targets gated by patient-context rules in the
+`mapRule` column (e.g. age/sex-dependent). A static seed script has no
+patient to evaluate a condition against, so this loader keeps only the
+**unconditional** rows — `mapRule` is exactly `"TRUE"` or `"OTHERWISE
+TRUE"` (the default/fallback rule within a `mapGroup`) — and skips every
+conditional row, counted at the end of the run. On the 2026-03-01 release
+this was built against: 285,108 active rows total, 147,646 pass the
+unconditional filter (covering 126,548 distinct SNOMED concepts); the
+remaining ~113K conditional rows are dropped.
+
+Two more things the file needs normalizing before DB lookups work:
+
+- **Dotted vs. dotless codes.** The map file's `mapTarget` column uses
+  dotted ICD-10-CM codes (`A41.9`); this project's seeded ICD-10-CM
+  concepts (from CMS's own code list, via `icd10cm.py`) are dotless
+  (`A419`). Both represent the same code — confirmed against the actual
+  files, not assumed — so the loader strips the dot before resolving.
+- **`mapCategoryName` → `ConceptMapEquivalence`.** The file's own quality
+  classification has exactly three values:
+  `MAP SOURCE CONCEPT IS PROPERLY CLASSIFIED` → `equivalent`,
+  `MAP OF SOURCE CONCEPT IS CONTEXT DEPENDENT` → `inexact`. The third,
+  `MAP SOURCE CONCEPT CANNOT BE CLASSIFIED WITH AVAILABLE DATA`, never
+  carries a `mapTarget` at all (confirmed empirically: zero such rows in
+  the actual file) — already excluded by requiring a non-empty target, no
+  explicit handling needed.
+
+`confidence` is left `NULL` on every inserted row — the source file
+carries a quality *category*, not a numeric score, and inventing one
+would be false precision. Backed by a new `BaseLoader.bulk_insert_concept_maps()`
+method (`app/terminology/import_/base.py`) — same batched-insert,
+match-the-real-constraint-exactly pattern as every other bulk-insert
+method here, targeting `TerminologyConceptMap`'s
+`UniqueConstraint(source_concept_id, target_concept_id, equivalence)`.
+
+Not part of the CLI's own `--source all` mode (that mode's `--xxx-file`
+flags don't cover it) — it's chained as a separate step in the *justfile's*
+own `terminology-all` recipe instead, after `terminology-snomed` (both
+dependencies satisfied by then) and before `terminology-seed-bindings-r4`.
+
 ## Field-binding seeding: two different scripts, two different sources
 
 Both scripts populate the same table (`TerminologyFieldBinding`), both are
@@ -225,10 +277,11 @@ terminology-icd10cm FILE=...          # ~72k codes, ~2 min
 terminology-rxnorm FILE=...           # ~100k drugs, ~3 min
 terminology-loinc FILE=...            # ~100k codes, ~3 min
 terminology-snomed DIR=...            # ~350k concepts + IS-A hierarchy, ~15 min
+terminology-snomed-icd10cm-map FILE=... # requires terminology-snomed + terminology-icd10cm first, ~147k mappings
 terminology-fhir-r4                   # v3-codesystems -> v2-tables -> valuesets, load order matters
 terminology-seed-bindings             # hand-curated; run after terminology-fhir-r4
 terminology-seed-bindings-r4          # "preferred over manual seed"; requires profiles-resources.json + profiles-types.json
-terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings-r4
+terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-snomed-icd10cm-map terminology-seed-bindings-r4
 ```
 
 `terminology-fhir-r4` itself is three sequential CLI invocations, order

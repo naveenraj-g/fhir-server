@@ -226,6 +226,6 @@ routes:
     # - communication
     # - communication_request
     # - family_member_history
-    # - terminology
+    - terminology
     - fhir_profile
     - fhir_validate

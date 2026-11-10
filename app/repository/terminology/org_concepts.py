@@ -1,7 +1,6 @@
 from sqlalchemy import func, select, text
 
 from app.models.terminology.terminology import (
-    TerminologyAuditLog,
     TerminologyCodeSystem,
     TerminologyConcept,
 )
@@ -33,19 +32,6 @@ class _OrgConceptsMixin:
                     "UPDATE terminology_concept SET search_vector = to_tsvector('english', :txt) WHERE id = :id"
                 ),
                 {"txt": f"{display} {definition or ''}".strip(), "id": concept.id},
-            )
-            session.add(
-                TerminologyAuditLog(
-                    action="org_concept.created",
-                    concept_id=concept.id,
-                    performed_by=user_id,
-                    new_value={
-                        "code": code,
-                        "display": display,
-                        "definition": definition,
-                        "org_id": org_id,
-                    },
-                )
             )
             await session.commit()
             await session.refresh(concept)
@@ -87,7 +73,6 @@ class _OrgConceptsMixin:
             if result is None:
                 return None
             concept, cs = result[0], result[1]
-            old = {"display": concept.display, "definition": concept.definition}
             if display is not None:
                 concept.display = display
             if definition is not None:
@@ -99,18 +84,6 @@ class _OrgConceptsMixin:
                     "UPDATE terminology_concept SET search_vector = to_tsvector('english', :txt) WHERE id = :id"
                 ),
                 {"txt": search_text, "id": concept.id},
-            )
-            session.add(
-                TerminologyAuditLog(
-                    action="org_concept.updated",
-                    concept_id=concept.id,
-                    performed_by=concept.user_id,
-                    old_value=old,
-                    new_value={
-                        "display": concept.display,
-                        "definition": concept.definition,
-                    },
-                )
             )
             await session.commit()
             await session.refresh(concept)
@@ -126,18 +99,6 @@ class _OrgConceptsMixin:
             concept = result.scalar_one_or_none()
             if concept is None:
                 return False
-            session.add(
-                TerminologyAuditLog(
-                    action="org_concept.deleted",
-                    performed_by=concept.user_id,
-                    old_value={
-                        "code": concept.code,
-                        "display": concept.display,
-                        "definition": concept.definition,
-                        "org_id": concept.org_id,
-                    },
-                )
-            )
             await session.delete(concept)
             await session.commit()
             return True
