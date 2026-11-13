@@ -23,7 +23,7 @@ def plain_coding(c) -> dict:
     """One Coding entry (FhirCodingMixin-shaped row) → plain dict. Shared by
     every HealthcareService CodeableConcept-list field's coding[] — all
     real dedicated child tables with the exact same shape — mirrors
-    app.fhir.mappers.organization.plain.plain_coding."""
+    app.fhir.mappers.practitioner.plain.plain_coding."""
     return {
         "id": c.id,
         "system": c.system,
@@ -41,7 +41,7 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
     `{prefix}` FHIR-reference-string convenience field. Shared by every
     flattened Reference field on HealthcareService (identifier.assigner,
     providedBy, location, coverageArea, endpoint) — mirrors
-    app.fhir.mappers.organization.plain._plain_reference_fields."""
+    app.fhir.mappers.practitioner.plain._plain_reference_fields."""
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
     ref_type = getattr(obj, f"{prefix}_type", None)
@@ -91,7 +91,7 @@ def plain_hs_identifier(i) -> dict:
     with an identifier fallback, and because the row carries an audit
     trail. `type_codings` is a real 0..* child table rather than a single
     flattened coding — mirrors
-    app.fhir.mappers.organization.plain.plain_org_identifier."""
+    app.fhir.mappers.practitioner.plain.plain_practitioner_identifier."""
     return {
         "id": i.id,
         "use": fhir_enum(i.use),

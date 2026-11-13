@@ -1,15 +1,15 @@
 """Shared FHIR `Address` datatype columns, reusable across every table that
-embeds exactly one Address — either a dedicated table (organization_address)
+embeds exactly one Address — either a dedicated table (practitioner_address)
 or a prefixed group of columns living alongside unrelated fields on a bigger
-table (organization_contact's `address_*` columns, next to its `purpose_*`
-and `name_*` groups).
+table (patient_contact's `address_*` columns, next to its other
+fields).
 
 Set `_address_prefix` on the concrete class to control the underlying DB
 column names (defaults to no prefix, for a dedicated table). The Python-side
 attribute names stay fixed (`use`, `city`, etc.) regardless of the prefix —
-e.g. OrganizationContact sets `_address_prefix = "address_"` so the DB
-columns stay `address_city`/`address_use` (matching its other prefixed
-groups), while still giving you `contact.city`/`contact.use` in Python.
+e.g. PatientContact sets `_address_prefix = "address_"` so the DB
+columns stay `address_city`/`address_use`, while still giving you
+`contact.city`/`contact.use` in Python.
 
 Only supports ONE Address usage per class — if a table ever needed two
 Address groups at once, this mixin couldn't be used twice (a class can't

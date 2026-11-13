@@ -21,7 +21,7 @@ async def create_test_organization(client) -> int:
         json={"name": "Good Health Clinic"},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 def minimal_related_person(patient_id: int) -> dict:

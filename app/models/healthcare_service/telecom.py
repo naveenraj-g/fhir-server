@@ -12,7 +12,7 @@ from app.models.shared import FhirContactPointMixin, TenantAuditMixin
 class HealthcareServiceTelecom(FhirContactPointMixin, TenantAuditMixin, Base):
     """telecom[] — contacts related to the healthcare service. Uses the
     shared FhirContactPointMixin rather than hand-declared columns, same as
-    OrganizationTelecom/LocationTelecom."""
+    PractitionerTelecom."""
 
     __tablename__ = "healthcare_service_telecom"
 

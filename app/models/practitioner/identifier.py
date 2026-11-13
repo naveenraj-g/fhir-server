@@ -37,8 +37,8 @@ class PractitionerIdentifier(TenantAuditMixin, Base):
     use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
     # Identifier.type (0..1 CodeableConcept) — type_text stays flattened
     # (sibling of coding[], not part of it); type's coding[] is a real 0..*
-    # child table (PractitionerIdentifierTypeCoding) — see
-    # app/models/organization/identifier.py for the full reasoning.
+    # child table (PractitionerIdentifierTypeCoding), since a CodeableConcept
+    # can carry any number of codings alongside its one text.
     type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=True)
@@ -46,8 +46,9 @@ class PractitionerIdentifier(TenantAuditMixin, Base):
     period_end = Column(DateTime(timezone=True), nullable=True)
 
     # assigner (0..1 Reference(Organization)) — flattened, no FK, stores the
-    # PUBLIC organization_id — see app/models/organization/identifier.py's
-    # assigner_* columns for the full reasoning.
+    # PUBLIC organization_id (the flattened-reference convention in
+    # CLAUDE.md); assigner_reference keeps the raw string as received, same
+    # reasoning as OrganizationModel.partof_reference.
     assigner_reference = Column(String, nullable=True)
     assigner_id = Column(BigInteger, nullable=True, index=True)
     assigner_type = Column(

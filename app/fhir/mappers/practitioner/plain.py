@@ -41,8 +41,7 @@ def plain_coding(c) -> dict:
 def _plain_reference_fields(obj, prefix: str) -> dict:
     """Raw `{prefix}_reference` string + resolved `{prefix}_type`/`{prefix}_id`/
     `{prefix}_display` + `{prefix}_identifier_*` fallback fields, plus a
-    resolved `{prefix}` FHIR-reference-string convenience field. Mirrors
-    app.fhir.mappers.organization.plain._plain_reference_fields."""
+    resolved `{prefix}` FHIR-reference-string convenience field."""
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
     ref_type = getattr(obj, f"{prefix}_type", None)

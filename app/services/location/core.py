@@ -1,26 +1,25 @@
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
 from app.errors.validation import FhirValidationError
-from app.fhir.mappers.location import (
-    merge_patch_fragment,
-    patch_fragment_to_fhir_location,
-    payload_to_fhir_location,
-    to_fhir_location,
-    to_plain_location,
-)
+from app.fhir.datatypes import merge_patch_fragment
+from app.fhir.input_payload import fhir_create_document, fhir_patch_fragment
+from app.fhir.mappers.location import to_fhir_location
+from app.fhir.search import SearchContext, SearchRequest, parse_search
 from app.fhir.validation import validate_resource
 from app.models.location import LocationModel
 from app.repository.location import LocationRepository
+from app.repository.location.search import location_search
 from app.schemas.location import LocationCreateSchema, LocationPatchSchema
 
 logger = get_logger(__name__)
 
 
 class _CoreMixin:
-    """All Location business logic. Shaped exactly like OrganizationService:
-    no standalone sub-resource endpoints and no separate scalar-only vs. full
-    create/patch split — see LocationCreateSchema's docstring. Auth matches
+    """All Location business logic — shaped exactly like OrganizationService
+    (Medplum-style storage: the FHIR body is validated and stored whole; see
+    LocationModel's docstring). Auth matches
     Patient/Practitioner/Organization: org_id comes from the verified JWT's
     activeOrganizationId claim (actor.org_id), never a client-suppliable
     field, and there's no org-less/super-admin bypass — every operation
@@ -33,9 +32,6 @@ class _CoreMixin:
 
     def _to_fhir(self, loc: LocationModel) -> dict:
         return to_fhir_location(loc)
-
-    def _to_plain(self, loc: LocationModel) -> dict:
-        return to_plain_location(loc)
 
     # ── Read ──────────────────────────────────────────────────────────────
 
@@ -55,57 +51,34 @@ class _CoreMixin:
             raise NotFoundError("Location not found")
         return loc
 
-    async def list_locations(
+    async def search_locations(
         self,
-        org_id: str | None = None,
-        name: str | None = None,
-        identifier: str | None = None,
-        location_status=None,
-        operational_status: str | None = None,
-        location_type: str | None = None,
-        address: str | None = None,
-        address_city: str | None = None,
-        address_state: str | None = None,
-        address_postal_code: str | None = None,
-        address_country: str | None = None,
-        address_use=None,
-        organization: str | None = None,
-        partof: str | None = None,
-        endpoint: str | None = None,
-        near: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[LocationModel], int | None]:
-        """Raises PermissionDeniedError (403) for an org-less token — same
-        invariant as get_location_scoped()."""
+        query: list[tuple[str, str]],
+        org_id: str | None,
+        *,
+        strict: bool = False,
+        fhir_base: str | None = None,
+    ) -> tuple[SearchRequest, list[LocationModel], int | None, list[tuple[str, object]]]:
+        """FHIR R4 search. `query` is the raw (key, value) parameter list —
+        parsed and validated here against the Location search registry
+        (SearchError -> 400 OperationOutcome). `strict` is
+        `Prefer: handling=strict`. Raises PermissionDeniedError (403) for an
+        org-less token — same invariant as get_location_scoped().
+
+        Returns (parsed request, matches, total, included (type, row) — an
+        include can be another resource type, e.g. Organization)."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Location operation requires an org-scoped token"
-            )
-        return await self.repository.list(
-            org_id=org_id,
-            name=name,
-            identifier=identifier,
-            location_status=location_status,
-            operational_status=operational_status,
-            location_type=location_type,
-            address=address,
-            address_city=address_city,
-            address_state=address_state,
-            address_postal_code=address_postal_code,
-            address_country=address_country,
-            address_use=address_use,
-            organization=organization,
-            partof=partof,
-            endpoint=endpoint,
-            near=near,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
+            raise PermissionDeniedError("Location operation requires an org-scoped token")
+        request = parse_search(
+            query,
+            location_search(),
+            strict=strict,
+            default_count=settings.pagination.default_limit,
+            max_count=settings.pagination.max_limit,
         )
+        ctx = SearchContext(tenant_id=org_id, fhir_base=fhir_base)
+        rows, total, included = await self.repository.search(request, ctx)
+        return request, rows, total, included
 
     # ── Write ─────────────────────────────────────────────────────────────
 
@@ -114,16 +87,22 @@ class _CoreMixin:
         payload: LocationCreateSchema,
         org_id: str | None,
         created_by: str | None,
+        body: dict | None = None,
     ) -> LocationModel:
         """org_id comes from the verified JWT's actor.org_id, not a client-
         supplied field — there is no bypass, so an org-less/platform token
-        cannot create a Location at all."""
+        cannot create a Location at all.
+
+        `body` is the raw request JSON, which is what base R4 validation
+        checks and what is stored (see app.fhir.input_payload); falls back to
+        the parsed payload for internal callers that have no raw body."""
         if not org_id:
             raise PermissionDeniedError(
                 "Location creation requires an org-scoped token"
             )
-        await self._validate_base_r4(payload_to_fhir_location(payload), org_id)
-        loc = await self.repository.create_full(payload, org_id, created_by)
+        document = fhir_create_document(self._raw(payload, body), "Location")
+        await self._validate_base_r4(document, org_id)
+        loc = await self.repository.create_full(document, org_id, created_by)
         logger.info(
             "Location created",
             extra={"event": "location.created", "location_id": loc.location_id},
@@ -136,6 +115,7 @@ class _CoreMixin:
         payload: LocationPatchSchema,
         updated_by: str | None = None,
         org_id: str | None = None,
+        body: dict | None = None,
     ) -> LocationModel:
         """org_id comes from the verified JWT's actor.org_id — no bypass: a
         missing org_id or a location belonging to a different org both raise
@@ -145,7 +125,7 @@ class _CoreMixin:
         check) because base R4 validation needs it: a PATCH payload is
         partial by nature, so it's merged onto the resource's current full
         FHIR representation before validating — see
-        patch_fragment_to_fhir_location()'s docstring."""
+        app.fhir.input_payload.fhir_patch_fragment()."""
         if not org_id:
             self._log_org_scope_miss("patch", location_id, org_id)
             raise NotFoundError("Location not found")
@@ -154,11 +134,13 @@ class _CoreMixin:
             self._log_org_scope_miss("patch", location_id, org_id)
             raise NotFoundError("Location not found")
 
-        fragment, touched = patch_fragment_to_fhir_location(payload)
+        fragment, touched = fhir_patch_fragment(self._raw(payload, body))
         merged = merge_patch_fragment(to_fhir_location(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(location_id, payload, updated_by)
+        # `merged` — the resource as it will look after this patch — is what
+        # was just validated, and exactly what gets stored.
+        updated = await self.repository.patch_full(location_id, merged, updated_by)
         if not updated:
             raise NotFoundError("Location not found")
         logger.info(
@@ -166,7 +148,7 @@ class _CoreMixin:
             extra={
                 "event": "location.updated",
                 "location_id": location_id,
-                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+                "fields": sorted(touched),
             },
         )
         return updated
@@ -189,6 +171,14 @@ class _CoreMixin:
         )
 
     # ── Validation helpers ────────────────────────────────────────────────
+
+    @staticmethod
+    def _raw(payload, body: dict | None) -> dict:
+        """The client's request JSON as sent; when there isn't one (an
+        internal caller), the parsed payload's supplied fields instead."""
+        if body is not None:
+            return body
+        return payload.model_dump(mode="json", exclude_unset=True)
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:

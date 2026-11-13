@@ -7,7 +7,7 @@ relationships) and is used for GET responses. This module reads the
 HealthcareServicePatchSchema) instead, before anything is written to the
 DB, so the result can be fed through app.fhir.validation.validate_resource()
 at the service layer — mirrors
-app.fhir.mappers.organization.payload's docstring/reasoning exactly.
+app.fhir.mappers.practitioner.payload's docstring/reasoning exactly.
 
 The two can't fully share code: the input schema has no resolved
 {prefix}_type/{prefix}_id for a Reference field yet (that's only known
@@ -84,7 +84,7 @@ def _reference_from_payload(obj, prefix: str) -> dict:
     fallback. Shared by every flattened Reference field on HealthcareService's
     input schemas (provided_by, identifier.assigner, location.reference,
     coverage_area.reference, endpoint.reference) — mirrors
-    app.fhir.mappers.organization.payload._reference_from_payload."""
+    app.fhir.mappers.practitioner.payload._reference_from_payload."""
     raw_reference = getattr(obj, prefix, None)
     display = getattr(obj, f"{prefix}_display", None)
 
@@ -389,8 +389,8 @@ def patch_fragment_to_fhir_healthcare_service(
     """Converts only the fields a PATCH request actually supplied (per
     `model_fields_set`) into a FHIR-shaped fragment, alongside the set of
     top-level FHIR keys the request touched — mirrors
-    app.fhir.mappers.organization.payload.patch_fragment_to_fhir_organization's
-    docstring/semantics exactly."""
+    app.fhir.datatypes.merge_patch_fragment's docstring for the tri-state
+    semantics."""
     provided = payload.model_fields_set
     fragment: dict = {}
     touched: set[str] = set()

@@ -31,7 +31,7 @@ async def create_test_organization(client) -> int:
         json={"name": "Princeton-Plainsboro Teaching Hospital", "active": True},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 async def create_test_condition(client, patient_id: int) -> int:

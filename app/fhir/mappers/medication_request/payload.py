@@ -1,5 +1,5 @@
 """Payload -> FHIR JSON conversion, the mirror image of fhir.py — see that
-module's docstring pattern (e.g. app.fhir.mappers.organization.payload) for
+module's docstring pattern (e.g. app.fhir.mappers.practitioner.payload) for
 the full reasoning. Reads the validated Pydantic input schema
 (MedicationRequestCreateSchema / MedicationRequestPatchSchema and their
 nested sub-schemas) rather than the persisted ORM model, before anything is

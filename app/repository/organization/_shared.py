@@ -2,12 +2,7 @@ from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
-from app.models.organization import (
-    OrganizationContact,
-    OrganizationIdentifier,
-    OrganizationModel,
-    OrganizationType,
-)
+from app.models.organization import OrganizationModel
 from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.repository._reference_shared import (
     _IDENTIFIER_FALLBACK_SUFFIXES,
@@ -19,7 +14,6 @@ from app.repository._reference_shared import (
 
 __all__ = [
     "_IDENTIFIER_FALLBACK_SUFFIXES",
-    "_SORTABLE_FIELDS",
     "_org_ref_kwargs",
     "_parse_endpoint_ref",
     "_parse_org_ref",
@@ -30,33 +24,15 @@ __all__ = [
 ]
 
 
-# Sortable fields exposed via the `sort` list-query param (see
-# app.core.pagination.resolve_sort) — mirrors Patient/Practitioner's
-# _shared.py exactly.
-_SORTABLE_FIELDS = {
-    "organization_id": OrganizationModel.organization_id,
-    "name": OrganizationModel.name,
-    "created_at": OrganizationModel.created_at,
-    "updated_at": OrganizationModel.updated_at,
-}
-
-
 def _with_relationships(stmt):
-    """Eager-load all organization sub-resources to avoid N+1 and async lazy-load failures."""
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from OrganizationModel.content."""
     return stmt.options(
-        selectinload(OrganizationModel.identifiers).selectinload(
-            OrganizationIdentifier.type_codings
-        ),
-        selectinload(OrganizationModel.types).selectinload(OrganizationType.codings),
-        selectinload(OrganizationModel.telecoms),
-        selectinload(OrganizationModel.addresses),
-        selectinload(OrganizationModel.contacts).selectinload(
-            OrganizationContact.telecoms
-        ),
-        selectinload(OrganizationModel.contacts).selectinload(
-            OrganizationContact.purpose_codings
-        ),
-        selectinload(OrganizationModel.endpoints),
+        *(
+            selectinload(getattr(OrganizationModel, rel))
+            for rel in ("identifiers", "types", "addresses", "endpoints")
+        )
     )
 
 
@@ -65,8 +41,7 @@ def _parse_endpoint_ref(ref: str) -> tuple:
     Endpoint isn't a modeled resource in this system (no RESOURCE_REGISTRY
     entry, see app/core/reference_resolver.py) so — unlike every
     Reference(Organization) field — there's no existence check to run here;
-    the identifier fallback (see OrganizationEndpointInput) is often the only
-    populated half."""
+    an endpoint given only by identifier/display simply has no index row."""
     return parse_reference(ref, OrganizationEndpointReferenceType)
 
 

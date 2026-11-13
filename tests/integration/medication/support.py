@@ -12,7 +12,7 @@ async def create_test_organization(client, name="Acme Pharmaceuticals") -> int:
         json={"active": True, "name": name},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 def minimal_medication() -> dict:

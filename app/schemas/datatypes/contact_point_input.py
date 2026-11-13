@@ -9,8 +9,8 @@ class ContactPointInput(BaseModel):
     """A ContactPoint entry (e.g. `telecom[]`) — a contact detail (phone,
     fax, email, ...) for a person or organization. `system`/`value` are
     0..1 per FHIR R4, so they stay optional here; some resources choose to
-    require both at the input layer (e.g. LocationTelecomInput,
-    HealthcareServiceTelecomInput) by re-declaring just those two fields in
+    require both at the input layer (e.g. HealthcareServiceTelecomInput)
+    by re-declaring just those two fields in
     a subclass."""
 
     model_config = ConfigDict(extra="forbid")

@@ -33,13 +33,19 @@ on the *same* `CodeableConcept`, not as two separate `type` entries:
 
 ## The actual implementation, file by file
 
+Organization is stored Medplum-style (see CLAUDE.md, "Medplum-style storage"): the whole FHIR
+resource lives in one `content` JSONB column, and the search index is derived from it. So
+there is no per-field mapping for `type` anywhere — the `coding[]` array above is stored and
+served exactly as sent, standard and custom codings side by side.
+
 | Layer | File | What it does |
 |---|---|---|
-| Storage | `app/models/organization/type.py` — `OrganizationType` (text only) + `OrganizationTypeCoding` (one row per `Coding`, FK `organization_type_id`) | One `OrganizationType` row (the `CodeableConcept`) can own many `OrganizationTypeCoding` rows (the `coding[]` array) — the `0..*` cardinality from file 05's storage table. |
-| Input | `app/schemas/organization/input/_shared.py` — `OrganizationCodingInput` (system/version/code/display/user_selected) | `app/schemas/organization/input/type.py` — `OrganizationTypeInput.coding: list[OrganizationCodingInput] \| None` | One entry per `Coding`, reused identically for `identifier.type` and `contact.purpose` since they're all the same shape. |
-| Response | `app/schemas/organization/response/_shared.py` — `PlainOrganizationCoding` | `type.py`'s `PlainOrganizationType.codings: list[PlainOrganizationCoding] \| None` | Same list shape on the way out. |
-| Mapper (DB → FHIR) | `app/fhir/mappers/organization/fhir.py` — `_fhir_coding_list()` | Renders every `OrganizationTypeCoding` row into the `coding[]` array — standard and custom codings side by side, exactly as in the spec example above. |
-| Mapper (payload → FHIR, for validation) | `app/fhir/mappers/organization/payload.py` — `_coding_list()` | The input-side mirror, used by `payload_to_fhir_organization()` to build the same shape *before* writing, so `app/fhir/validation/base_r4.py` validates the create/patch payload in true FHIR shape. |
+| Input (docs only) | `app/schemas/fhir_input/codeable_concept.py` — `FhirCodeableConceptInput.coding: list[FhirCodingInput]` (`coding.py`: system/version/code/display/userSelected) | Documents the request shape in OpenAPI and type-checks it early. Not what gets stored — the raw request body is (see `app/services/organization/core.py`). |
+| Validation document | `app/fhir/input_payload.py` — `fhir_create_document()` / `fhir_patch_fragment()` | Turns the raw body into the FHIR resource to validate: drops server-managed `id`/`meta`, stamps `resourceType`, prunes nulls and empty values. The `type` array passes through untouched. |
+| Storage | `app/models/organization/core.py` — `OrganizationModel.content` | The validated document, `type[]` included, exactly as sent. |
+| Search index | `app/models/organization/type.py` — `OrganizationType`, built by `app/repository/_content_index.py`'s `type_rows()` (called from `app/repository/organization/_indexer.py`) | One row per `coding` (`system`, `code`, `display_norm`, `text_norm`), so `type=prov` and `type=https://hospital-network.dev/fhir/CodeSystem/facility-class\|main-clinic` both find the example above. Derived from `content` on every write; never read to build a response. |
+| Search | `app/repository/organization/search.py` — the `type` `SearchParam` | Token search over those rows, including `:text`, `:not`, and `:in` / `:not-in` / `:above` / `:below` resolved through the terminology service. |
+| Read (DB → FHIR) | `app/fhir/mappers/organization/fhir.py`, via `app/fhir/mappers/content.py` | Serves `content` as-is and stamps `id` + `meta` — the `coding[]` array comes back in the same order it was sent. |
 
 ## Why `extensible`, not `required`, is what makes this legal
 
@@ -51,11 +57,19 @@ crosswalk. This only works because the base spec itself chose `extensible` for t
 confirm the binding strength before assuming this pattern applies to some *other* coded field;
 not every `CodeableConcept` in FHIR is bound loosely enough to allow it.
 
-## What validating this would eventually check (not built yet)
+## What validation checks today
 
-Today, `app/fhir/validation/base_r4.py` only confirms the *shape* is a valid `coding[]` array
-(each entry has the right field types) — it does not check whether the standard-looking coding
-(`http://terminology.hl7.org/CodeSystem/organization-type` / `"prov"`) is actually a real member
-of that value set, nor does it know the binding is `extensible` rather than `required` at all.
-That's the terminology-validation pipeline step (`docs/architecture/fhir-profiling-and-extensibility-strategy.md`
-§4, step 3) — not yet wired up for Organization.
+Validation runs on the whole document before it's written, through
+`app/fhir/validation/dispatch.py`'s `validate_resource()`. What it checks depends on
+`fhir_validation.backend` in `configs/config.yaml`:
+
+- **`native`** (`app/fhir/validation/base_r4.py`) checks shape only, against HL7's published
+  `fhir.schema.json`: each `coding[]` entry has the right field types. It does not know the
+  binding is `extensible`, and doesn't check whether `prov` is really in the
+  `organization-type` value set.
+- **`java_validator`** (the HL7 Java validator sidecar, the configured default) walks the
+  base → country → organization profile chain and checks terminology bindings too. So a
+  standard coding with an unknown code can be flagged, while an `extensible` binding still
+  lets the custom `facility-class` coding sit alongside it.
+
+See `docs/architecture/fhir-profiling-and-extensibility-strategy.md` for the wider plan.

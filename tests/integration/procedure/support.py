@@ -31,7 +31,7 @@ async def create_test_location(client) -> int:
         json={"name": "Operating Room 1", "status": "active"},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 async def create_test_condition(client, patient_id: int) -> int:

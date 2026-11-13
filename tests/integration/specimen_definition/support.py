@@ -11,7 +11,7 @@ async def create_test_organization(client) -> int:
         json={"active": True, "name": "Acme Pathology Lab"},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 def minimal_specimen_definition() -> dict:

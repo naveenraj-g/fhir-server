@@ -20,16 +20,26 @@ def fhir_instant(dt) -> str | None:
 
 def merge_patch_fragment(existing: dict, fragment: dict, touched: set[str]) -> dict:
     """Shallow-merges a PATCH fragment over a resource's current full FHIR
-    representation: every touched key is dropped first (so an explicit
-    clear or an empty-list replacement — which the fragment simply omits —
-    actually disappears from the merged result), then the fragment's own
-    keys are overlaid on top. 100% resource-agnostic (no resource-specific
-    logic at all), so every resource's payload.py imports this one copy
-    instead of redeclaring it — originally written for Organization, see
-    app/fhir/mappers/organization/payload.py's patch_fragment_to_fhir_organization()
-    for the full reasoning on why PATCH needs this (you can't meaningfully
-    validate a partial payload on its own, so this builds "what the
-    resource would look like after this patch" first)."""
+    representation, giving "what the resource will look like after this
+    patch" — the thing base R4 validation checks, since a partial PATCH
+    body can't be meaningfully validated on its own.
+
+    `fragment` / `touched` come from one of two producers:
+    - a normalized resource's `payload.py` `patch_fragment_to_fhir_<resource>()`
+      (touched = the schema's `model_fields_set`), or
+    - app.fhir.input_payload.fhir_patch_fragment() for a resource whose
+      PATCH body is already FHIR (Organization, Location).
+
+    Tri-state per top-level key:
+    - not in `touched`: left as it is in `existing`;
+    - in `touched` and in `fragment`: replaced by the fragment's value
+      (whole element — a list is replaced, never merged item by item);
+    - in `touched` but absent from `fragment` (sent as null / an empty
+      list): cleared — every touched key is dropped from `existing` first,
+      so it doesn't come back.
+
+    Resource-agnostic (no resource-specific logic), so every resource shares
+    this one copy."""
     merged = {k: v for k, v in existing.items() if k not in touched}
     merged.update(fragment)
     return merged

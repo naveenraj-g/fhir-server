@@ -1,17 +1,16 @@
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
 from app.errors.validation import FhirValidationError
-from app.fhir.mappers.organization import (
-    merge_patch_fragment,
-    patch_fragment_to_fhir_organization,
-    payload_to_fhir_organization,
-    to_fhir_organization,
-    to_plain_organization,
-)
+from app.fhir.datatypes import merge_patch_fragment
+from app.fhir.input_payload import fhir_create_document, fhir_patch_fragment
+from app.fhir.mappers.organization import to_fhir_organization
+from app.fhir.search import SearchContext, SearchRequest, parse_search
 from app.fhir.validation import validate_resource
 from app.models.organization import OrganizationModel
 from app.repository.organization import OrganizationRepository
+from app.repository.organization.search import organization_search
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
 
 logger = get_logger(__name__)
@@ -34,9 +33,6 @@ class _CoreMixin:
     def _to_fhir(self, org: OrganizationModel) -> dict:
         return to_fhir_organization(org)
 
-    def _to_plain(self, org: OrganizationModel) -> dict:
-        return to_plain_organization(org)
-
     # ── Read ──────────────────────────────────────────────────────────────
 
     async def get_organization_scoped(
@@ -57,51 +53,38 @@ class _CoreMixin:
             raise NotFoundError("Organization not found")
         return org
 
-    async def list_organizations(
+    async def search_organizations(
         self,
-        org_id: str | None = None,
-        active: bool | None = None,
-        name: str | None = None,
-        identifier: str | None = None,
-        org_type: str | None = None,
-        address: str | None = None,
-        address_city: str | None = None,
-        address_state: str | None = None,
-        address_postal_code: str | None = None,
-        address_country: str | None = None,
-        address_use=None,
-        partof: str | None = None,
-        endpoint: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[OrganizationModel], int | None]:
-        """Raises PermissionDeniedError (403) for an org-less token — same
-        invariant as get_organization_scoped()."""
+        query: list[tuple[str, str]],
+        org_id: str | None,
+        *,
+        strict: bool = False,
+        fhir_base: str | None = None,
+    ) -> tuple[
+        SearchRequest, list[OrganizationModel], int | None, list[OrganizationModel]
+    ]:
+        """FHIR R4 search. `query` is the raw (key, value) parameter list
+        — parsed and validated here against the Organization search
+        registry (SearchError -> 400 OperationOutcome). `strict` is
+        `Prefer: handling=strict`. Raises PermissionDeniedError (403) for an
+        org-less token — same invariant as get_organization_scoped().
+
+        Returns (parsed request, matches, total, included (type, row) —
+        an include can be another resource type, e.g. Location)."""
         if not org_id:
             raise PermissionDeniedError(
                 "Organization operation requires an org-scoped token"
             )
-        return await self.repository.list(
-            org_id=org_id,
-            active=active,
-            name=name,
-            identifier=identifier,
-            org_type=org_type,
-            address=address,
-            address_city=address_city,
-            address_state=address_state,
-            address_postal_code=address_postal_code,
-            address_country=address_country,
-            address_use=address_use,
-            partof=partof,
-            endpoint=endpoint,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
+        request = parse_search(
+            query,
+            organization_search(),
+            strict=strict,
+            default_count=settings.pagination.default_limit,
+            max_count=settings.pagination.max_limit,
         )
+        ctx = SearchContext(tenant_id=org_id, fhir_base=fhir_base)
+        rows, total, included = await self.repository.search(request, ctx)
+        return request, rows, total, included
 
     # ── Write ─────────────────────────────────────────────────────────────
 
@@ -110,16 +93,24 @@ class _CoreMixin:
         payload: OrganizationCreateSchema,
         org_id: str | None,
         created_by: str | None,
+        body: dict | None = None,
     ) -> OrganizationModel:
         """org_id comes from the verified JWT's actor.org_id, not a client-
         supplied field — there is no bypass, so an org-less/platform token
-        cannot create an Organization at all."""
+        cannot create an Organization at all.
+
+        `body` is the raw request JSON, which is what base R4 validation
+        checks (see app.fhir.input_payload); falls back to the parsed
+        payload for internal callers that have no raw body."""
         if not org_id:
             raise PermissionDeniedError(
                 "Organization creation requires an org-scoped token"
             )
-        await self._validate_base_r4(payload_to_fhir_organization(payload), org_id)
-        org = await self.repository.create_full(payload, org_id, created_by)
+        # The body is already a FHIR Organization — validate it as sent,
+        # then store exactly that document.
+        document = fhir_create_document(self._raw(payload, body), "Organization")
+        await self._validate_base_r4(document, org_id)
+        org = await self.repository.create_full(document, org_id, created_by)
         logger.info(
             "Organization created",
             extra={
@@ -135,6 +126,7 @@ class _CoreMixin:
         payload: OrganizationPatchSchema,
         updated_by: str | None = None,
         org_id: str | None = None,
+        body: dict | None = None,
     ) -> OrganizationModel:
         """org_id comes from the verified JWT's actor.org_id — no bypass: a
         missing org_id or an organization belonging to a different org both
@@ -144,7 +136,7 @@ class _CoreMixin:
         check) because base R4 validation needs it: a PATCH payload is
         partial by nature, so it's merged onto the resource's current full
         FHIR representation before validating — see
-        patch_fragment_to_fhir_organization()'s docstring."""
+        app.fhir.input_payload.fhir_patch_fragment()."""
         if not org_id:
             self._log_org_scope_miss("patch", organization_id, org_id)
             raise NotFoundError("Organization not found")
@@ -155,11 +147,13 @@ class _CoreMixin:
             self._log_org_scope_miss("patch", organization_id, org_id)
             raise NotFoundError("Organization not found")
 
-        fragment, touched = patch_fragment_to_fhir_organization(payload)
+        fragment, touched = fhir_patch_fragment(self._raw(payload, body))
         merged = merge_patch_fragment(to_fhir_organization(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(organization_id, payload, updated_by)
+        # `merged` — the resource as it will look after this patch — is what
+        # was just validated, and exactly what gets stored.
+        updated = await self.repository.patch_full(organization_id, merged, updated_by)
         if not updated:
             raise NotFoundError("Organization not found")
         logger.info(
@@ -167,7 +161,7 @@ class _CoreMixin:
             extra={
                 "event": "organization.updated",
                 "organization_id": organization_id,
-                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+                "fields": sorted(touched),
             },
         )
         return updated
@@ -193,6 +187,14 @@ class _CoreMixin:
         )
 
     # ── Validation helpers ────────────────────────────────────────────────
+
+    @staticmethod
+    def _raw(payload, body: dict | None) -> dict:
+        """The client's request JSON as sent; when there isn't one (an
+        internal caller), the parsed payload's supplied fields instead."""
+        if body is not None:
+            return body
+        return payload.model_dump(mode="json", exclude_unset=True)
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:

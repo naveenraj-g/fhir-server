@@ -1,6 +1,6 @@
 """Shared FHIR `ContactPoint` datatype columns, reusable across every table
 that embeds exactly one ContactPoint — either a dedicated table (the normal
-case: organization_telecom, organization_contact_telecom) or, if a future
+case: practitioner_telecom, patient_contact_telecom) or, if a future
 table ever needs it, a prefixed group of columns sharing a row with other
 fields (same `_contact_point_prefix` mechanism as FhirAddressMixin — see
 that file). Not needed by any current usage, but kept consistent with every

@@ -1,27 +1,21 @@
 """FHIR R4 conformance for `to_fhir_location()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Location is stored Medplum-style, like Organization: the resource lives
+whole in LocationModel.content, and to_fhir_location() only stamps `id`
+and `meta` onto it. Each case below is a `content` document as the write
+path would store it, run through the real read mapper.
 """
 
 import datetime as dt
-from decimal import Decimal
+import json
+from pathlib import Path
 
 import pytest
 
 from app.fhir.mappers.location import to_fhir_location
-from app.models.location import (
-    LocationEndpoint,
-    LocationHoursOfOperation,
-    LocationIdentifier,
-    LocationIdentifierTypeCoding,
-    LocationMode,
-    LocationModel,
-    LocationPhysicalTypeCoding,
-    LocationStatus,
-    LocationTelecom,
-    LocationType,
-    LocationTypeCoding,
-)
+from app.models.location import LocationModel
 
 from .support import assert_valid, fhir_json_text
 
@@ -32,215 +26,36 @@ location_pb2 = pytest.importorskip(
 
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
+_FIXTURE = Path(__file__).parents[1] / "integration" / "location" / "fixtures" / "r4_full_location.json"
 
-def _location(**overrides) -> LocationModel:
-    """A Location carrying only the columns the model marks NOT NULL, plus
-    empty sub-resource lists (nothing is lazy-loadable off a session here)."""
+
+def _loc(content: dict, **overrides) -> LocationModel:
     fields = {
         "location_id": 230001,
         "tenant_id": "org-test",
-        "status": LocationStatus.active,
-        "name": "South Wing",
-        "mode": LocationMode.instance,
-        # Address columns come from FhirAddressMixin (_address_prefix=
-        # "address_") — bare attribute names, not address_*-prefixed.
-        "type": "both",
-        "city": "Den Burg",
-        "state": "NH",
-        "postal_code": "9105 PZ",
-        "country": "NLD",
         "created_by": "u-test",
         "created_at": D,
+        "content": content,
     }
     fields.update(overrides)
-    loc = LocationModel(**fields)
-    for attr in (
-        "identifiers", "types", "telecoms", "endpoints",
-        "hours_of_operation", "physical_type_codings",
-    ):
-        if getattr(loc, attr, None) is None:
-            setattr(loc, attr, [])
-    return loc
+    return LocationModel(**fields)
 
 
-def _with(attr, *rows) -> LocationModel:
-    loc = _location()
-    setattr(loc, attr, list(rows))
-    return loc
+def _stored(document: dict) -> dict:
+    """What the write path stores: everything but resourceType/id/meta."""
+    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
 
 
-def _identifier(**kw) -> LocationIdentifier:
-    i = LocationIdentifier(
-        **{"id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
-           "value": "B1-S.F2", "created_by": "u-test", "created_at": D, **kw}
-    )
-    if i.type_codings is None:
-        i.type_codings = []
-    return i
-
-
-# Each case is one distinct shape the mapper can emit. Anything with a
-# conditional branch in app/fhir/mappers/location/fhir.py should appear here.
 CASES = {
-    "minimal": _location(),
-
-    "status_inactive_mode_kind": _location(
-        status=LocationStatus.inactive, mode=LocationMode.kind
-    ),
-    "status_suspended": _location(status=LocationStatus.suspended),
-
-    "operational_status_full_coding": _location(
-        operational_status_system="http://terminology.hl7.org/CodeSystem/v2-0116",
-        operational_status_version="2.9",
-        operational_status_code="U",
-        operational_status_display="Unoccupied",
-        operational_status_user_selected=True,
-    ),
-    "physical_type_with_text": _location(
-        physical_type_codings=[
-            LocationPhysicalTypeCoding(
-                id=1,
-                system="http://terminology.hl7.org/CodeSystem/location-physical-type",
-                code="ro", display="Room", user_selected=False,
-                created_by="u-test", created_at=D,
-            )
-        ],
-        physical_type_text="A room",
-    ),
-
-    "address_full": _location(
-        use="work",
-        text="Galapagosweg 91, Building A",
-        line=["Galapagosweg 91, Building A"],
-        district="Texel",
-        period_start=D,
-        period_end=D,
-    ),
-
-    "position_lon_lat": _location(
-        position_longitude=Decimal("-83.69456930"),
-        position_latitude=Decimal("42.25475478"),
-    ),
-    "position_with_altitude": _location(
-        position_longitude=Decimal("-83.69456930"),
-        position_latitude=Decimal("42.25475478"),
-        position_altitude=Decimal("123.45000000"),
-    ),
-
-    "managing_organization_resolved": _location(
-        managing_organization_type="Organization",
-        managing_organization_id=190001,
-        managing_organization_display="Burgers UMC",
-    ),
-    "managing_organization_identifier_fallback": _location(
-        managing_organization_identifier_system="urn:org-registry",
-        managing_organization_identifier_value="ORG-9",
-        managing_organization_identifier_use="official",
-    ),
-    "part_of_resolved": _location(
-        part_of_type="Location", part_of_id=230000, part_of_display="Main Building"
-    ),
-    "part_of_identifier_fallback": _location(
-        part_of_identifier_system="urn:loc-registry",
-        part_of_identifier_value="LOC-9",
-    ),
-
-    "identifier_with_type_and_period": _with(
-        "identifiers",
-        _identifier(
-            use="official",
-            type_codings=[
-                LocationIdentifierTypeCoding(
-                    id=1,
-                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
-                    version="2.9", code="PRN", display="Provider number",
-                    user_selected=True, created_by="u-test", created_at=D,
-                )
-            ],
-            type_text="Provider number",
-            period_start=D,
-            period_end=D,
-        ),
-    ),
-    "identifier_assigner_resolved": _with(
-        "identifiers",
-        _identifier(
-            assigner_type="Organization", assigner_id=190001, assigner_display="Acme"
-        ),
-    ),
-    "identifier_assigner_fallback": _with(
-        "identifiers",
-        _identifier(
-            assigner_identifier_system="urn:external-registry",
-            assigner_identifier_value="EXTERNAL-1",
-            assigner_identifier_use="official",
-        ),
-    ),
-
-    "type_with_text": _with(
-        "types",
-        LocationType(
-            id=1, tenant_id="org-test",
-            text="Hospital",
-            codings=[
-                LocationTypeCoding(
-                    id=1, system="http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-                    version="2.0", code="HOSP", display="Hospital",
-                    user_selected=True, created_by="u-test", created_at=D,
-                )
-            ],
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "aliases": _location(alias=["South Wing OR", "SW"]),
-    "telecoms_with_rank_and_period": _with(
-        "telecoms",
-        LocationTelecom(
-            id=1, tenant_id="org-test", system="phone", value="2328", use="work",
-            rank=1, period_start=D, period_end=D, created_by="u-test", created_at=D,
-        ),
-        LocationTelecom(
-            id=2, tenant_id="org-test", system="email", value="a@b.example",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "hours_all_day_no_times": _with(
-        "hours_of_operation",
-        LocationHoursOfOperation(
-            id=1, tenant_id="org-test", days_of_week=["sat", "sun"], all_day=True,
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "hours_all_seven_days_edge_times": _with(
-        "hours_of_operation",
-        LocationHoursOfOperation(
-            id=1, tenant_id="org-test",
-            days_of_week=["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-            all_day=False, opening_time=dt.time(0, 0),
-            closing_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "endpoint_resolved": _with(
-        "endpoints",
-        LocationEndpoint(
-            id=1, tenant_id="org-test", reference_type="Endpoint", reference_id=7,
-            reference_display="Main endpoint", created_by="u-test", created_at=D,
-        ),
-    ),
-    "endpoint_identifier_fallback": _with(
-        "endpoints",
-        LocationEndpoint(
-            id=1, tenant_id="org-test", reference_identifier_system="urn:ext-endpoint",
-            reference_identifier_value="EP-1", created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "availability_exceptions": _location(
-        availability_exceptions="Reduced services on public holidays"
-    ),
-    "description": _location(description="Second floor of the Old South Wing"),
+    "minimal": _loc({"name": "Main Building"}),
+    "empty": _loc({}),
+    "updated_by_and_updated_at": _loc({"name": "Main Building"}, updated_by="u-other", updated_at=D),
+    "kind_mode": _loc({"mode": "kind", "type": [{"coding": [{"code": "AMB"}]}]}),
+    "references_with_identifier": _loc({
+        "managingOrganization": {"reference": "Organization/190001", "display": "Acme"},
+        "partOf": {"identifier": {"system": "urn:reg", "value": "R-1"}},
+    }),
+    "full_r4_payload": _loc(_stored(json.loads(_FIXTURE.read_text()))),
 }
 
 
@@ -249,31 +64,36 @@ def test_location_mapper_emits_valid_fhir_r4(case):
     assert_valid(location_pb2.Location, to_fhir_location(CASES[case]))
 
 
+def test_mapper_serves_content_unchanged():
+    content = _stored(json.loads(_FIXTURE.read_text()))
+    out = to_fhir_location(_loc(content))
+    assert out["resourceType"] == "Location"
+    assert out["id"] == "230001"
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+
+
 # ── Guarding the oracle ────────────────────────────────────────────────────────
-# If google-fhir-r4 ever stops validating — a version bump, a changed API, a
-# silently-swallowed error — every test above would keep passing while checking
-# nothing. These deliberately-broken payloads prove the check still has teeth.
+# If google-fhir-r4 ever stops validating, every test above would keep passing
+# while checking nothing. These deliberately-broken payloads prove it still bites.
 
 @pytest.mark.parametrize(
     "label,broken",
     [
-        ("bad status code", {"status": "bogus"}),
-        ("bad mode code", {"mode": "sideways"}),
-        ("misspelled element", {"availabilityException": "x"}),
-        ("operationalStatus as CodeableConcept", {"operationalStatus": {"coding": [{"code": "U"}]}}),
-        ("alias as objects not strings", {"alias": [{"value": "SW"}]}),
-        ("bad daysOfWeek code", {"hoursOfOperation": [{"daysOfWeek": ["funday"]}]}),
-        ("openingTime not a time", {"hoursOfOperation": [{"openingTime": "9am"}]}),
-        ("position missing latitude", {"position": {"longitude": -83.6}}),
+        ("status outside required binding", {"status": "open"}),
+        ("mode outside required binding", {"mode": "both"}),
+        ("misspelled element", {"nam3": "Main Building"}),
+        # Not "address as a list": the oracle accepts a one-element array
+        # where R4 says 0..1 (documented in CLAUDE.md); base R4 validation
+        # rejects it on write — see tests/integration/location/test_core.py.
+        ("position latitude as string", {"position": {"longitude": 1, "latitude": "north"}}),
+        ("daysOfWeek outside required binding", {"hoursOfOperation": [{"daysOfWeek": ["monday"]}]}),
+        ("partOf as string not Reference", {"partOf": "Location/230000"}),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {
-        "resourceType": "Location", "id": "230001", "status": "active",
-        "name": "South Wing", **broken,
-    }
+    payload = {"resourceType": "Location", "id": "230001", "name": "Main Building", **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(
             fhir_json_text(payload), location_pb2.Location, validate=True

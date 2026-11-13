@@ -1,30 +1,48 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.config import settings
+from app.core.content_negotiation import (
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
+)
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.organization import get_organization_service
-from app.schemas.enums import AddressUse
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.organization.search import organization_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
 from app.schemas.organization import OrganizationCreateSchema, OrganizationPatchSchema
 from app.services.organization import OrganizationService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# Organization always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
-_FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -37,12 +55,14 @@ _FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
     description=(
         "Records a formally or informally recognized grouping of people or organizations "
         "formed for the purpose of achieving some form of collective action. "
-        "Organization is set once at onboarding rather than built up incrementally, so this "
-        "single endpoint accepts the full nested payload — identifier, type, alias, telecom, "
-        "address, contact, and endpoint arrays — atomically in one DB transaction. "
-        "Optionally link to a parent organization via `partof` (e.g. `'Organization/190001'`) — "
-        "rejected with 422 if the referenced organization doesn't exist. "
-        + _CONTENT_NEG
+        "The request body is a FHIR R4 Organization resource (camelCase, nested datatypes — "
+        "https://www.hl7.org/fhir/R4/organization.html); the organization and every supplied "
+        "element (identifier, type, alias, telecom, address, contact, endpoint) are written "
+        "atomically in one DB transaction. The body is checked against base FHIR R4: any valid "
+        "R4 element is accepted and stored as sent (server-managed `id`/`meta` are ignored); "
+        "a key that isn't FHIR at all is rejected with 422. Optionally link to a parent organization via `partOf` "
+        '(e.g. `{"reference": "Organization/190001"}`) — rejected with 422 if the referenced '
+        "organization doesn't exist. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -62,13 +82,10 @@ async def create_organization(
     )
     log_payload(logger, "organization.create.payload", payload)
     org = await organization_service.create_organization(
-        payload, actor.org_id, actor.sub
+        payload, actor.org_id, actor.sub, body=await request.json()
     )
-    return format_response(
-        organization_service._to_fhir(org),
-        organization_service._to_plain(org),
-        request,
-        status_code=status.HTTP_201_CREATED,
+    return fhir_response(
+        organization_service._to_fhir(org), status_code=status.HTTP_201_CREATED
     )
 
 
@@ -101,9 +118,7 @@ async def get_organization(
     org = await organization_service.get_organization_scoped(
         organization_id, actor.org_id
     )
-    return format_response(
-        organization_service._to_fhir(org), organization_service._to_plain(org), request
-    )
+    return fhir_response(organization_service._to_fhir(org))
 
 
 # ── Patch ──────────────────────────────────────────────────────────────────────
@@ -114,11 +129,12 @@ async def get_organization(
     operation_id="patch_organization",
     summary="Update an Organization resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every supplied "
-        "sub-resource list (identifier, type, alias, telecom, address, contact, endpoint — even "
-        "`[]`) atomically replaces the corresponding rows; omitted lists are left untouched. "
-        "`partof` may be set to null to clear the parent link — rejected with 422 if the "
-        "referenced organization doesn't exist or setting it would create a circular hierarchy. "
+        "The request body is a partial FHIR R4 Organization (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. Every supplied "
+        "list (identifier, type, alias, telecom, address, contact, endpoint — even `[]`) "
+        "atomically replaces the stored entries; a supplied `partOf` replaces the whole "
+        "Reference, and `null` clears it — rejected with 422 if the referenced organization "
+        "doesn't exist or setting it would create a circular hierarchy. "
         "Scoped to the caller's own org — patch_organization() raises NotFoundError (404, not "
         "403 — avoids leaking that an organization with this id exists in another org) if "
         "actor.org_id doesn't match. " + _CONTENT_NEG
@@ -142,127 +158,115 @@ async def patch_organization(
     )
     log_payload(logger, "organization.patch.payload", payload)
     updated = await organization_service.patch_organization(
-        organization_id, payload, actor.sub, org_id=actor.org_id
+        organization_id,
+        payload,
+        actor.sub,
+        org_id=actor.org_id,
+        body=await request.json(),
     )
-    return format_response(
-        organization_service._to_fhir(updated),
-        organization_service._to_plain(updated),
-        request,
-    )
+    return fhir_response(organization_service._to_fhir(updated))
 
 
-# ── List ───────────────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains (`partof.name`) and repeat for AND, none
+# of which fit FastAPI's per-name Query() declarations — and validated
+# against the Organization search registry. The OpenAPI parameter list is
+# generated from that same registry.
+
+_SEARCH_REGISTRY = organization_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    organization_service: OrganizationService,
+):
+    search_url, fhir_base = search_urls(request, "search_organizations")
+    search_request, rows, total, included = await organization_service.search_organizations(
+        query, actor.org_id, strict=strict_handling(request), fhir_base=fhir_base
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
 
 
 @router.get(
     "/",
-    operation_id="list_organizations",
-    summary="List all Organization resources",
-    description=(
-        "Returns a paginated list of Organization resources, matching the FHIR R4 Organization "
-        "search parameter set (mirroring Medplum's documented filters). "
-        "Filter by `name` (partial match against name or any alias), `identifier` (exact "
-        "business-identifier value), `type` (exact code match), `active`, "
-        "`address` (partial match across every Address sub-field) or "
-        "`address-city`/`address-state`/`address-postalcode`/`address-country`/`address-use` "
-        "(one specific sub-field), `partof`/`endpoint` (FHIR reference string, e.g. "
-        "`Organization/190001` / `Endpoint/1`). "
-        "Always scoped to the caller's own org (from the verified token) — `org_id` is "
-        "not a client-suppliable filter. "
-        "Sort with `sort` (e.g. `-name`); set `total_mode=none` to skip the COUNT(*) on large "
-        "result sets. " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
+    operation_id="search_organizations",
+    summary="Search Organization resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
 )
-async def list_organizations(
+async def search_organizations(
     request: Request,
     actor: AuthUser = Depends(require_permission("organization", "read")),
-    active: bool | None = Query(None, description="Filter by active status."),
-    name: str | None = Query(
-        None, description="Partial match against organization name or any alias."
-    ),
-    identifier: str | None = Query(
-        None, description="Exact match on a business identifier value."
-    ),
-    org_type: str | None = Query(
-        None, alias="type", description="Exact match on a coded organization type."
-    ),
-    address: str | None = Query(
-        None,
-        description="Partial match against any Address sub-field (line, city, district, state, country, postalCode, text).",
-    ),
-    address_city: str | None = Query(
-        None,
-        alias="address-city",
-        description="Filter by address city — partial match.",
-    ),
-    address_state: str | None = Query(
-        None,
-        alias="address-state",
-        description="Filter by address state — partial match.",
-    ),
-    address_postal_code: str | None = Query(
-        None,
-        alias="address-postalcode",
-        description="Filter by address postal code — exact match.",
-    ),
-    address_country: str | None = Query(
-        None,
-        alias="address-country",
-        description="Filter by address country — partial match.",
-    ),
-    address_use: AddressUse | None = Query(
-        None, alias="address-use", description="home|work|temp|old|billing."
-    ),
-    partof: str | None = Query(
-        None,
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string, e.g. `Organization/190001`.",
-    ),
-    endpoint: str | None = Query(
-        None,
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string, e.g. `Endpoint/1`.",
-    ),
-    params: ListParams = Depends(),
     organization_service: OrganizationService = Depends(get_organization_service),
 ):
-    """Every filter param is forwarded straight through to the repository's
-    list() — see the route description for the full filter set. org_id is
-    always the caller's own (actor.org_id), never client-suppliable;
-    list_organizations() raises PermissionDeniedError (403) outright for an
-    org-less token."""
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
     logger.info(
-        "List all Organization resources",
-        extra={"event": "route.list_organizations"},
+        "Search Organization resources",
+        extra={"event": "route.search_organizations"},
     )
-    orgs, total = await organization_service.list_organizations(
-        org_id=actor.org_id,
-        active=active,
-        name=name,
-        identifier=identifier,
-        org_type=org_type,
-        address=address,
-        address_city=address_city,
-        address_state=address_state,
-        address_postal_code=address_postal_code,
-        address_country=address_country,
-        address_use=address_use,
-        partof=partof,
-        endpoint=endpoint,
-        limit=params.limit,
-        offset=params.offset,
-        sort=params.sort,
-        total_mode=params.total_mode,
+    return await _search(request, get_query(request), actor, organization_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_organizations_post",
+    summary="Search Organization resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_organizations_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("organization", "read")),
+    organization_service: OrganizationService = Depends(get_organization_service),
+):
+    logger.info(
+        "Search Organization resources (POST _search)",
+        extra={"event": "route.search_organizations_post"},
     )
-    return format_paginated_response(
-        [organization_service._to_fhir(o) for o in orgs],
-        [organization_service._to_plain(o) for o in orgs],
-        total,
-        params.limit,
-        params.offset,
-        request,
-    )
+    return await _search(request, await post_query(request), actor, organization_service)
 
 
 # ── Delete ─────────────────────────────────────────────────────────────────────

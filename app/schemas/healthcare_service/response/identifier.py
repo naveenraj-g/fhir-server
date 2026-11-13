@@ -6,7 +6,7 @@ from app.schemas.datatypes import AuditFields, PlainCodingRow
 class PlainHealthcareServiceIdentifier(AuditFields):
     """`type_codings` is a real 0..* child table rather than a single
     flattened coding, mirroring
-    app.schemas.organization.response.identifier.PlainOrganizationIdentifier."""
+    app.schemas.practitioner.response.identifier.PlainPractitionerIdentifier."""
 
     id: int = Field(..., description="Internal row ID — use for sub-resource lookups.")
     use: str | None = Field(

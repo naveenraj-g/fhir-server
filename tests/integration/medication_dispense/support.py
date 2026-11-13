@@ -31,7 +31,7 @@ async def create_test_location(client) -> int:
         json={"name": "Central Pharmacy", "status": "active"},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 def minimal_medication_dispense(patient_id: int) -> dict:

@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from app.models.location import LocationMode, LocationModel, LocationStatus
+from app.models.location import LocationModel, LocationStatus
 
 BASE = "/api/fhir/v1/healthcare-services"
 FHIR_ACCEPT = {"Accept": "application/fhir+json"}
@@ -134,16 +134,25 @@ async def seed_location(
             LocationModel(
                 location_id=location_id,
                 tenant_id=org_id,
+                content={
+                    "status": "active",
+                    "name": "Test Location",
+                    "mode": "instance",
+                    "address": {
+                        "type": "both",
+                        "city": "Test City",
+                        "state": "TS",
+                        "postalCode": "00000",
+                        "country": "USA",
+                    },
+                },
+                # Search-index columns for the fields above (normally
+                # derived by app.repository.location._indexer).
                 status=LocationStatus.active,
                 name="Test Location",
-                mode=LocationMode.instance,
-                # Address columns come from FhirAddressMixin
-                # (_address_prefix="address_") — bare attribute names.
-                type="both",
-                city="Test City",
-                state="TS",
-                postal_code="00000",
-                country="USA",
+                name_norm="test location",
+                address_city="Test City",
+                address_city_norm="test city",
                 created_by="u-test",
                 created_at=dt.datetime.now(dt.timezone.utc),
             )

@@ -40,7 +40,7 @@ def plain_coding(c) -> dict:
 
 
 def _plain_reference_fields(obj, prefix: str) -> dict:
-    """Mirrors app.fhir.mappers.organization.plain._plain_reference_fields —
+    """Mirrors app.fhir.mappers.practitioner.plain._plain_reference_fields —
     raw `{prefix}_reference` + resolved type/id/display + a convenience
     `{prefix}` resolved-reference-string field."""
     ref_type = getattr(obj, f"{prefix}_type", None)

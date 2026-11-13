@@ -117,7 +117,7 @@ class AppointmentModel(TenantAuditMixin, Base):
     # base DomainResource type — not Appointment-specific). Raw
     # [{url, valueType, value}, ...]; validated against registered
     # extension definitions by the (not-yet-built) profile pipeline, not by
-    # the database. Same shape as OrganizationModel.extension.
+    # the database. Same shape as PractitionerModel.extension.
     extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 
     # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)

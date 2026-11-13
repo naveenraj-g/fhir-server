@@ -1,19 +1,10 @@
-from app.schemas.datatypes import PlainCodingRow
-
 from .core import (
     FHIRLocationBundle,
     FHIRLocationBundleEntry,
     FHIRLocationHoursOfOperation,
     FHIRLocationPosition,
     FHIRLocationSchema,
-    PaginatedLocationResponse,
-    PlainLocationResponse,
 )
-from .endpoint import PlainLocationEndpoint
-from .hours_of_operation import PlainLocationHoursOfOperation
-from .identifier import PlainLocationIdentifier
-from .telecom import PlainLocationTelecom
-from .type import PlainLocationType
 
 __all__ = [
     "FHIRLocationSchema",
@@ -21,12 +12,4 @@ __all__ = [
     "FHIRLocationBundle",
     "FHIRLocationPosition",
     "FHIRLocationHoursOfOperation",
-    "PlainLocationResponse",
-    "PaginatedLocationResponse",
-    "PlainCodingRow",
-    "PlainLocationIdentifier",
-    "PlainLocationType",
-    "PlainLocationTelecom",
-    "PlainLocationHoursOfOperation",
-    "PlainLocationEndpoint",
 ]

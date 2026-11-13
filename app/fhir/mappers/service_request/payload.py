@@ -1,5 +1,5 @@
 """Payload -> FHIR JSON conversion, the mirror image of fhir.py — see that
-module's docstring pattern (e.g. app.fhir.mappers.organization.payload) for
+module's docstring pattern (e.g. app.fhir.mappers.practitioner.payload) for
 the full reasoning. Reads the validated Pydantic input schema
 (ServiceRequestCreateSchema / ServiceRequestPatchSchema and their nested
 sub-schemas) rather than the persisted ORM model, before anything is
@@ -413,8 +413,8 @@ def payload_to_fhir_service_request(payload: ServiceRequestCreateSchema) -> dict
 
 def patch_fragment_to_fhir_service_request(payload: ServiceRequestPatchSchema) -> tuple[dict, set[str]]:
     """Tri-state conversion for PATCH — see
-    app.fhir.mappers.organization.payload.patch_fragment_to_fhir_organization's
-    docstring for the full reasoning."""
+    app.fhir.datatypes.merge_patch_fragment's docstring for the full
+    reasoning."""
     provided = payload.model_fields_set
     fragment: dict = {}
     touched: set[str] = set()

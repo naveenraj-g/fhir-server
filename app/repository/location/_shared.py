@@ -2,60 +2,32 @@ from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
-from app.models.location import LocationIdentifier, LocationModel, LocationType
+from app.models.location import LocationModel
 from app.models.location.enums import (
     LocationEndpointReferenceType,
     LocationPartOfReferenceType,
 )
-from app.repository._reference_shared import (
-    _IDENTIFIER_FALLBACK_SUFFIXES,
-    _org_ref_kwargs,
-    _parse_org_ref,
-    _reference_kwargs,
-    _validate_reference,
-)
+from app.repository._reference_shared import _parse_org_ref, _validate_reference
 
 __all__ = [
-    "_IDENTIFIER_FALLBACK_SUFFIXES",
-    "_SORTABLE_FIELDS",
-    "_location_ref_kwargs",
-    "_org_ref_kwargs",
     "_parse_endpoint_ref",
     "_parse_location_ref",
     "_parse_org_ref",
     "_partof_chain_contains",
-    "_reference_kwargs",
     "_validate_reference",
     "_with_relationships",
 ]
 
 
-# Sortable fields exposed via the `sort` list-query param (see
-# app.core.pagination.resolve_sort) — mirrors Organization's _shared.py.
-_SORTABLE_FIELDS = {
-    "location_id": LocationModel.location_id,
-    "name": LocationModel.name,
-    "status": LocationModel.status,
-    "created_at": LocationModel.created_at,
-    "updated_at": LocationModel.updated_at,
-}
-
-
 def _with_relationships(stmt):
-    """Eager-load all location sub-resources to avoid N+1 and async lazy-load
-    failures. identifiers.type_codings, types.codings, and
-    physical_type_codings are each a nested 0..* coding child table now
-    (see app.models.location.identifier/type/core) — mirrors
-    app.repository.organization._shared._with_relationships."""
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from LocationModel.content."""
     return stmt.options(
-        selectinload(LocationModel.identifiers).selectinload(
-            LocationIdentifier.type_codings
-        ),
-        selectinload(LocationModel.types).selectinload(LocationType.codings),
-        selectinload(LocationModel.telecoms),
-        selectinload(LocationModel.hours_of_operation),
-        selectinload(LocationModel.endpoints),
-        selectinload(LocationModel.physical_type_codings),
+        *(
+            selectinload(getattr(LocationModel, rel))
+            for rel in ("identifiers", "types", "endpoints")
+        )
     )
 
 
@@ -63,19 +35,6 @@ def _parse_location_ref(ref: str) -> tuple:
     """Parse 'Location/230001' → (LocationPartOfReferenceType.Location, 230001).
     Used for Location.partOf, the self-referential containment link."""
     return parse_reference(ref, LocationPartOfReferenceType)
-
-
-def _location_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
-    """Build `{prefix}_type`/`{prefix}_id`/`{prefix}_display` ORM constructor
-    kwargs from a Reference(Location) string. The Location counterpart of
-    app.repository._reference_shared._org_ref_kwargs, which is bound to
-    OrganizationReferenceType."""
-    ref_type, ref_id = _parse_location_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
 
 
 def _parse_endpoint_ref(ref: str) -> tuple:

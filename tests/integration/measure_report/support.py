@@ -11,7 +11,7 @@ async def create_test_organization(client) -> int:
         json={"active": True, "name": "Quality Health Organization"},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 async def create_test_patient(client) -> int:

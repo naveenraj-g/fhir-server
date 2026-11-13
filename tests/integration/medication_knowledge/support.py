@@ -13,7 +13,7 @@ async def create_test_organization(client, name="Pharma Corp") -> int:
         json={"active": True, "name": name},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 async def create_test_medication(client) -> int:

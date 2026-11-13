@@ -1,292 +1,165 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import IdentifierUse
+from app.schemas.fhir_input import (
+    FhirAddressInput,
+    FhirCodeableConceptInput,
+    FhirContactPointInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirReferenceInput,
+)
 
-from .address import OrganizationAddressInput
 from .contact import OrganizationContactInput
-from .endpoint import OrganizationEndpointInput
-from .identifier import OrganizationIdentifierInput
-from .telecom import OrganizationTelecomInput
-from .type import OrganizationTypeInput
+
+_EXAMPLE = {
+    "resourceType": "Organization",
+    "active": True,
+    "name": "General Hospital",
+    "partOf": {"reference": "Organization/190001", "display": "Parent Health System"},
+    "identifier": [
+        {
+            "use": "official",
+            "system": "https://fhir-server.dev/fhir/identifier-system/facility-id",
+            "value": "12345",
+            "assigner": {
+                "reference": "Organization/190001",
+                "display": "State Health Department",
+            },
+        }
+    ],
+    "type": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                    "code": "prov",
+                    "display": "Healthcare Provider",
+                }
+            ]
+        }
+    ],
+    "alias": ["Gen Hosp"],
+    "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
+    "address": [
+        {
+            "use": "work",
+            "type": "both",
+            "line": ["123 Main St"],
+            "city": "Anytown",
+            "state": "CA",
+            "postalCode": "12345",
+            "country": "US",
+        }
+    ],
+    "contact": [
+        {
+            "purpose": {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
+                        "code": "ADMIN",
+                    }
+                ]
+            },
+            "name": {"family": "Smith", "given": ["John"]},
+            "telecom": [{"system": "phone", "value": "555-0001"}],
+            "address": {"type": "both", "city": "Anytown", "state": "CA", "country": "US"},
+        }
+    ],
+    "endpoint": [
+        {
+            "display": "EHR FHIR Gateway",
+            "identifier": {
+                "system": "https://fhir-server.dev/fhir/identifier-system/endpoint",
+                "value": "EP-1",
+            },
+        }
+    ],
+}
 
 
-class OrganizationCreateSchema(BaseModel):
-    """Creates an Organization and any combination of its sub-resources
-    (identifier, type, alias, telecom, address, contact, endpoint) atomically
-    in one request — Organization has no separate scalar-only vs. full
-    create split like Patient/Practitioner, since it's set once at onboarding
-    rather than built up incrementally. org_id and created_by both come from
-    the verified JWT (actor.org_id / actor.sub) — neither is a request body
-    field. Like other tenant-level resources (and unlike Patient/Practitioner
-    which have a /me route), Organization has no user_id field at all —
-    it's a shared tenant-level entity, not scoped to an individual end-user."""
+class _OrganizationFields(FhirInputModel):
+    """Every writable Organization element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/organization.html). Create and patch accept
+    exactly the same fields — Organization has no element that is required
+    at this layer (org-1, "SHALL at least have a name or an identifier", is
+    enforced by base R4 validation, not here).
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "active": True,
-                "name": "General Hospital",
-                "partof": "Organization/190001",
-                "partof_display": "Parent Health System",
-                "identifier": [
-                    {
-                        "value": "12345",
-                        "system": "http://example.org/facility-ids",
-                        "use": "official",
-                        "assigner": "Organization/190001",
-                        "assigner_display": "State Health Department",
-                    }
-                ],
-                "type": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/organization-type",
-                                "code": "prov",
-                                "display": "Healthcare Provider",
-                            }
-                        ]
-                    }
-                ],
-                "alias": ["Gen Hosp"],
-                "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
-                "address": [
-                    {
-                        "use": "work",
-                        "type": "both",
-                        "line": ["123 Main St"],
-                        "city": "Anytown",
-                        "state": "CA",
-                        "postal_code": "12345",
-                        "country": "US",
-                    }
-                ],
-                "contact": [
-                    {
-                        "purpose_coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
-                                "code": "ADMIN",
-                            }
-                        ],
-                        "name_family": "Smith",
-                        "name_given": ["John"],
-                        "address_type": "both",
-                        "address_city": "Anytown",
-                        "address_state": "CA",
-                        "address_postal_code": "12345",
-                        "address_country": "US",
-                        "telecom": [{"system": "phone", "value": "555-0001"}],
-                    }
-                ],
-                "endpoint": [
-                    {
-                        "reference": "Endpoint/1",
-                        "reference_display": "EHR FHIR Gateway",
-                    }
-                ],
-            }
-        },
+    The validated body is stored whole (OrganizationModel.content), so any
+    valid R4 element is kept — including ones this model doesn't declare.
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    organization_id sequence) and `meta` (audit/tenant data, stamped on at
+    read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. Like other tenant-level
+    resources (unlike Patient/Practitioner) there is no user_id."""
+
+    resourceType: Literal["Organization"] | None = Field(
+        None,
+        description="Optional; if supplied it must be 'Organization'.",
     )
-
-    # active (0..1) — R4 removed the R3 default of true; no default here either.
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None,
+        description="Identifies this organization across multiple systems.",
+    )
     active: bool | None = Field(
         None, description="Whether the organization's record is still in active use."
     )
-    # name (0..1) — not required on its own; org-1 ("SHALL at least have a
-    # name or an identifier") is enforced by the FHIR validator layer, not
-    # here — same reasoning as every other invariant this session moved out
-    # of the DB (see OrganizationModel's docstring, app/models/organization/core.py).
+    type: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Kind of organization (e.g. prov, dept, team, govt, ins)."
+    )
     name: str | None = Field(
-        None, description="A name associated with the organization."
-    )
-    # partOf (0..1) Reference(Organization) — "The organization of which this organization forms a part."
-    partof: str | None = Field(
-        None,
-        description="The organization of which this organization forms a part, as a FHIR reference string (e.g. 'Organization/190001').",
-    )
-    partof_display: str | None = Field(
-        None,
-        description="Plain text narrative that identifies the parent organization in addition to the reference.",
-    )
-    partof_identifier_use: IdentifierUse | None = Field(
-        None,
-        description="Logical-identifier fallback for partOf (used when the parent organization isn't a resource in this system) — identifies the purpose for that identifier, if known.",
-    )
-    partof_identifier_type_system: str | None = Field(
-        None,
-        description="Fallback identifier — the code system that defines the meaning of its type code.",
-    )
-    partof_identifier_type_version: str | None = Field(
-        None,
-        description="Fallback identifier — the version of the code system used for its type code.",
-    )
-    partof_identifier_type_code: str | None = Field(
-        None,
-        description="Fallback identifier — a symbol in syntax defined by the code system.",
-    )
-    partof_identifier_type_display: str | None = Field(
-        None,
-        description="Fallback identifier — a representation of the meaning of its type code.",
-    )
-    partof_identifier_type_text: str | None = Field(
-        None,
-        description="Fallback identifier — a human language representation of its type.",
-    )
-    partof_identifier_type_user_selected: bool | None = Field(
-        None,
-        description="Fallback identifier — whether its type coding was chosen by a user directly.",
-    )
-    partof_identifier_system: str | None = Field(
-        None, description="Fallback identifier — the namespace URL for the value."
-    )
-    partof_identifier_value: str | None = Field(
-        None,
-        description="Fallback identifier — the portion typically relevant to the user, unique within the system.",
-    )
-    partof_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of its validity period."
-    )
-    partof_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of its validity period."
-    )
-
-    identifier: list[OrganizationIdentifierInput] | None = Field(
-        None,
-        description="Identifier(s) for the organization that is used to identify the organization across multiple disparate systems.",
-    )
-    type: list[OrganizationTypeInput] | None = Field(
-        None, description="The kind(s) of organization that this is."
+        None, description="Name used for the organization."
     )
     alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the organization is known as, or was known as in the past.",
     )
-    telecom: list[OrganizationTelecomInput] | None = Field(
+    telecom: list[FhirContactPointInput] | None = Field(
         None, description="A contact detail for the organization."
     )
-    address: list[OrganizationAddressInput] | None = Field(
+    address: list[FhirAddressInput] | None = Field(
         None, description="An address for the organization."
+    )
+    partOf: FhirReferenceInput | None = Field(
+        None,
+        description="The organization of which this organization forms a part — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     contact: list[OrganizationContactInput] | None = Field(
         None, description="Contact for the organization for a certain purpose."
     )
-    endpoint: list[OrganizationEndpointInput] | None = Field(
+    endpoint: list[FhirReferenceInput] | None = Field(
         None,
-        description="Technical endpoints providing access to services operated for the organization.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions — that's the not-yet-built profile pipeline's job (see docs/architecture/fhir-profiling-and-extensibility-strategy.md).",
+        description="Technical endpoints providing access to services operated for the organization — Reference(Endpoint).",
     )
 
 
-class OrganizationPatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows wholesale;
-    omitted lists are left untouched. No separate scalar-only vs. full patch
-    split — see OrganizationCreateSchema's docstring. updated_by comes from
-    the verified JWT (actor.sub), not a request body field."""
+class OrganizationCreateSchema(_OrganizationFields):
+    """POST body — a FHIR R4 Organization resource. Creates the
+    organization and every supplied nested element atomically in one
+    transaction."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class OrganizationPatchSchema(_OrganizationFields):
+    """PATCH body — a partial FHIR R4 Organization (merge-patch semantics on
+    top-level elements). Only supplied elements are written; omitted ones
+    are left untouched. A supplied element replaces the stored value
+    wholesale — a list (even `[]`) replaces every existing entry, an object
+    such as `partOf` replaces the whole Reference, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "name": "General Hospital Health System",
                 "alias": ["Gen Hosp", "GHHS"],
                 "telecom": [{"system": "phone", "value": "555-9999", "use": "work"}],
             }
-        },
-    )
-
-    active: bool | None = Field(
-        None, description="Whether the organization's record is still in active use."
-    )
-    name: str | None = Field(
-        None, description="A name associated with the organization."
-    )
-    partof: str | None = Field(
-        None,
-        description="The organization of which this organization forms a part, as a FHIR reference string (e.g. 'Organization/190001'). Set to null to clear.",
-    )
-    partof_display: str | None = Field(
-        None,
-        description="Plain text narrative that identifies the parent organization in addition to the reference.",
-    )
-    partof_identifier_use: IdentifierUse | None = Field(
-        None,
-        description="Logical-identifier fallback for partOf — identifies the purpose for that identifier, if known.",
-    )
-    partof_identifier_type_system: str | None = Field(
-        None,
-        description="Fallback identifier — the code system that defines the meaning of its type code.",
-    )
-    partof_identifier_type_version: str | None = Field(
-        None,
-        description="Fallback identifier — the version of the code system used for its type code.",
-    )
-    partof_identifier_type_code: str | None = Field(
-        None,
-        description="Fallback identifier — a symbol in syntax defined by the code system.",
-    )
-    partof_identifier_type_display: str | None = Field(
-        None,
-        description="Fallback identifier — a representation of the meaning of its type code.",
-    )
-    partof_identifier_type_text: str | None = Field(
-        None,
-        description="Fallback identifier — a human language representation of its type.",
-    )
-    partof_identifier_type_user_selected: bool | None = Field(
-        None,
-        description="Fallback identifier — whether its type coding was chosen by a user directly.",
-    )
-    partof_identifier_system: str | None = Field(
-        None, description="Fallback identifier — the namespace URL for the value."
-    )
-    partof_identifier_value: str | None = Field(
-        None,
-        description="Fallback identifier — the portion typically relevant to the user, unique within the system.",
-    )
-    partof_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of its validity period."
-    )
-    partof_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of its validity period."
-    )
-
-    identifier: list[OrganizationIdentifierInput] | None = Field(
-        None,
-        description="Identifier(s) for the organization — replaces the full list if supplied.",
-    )
-    type: list[OrganizationTypeInput] | None = Field(
-        None,
-        description="The kind(s) of organization that this is — replaces the full list if supplied.",
-    )
-    alias: list[str] | None = Field(
-        None,
-        description="Alternate name(s) for the organization — replaces the full list if supplied.",
-    )
-    telecom: list[OrganizationTelecomInput] | None = Field(
-        None,
-        description="Contact detail(s) for the organization — replaces the full list if supplied.",
-    )
-    address: list[OrganizationAddressInput] | None = Field(
-        None,
-        description="Address(es) for the organization — replaces the full list if supplied.",
-    )
-    contact: list[OrganizationContactInput] | None = Field(
-        None,
-        description="Contact(s) for the organization — replaces the full list if supplied.",
-    )
-    endpoint: list[OrganizationEndpointInput] | None = Field(
-        None,
-        description="Technical endpoint(s) for the organization — replaces the full list if supplied.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
-    )
+        }
+    }

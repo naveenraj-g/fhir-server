@@ -81,7 +81,7 @@ async def create_test_organization(client) -> int:
         json={"active": True, "name": "Acme Clinic"},
     )
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 def minimal_detected_issue(patient_id: int | None = None) -> dict:

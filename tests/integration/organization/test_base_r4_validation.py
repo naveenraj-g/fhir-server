@@ -5,16 +5,16 @@ This layer catches what Pydantic's own CreateSchema/PatchSchema can't:
 structural rules expressed only in HL7's fhir.schema.json, not in this
 project's input types. The clearest example — and what these tests exercise
 — is FHIR's `dateTime` primitive, which requires a timezone offset whenever
-a time-of-day is present; Python's `datetime` type (what period_start/
-period_end are typed as) has no such requirement, so a timezone-naive
-instant sails through Pydantic but fails the FHIR schema once converted.
+a time-of-day is present; Python's `datetime` type (what Period.start/
+Period.end are typed as) has no such requirement, so a timezone-naive
+instant sails through Pydantic but fails the FHIR schema.
 """
 
 from tests.integration.organization.support import BASE, MINIMAL, create_organization
 
 
 async def test_create_rejects_naive_datetime_period(client):
-    """period_start with no UTC offset passes Pydantic's `datetime` type but
+    """period.start with no UTC offset passes Pydantic's `datetime` type but
     violates FHIR's dateTime primitive pattern — the base R4 validator must
     catch it before anything is written.
 
@@ -31,7 +31,7 @@ async def test_create_rejects_naive_datetime_period(client):
                 "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
                 "value": "22AAAAA0000A1Z5",
                 "use": "official",
-                "period_start": "2024-01-01T00:00:00",
+                "period": {"start": "2024-01-01T00:00:00"},
             }
         ],
     }
@@ -60,7 +60,7 @@ async def test_create_accepts_tz_aware_datetime_period(client):
                 "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
                 "value": "22AAAAA0000A1Z5",
                 "use": "official",
-                "period_start": "2024-01-01T00:00:00+00:00",
+                "period": {"start": "2024-01-01T00:00:00+00:00"},
             }
         ],
     }
@@ -81,7 +81,7 @@ async def test_patch_rejects_naive_datetime_period(client):
                     "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
                     "value": "22AAAAA0000A1Z5",
                     "use": "official",
-                    "period_start": "2024-01-01T00:00:00",
+                    "period": {"start": "2024-01-01T00:00:00"},
                 }
             ]
         },

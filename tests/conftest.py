@@ -44,12 +44,10 @@ mount_routers(app)
 # postgresql.ARRAY type's own bind/result processors still assume a
 # Postgres-native array wire format, so handing a plain Python list to
 # aiosqlite raises `sqlite3.ProgrammingError: type 'list' is not supported`.
-# Organization's FhirAddressMixin (line) and OrganizationContact
-# (name_given/name_prefix/name_suffix) are the first real users of
-# ARRAY(String) in this codebase — everything earlier that looked like a
-# list (PractitionerRole's old ARRAY(Enum(DayOfWeek))) was replaced with
-# comma-separated Text instead. JSON-encode/decode on SQLite only; Postgres
-# keeps its native array handling untouched.
+# ARRAY columns are used widely (FhirAddressMixin.line, HumanName parts,
+# Organization/Location alias + alias_norm, daysOfWeek enum arrays, ...).
+# JSON-encode/decode on SQLite only; Postgres keeps its native array
+# handling untouched.
 import json
 
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
@@ -125,6 +123,25 @@ def _array_contains_sqlite(element, compiler, **kw):
     col_sql = compiler.process(element.column, **kw)
     val_sql = compiler.process(bindparam(None, element.value), **kw)
     return f"EXISTS (SELECT 1 FROM json_each({col_sql}) WHERE value = {val_sql})"
+
+# app.fhir.search.sql.ArrayAnyLike — FHIR string search (default starts-with /
+# :contains) over a normalized ARRAY(String) column (Organization alias,
+# address line). Same json_each() arrangement as the two shims above.
+from app.fhir.search.sql import ArrayAggregate, ArrayAnyLike  # noqa: E402
+
+
+@compiles(ArrayAnyLike, "sqlite")
+def _array_any_like_sqlite(element, compiler, **kw):
+    col_sql = compiler.process(element.column, **kw)
+    pattern_sql = compiler.process(bindparam(None, element.pattern), **kw)
+    return f"EXISTS (SELECT 1 FROM json_each({col_sql}) WHERE value LIKE {pattern_sql} ESCAPE '\\')"
+
+
+@compiles(ArrayAggregate, "sqlite")
+def _array_aggregate_sqlite(element, compiler, **kw):
+    col_sql = compiler.process(element.column, **kw)
+    return f"(SELECT {element.aggregate}(value) FROM json_each({col_sql}))"
+
 
 # ── Disable rate limiting for tests ───────────────────────────────────────────
 # The in-process sliding-window limiter accumulates across tests when Redis is

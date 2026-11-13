@@ -59,7 +59,7 @@ ORG_AND_HS_PERMS = HS_PERMS + [
 async def _create_organization(client, name="Provider Org") -> int:
     resp = await client.post(ORG_BASE + "/", json={**ORG_MINIMAL, "name": name})
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
