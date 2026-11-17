@@ -32,7 +32,9 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.fhir.profile_urls import country_profile_url, organization_profile_url
 from app.fhir.validation.base_r4 import validate_base_r4
+from app.errors.infrastructure import ValidatorUnavailableError
 from app.fhir.validation.java_validator import (
+    JavaValidatorUnavailable,
     ensure_profile_registered,
     validate_via_java,
 )
@@ -129,6 +131,13 @@ async def register_configured_country_profiles() -> None:
     the lazy per-request path in validate_resource() is still exactly the
     fallback it always was, with the same cold-start race as before for
     whichever profile didn't get warmed here."""
+    if (
+        not settings.fhir_validation.enabled
+        or settings.fhir_validation.backend != "java_validator"
+    ):
+        # Nothing to register with — no sidecar is in play.
+        return
+
     country = settings.fhir_validation.country
     if not country:
         logger.info(
@@ -279,6 +288,9 @@ async def validate_resource(
     # shipped" from ever drifting apart — and avoids every backend (the
     # java_validator sidecar's httpx POST, in particular) choking on a type
     # `json.dumps`/jsonschema was never going to accept anyway.
+    if not settings.fhir_validation.enabled:
+        return []
+
     fhir_resource = jsonable_encoder(fhir_resource)
 
     if settings.fhir_validation.backend == "java_validator":
@@ -321,11 +333,36 @@ async def validate_resource(
             profile_url = _BASE_PROFILE_URL.format(resource_type=resource_type)
             layer = None
 
-        return await validate_via_java(
-            resource_type,
-            fhir_resource,
-            profile_url=profile_url,
-            layer=layer,
-            structure_definition=structure_definition,
-        )
+        try:
+            return await validate_via_java(
+                resource_type,
+                fhir_resource,
+                profile_url=profile_url,
+                layer=layer,
+                structure_definition=structure_definition,
+            )
+        except JavaValidatorUnavailable as exc:
+            # Only a *system* failure lands here (unreachable/timeout/5xx).
+            # A resource the sidecar validated and rejected comes back as a
+            # normal error list above and never reaches this handler.
+            if not settings.fhir_validation.java_validator.fallback_to_native:
+                logger.error(
+                    "Java validator unavailable and fallback_to_native is off",
+                    extra={
+                        "event": "fhir_validation.java_unavailable",
+                        "resource_type": resource_type,
+                        "reason": str(exc),
+                    },
+                )
+                raise ValidatorUnavailableError(cause=exc) from exc
+            logger.warning(
+                "Java validator unavailable — validated with the native "
+                "structural validator only (no invariants, no country/org profile)",
+                extra={
+                    "event": "fhir_validation.java_unavailable_fallback",
+                    "resource_type": resource_type,
+                    "reason": str(exc),
+                },
+            )
+            return validate_base_r4(resource_type, fhir_resource)
     return validate_base_r4(resource_type, fhir_resource)

@@ -143,6 +143,18 @@ class JavaValidatorConfig(BaseModel):
     base_url: str = "http://localhost:4567"
     timeout_seconds: float = 30.0
 
+    # Short, separate budget for just *reaching* the sidecar, so a dead or
+    # unroutable host fails over quickly instead of eating the full
+    # timeout_seconds on every request.
+    connect_timeout_seconds: float = 3.0
+
+    # When the sidecar can't be used (unreachable, timeout, 5xx), fall back
+    # to the native structural validator instead of failing the request.
+    # Only ever applies to *system* errors — a resource the sidecar actually
+    # validated and rejected is a normal 422 and never triggers a fallback.
+    # false: a system error becomes a 503 instead.
+    fallback_to_native: bool = True
+
 
 class FhirValidationConfig(BaseModel):
     """Selects which engine validates a resource against base R4 (and, once
@@ -172,6 +184,11 @@ class FhirValidationConfig(BaseModel):
     # has a `scripts/data/profiling/resources/<resource_type>/country_<code>.json` file —
     # falls back to base R4 for any resource_type that doesn't yet.
     country: str | None = None
+
+    # Master switch. false skips validation entirely — validate_resource()
+    # returns "valid" without consulting any backend. Anything the API
+    # accepts is then stored as sent, so only turn this off deliberately.
+    enabled: bool = True
 
     # This deployment's own public base URL for canonical URLs it mints
     # itself — country/organization profile URLs (app/fhir/validation/
@@ -223,17 +240,72 @@ class TerminologyConfig(BaseModel):
     remote: TerminologyRemoteConfig = Field(default_factory=TerminologyRemoteConfig)
 
 
+class ConsoleLogConfig(BaseModel):
+    """stdout handler. Its line format is `logging.format`."""
+
+    enabled: bool = True
+
+
+class FileLogConfig(BaseModel):
+    """File handlers — one rotating file per level in `levels`, each holding
+    only records of exactly that level (`info.log` has INFO and nothing else).
+    Files rotate at midnight and the oldest are deleted beyond
+    `retention_days`, which is the TTL.
+
+    A level's file only receives records the root `logging.level` lets
+    through: with `level: INFO`, `debug.log` stays empty.
+
+    ⚠️ PHI: with `debug_payloads` on, debug.log holds patient data at rest.
+    """
+
+    enabled: bool = False
+    # Folder, relative to the process working directory unless absolute.
+    path: str = "logs"
+    levels: list[str] = Field(
+        default_factory=lambda: ["debug", "info", "warning", "error"]
+    )
+    # TTL, in days. Rotated files older than this many days are deleted.
+    retention_days: int = Field(default=7, ge=1)
+    format: Literal["json", "console"] = "json"
+
+    @field_validator("levels", mode="before")
+    @classmethod
+    def _normalise_levels(cls, v):
+        if not isinstance(v, list):
+            return v
+        names = [str(x).upper() for x in v]
+        bad = [n for n in names if n not in _LOG_LEVELS]
+        if bad:
+            raise ValueError(
+                f"logging.file.levels has unknown level(s) {bad}; "
+                f"valid: {sorted(_LOG_LEVELS)}"
+            )
+        # "error" also catches CRITICAL, so CRITICAL never needs its own file.
+        return [n.lower() for n in names]
+
+    @field_validator("format", mode="before")
+    @classmethod
+    def _normalise_format(cls, v):
+        return v.lower() if isinstance(v, str) else v
+
+
 class LogConfig(BaseModel):
     """Observability config — consumed by app.core.logging.setup_logging(),
     app.middleware.access_log, and app.core.database's query listeners.
     See CLAUDE.md's "Logging & Observability" section."""
+
+    # Master switch. false silences ALL logging in the process — ours and
+    # every library's, errors and tracebacks included — regardless of the
+    # console/file settings below.
+    enabled: bool = True
 
     # Root log level. DEBUG turns on the per-layer flow logging that services
     # and repositories emit; INFO keeps only business outcomes + the access log.
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     # "json" (one JSON object per line — what log aggregators want) or
-    # "console" (flat, human-readable; local development only).
+    # "console" (flat, human-readable; local development only). Applies to
+    # the console handler; file output has its own `file.format`.
     format: Literal["json", "console"] = "json"
 
     # Both of the above are matched case-insensitively: `format: JSON` and
@@ -247,6 +319,9 @@ class LogConfig(BaseModel):
         if isinstance(v, str):
             return v.upper() if v.upper() in _LOG_LEVELS else v.lower()
         return v
+
+    console: ConsoleLogConfig = Field(default_factory=ConsoleLogConfig)
+    file: FileLogConfig = Field(default_factory=FileLogConfig)
 
     # ⚠️ PHI. Logs full request payloads at DEBUG via log_payload(). This is a
     # FHIR server — enabling it writes patient names, addresses, birth dates

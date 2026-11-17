@@ -22,6 +22,8 @@ from . import appointment_response as appointment_response
 from . import care_plan as care_plan
 from . import care_team as care_team
 from . import clinical_impression as clinical_impression
+from . import communication as communication
+from . import communication_request as communication_request
 from . import condition as condition
 from . import consent as consent
 from . import detected_issue as detected_issue
@@ -32,6 +34,7 @@ from . import episode_of_care as episode_of_care
 from . import family_member_history as family_member_history
 from . import fhir_profile as fhir_profile
 from . import flag as flag
+from . import goal as goal
 from . import group as group
 from . import healthcare_service as healthcare_service
 from . import immunization as immunization
@@ -64,9 +67,6 @@ from . import slot as slot
 from . import specimen as specimen
 from . import specimen_definition as specimen_definition
 from . import task as task
-from . import goal as goal
-from . import communication as communication
-from . import communication_request as communication_request
 
 __all__ = [
     "activity_definition",
@@ -77,6 +77,7 @@ __all__ = [
     "care_team",
     "clinical_impression",
     "communication",
+    "communication_request",
     "condition",
     "consent",
     "detected_issue",
@@ -88,6 +89,7 @@ __all__ = [
     "family_member_history",
     "fhir_profile",
     "flag",
+    "goal",
     "group",
     "healthcare_service",
     "immunization",
@@ -119,8 +121,6 @@ __all__ = [
     "slot",
     "specimen",
     "specimen_definition",
-    "communication_request",
-    "goal",
     "task",
 ]
 
@@ -153,6 +153,8 @@ def discover_routers() -> dict[str, APIRouter]:
         if name == "discover_routers":
             continue
         mod = getattr(here, name, None)
-        if inspect.ismodule(mod) and isinstance(getattr(mod, "router", None), APIRouter):
+        if inspect.ismodule(mod) and isinstance(
+            getattr(mod, "router", None), APIRouter
+        ):
             result[name] = mod.router
     return result

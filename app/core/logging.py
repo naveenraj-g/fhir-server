@@ -26,6 +26,8 @@ import logging
 import re
 import sys
 import time
+from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 from typing import Any, ClassVar
 
 from app.core.config import settings
@@ -121,30 +123,156 @@ class ConsoleFormatter(logging.Formatter):
         return line
 
 
+class _LevelFilter(logging.Filter):
+    """Passes records whose level is in [low, high]. Backs the one-file-per-
+    level layout: `info.log` gets exactly INFO, not INFO-and-above."""
+
+    def __init__(self, low: int, high: int) -> None:
+        super().__init__()
+        self.low = low
+        self.high = high
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return self.low <= record.levelno <= self.high
+
+
+# Level file name -> (low, high). "error" also takes CRITICAL, so a critical
+# record is never lost for lack of a file of its own.
+_FILE_LEVEL_RANGES: dict[str, tuple[int, int]] = {
+    "debug": (logging.DEBUG, logging.DEBUG),
+    "info": (logging.INFO, logging.INFO),
+    "warning": (logging.WARNING, logging.WARNING),
+    "error": (logging.ERROR, logging.CRITICAL),
+}
+
+
+def _formatter_for(kind: str) -> logging.Formatter:
+    return ConsoleFormatter() if kind == "console" else JsonFormatter()
+
+
+class _ConsoleFormatter(logging.Formatter):
+    """Console-only wrapper: Uvicorn's access records are rendered in
+    Uvicorn's own style —
+
+        INFO:     127.0.0.1:57945 - "GET /x HTTP/1.1" 307 Temporary Redirect
+
+    (coloured when stdout is a terminal) — and everything else goes through
+    the configured formatter. File handlers never use this wrapper, so the
+    files stay uniform JSON."""
+
+    def __init__(self, default: logging.Formatter) -> None:
+        super().__init__()
+        self._default = default
+        try:
+            from uvicorn.logging import AccessFormatter
+
+            self._access: logging.Formatter | None = AccessFormatter(
+                fmt='%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+                use_colors=None,  # colour only if stdout is a TTY
+            )
+        except ImportError:  # uvicorn absent: keep the default rendering
+            self._access = None
+
+    def format(self, record: logging.LogRecord) -> str:
+        # AccessFormatter needs uvicorn's 5-tuple args
+        # (client, method, path, http_version, status).
+        if (
+            self._access is not None
+            and record.name == "uvicorn.access"
+            and isinstance(record.args, tuple)
+            and len(record.args) == 5
+        ):
+            return self._access.format(record)
+        return self._default.format(record)
+
+
+def _build_file_handlers(file_cfg) -> list[logging.Handler]:
+    """One midnight-rotating handler per configured level. `backupCount` is
+    the TTL: once more than `retention_days` rotated files exist, the oldest
+    is deleted. `delay=True` means a level that never fires never creates an
+    empty file."""
+    folder = Path(file_cfg.path)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    handlers: list[logging.Handler] = []
+    for name in file_cfg.levels:
+        low, high = _FILE_LEVEL_RANGES[name]
+        handler = TimedRotatingFileHandler(
+            folder / f"{name}.log",
+            when="midnight",
+            backupCount=file_cfg.retention_days,
+            encoding="utf-8",
+            delay=True,
+        )
+        handler.setLevel(low)
+        handler.addFilter(_LevelFilter(low, high))
+        handler.setFormatter(_formatter_for(file_cfg.format))
+        handlers.append(handler)
+    return handlers
+
+
 def setup_logging() -> None:
     """Configure the root logger from settings.logging. Idempotent — replaces
-    any previously installed handlers rather than stacking another one."""
+    any previously installed handlers rather than stacking another one.
+
+    Three independent switches:
+      logging.enabled          master — false silences the app (Uvicorn's own
+                               native console lines are left alone)
+      logging.console.enabled  stdout handler
+      logging.file.enabled     per-level rotating files (see FileLogConfig)
+    """
     log_settings = settings.logging
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(
-        ConsoleFormatter() if log_settings.format == "console" else JsonFormatter()
-    )
-
     root = logging.getLogger()
-    root.setLevel(log_settings.level)
-    root.handlers.clear()
-    root.addHandler(handler)
+    # Close what we're replacing so a re-run doesn't leak file descriptors.
+    for old in list(root.handlers):
+        root.removeHandler(old)
+        old.close()
 
-    # Uvicorn ships its own plaintext access log
-    # (`INFO: 127.0.0.1:53412 - "GET /patients/ HTTP/1.1" 200 OK`).
-    #
-    # Off by default: it duplicates app.middleware.access_log's richer
-    # `http.request` line, and since the uvicorn.access logger sets
-    # propagate=False and keeps its own handler, it bypasses the formatter
-    # installed above — so it stays plain text even with format: json, which
-    # breaks anything parsing the stream. Set logging.uvicorn_access: true in
-    # configs/config.yaml to turn it back on and see both effects.
+    if not log_settings.enabled:
+        # Silence the app: no root handler output, and a root level above
+        # CRITICAL so every logger that inherits it (ours, SQLAlchemy, other
+        # libraries) is off and every isEnabledFor() guard stays cheap. The
+        # NullHandler stops Python's last-resort handler from printing.
+        #
+        # Deliberately NOT logging.disable(): that is process-wide and would
+        # also kill Uvicorn's own native loggers (uvicorn / uvicorn.error /
+        # uvicorn.access). Those keep their own handlers + explicit level and
+        # propagate=False, so they are untouched here and its plain coloured
+        # per-request line still prints.
+        root.addHandler(logging.NullHandler())
+        root.setLevel(logging.CRITICAL + 1)
+        return
+
+    logging.disable(logging.NOTSET)  # undo a previous disabled run
+    root.setLevel(log_settings.level)
+
+    handlers: list[logging.Handler] = []
+    if log_settings.console.enabled:
+        console = logging.StreamHandler(sys.stdout)
+        console.setFormatter(_ConsoleFormatter(_formatter_for(log_settings.format)))
+        handlers.append(console)
+    if log_settings.file.enabled:
+        handlers.extend(_build_file_handlers(log_settings.file))
+    if not handlers:
+        handlers.append(logging.NullHandler())
+    for handler in handlers:
+        root.addHandler(handler)
+
+    # Uvicorn ships its own handlers for these loggers (plain text, and
+    # propagate=False), so by default its lines bypass our switches and never
+    # reach the file handlers. Drop them and propagate to the root instead, so
+    # startup/error/access lines go through the same switches. On the console
+    # the access line keeps Uvicorn's familiar look (see _ConsoleFormatter);
+    # in files it is JSON like everything else.
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        uv = logging.getLogger(name)
+        uv.handlers.clear()
+        uv.propagate = True
+
+    # Uvicorn's own per-request access line duplicates
+    # app.middleware.access_log's richer `http.request` line, so it is
+    # suppressed unless logging.uvicorn_access is on.
     logging.getLogger("uvicorn.access").setLevel(
         logging.INFO if log_settings.uvicorn_access else logging.WARNING
     )

@@ -167,6 +167,14 @@ async def lifespan(app: FastAPI):
             "environment": settings.ENVIRONMENT,
             "log_level": settings.logging.level,
             "log_format": settings.logging.format,
+            "logging_enabled": settings.logging.enabled,
+            "log_console": settings.logging.console.enabled,
+            "log_file": settings.logging.file.enabled,
+            "log_file_path": settings.logging.file.path
+            if settings.logging.file.enabled
+            else None,
+            "fhir_validation_enabled": settings.fhir_validation.enabled,
+            "fhir_validation_backend": settings.fhir_validation.backend,
             "debug_payloads": settings.logging.debug_payloads,
             "slow_query_ms": settings.logging.slow_query_ms,
             "redis_enabled": settings.redis.enabled,

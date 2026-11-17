@@ -124,6 +124,7 @@ def fhir_response(data: dict, status_code: int = 200) -> JSONResponse:
     format_response(), status_code must be passed explicitly (e.g. 201)."""
     return FHIRJSONResponse(content=jsonable_encoder(data), status_code=status_code)
 
+
 # ── Accept / _format for FHIR-only resources ─────────────────────────────────
 # Medplum's approach: there is exactly one representation (FHIR R4 JSON), so
 # it is sent whatever the client's Accept header says — no negotiation. The

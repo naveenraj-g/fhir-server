@@ -208,7 +208,12 @@ async def _search(
     organization_service: OrganizationService,
 ):
     search_url, fhir_base = search_urls(request, "search_organizations")
-    search_request, rows, total, included = await organization_service.search_organizations(
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await organization_service.search_organizations(
         query, actor.org_id, strict=strict_handling(request), fhir_base=fhir_base
     )
     return searchset_response(
@@ -266,7 +271,9 @@ async def search_organizations_post(
         "Search Organization resources (POST _search)",
         extra={"event": "route.search_organizations_post"},
     )
-    return await _search(request, await post_query(request), actor, organization_service)
+    return await _search(
+        request, await post_query(request), actor, organization_service
+    )
 
 
 # ── Delete ─────────────────────────────────────────────────────────────────────

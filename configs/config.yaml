@@ -48,13 +48,41 @@ database:
   pool_recycle: 1800
 
 logging:
+  # MASTER SWITCH. false silences the app's logging — ours and every
+  # library's, errors and tracebacks included — whatever console/file say.
+  # Uvicorn's own native request line (coloured, plain text) still prints.
+  enabled: false
+
   # Root log level. DEBUG turns on the per-layer flow logging that services and
   # repositories emit; INFO keeps only business outcomes + the access log.
   level: INFO
 
-  # "json" (one JSON object per line — what log aggregators want) or "console"
-  # (flat, human-readable). Use console locally, json everywhere else.
+  # Console line format: "json" (one JSON object per line — what log
+  # aggregators want) or "console" (flat, human-readable). Use console locally,
+  # json everywhere else. Files have their own format under file: below.
   format: json
+
+  console:
+    # stdout handler on/off.
+    enabled: true
+
+  file:
+    # Per-level rotating log files.
+    enabled: false
+    # Folder (relative to the working directory unless absolute). In Docker,
+    # mount a volume here or the files vanish with the container.
+    path: ../logs/fhir-server
+    # One file per level, each holding ONLY that level: debug.log, info.log,
+    # warning.log, error.log (error also takes CRITICAL). A level's file only
+    # fills if logging.level above lets that level through — with level: INFO,
+    # debug.log stays empty.
+    levels: [debug, info, warning, error]
+    # TTL: files rotate at midnight; rotated files beyond this many days are
+    # deleted. Several uvicorn workers writing the same file can clash at
+    # rotation — run one process per log folder, or ship stdout instead.
+    retention_days: 7
+    # json | console
+    format: json
 
   # ⚠️  PHI WARNING — LOCAL DEVELOPMENT ONLY, NEVER ENABLE IN PRODUCTION.
   # This is a FHIR server. Turning this on logs full request payloads at DEBUG:
@@ -68,12 +96,13 @@ logging:
   # Log every SQL statement at DEBUG (very noisy — debugging only).
   sql_echo: false
 
-  # Re-enable Uvicorn's own per-request line:
+  # Uvicorn's own per-request line:
   #   INFO: 127.0.0.1:53412 - "GET /api/fhir/v1/patients/ HTTP/1.1" 200 OK
-  # Off because app/middleware/access_log.py already logs every request with
-  # more detail (duration_ms, request_id, operation_id, actor), and because
-  # Uvicorn's logger keeps its own handler — so its line stays PLAIN TEXT even
-  # when format is json, breaking anything that parses the stream.
+  # app/middleware/access_log.py already logs every request with more detail
+  # (duration_ms, request_id, operation_id, actor), so leaving this on doubles
+  # each request line — set false to keep only ours. On the console it keeps
+  # Uvicorn's own coloured look (INFO:     127.0.0.1:1234 - "GET /x HTTP/1.1"
+  # 200 OK); in the log files it is a JSON line like everything else.
   uvicorn_access: true
 
   # Field names masked by log_payload(), matched case-insensitively at any
@@ -110,6 +139,9 @@ pagination:
   max_limit: 200
 
 fhir_validation:
+  # MASTER SWITCH. false skips validation entirely — every resource is
+  # accepted and stored as sent. Only turn off deliberately.
+  enabled: false
   # native | java_validator — see app/core/config.py's FhirValidationConfig
   # and docs/structure-definitions/12-three-layer-validation-architecture.md.
   # "native" is this project's own fhir.schema.json structural check
@@ -144,6 +176,16 @@ fhir_validation:
     # name on the shared network instead.
     base_url: http://localhost:4567
     timeout_seconds: 30
+    # Budget for just reaching the sidecar — a dead host fails over after this
+    # instead of waiting out timeout_seconds on every request.
+    connect_timeout_seconds: 3
+    # If the sidecar is unreachable, times out or answers 5xx, validate with
+    # the native structural validator instead (NO invariants, NO country/org
+    # profile — weaker than java_validator, logged as a WARNING each time).
+    # false: that situation returns 503 instead. Either way, a resource the
+    # sidecar actually validated and rejected is a normal 422 — never a
+    # fallback trigger.
+    fallback_to_native: true
 
 terminology:
   # embedded | remote — see app/core/config.py's TerminologyConfig and
@@ -195,7 +237,7 @@ routes:
     # - immunization_evaluation
     # - immunization_recommendation
     - organization
-    - location
+    # - location
     # - measure
     # - measure_report
     # - medication
@@ -226,6 +268,6 @@ routes:
     # - communication
     # - communication_request
     # - family_member_history
-    - terminology
-    - fhir_profile
-    - fhir_validate
+    # - terminology
+    # - fhir_profile
+    # - fhir_validate

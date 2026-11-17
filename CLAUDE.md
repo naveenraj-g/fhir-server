@@ -330,6 +330,10 @@ async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> N
 
 **⚠️ Known `java_validator` gotcha — don't pick test fixture codes that trigger a live terminology lookup.** Some CodeableConcept/Coding fields carry a real HL7 binding that makes the sidecar attempt to verify the code against an *external* ValueSet — e.g. any `Coding.system = "urn:ietf:bcp:47"` (language codes) triggers a check against the full "All Languages" ValueSet (`http://hl7.org/fhir/ValueSet/languages`), and `Attachment.contentType` is checked against the full IANA MimeType ValueSet via a remote `tx.fhir.org` cache lookup. In a sandboxed/offline dev environment these can hang for minutes (confirmed via the sidecar's own container logs: `Operation took too long - longer than 60000ms ... codeInValueSet: urn:ietf:bcp:47#en`, 180s+) instead of failing fast. **When writing a test fixture:** omit `system`/`contentType` on fields like these (they're legitimately optional per spec) rather than supplying a real-world value, unless you specifically intend to test that lookup. `http://example.org/*` systems are a separate, *fast*-reject gotcha (the sidecar explicitly blocks example-domain URLs with a quick "Example URLs are not allowed in this context" error) — use this project's own `https://fhir-server.dev/fhir/identifier-system/<name>` convention instead.
 
+### Validator switch & fallback
+
+`fhir_validation.enabled: false` skips validation entirely (`validate_resource()` returns `[]`). With `backend: java_validator`, only *system* failures of the sidecar — connection error, timeout, 5xx, non-JSON reply (`JavaValidatorUnavailable`, `java_validator.py`) — trigger the fallback to the native structural validator (`java_validator.fallback_to_native`, default true; logged as WARNING `fhir_validation.java_unavailable_fallback`). With the fallback off they become a 503 (`ValidatorUnavailableError`). A resource the sidecar validated and rejected is a normal 422 and a sidecar 4xx propagates — neither ever falls back. The native fallback has no invariants and no country/org profile, so it is weaker than the Java path.
+
 ### Conformance testing the FHIR half
 
 `tests/conformance/` validates `to_fhir_<resource>()` output against **`google-fhir-r4`** (dev group only — nothing in `app/` imports it; FHIR is output-only here, so there is nothing to validate at runtime). It carries HL7's published R4 StructureDefinitions as protobuf, so it is an *independent* oracle: the rest of the suite asserts what we believe the spec says, and if we misread it those assertions encode the same misreading and pass.
@@ -386,6 +390,10 @@ All errors return FHIR `OperationOutcome`. Handlers in `app/errors/handlers.py`:
 ## Logging & Observability
 
 One JSON object per line (`app/core/logging.py`'s `JsonFormatter`), configured entirely from `configs/config.yaml`'s `logging:` block — see the Environment section.
+
+### Output switches
+
+`logging.enabled` is the master switch (false → app logging is silent, errors included; Uvicorn's own native console lines are left alone). Under it, `logging.console.enabled` controls stdout and `logging.file.enabled` controls files. File output is one `TimedRotatingFileHandler` per level in `logging.file.levels`, each holding **only that level** (`error.log` also takes CRITICAL), rotated at midnight with `retention_days` as the TTL. A level's file only fills if `logging.level` lets it through. Uvicorn's own loggers are routed through the same handlers. `debug.log` with `debug_payloads` holds PHI at rest. See `setup_logging()` in `app/core/logging.py`.
 
 ### Two modes, driven by `logging.level`
 
@@ -467,7 +475,7 @@ That's why `bind_actor()` writes to **both** the ContextVars *and* `request.stat
 - **`extra` keys must not collide with `LogRecord` attributes** — `args`, `name`, `msg`, `module`, `filename`, `process`, … `logging.makeRecord()` raises `KeyError: Attempt to overwrite 'x' in LogRecord`. That's why the trace decorator emits `call_args`, not `args`. Full list: `_RESERVED_ATTRS` in `app/core/logging.py`.
 - **⚠️ `debug_payloads` logs PHI.** `log_payload()` writes patient names, addresses, birth dates and identifiers. It no-ops unless the flag is on *and* the logger is DEBUG-enabled, so it's free in production — but it must never be enabled there. `logging.redact` masks obvious secrets; it is not a PHI safeguard.
 - `app/core/database.py` instruments **every** query for all resources from one place. Never time queries per call site.
-- **Uvicorn's own access log is off** (`logging.uvicorn_access: false`) — `app/middleware/access_log.py` already logs every request with more detail, and the `uvicorn.access` logger sets `propagate=False` with its own handler, so its line stays plain text even under `format: json` and breaks stream parsing. Flip the flag to see both effects.
+- **Uvicorn's own access line (`logging.uvicorn_access`, default true).** Uvicorn ships its own handlers for `uvicorn`/`uvicorn.error`/`uvicorn.access` (plain text, `propagate=False`), which would bypass our switches and never reach the log files. While logging is enabled, `setup_logging()` drops those handlers and propagates the loggers to the root, so they go through the same console/file switches. On the console the access line keeps Uvicorn's familiar look (`INFO:     127.0.0.1:57945 - "GET /x HTTP/1.1" 307 Temporary Redirect`, via `_ConsoleFormatter`); in the files it is JSON like everything else. `app/middleware/access_log.py` still logs a richer `http.request` line, so set `uvicorn_access: false` if you want only that one. With the master switch off (`logging.enabled: false`) none of this is touched: Uvicorn keeps its own native handlers and its plain coloured request line still prints. The `--reload` parent process's three startup lines are always plain text.
 - `logging.level` and `logging.format` are matched case-insensitively (`JSON`, `Debug`, … all work) — they're the two settings people hand-edit, and a `literal_error` at import time is a hostile failure mode.
 
 Currently instrumented end-to-end: **Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, Questionnaire, QuestionnaireResponse, ServiceRequest, MedicationRequest, Observation, DiagnosticReport** — all 162 routes (explicit per-handler `logger.info`), all 164 service methods and all 188 repository methods (`@trace_methods`). This is every currently-built FHIR resource — logging instrumentation has nothing to do with the auth-rollout status of a resource (see "Adding a New FHIR Resource" below); it just happens that both have now reached full coverage independently. The ~19 other resources with no flow trace are infra/not-yet-built — add it to a new one by applying `@trace_methods` to its service/repository classes.
@@ -497,12 +505,21 @@ Config comes from four sources across three precedence tiers, highest-to-lowest 
 3. **`configs/config.yaml`** — checked-in application-behavior config, not a secret (same spirit as `alembic.ini`):
    ```yaml
    logging:
+     enabled: true          # MASTER switch — false silences the app's own logging (Uvicorn's native console lines stay)
      level: INFO
-     format: json           # json | console (both matched case-insensitively)
+     format: json           # console line format: json | console (case-insensitive)
+     console:
+       enabled: true        # stdout handler on/off
+     file:
+       enabled: false       # per-level rotating files (debug/info/warning/error .log)
+       path: logs
+       levels: [debug, info, warning, error]
+       retention_days: 7    # TTL — rotated files beyond this many days are deleted
+       format: json
      debug_payloads: false  # ⚠️ PHI — local dev only
      slow_query_ms: 500
      sql_echo: false
-     uvicorn_access: false  # Uvicorn's own plaintext access line
+     uvicorn_access: true   # Uvicorn's own access line (Uvicorn-style on the console, JSON in files)
      redact: [authorization, token, password, secret]
 
    redis:

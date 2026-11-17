@@ -31,9 +31,21 @@ logger = get_logger(__name__)
 _registered: set[str] = set()
 
 
+class JavaValidatorUnavailable(Exception):
+    """The sidecar could not be *used* — unreachable, timed out, dropped the
+    connection, answered 5xx, or returned a body that isn't JSON. A
+    system-level failure, deliberately distinct from a resource that was
+    validated and found invalid (that is an ordinary list of errors returned
+    by validate_via_java()). dispatch.validate_resource() falls back to the
+    native validator on this exception and on nothing else."""
+
+
 def _client() -> httpx.AsyncClient:
     cfg = settings.fhir_validation.java_validator
-    return httpx.AsyncClient(base_url=cfg.base_url, timeout=cfg.timeout_seconds)
+    return httpx.AsyncClient(
+        base_url=cfg.base_url,
+        timeout=httpx.Timeout(cfg.timeout_seconds, connect=cfg.connect_timeout_seconds),
+    )
 
 
 async def _ensure_registered(
@@ -194,14 +206,34 @@ async def validate_via_java(
     resolved by dispatch.py from FhirProfileService) only for a profile this
     project authored itself, not preloaded anywhere — registered with the
     sidecar from that dict first if this process hasn't already."""
-    if layer is not None:
-        if structure_definition is None:
-            raise ValueError("structure_definition is required when layer is set")
-        await _ensure_registered(resource_type, layer, structure_definition)
-    async with _client() as client:
-        resp = await client.post(
-            "/validate", params={"profile": profile_url}, json=fhir_resource
-        )
-        resp.raise_for_status()
-        operation_outcome = resp.json()
+    if layer is not None and structure_definition is None:
+        raise ValueError("structure_definition is required when layer is set")
+    try:
+        if layer is not None:
+            await _ensure_registered(resource_type, layer, structure_definition)
+        async with _client() as client:
+            resp = await client.post(
+                "/validate", params={"profile": profile_url}, json=fhir_resource
+            )
+            resp.raise_for_status()
+            operation_outcome = resp.json()
+    except httpx.HTTPStatusError as exc:
+        # 5xx = the sidecar itself is broken. A 4xx is a bad request/profile
+        # (our bug or config), not an outage — never masked by a fallback.
+        if exc.response.status_code >= 500:
+            raise JavaValidatorUnavailable(
+                f"Java validator returned HTTP {exc.response.status_code}"
+            ) from exc
+        raise
+    except httpx.TransportError as exc:
+        # ConnectError, ConnectTimeout, ReadTimeout, NetworkError, ProtocolError…
+        raise JavaValidatorUnavailable(
+            f"Java validator unreachable: {type(exc).__name__}"
+        ) from exc
+    except ValueError as exc:
+        # resp.json() on a 2xx that isn't JSON — the sidecar is misbehaving.
+        # (The structure_definition ValueError above is raised before this try.)
+        raise JavaValidatorUnavailable(
+            "Java validator returned a non-JSON response"
+        ) from exc
     return _issues_to_errors(operation_outcome)

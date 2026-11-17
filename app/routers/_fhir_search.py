@@ -17,7 +17,12 @@ from urllib.parse import parse_qsl
 from fastapi import Request
 
 from app.core.content_negotiation import fhir_response
-from app.fhir.search import SearchRegistry, SearchRequest, parse_prefer_strict, searchset_bundle
+from app.fhir.search import (
+    SearchRegistry,
+    SearchRequest,
+    parse_prefer_strict,
+    searchset_bundle,
+)
 from app.fhir.search.execute import kind_of
 
 

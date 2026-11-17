@@ -7,7 +7,7 @@ from .full import _FullMixin
 __all__ = ["OrganizationRepository"]
 
 
-@trace_methods
+# @trace_methods
 class OrganizationRepository(_CoreMixin, _FullMixin, BaseRepository):
     """All Organization DB I/O. Unlike Patient/Practitioner, Organization has
     no standalone sub-resource endpoints (it's a set-once-rarely-edited

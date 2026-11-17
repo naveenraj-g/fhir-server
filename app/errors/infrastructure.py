@@ -29,3 +29,21 @@ class DatabaseError(ApplicationError):
             cause=cause,
             is_operational=False,
         )
+
+
+class ValidatorUnavailableError(ApplicationError):
+    """The external FHIR validator could not be used (unreachable, timed out,
+    or a server error) and `fhir_validation.java_validator.fallback_to_native`
+    is off, so there is nothing to fall back to. 503, not 500 — the request
+    itself is fine and can be retried once the validator is back."""
+
+    def __init__(self, message="FHIR validator is unavailable", cause=None):
+        super().__init__(
+            name="ValidatorUnavailableError",
+            message=message,
+            status_code=503,
+            code="VALIDATOR_UNAVAILABLE",
+            issue_type=IssueType.TRANSIENT,
+            cause=cause,
+            is_operational=True,
+        )
