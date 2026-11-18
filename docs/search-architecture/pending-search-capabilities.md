@@ -88,7 +88,7 @@ Each needs a type builder in `app/fhir/search/sql.py` and a parser in `values.py
 | System-wide search (`GET [base]?_type=...`) | not implemented |
 | `_history` (instance, type, system) | no history endpoint exists |
 | Conditional operations (`If-None-Exist`, conditional update/delete) | not checked in this audit; no sign of them |
-| `CapabilityStatement` (`GET /metadata`) declaring supported search parameters | confirmed absent. Only `GET /api/v1/terminology/metadata` (a `TerminologyCapabilities`) exists. To be generated at request time from the registries and `routes.enabled`: a read-only endpoint, not a stored resource (no table, model, migration or CRUD). Terminology's own metadata is deferred. |
+| `CapabilityStatement` (`GET /api/fhir/v1/metadata`) | **done** (`app/fhir/capability.py`, `app/routers/capability.py`). Generated per request from the search registries and `routes.enabled`; lists only resources on the search engine. Adding a resource = one line in `SEARCH_REGISTRIES`. Terminology's own `/metadata` is separate and deferred. |
 
 ### 4.4 Per-resource work (when each resource gets its registry)
 

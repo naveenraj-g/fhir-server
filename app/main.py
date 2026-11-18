@@ -31,6 +31,7 @@ from app.middleware import (
     request_context_middleware,
 )
 from app.routers import discover_routers
+from app.routers.capability import router as capability_router
 from app.routers.fhir_validate import router as fhir_validate_router
 from app.routers.terminology import router as terminology_router
 
@@ -68,7 +69,7 @@ async def log_route_entry(request: Request) -> None:
 # _OWN_PREFIX_ROUTERS, so their tags only show up in the docs when
 # actually mounted, via the same active_tags.update(router.tags) call
 # every other mounted router gets.
-_ALWAYS_ON_TAGS = {"Health"}
+_ALWAYS_ON_TAGS = {"Health", "Capability"}
 
 
 # Mounted via mount_routers() under their OWN distinct prefix, not merged
@@ -139,6 +140,7 @@ def mount_routers(app: FastAPI) -> None:
             "routes": sorted(enabled_routes),
         },
     )
+    api_router.include_router(capability_router)
     app.include_router(
         api_router,
         prefix="/api/fhir/v1",

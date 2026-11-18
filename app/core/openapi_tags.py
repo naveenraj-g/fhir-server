@@ -344,6 +344,13 @@ OPENAPI_TAGS: list[dict] = [
     },
     # ── Infrastructure ────────────────────────────────────────────────────────
     {
+        "name": "Capability",
+        "description": (
+            "GET /api/fhir/v1/metadata — FHIR R4 CapabilityStatement generated from the search "
+            "registries: supported resources, interactions, search parameters and includes."
+        ),
+    },
+    {
         "name": "Health",
         "description": (
             "Server liveness and readiness probes. No authentication required. "
