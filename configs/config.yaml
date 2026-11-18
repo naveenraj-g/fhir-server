@@ -250,7 +250,7 @@ routes:
     # - observation
     # - observation_definition
     - healthcare_service
-    # - patient
+    - patient
     # - plan_definition
     - practitioner
     - practitioner_role

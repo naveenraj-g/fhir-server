@@ -1,6 +1,14 @@
 """FHIR R4 conformance for `to_fhir_patient()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Patient is stored Medplum-style (like Practitioner and the other content-based
+resources): the resource lives whole in PatientModel.content, and
+to_fhir_patient() only stamps `id` and `meta` onto it. So what can go wrong on
+the read side is that stamping (e.g. a malformed meta extension) or a stored
+document the server returns that isn't valid R4 — each case below is a
+`content` document as the write path would store it, run through the real read
+mapper.
 """
 
 import datetime as dt
@@ -8,40 +16,10 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.patient import to_fhir_patient
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.patient import (
-    PatientAddress,
-    PatientCommunication,
-    PatientCommunicationLanguageCoding,
-    PatientContact,
-    PatientContactRelationship,
-    PatientContactRelationshipCoding,
-    PatientContactTelecom,
-    PatientGeneralPractitioner,
-    PatientIdentifier,
-    PatientIdentifierTypeCoding,
-    PatientLink,
-    PatientMaritalStatusCoding,
-    PatientModel,
-    PatientName,
-    PatientPhoto,
-    PatientTelecom,
-)
-from app.models.patient.enums import (
-    PatientGeneralPractitionerReferenceType,
-    PatientLinkOtherType,
-    PatientLinkType,
-)
-from app.schemas.enums import (
-    AddressType,
-    AddressUse,
-    AdministrativeGender,
-    ContactPointSystem,
-    ContactPointUse,
-    HumanNameUse,
-)
+from app.models.patient import PatientModel
+from tests.integration.patient.support import FULL, MINIMAL
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
 patient_pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.patient_pb2",
@@ -50,426 +28,180 @@ patient_pb2 = pytest.importorskip(
 
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
-_CHILD_ATTRS = (
-    "identifiers",
-    "names",
-    "telecoms",
-    "addresses",
-    "photos",
-    "marital_status_codings",
-    "contacts",
-    "communications",
-    "general_practitioners",
-    "links",
-)
+
+def _stored(document: dict) -> dict:
+    """What the write path stores: everything but resourceType/id/meta."""
+    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
 
 
-def _patient(**overrides) -> PatientModel:
-    fields = {
-        "id": 1,
-        "patient_id": 10001,
-        "tenant_id": "org-test",
-        "user_id": "u-test",
-        "active": True,
-        "gender": AdministrativeGender.female,
-        "birth_date": dt.date(1990, 7, 22),
-        "created_by": "u-test",
-        "created_at": D,
-        "updated_at": D,
-        "extension": [],
-    }
+def _patient(content: dict, **overrides) -> PatientModel:
+    fields = {"patient_id": 10001, "tenant_id": "org-test", "created_by": "u-test", "created_at": D, "content": content}
     fields.update(overrides)
-    p = PatientModel(**fields)
-    for attr in _CHILD_ATTRS:
-        if getattr(p, attr, None) is None:
-            setattr(p, attr, [])
-    return p
+    return PatientModel(**fields)
 
 
-def test_minimal_patient_conforms():
-    p = _patient()
-    out = to_fhir_patient(p)
+CASES = {
+    "empty": _patient({}),
+    "minimal": _patient(_stored(MINIMAL)),
+    "active_false": _patient({"active": False}),
+    "updated_by_and_updated_at": _patient({"active": True}, updated_by="u-other", updated_at=D),
+    **{f"gender_{g}": _patient({"gender": g}) for g in ("male", "female", "other", "unknown")},
+    "birth_date_full": _patient({"birthDate": "1974-12-25"}),
+    "birth_date_year_month": _patient({"birthDate": "1990-05"}),
+    "birth_date_year": _patient({"birthDate": "1990"}),
+    "deceased_boolean_true": _patient({"deceasedBoolean": True}),
+    "deceased_boolean_false": _patient({"deceasedBoolean": False}),
+    "deceased_date_time": _patient({"deceasedDateTime": "2020-03-01T10:00:00Z"}),
+    "multiple_birth_boolean": _patient({"multipleBirthBoolean": True}),
+    "multiple_birth_integer": _patient({"multipleBirthInteger": 2}),
+    "identifier_with_type_and_assigner": _patient(
+        {
+            "identifier": [
+                {
+                    "use": "official",
+                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "MR"}]},
+                    "system": "http://hospital.example.org/mrn",
+                    "value": "MRN-1",
+                    "period": {"start": "2020-01-01"},
+                    "assigner": {"reference": "Organization/190001"},
+                }
+            ]
+        }
+    ),
+    "names": _patient(
+        {
+            "name": [
+                {"use": "official", "family": "Chalmers", "given": ["Peter", "James"], "prefix": ["Mr"], "suffix": ["Jr"]},
+                {"use": "maiden", "text": "Peter C", "period": {"start": "1990-01-01", "end": "2000-01-01"}},
+            ]
+        }
+    ),
+    "telecoms": _patient(
+        {
+            "telecom": [
+                {"system": "phone", "value": "555-1234", "use": "home", "rank": 1},
+                {"system": "email", "value": "peter@example.org"},
+            ]
+        }
+    ),
+    "address": _patient(
+        {
+            "address": [
+                {
+                    "use": "home",
+                    "type": "both",
+                    "line": ["534 Erewhon St", "Unit 2"],
+                    "city": "PleasantVille",
+                    "district": "Rainbow",
+                    "state": "Vic",
+                    "postalCode": "3999",
+                    "country": "AU",
+                }
+            ]
+        }
+    ),
+    "marital_status": _patient({"maritalStatus": {"coding": [{"code": "M", "display": "Married"}], "text": "Married"}}),
+    "photo": _patient({"photo": [{"url": "https://fhir-server.dev/fhir/assets/patient.png"}]}),
+    "contact_with_every_part": _patient(
+        {
+            "contact": [
+                {
+                    "relationship": [{"coding": [{"code": "N", "display": "Next-of-Kin"}]}],
+                    "name": {"family": "Chalmers", "given": ["Sarah"]},
+                    "telecom": [{"system": "phone", "value": "555-9876", "use": "mobile"}],
+                    "address": {"city": "Springfield", "line": ["1 Main St"]},
+                    "gender": "female",
+                    "organization": {"reference": "Organization/190001"},
+                    "period": {"start": "2020-01-01"},
+                }
+            ]
+        }
+    ),
+    "contact_with_only_an_organization": _patient({"contact": [{"organization": {"display": "Employer"}}]}),
+    "communication": _patient(
+        {
+            "communication": [
+                {"language": {"coding": [{"code": "en", "display": "English"}]}, "preferred": True},
+                {"language": {"text": "Francais"}},
+            ]
+        }
+    ),
+    "general_practitioners_of_every_type": _patient(
+        {
+            "generalPractitioner": [
+                {"reference": "Practitioner/30001", "display": "Dr Careful"},
+                {"reference": "PractitionerRole/140001"},
+                {"reference": "Organization/190001"},
+            ]
+        }
+    ),
+    "logical_and_absolute_general_practitioners": _patient(
+        {
+            "generalPractitioner": [
+                {"reference": "https://other.example.org/fhir/Practitioner/9"},
+                {"identifier": {"system": "urn:gps", "value": "GP-7"}, "display": "External GP"},
+            ]
+        }
+    ),
+    "managing_organization": _patient({"managingOrganization": {"reference": "Organization/190001", "display": "Hospital"}}),
+    "links": _patient(
+        {
+            "link": [
+                {"other": {"reference": "Patient/10002"}, "type": "replaced-by"},
+                {"other": {"reference": "RelatedPerson/5"}, "type": "seealso"},
+                {"other": {"reference": "Patient/10003"}, "type": "replaces"},
+                {"other": {"reference": "Patient/10004"}, "type": "refer"},
+            ]
+        }
+    ),
+    "extension": _patient({"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}),
+    "full_payload": _patient(_stored(FULL)),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_patient_mapper_emits_valid_fhir_r4(case):
+    assert_valid(patient_pb2.Patient, to_fhir_patient(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = _stored(FULL)
+    out = to_fhir_patient(_patient(content))
     assert out["resourceType"] == "Patient"
     assert out["id"] == "10001"
-    assert out["active"] is True
-    assert out["gender"] == "female"
-    assert out["birthDate"] == "1990-07-22"
-    assert_valid(patient_pb2.Patient, out)
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
 
 
-def test_deceased_boolean_and_datetime():
-    p_bool = _patient(deceased_boolean=True)
-    assert_valid(patient_pb2.Patient, to_fhir_patient(p_bool))
-
-    p_dt = _patient(deceased_date_time=D)
-    out_dt = to_fhir_patient(p_dt)
-    assert out_dt["deceasedDateTime"] == D.isoformat()
-    assert_valid(patient_pb2.Patient, out_dt)
+# ── Guarding the oracle ────────────────────────────────────────────────────────
+# If google-fhir-r4 ever stops validating — a version bump, a changed API, a
+# silently-swallowed error — every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1, and an unknown `gender` code here.)
 
 
-def test_multiple_birth():
-    p_bool = _patient(multiple_birth_boolean=True)
-    assert_valid(patient_pb2.Patient, to_fhir_patient(p_bool))
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("active as string not boolean", {"active": "yes"}),
+        ("misspelled element", {"birthDat": "1974-12-25"}),
+        ("birthDate not a date", {"birthDate": "last tuesday"}),
+        ("deceasedBoolean as string", {"deceasedBoolean": "no"}),
+        ("deceasedDateTime not a dateTime", {"deceasedDateTime": "tomorrow"}),
+        ("name as strings not HumanNames", {"name": ["Peter Chalmers"]}),
+        ("telecom value as number", {"telecom": [{"system": "phone", "value": 5551234}]}),
+        ("maritalStatus as string not CodeableConcept", {"maritalStatus": "M"}),
+        ("multipleBirthInteger as string", {"multipleBirthInteger": "two"}),
+        ("generalPractitioner as strings not References", {"generalPractitioner": ["Practitioner/30001"]}),
+        ("managingOrganization as string not Reference", {"managingOrganization": "Organization/190001"}),
+        ("communication as strings not backbone elements", {"communication": ["en"]}),
+        ("link type not a link type", {"link": [{"other": {"reference": "Patient/1"}, "type": "friend"}]}),
+        ("contact as an object not a list", {"contact": {"gender": "female"}}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
 
-    p_int = _patient(multiple_birth_integer=2)
-    out_int = to_fhir_patient(p_int)
-    assert out_int["multipleBirthInteger"] == 2
-    assert_valid(patient_pb2.Patient, out_int)
-
-
-def test_marital_status():
-    p = _patient(marital_status_text="Never Married")
-    coding = PatientMaritalStatusCoding(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
-        code="S",
-        display="Never Married",
-        created_by="u-test",
-        created_at=D,
-    )
-    p.marital_status_codings = [coding]
-    out = to_fhir_patient(p)
-    assert out["maritalStatus"]["text"] == "Never Married"
-    assert out["maritalStatus"]["coding"][0]["code"] == "S"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_managing_organization():
-    p = _patient(
-        managing_organization_reference="Organization/190001",
-        managing_organization_type=OrganizationReferenceType.Organization,
-        managing_organization_id=190001,
-        managing_organization_display="Sunrise Medical Center",
-    )
-    out = to_fhir_patient(p)
-    assert out["managingOrganization"]["reference"] == "Organization/190001"
-    assert out["managingOrganization"]["display"] == "Sunrise Medical Center"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_names():
-    p = _patient()
-    p.names = [
-        PatientName(
-            id=1,
-            patient_pk=1,
-            tenant_id="org-test",
-            use=HumanNameUse.official,
-            text="Emily Rose Carter",
-            family="Carter",
-            given=["Emily", "Rose"],
-            prefix=["Dr."],
-            period_start=D,
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    out = to_fhir_patient(p)
-    assert len(out["name"]) == 1
-    assert out["name"][0]["family"] == "Carter"
-    assert out["name"][0]["given"] == ["Emily", "Rose"]
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_identifiers():
-    p = _patient()
-    ident = PatientIdentifier(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        system="http://hospital.example.com/mrn",
-        value="MRN-12345",
-        type_text="Medical Record Number",
-        created_by="u-test",
-        created_at=D,
-    )
-    ident.type_codings = [
-        PatientIdentifierTypeCoding(
-            id=1,
-            patient_identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="MR",
-            display="Medical record number",
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    p.identifiers = [ident]
-    out = to_fhir_patient(p)
-    assert len(out["identifier"]) == 1
-    assert out["identifier"][0]["value"] == "MRN-12345"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_telecoms():
-    p = _patient()
-    p.telecoms = [
-        PatientTelecom(
-            id=1,
-            patient_pk=1,
-            tenant_id="org-test",
-            system=ContactPointSystem.phone,
-            value="+1-555-123-4567",
-            use=ContactPointUse.mobile,
-            rank=1,
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    out = to_fhir_patient(p)
-    assert len(out["telecom"]) == 1
-    assert out["telecom"][0]["value"] == "+1-555-123-4567"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_addresses():
-    p = _patient()
-    p.addresses = [
-        PatientAddress(
-            id=1,
-            patient_pk=1,
-            tenant_id="org-test",
-            use=AddressUse.home,
-            type=AddressType.physical,
-            line=["123 Main St", "Apt 4B"],
-            city="Boston",
-            state="MA",
-            postal_code="02115",
-            country="US",
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    out = to_fhir_patient(p)
-    assert len(out["address"]) == 1
-    assert out["address"][0]["city"] == "Boston"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_photos():
-    p = _patient()
-    p.photos = [
-        PatientPhoto(
-            id=1,
-            patient_pk=1,
-            tenant_id="org-test",
-            content_type="image/jpeg",
-            url="https://example.com/photo.jpg",
-            title="Profile photo",
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    out = to_fhir_patient(p)
-    assert len(out["photo"]) == 1
-    assert out["photo"][0]["url"] == "https://example.com/photo.jpg"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_communication():
-    p = _patient()
-    comm = PatientCommunication(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        language_text="English",
-        preferred=True,
-        created_by="u-test",
-        created_at=D,
-    )
-    comm.language_codings = [
-        PatientCommunicationLanguageCoding(
-            id=1,
-            patient_communication_id=1,
-            tenant_id="org-test",
-            system="urn:ietf:bcp:47",
-            code="en",
-            display="English",
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    p.communications = [comm]
-    out = to_fhir_patient(p)
-    assert len(out["communication"]) == 1
-    assert out["communication"][0]["preferred"] is True
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_general_practitioner():
-    p = _patient()
-    p.general_practitioners = [
-        PatientGeneralPractitioner(
-            id=1,
-            patient_pk=1,
-            tenant_id="org-test",
-            reference_reference="Practitioner/30001",
-            reference_type=PatientGeneralPractitionerReferenceType.Practitioner,
-            reference_id=30001,
-            reference_display="Dr. Alice Smith",
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    out = to_fhir_patient(p)
-    assert len(out["generalPractitioner"]) == 1
-    assert out["generalPractitioner"][0]["reference"] == "Practitioner/30001"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_link():
-    p = _patient()
-    p.links = [
-        PatientLink(
-            id=1,
-            patient_pk=1,
-            tenant_id="org-test",
-            other_reference="Patient/10002",
-            other_type=PatientLinkOtherType.Patient,
-            other_id=10002,
-            other_display="Old Patient Record",
-            type=PatientLinkType.replaces,
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    out = to_fhir_patient(p)
-    assert len(out["link"]) == 1
-    assert out["link"][0]["other"]["reference"] == "Patient/10002"
-    assert out["link"][0]["type"] == "replaces"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_contacts():
-    p = _patient()
-    contact = PatientContact(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        gender=AdministrativeGender.male,
-        name_use=HumanNameUse.official,
-        name_family="Carter",
-        name_given=["Michael"],
-        city="Boston",
-        country="US",
-        organization_reference="Organization/190001",
-        created_by="u-test",
-        created_at=D,
-    )
-    rel = PatientContactRelationship(
-        id=1,
-        contact_id=1,
-        tenant_id="org-test",
-        text="Next-of-Kin",
-        created_by="u-test",
-        created_at=D,
-    )
-    rel.codings = [
-        PatientContactRelationshipCoding(
-            id=1,
-            relationship_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0131",
-            code="N",
-            display="Next-of-Kin",
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    contact.relationships = [rel]
-    contact.telecoms = [
-        PatientContactTelecom(
-            id=1,
-            contact_id=1,
-            tenant_id="org-test",
-            system=ContactPointSystem.phone,
-            value="+1-555-987-6543",
-            use=ContactPointUse.home,
-            created_by="u-test",
-            created_at=D,
-        )
-    ]
-    p.contacts = [contact]
-    out = to_fhir_patient(p)
-    assert len(out["contact"]) == 1
-    assert out["contact"][0]["name"]["family"] == "Carter"
-    assert out["contact"][0]["relationship"][0]["coding"][0]["code"] == "N"
-    assert out["contact"][0]["telecom"][0]["value"] == "+1-555-987-6543"
-    assert_valid(patient_pb2.Patient, out)
-
-
-def test_patient_reference_fallback_identifiers():
-    ident = PatientIdentifier(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        system="http://hospital.example.org",
-        value="PAT-001",
-        assigner_reference=None,
-        assigner_type=None,
-        assigner_id=None,
-        assigner_identifier_system="http://hospital.example.org/orgs",
-        assigner_identifier_value="ORG-1111",
-        created_by="u-test",
-        created_at=D,
-    )
-    contact = PatientContact(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        organization_reference=None,
-        organization_type=None,
-        organization_id=None,
-        organization_identifier_system="http://hospital.example.org/orgs",
-        organization_identifier_value="ORG-2222",
-        created_by="u-test",
-        created_at=D,
-    )
-    gp = PatientGeneralPractitioner(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        reference_reference=None,
-        reference_type=None,
-        reference_id=None,
-        reference_identifier_system="http://hospital.example.org/practitioners",
-        reference_identifier_value="PRAC-3333",
-        created_by="u-test",
-        created_at=D,
-    )
-    link = PatientLink(
-        id=1,
-        patient_pk=1,
-        tenant_id="org-test",
-        other_reference=None,
-        other_type=None,
-        other_id=None,
-        other_identifier_system="http://hospital.example.org/patients",
-        other_identifier_value="PAT-4444",
-        type=PatientLinkType.seealso,
-        created_by="u-test",
-        created_at=D,
-    )
-    p = _patient(
-        managing_organization_reference=None,
-        managing_organization_type=None,
-        managing_organization_id=None,
-        managing_organization_identifier_system="http://hospital.example.org/orgs",
-        managing_organization_identifier_value="ORG-5555",
-        identifiers=[ident],
-        contacts=[contact],
-        general_practitioners=[gp],
-        links=[link],
-    )
-    out = to_fhir_patient(p)
-    assert out["managingOrganization"]["identifier"]["value"] == "ORG-5555"
-    assert out["contact"][0]["organization"]["identifier"]["value"] == "ORG-2222"
-    assert out["generalPractitioner"][0]["identifier"]["value"] == "PRAC-3333"
-    assert out["link"][0]["other"]["identifier"]["value"] == "PAT-4444"
-    assert out["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-1111"
-    assert_valid(patient_pb2.Patient, out)
+    payload = {"resourceType": "Patient", "id": "10001", **broken}
+    with pytest.raises(Exception):  # noqa: B017 — the library raises several types
+        json_format.json_fhir_string_to_proto(fhir_json_text(payload), patient_pb2.Patient, validate=True)

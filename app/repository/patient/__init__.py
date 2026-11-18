@@ -9,7 +9,9 @@ __all__ = ["PatientRepository"]
 
 @trace_methods
 class PatientRepository(_CoreMixin, _FullMixin, BaseRepository):
-    """All Patient DB I/O. Atomic nested-write orchestrators (create_full, patch_full)
-    live in full.py; single-row lookups, existence checks, list(), get_me(), and delete()
-    live in core.py; eager-loading and shared reference helpers live in _shared.py.
-    """
+    """All Patient DB I/O. Like Organization, Patient's create/patch
+    always operate on the whole nested payload (see full.py) rather than a
+    separate scalar-only vs. full split — see PatientCreateSchema's
+    docstring. session_factory/__init__ and the generic paginated-list
+    execution (`_execute_paginated`) are inherited from BaseRepository — see
+    that class."""

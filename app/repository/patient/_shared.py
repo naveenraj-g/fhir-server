@@ -1,94 +1,55 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.models.patient import (
-    PatientCommunication,
-    PatientContact,
-    PatientContactRelationship,
-    PatientIdentifier,
-    PatientModel,
-)
-from app.models.patient.enums import (
-    PatientGeneralPractitionerReferenceType,
-    PatientLinkOtherType,
-)
+from app.models.patient import REFERENCE_TYPES, PatientModel
 from app.repository._reference_shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
     _org_ref_kwargs,
     _parse_org_ref,
+    _reference_kwargs,
     _validate_reference,
 )
 
-_IDENTIFIER_FALLBACK_SUFFIXES = (
-    "identifier_use",
-    "identifier_type_system",
-    "identifier_type_version",
-    "identifier_type_code",
-    "identifier_type_display",
-    "identifier_type_user_selected",
-    "identifier_type_text",
-    "identifier_system",
-    "identifier_value",
-    "identifier_period_start",
-    "identifier_period_end",
-)
-
-
-def _reference_kwargs(prefix: str, payload) -> dict:
-    """Build {prefix}_identifier_* ORM constructor kwargs from payload."""
-    return {
-        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
-
 __all__ = [
     "_IDENTIFIER_FALLBACK_SUFFIXES",
-    "_SORTABLE_FIELDS",
+    "MODELED_TYPES",
     "_org_ref_kwargs",
-    "_parse_gp_ref",
-    "_parse_link_ref",
     "_parse_org_ref",
     "_reference_kwargs",
     "_validate_reference",
     "_with_relationships",
+    "ref_type_and_id",
 ]
 
-_SORTABLE_FIELDS = {
-    "patient_id": PatientModel.patient_id,
-    "birth_date": PatientModel.birth_date,
-    "created_at": PatientModel.created_at,
-    "updated_at": PatientModel.updated_at,
-}
+# Of the types Patient's reference elements can point at, these are resources
+# on this server (registered in RESOURCE_REGISTRY — see
+# app/core/reference_resolver.py). A relative RelatedPerson reference is
+# accepted and indexed but not existence-checked: ensure_resource_exists()
+# fails closed for an unregistered type (422 on every valid reference to one).
+MODELED_TYPES = {"Organization", "Practitioner", "PractitionerRole", "Patient"}
 
-
-def _parse_gp_ref(ref: str) -> tuple:
-    """Parse 'Practitioner/123' -> (PatientGeneralPractitionerReferenceType.Practitioner, 123)."""
-    return parse_reference(ref, PatientGeneralPractitionerReferenceType)
-
-
-def _parse_link_ref(ref: str) -> tuple:
-    """Parse 'Patient/123' -> (PatientLinkOtherType.Patient, 123)."""
-    return parse_reference(ref, PatientLinkOtherType)
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
-    """Eager-load all Patient sub-resources to avoid N+1 and async
-    lazy-load failures."""
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from PatientModel.content."""
     return stmt.options(
-        selectinload(PatientModel.identifiers).selectinload(
-            PatientIdentifier.type_codings
-        ),
-        selectinload(PatientModel.names),
-        selectinload(PatientModel.telecoms),
-        selectinload(PatientModel.addresses),
-        selectinload(PatientModel.photos),
-        selectinload(PatientModel.marital_status_codings),
-        selectinload(PatientModel.contacts)
-        .selectinload(PatientContact.relationships)
-        .selectinload(PatientContactRelationship.codings),
-        selectinload(PatientModel.contacts).selectinload(PatientContact.telecoms),
-        selectinload(PatientModel.communications).selectinload(
-            PatientCommunication.language_codings
-        ),
-        selectinload(PatientModel.general_practitioners),
-        selectinload(PatientModel.links),
+        *(
+            selectinload(getattr(PatientModel, rel))
+            for rel in ("identifiers", "names", "telecoms", "addresses", "communications", "references")
+        )
     )
+
+
+def ref_type_and_id(reference: str | None, param: str) -> tuple[str, int] | None:
+    """('Practitioner', 30001) for a relative `Type/<id>` naming one of the
+    types the search parameter `param` (general-practitioner | link) allows;
+    None for an absolute URL, a contained reference or any other shape (those
+    match by their raw string only)."""
+    match = _REF.match(reference or "")
+    if match and match["type"] in REFERENCE_TYPES[param]:
+        return match["type"], int(match["id"])
+    return None

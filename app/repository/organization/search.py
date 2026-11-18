@@ -401,6 +401,23 @@ async def _revinclude_practitioner_role_organization(session, ctx, orgs):
     return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.organization_id.in_(ids)))
 
 
+async def _revinclude_patient_general_practitioner(session, ctx, orgs):
+    """_revinclude=Patient:general-practitioner — patients whose
+    generalPractitioner is one of these organizations."""
+    from app.repository.patient.search import revinclude_patients_via_reference
+
+    return await revinclude_patients_via_reference(
+        "general-practitioner", "Organization", lambda o: o.organization_id
+    )(session, ctx, orgs)
+
+
+async def _revinclude_patient_organization(session, ctx, orgs):
+    """_revinclude=Patient:organization — patients managed by these organizations."""
+    from app.repository.patient.search import revinclude_patients_by_organization
+
+    return await revinclude_patients_by_organization(session, ctx, orgs)
+
+
 async def _revinclude_healthcare_service_organization(session, ctx, orgs):
     """_revinclude=HealthcareService:organization — HealthcareServices
     whose providedBy is one of these organizations."""
@@ -665,6 +682,20 @@ def organization_search() -> SearchRegistry:
                 "organization",
                 "Organization",
                 _revinclude_practitioner_role_organization,
+                reverse=True,
+            ),
+            IncludeTarget(
+                "Patient",
+                "general-practitioner",
+                "Organization",
+                _revinclude_patient_general_practitioner,
+                reverse=True,
+            ),
+            IncludeTarget(
+                "Patient",
+                "organization",
+                "Organization",
+                _revinclude_patient_organization,
                 reverse=True,
             ),
         ),

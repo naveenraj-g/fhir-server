@@ -1,347 +1,147 @@
-from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.datatypes import CodingInput
-from app.schemas.enums import AdministrativeGender, IdentifierUse
+from app.schemas.enums import AdministrativeGender
+from app.schemas.fhir_input import (
+    FhirAddressInput,
+    FhirAttachmentInput,
+    FhirCodeableConceptInput,
+    FhirContactPointInput,
+    FhirHumanNameInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirReferenceInput,
+)
 
-from .address import PatientAddressInput
 from .communication import PatientCommunicationInput
 from .contact import PatientContactInput
-from .general_practitioner import PatientGeneralPractitionerInput
-from .identifier import PatientIdentifierInput
 from .link import PatientLinkInput
-from .name import PatientNameInput
-from .photo import PatientPhotoInput
-from .telecom import PatientTelecomInput
+
+_EXAMPLE = {
+    "resourceType": "Patient",
+    "active": True,
+    "gender": "male",
+    "birthDate": "1974-12-25",
+    "deceasedBoolean": False,
+    "identifier": [
+        {
+            "use": "official",
+            "system": "http://hospital.example.org/mrn",
+            "value": "MRN-12345",
+        }
+    ],
+    "name": [{"use": "official", "family": "Chalmers", "given": ["Peter", "James"], "prefix": ["Mr"]}],
+    "telecom": [{"system": "phone", "value": "555-1234", "use": "home"}],
+    "address": [
+        {
+            "use": "home",
+            "line": ["534 Erewhon St"],
+            "city": "PleasantVille",
+            "state": "Vic",
+            "postalCode": "3999",
+            "country": "AU",
+        }
+    ],
+    "maritalStatus": {"coding": [{"code": "M", "display": "Married"}]},
+    "contact": [
+        {
+            "relationship": [{"coding": [{"code": "N", "display": "Next-of-Kin"}]}],
+            "name": {"family": "Chalmers", "given": ["Sarah"]},
+            "telecom": [{"system": "phone", "value": "555-9876"}],
+        }
+    ],
+    "communication": [{"language": {"coding": [{"code": "en", "display": "English"}]}, "preferred": True}],
+    "generalPractitioner": [{"reference": "Practitioner/30001"}],
+    "managingOrganization": {"reference": "Organization/190001"},
+}
 
 
-class PatientCreateSchema(BaseModel):
-    """Creates a Patient and any combination of its sub-resources atomically in one
-    request. `tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) —
-    neither is a request body field. Patient keeps a plain `user_id` field: a Patient record
-    is scoped to an individual end-user's account."""
+class _PatientFields(FhirInputModel):
+    """Every writable Patient element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/patient.html). Create and patch accept
+    exactly the same fields — Patient has no element that is required at this
+    layer (R4 requires `link.other`/`link.type`, `communication.language` and
+    a `contact` to carry something, which base R4 validation enforces on the
+    stored document).
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "user_id": "user-abc123",
-                "active": True,
-                "gender": "female",
-                "birth_date": "1990-07-22",
-                "deceased_boolean": False,
-                "marital_status_text": "Never Married",
-                "marital_status_coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
-                        "code": "S",
-                        "display": "Never Married",
-                    }
-                ],
-                "managing_organization": "Organization/190001",
-                "managing_organization_display": "Sunrise Medical Center",
-                "name": [
-                    {
-                        "use": "official",
-                        "family": "Carter",
-                        "given": ["Emily", "Rose"],
-                    }
-                ],
-                "identifier": [
-                    {
-                        "use": "official",
-                        "system": "http://hospital.example.com/mrn",
-                        "value": "MRN-200456",
-                        "type_coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                                "code": "MR",
-                                "display": "Medical record number",
-                            }
-                        ],
-                    }
-                ],
-                "telecom": [
-                    {"system": "phone", "value": "+1-555-321-7890", "use": "mobile", "rank": 1},
-                    {"system": "email", "value": "emily.carter@example.com", "use": "home", "rank": 2},
-                ],
-                "address": [
-                    {
-                        "use": "home",
-                        "type": "both",
-                        "line": ["12 Birch Lane"],
-                        "city": "Cambridge",
-                        "state": "MA",
-                        "postal_code": "02139",
-                        "country": "US",
-                    }
-                ],
-                "photo": [
-                    {
-                        "content_type": "image/jpeg",
-                        "url": "https://example.com/patients/photos/emily-carter.jpg",
-                        "title": "Profile photo",
-                    }
-                ],
-                "contact": [
-                    {
-                        "relationship": [
-                            {
-                                "coding": [
-                                    {
-                                        "system": "http://terminology.hl7.org/CodeSystem/v2-0131",
-                                        "code": "N",
-                                        "display": "Next-of-Kin",
-                                    }
-                                ]
-                            }
-                        ],
-                        "name_family": "Carter",
-                        "name_given": ["Michael"],
-                        "telecom": [
-                            {"system": "phone", "value": "+1-555-654-3210", "use": "mobile"}
-                        ],
-                        "gender": "male",
-                    }
-                ],
-                "communication": [
-                    {
-                        "language_coding": [
-                            {"system": "urn:ietf:bcp:47", "code": "en", "display": "English"}
-                        ],
-                        "preferred": True,
-                    }
-                ],
-                "general_practitioner": [
-                    {
-                        "reference": "Practitioner/30001",
-                        "display": "Dr. Priya R. Sharma",
-                    }
-                ],
-                "link": [
-                    {
-                        "other": "RelatedPerson/300001",
-                        "other_display": "Michael Carter (spouse)",
-                        "type": "seealso",
-                    }
-                ],
-            }
-        },
-    )
+    The validated body is stored whole (PatientModel.content), so any valid R4
+    element is kept — including ones this model doesn't declare.
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    patient_id sequence) and `meta` (audit/tenant data, stamped on at read
+    time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body.
 
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded acting end-user's own account ID."
-    )
-    active: bool | None = Field(
-        None, description="Whether this patient's record is in active use."
-    )
-    gender: AdministrativeGender | None = Field(
-        None, description="Administrative Gender — male|female|other|unknown."
-    )
-    birth_date: date | None = Field(None, description="Date of birth for the individual.")
-    deceased_boolean: bool | None = Field(
-        None, description="Indicates if the individual is deceased."
-    )
-    deceased_date_time: datetime | None = Field(
-        None, description="The date and time when the individual died."
-    )
-    marital_status_text: str | None = Field(
-        None, description="Marital status narrative representation."
-    )
-    marital_status_coding: list[CodingInput] | None = Field(
-        None, description="Coding(s) for the marital status."
-    )
-    multiple_birth_boolean: bool | None = Field(
-        None, description="Whether patient is part of a multiple birth."
-    )
-    multiple_birth_integer: int | None = Field(
-        None, description="Birth order in a multiple birth."
-    )
-    managing_organization: str | None = Field(
+    The end-user a record belongs to (`user_id`, which scopes `/me`) is not a
+    FHIR element and is not accepted here: it is set afterwards with
+    `PUT /patients/{id}/user`, or at create time with `?link_me=true`."""
+
+    resourceType: Literal["Patient"] | None = Field(None, description="Optional; if supplied it must be 'Patient'.")
+    extension: list[dict] | None = Field(
         None,
-        description="Organization that is custodian of the patient record (e.g. 'Organization/190001').",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    managing_organization_display: str | None = Field(
-        None, description="Display narrative for the managing organization reference."
-    )
-    managing_organization_identifier_use: IdentifierUse | None = Field(
-        None, description="Logical-reference fallback — identifier use."
-    )
-    managing_organization_identifier_type_system: str | None = Field(
-        None, description="Logical-reference fallback — identifier type system."
-    )
-    managing_organization_identifier_type_version: str | None = Field(
-        None, description="Logical-reference fallback — identifier type version."
-    )
-    managing_organization_identifier_type_code: str | None = Field(
-        None, description="Logical-reference fallback — identifier type code."
-    )
-    managing_organization_identifier_type_display: str | None = Field(
-        None, description="Logical-reference fallback — identifier type display."
-    )
-    managing_organization_identifier_type_user_selected: bool | None = Field(
-        None, description="Logical-reference fallback — identifier type user selected."
-    )
-    managing_organization_identifier_type_text: str | None = Field(
-        None, description="Logical-reference fallback — identifier type text."
-    )
-    managing_organization_identifier_system: str | None = Field(
-        None, description="Logical-reference fallback — identifier namespace URL."
-    )
-    managing_organization_identifier_value: str | None = Field(
-        None, description="Logical-reference fallback — identifier value."
-    )
-    managing_organization_identifier_period_start: datetime | None = Field(
-        None, description="Logical-reference fallback — identifier period start."
-    )
-    managing_organization_identifier_period_end: datetime | None = Field(
-        None, description="Logical-reference fallback — identifier period end."
-    )
-
-    identifier: list[PatientIdentifierInput] | None = Field(
-        None, description="An identifier for this patient."
-    )
-    name: list[PatientNameInput] | None = Field(
-        None, description="A name associated with the patient."
-    )
-    telecom: list[PatientTelecomInput] | None = Field(
+    identifier: list[FhirIdentifierInput] | None = Field(None, description="An identifier for this patient.")
+    active: bool | None = Field(None, description="Whether this patient's record is in active use.")
+    name: list[FhirHumanNameInput] | None = Field(None, description="A name associated with the patient.")
+    telecom: list[FhirContactPointInput] | None = Field(
         None, description="A contact detail for the individual."
     )
-    address: list[PatientAddressInput] | None = Field(
-        None, description="An address for the individual."
+    gender: AdministrativeGender | None = Field(None, description="male | female | other | unknown.")
+    birthDate: str | None = Field(
+        None, description="The date of birth for the individual (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD)."
     )
-    photo: list[PatientPhotoInput] | None = Field(
-        None, description="Image of the patient."
+    deceasedBoolean: bool | None = Field(
+        None, description="Indicates if the individual is deceased or not (deceased[x] — send this or deceasedDateTime)."
     )
+    deceasedDateTime: str | None = Field(
+        None, description="Date and time of death (deceased[x] — send this or deceasedBoolean)."
+    )
+    address: list[FhirAddressInput] | None = Field(None, description="An address for the individual.")
+    maritalStatus: FhirCodeableConceptInput | None = Field(
+        None, description="Marital (civil) status of a patient."
+    )
+    multipleBirthBoolean: bool | None = Field(
+        None, description="Whether patient is part of a multiple birth (multipleBirth[x] — send this or multipleBirthInteger)."
+    )
+    multipleBirthInteger: int | None = Field(
+        None, description="Birth order of a multiple birth (multipleBirth[x] — send this or multipleBirthBoolean)."
+    )
+    photo: list[FhirAttachmentInput] | None = Field(None, description="Image of the patient.")
     contact: list[PatientContactInput] | None = Field(
         None, description="A contact party (e.g. guardian, partner, friend) for the patient."
     )
     communication: list[PatientCommunicationInput] | None = Field(
-        None, description="A language which may be used to communicate with the patient."
+        None, description="A language which may be used to communicate with the patient about his or her health."
     )
-    general_practitioner: list[PatientGeneralPractitionerInput] | None = Field(
-        None, description="Patient's nominated care provider."
+    generalPractitioner: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Patient's nominated primary care provider — Reference(Organization | Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    managingOrganization: FhirReferenceInput | None = Field(
+        None,
+        description="Organization that is the custodian of the patient record — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     link: list[PatientLinkInput] | None = Field(
-        None, description="Link to a Patient or RelatedPerson resource that concerns the same actual individual."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
+        None, description="Link to another patient resource that concerns the same actual person."
     )
 
 
-class PatientPatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows wholesale;
-    omitted lists are left untouched. `updated_by` comes from the verified JWT (`actor.sub`),
-    not a request body field. `user_id` is immutable after create — excluded here."""
+class PatientCreateSchema(_PatientFields):
+    """POST body — a FHIR R4 Patient resource. Creates the patient and every
+    supplied nested element atomically in one transaction."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "active": False,
-                "gender": "female",
-            }
-        },
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    active: bool | None = Field(
-        None, description="Whether this patient's record is in active use."
-    )
-    gender: AdministrativeGender | None = Field(
-        None, description="Administrative Gender — male|female|other|unknown."
-    )
-    birth_date: date | None = Field(None, description="Date of birth for the individual.")
-    deceased_boolean: bool | None = Field(
-        None, description="Indicates if the individual is deceased."
-    )
-    deceased_date_time: datetime | None = Field(
-        None, description="The date and time when the individual died."
-    )
-    marital_status_text: str | None = Field(
-        None, description="Marital status narrative representation."
-    )
-    marital_status_coding: list[CodingInput] | None = Field(
-        None, description="Coding(s) for the marital status — replaces the list if supplied."
-    )
-    multiple_birth_boolean: bool | None = Field(
-        None, description="Whether patient is part of a multiple birth."
-    )
-    multiple_birth_integer: int | None = Field(
-        None, description="Birth order in a multiple birth."
-    )
-    managing_organization: str | None = Field(
-        None,
-        description="Organization that is custodian of the patient record (e.g. 'Organization/190001').",
-    )
-    managing_organization_display: str | None = Field(
-        None, description="Display narrative for the managing organization reference."
-    )
-    managing_organization_identifier_use: IdentifierUse | None = Field(
-        None, description="Logical-reference fallback — identifier use."
-    )
-    managing_organization_identifier_type_system: str | None = Field(
-        None, description="Logical-reference fallback — identifier type system."
-    )
-    managing_organization_identifier_type_version: str | None = Field(
-        None, description="Logical-reference fallback — identifier type version."
-    )
-    managing_organization_identifier_type_code: str | None = Field(
-        None, description="Logical-reference fallback — identifier type code."
-    )
-    managing_organization_identifier_type_display: str | None = Field(
-        None, description="Logical-reference fallback — identifier type display."
-    )
-    managing_organization_identifier_type_user_selected: bool | None = Field(
-        None, description="Logical-reference fallback — identifier type user selected."
-    )
-    managing_organization_identifier_type_text: str | None = Field(
-        None, description="Logical-reference fallback — identifier type text."
-    )
-    managing_organization_identifier_system: str | None = Field(
-        None, description="Logical-reference fallback — identifier namespace URL."
-    )
-    managing_organization_identifier_value: str | None = Field(
-        None, description="Logical-reference fallback — identifier value."
-    )
-    managing_organization_identifier_period_start: datetime | None = Field(
-        None, description="Logical-reference fallback — identifier period start."
-    )
-    managing_organization_identifier_period_end: datetime | None = Field(
-        None, description="Logical-reference fallback — identifier period end."
-    )
 
-    identifier: list[PatientIdentifierInput] | None = Field(
-        None, description="An identifier for this patient — replaces the full list if supplied."
-    )
-    name: list[PatientNameInput] | None = Field(
-        None, description="A name associated with the patient — replaces the full list if supplied."
-    )
-    telecom: list[PatientTelecomInput] | None = Field(
-        None, description="A contact detail for the individual — replaces the full list if supplied."
-    )
-    address: list[PatientAddressInput] | None = Field(
-        None, description="An address for the individual — replaces the full list if supplied."
-    )
-    photo: list[PatientPhotoInput] | None = Field(
-        None, description="Image of the patient — replaces the full list if supplied."
-    )
-    contact: list[PatientContactInput] | None = Field(
-        None, description="A contact party for the patient — replaces the full list if supplied."
-    )
-    communication: list[PatientCommunicationInput] | None = Field(
-        None, description="A language which may be used to communicate with the patient — replaces the full list if supplied."
-    )
-    general_practitioner: list[PatientGeneralPractitionerInput] | None = Field(
-        None, description="Patient's nominated care provider — replaces the full list if supplied."
-    )
-    link: list[PatientLinkInput] | None = Field(
-        None, description="Link to a Patient or RelatedPerson resource — replaces the full list if supplied."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
-    )
+class PatientPatchSchema(_PatientFields):
+    """PATCH body — a partial FHIR R4 Patient (merge-patch semantics on
+    top-level elements). Only supplied elements are written; omitted ones are
+    left untouched. A supplied element replaces the stored value wholesale — a
+    list (even `[]`) replaces every existing entry, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"telecom": [{"system": "phone", "value": "555-0000", "use": "mobile"}], "active": False}
+        }
+    }

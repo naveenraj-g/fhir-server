@@ -1,79 +1,80 @@
-"""Shared helpers and payloads for patient integration tests."""
+"""Shared helpers and payloads for patient integration tests.
+
+Request bodies are genuine FHIR R4 Patient JSON (camelCase, nested datatypes),
+and every response is FHIR R4 too."""
+
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
 
 BASE = "/api/fhir/v1/patients"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+MRN = "http://hospital.example.org/mrn"
+LANG = "urn:ietf:bcp:47"
 
 MINIMAL = {
     "active": True,
     "name": [{"family": "Chalmers", "given": ["Peter"]}],
 }
 
+# No `system` on the coded fields below deliberately — an external-terminology
+# system can trigger a slow remote lookup in the java validator sidecar.
 FULL = {
-    "user_id": "end-user-1",
+    "resourceType": "Patient",
     "active": True,
     "gender": "male",
-    "birth_date": "1974-12-25",
-    "deceased_boolean": False,
-    "marital_status_text": "Married",
-    "marital_status_coding": [
-        {"code": "M", "display": "Married"}
-    ],
-    "multiple_birth_boolean": False,
+    "birthDate": "1974-12-25",
+    "deceasedBoolean": False,
+    "multipleBirthBoolean": False,
+    "maritalStatus": {"coding": [{"code": "M", "display": "Married"}], "text": "Married"},
     "identifier": [
         {
             "use": "official",
-            "system": "http://hospital.example.com/mrn",
+            "system": MRN,
             "value": "MRN-12345",
-            "type_coding": [{"code": "MR"}],
+            "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "MR"}]},
         }
     ],
-    "name": [
-        {
-            "use": "official",
-            "family": "Chalmers",
-            "given": ["Peter", "James"],
-            "prefix": ["Mr."],
-        }
-    ],
+    "name": [{"use": "official", "family": "Chalmers", "given": ["Peter", "James"], "prefix": ["Mr"]}],
     "telecom": [
-        {"system": "phone", "value": "+1-555-123-4567", "use": "home"}
+        {"system": "phone", "value": "555-1234", "use": "home"},
+        {"system": "email", "value": "peter@example.org"},
     ],
     "address": [
         {
             "use": "home",
-            "type": "physical",
             "line": ["534 Erewhon St"],
             "city": "PleasantVille",
             "state": "Vic",
-            "postal_code": "3999",
+            "postalCode": "3999",
             "country": "AU",
         }
     ],
-    "photo": [
-        {"url": "https://fhir-server.dev/fhir/assets/patient.png"}
-    ],
+    # No `contentType` deliberately — Attachment.contentType is bound against the
+    # full IANA MimeType ValueSet and the sidecar tries a remote lookup for it.
+    "photo": [{"url": "https://fhir-server.dev/fhir/assets/patient.png"}],
     "contact": [
         {
-            "relationship": [
-                {"coding": [{"code": "N", "display": "Next-of-Kin"}]}
-            ],
-            "name_family": "Chalmers",
-            "name_given": ["Sarah"],
+            "relationship": [{"coding": [{"code": "N", "display": "Next-of-Kin"}]}],
+            "name": {"family": "Chalmers", "given": ["Sarah"]},
             "gender": "female",
-            "telecom": [
-                {"system": "phone", "value": "+1-555-987-6543", "use": "mobile"}
-            ],
+            "telecom": [{"system": "phone", "value": "555-9876", "use": "mobile"}],
         }
     ],
-    "communication": [
-        {"language_coding": [{"code": "en", "display": "English"}], "preferred": True}
-    ],
+    "communication": [{"language": {"coding": [{"code": "en", "display": "English"}]}, "preferred": True}],
 }
 
 
+async def link_user(client, patient_id: int, user_id: str = "u-test"):
+    """Link an end-user to a patient (needs patient:link)."""
+    return await client.put(f"{BASE}/{patient_id}/user", json={"user_id": user_id})
+
+
 async def create_patient(client, payload=None) -> int:
-    """Create a patient and return the public patient id."""
-    payload = payload or MINIMAL
-    resp = await client.post(BASE + "/", json=payload)
+    """Create a patient and return the public patient id (int)."""
+    resp = await client.post(BASE + "/", json=payload or MINIMAL)
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])

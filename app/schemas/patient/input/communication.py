@@ -1,17 +1,14 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.datatypes import CodingInput
+from app.schemas.fhir_input import FhirCodeableConceptInput, FhirInputModel
 
 
-class PatientCommunicationInput(BaseModel):
-    """Patient.communication — a language which may be used to communicate with the patient (BackboneElement)."""
+class PatientCommunicationInput(FhirInputModel):
+    """Patient.communication — a language which may be used to communicate with
+    the patient about his or her health (BackboneElement)."""
 
-    model_config = ConfigDict(extra="forbid")
-    language_coding: list[CodingInput] | None = Field(
-        None, description="Coding(s) for the language (e.g. urn:ietf:bcp:47 code 'en')."
-    )
-    language_text: str | None = Field(
-        None, description="Plain text representation of the language."
+    language: FhirCodeableConceptInput = Field(
+        ..., description="The language which can be used to communicate with the patient (required by R4)."
     )
     preferred: bool | None = Field(
         None, description="Language preference indicator."

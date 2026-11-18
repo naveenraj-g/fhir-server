@@ -296,6 +296,18 @@ def _revinclude_schedules(resource_type: str, key):
     return fetch
 
 
+def _revinclude_patients(param: str, resource_type: str, key):
+    """_revinclude=Patient:<param> — patients pointing at one of these rows
+    (resolved lazily so the registries don't import each other at load)."""
+
+    async def fetch(session, ctx, rows):
+        from app.repository.patient.search import revinclude_patients_via_reference
+
+        return await revinclude_patients_via_reference(param, resource_type, key)(session, ctx, rows)
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders PractitionerRole rows —
     for PractitionerRole searches and for roles included by others."""
@@ -464,6 +476,12 @@ def practitioner_role_search() -> SearchRegistry:
             IncludeTarget(
                 "Schedule", "actor", "PractitionerRole",
                 _revinclude_schedules("PractitionerRole", lambda r: r.practitioner_role_id), reverse=True,
+            ),
+            # Patient.generalPractitioner points here.
+            IncludeTarget(
+                "Patient", "general-practitioner", "PractitionerRole",
+                _revinclude_patients("general-practitioner", "PractitionerRole", lambda r: r.practitioner_role_id),
+                reverse=True,
             ),
         ),
         default_sort=lambda: [PR.practitioner_role_id.desc()],

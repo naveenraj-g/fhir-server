@@ -261,6 +261,18 @@ def _revinclude_schedules(resource_type: str, key):
     return fetch
 
 
+def _revinclude_patients(param: str, resource_type: str, key):
+    """_revinclude=Patient:<param> — patients pointing at one of these rows
+    (resolved lazily so the registries don't import each other at load)."""
+
+    async def fetch(session, ctx, rows):
+        from app.repository.patient.search import revinclude_patients_via_reference
+
+        return await revinclude_patients_via_reference(param, resource_type, key)(session, ctx, rows)
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Practitioner rows."""
     from app.fhir.mappers.practitioner import to_fhir_practitioner
@@ -518,6 +530,12 @@ def practitioner_search() -> SearchRegistry:
             IncludeTarget(
                 "Schedule", "actor", "Practitioner",
                 _revinclude_schedules("Practitioner", lambda p: p.practitioner_id), reverse=True,
+            ),
+            # Patient.generalPractitioner points here.
+            IncludeTarget(
+                "Patient", "general-practitioner", "Practitioner",
+                _revinclude_patients("general-practitioner", "Practitioner", lambda p: p.practitioner_id),
+                reverse=True,
             ),
         ),
         default_sort=lambda: [Prac.practitioner_id.desc()],

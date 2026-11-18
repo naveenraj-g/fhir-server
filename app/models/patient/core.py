@@ -1,39 +1,72 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    Date,
-    DateTime,
-    Enum,
-    Integer,
-    Sequence,
-    String,
-    text,
-)
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.enums import OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 from app.schemas.enums import AdministrativeGender
 
-patient_id_seq = Sequence(
-    "patient_pub_seq", start=10000, increment=1, metadata=Base.metadata
-)
+patient_id_seq = Sequence("patient_pub_seq", start=10000, increment=1, metadata=Base.metadata)
 
 
 class PatientModel(TenantAuditMixin, Base):
-    """FHIR R4 Patient. Demographics and other administrative information about an
-    individual receiving care or other health-related services.
-    https://www.hl7.org/fhir/R4/patient.html
+    """FHIR R4 Patient — Medplum-style storage, same as Practitioner and
+    the other content-based resources.
 
-    Patient keeps a plain `user_id` column alongside the JWT-derived `tenant_id`/
-    `created_by`/`updated_by` (TenantAuditMixin) — a Patient record belongs to an
-    individual end-user, so `/me` scopes to `actor.sub` + `actor.org_id`.
-    """
+    `content` (JSONB) holds the whole resource exactly as validated on write;
+    it is the single source of truth, and GET serves it back as-is
+    (`id`/`meta` are stamped on at read time from this row's own columns —
+    see app.fhir.mappers.patient). Nothing else in this table or its child
+    tables is a second copy of the resource: every other column exists only
+    because a FHIR R4 Patient search parameter filters on it
+    (https://www.hl7.org/fhir/R4/patient.html#search), and is derived from
+    `content` on every write by app.repository.patient._indexer.
+
+    Search parameter -> storage:
+      active              -> active (0..1, column)
+      gender              -> gender (0..1, column)
+      birthdate           -> birth_date_start/_end (0..1, columns; the
+                             half-open range the date covers, so a partial
+                             date like `1990-05` works — see period_bounds)
+      death-date          -> death_date_start/_end (same, from deceasedDateTime)
+      deceased            -> deceased (0..1 column): true when deceased[x] is
+                             present and not false, false for deceasedBoolean
+                             false, NULL when absent
+      organization        -> managing_organization_reference/_type/_id +
+                             managing_organization_identifier_system/_value
+                             (0..1, columns)
+      name, family,
+      given, phonetic     -> PatientName (0..*, one row per HumanName)
+      identifier          -> PatientIdentifier (0..*)
+      telecom, phone,
+      email               -> PatientTelecom (0..*)
+      address, address-*  -> PatientAddress (0..*)
+      language            -> PatientCommunication (0..*, one row per coding of
+                             communication.language)
+      general-practitioner,
+      link                -> PatientReference (0..*, told apart by `param`)
+      _id                 -> patient_id;  _lastUpdated -> updated_at/created_at
+
+    `user_id` is not a FHIR element and not a search parameter: it links the
+    record to the IAM user who is this patient (a patient portal user) and
+    scopes the `/me` route. It is never in `content` and is never a body field —
+    it is set by the permission-gated `PUT/DELETE /patients/{id}/user`, or on
+    create when the caller explicitly asks to link themselves (self-signup).
+
+    String parameters are stored twice: as written (for `:exact`) and
+    normalized — accents stripped, case-folded (app.fhir.search.normalize) —
+    for R4's default case/accent-insensitive starts-with match and
+    `:contains`.
+
+    No DB-level CHECK constraints — every R4 rule is enforced by the FHIR
+    validator before anything is written."""
 
     __tablename__ = "patient"
+    __table_args__ = (
+        Index("ix_patient_birth_date", "birth_date_start", "birth_date_end"),
+        Index("ix_patient_death_date", "death_date_start", "death_date_end"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     patient_id = Column(
@@ -45,105 +78,40 @@ class PatientModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
+
+    # The IAM user linked to this record (see the docstring); NULL = unlinked.
     user_id = Column(String, nullable=True, index=True)
 
-    # active (0..1 boolean)
+    # ── Search index (derived from `content`) ─────────────────────────────
+    # active (0..1) — R4 removed the R3 default of true; absent means
+    # unknown, not false.
     active = Column(Boolean, nullable=True)
-
-    # gender (0..1 code, AdministrativeGender)
     gender = Column(Enum(AdministrativeGender, name="administrative_gender"), nullable=True)
 
-    # birthDate (0..1 date)
-    birth_date = Column(Date, nullable=True)
+    # birthDate / deceasedDateTime are FHIR dates that may be partial
+    # (`1990`, `1990-05`): each is held as the half-open [start, end) range of
+    # instants it covers (NULL = absent), matched with period_match.
+    birth_date_start = Column(DateTime(timezone=True), nullable=True)
+    birth_date_end = Column(DateTime(timezone=True), nullable=True)
+    death_date_start = Column(DateTime(timezone=True), nullable=True)
+    death_date_end = Column(DateTime(timezone=True), nullable=True)
+    deceased = Column(Boolean, nullable=True)
 
-    # deceased[x] (0..1 boolean | dateTime)
-    deceased_boolean = Column(Boolean, nullable=True)
-    deceased_date_time = Column(DateTime(timezone=True), nullable=True)
-
-    # maritalStatus (0..1 CodeableConcept) — text flat here, coding[] in child table
-    marital_status_text = Column(String, nullable=True)
-
-    # multipleBirth[x] (0..1 boolean | integer)
-    multiple_birth_boolean = Column(Boolean, nullable=True)
-    multiple_birth_integer = Column(Integer, nullable=True)
-
-    # managingOrganization (0..1 Reference(Organization))
+    # managingOrganization (0..1 Reference(Organization)) -> `organization`.
     managing_organization_reference = Column(String, nullable=True)
     managing_organization_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
     managing_organization_id = Column(BigInteger, nullable=True, index=True)
-    managing_organization_display = Column(String, nullable=True)
-    managing_organization_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    managing_organization_identifier_type_system = Column(String, nullable=True)
-    managing_organization_identifier_type_version = Column(String, nullable=True)
-    managing_organization_identifier_type_code = Column(String, nullable=True)
-    managing_organization_identifier_type_display = Column(String, nullable=True)
-    managing_organization_identifier_type_user_selected = Column(Boolean, nullable=True)
-    managing_organization_identifier_type_text = Column(String, nullable=True)
     managing_organization_identifier_system = Column(String, nullable=True)
     managing_organization_identifier_value = Column(String, nullable=True)
-    managing_organization_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    managing_organization_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # Mandatory resource-level extension column
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Relationships
-    identifiers = relationship(
-        "PatientIdentifier",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    names = relationship(
-        "PatientName",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    telecoms = relationship(
-        "PatientTelecom",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    addresses = relationship(
-        "PatientAddress",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    photos = relationship(
-        "PatientPhoto",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    marital_status_codings = relationship(
-        "PatientMaritalStatusCoding",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    contacts = relationship(
-        "PatientContact",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    communications = relationship(
-        "PatientCommunication",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    general_practitioners = relationship(
-        "PatientGeneralPractitioner",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
-    links = relationship(
-        "PatientLink",
-        back_populates="patient",
-        cascade="all, delete-orphan",
-    )
+    identifiers = relationship("PatientIdentifier", back_populates="patient", cascade="all, delete-orphan")
+    names = relationship("PatientName", back_populates="patient", cascade="all, delete-orphan")
+    telecoms = relationship("PatientTelecom", back_populates="patient", cascade="all, delete-orphan")
+    addresses = relationship("PatientAddress", back_populates="patient", cascade="all, delete-orphan")
+    communications = relationship("PatientCommunication", back_populates="patient", cascade="all, delete-orphan")
+    references = relationship("PatientReference", back_populates="patient", cascade="all, delete-orphan")

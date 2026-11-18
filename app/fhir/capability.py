@@ -23,6 +23,7 @@ from app.repository.endpoint.search import endpoint_search
 from app.repository.healthcare_service.search import healthcare_service_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
+from app.repository.patient.search import patient_search
 from app.repository.practitioner.search import practitioner_search
 from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.schedule.search import schedule_search
@@ -38,6 +39,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "practitioner_role": practitioner_role_search,
     "schedule": schedule_search,
     "slot": slot_search,
+    "patient": patient_search,
 }
 
 # Interactions the Organization/Location/Practitioner/HealthcareService/Endpoint/PractitionerRole/Schedule routers implement.
