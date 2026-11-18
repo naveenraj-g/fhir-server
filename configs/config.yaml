@@ -141,7 +141,7 @@ pagination:
 fhir_validation:
   # MASTER SWITCH. false skips validation entirely — every resource is
   # accepted and stored as sent. Only turn off deliberately.
-  enabled: false
+  enabled: true
   # native | java_validator — see app/core/config.py's FhirValidationConfig
   # and docs/structure-definitions/12-three-layer-validation-architecture.md.
   # "native" is this project's own fhir.schema.json structural check

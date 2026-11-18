@@ -8,7 +8,6 @@ from ._indexer import (
     index_columns,
     index_rows,
     organization_references,
-    user_id_of,
 )
 from ._shared import _parse_org_ref, _validate_reference, _with_relationships
 
@@ -47,7 +46,6 @@ class _FullMixin:
             practitioner = PractitionerModel(
                 tenant_id=org_id,
                 created_by=created_by,
-                user_id=user_id_of(document),
                 content=_storable(document),
                 **index_columns(document),
                 **index_rows(document),
@@ -70,8 +68,8 @@ class _FullMixin:
         """`document` is the resource as it should look *after* the patch
         (the service merges the patch onto the current content and validates
         the result). The stored content is replaced and every index row
-        rebuilt. `user_id` is deliberately not touched — it is immutable
-        (the service rejects a patch that would change it)."""
+        rebuilt. `user_id` is not part of the resource and is never touched
+        here — it is only changed by set_user_id()."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(PractitionerModel).where(

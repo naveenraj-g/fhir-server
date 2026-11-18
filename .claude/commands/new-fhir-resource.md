@@ -106,7 +106,7 @@ Copy Organization (`app/**/organization/**`), the simplest example, or Practitio
 - `core.py` — `get_<resource>_scoped` (403 org-less, 404 cross-org), `search_<resource>s(query, org_id, strict=, fhir_base=)` (`parse_search(...)` → `SearchContext` → repository), `create_<resource>(payload, org_id, created_by, body=)`, `patch_<resource>(...)`, `delete_<resource>`, `_to_fhir`, `_raw`, `_validate_base_r4`, `_log_org_scope_miss`.
   - create: `document = fhir_create_document(raw_body, "<Resource>")` → `_validate_base_r4` → `repository.create_full`
   - patch: load current row → `fragment, touched = fhir_patch_fragment(raw_body)` → `merged = merge_patch_fragment(to_fhir_<resource>(existing), fragment, touched)` → validate `merged` → `repository.patch_full(id, merged, updated_by)`. Merge-patch on top-level elements; a supplied element replaces wholesale, `null`/`[]` clears.
-  - Anything not a FHIR element but part of the record (Practitioner's `user_id`) travels as a **documented extension** in the body, is copied to a column by the indexer on create, and is checked for immutability in `patch_` — see Practitioner.
+  - Anything that is not a FHIR element but is part of the record (Practitioner's `user_id`, the IAM user it is linked to) never goes in the body or `content`. It is a column set by its own permission-gated call (`PUT/DELETE /<resources>/{id}/user`, scope `<resource>:link`), exactly like Medplum's ProjectMembership link. See Practitioner (`link_user`/`unlink_user`) for the pattern.
 - `__init__.py` — `<Resource>Service(_CoreMixin)`.
 
 ### G. DI — `app/di/modules/<resource>.py`, `app/di/dependencies/<resource>.py`, wired in `app/di/container.py`
@@ -123,7 +123,7 @@ Same three lines as Organization.
 - `app/core/reference_resolver.py` — add `"<Resource>": (<Resource>Model, "<resource>_id")` to `RESOURCE_REGISTRY` (otherwise nothing can reference it).
 - `app/fhir/capability.py` — add one line to `SEARCH_REGISTRIES` so `/metadata` lists it; add it to the `expected` map in `tests/integration/capability/test_metadata.py`.
 - `configs/config.yaml` — append the name to `routes.enabled` once it is ready (an unlisted router is not mounted and every test against it 404s).
-- `CLAUDE.md` — sequence-allocation table; the Medplum-style section (one paragraph: what is indexed, any `user_id`-style extension, includes).
+- `CLAUDE.md` — sequence-allocation table; the Medplum-style section (one paragraph: what is indexed, any end-user link, includes).
 - `docs/search-architecture/pending-search-capabilities.md` — scope + parameter tables.
 
 ### J. Tests — `tests/` (see `/add-resource-tests`)

@@ -16,7 +16,7 @@ import pytest
 
 from app.fhir.mappers.practitioner import to_fhir_practitioner
 from app.models.practitioner import PractitionerModel
-from tests.integration.practitioner.support import FULL, USER_ID_EXT
+from tests.integration.practitioner.support import FULL
 
 from .support import assert_valid, fhir_json_text
 
@@ -53,8 +53,11 @@ CASES = {
     "updated_by_and_updated_at": _practitioner(
         {"name": [{"family": "Careful"}]}, updated_by="u-other", updated_at=D
     ),
-    "user_id_extension": _practitioner(
-        {"extension": [{"url": USER_ID_EXT, "valueString": "end-user-1"}]}, user_id="end-user-1"
+    "linked_user_is_not_in_the_resource": _practitioner(
+        {"name": [{"family": "Careful"}]}, user_id="end-user-1"
+    ),
+    "extension": _practitioner(
+        {"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}
     ),
     "several_names": _practitioner(
         {
@@ -104,6 +107,11 @@ CASES = {
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_practitioner_mapper_emits_valid_fhir_r4(case):
     assert_valid(practitioner_pb2.Practitioner, to_fhir_practitioner(CASES[case]))
+
+
+def test_user_link_never_leaks_into_the_resource():
+    out = to_fhir_practitioner(_practitioner({"name": [{"family": "Careful"}]}, user_id="end-user-1"))
+    assert "end-user-1" not in str(out)
 
 
 def test_mapper_serves_content_unchanged():

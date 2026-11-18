@@ -16,7 +16,6 @@ post-write document.
 from __future__ import annotations
 
 from app.core.phonetic import phonetic_key
-from app.fhir.mappers.content import EXT_BASE
 from app.fhir.search import normalize
 from app.models.practitioner import (
     PractitionerAddress,
@@ -37,19 +36,6 @@ from app.schemas.enums import AddressUse, AdministrativeGender
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "names", "telecoms", "addresses", "communications")
 
-# The one non-FHIR piece of state a Practitioner carries: which end-user owns
-# the record (drives `/me`). Sent as this extension with a `valueString`.
-USER_ID_EXTENSION_URL = f"{EXT_BASE}/user-id"
-
-
-def user_id_of(document: dict) -> str | None:
-    """The end-user id carried by the user-id extension, if any."""
-    for ext in document.get("extension") or []:
-        if ext.get("url") == USER_ID_EXTENSION_URL and ext.get("valueString"):
-            return ext["valueString"]
-    return None
-
-
 def organization_references(document: dict) -> list[tuple[str, str]]:
     """(element label, relative Organization reference) for every local
     Reference(Organization) in the document — identifier.assigner and
@@ -68,7 +54,7 @@ def organization_references(document: dict) -> list[tuple[str, str]]:
 
 def index_columns(document: dict) -> dict:
     """Search columns on the practitioner row itself (not `user_id`, which
-    is set once at create)."""
+    is not part of the FHIR resource — it is set by the link call)."""
     gender = document.get("gender")
     try:
         gender = AdministrativeGender(gender) if gender else None

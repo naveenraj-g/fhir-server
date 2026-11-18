@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Path, Request, status
+from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
@@ -9,6 +10,7 @@ from app.core.content_negotiation import (
     require_fhir_json,
 )
 from app.core.logging import get_logger, log_payload
+from app.core.schema_utils import inline_schema
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.fhir.search.openapi import search_description, search_parameters
 from app.repository.practitioner.search import practitioner_search
@@ -19,7 +21,12 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.practitioner import PractitionerCreateSchema, PractitionerPatchSchema
+from app.schemas.practitioner import (
+    PractitionerCreateSchema,
+    PractitionerPatchSchema,
+    PractitionerUserLinkInput,
+    PractitionerUserLinkResponse,
+)
 from app.services.practitioner import PractitionerService
 
 from ._responses import (
@@ -62,9 +69,8 @@ logger = get_logger(__name__)
         "(server-managed `id`/`meta` are ignored); a key that isn't FHIR at all is rejected with "
         "422. A qualification's `issuer` may reference an Organization "
         '(e.g. `{"reference": "Organization/190001"}`) — rejected with 422 if it doesn\'t exist. '
-        "The end-user the record belongs to (what `GET /me` scopes to) is sent as the "
-        "`https://fhir-server.dev/fhir/StructureDefinition/user-id` extension "
-        "(`valueString`); it can't be changed afterwards. " + _CONTENT_NEG
+        "The record starts unlinked: the end-user it belongs to (what `GET /me` scopes to) is "
+        "linked afterwards with `PUT /{practitioner_id}/user`. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -76,9 +82,8 @@ async def create_practitioner(
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
-    token is rejected outright (403). The end-user id (`user_id`), unlike
-    Organization/Location, is still part of the record: see
-    PractitionerModel's docstring."""
+    token is rejected outright (403). Create never links an end-user (see
+    link_practitioner_user)."""
     logger.info(
         "Create a new Practitioner resource",
         extra={"event": "route.create_practitioner"},
@@ -226,8 +231,8 @@ async def search_practitioners_post(
     summary="Search Practitioner resources owned by the authenticated end-user",
     description=(
         "Same search as `GET /` (every parameter, modifier and result parameter), always "
-        "additionally restricted to the authenticated end-user's own records — those whose "
-        "user-id extension equals the token's `sub` — on top of the caller's own org. "
+        "additionally restricted to the authenticated end-user's own records — those linked "
+        "to the token's `sub` (see `PUT /{practitioner_id}/user`) — on top of the caller's own org. "
         + _SEARCH_DESCRIPTION
     ),
     responses={**_LIST_200, **_ERR_SEARCH},
@@ -298,8 +303,7 @@ async def get_practitioner(
         "The request body is a partial FHIR R4 Practitioner (merge-patch on top-level elements). "
         "Only supplied elements are written; omitted elements are left unchanged. Every supplied "
         "list (identifier, name, telecom, address, photo, qualification, communication — even "
-        "`[]`) atomically replaces the stored entries, and `null` clears an element. The "
-        "user-id extension can't be added, changed or dropped (422). "
+        "`[]`) atomically replaces the stored entries, and `null` clears an element. "
         "Scoped to the caller's own org — patch_practitioner() raises NotFoundError (404, not "
         "403 — avoids leaking that a practitioner with this id exists in another org) if "
         "actor.org_id doesn't match. " + _CONTENT_NEG
@@ -330,6 +334,112 @@ async def patch_practitioner(
         body=await request.json(),
     )
     return fhir_response(practitioner_service._to_fhir(updated))
+
+
+# ── End-user link ────────────────────────────────────────────────────────
+# Which IAM user acts as this practitioner. Not a FHIR element, so it is
+# not in the resource body and not settable through create/patch — only
+# here, behind its own permission (the equivalent of creating a Medplum
+# ProjectMembership with `profile` = this practitioner).
+
+_USER_LINK_200 = {
+    200: {
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PractitionerUserLinkResponse.model_json_schema())
+            }
+        }
+    }
+}
+
+
+def _link_response(practitioner) -> JSONResponse:
+    return JSONResponse(
+        PractitionerUserLinkResponse(
+            practitioner_id=practitioner.practitioner_id, user_id=practitioner.user_id
+        ).model_dump()
+    )
+
+
+@router.get(
+    "/{practitioner_id}/user",
+    operation_id="get_practitioner_user_link",
+    summary="Show which end-user is linked to a Practitioner",
+    description=(
+        "Returns the linked IAM user id, or `null` when the record is not linked. Not a FHIR "
+        "resource (`application/json`). Scoped to the caller's own org like every other read."
+    ),
+    responses={**_USER_LINK_200, **_ERR_NOT_FOUND},
+    response_class=JSONResponse,
+)
+async def get_practitioner_user_link(
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
+    actor: AuthUser = Depends(require_permission("practitioner", "read")),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    logger.info(
+        "Get a Practitioner end-user link",
+        extra={"event": "route.get_practitioner_user_link", "practitioner_id": practitioner_id},
+    )
+    return _link_response(
+        await practitioner_service.get_user_link(practitioner_id, actor.org_id)
+    )
+
+
+@router.put(
+    "/{practitioner_id}/user",
+    operation_id="link_practitioner_user",
+    summary="Link an end-user to a Practitioner",
+    description=(
+        "Links the IAM user `user_id` (a JWT `sub`) to this practitioner, so that user's "
+        "`GET /me` returns it. Replaces any previous link; linking the same user again is a "
+        "no-op. A user can act as at most one practitioner per org (422 if already linked "
+        "to another). Requires the separate `practitioner:link` permission — linking is how "
+        "an onboarding/verification flow (or an admin) confirms that a person is this "
+        "practitioner. Scoped to the caller's own org (404 across orgs)."
+    ),
+    responses={**_USER_LINK_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    response_class=JSONResponse,
+)
+async def link_practitioner_user(
+    payload: PractitionerUserLinkInput,
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
+    actor: AuthUser = Depends(require_permission("practitioner", "link")),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    logger.info(
+        "Link an end-user to a Practitioner",
+        extra={"event": "route.link_practitioner_user", "practitioner_id": practitioner_id},
+    )
+    return _link_response(
+        await practitioner_service.link_user(
+            practitioner_id, payload.user_id, actor.org_id, actor.sub
+        )
+    )
+
+
+@router.delete(
+    "/{practitioner_id}/user",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="unlink_practitioner_user",
+    summary="Remove the end-user link from a Practitioner",
+    description=(
+        "Clears the link; idempotent (204 whether or not it was linked). The Practitioner "
+        "record itself is untouched. Requires `practitioner:link`. Scoped to the caller's own "
+        "org (404 across orgs)."
+    ),
+    responses={**_ERR_NOT_FOUND},
+)
+async def unlink_practitioner_user(
+    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
+    actor: AuthUser = Depends(require_permission("practitioner", "link")),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    logger.info(
+        "Remove a Practitioner end-user link",
+        extra={"event": "route.unlink_practitioner_user", "practitioner_id": practitioner_id},
+    )
+    await practitioner_service.unlink_user(practitioner_id, actor.org_id, actor.sub)
 
 
 # ── Delete ───────────────────────────────────────────────────────────────

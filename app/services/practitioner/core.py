@@ -10,7 +10,6 @@ from app.fhir.search import SearchContext, SearchRequest, parse_search
 from app.fhir.validation import validate_resource
 from app.models.practitioner import PractitionerModel
 from app.repository.practitioner import PractitionerRepository
-from app.repository.practitioner._indexer import user_id_of
 from app.repository.practitioner.search import practitioner_search
 from app.schemas.practitioner import PractitionerCreateSchema, PractitionerPatchSchema
 
@@ -24,9 +23,10 @@ class _CoreMixin:
     from the verified JWT's activeOrganizationId claim (actor.org_id), never
     a client-suppliable field, and there's no org-less/super-admin bypass.
 
-    Unlike Organization, a Practitioner belongs to an individual end-user
-    (`user_id`, carried as the user-id extension — see PractitionerModel),
-    which scopes the `/me` search and is immutable after create."""
+    Unlike Organization, a Practitioner can be linked to an individual
+    end-user (`user_id`, see PractitionerModel). That link is not part of the
+    FHIR resource: it is set and cleared through link_user()/unlink_user(),
+    never through create/patch, and scopes the `/me` search."""
 
     def __init__(self, repository: PractitionerRepository):
         self.repository = repository
@@ -156,12 +156,6 @@ class _CoreMixin:
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
         merged = merge_patch_fragment(to_fhir_practitioner(existing), fragment, touched)
-        # user_id is immutable after create: a patch may not add, change or
-        # drop the user-id extension.
-        if user_id_of(merged) != existing.user_id:
-            raise BusinessRuleViolationError(
-                "The end-user id (user-id extension) is immutable after create."
-            )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
@@ -197,6 +191,56 @@ class _CoreMixin:
                 "event": "practitioner.deleted",
                 "practitioner_id": practitioner_id,
             },
+        )
+
+    # ── End-user link ─────────────────────────────────────────────────────
+
+    async def get_user_link(
+        self, practitioner_id: int, org_id: str | None
+    ) -> PractitionerModel:
+        """The practitioner row (its `user_id` may be None = unlinked)."""
+        return await self.get_practitioner_scoped(practitioner_id, org_id)
+
+    async def link_user(
+        self,
+        practitioner_id: int,
+        user_id: str,
+        org_id: str | None,
+        updated_by: str | None,
+    ) -> PractitionerModel:
+        """Link the end-user `user_id` to this practitioner. A user acts as
+        at most one practitioner per org (a conflict is 422), re-linking the
+        same user is a no-op, and linking replaces any previous user. Same
+        org-scope gate as every other write: 403 org-less, 404 cross-org."""
+        practitioner = await self.get_practitioner_scoped(practitioner_id, org_id)
+        other = await self.repository.get_by_user_id_in_org(user_id, org_id)
+        if other and other.practitioner_id != practitioner_id:
+            raise BusinessRuleViolationError(
+                f"User '{user_id}' is already linked to Practitioner/{other.practitioner_id}."
+            )
+        if practitioner.user_id == user_id:
+            return practitioner
+        updated = await self.repository.set_user_id(practitioner_id, user_id, updated_by)
+        if not updated:
+            raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner user linked",
+            extra={"event": "practitioner.user_linked", "practitioner_id": practitioner_id},
+        )
+        return updated
+
+    async def unlink_user(
+        self, practitioner_id: int, org_id: str | None, updated_by: str | None
+    ) -> None:
+        """Clear the link (idempotent). Same org-scope gate as link_user."""
+        practitioner = await self.get_practitioner_scoped(practitioner_id, org_id)
+        if practitioner.user_id is None:
+            return
+        if not await self.repository.set_user_id(practitioner_id, None, updated_by):
+            raise NotFoundError("Practitioner not found")
+        logger.info(
+            "Practitioner user unlinked",
+            extra={"event": "practitioner.user_unlinked", "practitioner_id": practitioner_id},
         )
 
     # ── Validation helpers ────────────────────────────────────────────────

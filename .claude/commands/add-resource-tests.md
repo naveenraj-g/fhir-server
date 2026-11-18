@@ -32,7 +32,7 @@ tests/integration/capability/test_metadata.py add the resource to the `expected`
 ```
 
 ### `conftest.py`
-Autouse fixture overriding `get_current_user` with `make_test_user(permissions=["<resource>:create", ":read", ":update", ":delete"])` and restoring the default afterwards (copy Practitioner's).
+Autouse fixture overriding `get_current_user` with `make_test_user(permissions=["<resource>:create", ":read", ":update", ":delete"])` (plus `<resource>:link` for resources with an end-user link) and restoring the default afterwards (copy Practitioner's).
 
 ### `support.py`
 - `BASE = "/api/fhir/v1/<resources>"`.
@@ -45,7 +45,7 @@ Autouse fixture overriding `get_current_user` with `make_test_user(permissions=[
 - **Read:** by id; always `application/fhir+json` whatever `Accept` says (`None`, `application/json`, `*/*`); XML-only `Accept` / `_format=xml` → 406 OperationOutcome; not found → 404 OperationOutcome.
 - **Patch:** scalar update; untouched elements survive; **search index is rebuilt** (old value no longer found, new value found); a supplied list replaces wholesale and `[]` clears (and the index follows); an invalid value → 422 and nothing written; not found → 404; resource business rules (e.g. Organization's circular `partOf`).
 - **Delete:** 204, then 404, and its index rows are gone from search.
-- **Record-state extension / `/me`** (end-user scoped resources): `/me` returns only the caller's own records and supports every search parameter; the route isn't shadowed by `/{id}`; the extension can't be changed, dropped, or added after create (422); an unrelated patch leaves it intact.
+- **End-user link / `/me`** (resources with a `user_id`): create starts unlinked; `PUT/GET/DELETE /{id}/user` (link, show, unlink — idempotent, replace on re-link, one user per org → 422, same user allowed in different orgs, own `<resource>:link` permission → 403 without it, 404 cross-org, 422 on empty body); the link never appears in the resource or `content`; patch/delete of the record leave it alone; `/me` returns only records linked to the caller's `sub`, follows link/unlink, supports every search parameter, and isn't shadowed by `/{id}`.
 - **Auth:** missing scope → 403; org-less token → 403 on create/search/read (override `get_current_user` with an `async def _no_org(request: Request)` — **annotate `request: Request`** or FastAPI treats it as a query parameter); cross-org GET/PATCH/DELETE → 404 (never 403); cross-tenant search isolation.
 
 ### The validator switch

@@ -69,12 +69,12 @@ class <Resource>Model(TenantAuditMixin, Base):      # tenant_id, created_by (NOT
 - Sequence: `Sequence("<resource>_pub_seq", start=<next free 10000-block from CLAUDE.md>, increment=1, metadata=Base.metadata)`.
 - `TenantAuditMixin` (`app/models/shared/`) supplies the audit/tenant columns; `org_id` from the JWT is stored as `tenant_id`. Don't redeclare them.
 - Put a docstring on the model with the **search parameter → storage** table (copy Organization's) — it is the contract between `search.py` and `_indexer.py`.
-- **Non-FHIR record state** that must be queryable (Practitioner's `user_id`, which scopes `/me`): keep it as a column *and* carry it in the resource as a documented extension (`https://fhir-server.dev/fhir/StructureDefinition/<name>`, `valueString`) so the body stays plain FHIR; the indexer copies it to the column on create; make it immutable in the service.
+- **Non-FHIR record state** that must be queryable (Practitioner's `user_id`, the IAM user it is linked to; scopes `/me`): keep it as a **column only**. It is not in `content`, not accepted in the create/patch body, and not settable through them. Set it through a dedicated, permission-gated call (`PUT/DELETE /<resources>/{id}/user`, scope `<resource>:link`) — the equivalent of Medplum's `ProjectMembership.profile`. Enforce "one user per org" in the service.
 
 ## Step 6 — Migration
 
 - New resource: `uv run alembic revision --autogenerate -m "add_<resource>_content_and_search_index"`, then hand-fix: reuse shared PG enums with `create_type=False`, create the `<resource>_pub_seq` sequence (`CREATE SEQUENCE IF NOT EXISTS ... START WITH <N>`; strip autogenerate's false-positive `CREATE/DROP SEQUENCE` noise), write a real `downgrade()`.
-- **Converting a normalized resource:** model the migration on `a7d3f19c2b64` — add `content`, build it per row with a **frozen** copy of the old mapper (never import app code), drop the old child tables and columns, create the index tables, rebuild the index from `content`, set `content` `NOT NULL`. Carry any non-FHIR state into `content` (e.g. `user_id` → extension).
+- **Converting a normalized resource:** model the migration on `a7d3f19c2b64` — add `content`, build it per row with a **frozen** copy of the old mapper (never import app code), drop the old child tables and columns, create the index tables, rebuild the index from `content`, set `content` `NOT NULL`. Keep any non-FHIR state (e.g. `user_id`) as a column — never in `content` — and carry it over unchanged.
 - **Verify on a scratch database, never the dev DB:** create DB → `alembic upgrade <previous head>` → insert old-shape rows → `alembic upgrade head` → inspect `content` and index rows → `alembic check` and look for drift on your tables → drop DB.
 
 ## Step 7 — Reminders

@@ -17,7 +17,7 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization, Location and Practitioner** (Practitioner added 2026-11-18, with `/me`). Every other resource (Patient, Observation,
+The R4 search engine covers **Organization, Location and Practitioner** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Patient, Observation,
 Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 

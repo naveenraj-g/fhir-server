@@ -36,11 +36,12 @@ class PractitionerModel(TenantAuditMixin, Base):
       communication      -> PractitionerCommunication (0..*, one row per coding)
       _id                -> practitioner_id;  _lastUpdated -> updated_at/created_at
 
-    `user_id` is not a FHIR element and not a search parameter: it scopes the
-    `/me` route to the individual end-user the record belongs to. It is
-    carried in the resource as one extension (USER_ID_EXTENSION_URL,
-    `valueString`) — so the request body stays plain FHIR — and copied into
-    this column by the indexer. It is immutable after create.
+    `user_id` is not a FHIR element and not a search parameter: it links the
+    record to the IAM user who acts as this practitioner and scopes the
+    `/me` route. It is never in `content` and never set by create/patch —
+    only by the permission-gated `PUT/DELETE /practitioners/{id}/user`
+    (the equivalent of Medplum ProjectMembership.profile, kept on the row
+    instead of a separate membership record).
 
     String parameters are stored twice: as written (for `:exact`) and
     normalized — accents stripped, case-folded (app.fhir.search.normalize) —
@@ -65,8 +66,7 @@ class PractitionerModel(TenantAuditMixin, Base):
     # The whole FHIR resource minus resourceType/id/meta (server-stamped).
     content = Column(JSONB, nullable=False)
 
-    # The end-user this record belongs to (see the docstring). Derived from
-    # the user-id extension on create; never changed afterwards.
+    # The IAM user linked to this record (see the docstring); NULL = unlinked.
     user_id = Column(String, nullable=True, index=True)
 
     # ── Search index (derived from `content`) ─────────────────────────────

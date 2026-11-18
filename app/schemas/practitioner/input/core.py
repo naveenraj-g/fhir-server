@@ -15,11 +15,8 @@ from app.schemas.fhir_input import (
 
 from .qualification import PractitionerQualificationInput
 
-_USER_ID_EXTENSION = "https://fhir-server.dev/fhir/StructureDefinition/user-id"
-
 _EXAMPLE = {
     "resourceType": "Practitioner",
-    "extension": [{"url": _USER_ID_EXTENSION, "valueString": "user-abc123"}],
     "active": True,
     "gender": "female",
     "birthDate": "1980-05-15",
@@ -70,18 +67,16 @@ class _PractitionerFields(FhirInputModel):
     read time). org_id and created_by/updated_by come from the verified JWT
     (actor.org_id / actor.sub), never the body.
 
-    `user_id` — the end-user a record belongs to, which scopes `/me` — is
-    not a FHIR element, so it travels as this extension:
-    `{"url": "https://fhir-server.dev/fhir/StructureDefinition/user-id",
-    "valueString": "<user id>"}`. Set it on create; it can't be changed
-    afterwards."""
+    The end-user a record belongs to (`user_id`, which scopes `/me`) is not
+    a FHIR element and is not accepted here: it is set afterwards with
+    `PUT /practitioners/{id}/user`."""
 
     resourceType: Literal["Practitioner"] | None = Field(
         None, description="Optional; if supplied it must be 'Practitioner'."
     )
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries. Carries the end-user id as the user-id extension (see the model description); the rest are validated by the profile pipeline, not here.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
     identifier: list[FhirIdentifierInput] | None = Field(
         None, description="An identifier for the person as this agent."
@@ -128,7 +123,7 @@ class PractitionerPatchSchema(_PractitionerFields):
     top-level elements). Only supplied elements are written; omitted ones
     are left untouched. A supplied element replaces the stored value
     wholesale — a list (even `[]`) replaces every existing entry, and `null`
-    clears it. The user-id extension can't be added, changed or dropped."""
+    clears it."""
 
     model_config = {
         "json_schema_extra": {

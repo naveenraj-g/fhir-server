@@ -4,7 +4,6 @@ Request bodies are genuine FHIR R4 Practitioner JSON (camelCase, nested
 datatypes), and every response is FHIR R4 too."""
 
 BASE = "/api/fhir/v1/practitioners"
-USER_ID_EXT = "https://fhir-server.dev/fhir/StructureDefinition/user-id"
 
 MINIMAL = {
     "active": True,
@@ -13,7 +12,6 @@ MINIMAL = {
 
 FULL = {
     "resourceType": "Practitioner",
-    "extension": [{"url": USER_ID_EXT, "valueString": "end-user-1"}],
     "active": True,
     "gender": "male",
     "birthDate": "1980-05-15",
@@ -54,6 +52,11 @@ FULL = {
     ],
     "communication": [{"coding": [{"code": "en", "display": "English"}]}],
 }
+
+
+async def link_user(client, practitioner_id: int, user_id: str = "u-test"):
+    """Link an end-user to a practitioner (needs practitioner:link)."""
+    return await client.put(f"{BASE}/{practitioner_id}/user", json={"user_id": user_id})
 
 
 async def create_practitioner(client, payload=None) -> int:

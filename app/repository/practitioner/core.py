@@ -50,6 +50,45 @@ class _CoreMixin:
             result = await session.execute(stmt)
             return result.scalar_one_or_none() is not None
 
+    # ── End-user link ─────────────────────────────────────────────────────
+    # `user_id` ties a practitioner record to the IAM user who acts as that
+    # practitioner (what `/me` scopes to). It is not part of the FHIR
+    # resource, so it is read and written here, not through create/patch.
+
+    async def get_by_user_id_in_org(
+        self, user_id: str, org_id: str
+    ) -> PractitionerModel | None:
+        """The practitioner in org_id linked to user_id, if any."""
+        async with self.session_factory() as session:
+            stmt = select(PractitionerModel).where(
+                PractitionerModel.user_id == user_id,
+                PractitionerModel.tenant_id == org_id,
+            )
+            return (await session.execute(stmt)).scalars().first()
+
+    async def set_user_id(
+        self, practitioner_id: int, user_id: str | None, updated_by: str | None
+    ) -> PractitionerModel | None:
+        """Link (or, with None, unlink) the end-user. Does not touch
+        `content` or the search index."""
+        async with self.session_factory() as session:
+            stmt = select(PractitionerModel).where(
+                PractitionerModel.practitioner_id == practitioner_id
+            )
+            practitioner = (await session.execute(stmt)).scalars().first()
+            if not practitioner:
+                return None
+            practitioner.user_id = user_id
+            if updated_by is not None:
+                practitioner.updated_by = updated_by
+            try:
+                await session.commit()
+                await session.refresh(practitioner)
+            except Exception:
+                await session.rollback()
+                raise
+            return practitioner
+
     # ── Search ────────────────────────────────────────────────────────────
     # FHIR R4 search — every parameter, modifier and result parameter is
     # declared in search.py's registry and run by app.fhir.search.

@@ -24,7 +24,7 @@ class FHIRPractitionerSchema(BaseModel):
     )
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — includes the user-id extension when the record belongs to an end-user.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="An identifier for the person as this agent."
