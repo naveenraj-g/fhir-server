@@ -1,0 +1,119 @@
+# Search: what is implemented and what is pending
+
+Audit of the FHIR R4 search engine (`app/fhir/search/`) against the HL7 R4 search spec
+(https://www.hl7.org/fhir/R4/search.html). Based on a code read, not a live test run.
+Diagram of the current design: [`../architecture/search-architecture.html`](../architecture/search-architecture.html).
+
+## Plan
+
+Everything pending here is a **capability of the shared engine** or a **per-resource search registry**.
+None of it needs to be built now. The intended order:
+
+1. Finish building the remaining resources.
+2. Give each resource its own `SearchRegistry` (like `app/repository/organization/search.py` and
+   `app/repository/location/search.py`). The engine is resource-agnostic, so a resource only declares its
+   parameters, index columns and tables, and its `_indexer.py`.
+3. Add the pending engine-level capabilities from section 4 once they can be exercised across many resources.
+
+## 1. Scope today
+
+The R4 search engine covers **Organization and Location only**. Every other resource (Patient, Observation,
+Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
+beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
+
+## 2. Resource-specific parameters
+
+| Resource | R4 defines | Implemented | Missing |
+|---|---|---|---|
+| Organization | 13 | 13 | none |
+| Location | 15 | 15 | none |
+| All other resources | - | 0 (old list filters) | everything: needs a registry each |
+
+- Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
+  `address-use`, `endpoint`, `identifier`, `name`, `partof`, `phonetic`, `type`.
+- Location: the same address set, plus `endpoint`, `identifier`, `name`, `near`, `operational-status`,
+  `organization`, `partof`, `status`, `type`.
+
+## 3. Implemented (engine level)
+
+| Feature | Status |
+|---|---|
+| string: starts-with (case/accent-insensitive), `:exact`, `:contains` | done |
+| token: `code`, `system\|code`, `\|code`, `system\|`; `:not`, `:text`, `:of-type`, `:in`, `:not-in`, `:above`, `:below` | done (terminology-backed) |
+| reference: id, `Type/id`, absolute URL; `:[type]`, `:identifier`, `:above`, `:below` | done |
+| chaining (`partof.name=`), recursive | done |
+| date: 9 prefixes, precision-aware | done |
+| special: `near` (+ `location-distance` extension) | done |
+| `:missing` on every parameter | done |
+| comma = OR, repeat = AND, escaping | done |
+| bad value / unsupported modifier -> 400 | done |
+| `_id`, `_lastUpdated` | done |
+| `_count` (default 50, max 200, `0` = count only), `_offset` | done |
+| `_sort` (multi-key, `-desc`, earliest/latest rule for multi-valued) | done |
+| `_total`, `_summary`, `_elements` (SUBSETTED tag) | done |
+| `_include` / `_revinclude` / `:iterate` | done for the registered targets (see 4.5) |
+| searchset Bundle: `total`, `fullUrl`, `search.mode`, self/first/previous/next/last links | done |
+| `POST [type]/_search` (form-encoded) | done |
+
+## 4. Pending
+
+### 4.1 Common parameters not implemented
+
+Current behaviour: ignored with a `search.mode=outcome` entry, or 400 under `Prefer: handling=strict`.
+This is spec-legal (R4 allows lenient handling) but still a capability gap.
+
+| Parameter | Notes |
+|---|---|
+| `_tag`, `_profile`, `_security`, `_source` | Cheap to search, but `meta` is stripped on write today, so this needs a storage change (persist and index `meta.tag`, `meta.profile`, `meta.security`, `meta.source`) as well as a search change. |
+| `_has` (reverse chaining) | Most valuable missing feature, e.g. "organizations that have an active Location". Needs the registry to know which resource types reference which. Best done once many resources have registries. |
+| `_type` | Only meaningful with system-wide search (4.3). |
+| `_text`, `_content` | Full-text search. Needs a text index strategy. Expensive. |
+| `_list` | Needs the List resource. |
+| `_filter` | Full filter expression language. Expensive, rarely used. |
+| `_contained`, `_containedType` | Only the default is accepted; anything else is 400. |
+| `_format` | JSON only. `_pretty` is accepted with no effect. |
+| `_sort=_score` | 400. No relevance scoring. |
+| `_query` | Always 400 (named queries not supported). |
+
+### 4.2 Parameter types not implemented
+
+number, quantity, uri and composite. Organization and Location have none, but clinical resources will
+(Observation `value-quantity`, `code-value-quantity` composites, Patient `birthdate` is date, ValueSet `url` is uri, ...).
+Each needs a type builder in `app/fhir/search/sql.py` and a parser in `values.py`.
+
+### 4.3 Protocol-level features
+
+| Feature | Status |
+|---|---|
+| System-wide search (`GET [base]?_type=...`) | not implemented |
+| `_history` (instance, type, system) | no history endpoint exists |
+| Conditional operations (`If-None-Exist`, conditional update/delete) | not checked in this audit; no sign of them |
+| `CapabilityStatement` (`GET /metadata`) declaring supported search parameters | confirmed absent. Only `GET /api/v1/terminology/metadata` (a `TerminologyCapabilities`) exists. To be generated at request time from the registries and `routes.enabled`: a read-only endpoint, not a stored resource (no table, model, migration or CRUD). Terminology's own metadata is deferred. |
+
+### 4.4 Per-resource work (when each resource gets its registry)
+
+For each resource, follow the Organization/Location pattern:
+
+- Add index columns / child tables, populated by that resource's `_indexer.py` on every write.
+- Declare a `SearchRegistry` with every R4 search parameter for the resource.
+- Declare its `IncludeTarget`s (`_include` / `_revinclude`) and register a `ResourceKind` so included rows render.
+- Declare `default_sort` and `summary_elements`.
+- Use `app/routers/_fhir_search.py` for the route glue and add `POST /_search`.
+- OpenAPI parameters come from the registry automatically (MCP callers discover them).
+
+### 4.5 `_include` / `_revinclude` gaps
+
+- Working today: `Organization:partof`, `Location:organization`, `Location:partof`, and
+  `_revinclude` of `Organization:partof`, `Location:organization`, `Location:partof`.
+- `:endpoint` is accepted but adds nothing (there is no Endpoint resource).
+- `_revinclude` from resources that point at Organization/Location (Patient, Encounter, PractitionerRole, ...)
+  becomes possible only when those resources are on the engine.
+
+## 5. Suggested order after the resources exist
+
+1. Registry for every resource (the bulk of the work; mechanical).
+2. `CapabilityStatement` generated from the registries, so the server declares what it supports.
+3. `_tag` / `_profile` / `_security` / `_source` (with the `meta` storage change).
+4. `_has`.
+5. number / quantity / uri / composite types, as the clinical resources need them.
+6. Later or never: `_text`, `_content`, `_filter`, `_list`, `_contained`, `_history`, system-wide search.
