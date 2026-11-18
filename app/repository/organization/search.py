@@ -369,6 +369,18 @@ async def _revinclude_location_organization(session, ctx, orgs):
     )
 
 
+async def _revinclude_healthcare_service_organization(session, ctx, orgs):
+    """_revinclude=HealthcareService:organization — HealthcareServices
+    whose providedBy is one of these organizations."""
+    from app.models.healthcare_service import HealthcareServiceModel as HS
+
+    ids = {o.organization_id for o in orgs}
+    return await _fetch(
+        session,
+        select(HS).where(HS.tenant_id == ctx.tenant_id, HS.provided_by_id.in_(ids)),
+    )
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Organization rows —
     for Organization searches and for Organizations included by others."""
@@ -601,6 +613,13 @@ def organization_search() -> SearchRegistry:
                 "organization",
                 "Organization",
                 _revinclude_location_organization,
+                reverse=True,
+            ),
+            IncludeTarget(
+                "HealthcareService",
+                "organization",
+                "Organization",
+                _revinclude_healthcare_service_organization,
                 reverse=True,
             ),
         ),

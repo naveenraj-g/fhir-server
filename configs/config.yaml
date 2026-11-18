@@ -237,7 +237,7 @@ routes:
     # - immunization_evaluation
     # - immunization_recommendation
     - organization
-    # - location
+    - location
     # - measure
     # - measure_report
     # - medication
@@ -248,7 +248,7 @@ routes:
     # - medication_statement
     # - observation
     # - observation_definition
-    # - healthcare_service
+    - healthcare_service
     # - patient
     # - plan_definition
     - practitioner

@@ -1,451 +1,332 @@
-"""Core healthcare_service endpoint coverage.
+"""Core healthcare-service endpoint coverage.
 
-HealthcareService follows Organization's "set once, rarely edited" shape —
-5 endpoints (create/get/patch/list/delete), no sub-resource routes and no
-/me route. Every supplied sub-resource list on create/patch (identifier,
-category, type, specialty, location, telecom, coverageArea,
-serviceProvisionCode, eligibility, program, characteristic, communication,
-referralMethod, availableTime, notAvailable, endpoint) replaces the
-corresponding rows wholesale. Same JWT/RBAC auth rollout as Organization:
-org_id/created_by/updated_by come from the verified token, never the body.
+HealthcareService is stored Medplum-style (like Organization/Location/
+Practitioner): the request body (genuine FHIR R4 HealthcareService JSON) is
+validated and stored whole in `content`, every response is FHIR R4
+(`application/fhir+json`, regardless of Accept), and only the FHIR R4 search
+parameters are indexed
+(https://www.hl7.org/fhir/R4/healthcareservice.html#search).
 
-This file holds:
-- create (minimal + full nested payload, FHIR format, validation,
-  providedBy/location reference resolution + rejection)
-- read (plain + FHIR, not found)
-- list (plain, FHIR bundle, pagination, every Medplum-mirrored filter, sort)
-- patch (field updates, sub-resource list replace, not found)
-- delete
-- auth: org-less token, missing permission scope, cross-org isolation
+This file holds create, read, patch, delete and auth (org-less token, missing
+scope, cross-org isolation). Search lives in test_search.py.
 """
 
+import pytest
+from fastapi import Request
+
 from app.auth.dependencies import get_current_user
+from app.core.config import settings
 from app.main import app
 from tests.conftest import make_test_user
-from tests.helpers.assertions import (
-    assert_fhir_bundle,
-    assert_fhir_healthcare_service,
-    assert_operation_outcome,
-    assert_paginated,
-    assert_plain_healthcare_service,
-)
+from tests.helpers.assertions import assert_operation_outcome
 from tests.integration.healthcare_service.support import (
     BASE,
-    FHIR_ACCEPT,
     FULL,
     MINIMAL,
     create_healthcare_service,
+    create_organization,
     seed_location,
 )
-from tests.integration.organization.support import (
-    BASE as ORG_BASE,
-    MINIMAL as ORG_MINIMAL,
-)
 
-HS_PERMS = [
+PERMS = [
     "healthcare_service:create",
     "healthcare_service:read",
     "healthcare_service:update",
     "healthcare_service:delete",
-]
-ORG_AND_HS_PERMS = HS_PERMS + [
     "organization:create",
     "organization:read",
-    "organization:update",
-    "organization:delete",
+    "location:read",
 ]
 
 
-async def _create_organization(client, name="Provider Org") -> int:
-    resp = await client.post(ORG_BASE + "/", json={**ORG_MINIMAL, "name": name})
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
+@pytest.fixture
+def native_validation(monkeypatch):
+    """configs/config.yaml ships with fhir_validation.enabled=false, which
+    skips base R4 validation entirely. Tests that assert "a key that isn't
+    FHIR is a 422" need the validator on: the project's own structural check
+    (no sidecar needed)."""
+    monkeypatch.setattr(settings.fhir_validation, "enabled", True)
+    monkeypatch.setattr(settings.fhir_validation, "backend", "native")
+
+
+def _ids(bundle: dict) -> set[int]:
+    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+
+
+def _as_user(sub="u-test", org_id="org-test", permissions=PERMS):
+    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
 
 
-async def test_create_healthcare_service_minimal(client):
+async def test_create_minimal(client):
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 201
-    assert_plain_healthcare_service(resp.json(), name="Test Healthcare Service", active=True)
-
-
-async def test_create_healthcare_service_full(client):
-    resp = await client.post(BASE + "/", json=FULL)
-    assert resp.status_code == 201
-    data = resp.json()
-    assert_plain_healthcare_service(data, name="Cardiology Services", active=True)
-    assert data["identifier"][0]["value"] == "HS-1001"
-    assert data["identifier"][0]["assigner_identifier_value"] == "EXTERNAL-1"
-    assert data["category"][0]["codings"][0]["code"] == "8"
-    assert data["type"][0]["codings"][0]["code"] == "394579002"
-    assert data["specialty"][0]["codings"][0]["code"] == "394579002"
-    assert data["telecom"][0]["value"] == "555-1234"
-    assert data["location"][0]["reference_identifier_value"] == "LOC-9"
-    assert data["coverage_area"][0]["reference_identifier_value"] == "LOC-8"
-    assert data["service_provision_code"][0]["codings"][0]["code"] == "free"
-    assert data["eligibility"][0]["code_codings"][0]["code"] == "ind"
-    assert data["program"][0]["codings"][0]["code"] == "mh"
-    assert data["characteristic"][0]["codings"][0]["code"] == "wheelchair"
-    assert data["communication"][0]["codings"][0]["code"] == "en"
-    assert data["referral_method"][0]["codings"][0]["code"] == "phone"
-    assert data["available_time"][0]["days_of_week"] == ["mon", "tue", "wed", "thu", "fri"]
-    assert data["available_time"][0]["available_start_time"] == "09:00:00"
-    assert data["not_available"][0]["description"] == "Closed for renovations."
-    assert data["endpoint"][0]["reference_identifier_value"] == "EP-1"
-
-
-async def test_create_healthcare_service_returns_fhir_format(client):
-    resp = await client.post(BASE + "/", json=MINIMAL, headers=FHIR_ACCEPT)
-    assert resp.status_code == 201
+    assert resp.status_code == 201, resp.text
     assert "application/fhir+json" in resp.headers["content-type"]
-    assert_fhir_healthcare_service(resp.json(), name="Test Healthcare Service")
-
-
-async def test_create_healthcare_service_extra_field_rejected(client):
-    resp = await client.post(BASE + "/", json={**MINIMAL, "nonexistent_field": "value"})
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
-
-
-async def test_create_healthcare_service_org_id_in_body_rejected(client):
-    """org_id/created_by/updated_by come from the verified token — not
-    request-body fields — since HealthcareService's JWT/RBAC rollout."""
-    resp = await client.post(BASE + "/", json={**MINIMAL, "org_id": "sneaky-org"})
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
-
-
-async def test_create_healthcare_service_created_by_derived_from_actor(client):
-    resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 201
     data = resp.json()
-    assert data["created_by"] == "u-test"
-    assert data["org_id"] == "org-test"
+    assert data["resourceType"] == "HealthcareService"
+    assert data["name"] == "Test Healthcare Service" and data["active"] is True
 
 
-async def test_create_healthcare_service_with_provided_by(client):
-    """providedBy is a real cross-resource reference (Reference(Organization))
-    validated for existence at write time — Organization is mounted in this
-    test env (see configs/config.yaml), so create a real one via its API."""
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_AND_HS_PERMS)
-    org_id = await _create_organization(client)
-    resp = await client.post(
-        BASE + "/", json={**MINIMAL, "provided_by": f"Organization/{org_id}"}
-    )
+async def test_create_full_round_trip(client, _engine):
+    org = await create_organization(client)
+    loc = await seed_location(_engine)
+    body = {
+        **FULL,
+        "providedBy": {"reference": f"Organization/{org}"},
+        "location": [{"reference": f"Location/{loc}"}],
+        "coverageArea": [{"reference": f"Location/{loc}"}],
+    }
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     data = resp.json()
-    assert data["provided_by_id"] == org_id
-    assert data["provided_by"] == f"Organization/{org_id}"
+    expected = {k: v for k, v in body.items() if k != "resourceType"}
+    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert (await client.get(f"{BASE}/{data['id']}")).json() == data
 
 
-async def test_create_healthcare_service_nonexistent_provided_by_rejected(client):
+async def test_create_keeps_elements_nothing_searches_on(client):
+    """eligibility, availableTime, notAvailable, referralMethod, communication,
+    telecom, ... have no search parameter — they live only in `content`."""
+    data = (await client.post(BASE + "/", json=FULL)).json()
+    assert data["availableTime"][0]["daysOfWeek"] == ["mon", "tue"]
+    assert data["notAvailable"][0]["description"] == "Closed for the holidays"
+    assert data["eligibility"][0]["comment"] == "Adults only"
+    assert data["referralMethod"][0]["coding"][0]["code"] == "phone"
+    assert data["telecom"][0]["value"] == "555-0100"
+
+
+async def test_create_ignores_server_managed_id_and_meta(client):
     resp = await client.post(
-        BASE + "/", json={**MINIMAL, "provided_by": "Organization/9999999"}
-    )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
-
-
-async def test_create_healthcare_service_with_resolved_location(client, _engine):
-    """location[] is a real cross-resource reference (Reference(Location))
-    validated for existence at write time. Location's own router isn't
-    mounted in this test env, so seed a row directly."""
-    location_id = await seed_location(_engine)
-    resp = await client.post(
-        BASE + "/",
-        json={**MINIMAL, "location": [{"reference": f"Location/{location_id}"}]},
+        BASE + "/", json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}}
     )
     assert resp.status_code == 201, resp.text
-    data = resp.json()
-    assert data["location"][0]["reference_id"] == location_id
-    assert data["location"][0]["reference"] == f"Location/{location_id}"
+    assert resp.json()["id"] != "999"
+    assert not resp.json()["meta"]["lastUpdated"].startswith("2000")
 
 
-async def test_create_healthcare_service_nonexistent_location_rejected(client):
-    resp = await client.post(
-        BASE + "/", json={**MINIMAL, "location": [{"reference": "Location/9999999"}]}
-    )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+async def test_create_non_fhir_key_rejected(client, native_validation):
+    resp = await client.post(BASE + "/", json={**MINIMAL, "not_a_fhir_element": 1})
+    assert resp.status_code == 422, resp.text
 
 
-async def test_create_healthcare_service_nonexistent_coverage_area_rejected(client):
-    resp = await client.post(
-        BASE + "/", json={**MINIMAL, "coverage_area": [{"reference": "Location/9999999"}]}
-    )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+async def test_create_old_flat_fields_rejected(client, native_validation):
+    for stale in ({"extra_details": "x"}, {"appointment_required": True}, {"org_id": "x"}, {"user_id": "u"}):
+        resp = await client.post(BASE + "/", json={**MINIMAL, **stale})
+        assert resp.status_code == 422, (stale, resp.text)
 
 
-# ── Get ──────────────────────────────────────────────────────────────────────
+async def test_create_wrong_resource_type_rejected(client):
+    resp = await client.post(BASE + "/", json={**MINIMAL, "resourceType": "Patient"})
+    assert resp.status_code == 422, resp.text
 
 
-async def test_get_healthcare_service_by_id_plain(client):
-    hs_id = await create_healthcare_service(client)
-    resp = await client.get(f"{BASE}/{hs_id}")
+async def test_create_bad_day_of_week_rejected(client):
+    body = {**MINIMAL, "availableTime": [{"daysOfWeek": ["funday"]}]}
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+
+
+async def test_create_not_available_needs_description(client):
+    body = {**MINIMAL, "notAvailable": [{"during": {"start": "2026-12-24T00:00:00Z"}}]}
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+
+
+async def test_create_audit_meta_from_actor(client):
+    data = (await client.post(BASE + "/", json=MINIMAL)).json()
+    exts = {e["url"].rsplit("/", 1)[1]: e for e in data["meta"]["extension"]}
+    assert exts["org-id"]["valueString"] == "org-test"
+    assert exts["created-by"]["valueString"] == "u-test"
+
+
+async def test_create_provided_by_must_exist(client):
+    resp = await client.post(BASE + "/", json={**MINIMAL, "providedBy": {"reference": "Organization/999999"}})
+    assert resp.status_code == 422, resp.text
+
+
+async def test_create_location_and_coverage_area_must_exist(client):
+    for element in ("location", "coverageArea"):
+        resp = await client.post(BASE + "/", json={**MINIMAL, element: [{"reference": "Location/999999"}]})
+        assert resp.status_code == 422, (element, resp.text)
+
+
+async def test_create_identifier_assigner_must_exist(client):
+    body = {**MINIMAL, "identifier": [{"value": "1", "assigner": {"reference": "Organization/999999"}}]}
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+
+
+async def test_create_absolute_references_stored_not_resolved(client):
+    ref = "https://other.example.org/fhir/Location/42"
+    resp = await client.post(BASE + "/", json={**MINIMAL, "location": [{"reference": ref}]})
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["location"][0]["reference"] == ref
+
+
+async def test_create_logical_reference_without_resource(client):
+    body = {**MINIMAL, "providedBy": {"identifier": {"system": "urn:registry", "value": "ORG-9"}}}
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_reference_in_another_org_is_rejected(client, other_client):
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        other_org = await create_organization(other_client, "Other Tenant Org")
+    finally:
+        _as_user()
+    resp = await client.post(BASE + "/", json={**MINIMAL, "providedBy": {"reference": f"Organization/{other_org}"}})
+    assert resp.status_code == 422, resp.text
+
+
+# ── Read ─────────────────────────────────────────────────────────────────────
+
+
+async def test_get_by_id(client):
+    hs = await create_healthcare_service(client, FULL)
+    resp = await client.get(f"{BASE}/{hs}")
     assert resp.status_code == 200
-    data = resp.json()
-    assert_plain_healthcare_service(data, name="Test Healthcare Service")
-    assert data["id"] == hs_id
+    assert resp.json()["id"] == str(hs)
 
 
-async def test_get_healthcare_service_by_id_fhir(client):
-    hs_id = await create_healthcare_service(client)
-    resp = await client.get(f"{BASE}/{hs_id}", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    assert_fhir_healthcare_service(resp.json())
-    assert resp.json()["id"] == str(hs_id)
+async def test_get_is_fhir_regardless_of_accept(client):
+    hs = await create_healthcare_service(client)
+    for accept in (None, "application/json", "*/*"):
+        headers = {"Accept": accept} if accept else {}
+        resp = await client.get(f"{BASE}/{hs}", headers=headers)
+        assert resp.headers["content-type"].startswith("application/fhir+json"), accept
+        assert resp.json()["resourceType"] == "HealthcareService"
 
 
-async def test_get_healthcare_service_not_found(client):
-    resp = await client.get(f"{BASE}/9999999")
+async def test_xml_only_accept_is_406(client):
+    hs = await create_healthcare_service(client)
+    resp = await client.get(f"{BASE}/{hs}", headers={"Accept": "application/fhir+xml"})
+    assert resp.status_code == 406
+    assert resp.json()["resourceType"] == "OperationOutcome"
+
+
+async def test_get_not_found(client):
+    resp = await client.get(f"{BASE}/999999")
     assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-
-
-# ── List ─────────────────────────────────────────────────────────────────────
-
-
-async def test_list_healthcare_services_plain(client):
-    await create_healthcare_service(client)
-    resp = await client.get(BASE + "/")
-    assert resp.status_code == 200
-    assert_paginated(resp.json())
-
-
-async def test_list_healthcare_services_fhir_bundle(client):
-    await create_healthcare_service(client)
-    resp = await client.get(BASE + "/", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    assert_fhir_bundle(resp.json())
-
-
-async def test_list_healthcare_services_pagination(client):
-    for i in range(3):
-        await create_healthcare_service(client, {**MINIMAL, "name": f"Service {i}"})
-    resp = await client.get(f"{BASE}/?limit=2&offset=0")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert len(data["data"]) <= 2
-    assert data["limit"] == 2
-
-
-async def test_list_healthcare_services_filter_active(client):
-    await create_healthcare_service(client, {**MINIMAL, "name": "Active Svc", "active": True})
-    await create_healthcare_service(client, {**MINIMAL, "name": "Inactive Svc", "active": False})
-    resp = await client.get(BASE + "/", params={"active": "false"})
-    assert resp.status_code == 200
-    assert all(hs["active"] is False for hs in resp.json()["data"])
-
-
-async def test_list_healthcare_services_filter_name(client):
-    await create_healthcare_service(client, {**MINIMAL, "name": "FindMeByName"})
-    resp = await client.get(BASE + "/", params={"name": "FindMeByName"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_identifier(client):
-    await create_healthcare_service(client, FULL)
-    resp = await client.get(BASE + "/", params={"identifier": "HS-1001"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_service_category(client):
-    await create_healthcare_service(client, FULL)
-    resp = await client.get(BASE + "/", params={"service-category": "8"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_service_type(client):
-    await create_healthcare_service(client, FULL)
-    resp = await client.get(BASE + "/", params={"service-type": "394579002"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_specialty(client):
-    await create_healthcare_service(client, FULL)
-    resp = await client.get(BASE + "/", params={"specialty": "394579002"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_characteristic(client):
-    await create_healthcare_service(client, FULL)
-    resp = await client.get(BASE + "/", params={"characteristic": "wheelchair"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_program(client):
-    await create_healthcare_service(client, FULL)
-    resp = await client.get(BASE + "/", params={"program": "mh"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_filter_organization(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_AND_HS_PERMS)
-    org_id = await _create_organization(client)
-    await create_healthcare_service(
-        client, {**MINIMAL, "provided_by": f"Organization/{org_id}"}
-    )
-    resp = await client.get(BASE + "/", params={"organization": f"Organization/{org_id}"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-
-async def test_list_healthcare_services_sort_and_total_mode_none(client):
-    await create_healthcare_service(client)
-    resp = await client.get(BASE + "/", params={"sort": "-name", "total_mode": "none"})
-    assert resp.status_code == 200
-    assert resp.json()["total"] is None
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
 
 
-async def test_patch_healthcare_service_name(client):
-    hs_id = await create_healthcare_service(client)
-    resp = await client.patch(f"{BASE}/{hs_id}", json={"name": "Updated Service"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["name"] == "Updated Service"
-    assert data["updated_by"] == "u-test"
+async def test_patch_scalar_keeps_the_rest(client):
+    hs = await create_healthcare_service(client, FULL)
+    resp = await client.patch(f"{BASE}/{hs}", json={"active": False, "name": "Renamed"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["active"] is False and resp.json()["name"] == "Renamed"
+    assert resp.json()["availableTime"][0]["daysOfWeek"] == ["mon", "tue"]
 
 
-async def test_patch_healthcare_service_active(client):
-    hs_id = await create_healthcare_service(client)
-    resp = await client.patch(f"{BASE}/{hs_id}", json={"active": False})
-    assert resp.status_code == 200
-    assert resp.json()["active"] is False
+async def test_patch_reindexes_search(client):
+    hs = await create_healthcare_service(client, FULL)
+    await client.patch(f"{BASE}/{hs}", json={"name": "Renamed Service"})
+    old = await client.get(BASE + "/", params={"name": "Cardiology"})
+    new = await client.get(BASE + "/", params={"name": "Renamed"})
+    assert hs not in _ids(old.json())
+    assert hs in _ids(new.json())
 
 
-async def test_patch_healthcare_service_replaces_category_list(client):
-    hs_id = await create_healthcare_service(client, FULL)
-    resp = await client.patch(
-        f"{BASE}/{hs_id}",
-        json={"category": [{"coding": [{"code": "new-cat", "display": "New Category"}]}]},
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert len(data["category"]) == 1
-    assert data["category"][0]["codings"][0]["code"] == "new-cat"
-    # Untouched lists are left alone.
-    assert len(data["identifier"]) == 1
+async def test_patch_replaces_list_wholesale_and_empty_clears(client):
+    hs = await create_healthcare_service(client, FULL)
+    resp = await client.patch(f"{BASE}/{hs}", json={"specialty": [{"coding": [{"code": "NEW"}]}]})
+    assert resp.json()["specialty"] == [{"coding": [{"code": "NEW"}]}]
+    assert hs not in _ids((await client.get(BASE + "/", params={"specialty": "394579002"})).json())
+    assert hs in _ids((await client.get(BASE + "/", params={"specialty": "NEW"})).json())
+    resp = await client.patch(f"{BASE}/{hs}", json={"specialty": []})
+    assert "specialty" not in resp.json()
+    assert hs not in _ids((await client.get(BASE + "/", params={"specialty": "NEW"})).json())
 
 
-async def test_patch_healthcare_service_provided_by_resolved(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_AND_HS_PERMS)
-    org_id = await _create_organization(client)
-    hs_id = await create_healthcare_service(client)
-    resp = await client.patch(
-        f"{BASE}/{hs_id}", json={"provided_by": f"Organization/{org_id}"}
-    )
-    assert resp.status_code == 200
-    assert resp.json()["provided_by_id"] == org_id
+async def test_patch_provided_by_resolved_then_cleared(client):
+    org = await create_organization(client)
+    hs = await create_healthcare_service(client)
+    await client.patch(f"{BASE}/{hs}", json={"providedBy": {"reference": f"Organization/{org}"}})
+    assert hs in _ids((await client.get(BASE + "/", params={"organization": f"Organization/{org}"})).json())
+    resp = await client.patch(f"{BASE}/{hs}", json={"providedBy": None})
+    assert "providedBy" not in resp.json()
+    assert hs not in _ids((await client.get(BASE + "/", params={"organization": f"Organization/{org}"})).json())
 
 
-async def test_patch_healthcare_service_not_found(client):
-    resp = await client.patch(f"{BASE}/9999999", json={"name": "X"})
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(client):
+    hs = await create_healthcare_service(client, FULL)
+    resp = await client.patch(f"{BASE}/{hs}", json={"location": [{"reference": "Location/999999"}]})
+    assert resp.status_code == 422
+    assert "location" not in (await client.get(f"{BASE}/{hs}")).json()
+
+
+async def test_patch_invalid_value_rejected_and_nothing_written(client):
+    hs = await create_healthcare_service(client, FULL)
+    resp = await client.patch(f"{BASE}/{hs}", json={"availableTime": [{"daysOfWeek": ["funday"]}]})
+    assert resp.status_code == 422
+    assert (await client.get(f"{BASE}/{hs}")).json()["availableTime"][0]["daysOfWeek"] == ["mon", "tue"]
+
+
+async def test_patch_not_found(client):
+    resp = await client.patch(f"{BASE}/999999", json={"active": False})
     assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
 
 
-async def test_delete_healthcare_service(client):
-    hs_id = await create_healthcare_service(client)
-    resp = await client.delete(f"{BASE}/{hs_id}")
-    assert resp.status_code == 204
-    assert (await client.get(f"{BASE}/{hs_id}")).status_code == 404
+async def test_delete(client):
+    hs = await create_healthcare_service(client, FULL)
+    assert (await client.delete(f"{BASE}/{hs}")).status_code == 204
+    assert (await client.get(f"{BASE}/{hs}")).status_code == 404
+    # Its index rows are gone with it.
+    assert hs not in _ids((await client.get(BASE + "/", params={"name": "Cardiology"})).json())
+    assert hs not in _ids((await client.get(BASE + "/", params={"specialty": "394579002"})).json())
 
 
-async def test_delete_healthcare_service_not_found(client):
-    resp = await client.delete(f"{BASE}/9999999")
+async def test_delete_not_found(client):
+    resp = await client.delete(f"{BASE}/999999")
     assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 
 
-# ── Auth & tenancy ───────────────────────────────────────────────────────────
+# ── Auth ─────────────────────────────────────────────────────────────────────
 
 
-async def test_create_healthcare_service_no_permission(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=["healthcare_service:read"])
+async def test_create_without_permission(client):
+    _as_user(permissions=["healthcare_service:read"])
+    assert (await client.post(BASE + "/", json=MINIMAL)).status_code == 403
+
+
+async def test_org_less_token_rejected(client):
+    hs = await create_healthcare_service(client)
+
+    async def _no_org(request: Request):
+        request.state.user = {"sub": "u-test", "permissions": PERMS}
+
+    app.dependency_overrides[get_current_user] = _no_org
+    assert (await client.post(BASE + "/", json=MINIMAL)).status_code == 403
+    assert (await client.get(BASE + "/")).status_code == 403
+    assert (await client.get(f"{BASE}/{hs}")).status_code == 403
+
+
+async def test_cross_org_get_patch_delete_return_404(client, other_client):
+    _as_user()  # the other_client fixture resets the override
+    hs = await create_healthcare_service(client)
+    _as_user(sub="u-other", org_id="org-other")
     try:
-        resp = await client.post(BASE + "/", json=MINIMAL)
-        assert_operation_outcome(resp.json(), expected_status=403, response_status=resp.status_code)
+        for resp in (
+            await other_client.get(f"{BASE}/{hs}"),
+            await other_client.patch(f"{BASE}/{hs}", json={"active": False}),
+            await other_client.delete(f"{BASE}/{hs}"),
+        ):
+            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
+        _as_user()
 
 
-async def test_create_healthcare_service_org_less_token_rejected(client):
-    app.dependency_overrides[get_current_user] = make_test_user(org_id=None, permissions=HS_PERMS)
+async def test_search_cross_tenant_isolation(client, other_client):
+    _as_user()
+    await create_healthcare_service(client, {"name": "TenantAOnly Clinic"})
+    _as_user(sub="u-other", org_id="org-other")
     try:
-        resp = await client.post(BASE + "/", json=MINIMAL)
-        assert resp.status_code == 403
+        bundle = (await other_client.get(BASE + "/", params={"name": "TenantAOnly"})).json()
+        assert bundle["total"] == 0
+        assert "entry" not in bundle
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-
-
-async def test_list_healthcare_services_org_less_token_rejected(client):
-    app.dependency_overrides[get_current_user] = make_test_user(org_id=None, permissions=HS_PERMS)
-    try:
-        resp = await client.get(BASE + "/")
-        assert resp.status_code == 403
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-
-
-async def test_get_healthcare_service_org_mismatch_returns_404(client, other_client):
-    # Requesting other_client overwrote the get_current_user override with its
-    # own default identity — restore org-test's healthcare_service permissions
-    # before creating, then switch to org-other before the read.
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-    hs_id = await create_healthcare_service(client)
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=HS_PERMS
-    )
-    try:
-        resp = await other_client.get(f"{BASE}/{hs_id}")
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-
-
-async def test_patch_healthcare_service_org_mismatch_returns_404(client, other_client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-    hs_id = await create_healthcare_service(client)
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=HS_PERMS
-    )
-    try:
-        resp = await other_client.patch(f"{BASE}/{hs_id}", json={"name": "Hacked"})
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-
-
-async def test_delete_healthcare_service_org_mismatch_returns_404(client, other_client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-    hs_id = await create_healthcare_service(client)
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=HS_PERMS
-    )
-    try:
-        resp = await other_client.delete(f"{BASE}/{hs_id}")
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-
-
-async def test_list_healthcare_services_cross_tenant_isolation(client, other_client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
-    await create_healthcare_service(client, {**MINIMAL, "name": "Tenant-A-Only-Service"})
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=HS_PERMS
-    )
-    try:
-        resp = await other_client.get(BASE + "/", params={"name": "Tenant-A-Only-Service"})
-        assert resp.status_code == 200
-        assert resp.json()["total"] == 0
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=HS_PERMS)
+        _as_user()

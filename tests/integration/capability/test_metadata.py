@@ -3,6 +3,7 @@
 import pytest
 
 from app.core.config import settings
+from app.repository.healthcare_service.search import healthcare_service_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
 from app.repository.practitioner.search import practitioner_search
@@ -33,6 +34,7 @@ async def test_search_params_match_registries(client):
         "organization": ("Organization", organization_search()),
         "location": ("Location", location_search()),
         "practitioner": ("Practitioner", practitioner_search()),
+        "healthcare_service": ("HealthcareService", healthcare_service_search()),
     }
     enabled = {k: v for k, v in expected.items() if k in settings.routes.enabled}
     assert set(by_type) == {t for t, _ in enabled.values()}  # only what is mounted

@@ -1,32 +1,48 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response
-from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
-from app.di.dependencies.healthcare_service import get_healthcare_service_service
-from app.schemas.healthcare_service import (
-    HealthcareServiceCreateSchema,
-    HealthcareServicePatchSchema,
+from app.core.config import settings
+from app.core.content_negotiation import (
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
 )
+from app.core.logging import get_logger, log_payload
+from app.di.dependencies.healthcare_service import get_healthcare_service_service
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.healthcare_service.search import healthcare_service_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
+from app.schemas.healthcare_service import HealthcareServiceCreateSchema, HealthcareServicePatchSchema
 from app.services.healthcare_service import HealthcareServiceService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# HealthcareService always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
-_FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -38,14 +54,17 @@ _FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
     summary="Create a new HealthcareService resource",
     description=(
         "Records the details of a healthcare service available at a location, or by an "
-        "organization, for a certain type of patient. HealthcareService is set once and "
-        "then patched rather than built up incrementally, so this single endpoint accepts "
-        "the full nested payload — identifier, category, type, specialty, location, telecom, "
-        "coverageArea, serviceProvisionCode, eligibility, program, characteristic, "
-        "communication, referralMethod, availableTime, notAvailable, and endpoint arrays — "
-        "atomically in one DB transaction. Optionally link to a providing organization via "
-        "`provided_by` (e.g. `'Organization/190001'`) — rejected with 422 if it doesn't exist. "
-        + _CONTENT_NEG
+        "organization, for a certain type of patient. The request body is a FHIR R4 "
+        "HealthcareService resource (camelCase, nested datatypes — "
+        "https://www.hl7.org/fhir/R4/healthcareservice.html); the service and every supplied "
+        "element (identifier, category, type, specialty, location, telecom, coverageArea, "
+        "eligibility, program, characteristic, communication, availableTime, notAvailable, "
+        "endpoint, ...) are written atomically in one DB transaction. The body is checked "
+        "against base FHIR R4: any valid R4 element is accepted and stored as sent "
+        "(server-managed `id`/`meta` are ignored); a key that isn't FHIR at all is rejected "
+        "with 422. `providedBy` may reference an Organization and `location` / `coverageArea` "
+        "a Location (e.g. `{\"reference\": \"Location/230001\"}`) — rejected with 422 if the "
+        "referenced resource doesn't exist in the caller's org. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -53,28 +72,136 @@ async def create_healthcare_service(
     payload: HealthcareServiceCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("healthcare_service", "create")),
-    healthcare_service_service: HealthcareServiceService = Depends(
-        get_healthcare_service_service
-    ),
+    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
-    actor.sub) — org_id is no longer a request body field at all, and an
-    org-less token is rejected outright (403). HealthcareService has no
-    user_id field at all, like Organization and Location."""
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new HealthcareService resource",
         extra={"event": "route.create_healthcare_service"},
     )
     log_payload(logger, "healthcare_service.create.payload", payload)
-    hs = await healthcare_service_service.create_healthcare_service(
-        payload, actor.org_id, actor.sub
+    healthcare_service = await healthcare_service_service.create_healthcare_service(
+        payload, actor.org_id, actor.sub, body=await request.json()
     )
-    return format_response(
-        healthcare_service_service._to_fhir(hs),
-        healthcare_service_service._to_plain(hs),
-        request,
+    return fhir_response(
+        healthcare_service_service._to_fhir(healthcare_service),
         status_code=status.HTTP_201_CREATED,
     )
+
+
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# HealthcareService search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = healthcare_service_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    healthcare_service_service: HealthcareServiceService,
+):
+    search_url, fhir_base = search_urls(request, "search_healthcare_services")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await healthcare_service_service.search_healthcare_services(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_healthcare_services",
+    summary="Search HealthcareService resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_healthcare_services(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
+    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search HealthcareService resources",
+        extra={"event": "route.search_healthcare_services"},
+    )
+    return await _search(request, get_query(request), actor, healthcare_service_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_healthcare_services_post",
+    summary="Search HealthcareService resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_healthcare_services_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
+    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+):
+    logger.info(
+        "Search HealthcareService resources (POST _search)",
+        extra={"event": "route.search_healthcare_services_post"},
+    )
+    return await _search(request, await post_query(request), actor, healthcare_service_service)
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -94,9 +221,7 @@ async def get_healthcare_service(
         ..., ge=1, description="Public healthcare_service identifier."
     ),
     actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
-    healthcare_service_service: HealthcareServiceService = Depends(
-        get_healthcare_service_service
-    ),
+    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
     logger.info(
         "Retrieve a HealthcareService resource by public healthcare_service_id",
@@ -105,17 +230,13 @@ async def get_healthcare_service(
             "healthcare_service_id": healthcare_service_id,
         },
     )
-    hs = await healthcare_service_service.get_healthcare_service_scoped(
+    healthcare_service = await healthcare_service_service.get_healthcare_service_scoped(
         healthcare_service_id, actor.org_id
     )
-    return format_response(
-        healthcare_service_service._to_fhir(hs),
-        healthcare_service_service._to_plain(hs),
-        request,
-    )
+    return fhir_response(healthcare_service_service._to_fhir(healthcare_service))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -123,16 +244,15 @@ async def get_healthcare_service(
     operation_id="patch_healthcare_service",
     summary="Update a HealthcareService resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every supplied "
-        "sub-resource list (identifier, category, type, specialty, location, telecom, "
-        "coverageArea, serviceProvisionCode, eligibility, program, characteristic, "
-        "communication, referralMethod, availableTime, notAvailable, endpoint — even `[]`) "
-        "atomically replaces the corresponding rows; omitted lists are left untouched. "
-        "`provided_by` may be set to null to clear the providing-organization link — rejected "
-        "with 422 if the referenced organization doesn't exist. "
-        "Scoped to the caller's own org — patch_healthcare_service() raises NotFoundError "
-        "(404, not 403 — avoids leaking that a healthcare service with this id exists in "
-        "another org) if actor.org_id doesn't match. " + _CONTENT_NEG
+        "The request body is a partial FHIR R4 HealthcareService (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. Every supplied "
+        "list (identifier, category, type, specialty, location, telecom, coverageArea, eligibility, "
+        "program, characteristic, availableTime, notAvailable, endpoint, ... — even `[]`) atomically "
+        "replaces the stored entries, a supplied `providedBy` replaces the whole Reference, and `null` "
+        "clears an element. "
+        "Scoped to the caller's own org — patch_healthcare_service() raises NotFoundError (404, not "
+        "403 — avoids leaking that a healthcare_service with this id exists in another org) if "
+        "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -143,150 +263,26 @@ async def patch_healthcare_service(
         ..., ge=1, description="Public healthcare_service identifier."
     ),
     actor: AuthUser = Depends(require_permission("healthcare_service", "update")),
-    healthcare_service_service: HealthcareServiceService = Depends(
-        get_healthcare_service_service
-    ),
+    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_healthcare_service()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a HealthcareService resource",
-        extra={
-            "event": "route.patch_healthcare_service",
-            "healthcare_service_id": healthcare_service_id,
-        },
+        extra={"event": "route.patch_healthcare_service", "healthcare_service_id": healthcare_service_id},
     )
     log_payload(logger, "healthcare_service.patch.payload", payload)
     updated = await healthcare_service_service.patch_healthcare_service(
-        healthcare_service_id, payload, actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        healthcare_service_service._to_fhir(updated),
-        healthcare_service_service._to_plain(updated),
-        request,
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_healthcare_services",
-    summary="List all HealthcareService resources",
-    description=(
-        "Returns a paginated list of HealthcareService resources, matching the search "
-        "parameter set documented at "
-        "https://www.medplum.com/docs/api/fhir/resources/healthcareservice. "
-        "Filter by `name` (partial match), `identifier` (exact business-identifier value), "
-        "`active`, `service-category`/`service-type`/`specialty`/`characteristic`/`program` "
-        "(exact code match), `organization` (FHIR reference string to the providing "
-        "Organization), `location`/`coverage-area`/`endpoint` (FHIR reference string, e.g. "
-        "`Location/230001` / `Endpoint/1`). Medplum's `offered-in` search parameter has no "
-        "equivalent here — `HealthcareService.offeredIn` doesn't exist in FHIR R4 (it's an "
-        "R4B/R5 addition), and this server targets R4 only. "
-        "Always scoped to the caller's own org (from the verified token) — `org_id` is "
-        "not a client-suppliable filter. "
-        "Sort with `sort` (e.g. `-name`); set `total_mode=none` to skip the COUNT(*) on large "
-        "result sets. " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_healthcare_services(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
-    active: bool | None = Query(None, description="Filter by active status."),
-    name: str | None = Query(
-        None, description="Partial match against the service name."
-    ),
-    identifier: str | None = Query(
-        None, description="Exact match on a business identifier value."
-    ),
-    category: str | None = Query(
-        None,
-        alias="service-category",
-        description="Exact match on a coded service category.",
-    ),
-    service_type: str | None = Query(
-        None,
-        alias="service-type",
-        description="Exact match on a coded service type.",
-    ),
-    specialty: str | None = Query(
-        None, description="Exact match on a coded specialty."
-    ),
-    characteristic: str | None = Query(
-        None, description="Exact match on a coded service characteristic."
-    ),
-    program: str | None = Query(
-        None, description="Exact match on a coded program supported by this service."
-    ),
-    provided_by: str | None = Query(
-        None,
-        alias="organization",
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string to the providing Organization, e.g. `Organization/190001`.",
-    ),
-    location: str | None = Query(
-        None,
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string, e.g. `Location/230001`.",
-    ),
-    coverage_area: str | None = Query(
-        None,
-        alias="coverage-area",
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string, e.g. `Location/230001`.",
-    ),
-    endpoint: str | None = Query(
-        None,
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string, e.g. `Endpoint/1`.",
-    ),
-    params: ListParams = Depends(),
-    healthcare_service_service: HealthcareServiceService = Depends(
-        get_healthcare_service_service
-    ),
-):
-    """Every filter param is forwarded straight through to the repository's
-    list() — see the route description for the full filter set. org_id is
-    always the caller's own (actor.org_id), never client-suppliable;
-    list_healthcare_services() raises PermissionDeniedError (403) outright
-    for an org-less token."""
-    logger.info(
-        "List all HealthcareService resources",
-        extra={"event": "route.list_healthcare_services"},
-    )
-    items, total = await healthcare_service_service.list_healthcare_services(
+        healthcare_service_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        active=active,
-        name=name,
-        identifier=identifier,
-        category=category,
-        service_type=service_type,
-        specialty=specialty,
-        characteristic=characteristic,
-        program=program,
-        provided_by=provided_by,
-        location=location,
-        coverage_area=coverage_area,
-        endpoint=endpoint,
-        limit=params.limit,
-        offset=params.offset,
-        sort=params.sort,
-        total_mode=params.total_mode,
+        body=await request.json(),
     )
-    return format_paginated_response(
-        [healthcare_service_service._to_fhir(hs) for hs in items],
-        [healthcare_service_service._to_plain(hs) for hs in items],
-        total,
-        params.limit,
-        params.offset,
-        request,
-    )
+    return fhir_response(healthcare_service_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -295,9 +291,9 @@ async def list_healthcare_services(
     operation_id="delete_healthcare_service",
     summary="Delete a HealthcareService resource",
     description=(
-        "Permanently deletes the HealthcareService and all associated sub-resources. "
+        "Permanently deletes the HealthcareService and its search-index rows. "
         "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
-        "healthcare service exists but belongs to a different org. Returns 204 on success."
+        "healthcare_service exists but belongs to a different org. Returns 204 on success."
     ),
     responses={**_ERR_NOT_FOUND},
 )
@@ -306,13 +302,10 @@ async def delete_healthcare_service(
         ..., ge=1, description="Public healthcare_service identifier."
     ),
     actor: AuthUser = Depends(require_permission("healthcare_service", "delete")),
-    healthcare_service_service: HealthcareServiceService = Depends(
-        get_healthcare_service_service
-    ),
+    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
-    """delete_healthcare_service() raises NotFoundError (404) if the id
-    doesn't exist at all, or if it exists but belongs to a different org.
-    Delete cascades to every sub-resource row."""
+    """delete_healthcare_service() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a HealthcareService resource",
         extra={
@@ -320,6 +313,4 @@ async def delete_healthcare_service(
             "healthcare_service_id": healthcare_service_id,
         },
     )
-    await healthcare_service_service.delete_healthcare_service(
-        healthcare_service_id, org_id=actor.org_id
-    )
+    await healthcare_service_service.delete_healthcare_service(healthcare_service_id, org_id=actor.org_id)

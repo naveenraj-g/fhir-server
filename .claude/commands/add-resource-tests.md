@@ -16,7 +16,7 @@ Aim: every endpoint at least once, every search parameter and every modifier it 
 - `app/repository/<resource>/_indexer.py` — what each stored shape turns into in the index.
 - `app/routers/<resource>/core.py` — routes, `/me` if present.
 - The R4 resource page's **Search Parameters** table (`https://www.hl7.org/fhir/R4/<resource>.html#search`) and `https://www.hl7.org/fhir/R4/search.html` for what each type must match (string = case/accent-insensitive **starts-with**, `:exact`, `:contains`; token forms; reference forms; date prefixes).
-- `configs/config.yaml` — `routes.enabled` must list the resource or every request 404s; `fhir_validation.enabled` ships `false`.
+- `configs/config.yaml` — `routes.enabled` must list the resource or every request 404s; `fhir_validation.enabled` is a local switch (it can be `false`, which skips base R4 validation).
 
 ## Files
 
@@ -49,7 +49,7 @@ Autouse fixture overriding `get_current_user` with `make_test_user(permissions=[
 - **Auth:** missing scope → 403; org-less token → 403 on create/search/read (override `get_current_user` with an `async def _no_org(request: Request)` — **annotate `request: Request`** or FastAPI treats it as a query parameter); cross-org GET/PATCH/DELETE → 404 (never 403); cross-tenant search isolation.
 
 ### The validator switch
-`configs/config.yaml` ships `fhir_validation.enabled: false`, which skips base R4 validation. A test that asserts "a non-FHIR key / bad datatype is rejected" must turn it on itself:
+`configs/config.yaml`'s `fhir_validation.enabled` is a switch that may be `false` locally, which skips base R4 validation entirely. A test that asserts "a non-FHIR key / bad datatype is rejected" must turn it on itself:
 
 ```python
 @pytest.fixture

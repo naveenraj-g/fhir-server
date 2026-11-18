@@ -1,6 +1,14 @@
 """FHIR R4 conformance for `to_fhir_healthcare_service()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+HealthcareService is stored Medplum-style (like Organization/Practitioner):
+the resource lives whole in HealthcareServiceModel.content, and
+to_fhir_healthcare_service() only stamps `id` and `meta` onto it. So what can
+go wrong on the read side is that stamping (e.g. a malformed meta extension)
+or a stored document the server returns that isn't valid R4 — each case below
+is a `content` document as the write path would store it, run through the
+real read mapper.
 """
 
 import datetime as dt
@@ -8,35 +16,8 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.healthcare_service import to_fhir_healthcare_service
-from app.models.healthcare_service import (
-    HealthcareServiceAvailableTime,
-    HealthcareServiceCategory,
-    HealthcareServiceCategoryCoding,
-    HealthcareServiceCharacteristic,
-    HealthcareServiceCharacteristicCoding,
-    HealthcareServiceCommunication,
-    HealthcareServiceCommunicationCoding,
-    HealthcareServiceCoverageArea,
-    HealthcareServiceEligibility,
-    HealthcareServiceEligibilityCodeCoding,
-    HealthcareServiceEndpoint,
-    HealthcareServiceIdentifier,
-    HealthcareServiceIdentifierTypeCoding,
-    HealthcareServiceLocation,
-    HealthcareServiceModel,
-    HealthcareServiceNotAvailable,
-    HealthcareServiceProgram,
-    HealthcareServiceProgramCoding,
-    HealthcareServiceReferralMethod,
-    HealthcareServiceReferralMethodCoding,
-    HealthcareServiceServiceProvisionCode,
-    HealthcareServiceServiceProvisionCodeCoding,
-    HealthcareServiceSpecialty,
-    HealthcareServiceSpecialtyCoding,
-    HealthcareServiceTelecom,
-    HealthcareServiceType,
-    HealthcareServiceTypeCoding,
-)
+from app.models.healthcare_service import HealthcareServiceModel
+from tests.integration.healthcare_service.support import FULL
 
 from .support import assert_valid, fhir_json_text
 
@@ -47,408 +28,150 @@ healthcare_service_pb2 = pytest.importorskip(
 
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
-_CHILD_ATTRS = (
-    "identifiers", "categories", "types", "specialties", "locations",
-    "telecoms", "coverage_areas", "service_provision_codes", "eligibilities",
-    "programs", "characteristics", "communications", "referral_methods",
-    "available_times", "not_available", "endpoints",
-)
+
+def _stored(document: dict) -> dict:
+    """What the write path stores: everything but resourceType/id/meta."""
+    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
 
 
-def _hs(**overrides) -> HealthcareServiceModel:
-    """A HealthcareService carrying only the columns the model marks NOT
-    NULL, plus empty sub-resource lists (nothing is lazy-loadable off a
-    session here)."""
+def _service(content: dict, **overrides) -> HealthcareServiceModel:
     fields = {
         "healthcare_service_id": 150001,
         "tenant_id": "org-test",
-        "name": "South Wing Physio",
         "created_by": "u-test",
         "created_at": D,
+        "content": content,
     }
     fields.update(overrides)
-    hs = HealthcareServiceModel(**fields)
-    for attr in _CHILD_ATTRS:
-        if getattr(hs, attr, None) is None:
-            setattr(hs, attr, [])
-    return hs
+    return HealthcareServiceModel(**fields)
 
 
-def _with(attr, *rows) -> HealthcareServiceModel:
-    hs = _hs()
-    setattr(hs, attr, list(rows))
-    return hs
-
-
-def _identifier(**kw) -> HealthcareServiceIdentifier:
-    i = HealthcareServiceIdentifier(
-        **{
-            "id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
-            "value": "HS-1", "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
-    if i.type_codings is None:
-        i.type_codings = []
-    return i
-
-
-# Each CodeableConcept-list field (category/type/specialty/
-# serviceProvisionCode/program/characteristic/communication/referralMethod)
-# is now a real 0..* child table with its own dedicated Coding grandchild
-# table — this maps a parent model class to its matching Coding class so
-# one `_cc()` helper still covers all eight.
-_CODING_CLASS = {
-    HealthcareServiceCategory: HealthcareServiceCategoryCoding,
-    HealthcareServiceType: HealthcareServiceTypeCoding,
-    HealthcareServiceSpecialty: HealthcareServiceSpecialtyCoding,
-    HealthcareServiceServiceProvisionCode: HealthcareServiceServiceProvisionCodeCoding,
-    HealthcareServiceProgram: HealthcareServiceProgramCoding,
-    HealthcareServiceCharacteristic: HealthcareServiceCharacteristicCoding,
-    HealthcareServiceCommunication: HealthcareServiceCommunicationCoding,
-    HealthcareServiceReferralMethod: HealthcareServiceReferralMethodCoding,
-}
-
-
-def _cc(model_cls, *, codings=None, **kw):
-    coding_cls = _CODING_CLASS[model_cls]
-    if codings is None:
-        codings = [
-            coding_cls(
-                id=1,
-                system="http://terminology.hl7.org/CodeSystem/service-category",
-                code="8", display="Counselling",
-                created_by="u-test", created_at=D,
-            )
-        ]
-    return model_cls(
-        **{
-            "id": 1, "tenant_id": "org-test", "codings": codings,
-            "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
-
-
-# Each case is one distinct shape the mapper can emit. Anything with a
-# conditional branch in app/fhir/mappers/healthcare_service/fhir.py should
-# appear here.
 CASES = {
-    "minimal": _hs(),
-
-    "active_true": _hs(active=True),
-    "active_false": _hs(active=False),
-
-    "provided_by_resolved": _hs(
-        provided_by_type="Organization", provided_by_id=190001,
-        provided_by_display="General Hospital",
+    "minimal": _service({"name": "Cardiology"}),
+    "active_false": _service({"active": False, "name": "Cardiology"}),
+    "updated_by_and_updated_at": _service({"name": "Cardiology"}, updated_by="u-other", updated_at=D),
+    "provided_by": _service(
+        {
+            "providedBy": {
+                "reference": "Organization/190001",
+                "type": "Organization",
+                "display": "General Hospital",
+                "identifier": {"system": "urn:org-registry", "value": "ORG-9"},
+            }
+        }
     ),
-    "provided_by_identifier_fallback": _hs(
-        provided_by_identifier_system="urn:org-registry",
-        provided_by_identifier_value="ORG-9",
-        provided_by_identifier_use="official",
+    "category_type_specialty": _service(
+        {
+            "category": [{"coding": [{"code": "35", "display": "Specialist Medical"}], "text": "Specialist"}],
+            "type": [{"coding": [{"code": "124"}]}],
+            "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
+        }
     ),
-
-    "comment": _hs(comment="Referral required for new patients."),
-    "extra_details": _hs(extra_details="# Markdown details\n\nMore info here."),
-
-    "photo_full": _hs(
-        photo_content_type="image/png",
-        photo_language="en",
-        photo_data="YWJjMTIz",
-        photo_url="https://example.org/photo.png",
-        photo_size=1024,
-        photo_hash="ZGVhZGJlZWY=",
-        photo_title="Clinic photo",
-        photo_creation=D,
+    "locations_and_coverage_area": _service(
+        {
+            "location": [{"reference": "Location/230001", "display": "North Wing"}],
+            "coverageArea": [{"reference": "Location/230002"}],
+        }
     ),
-
-    "appointment_required_true": _hs(appointment_required=True),
-    "appointment_required_false": _hs(appointment_required=False),
-    "availability_exceptions": _hs(
-        availability_exceptions="Closed on public holidays."
+    "identifier_with_type_and_assigner": _service(
+        {
+            "identifier": [
+                {
+                    "use": "official",
+                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "SVC"}]},
+                    "system": "https://fhir-server.dev/fhir/identifier-system/hs-ids",
+                    "value": "HS-1",
+                    "assigner": {"reference": "Organization/190001"},
+                }
+            ]
+        }
     ),
-
-    "identifier_with_type_and_period": _with(
-        "identifiers",
-        _identifier(
-            use="official",
-            type_codings=[
-                HealthcareServiceIdentifierTypeCoding(
-                    id=1,
-                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
-                    version="2.9", code="PRN", display="Provider number",
-                    user_selected=True, created_by="u-test", created_at=D,
-                )
-            ],
-            type_text="Provider number",
-            period_start=D,
-            period_end=D,
-        ),
+    "telecom_and_photo": _service(
+        {
+            "telecom": [{"system": "phone", "value": "555-0100", "use": "work", "rank": 1}],
+            "photo": {"url": "https://fhir-server.dev/fhir/assets/photo.png", "title": "Front desk"},
+        }
     ),
-    "identifier_assigner_resolved": _with(
-        "identifiers",
-        _identifier(
-            assigner_type="Organization", assigner_id=190001, assigner_display="Acme"
-        ),
+    "eligibility": _service({"eligibility": [{"code": {"text": "Over 18"}, "comment": "Adults only"}]}),
+    "available_time": _service(
+        {
+            "availableTime": [
+                {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"},
+                {"daysOfWeek": ["sat"], "allDay": True},
+            ]
+        }
     ),
-    "identifier_assigner_fallback": _with(
-        "identifiers",
-        _identifier(
-            assigner_identifier_system="urn:external-registry",
-            assigner_identifier_value="EXTERNAL-1",
-            assigner_identifier_use="official",
-        ),
+    "not_available": _service(
+        {
+            "notAvailable": [
+                {"description": "Closed", "during": {"start": "2026-12-24T00:00:00Z", "end": "2026-12-26T00:00:00Z"}}
+            ]
+        }
     ),
-
-    "category_with_text": _with(
-        "categories", _cc(HealthcareServiceCategory, text="Counselling")
+    "program_characteristic_communication_referral": _service(
+        {
+            "serviceProvisionCode": [{"coding": [{"code": "free"}]}],
+            "program": [{"coding": [{"code": "diabetes"}]}],
+            "characteristic": [{"coding": [{"code": "wheelchair"}]}],
+            "communication": [{"coding": [{"code": "en"}], "text": "English"}],
+            "referralMethod": [{"coding": [{"code": "phone"}]}],
+        }
     ),
-    "type_with_text": _with(
-        "types",
-        _cc(
-            HealthcareServiceType,
-            codings=[
-                HealthcareServiceTypeCoding(
-                    id=1, system="http://snomed.info/sct", code="394814009",
-                    display="General practice", user_selected=True,
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="General practice",
-        ),
+    "scalars": _service(
+        {
+            "comment": "Heart care",
+            "extraDetails": "More details",
+            "appointmentRequired": True,
+            "availabilityExceptions": "Closed on public holidays",
+        }
     ),
-    "specialty_with_text": _with(
-        "specialties",
-        _cc(
-            HealthcareServiceSpecialty,
-            codings=[
-                HealthcareServiceSpecialtyCoding(
-                    id=1, system="http://snomed.info/sct", code="408443003",
-                    display="General medical practice",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="General medical practice",
-        ),
+    "endpoint": _service({"endpoint": [{"identifier": {"system": "urn:ep", "value": "EP-1"}}]}),
+    "extension": _service(
+        {"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}
     ),
-
-    "location_resolved": _with(
-        "locations",
-        HealthcareServiceLocation(
-            id=1, tenant_id="org-test", reference_type="Location", reference_id=230001,
-            reference_display="Main Building", created_by="u-test", created_at=D,
-        ),
-    ),
-    "location_identifier_fallback": _with(
-        "locations",
-        HealthcareServiceLocation(
-            id=1, tenant_id="org-test", reference_identifier_system="urn:loc-registry",
-            reference_identifier_value="LOC-9", created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "telecoms_with_rank_and_period": _with(
-        "telecoms",
-        HealthcareServiceTelecom(
-            id=1, tenant_id="org-test", system="phone", value="2328", use="work",
-            rank=1, period_start=D, period_end=D, created_by="u-test", created_at=D,
-        ),
-        HealthcareServiceTelecom(
-            id=2, tenant_id="org-test", system="email", value="a@b.example",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "coverage_area_resolved": _with(
-        "coverage_areas",
-        HealthcareServiceCoverageArea(
-            id=1, tenant_id="org-test", reference_type="Location", reference_id=230001,
-            reference_display="Downtown catchment", created_by="u-test", created_at=D,
-        ),
-    ),
-    "coverage_area_identifier_fallback": _with(
-        "coverage_areas",
-        HealthcareServiceCoverageArea(
-            id=1, tenant_id="org-test", reference_identifier_system="urn:loc-registry",
-            reference_identifier_value="LOC-8", created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "service_provision_code_with_text": _with(
-        "service_provision_codes",
-        _cc(
-            HealthcareServiceServiceProvisionCode,
-            codings=[
-                HealthcareServiceServiceProvisionCodeCoding(
-                    id=1,
-                    system="http://terminology.hl7.org/CodeSystem/service-provision-conditions",
-                    code="free", display="Free",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="Free",
-        ),
-    ),
-
-    "eligibility_code_and_comment": _with(
-        "eligibilities",
-        HealthcareServiceEligibility(
-            id=1, tenant_id="org-test",
-            code_codings=[
-                HealthcareServiceEligibilityCodeCoding(
-                    id=1,
-                    system="http://terminology.hl7.org/CodeSystem/eligibility",
-                    code="ind", display="Indigenous population",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            code_text="Indigenous population",
-            comment="Must provide proof of eligibility.",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "eligibility_comment_only": _with(
-        "eligibilities",
-        HealthcareServiceEligibility(
-            id=1, tenant_id="org-test", comment="Referral required.",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "program_with_text": _with(
-        "programs",
-        _cc(
-            HealthcareServiceProgram,
-            codings=[
-                HealthcareServiceProgramCoding(
-                    id=1, system="http://example.org/programs", code="mh",
-                    display="Mental Health", created_by="u-test", created_at=D,
-                )
-            ],
-            text="Mental Health",
-        ),
-    ),
-    "characteristic_with_text": _with(
-        "characteristics",
-        _cc(
-            HealthcareServiceCharacteristic,
-            codings=[
-                HealthcareServiceCharacteristicCoding(
-                    id=1, system="http://example.org/characteristics",
-                    code="wheelchair", display="Wheelchair accessible",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="Wheelchair accessible",
-        ),
-    ),
-    "communication_with_text": _with(
-        "communications",
-        _cc(
-            HealthcareServiceCommunication,
-            codings=[
-                HealthcareServiceCommunicationCoding(
-                    id=1, system="urn:ietf:bcp:47", code="en", display="English",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="English",
-        ),
-    ),
-    "referral_method_with_text": _with(
-        "referral_methods",
-        _cc(
-            HealthcareServiceReferralMethod,
-            codings=[
-                HealthcareServiceReferralMethodCoding(
-                    id=1, system="http://example.org/referral-method",
-                    code="phone", display="Phone",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="Phone",
-        ),
-    ),
-
-    "available_time_all_day_no_times": _with(
-        "available_times",
-        HealthcareServiceAvailableTime(
-            id=1, tenant_id="org-test", days_of_week=["sat", "sun"], all_day=True,
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "available_time_all_seven_days_edge_times": _with(
-        "available_times",
-        HealthcareServiceAvailableTime(
-            id=1, tenant_id="org-test",
-            days_of_week=["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-            all_day=False, available_start_time=dt.time(0, 0),
-            available_end_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "not_available_description_only": _with(
-        "not_available",
-        HealthcareServiceNotAvailable(
-            id=1, tenant_id="org-test", description="Closed for renovations.",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "not_available_with_during": _with(
-        "not_available",
-        HealthcareServiceNotAvailable(
-            id=1, tenant_id="org-test", description="Annual maintenance.",
-            during_start=D, during_end=D, created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "endpoint_resolved": _with(
-        "endpoints",
-        HealthcareServiceEndpoint(
-            id=1, tenant_id="org-test", reference_type="Endpoint", reference_id=7,
-            reference_display="Main endpoint", created_by="u-test", created_at=D,
-        ),
-    ),
-    "endpoint_identifier_fallback": _with(
-        "endpoints",
-        HealthcareServiceEndpoint(
-            id=1, tenant_id="org-test", reference_identifier_system="urn:ext-endpoint",
-            reference_identifier_value="EP-1", created_by="u-test", created_at=D,
-        ),
-    ),
+    "full_payload": _service(_stored(FULL)),
 }
 
 
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_healthcare_service_mapper_emits_valid_fhir_r4(case):
-    assert_valid(
-        healthcare_service_pb2.HealthcareService, to_fhir_healthcare_service(CASES[case])
-    )
+    assert_valid(healthcare_service_pb2.HealthcareService, to_fhir_healthcare_service(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = _stored(FULL)
+    out = to_fhir_healthcare_service(_service(content))
+    assert out["resourceType"] == "HealthcareService"
+    assert out["id"] == "150001"
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
 # If google-fhir-r4 ever stops validating — a version bump, a changed API, a
 # silently-swallowed error — every test above would keep passing while checking
 # nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array where
+# the spec says 0..1, e.g. `photo: [{...}]`.)
+
 
 @pytest.mark.parametrize(
     "label,broken",
     [
-        ("bad daysOfWeek code", {"availableTime": [{"daysOfWeek": ["funday"]}]}),
-        ("availableStartTime not a time", {"availableTime": [{"availableStartTime": "9am"}]}),
-        ("category as strings not CodeableConcepts", {"category": ["counselling"]}),
-        ("misspelled element", {"providedBy2": {"reference": "Organization/1"}}),
-        ("notAvailable missing required description", {"notAvailable": [{"during": {"start": "2026-01-01"}}]}),
         ("active as string not boolean", {"active": "yes"}),
-        ("identifier as string not object", {"identifier": ["HS-1"]}),
+        ("misspelled element", {"nam3": "Cardiology"}),
+        ("name as object not string", {"name": {"text": "Cardiology"}}),
+        ("category as strings not CodeableConcepts", {"category": ["35"]}),
+        ("providedBy as string not Reference", {"providedBy": "Organization/190001"}),
+        ("location as string not Reference", {"location": ["Location/230001"]}),
+        ("day of week outside the required binding", {"availableTime": [{"daysOfWeek": ["funday"]}]}),
+        ("notAvailable without its required description", {"notAvailable": [{"during": {"start": "2026-01-01T00:00:00Z"}}]}),
+        ("appointmentRequired as string", {"appointmentRequired": "yes"}),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {
-        "resourceType": "HealthcareService", "id": "150001",
-        "name": "South Wing Physio", **broken,
-    }
+    payload = {"resourceType": "HealthcareService", "id": "150001", "active": True, "name": "Cardiology", **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(
             fhir_json_text(payload), healthcare_service_pb2.HealthcareService, validate=True

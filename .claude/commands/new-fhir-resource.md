@@ -57,6 +57,8 @@ Never `https://www.hl7.org/fhir/<resource>.html` (that is R5). `CodeableReferenc
 | number, quantity, uri, composite | **not in the engine yet** — add a builder to `app/fhir/search/sql.py` + parser to `values.py` first, with tests |
 | `near`-style special | a custom matcher in the resource's `search.py` (see Location `near`) |
 
+> **Several parameters of the same shape?** Use **one shared table with a `param` column** instead of one table each: HealthcareService keeps its five CodeableConcept token parameters in `healthcare_service_token` and its three 0..* reference parameters in `healthcare_service_reference`. Build the rows with `functools.partial(Model, param="...")`.
+
 4. **Everything else is not modelled at all.** No columns for non-searched elements, no `extension` column (it lives in `content`), no per-row audit columns on index tables, no DB `CHECK`/`UNIQUE` constraints (R4 rules are the validator's job; identifier uniqueness is a profile decision).
 5. Nullability follows real cardinality — never a stricter-than-spec `NOT NULL`. (Index columns are all nullable; only `content` is `NOT NULL`.)
 6. State which references the resource holds to other resources, and whether any resource that points *at* this one is already on the engine (that decides `_include` / `_revinclude` targets).
@@ -139,7 +141,7 @@ uv run pytest tests/integration/<resource> tests/conformance/test_<resource>_fhi
 ```
 - Open `/openapi.json`: the search parameters must be listed on `GET /` and `POST /_search`, the create body must show the FHIR shape, and there must be no duplicate-operation-id warnings (`warnings.simplefilter("error")` while calling `app.openapi()` finds them).
 - `GET /api/fhir/v1/metadata` lists the resource with every search parameter.
-- `configs/config.yaml` ships `fhir_validation.enabled: false`, which skips base validation entirely. Tests that assert "non-FHIR key → 422" must switch the native validator on themselves (a `native_validation` monkeypatch fixture, as in `tests/integration/practitioner/test_core.py`).
+- `configs/config.yaml`'s `fhir_validation.enabled` can be `false` locally, which skips base validation entirely, so never rely on it being on. Tests that assert "non-FHIR key → 422" must switch the native validator on themselves (a `native_validation` monkeypatch fixture, as in `tests/integration/practitioner/test_core.py`).
 - Migration: verified on a scratch DB as described in B.
 
 ---

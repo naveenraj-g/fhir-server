@@ -43,6 +43,8 @@ Every searched string is stored twice: **as written** (answers `:exact`, which i
 | number / quantity / uri / composite | the engine has no builder yet — add one to `app/fhir/search/sql.py` + `values.py` (with tests) before modelling the column |
 | `near`-style special | store the primitives it needs (lat/long columns) and write a custom matcher |
 
+**Several parameters with the same shape → one shared table with a `param` column** (HealthcareService: `healthcare_service_token` for its five CodeableConcept parameters, `healthcare_service_reference` for `location` / `coverage-area` / `endpoint`). Each query adds `param == '<name>'` to its `EXISTS`; there is nothing else to keep in sync. A reference table's `reference_type` can then be a plain string (the value is fixed by `param`) rather than a Postgres enum.
+
 Chained parameters (`partof.name`) and hierarchy (`:above`/`:below`) need **no extra storage**: they join the same index through the registry (`chain=`, `hierarchy=`; Organization's recursive CTE is the example).
 
 ## Step 4 — Rules for every index table

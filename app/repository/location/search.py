@@ -415,6 +415,21 @@ async def _revinclude_partof(session, ctx, locations):
     return await _fetch(session, select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.part_of_id.in_(ids)))
 
 
+def _revinclude_healthcare_services(param: str):
+    """_revinclude=HealthcareService:<param> — HealthcareServices whose
+    `location` / `coverageArea` points at one of these locations."""
+
+    async def fetch(session, ctx, locations):
+        from app.models.healthcare_service import HealthcareServiceModel as HS
+        from app.models.healthcare_service import HealthcareServiceReference as Ref
+
+        ids = {loc.location_id for loc in locations}
+        pks = select(Ref.healthcare_service_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
+        return await _fetch(session, select(HS).where(HS.tenant_id == ctx.tenant_id, HS.id.in_(pks)))
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Location rows — for
     Location searches and for Locations included by others."""
@@ -562,7 +577,19 @@ def location_search() -> SearchRegistry:
             # Endpoint isn't a resource on this server: accepted, adds nothing.
             IncludeTarget("Location", "endpoint", "Endpoint"),
         ),
-        revincludes=(IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),),
+        revincludes=(
+            IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),
+            IncludeTarget(
+                "HealthcareService", "location", "Location", _revinclude_healthcare_services("location"), reverse=True
+            ),
+            IncludeTarget(
+                "HealthcareService",
+                "coverage-area",
+                "Location",
+                _revinclude_healthcare_services("coverage-area"),
+                reverse=True,
+            ),
+        ),
         default_sort=lambda: [Loc.location_id.desc()],
         entry_extensions=near_distance_extensions,
     )
