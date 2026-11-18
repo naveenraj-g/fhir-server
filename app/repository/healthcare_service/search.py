@@ -246,6 +246,22 @@ def _revinclude_practitioner_roles(param: str, key):
     return fetch
 
 
+def _revinclude_schedules(resource_type: str, key):
+    """_revinclude=Schedule:actor — schedules with an actor of this type
+    pointing at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.schedule import ScheduleActor as A
+        from app.models.schedule import ScheduleModel as S
+
+        ids = {key(r) for r in rows}
+        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
+        return list((await session.execute(stmt)).scalars().all())
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders HealthcareService rows."""
     from app.fhir.mappers.healthcare_service import to_fhir_healthcare_service
@@ -391,6 +407,10 @@ def healthcare_service_search() -> SearchRegistry:
                 "HealthcareService",
                 _revinclude_practitioner_roles("service", lambda s: s.healthcare_service_id),
                 reverse=True,
+            ),
+            IncludeTarget(
+                "Schedule", "actor", "HealthcareService",
+                _revinclude_schedules("HealthcareService", lambda s: s.healthcare_service_id), reverse=True,
             ),
         ),
         default_sort=lambda: [HS.healthcare_service_id.desc()],

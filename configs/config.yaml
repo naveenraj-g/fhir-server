@@ -259,9 +259,9 @@ routes:
     # - questionnaire_response
     # - related_person
     # - risk_assessment
-    # - schedule
+    - schedule
     # - service_request
-    # - slot
+    - slot
     # - specimen
     # - specimen_definition
     # - task

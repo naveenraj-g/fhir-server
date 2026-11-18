@@ -280,6 +280,22 @@ def _include_via_reference_table(param: str, model_path: str, model: str, id_col
     return fetch
 
 
+def _revinclude_schedules(resource_type: str, key):
+    """_revinclude=Schedule:actor — schedules with an actor of this type
+    pointing at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.schedule import ScheduleActor as A
+        from app.models.schedule import ScheduleModel as S
+
+        ids = {key(r) for r in rows}
+        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
+        return list((await session.execute(stmt)).scalars().all())
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders PractitionerRole rows —
     for PractitionerRole searches and for roles included by others."""
@@ -443,8 +459,12 @@ def practitioner_role_search() -> SearchRegistry:
                 _include_via_reference_table("endpoint", "app.models.endpoint", "EndpointModel", "endpoint_id"),
             ),
         ),
-        # Nothing that references a PractitionerRole is on the engine yet
-        # (Schedule, Appointment, ... will add their _revinclude here).
-        revincludes=(),
+        # Schedule.actor points here (Appointment, ... will add theirs when rebuilt).
+        revincludes=(
+            IncludeTarget(
+                "Schedule", "actor", "PractitionerRole",
+                _revinclude_schedules("PractitionerRole", lambda r: r.practitioner_role_id), reverse=True,
+            ),
+        ),
         default_sort=lambda: [PR.practitioner_role_id.desc()],
     )

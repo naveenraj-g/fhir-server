@@ -245,6 +245,22 @@ async def _revinclude_practitioner_role(session, ctx, practitioners):
     return list((await session.execute(stmt)).scalars().all())
 
 
+def _revinclude_schedules(resource_type: str, key):
+    """_revinclude=Schedule:actor — schedules with an actor of this type
+    pointing at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.schedule import ScheduleActor as A
+        from app.models.schedule import ScheduleModel as S
+
+        ids = {key(r) for r in rows}
+        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
+        return list((await session.execute(stmt)).scalars().all())
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Practitioner rows."""
     from app.fhir.mappers.practitioner import to_fhir_practitioner
@@ -497,6 +513,11 @@ def practitioner_search() -> SearchRegistry:
         revincludes=(
             IncludeTarget(
                 "PractitionerRole", "practitioner", "Practitioner", _revinclude_practitioner_role, reverse=True
+            ),
+            # Schedule.actor points here.
+            IncludeTarget(
+                "Schedule", "actor", "Practitioner",
+                _revinclude_schedules("Practitioner", lambda p: p.practitioner_id), reverse=True,
             ),
         ),
         default_sort=lambda: [Prac.practitioner_id.desc()],

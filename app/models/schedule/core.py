@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Sequence, Text, text
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Index, Sequence
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -10,43 +10,50 @@ schedule_id_seq = Sequence(
 )
 
 
-# ---------------------------------------------------------------------------
-# Main table
-# ---------------------------------------------------------------------------
-
-
 class ScheduleModel(TenantAuditMixin, Base):
-    """FHIR R4 Schedule — https://www.hl7.org/fhir/R4/schedule.html
+    """FHIR R4 Schedule — Medplum-style storage, same as Organization,
+    Location, Practitioner, HealthcareService, Endpoint and PractitionerRole.
 
-    A container for slots of time that may be available for booking
-    appointments.
+    `content` (JSONB) holds the whole resource exactly as validated on
+    write; it is the single source of truth, and GET serves it back as-is
+    (`id`/`meta` are stamped on at read time from this row's own columns —
+    see app.fhir.mappers.schedule). Nothing else in this table or its child
+    tables is a second copy of the resource: every other column exists only
+    because a FHIR R4 Schedule search parameter filters on it
+    (https://www.hl7.org/fhir/R4/schedule.html#search), and is derived from
+    `content` on every write by app.repository.schedule._indexer.
 
-    Modeled to the same conventions as Organization/Location/
-    HealthcareService/PractitionerRole: BigInteger internal PK + public
-    sequence ID, TenantAuditMixin (tenant_id, not a hand-declared org_id),
-    flattened references (`{prefix}_type`/`_id`/`_display`, storing the
-    target's PUBLIC sequence ID with no ForeignKey/relationship — see
-    CLAUDE.md's FHIR DB Model Design section) with an Identifier
-    logical-reference fallback where the target may live outside this
-    system, and every CodeableConcept's coding[] as a real 0..* child/
-    grandchild table rather than a single flattened coding (see
-    identifier.py/service_category.py/service_type.py/specialty.py).
+    Search parameter -> storage:
+      active            -> active (0..1, column)
+      date              -> planning_horizon_start / planning_horizon_end
+                           (0..1 Period, two columns; matched as a range — see
+                           app.fhir.search.sql.period_match)
+      identifier        -> ScheduleIdentifier (0..*)
+      service-category,
+      service-type,
+      specialty         -> ScheduleToken (0..*, one row per coding, `param`
+                           says which search parameter it feeds)
+      actor             -> ScheduleActor (1..*, a Reference to one of seven
+                           resource types — `reference_type` says which)
+      _id               -> schedule_id;  _lastUpdated -> updated_at/created_at
 
-    This resource IS part of the JWT auth rollout (see CLAUDE.md's
-    Multi-Tenancy & Ownership section) — org_id comes from the verified
-    JWT's activeOrganizationId claim, never a client-suppliable field.
-    There is deliberately no user_id: like Organization/Location/
-    HealthcareService/PractitionerRole, a Schedule is a shared
-    tenant-level entity, not scoped to one end user's own account.
-    """
+    `comment` and `extension` have no search parameter and live only in
+    `content`.
+
+    `planning_horizon_start` is the first instant the period covers and
+    `planning_horizon_end` the first instant *after* it (see
+    app.repository._content_index.period_bounds), NULL meaning open.
+
+    No `user_id`: a Schedule is a shared tenant-level entity. No DB-level
+    CHECK constraints — every R4 rule (e.g. `actor` is 1..*) is enforced by the
+    FHIR validator before anything is written."""
 
     __tablename__ = "schedule"
+    __table_args__ = (
+        Index("ix_schedule_planning_horizon", "planning_horizon_start", "planning_horizon_end"),
+    )
 
-    # Internal PK — never exposed. BigInteger so every child table's FK shares
-    # the type.
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-
-    # Public ID — used in all API responses and FHIR output
     schedule_id = Column(
         BigInteger,
         schedule_id_seq,
@@ -56,61 +63,20 @@ class ScheduleModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    # ── active (0..1 boolean) ─────────────────────────────────────────────────
-    # Absent means unknown, not false — nullable with no default, same
-    # reasoning as OrganizationModel.active. Was NOT NULL with a
-    # Python-level default=False here, citing "historical precedent" from
-    # before the mass resource cleanup — that precedent was itself a spec
-    # deviation (Schedule.active is 0..1), not a documented exception, so
-    # it isn't preserved. HealthcareServiceModel.active had the identical
-    # issue, fixed the same way.
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
+    # ── Search index (derived from `content`) ─────────────────────────────
     active = Column(Boolean, nullable=True)
-
-    # ── planningHorizon (0..1 Period) ─────────────────────────────────────────
-
     planning_horizon_start = Column(DateTime(timezone=True), nullable=True)
     planning_horizon_end = Column(DateTime(timezone=True), nullable=True)
 
-    # ── comment (0..1 string) ─────────────────────────────────────────────────
-
-    comment = Column(Text, nullable=True)
-
-    # Resource-level extension support (0..* Extension, inherited from the
-    # base DomainResource type — not Schedule-specific). Raw
-    # [{url, valueType, value}, ...]; validated against registered
-    # extension definitions by the (not-yet-built) profile pipeline, not by
-    # the database. Same shape as PractitionerModel.extension.
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
-    # come from TenantAuditMixin above — no hand-declared org_id here, same
-    # as OrganizationModel/LocationModel/HealthcareServiceModel/PractitionerRoleModel.
-
-    # ── Relationships ─────────────────────────────────────────────────────────
-
     identifiers = relationship(
-        "ScheduleIdentifier",
-        back_populates="schedule",
-        cascade="all, delete-orphan",
+        "ScheduleIdentifier", back_populates="schedule", cascade="all, delete-orphan"
     )
-    service_categories = relationship(
-        "ScheduleServiceCategory",
-        back_populates="schedule",
-        cascade="all, delete-orphan",
-    )
-    service_types = relationship(
-        "ScheduleServiceType",
-        back_populates="schedule",
-        cascade="all, delete-orphan",
-    )
-    specialties = relationship(
-        "ScheduleSpecialty",
-        back_populates="schedule",
-        cascade="all, delete-orphan",
+    tokens = relationship(
+        "ScheduleToken", back_populates="schedule", cascade="all, delete-orphan"
     )
     actors = relationship(
-        "ScheduleActor",
-        back_populates="schedule",
-        cascade="all, delete-orphan",
+        "ScheduleActor", back_populates="schedule", cascade="all, delete-orphan"
     )

@@ -1,22 +1,15 @@
 from .actor import ScheduleActor
 from .core import ScheduleModel, schedule_id_seq
 from .enums import ScheduleActorReferenceType
-from .identifier import ScheduleIdentifier, ScheduleIdentifierTypeCoding
-from .service_category import ScheduleServiceCategory, ScheduleServiceCategoryCoding
-from .service_type import ScheduleServiceType, ScheduleServiceTypeCoding
-from .specialty import ScheduleSpecialty, ScheduleSpecialtyCoding
+from .identifier import ScheduleIdentifier
+from .token import TOKEN_PARAMS, ScheduleToken
 
 __all__ = [
+    "TOKEN_PARAMS",
     "ScheduleActor",
     "ScheduleActorReferenceType",
     "ScheduleIdentifier",
-    "ScheduleIdentifierTypeCoding",
     "ScheduleModel",
-    "ScheduleServiceCategory",
-    "ScheduleServiceCategoryCoding",
-    "ScheduleServiceType",
-    "ScheduleServiceTypeCoding",
-    "ScheduleSpecialty",
-    "ScheduleSpecialtyCoding",
+    "ScheduleToken",
     "schedule_id_seq",
 ]

@@ -17,7 +17,7 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint and PractitionerRole** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Patient, Observation,
+The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole and Schedule** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Patient, Observation,
 Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 
@@ -31,6 +31,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 | HealthcareService | 12 | 12 | none |
 | Endpoint | 6 | 6 | none |
 | PractitionerRole | 13 | 13 | none |
+| Schedule | 7 | 7 | none |
 | All other resources | - | 0 (old list filters) | everything: needs a registry each |
 
 - Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
@@ -49,6 +50,9 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 - PractitionerRole: `active`, `date`, `email`, `endpoint`, `identifier`, `location`, `organization`, `phone`,
   `practitioner`, `role`, `service`, `specialty`, `telecom`. `date` is a Period search (range semantics, see below);
   `practitioner`, `organization`, `location` and `service` chain; every parameter is sortable.
+- Schedule: `active`, `actor`, `date`, `identifier`, `service-category`, `service-type`, `specialty`. `actor` is a multi-target
+  reference (needs a type; chains through `actor:Practitioner|PractitionerRole|HealthcareService|Location`); `date` is a Period search over
+  `planningHorizon`; every parameter is sortable.
 
 ## 3. Implemented (engine level)
 
@@ -121,13 +125,13 @@ For each resource, follow the Organization/Location pattern:
 
 - Working today: `Organization:partof`, `Location:organization`, `Location:partof`,
   `HealthcareService:organization`, `HealthcareService:location`, `HealthcareService:coverage-area`,
-  `PractitionerRole:practitioner|organization|location|service|endpoint`, `Organization:endpoint`, `Location:endpoint`, `HealthcareService:endpoint`, `Endpoint:organization`, and
+  `PractitionerRole:practitioner|organization|location|service|endpoint`, `Schedule:actor[:Type]`, `Organization:endpoint`, `Location:endpoint`, `HealthcareService:endpoint`, `Endpoint:organization`, and
   `_revinclude` of `Organization:partof`, `Location:organization`, `Location:partof`,
   `HealthcareService:organization` (on Organization), `HealthcareService:location` / `:coverage-area` (on Location),
   `Endpoint:organization` (on Organization), `Organization:endpoint` / `Location:endpoint` / `HealthcareService:endpoint` (on Endpoint),
-  and `PractitionerRole:practitioner` / `:organization` / `:location` / `:service` / `:endpoint` (on Practitioner, Organization,
-  Location, HealthcareService and Endpoint respectively).
-- `_revinclude` from resources that point at Organization/Location (Patient, Encounter, Schedule, ...)
+  `PractitionerRole:practitioner` / `:organization` / `:location` / `:service` / `:endpoint` (on Practitioner, Organization,
+  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), and `Slot:schedule` (on Schedule).
+- `_revinclude` from resources that point at Organization/Location (Patient, Encounter, ...)
   becomes possible only when those resources are on the engine.
 
 ## 5. Suggested order after the resources exist

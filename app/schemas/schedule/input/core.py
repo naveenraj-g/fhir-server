@@ -1,160 +1,97 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from .actor import ScheduleActorInput
-from .identifier import ScheduleIdentifierInput
-from .service_category import ScheduleServiceCategoryInput
-from .service_type import ScheduleServiceTypeInput
-from .specialty import ScheduleSpecialtyInput
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
+)
+
+_EXAMPLE = {
+    "resourceType": "Schedule",
+    "active": True,
+    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/schedule-id", "value": "S-1"}],
+    "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}]}],
+    "serviceType": [{"coding": [{"code": "124", "display": "General Practice"}]}],
+    "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
+    "actor": [
+        {"reference": "Practitioner/30001", "display": "Dr Adam Careful"},
+        {"reference": "Location/230001", "display": "Consulting room 1"},
+    ],
+    "planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"},
+    "comment": "Weekday clinic",
+}
 
 
-class ScheduleCreateSchema(BaseModel):
-    """Creates a Schedule and any combination of its 5 sub-resource lists
-    atomically in one request — same set-once-then-patch shape as
-    Organization/HealthcareService/PractitionerRole, no separate scalar-only
-    vs. full create split. org_id and created_by both come from the
-    verified JWT (actor.org_id / actor.sub) — neither is a request body
-    field. Like Organization/Location/HealthcareService/PractitionerRole,
-    Schedule has no user_id field at all — it's a shared tenant-level
-    entity (a container of bookable time), not scoped to an individual
-    end-user."""
+class _ScheduleFields(FhirInputModel):
+    """Every writable Schedule element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/schedule.html). Create and patch accept
+    exactly the same fields. R4 requires at least one `actor`; that is enforced
+    by base R4 validation of the stored document (the `java_validator`
+    backend — the native structural check has no cardinality minimums), not by
+    this model. A PATCH may omit it: it is merged onto the current resource
+    before validating.
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "active": True,
-                "planning_horizon_start": "2026-01-01T00:00:00Z",
-                "planning_horizon_end": "2026-12-31T23:59:59Z",
-                "comment": "General practice bookings only",
-                "identifier": [],
-                "service_category": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/service-category",
-                                "code": "17",
-                                "display": "General Practice",
-                            }
-                        ]
-                    }
-                ],
-                "service_type": [{"coding": [{"code": "57", "display": "Immunization"}]}],
-                "specialty": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "394814009",
-                                "display": "General practice",
-                            }
-                        ]
-                    }
-                ],
-                "actor": [
-                    {
-                        "reference": "Practitioner/30001",
-                        "reference_display": "Dr. Jane Smith",
-                    }
-                ],
-            }
-        },
+    The validated body is stored whole (ScheduleModel.content), so any valid R4
+    element is kept — including ones this model doesn't declare.
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    schedule_id sequence) and `meta` (audit/tenant data, stamped on at read
+    time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["Schedule"] | None = Field(
+        None, description="Optional; if supplied it must be 'Schedule'."
     )
-
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External Ids for this item."
     )
     active: bool | None = Field(
-        None, description="Whether this schedule record is in active use."
+        None, description="Whether this schedule is in active use."
     )
-
-    planning_horizon_start: datetime | None = Field(
+    serviceCategory: list[FhirCodeableConceptInput] | None = Field(
+        None, description="High-level category."
+    )
+    serviceType: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Specific service."
+    )
+    specialty: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Type of specialty needed."
+    )
+    actor: list[FhirReferenceInput] | None = Field(
         None,
-        description="Start of the period of time covered by this schedule's slots.",
+        description="Resource(s) that availability information is being provided for — Reference(Patient | Practitioner | PractitionerRole | RelatedPerson | Device | HealthcareService | Location), at least one (required by R4). A relative 'Practitioner/<id>', 'PractitionerRole/<id>', 'HealthcareService/<id>' or 'Location/<id>' reference must exist in the caller's org (422 otherwise); Patient, RelatedPerson and Device aren't resources on this server and aren't checked.",
     )
-    planning_horizon_end: datetime | None = Field(
-        None,
-        description="End of the period of time covered by this schedule's slots.",
+    planningHorizon: FhirPeriodInput | None = Field(
+        None, description="Period of time covered by schedule."
     )
-
     comment: str | None = Field(
-        None,
-        description="Comments on the availability to describe any extended information, such as custom constraints.",
-    )
-
-    identifier: list[ScheduleIdentifierInput] | None = Field(
-        None, description="External identifiers for this item."
-    )
-    service_category: list[ScheduleServiceCategoryInput] | None = Field(
-        None,
-        description="A high-level category of service(s) that could be provided using this schedule.",
-    )
-    service_type: list[ScheduleServiceTypeInput] | None = Field(
-        None,
-        description="The specific service(s) that could be provided using this schedule.",
-    )
-    specialty: list[ScheduleSpecialtyInput] | None = Field(
-        None,
-        description="The specialty of a practitioner that would be required to perform the service requested in this schedule.",
-    )
-    actor: list[ScheduleActorInput] | None = Field(
-        None,
-        description="The resource(s) this schedule resource is for (Patient, Practitioner, PractitionerRole, RelatedPerson, Device, HealthcareService, or Location).",
+        None, description="Comments on availability."
     )
 
 
-class SchedulePatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows wholesale;
-    omitted lists are left untouched. updated_by comes from the verified
-    JWT (actor.sub), not a request body field."""
+class ScheduleCreateSchema(_ScheduleFields):
+    """POST body — a FHIR R4 Schedule resource. Creates the schedule and every
+    supplied nested element atomically in one transaction."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "active": False,
-                "comment": "Temporarily closed for renovations",
-            }
-        },
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
-    )
-    active: bool | None = Field(
-        None, description="Whether this schedule record is in active use."
-    )
 
-    planning_horizon_start: datetime | None = Field(
-        None,
-        description="Start of the period of time covered by this schedule's slots.",
-    )
-    planning_horizon_end: datetime | None = Field(
-        None,
-        description="End of the period of time covered by this schedule's slots.",
-    )
+class SchedulePatchSchema(_ScheduleFields):
+    """PATCH body — a partial FHIR R4 Schedule (merge-patch semantics on
+    top-level elements). Only supplied elements are written; omitted ones are
+    left untouched. A supplied element replaces the stored value wholesale — a
+    list (even `[]`) replaces every existing entry, an object such as
+    `planningHorizon` replaces the whole value, and `null` clears it."""
 
-    comment: str | None = Field(
-        None, description="Comments on the availability."
-    )
-
-    identifier: list[ScheduleIdentifierInput] | None = Field(
-        None, description="External identifiers — replaces the full list if supplied."
-    )
-    service_category: list[ScheduleServiceCategoryInput] | None = Field(
-        None,
-        description="High-level service category(ies) — replaces the full list if supplied.",
-    )
-    service_type: list[ScheduleServiceTypeInput] | None = Field(
-        None, description="Specific service type(s) — replaces the full list if supplied."
-    )
-    specialty: list[ScheduleSpecialtyInput] | None = Field(
-        None, description="Specialty(ies) — replaces the full list if supplied."
-    )
-    actor: list[ScheduleActorInput] | None = Field(
-        None, description="Actor(s) — replaces the full list if supplied."
-    )
+    model_config = {
+        "json_schema_extra": {
+            "example": {"active": False, "planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-06-30T23:59:59Z"}}
+        }
+    }

@@ -442,6 +442,22 @@ def _revinclude_practitioner_roles(param: str, key):
     return fetch
 
 
+def _revinclude_schedules(resource_type: str, key):
+    """_revinclude=Schedule:actor — schedules with an actor of this type
+    pointing at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.schedule import ScheduleActor as A
+        from app.models.schedule import ScheduleModel as S
+
+        ids = {key(r) for r in rows}
+        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
+        return list((await session.execute(stmt)).scalars().all())
+
+    return fetch
+
+
 def _revinclude_healthcare_services(param: str):
     """_revinclude=HealthcareService:<param> — HealthcareServices whose
     `location` / `coverageArea` points at one of these locations."""
@@ -621,6 +637,10 @@ def location_search() -> SearchRegistry:
                 "Location",
                 _revinclude_practitioner_roles("location", lambda loc: loc.location_id),
                 reverse=True,
+            ),
+            IncludeTarget(
+                "Schedule", "actor", "Location",
+                _revinclude_schedules("Location", lambda loc: loc.location_id), reverse=True,
             ),
         ),
         default_sort=lambda: [Loc.location_id.desc()],

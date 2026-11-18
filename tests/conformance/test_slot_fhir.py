@@ -1,6 +1,14 @@
 """FHIR R4 conformance for `to_fhir_slot()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Slot is stored Medplum-style (like Schedule and the other content-based
+resources): the resource lives whole in SlotModel.content, and to_fhir_slot()
+only stamps `id` and `meta` onto it. So what can go wrong on the read side is
+that stamping or a stored document the server returns that isn't valid R4 —
+each case below is a `content` document as the write path would store it, run
+through the real read mapper. (R4 requires `schedule`, `status`, `start` and
+`end`, so every case carries them.)
 """
 
 import datetime as dt
@@ -8,19 +16,8 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.slot import to_fhir_slot
-from app.models.slot import (
-    SlotAppointmentTypeCoding,
-    SlotIdentifier,
-    SlotIdentifierTypeCoding,
-    SlotModel,
-    SlotServiceCategory,
-    SlotServiceCategoryCoding,
-    SlotServiceType,
-    SlotServiceTypeCoding,
-    SlotSpecialty,
-    SlotSpecialtyCoding,
-    SlotStatus,
-)
+from app.models.slot import SlotModel
+from tests.integration.slot.support import full_body, slot_body
 
 from .support import assert_valid, fhir_json_text
 
@@ -29,178 +26,75 @@ slot_pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 9, 0, tzinfo=dt.timezone.utc)
-D2 = dt.datetime(2026, 1, 1, 9, 30, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers", "service_categories", "service_types", "specialties",
-    "appointment_type_codings",
-)
-
-
-def _slot(**overrides) -> SlotModel:
-    """A Slot carrying only the columns the model marks NOT NULL, plus
-    empty sub-resource lists (nothing is lazy-loadable off a session
-    here). `schedule`/`status`/`start`/`end` are FHIR R4's required (1..1)
-    Slot fields."""
-    fields = {
-        "slot_id": 220001,
-        "tenant_id": "org-test",
-        "schedule_type": "Schedule",
-        "schedule_id": 200001,
-        "status": SlotStatus.busy,
-        "start": D,
-        "end": D2,
-        "created_by": "u-test",
-        "created_at": D,
-    }
-    fields.update(overrides)
-    slot = SlotModel(**fields)
-    for attr in _CHILD_ATTRS:
-        if getattr(slot, attr, None) is None:
-            setattr(slot, attr, [])
-    return slot
-
-
-def _with(attr, *rows) -> SlotModel:
-    slot = _slot()
-    setattr(slot, attr, list(rows))
-    return slot
-
-
-def _identifier(**kw) -> SlotIdentifier:
-    i = SlotIdentifier(
-        **{
-            "id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
-            "value": "SLOT-1", "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
-    if i.type_codings is None:
-        i.type_codings = []
-    return i
-
-
-# Each CodeableConcept-list field (serviceCategory/serviceType/specialty) is
-# a real 0..* child table with its own dedicated Coding grandchild table —
-# this maps a parent model class to its matching Coding class so one
-# `_cc()` helper covers all three.
-_CODING_CLASS = {
-    SlotServiceCategory: SlotServiceCategoryCoding,
-    SlotServiceType: SlotServiceTypeCoding,
-    SlotSpecialty: SlotSpecialtyCoding,
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+REQUIRED = {
+    "schedule": {"reference": "Schedule/200001"},
+    "status": "free",
+    "start": "2026-06-01T09:00:00Z",
+    "end": "2026-06-01T09:30:00Z",
 }
 
 
-def _cc(model_cls, *, codings=None, **kw):
-    coding_cls = _CODING_CLASS[model_cls]
-    if codings is None:
-        codings = [
-            coding_cls(
-                id=1, code="17", display="General Practice",
-                created_by="u-test", created_at=D,
-            )
-        ]
-    return model_cls(
-        **{
-            "id": 1, "tenant_id": "org-test", "codings": codings,
-            "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
+def _stored(document: dict) -> dict:
+    """What the write path stores: everything but resourceType/id/meta."""
+    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
 
 
-# Each case is one distinct shape the mapper can emit. Anything with a
-# conditional branch in app/fhir/mappers/slot/fhir.py should appear here.
+def _slot(content: dict, **overrides) -> SlotModel:
+    fields = {
+        "slot_id": 220001,
+        "tenant_id": "org-test",
+        "created_by": "u-test",
+        "created_at": D,
+        "content": {**REQUIRED, **content},
+    }
+    fields.update(overrides)
+    return SlotModel(**fields)
+
+
 CASES = {
-    "minimal": _slot(),
-
-    "status_busy": _slot(status=SlotStatus.busy),
-    "status_free": _slot(status=SlotStatus.free),
-    "status_busy_unavailable": _slot(status=SlotStatus.busy_unavailable),
-    "status_busy_tentative": _slot(status=SlotStatus.busy_tentative),
-    "status_entered_in_error": _slot(status=SlotStatus.entered_in_error),
-
-    "schedule_identifier_fallback": _slot(
-        schedule_type=None, schedule_id=None,
-        schedule_identifier_system="urn:schedule-registry",
-        schedule_identifier_value="SCHED-9",
-        schedule_identifier_use="official",
+    "minimal": _slot({}),
+    **{
+        f"status_{s}": _slot({"status": s})
+        for s in ("busy", "free", "busy-unavailable", "busy-tentative", "entered-in-error")
+    },
+    "updated_by_and_updated_at": _slot({}, updated_by="u-other", updated_at=D),
+    "start_and_end_with_offset": _slot({"start": "2026-06-01T09:00:00+05:30", "end": "2026-06-01T09:30:00+05:30"}),
+    "overbooked_true": _slot({"overbooked": True}),
+    "overbooked_false": _slot({"overbooked": False}),
+    "comment": _slot({"comment": "Bring previous reports"}),
+    "identifier_with_type_and_assigner": _slot(
+        {
+            "identifier": [
+                {
+                    "use": "official",
+                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "SLT"}]},
+                    "system": "https://fhir-server.dev/fhir/identifier-system/slot-id",
+                    "value": "SL-1",
+                    "assigner": {"reference": "Organization/190001"},
+                }
+            ]
+        }
     ),
-
-    "overbooked_true": _slot(overbooked=True),
-    "overbooked_false": _slot(overbooked=False),
-    "comment": _slot(comment="Reserved for walk-in."),
-
-    "identifier_with_type_and_period": _with(
-        "identifiers",
-        _identifier(
-            use="official",
-            type_codings=[
-                SlotIdentifierTypeCoding(
-                    id=1,
-                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
-                    version="2.9", code="PRN", display="Provider number",
-                    user_selected=True, created_by="u-test", created_at=D,
-                )
-            ],
-            type_text="Provider number",
-            period_start=D,
-            period_end=D,
-        ),
+    "categories_types_and_specialties": _slot(
+        {
+            "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}], "text": "General"}],
+            "serviceType": [{"coding": [{"code": "124"}]}, {"text": "Free text only"}],
+            "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
+        }
     ),
-    "identifier_assigner_resolved": _with(
-        "identifiers",
-        _identifier(
-            assigner_type="Organization", assigner_id=190001, assigner_display="Acme"
-        ),
+    "appointment_type_single_concept": _slot(
+        {"appointmentType": {"coding": [{"code": "ROUTINE", "display": "Routine appointment"}], "text": "Routine"}}
     ),
-    "identifier_assigner_fallback": _with(
-        "identifiers",
-        _identifier(
-            assigner_identifier_system="urn:external-registry",
-            assigner_identifier_value="EXTERNAL-1",
-            assigner_identifier_use="official",
-        ),
+    "schedule_with_display": _slot({"schedule": {"reference": "Schedule/200001", "display": "Dr Careful clinic"}}),
+    "absolute_schedule": _slot({"schedule": {"reference": "https://other.example.org/fhir/Schedule/9"}}),
+    "logical_schedule": _slot({"schedule": {"identifier": {"system": "urn:schedules", "value": "SCH-9"}}}),
+    "extension": _slot({"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}),
+    "full_payload": SlotModel(
+        slot_id=220001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(full_body(200001))
     ),
-
-    "service_category_with_text": _with(
-        "service_categories", _cc(SlotServiceCategory, text="General Practice")
-    ),
-    "service_type_with_text": _with(
-        "service_types",
-        _cc(
-            SlotServiceType,
-            codings=[
-                SlotServiceTypeCoding(
-                    id=1, system="http://example.org/service-type", code="57",
-                    display="Immunization", created_by="u-test", created_at=D,
-                )
-            ],
-            text="Immunization",
-        ),
-    ),
-    "specialty_with_text": _with(
-        "specialties",
-        _cc(
-            SlotSpecialty,
-            codings=[
-                SlotSpecialtyCoding(
-                    id=1, system="http://snomed.info/sct", code="408443003",
-                    display="General medical practice",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="General medical practice",
-        ),
-    ),
-
-    "appointment_type_coding_and_text": _with(
-        "appointment_type_codings",
-        SlotAppointmentTypeCoding(
-            id=1, tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0276",
-            code="ROUTINE", display="Routine appointment",
-            created_by="u-test", created_at=D,
-        ),
+    "minimal_payload": SlotModel(
+        slot_id=220001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(slot_body(200001))
     ),
 }
 
@@ -210,35 +104,41 @@ def test_slot_mapper_emits_valid_fhir_r4(case):
     assert_valid(slot_pb2.Slot, to_fhir_slot(CASES[case]))
 
 
+def test_mapper_serves_content_unchanged():
+    content = _stored(full_body(200001))
+    out = to_fhir_slot(SlotModel(slot_id=220001, tenant_id="org-test", created_by="u-test", created_at=D, content=content))
+    assert out["resourceType"] == "Slot"
+    assert out["id"] == "220001"
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+
+
 # ── Guarding the oracle ────────────────────────────────────────────────────────
 # If google-fhir-r4 ever stops validating — a version bump, a changed API, a
 # silently-swallowed error — every test above would keep passing while checking
 # nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 — e.g. appointmentType — and an unknown `status`
+# code, which the oracle accepts here; the search/core tests cover that.)
+
 
 @pytest.mark.parametrize(
     "label,broken",
     [
-        ("bad status code", {"status": "not-a-status"}),
-        ("serviceCategory as strings not CodeableConcepts", {"serviceCategory": ["gp"]}),
-        ("misspelled element", {"schedule2": {"reference": "Schedule/1"}}),
-        ("start not a datetime", {"start": "not-a-date"}),
+        ("status as boolean", {"status": True}),
+        ("misspelled element", {"overbookd": True}),
         ("overbooked as string not boolean", {"overbooked": "yes"}),
-        ("identifier as string not object", {"identifier": ["SLOT-1"]}),
-        ("missing required status", {"status": None}),
+        ("start not an instant", {"start": "tomorrow"}),
+        ("start without a timezone", {"start": "2026-06-01T09:00:00"}),
+        ("schedule as string not Reference", {"schedule": "Schedule/200001"}),
+        ("serviceCategory as strings not CodeableConcepts", {"serviceCategory": ["17"]}),
+        ("specialty as an object not a list", {"specialty": {"coding": [{"code": "x"}]}}),
+        ("identifier as strings not Identifiers", {"identifier": ["SL-1"]}),
+        ("comment as list", {"comment": ["x"]}),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {
-        "resourceType": "Slot", "id": "220001",
-        "schedule": {"reference": "Schedule/200001"},
-        "status": "busy", "start": "2026-02-01T09:00:00Z", "end": "2026-02-01T09:30:00Z",
-        **{k: v for k, v in broken.items() if v is not None},
-    }
-    if "status" in broken and broken["status"] is None:
-        payload.pop("status", None)
+    payload = {"resourceType": "Slot", "id": "220001", **REQUIRED, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(
-            fhir_json_text(payload), slot_pb2.Slot, validate=True
-        )
+        json_format.json_fhir_string_to_proto(fhir_json_text(payload), slot_pb2.Slot, validate=True)

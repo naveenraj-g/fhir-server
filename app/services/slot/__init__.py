@@ -7,5 +7,5 @@ __all__ = ["SlotService"]
 
 @trace_methods
 class SlotService(_CoreMixin):
-    """All Slot business logic. __init__ (repository=...) is inherited
-    from _CoreMixin."""
+    """All Slot business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

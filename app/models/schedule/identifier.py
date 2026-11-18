@@ -1,104 +1,37 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    String,
-)
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
-
-# ---------------------------------------------------------------------------
-# identifier (0..*) child table
-# ---------------------------------------------------------------------------
 
 
-class ScheduleIdentifier(TenantAuditMixin, Base):
-    """identifier[] — external business identifiers for this schedule.
+class ScheduleIdentifier(Base):
+    """Search index for the `identifier` token parameter (0..*). Derived
+    from ScheduleModel.content — never read to build a response.
 
-    type_text stays flattened (sibling of coding[], not part of it);
-    type's coding[] is a real 0..* child table (ScheduleIdentifierTypeCoding,
-    below) rather than a single flattened coding — same reasoning as
-    PractitionerRoleIdentifier's own type.coding[] promotion.
+    One row per Schedule.identifier *per Identifier.type.coding* (one row
+    with no type when the identifier has no coded type), so that
+    `identifier:of-type=type-system|type-code|value` can match type and value
+    on the same row. A plain `identifier=` search is an EXISTS, so the
+    repetition never duplicates results.
 
-    No UniqueConstraint on (system, value) and no DB-level CHECK
-    constraints — same reasoning as OrganizationIdentifier, see
-    app/models/organization/identifier.py's docstring."""
+      identifier            -> system, value
+      identifier:of-type    -> type_system, type_code, value
+      identifier:text       -> type_text_norm / type_display_norm
+
+    No UniqueConstraint on (system, value): FHIR R4 doesn't require
+    identifier uniqueness — that's a profile decision, not a base rule."""
 
     __tablename__ = "schedule_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    # Containment FK — named schedule_pk, not schedule_id, so it can never be
-    # confused with ScheduleModel.schedule_id (the public, FHIR-facing
-    # sequence ID) — same reasoning as PractitionerRole's practitioner_role_pk.
-    schedule_pk = Column(
-        BigInteger, ForeignKey("schedule.id"), nullable=False, index=True
-    )
-
-    use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
-    type_text = Column(String, nullable=True)
+    # Named schedule_pk (not schedule_id) so it can't be confused with
+    # ScheduleModel.schedule_id, the public sequence id.
+    schedule_pk = Column(BigInteger, ForeignKey("schedule.id"), nullable=False, index=True)
     system = Column(String, nullable=True)
-    value = Column(String, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # assigner (0..1 Reference(Organization))
-    #
-    # assigner_reference is the raw literal string exactly as received —
-    # see OrganizationIdentifier.assigner_reference for the full reasoning.
-    assigner_reference = Column(String, nullable=True)
-    assigner_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    assigner_id = Column(BigInteger, nullable=True, index=True)
-    assigner_display = Column(String, nullable=True)
-
-    # assigner.identifier (0..1 Identifier) — logical-reference fallback
-    assigner_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use"), nullable=True
-    )
-    assigner_identifier_type_system = Column(String, nullable=True)
-    assigner_identifier_type_version = Column(String, nullable=True)
-    assigner_identifier_type_code = Column(String, nullable=True)
-    assigner_identifier_type_display = Column(String, nullable=True)
-    assigner_identifier_type_text = Column(String, nullable=True)
-    assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
-    assigner_identifier_system = Column(String, nullable=True)
-    assigner_identifier_value = Column(String, nullable=True)
-    assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value = Column(String, nullable=True, index=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_text_norm = Column(String, nullable=True)
+    type_display_norm = Column(String, nullable=True)
 
     schedule = relationship("ScheduleModel", back_populates="identifiers")
-    type_codings = relationship(
-        "ScheduleIdentifierTypeCoding",
-        back_populates="identifier",
-        cascade="all, delete-orphan",
-    )
-
-
-# ---------------------------------------------------------------------------
-# identifier.type.coding (0..*) grandchild table
-# ---------------------------------------------------------------------------
-
-
-class ScheduleIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """One entry of Schedule.identifier.type.coding (0..*)."""
-
-    __tablename__ = "schedule_identifier_type_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    schedule_identifier_id = Column(
-        BigInteger, ForeignKey("schedule_identifier.id"), nullable=False, index=True
-    )
-
-    identifier = relationship("ScheduleIdentifier", back_populates="type_codings")

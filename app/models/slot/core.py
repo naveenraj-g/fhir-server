@@ -1,69 +1,55 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Sequence,
-    String,
-    Text,
-    text,
-)
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, ScheduleReferenceType
+from app.models.enums import ScheduleReferenceType
 from app.models.shared import TenantAuditMixin
-from app.models.slot.enums import SlotStatus
 
-slot_id_seq = Sequence(
-    "slot_pub_seq", start=220000, increment=1, metadata=Base.metadata
-)
+from .enums import SlotStatus
 
-
-# ---------------------------------------------------------------------------
-# Main table
-# ---------------------------------------------------------------------------
+slot_id_seq = Sequence("slot_pub_seq", start=220000, increment=1, metadata=Base.metadata)
 
 
 class SlotModel(TenantAuditMixin, Base):
-    """FHIR R4 Slot — https://www.hl7.org/fhir/R4/slot.html
+    """FHIR R4 Slot — Medplum-style storage, same as Organization, Location,
+    Practitioner, HealthcareService, Endpoint, PractitionerRole and Schedule.
 
-    A slot of time on a schedule that may be available for booking
-    appointments.
+    `content` (JSONB) holds the whole resource exactly as validated on
+    write; it is the single source of truth, and GET serves it back as-is
+    (`id`/`meta` are stamped on at read time from this row's own columns —
+    see app.fhir.mappers.slot). Nothing else in this table or its child
+    tables is a second copy of the resource: every other column exists only
+    because a FHIR R4 Slot search parameter filters on it
+    (https://www.hl7.org/fhir/R4/slot.html#search), and is derived from
+    `content` on every write by app.repository.slot._indexer.
 
-    Modeled to the same conventions as Organization/Location/
-    HealthcareService/PractitionerRole/Schedule: BigInteger internal PK +
-    public sequence ID, TenantAuditMixin (tenant_id, not a hand-declared
-    org_id), flattened references (`{prefix}_type`/`_id`/`_display`,
-    storing the target's PUBLIC sequence ID with no ForeignKey/relationship
-    — see CLAUDE.md's FHIR DB Model Design section) with an Identifier
-    logical-reference fallback where the target may live outside this
-    system, and every CodeableConcept's coding[] as a real 0..* child/
-    grandchild table rather than a single flattened coding (see
-    identifier.py/service_category.py/service_type.py/specialty.py/
-    appointment_type.py) — this applies even to `appointmentType` itself,
-    a 0..1 CodeableConcept living directly on this row, because a
-    CodeableConcept's own `coding[]` is always 0..* regardless of the
-    containing field's cardinality (same reasoning as
-    HealthcareServiceEligibility.code's promotion).
+    Search parameter -> storage:
+      status            -> status (1..1 code, Enum column, stored by value)
+      start             -> start (1..1 instant, column)
+      schedule          -> schedule_reference/_type/_id +
+                           schedule_identifier_system/_value (1..1, columns)
+      identifier        -> SlotIdentifier (0..*)
+      service-category,
+      service-type,
+      specialty,
+      appointment-type  -> SlotToken (one row per coding, `param` says which
+                           search parameter it feeds)
+      _id               -> slot_id;  _lastUpdated -> updated_at/created_at
 
-    This resource IS part of the JWT auth rollout (see CLAUDE.md's
-    Multi-Tenancy & Ownership section) — org_id comes from the verified
-    JWT's activeOrganizationId claim, never a client-suppliable field.
-    There is deliberately no user_id: like Organization/Location/
-    HealthcareService/PractitionerRole/Schedule, a Slot is a shared
-    tenant-level entity, not scoped to one end user's own account.
-    """
+    `end`, `overbooked`, `comment` and `extension` have no search parameter and
+    live only in `content` (so a range query on a slot's end isn't indexed —
+    R4 has no `end` search parameter).
+
+    All index columns are nullable: R4 makes `schedule`, `status`, `start` and
+    `end` mandatory, but that is the validator's rule (enforced by the
+    `java_validator` backend), not the database's. No `user_id`: a Slot is a
+    shared tenant-level entity. No DB-level CHECK constraints."""
 
     __tablename__ = "slot"
+    __table_args__ = (Index("ix_slot_schedule_start", "schedule_id", "start"),)
 
-    # Internal PK — never exposed. BigInteger so every child table's FK shares
-    # the type.
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-
-    # Public ID — used in all API responses and FHIR output
     slot_id = Column(
         BigInteger,
         slot_id_seq,
@@ -73,94 +59,36 @@ class SlotModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    # ── schedule (1..1 Reference(Schedule)) — required ───────────────────────
-    # schedule_id stores Schedule's PUBLIC schedule_id — no FK, no
-    # relationship (see PractitionerRoleModel.practitioner_* for the same
-    # pattern). Shared PG enum type — create_type=False since the
-    # migration owns creation and it's registered in app/models/enums.py
-    # for reuse by any future resource referencing Schedule.
-    #
-    # schedule_reference is the raw literal string exactly as received —
-    # see OrganizationModel.partof_reference for the full reasoning. Kept
-    # nullable even though schedule_type/schedule_id are themselves
-    # required (1..1) — an unresolvable absolute URL would otherwise have
-    # nowhere to live, same as every other Reference field's `_reference`.
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
+
+    # ── Search index (derived from `content`) ─────────────────────────────
+    status = Column(
+        Enum(
+            SlotStatus,
+            name="slot_status",
+            # Store `busy-unavailable`, not the Python member name.
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=True,
+    )
+    start = Column(DateTime(timezone=True), nullable=True, index=True)
+    # schedule (1..1 Reference(Schedule)). `schedule_reference` is the raw
+    # literal string exactly as received (kept whether or not it resolves
+    # locally); `schedule_type`/`schedule_id` are the resolved type and PUBLIC
+    # id for a relative Schedule/<id> (no FK — see CLAUDE.md's
+    # flattened-reference convention); `schedule_identifier_*` is
+    # Reference.identifier, for `schedule:identifier`.
     schedule_reference = Column(String, nullable=True)
     schedule_type = Column(
         Enum(ScheduleReferenceType, name="schedule_reference_type", create_type=False),
-        nullable=False,
+        nullable=True,
     )
-    schedule_id = Column(BigInteger, nullable=False, index=True)
-    schedule_display = Column(String, nullable=True)
-
-    # schedule.identifier (0..1 Identifier) — logical-reference fallback;
-    # in practice always empty since Schedule is a modeled resource here,
-    # but kept for the same reason every other resolved reference carries
-    # one (FHIR's own Reference datatype always has it).
-    schedule_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use"), nullable=True
-    )
-    schedule_identifier_type_system = Column(String, nullable=True)
-    schedule_identifier_type_version = Column(String, nullable=True)
-    schedule_identifier_type_code = Column(String, nullable=True)
-    schedule_identifier_type_display = Column(String, nullable=True)
-    schedule_identifier_type_text = Column(String, nullable=True)
-    schedule_identifier_type_user_selected = Column(Boolean, nullable=True)
+    schedule_id = Column(BigInteger, nullable=True)
     schedule_identifier_system = Column(String, nullable=True)
     schedule_identifier_value = Column(String, nullable=True)
-    schedule_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    schedule_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # ── status (1..1 code) — required ─────────────────────────────────────────
-
-    status = Column(Enum(SlotStatus, name="slot_status"), nullable=False)
-
-    # ── start / end (1..1 instant each) — required ────────────────────────────
-
-    start = Column(DateTime(timezone=True), nullable=False)
-    end = Column(DateTime(timezone=True), nullable=False)
-
-    # ── appointmentType (0..1 CodeableConcept) — text flattened here, ────────
-    # coding[] promoted to a dedicated child table (appointment_type.py)
-
-    appointment_type_text = Column(String, nullable=True)
-
-    # ── overbooked (0..1 boolean) ─────────────────────────────────────────────
-
-    overbooked = Column(Boolean, nullable=True)
-
-    # ── comment (0..1 string) ─────────────────────────────────────────────────
-
-    comment = Column(Text, nullable=True)
-
-    # Resource-level extension support (0..* Extension, inherited from the
-    # base DomainResource type — not Slot-specific). Raw
-    # [{url, valueType, value}, ...]; validated against registered
-    # extension definitions by the (not-yet-built) profile pipeline, not by
-    # the database. Same shape as PractitionerModel.extension.
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
-    # come from TenantAuditMixin above — no hand-declared org_id here, same
-    # as OrganizationModel/LocationModel/HealthcareServiceModel/
-    # PractitionerRoleModel/ScheduleModel.
-
-    # ── Relationships ─────────────────────────────────────────────────────────
 
     identifiers = relationship(
         "SlotIdentifier", back_populates="slot", cascade="all, delete-orphan"
     )
-    service_categories = relationship(
-        "SlotServiceCategory", back_populates="slot", cascade="all, delete-orphan"
-    )
-    service_types = relationship(
-        "SlotServiceType", back_populates="slot", cascade="all, delete-orphan"
-    )
-    specialties = relationship(
-        "SlotSpecialty", back_populates="slot", cascade="all, delete-orphan"
-    )
-    appointment_type_codings = relationship(
-        "SlotAppointmentTypeCoding",
-        back_populates="slot",
-        cascade="all, delete-orphan",
-    )
+    tokens = relationship("SlotToken", back_populates="slot", cascade="all, delete-orphan")

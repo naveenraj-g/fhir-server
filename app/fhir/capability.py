@@ -23,8 +23,10 @@ from app.repository.endpoint.search import endpoint_search
 from app.repository.healthcare_service.search import healthcare_service_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
-from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.practitioner.search import practitioner_search
+from app.repository.practitioner_role.search import practitioner_role_search
+from app.repository.schedule.search import schedule_search
+from app.repository.slot.search import slot_search
 
 # routes.enabled name -> registry factory.
 SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
@@ -34,9 +36,11 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "healthcare_service": healthcare_service_search,
     "endpoint": endpoint_search,
     "practitioner_role": practitioner_role_search,
+    "schedule": schedule_search,
+    "slot": slot_search,
 }
 
-# Interactions the Organization/Location/Practitioner/HealthcareService/Endpoint/PractitionerRole routers implement.
+# Interactions the Organization/Location/Practitioner/HealthcareService/Endpoint/PractitionerRole/Schedule routers implement.
 # (No `update`/PUT, no `vread`, no history.)
 _INTERACTIONS = ("read", "create", "patch", "delete", "search-type")
 
@@ -86,7 +90,9 @@ def _resource_entry(resource_type: str, registry: SearchRegistry) -> dict:
         "conditionalCreate": False,
         "conditionalUpdate": False,
         "conditionalDelete": "not-supported",
-        "searchParam": [_search_param(resource_type, p) for p in registry.params.values()],
+        "searchParam": [
+            _search_param(resource_type, p) for p in registry.params.values()
+        ],
     }
     if registry.includes:
         entry["searchInclude"] = _include_strings(registry.includes)
@@ -120,7 +126,8 @@ def build_capability_statement(base_url: str) -> dict:
                 "mode": "server",
                 "documentation": (
                     "Search results parameters: "
-                    + _RESULT_PARAMS % (settings.pagination.default_limit, settings.pagination.max_limit)
+                    + _RESULT_PARAMS
+                    % (settings.pagination.default_limit, settings.pagination.max_limit)
                     + ". Unknown search parameters are ignored and reported in the Bundle "
                     "(400 with `Prefer: handling=strict`). Only the resources listed here are "
                     "described: resources not listed still use older, non-FHIR-search list "

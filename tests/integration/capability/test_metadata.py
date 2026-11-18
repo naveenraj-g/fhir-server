@@ -8,6 +8,8 @@ from app.repository.healthcare_service.search import healthcare_service_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
 from app.repository.practitioner_role.search import practitioner_role_search
+from app.repository.schedule.search import schedule_search
+from app.repository.slot.search import slot_search
 from app.repository.practitioner.search import practitioner_search
 
 URL = "/api/fhir/v1/metadata"
@@ -39,6 +41,8 @@ async def test_search_params_match_registries(client):
         "healthcare_service": ("HealthcareService", healthcare_service_search()),
         "endpoint": ("Endpoint", endpoint_search()),
         "practitioner_role": ("PractitionerRole", practitioner_role_search()),
+        "schedule": ("Schedule", schedule_search()),
+        "slot": ("Slot", slot_search()),
     }
     enabled = {k: v for k, v in expected.items() if k in settings.routes.enabled}
     assert set(by_type) == {t for t, _ in enabled.values()}  # only what is mounted

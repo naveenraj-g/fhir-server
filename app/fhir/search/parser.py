@@ -314,13 +314,15 @@ def _parse_includes(
         )
     source, param = parts[0], parts[1]
     target = parts[2] if len(parts) == 3 else None
-    for t in supported:
-        if (
-            t.source == source
-            and t.param == param
-            and (target is None or target == t.target)
-        ):
-            return [IncludeSpec(t, iterate)]
+    # Every include declared for `source:param` — a parameter with several target
+    # types (Schedule.actor) has one per target; `:targetType` narrows to one.
+    matches = [
+        IncludeSpec(t, iterate)
+        for t in supported
+        if t.source == source and t.param == param and (target is None or target == t.target)
+    ]
+    if matches:
+        return matches
     allowed = ", ".join(f"{t.source}:{t.param}" for t in supported) or "none"
     raise UnsupportedSearchError(
         key, f"{key}={value} is not supported (supported: {allowed})."

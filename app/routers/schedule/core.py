@@ -1,29 +1,48 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.config import settings
+from app.core.content_negotiation import (
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
+)
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.schedule import get_schedule_service
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.schedule.search import schedule_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
 from app.schemas.schedule import ScheduleCreateSchema, SchedulePatchSchema
 from app.services.schedule import ScheduleService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# Schedule always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
-_FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -34,15 +53,17 @@ _FHIR_REFERENCE_PATTERN = r"^[A-Za-z]+/[0-9]+$"
     operation_id="create_schedule",
     summary="Create a new Schedule resource",
     description=(
-        "A container for slots of time that may be available for booking appointments. "
-        "Schedule is set once and then patched rather than built up incrementally, so "
-        "this single endpoint accepts the full nested payload — identifier, "
-        "serviceCategory, serviceType, specialty, and actor arrays — atomically in one "
-        "DB transaction. `actor` entries may reference Practitioner, PractitionerRole, "
-        "HealthcareService, or Location (rejected with 422 if the referenced resource "
-        "doesn't exist); Patient, RelatedPerson, and Device aren't modeled resources in "
-        "this system, so those rely on the identifier fallback fields instead. "
-        + _CONTENT_NEG
+        "Records a container for slots of time that may be available for booking appointments. "
+        "The request body is a FHIR R4 Schedule resource (camelCase, nested datatypes — "
+        "https://www.hl7.org/fhir/R4/schedule.html); the schedule and every supplied element "
+        "(identifier, serviceCategory, serviceType, specialty, actor, planningHorizon, ...) are "
+        "written atomically in one DB transaction. R4 requires at least one `actor`. The body is "
+        "checked against base FHIR R4: any valid R4 element is accepted and stored as sent "
+        "(server-managed `id`/`meta` are ignored); a key that isn't FHIR at all is rejected with "
+        "422. An `actor` may reference a Practitioner, Schedule, HealthcareService or "
+        'Location (e.g. `{"reference": "Practitioner/30001"}`) — rejected with 422 if it doesn\'t '
+        "exist in the caller's org; Patient, RelatedPerson and Device actors aren't resources on "
+        "this server and are stored as sent. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -53,22 +74,133 @@ async def create_schedule(
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
-    actor.sub) — org_id is no longer a request body field at all, and an
-    org-less token is rejected outright (403). Schedule has no user_id
-    field at all, like Organization/Location/HealthcareService/
-    PractitionerRole."""
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new Schedule resource",
         extra={"event": "route.create_schedule"},
     )
     log_payload(logger, "schedule.create.payload", payload)
-    sch = await schedule_service.create_schedule(payload, actor.org_id, actor.sub)
-    return format_response(
-        schedule_service._to_fhir(sch),
-        schedule_service._to_plain(sch),
-        request,
+    schedule = await schedule_service.create_schedule(
+        payload, actor.org_id, actor.sub, body=await request.json()
+    )
+    return fhir_response(
+        schedule_service._to_fhir(schedule),
         status_code=status.HTTP_201_CREATED,
     )
+
+
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# Schedule search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = schedule_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    schedule_service: ScheduleService,
+):
+    search_url, fhir_base = search_urls(request, "search_schedules")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await schedule_service.search_schedules(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_schedules",
+    summary="Search Schedule resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_schedules(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("schedule", "read")),
+    schedule_service: ScheduleService = Depends(get_schedule_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search Schedule resources",
+        extra={"event": "route.search_schedules"},
+    )
+    return await _search(request, get_query(request), actor, schedule_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_schedules_post",
+    summary="Search Schedule resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_schedules_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("schedule", "read")),
+    schedule_service: ScheduleService = Depends(get_schedule_service),
+):
+    logger.info(
+        "Search Schedule resources (POST _search)",
+        extra={"event": "route.search_schedules_post"},
+    )
+    return await _search(request, await post_query(request), actor, schedule_service)
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -84,21 +216,26 @@ async def create_schedule(
 )
 async def get_schedule(
     request: Request,
-    schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
+    schedule_id: int = Path(
+        ..., ge=1, description="Public schedule identifier."
+    ),
     actor: AuthUser = Depends(require_permission("schedule", "read")),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):
     logger.info(
         "Retrieve a Schedule resource by public schedule_id",
-        extra={"event": "route.get_schedule_by_id", "schedule_id": schedule_id},
+        extra={
+            "event": "route.get_schedule_by_id",
+            "schedule_id": schedule_id,
+        },
     )
-    sch = await schedule_service.get_schedule_scoped(schedule_id, actor.org_id)
-    return format_response(
-        schedule_service._to_fhir(sch), schedule_service._to_plain(sch), request
+    schedule = await schedule_service.get_schedule_scoped(
+        schedule_id, actor.org_id
     )
+    return fhir_response(schedule_service._to_fhir(schedule))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -106,20 +243,23 @@ async def get_schedule(
     operation_id="patch_schedule",
     summary="Update a Schedule resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every "
-        "supplied sub-resource list (identifier, serviceCategory, serviceType, "
-        "specialty, actor — even `[]`) atomically replaces the corresponding rows; "
-        "omitted lists are left untouched. "
-        "Scoped to the caller's own org — patch_schedule() raises NotFoundError "
-        "(404, not 403 — avoids leaking that a schedule with this id exists in "
-        "another org) if actor.org_id doesn't match. " + _CONTENT_NEG
+        "The request body is a partial FHIR R4 Schedule (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. Every supplied "
+        "list (identifier, serviceCategory, serviceType, specialty, actor — even `[]`) atomically "
+        "replaces the stored entries, a supplied `planningHorizon` replaces the whole value, and "
+        "`null` clears an element. "
+        "Scoped to the caller's own org — patch_schedule() raises NotFoundError (404, not "
+        "403 — avoids leaking that a schedule with this id exists in another org) if "
+        "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_schedule(
     payload: SchedulePatchSchema,
     request: Request,
-    schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
+    schedule_id: int = Path(
+        ..., ge=1, description="Public schedule identifier."
+    ),
     actor: AuthUser = Depends(require_permission("schedule", "update")),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):
@@ -131,93 +271,16 @@ async def patch_schedule(
     )
     log_payload(logger, "schedule.patch.payload", payload)
     updated = await schedule_service.patch_schedule(
-        schedule_id, payload, actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        schedule_service._to_fhir(updated), schedule_service._to_plain(updated), request
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_schedules",
-    summary="List all Schedule resources",
-    description=(
-        "Returns a paginated list of Schedule resources, matching the search "
-        "parameter set documented at https://www.hl7.org/fhir/R4/schedule.html#search. "
-        "Filter by `active`, `identifier` (exact business-identifier value), "
-        "`service-category`/`service-type`/`specialty` (exact code match), `actor` "
-        "(FHIR reference string, e.g. `Practitioner/30001` / `Location/230001`). "
-        "Always scoped to the caller's own org (from the verified token) — `org_id` is "
-        "not a client-suppliable filter. "
-        "Sort with `sort` (e.g. `-schedule_id`); set `total_mode=none` to skip the "
-        "COUNT(*) on large result sets. " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_schedules(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("schedule", "read")),
-    active: bool | None = Query(None, description="Filter by active status."),
-    identifier: str | None = Query(
-        None, description="Exact match on a business identifier value."
-    ),
-    service_category: str | None = Query(
-        None,
-        alias="service-category",
-        description="Exact match on a coded service category.",
-    ),
-    service_type: str | None = Query(
-        None, alias="service-type", description="Exact match on a coded service type."
-    ),
-    specialty: str | None = Query(
-        None, description="Exact match on a coded specialty."
-    ),
-    actor_ref: str | None = Query(
-        None,
-        alias="actor",
-        pattern=_FHIR_REFERENCE_PATTERN,
-        description="FHIR reference string, e.g. `Practitioner/30001` or `Location/230001`.",
-    ),
-    params: ListParams = Depends(),
-    schedule_service: ScheduleService = Depends(get_schedule_service),
-):
-    """Every filter param is forwarded straight through to the repository's
-    list() — see the route description for the full filter set. org_id is
-    always the caller's own (actor.org_id), never client-suppliable;
-    list_schedules() raises PermissionDeniedError (403) outright for an
-    org-less token."""
-    logger.info(
-        "List all Schedule resources",
-        extra={"event": "route.list_schedules"},
-    )
-    items, total = await schedule_service.list_schedules(
+        schedule_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        active=active,
-        identifier=identifier,
-        service_category=service_category,
-        service_type=service_type,
-        specialty=specialty,
-        actor=actor_ref,
-        limit=params.limit,
-        offset=params.offset,
-        sort=params.sort,
-        total_mode=params.total_mode,
+        body=await request.json(),
     )
-    return format_paginated_response(
-        [schedule_service._to_fhir(sch) for sch in items],
-        [schedule_service._to_plain(sch) for sch in items],
-        total,
-        params.limit,
-        params.offset,
-        request,
-    )
+    return fhir_response(schedule_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -226,22 +289,26 @@ async def list_schedules(
     operation_id="delete_schedule",
     summary="Delete a Schedule resource",
     description=(
-        "Permanently deletes the Schedule and all associated sub-resources. "
+        "Permanently deletes the Schedule and its search-index rows. "
         "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
         "schedule exists but belongs to a different org. Returns 204 on success."
     ),
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_schedule(
-    schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
+    schedule_id: int = Path(
+        ..., ge=1, description="Public schedule identifier."
+    ),
     actor: AuthUser = Depends(require_permission("schedule", "delete")),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):
-    """delete_schedule() raises NotFoundError (404) if the id doesn't exist
-    at all, or if it exists but belongs to a different org. Delete
-    cascades to every sub-resource row."""
+    """delete_schedule() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a Schedule resource",
-        extra={"event": "route.delete_schedule", "schedule_id": schedule_id},
+        extra={
+            "event": "route.delete_schedule",
+            "schedule_id": schedule_id,
+        },
     )
     await schedule_service.delete_schedule(schedule_id, org_id=actor.org_id)
