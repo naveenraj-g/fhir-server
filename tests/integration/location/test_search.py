@@ -10,6 +10,7 @@ behaviour (escaping, paging, `_summary`, lenient/strict handling, ...) is
 covered once in tests/integration/organization/test_search.py.
 """
 
+from tests.helpers.seed import seed_endpoint
 from tests.integration.location.support import BASE, FULL, MINIMAL, ORG_BASE, create_location, create_organization
 
 ROLE = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
@@ -165,7 +166,8 @@ async def test_partof_hierarchy_and_chain(client):
     assert await _ids_for(client, {"partof:missing": "true"}) == {building}
 
 
-async def test_endpoint(client):
+async def test_endpoint(client, _engine):
+    await seed_endpoint(_engine, endpoint_id=3)  # a local Endpoint reference must resolve
     loc_id = await _loc(client, endpoint=[{"reference": "Endpoint/3"}])
     by_ident = await create_location(client, FULL)
     assert await _ids_for(client, {"endpoint": "Endpoint/3"}) == {loc_id}

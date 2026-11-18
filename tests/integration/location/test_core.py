@@ -17,6 +17,7 @@ from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.assertions import assert_operation_outcome
+from tests.helpers.seed import seed_endpoint
 from tests.integration.location.support import (
     BASE,
     FULL,
@@ -75,10 +76,11 @@ async def test_create_full_round_trip(client):
     assert _content(resp.json()) == {k: v for k, v in FULL.items() if k != "resourceType"}
 
 
-async def test_create_full_r4_payload_stored_as_sent(client):
+async def test_create_full_r4_payload_stored_as_sent(client, _engine):
     """Every R4 element — including ones nothing searches on (telecom,
     hoursOfOperation, physicalType, position.altitude, periods) — is stored
     and served back exactly as sent."""
+    await seed_endpoint(_engine, endpoint_id=1)  # the fixture's `endpoint` points at Endpoint/1
     body = _fixture()
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text

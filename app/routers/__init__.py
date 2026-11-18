@@ -36,6 +36,7 @@ from . import fhir_profile as fhir_profile
 from . import flag as flag
 from . import goal as goal
 from . import group as group
+from . import endpoint as endpoint
 from . import healthcare_service as healthcare_service
 from . import immunization as immunization
 from . import immunization_evaluation as immunization_evaluation
@@ -91,6 +92,7 @@ __all__ = [
     "flag",
     "goal",
     "group",
+    "endpoint",
     "healthcare_service",
     "immunization",
     "immunization_evaluation",

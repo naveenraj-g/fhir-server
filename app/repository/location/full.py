@@ -7,12 +7,14 @@ from app.models.location import LocationModel
 from ._indexer import (
     INDEX_RELATIONSHIPS,
     assigner_references,
+    endpoint_references,
     index_columns,
     index_rows,
     managing_organization_reference,
     part_of_reference,
 )
 from ._shared import (
+    _parse_endpoint_ref,
     _parse_location_ref,
     _parse_org_ref,
     _partof_chain_contains,
@@ -32,7 +34,7 @@ def _storable(document: dict) -> dict:
 
 async def _validate_local_references(session, tenant_id: str, document: dict) -> int | None:
     """Existence-check every relative local Reference in the document —
-    managingOrganization, partOf and identifier.assigner — scoped to the
+    managingOrganization, partOf, identifier.assigner and endpoint[] — scoped to the
     caller's org (422 if one doesn't resolve). Returns partOf's resolved
     public id, if any. Absolute URLs aren't checked: they point elsewhere."""
     org_ref = managing_organization_reference(document)
@@ -47,6 +49,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
     for ref in assigner_references(document):
         ref_type, ref_id = _parse_org_ref(ref)
         await _validate_reference(session, tenant_id, ref_type, ref_id, "identifier.assigner")
+    for ref in endpoint_references(document):
+        ref_type, ref_id = _parse_endpoint_ref(ref)
+        await _validate_reference(session, tenant_id, ref_type, ref_id, "endpoint")
     return part_of_id
 
 

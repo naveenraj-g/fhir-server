@@ -37,6 +37,7 @@ import app.models.fhir_profile.fhir_profile
 import app.models.flag
 import app.models.goal
 import app.models.group
+import app.models.endpoint
 import app.models.healthcare_service
 import app.models.immunization
 import app.models.immunization_evaluation

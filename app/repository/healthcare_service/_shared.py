@@ -44,7 +44,7 @@ def _parse_location_ref(ref: str) -> tuple:
 
 
 def _parse_endpoint_ref(ref: str) -> tuple:
-    """Parse 'Endpoint/1'. Endpoint isn't a modeled resource in this system
-    (no RESOURCE_REGISTRY entry), so there is no existence check to run for
-    it; an endpoint given only by identifier/display simply has no index row."""
+    """Parse 'Endpoint/1'. Endpoint is a resource on this server
+    (RESOURCE_REGISTRY), so a relative Endpoint/<id> is existence-checked on
+    write; an endpoint given only by identifier/display simply has no index row."""
     return parse_reference(ref, HealthcareServiceEndpointReferenceType)

@@ -415,6 +415,18 @@ async def _revinclude_partof(session, ctx, locations):
     return await _fetch(session, select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.part_of_id.in_(ids)))
 
 
+async def _include_endpoint(session, ctx, locations):
+    """_include=Location:endpoint — the endpoints these locations point at
+    (only those that are Endpoint resources on this server)."""
+    from app.models.endpoint import EndpointModel as Ep
+
+    ids = select(LocationEndpoint.reference_id).where(
+        LocationEndpoint.location_pk.in_({loc.id for loc in locations}),
+        LocationEndpoint.reference_id.is_not(None),
+    )
+    return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
+
+
 def _revinclude_healthcare_services(param: str):
     """_revinclude=HealthcareService:<param> — HealthcareServices whose
     `location` / `coverageArea` points at one of these locations."""
@@ -574,8 +586,7 @@ def location_search() -> SearchRegistry:
         includes=(
             IncludeTarget("Location", "organization", "Organization", _include_organization),
             IncludeTarget("Location", "partof", "Location", _include_partof),
-            # Endpoint isn't a resource on this server: accepted, adds nothing.
-            IncludeTarget("Location", "endpoint", "Endpoint"),
+            IncludeTarget("Location", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
             IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),

@@ -23,6 +23,7 @@ from app.di.modules import (
     FlagContainer,
     GoalContainer,
     GroupContainer,
+    EndpointContainer,
     HealthcareServiceContainer,
     ImmunizationContainer,
     ImmunizationEvaluationContainer,
@@ -170,6 +171,11 @@ class Container(containers.DeclarativeContainer):
 
     healthcare_service = providers.Container(
         HealthcareServiceContainer,
+        core=core,
+    )
+
+    endpoint = providers.Container(
+        EndpointContainer,
         core=core,
     )
 

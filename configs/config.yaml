@@ -230,6 +230,7 @@ routes:
     # - diagnostic_report
     # - document_reference
     # - encounter
+    - endpoint
     # - episode_of_care
     # - flag
     # - group

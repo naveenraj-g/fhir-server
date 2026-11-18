@@ -17,6 +17,7 @@ from app.models.terminology.terminology import (
     TerminologyValueSet,
     TerminologyValueSetConcept,
 )
+from tests.helpers.seed import seed_endpoint
 from tests.integration.organization.support import BASE, FULL, MINIMAL, create_organization
 
 ORG_TYPE = "http://terminology.hl7.org/CodeSystem/organization-type"
@@ -377,7 +378,8 @@ async def test_partof_chaining(client):
     _rejected(await _get(client, {"name.foo": "x"}))
 
 
-async def test_endpoint_reference_and_identifier(client):
+async def test_endpoint_reference_and_identifier(client, _engine):
+    await seed_endpoint(_engine, endpoint_id=7)  # a local Endpoint reference must resolve
     org_id = await _org(client, endpoint=[{"reference": "Endpoint/7"}])
     by_ident = await create_organization(client, FULL)  # endpoint identifier urn:ext-endpoint|EP-1
     assert await _ids_for(client, {"endpoint": "Endpoint/7"}) == {org_id}

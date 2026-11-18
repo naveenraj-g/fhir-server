@@ -17,7 +17,7 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization, Location, Practitioner and HealthcareService** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Patient, Observation,
+The R4 search engine covers **Organization, Location, Practitioner, HealthcareService and Endpoint** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Patient, Observation,
 Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 
@@ -29,6 +29,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 | Location | 15 | 15 | none |
 | Practitioner | 17 | 17 | none |
 | HealthcareService | 12 | 12 | none |
+| Endpoint | 6 | 6 | none |
 | All other resources | - | 0 (old list filters) | everything: needs a registry each |
 
 - Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
@@ -42,6 +43,8 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 - HealthcareService: `active`, `characteristic`, `coverage-area`, `endpoint`, `identifier`, `location`, `name`,
   `organization`, `program`, `service-category`, `service-type`, `specialty`. `organization`, `location` and `coverage-area` chain;
   every parameter is sortable.
+- Endpoint: `connection-type`, `identifier`, `name`, `organization`, `payload-type`, `status`. `organization` chains; every
+  parameter is sortable.
 
 ## 3. Implemented (engine level)
 
@@ -113,10 +116,11 @@ For each resource, follow the Organization/Location pattern:
 ### 4.5 `_include` / `_revinclude` gaps
 
 - Working today: `Organization:partof`, `Location:organization`, `Location:partof`,
-  `HealthcareService:organization`, `HealthcareService:location`, `HealthcareService:coverage-area`, and
+  `HealthcareService:organization`, `HealthcareService:location`, `HealthcareService:coverage-area`,
+  `Organization:endpoint`, `Location:endpoint`, `HealthcareService:endpoint`, `Endpoint:organization`, and
   `_revinclude` of `Organization:partof`, `Location:organization`, `Location:partof`,
-  `HealthcareService:organization` (on Organization) and `HealthcareService:location` / `:coverage-area` (on Location).
-- `:endpoint` is accepted but adds nothing (there is no Endpoint resource).
+  `HealthcareService:organization` (on Organization), `HealthcareService:location` / `:coverage-area` (on Location),
+  `Endpoint:organization` (on Organization) and `Organization:endpoint` / `Location:endpoint` / `HealthcareService:endpoint` (on Endpoint).
 - `_revinclude` from resources that point at Organization/Location (Patient, Encounter, PractitionerRole, ...)
   becomes possible only when those resources are on the engine.
 

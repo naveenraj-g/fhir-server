@@ -123,6 +123,7 @@ Same three lines as Organization.
 
 ### I. Shared registrations
 - `app/core/reference_resolver.py` — add `"<Resource>": (<Resource>Model, "<resource>_id")` to `RESOURCE_REGISTRY` (otherwise nothing can reference it).
+  - **If already-rebuilt resources hold references to it** (Endpoint did: `Organization.endpoint`, `Location.endpoint`, `HealthcareService.endpoint`), wire them in the same change: add the relative-reference existence check to their `full.py`/`_indexer.py`, replace their "accepted, adds nothing" `IncludeTarget` with a real fetch, add the reverse `_revinclude` on the new resource, and update the existing tests that referenced a nonexistent id (seed the row with `tests/helpers/seed.py`).
 - `app/fhir/capability.py` — add one line to `SEARCH_REGISTRIES` so `/metadata` lists it; add it to the `expected` map in `tests/integration/capability/test_metadata.py`.
 - `configs/config.yaml` — append the name to `routes.enabled` once it is ready (an unlisted router is not mounted and every test against it 404s).
 - `CLAUDE.md` — sequence-allocation table; the Medplum-style section (one paragraph: what is indexed, any end-user link, includes).

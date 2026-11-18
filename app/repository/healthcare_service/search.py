@@ -220,6 +220,17 @@ def _include_locations(param: str):
     return fetch
 
 
+async def _include_endpoint(session, ctx, services):
+    """_include=HealthcareService:endpoint — the endpoints these services
+    point at (only those that are Endpoint resources on this server)."""
+    from app.models.endpoint import EndpointModel as Ep
+
+    ids = select(_R.reference_id).where(
+        _R.healthcare_service_pk.in_({s.id for s in services}), _R.param == "endpoint", _R.reference_id.is_not(None)
+    )
+    return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders HealthcareService rows."""
     from app.fhir.mappers.healthcare_service import to_fhir_healthcare_service
@@ -354,8 +365,7 @@ def healthcare_service_search() -> SearchRegistry:
             IncludeTarget("HealthcareService", "organization", "Organization", _include_organization),
             IncludeTarget("HealthcareService", "location", "Location", _include_locations("location")),
             IncludeTarget("HealthcareService", "coverage-area", "Location", _include_locations("coverage-area")),
-            # Endpoint isn't a resource on this server: accepted, adds nothing.
-            IncludeTarget("HealthcareService", "endpoint", "Endpoint"),
+            IncludeTarget("HealthcareService", "endpoint", "Endpoint", _include_endpoint),
         ),
         # Nothing that references a HealthcareService is on the engine yet
         # (PractitionerRole, Schedule, ... will add their _revinclude here).

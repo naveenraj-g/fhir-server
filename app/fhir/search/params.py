@@ -108,7 +108,7 @@ class IncludeTarget:
     rows it applies to — for an _include, the `source` rows' referenced
     `target` rows; for a _revinclude (`reverse=True`), the `source` rows
     that reference the given `target` rows. None means the target isn't
-    stored on this server (e.g. Endpoint): accepted, adds nothing."""
+    stored on this server: accepted, adds nothing."""
 
     source: str
     param: str

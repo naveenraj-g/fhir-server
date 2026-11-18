@@ -369,6 +369,29 @@ async def _revinclude_location_organization(session, ctx, orgs):
     )
 
 
+async def _include_endpoint(session, ctx, orgs):
+    """_include=Organization:endpoint — the endpoints these organizations
+    point at (only those that are Endpoint resources on this server)."""
+    from app.models.endpoint import EndpointModel as Ep
+
+    ids = select(OrganizationEndpoint.reference_id).where(
+        OrganizationEndpoint.organization_pk.in_({o.id for o in orgs}),
+        OrganizationEndpoint.reference_id.is_not(None),
+    )
+    return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
+
+
+async def _revinclude_endpoint_organization(session, ctx, orgs):
+    """_revinclude=Endpoint:organization — Endpoints whose
+    managingOrganization is one of these organizations."""
+    from app.models.endpoint import EndpointModel as Ep
+
+    ids = {o.organization_id for o in orgs}
+    return await _fetch(
+        session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.managing_organization_id.in_(ids))
+    )
+
+
 async def _revinclude_healthcare_service_organization(session, ctx, orgs):
     """_revinclude=HealthcareService:organization — HealthcareServices
     whose providedBy is one of these organizations."""
@@ -597,8 +620,7 @@ def organization_search() -> SearchRegistry:
         summary_elements=frozenset({"identifier", "active", "type", "name", "partOf"}),
         includes=(
             IncludeTarget("Organization", "partof", "Organization", _include_partof),
-            # Endpoint isn't a resource on this server: accepted, adds nothing.
-            IncludeTarget("Organization", "endpoint", "Endpoint"),
+            IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
             IncludeTarget(
@@ -620,6 +642,13 @@ def organization_search() -> SearchRegistry:
                 "organization",
                 "Organization",
                 _revinclude_healthcare_service_organization,
+                reverse=True,
+            ),
+            IncludeTarget(
+                "Endpoint",
+                "organization",
+                "Organization",
+                _revinclude_endpoint_organization,
                 reverse=True,
             ),
         ),

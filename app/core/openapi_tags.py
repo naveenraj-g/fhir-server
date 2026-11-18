@@ -184,6 +184,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "Endpoints",
+        "description": (
+            "FHIR R4 Endpoint resources — the technical details of an endpoint that can be used for electronic "
+            "services (a FHIR API, a messaging gateway, a document-exchange interface)."
+        ),
+    },
+    {
         "name": "HealthcareServices",
         "description": (
             "FHIR R4 HealthcareService resources — services offered by an organization at a location, "

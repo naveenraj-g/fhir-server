@@ -53,6 +53,18 @@ def assigner_references(document: dict) -> list[str]:
     return refs
 
 
+def endpoint_references(document: dict) -> list[str]:
+    """Relative `Endpoint/<id>` references in `endpoint[]` — the only shape
+    that can resolve to a local Endpoint (an absolute URL, or an endpoint
+    given only by identifier/display, is stored as sent and not checked)."""
+    refs = []
+    for ref in document.get("endpoint") or []:
+        local = relative(ref.get("reference"), "Endpoint")
+        if local:
+            refs.append(local)
+    return refs
+
+
 def index_columns(document: dict) -> dict:
     """Search columns on the organization row itself."""
     aliases = strings(document.get("alias"))

@@ -38,10 +38,10 @@ def _with_relationships(stmt):
 
 def _parse_endpoint_ref(ref: str) -> tuple:
     """Parse 'Endpoint/1' → (OrganizationEndpointReferenceType.Endpoint, 1).
-    Endpoint isn't a modeled resource in this system (no RESOURCE_REGISTRY
-    entry, see app/core/reference_resolver.py) so — unlike every
-    Reference(Organization) field — there's no existence check to run here;
-    an endpoint given only by identifier/display simply has no index row."""
+    Endpoint is a resource on this server (RESOURCE_REGISTRY, see
+    app/core/reference_resolver.py), so a relative Endpoint/<id> is
+    existence-checked on write like every other local reference; an endpoint
+    given only by identifier/display simply has no index row."""
     return parse_reference(ref, OrganizationEndpointReferenceType)
 
 

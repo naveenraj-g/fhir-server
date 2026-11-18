@@ -33,11 +33,11 @@ class LocationPartOfReferenceType(str, Enum):
 class LocationEndpointReferenceType(str, Enum):
     """Allowed reference type for Location.endpoint[] (0..*).
 
-    Endpoint is not a modeled resource in this system, so in practice rows
-    carry the reference_identifier_* logical-reference columns rather than a
-    resolved reference_id. The enum still exists so the allowed target type is
-    self-documenting and the reference pattern stays uniform — same reasoning
-    as OrganizationEndpointReferenceType.
+    Endpoint is a resource on this server, so a relative `Endpoint/<id>` is
+    resolved (and existence-checked on write); an endpoint given only by
+    identifier, or by an absolute URL, carries no resolved reference_id. The
+    enum keeps the allowed target type self-documenting and the reference
+    pattern uniform.
     """
 
     Endpoint = "Endpoint"

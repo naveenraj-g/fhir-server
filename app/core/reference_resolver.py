@@ -36,6 +36,7 @@ from app.models.family_member_history import FamilyMemberHistoryModel
 from app.models.flag import FlagModel
 from app.models.goal import GoalModel
 from app.models.group import GroupModel
+from app.models.endpoint import EndpointModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.immunization import ImmunizationModel
 from app.models.immunization_evaluation import ImmunizationEvaluationModel
@@ -86,6 +87,9 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # must never be passed for it — same as Organization.
     "Location": (LocationModel, "location_id"),
     "HealthcareService": (HealthcareServiceModel, "healthcare_service_id"),
+    # Registered so a reference to an Endpoint (Organization/Location/
+    # HealthcareService .endpoint) is existence-checked on write.
+    "Endpoint": (EndpointModel, "endpoint_id"),
     # Registered so PractitionerRole.practitioner's existence check works —
     # Practitioner has a user_id column (see PractitionerModel's docstring),
     # but resource_exists() only applies that filter when the caller passes

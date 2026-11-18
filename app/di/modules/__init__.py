@@ -16,6 +16,7 @@ from .family_member_history import FamilyMemberHistoryContainer
 from .fhir_profile import FhirProfileContainer
 from .flag import FlagContainer
 from .group import GroupContainer
+from .endpoint import EndpointContainer
 from .healthcare_service import HealthcareServiceContainer
 from .immunization import ImmunizationContainer
 from .immunization_evaluation import ImmunizationEvaluationContainer
@@ -72,6 +73,7 @@ __all__ = [
     "FhirProfileContainer",
     "FlagContainer",
     "GroupContainer",
+    "EndpointContainer",
     "HealthcareServiceContainer",
     "ImmunizationContainer",
     "ImmunizationEvaluationContainer",

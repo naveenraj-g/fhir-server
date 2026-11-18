@@ -7,11 +7,13 @@ from app.models.organization import OrganizationModel
 from ._indexer import (
     INDEX_RELATIONSHIPS,
     assigner_references,
+    endpoint_references,
     index_columns,
     index_rows,
     partof_reference,
 )
 from ._shared import (
+    _parse_endpoint_ref,
     _parse_org_ref,
     _partof_chain_contains,
     _validate_reference,
@@ -31,9 +33,10 @@ def _storable(document: dict) -> dict:
 async def _validate_local_references(
     session, tenant_id: str, document: dict
 ) -> int | None:
-    """Existence-check every relative Reference(Organization) in the
-    document, scoped to the caller's org (422 if one doesn't resolve).
-    Returns partOf's resolved public id, if any."""
+    """Existence-check every relative local reference in the document —
+    Reference(Organization) in partOf / identifier.assigner and
+    Reference(Endpoint) in endpoint[] — scoped to the caller's org (422 if one
+    doesn't resolve). Returns partOf's resolved public id, if any."""
     partof_id = None
     partof = partof_reference(document)
     if partof:
@@ -44,6 +47,9 @@ async def _validate_local_references(
         await _validate_reference(
             session, tenant_id, ref_type, ref_id, "identifier.assigner"
         )
+    for ref in endpoint_references(document):
+        ref_type, ref_id = _parse_endpoint_ref(ref)
+        await _validate_reference(session, tenant_id, ref_type, ref_id, "endpoint")
     return partof_id
 
 

@@ -39,11 +39,10 @@ def _parse_location_ref(ref: str) -> tuple:
 
 def _parse_endpoint_ref(ref: str) -> tuple:
     """Parse 'Endpoint/1' → (LocationEndpointReferenceType.Endpoint, 1).
-    Endpoint isn't a modeled resource in this system (no RESOURCE_REGISTRY
-    entry, see app/core/reference_resolver.py) so — unlike every
-    Reference(Organization)/Reference(Location) field — there's no existence
-    check to run here; the identifier fallback (see LocationEndpointInput) is
-    often the only populated half."""
+    Endpoint is a resource on this server (RESOURCE_REGISTRY, see
+    app/core/reference_resolver.py), so a relative Endpoint/<id> is
+    existence-checked on write like every other local reference; an endpoint
+    given only by identifier, or by an absolute URL, has no local row to check."""
     return parse_reference(ref, LocationEndpointReferenceType)
 
 
