@@ -1,185 +1,140 @@
-from datetime import date
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
 from app.schemas.enums import AdministrativeGender
+from app.schemas.fhir_input import (
+    FhirAddressInput,
+    FhirAttachmentInput,
+    FhirCodeableConceptInput,
+    FhirContactPointInput,
+    FhirHumanNameInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+)
 
-from .address import PractitionerAddressInput
-from .communication import PractitionerCommunicationInput
-from .identifier import PractitionerIdentifierInput
-from .name import PractitionerNameInput
-from .photo import PractitionerPhotoInput
 from .qualification import PractitionerQualificationInput
-from .telecom import PractitionerTelecomInput
+
+_USER_ID_EXTENSION = "https://fhir-server.dev/fhir/StructureDefinition/user-id"
+
+_EXAMPLE = {
+    "resourceType": "Practitioner",
+    "extension": [{"url": _USER_ID_EXTENSION, "valueString": "user-abc123"}],
+    "active": True,
+    "gender": "female",
+    "birthDate": "1980-05-15",
+    "identifier": [
+        {
+            "use": "official",
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "9941339108",
+        }
+    ],
+    "name": [
+        {"use": "official", "family": "Careful", "given": ["Adam"], "prefix": ["Dr"]}
+    ],
+    "telecom": [{"system": "phone", "value": "555-9988", "use": "work"}],
+    "address": [
+        {
+            "use": "work",
+            "line": ["534 Erewhon St"],
+            "city": "PleasantVille",
+            "state": "Vic",
+            "postalCode": "3999",
+        }
+    ],
+    "photo": [{"url": "https://fhir-server.dev/fhir/assets/photo.png"}],
+    "qualification": [
+        {
+            "code": {
+                "coding": [{"code": "BS", "display": "Bachelor of Science"}],
+                "text": "Bachelor of Science",
+            },
+            "issuer": {"reference": "Organization/190001"},
+        }
+    ],
+    "communication": [{"coding": [{"code": "en", "display": "English"}]}],
+}
 
 
-class PractitionerCreateSchema(BaseModel):
-    """Creates a Practitioner and any combination of its sub-resources
-    (identifier, name, telecom, address, photo, qualification,
-    communication) atomically in one request — same single-endpoint shape
-    as Organization/Location/HealthcareService, see
-    OrganizationCreateSchema's docstring. `tenant_id`/`created_by` both come
-    from the verified JWT (`actor.org_id`/`actor.sub`) — neither is a
-    request body field. Unlike Organization/Location/HealthcareService,
-    Practitioner keeps a plain `user_id` field: a Practitioner record is
-    naturally scoped to an individual end-user's own account (the
-    clinician), not a shared tenant-level entity — see PractitionerModel's
-    docstring (app/models/practitioner/core.py)."""
+class _PractitionerFields(FhirInputModel):
+    """Every writable Practitioner element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/practitioner.html). Create and patch accept
+    exactly the same fields — Practitioner has no element that is required
+    at this layer.
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "user_id": "user-abc123",
-                "active": True,
-                "gender": "female",
-                "birth_date": "1980-05-15",
-                "identifier": [
-                    {
-                        "value": "9941339108",
-                        "system": "http://hl7.org/fhir/sid/us-npi",
-                        "use": "official",
-                    }
-                ],
-                "name": [
-                    {
-                        "use": "official",
-                        "family": "Careful",
-                        "given": ["Adam"],
-                        "prefix": ["Dr"],
-                    }
-                ],
-                "telecom": [{"system": "phone", "value": "555-9988", "use": "work"}],
-                "address": [
-                    {
-                        "use": "work",
-                        "line": ["534 Erewhon St"],
-                        "city": "PleasantVille",
-                        "state": "Vic",
-                        "postal_code": "3999",
-                    }
-                ],
-                "qualification": [
-                    {
-                        "code_coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/v2-0360/2.7",
-                                "code": "BS",
-                                "display": "Bachelor of Science",
-                            }
-                        ],
-                        "issuer": "Organization/190001",
-                    }
-                ],
-                "communication": [
-                    {
-                        "coding": [
-                            {
-                                "system": "urn:ietf:bcp:47",
-                                "code": "en",
-                                "display": "English",
-                            }
-                        ]
-                    }
-                ],
-            }
-        },
-    )
+    The validated body is stored whole (PractitionerModel.content), so any
+    valid R4 element is kept — including ones this model doesn't declare.
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    practitioner_id sequence) and `meta` (audit/tenant data, stamped on at
+    read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body.
 
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded acting end-user's own account ID."
-    )
+    `user_id` — the end-user a record belongs to, which scopes `/me` — is
+    not a FHIR element, so it travels as this extension:
+    `{"url": "https://fhir-server.dev/fhir/StructureDefinition/user-id",
+    "valueString": "<user id>"}`. Set it on create; it can't be changed
+    afterwards."""
 
-    # active (0..1) — R4 removed the R3 default of true; no default here either.
-    active: bool | None = Field(
-        None, description="Whether this practitioner's record is in active use."
-    )
-    gender: AdministrativeGender | None = Field(
-        None, description="male|female|other|unknown."
-    )
-    birth_date: date | None = Field(None, description="Date of birth.")
-
-    identifier: list[PractitionerIdentifierInput] | None = Field(
-        None, description="Identifiers for the person in this role."
-    )
-    name: list[PractitionerNameInput] | None = Field(
-        None, description="Name(s) associated with the practitioner."
-    )
-    telecom: list[PractitionerTelecomInput] | None = Field(
-        None, description="Contact details applying to all roles."
-    )
-    address: list[PractitionerAddressInput] | None = Field(
-        None, description="Non-role-specific addresses, typically home."
-    )
-    photo: list[PractitionerPhotoInput] | None = Field(
-        None, description="Image(s) of the person."
-    )
-    qualification: list[PractitionerQualificationInput] | None = Field(
-        None, description="Certifications, licenses, or training."
-    )
-    communication: list[PractitionerCommunicationInput] | None = Field(
-        None, description="Languages the practitioner can use in patient communication."
+    resourceType: Literal["Practitioner"] | None = Field(
+        None, description="Optional; if supplied it must be 'Practitioner'."
     )
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries. Carries the end-user id as the user-id extension (see the model description); the rest are validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="An identifier for the person as this agent."
+    )
+    active: bool | None = Field(
+        None, description="Whether this practitioner's record is in active use."
+    )
+    name: list[FhirHumanNameInput] | None = Field(
+        None, description="The name(s) associated with the practitioner."
+    )
+    telecom: list[FhirContactPointInput] | None = Field(
+        None, description="A contact detail for the practitioner (that apply to all roles)."
+    )
+    address: list[FhirAddressInput] | None = Field(
+        None, description="Address(es) of the practitioner that are not role specific."
+    )
+    gender: AdministrativeGender | None = Field(
+        None, description="male | female | other | unknown."
+    )
+    birthDate: str | None = Field(
+        None, description="The date on which the practitioner was born (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD)."
+    )
+    photo: list[FhirAttachmentInput] | None = Field(
+        None, description="Image of the person."
+    )
+    qualification: list[PractitionerQualificationInput] | None = Field(
+        None, description="Certification, licenses, or training pertaining to the provision of care."
+    )
+    communication: list[FhirCodeableConceptInput] | None = Field(
+        None, description="A language the practitioner can use in patient communication."
     )
 
 
-class PractitionerPatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows wholesale;
-    omitted lists are left untouched — see OrganizationPatchSchema's
-    docstring. `updated_by` comes from the verified JWT (`actor.sub`), not a
-    request body field. `user_id` is immutable after create — excluded
-    here, same as `tenant_id`."""
+class PractitionerCreateSchema(_PractitionerFields):
+    """POST body — a FHIR R4 Practitioner resource. Creates the
+    practitioner and every supplied nested element atomically in one
+    transaction."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class PractitionerPatchSchema(_PractitionerFields):
+    """PATCH body — a partial FHIR R4 Practitioner (merge-patch semantics on
+    top-level elements). Only supplied elements are written; omitted ones
+    are left untouched. A supplied element replaces the stored value
+    wholesale — a list (even `[]`) replaces every existing entry, and `null`
+    clears it. The user-id extension can't be added, changed or dropped."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
+                "telecom": [{"system": "phone", "value": "555-0000", "use": "work"}],
                 "active": False,
-                "name": [{"use": "official", "family": "Careful", "given": ["Adam"]}],
             }
-        },
-    )
-
-    active: bool | None = Field(
-        None, description="Whether this practitioner's record is in active use."
-    )
-    gender: AdministrativeGender | None = Field(
-        None, description="male|female|other|unknown."
-    )
-    birth_date: date | None = Field(None, description="Date of birth.")
-
-    identifier: list[PractitionerIdentifierInput] | None = Field(
-        None,
-        description="Identifiers for the person in this role — replaces the full list if supplied.",
-    )
-    name: list[PractitionerNameInput] | None = Field(
-        None,
-        description="Name(s) associated with the practitioner — replaces the full list if supplied.",
-    )
-    telecom: list[PractitionerTelecomInput] | None = Field(
-        None,
-        description="Contact detail(s) applying to all roles — replaces the full list if supplied.",
-    )
-    address: list[PractitionerAddressInput] | None = Field(
-        None,
-        description="Address(es), typically home — replaces the full list if supplied.",
-    )
-    photo: list[PractitionerPhotoInput] | None = Field(
-        None, description="Image(s) of the person — replaces the full list if supplied."
-    )
-    qualification: list[PractitionerQualificationInput] | None = Field(
-        None,
-        description="Certification(s), license(s), or training — replaces the full list if supplied.",
-    )
-    communication: list[PractitionerCommunicationInput] | None = Field(
-        None,
-        description="Language(s) the practitioner can use in patient communication — replaces the full list if supplied.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
-    )
+        }
+    }

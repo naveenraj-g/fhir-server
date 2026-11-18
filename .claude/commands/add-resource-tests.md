@@ -1,499 +1,98 @@
-# Add Integration Tests for a FHIR Resource
+# Add Tests for a FHIR Resource (content-based / Medplum-style)
 
-Complete checklist for adding pytest integration tests for any FHIR R4 resource in this server.
+Checklist for the tests of a resource built per `/new-fhir-resource`. Reference implementations: `tests/integration/organization/`, `tests/integration/practitioner/`, `tests/conformance/test_practitioner_fhir.py`. The old normalized-resource test guide (plain + FHIR formats, `/me`, child routes) is preserved in `docs/legacy/add-resource-tests-normalized.md`.
 
-The test stack uses **pytest-asyncio** with `asyncio_mode = "auto"`, **httpx AsyncClient**, and **SQLite in-memory** (`StaticPool`). The shared `tests/conftest.py` handles infrastructure; each resource package adds only resource-specific auth overrides, payload helpers, and test modules.
+Stack: **pytest-asyncio** (`asyncio_mode = "auto"`), **httpx AsyncClient** against the real app, **SQLite in-memory**. `tests/conftest.py` provides the `client` / `other_client` fixtures, `make_test_user`, and SQLite shims for Postgres-only things (arrays, JSONB, `near` math). The resource package adds only auth overrides, payloads and test modules.
 
-The standard for these tests is **production-grade integration coverage**:
-- cover **every endpoint** in the router at least once
-- cover the highest-risk negative paths, not every nullable permutation
-- add comments and notes so another engineer can understand why the test exists
-
----
+Aim: every endpoint at least once, every search parameter and every modifier it declares, and the high-risk negative paths (cross-org, org-less token, missing scope, bad values). Comments should say *why* a test exists.
 
 ## ARGUMENTS: $RESOURCE
 
-Steps use `$RESOURCE` = the resource name (for example `Patient`, `Claim`). Adjust snake_case paths accordingly.
-
 ---
 
-## Before Starting
+## Before starting — read these
 
-Read these files first. They determine what the tests must actually assert:
+- `app/repository/<resource>/search.py` — the registry: it is the list of what must be tested (every `SearchParam`, its `modifiers`, `sort`, includes).
+- `app/repository/<resource>/_indexer.py` — what each stored shape turns into in the index.
+- `app/routers/<resource>/core.py` — routes, `/me` if present.
+- The R4 resource page's **Search Parameters** table (`https://www.hl7.org/fhir/R4/<resource>.html#search`) and `https://www.hl7.org/fhir/R4/search.html` for what each type must match (string = case/accent-insensitive **starts-with**, `:exact`, `:contains`; token forms; reference forms; date prefixes).
+- `configs/config.yaml` — `routes.enabled` must list the resource or every request 404s; `fhir_validation.enabled` ships `false`.
 
-- `app/routers/<resource>.py` - route paths, HTTP methods, query param names, `/me` support
-- `app/fhir/mappers/<resource>/plain.py` - exact plain JSON field names
-- `app/fhir/mappers/<resource>/fhir.py` - exact FHIR response field names
-- `app/schemas/<resource>/input.py` - required fields, patchable fields, nested input shapes
-- `app/services/<resource>/core.py` - every currently-built resource is auth-rolled-out (see CLAUDE.md's "Multi-Tenancy & Ownership"): `get_<resource>_scoped()` 404s on cross-org, 403s on an org-less token; tests need a real or overridden `get_current_user` that supplies `activeOrganizationId` and the right `<resource>:<action>` permission scopes, not just a bare authenticated user
-- `app/repository/<resource>_repository.py` - runtime list filters, foreign-key resolution, custom reference parsing
-- `app/core/content_negotiation.py` - current runtime status behavior may differ from decorator metadata
+## Files
 
-Do not write tests based on route descriptions alone. Assert the current runtime behavior.
-
----
-
-## Step 1 - Choose the resource package shape
-
-Do not default to a single `tests/integration/test_<resource>.py` file for production-grade suites. Use a package.
-
-### Pattern A - resources with many child endpoints
-
-Use this for resources like `patient` and `practitioner`.
-
-```text
-tests/integration/<resource>/
-  conftest.py
-  support.py
-  test_core.py
-  test_<group_1>.py
-  test_<group_2>.py
+```
+tests/integration/<resource>/__init__.py      (empty)
+tests/integration/<resource>/conftest.py      autouse permission override
+tests/integration/<resource>/support.py       BASE, MINIMAL, FULL, create_<resource>()
+tests/integration/<resource>/test_core.py     create / read / patch / delete / auth (+ /me, immutability)
+tests/integration/<resource>/test_search.py   one block per parameter, then result params
+tests/conformance/test_<resource>_fhir.py     mapper output vs google-fhir-r4
+tests/helpers/assertions.py                   assert_fhir_<resource>(data, **expected)
+tests/integration/capability/test_metadata.py add the resource to the `expected` map
 ```
 
-Recommended split:
-- `conftest.py`: resource-specific permission override only
-- `support.py`: `BASE`, `FHIR_ACCEPT`, payloads, tiny create helpers, tiny child-id helpers
-- `test_core.py`: create, get by id, patch, delete, list, `/me`, permissions, content negotiation
-- other files: grouped child endpoint coverage by route family or response family
+### `conftest.py`
+Autouse fixture overriding `get_current_user` with `make_test_user(permissions=["<resource>:create", ":read", ":update", ":delete"])` and restoring the default afterwards (copy Practitioner's).
 
-Examples already in this repo:
-- `tests/integration/patient/`
-- `tests/integration/practitioner/`
+### `support.py`
+- `BASE = "/api/fhir/v1/<resources>"`.
+- Payloads are **genuine FHIR R4 JSON** (camelCase, nested datatypes); responses are FHIR too. `MINIMAL`, and a `FULL` that exercises every element the registry indexes **plus** elements nothing searches on (they must round-trip).
+- `create_<resource>(client, payload=None) -> int` asserting 201 and returning `int(resp.json()["id"])`.
+- Avoid fixture values that make the Java validator sidecar do slow remote lookups: omit `system` on `urn:ietf:bcp:47` language codings and omit `Attachment.contentType`; use `https://fhir-server.dev/fhir/...` for identifier systems, never `http://example.org/...`.
 
-### Pattern B - resources with complex nested payloads but no child endpoints
+### `test_core.py` must cover
+- **Create:** minimal; full round trip (stored body == sent body minus `resourceType`/`id`/`meta`, and GET returns the same); elements nothing searches on survive; sent `id`/`meta` are ignored; audit `meta` extensions come from the actor; wrong `resourceType` → 422; a bad required-binding code → 422; **non-FHIR key and stale flat fields → 422 (needs the validator on — see below)**; a local reference that doesn't exist → 422, an absolute URL is stored unresolved.
+- **Read:** by id; always `application/fhir+json` whatever `Accept` says (`None`, `application/json`, `*/*`); XML-only `Accept` / `_format=xml` → 406 OperationOutcome; not found → 404 OperationOutcome.
+- **Patch:** scalar update; untouched elements survive; **search index is rebuilt** (old value no longer found, new value found); a supplied list replaces wholesale and `[]` clears (and the index follows); an invalid value → 422 and nothing written; not found → 404; resource business rules (e.g. Organization's circular `partOf`).
+- **Delete:** 204, then 404, and its index rows are gone from search.
+- **Record-state extension / `/me`** (end-user scoped resources): `/me` returns only the caller's own records and supports every search parameter; the route isn't shadowed by `/{id}`; the extension can't be changed, dropped, or added after create (422); an unrelated patch leaves it intact.
+- **Auth:** missing scope → 403; org-less token → 403 on create/search/read (override `get_current_user` with an `async def _no_org(request: Request)` — **annotate `request: Request`** or FastAPI treats it as a query parameter); cross-org GET/PATCH/DELETE → 404 (never 403); cross-tenant search isolation.
 
-Use this for resources like `appointment`.
-
-```text
-tests/integration/<resource>/
-  conftest.py
-  support.py
-  test_core.py
-  test_nested_fields.py
-```
-
-Recommended split:
-- `test_core.py`: all top-level endpoints and filter behavior
-- `test_nested_fields.py`: representative nested mapper assertions and invalid reference tests
-
-Example already in this repo:
-- `tests/integration/appointment/`
-
-Choose the smallest structure that stays readable. Once a file becomes hard to scan, split it.
-
----
-
-## Step 2 - Add package-level permissions
-
-The shared `client` fixture in `tests/conftest.py` starts with `patient:*` permissions. For any other resource, add `tests/integration/<resource>/conftest.py`:
+### The validator switch
+`configs/config.yaml` ships `fhir_validation.enabled: false`, which skips base R4 validation. A test that asserts "a non-FHIR key / bad datatype is rejected" must turn it on itself:
 
 ```python
-"""<Resource>-specific auth setup for integration tests."""
-
-import pytest
-
-from app.auth.dependencies import get_current_user
-from app.main import app
-from tests.conftest import make_test_user
-
-
-@pytest.fixture(autouse=True)
-def _set_<resource>_permissions(client):
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=[
-            "<resource>:create",
-            "<resource>:read",
-            "<resource>:update",
-            "<resource>:delete",
-        ]
-    )
-    yield
-    app.dependency_overrides[get_current_user] = make_test_user()
+@pytest.fixture
+def native_validation(monkeypatch):
+    monkeypatch.setattr(settings.fhir_validation, "enabled", True)
+    monkeypatch.setattr(settings.fhir_validation, "backend", "native")
 ```
-
-If payload helpers need prerequisite resources such as patients or practitioners, include those permissions too.
-
----
-
-## Step 3 - Create `support.py`
-
-`support.py` should carry the small reusable pieces, not full test logic.
-
-Base shape:
-
-```python
-"""Shared helpers and payloads for <resource> integration tests."""
-
-BASE = "/api/fhir/v1/<resources>"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
-```
-
-### Prefer payload builders over giant module constants
-
-Use builder functions when:
-- the resource needs prerequisite resources created first
-- references must be generated dynamically
-- the full payload is too large to keep readable as one static dict
-
-Example:
-
-```python
-async def build_minimal_payload(client, *, user_id="u-test", org_id="org-test") -> dict:
-    return {
-        "user_id": user_id,
-        "org_id": org_id,
-        # ... minimum required fields ...
-    }
-
-
-async def build_full_payload(client, *, user_id="u-test", org_id="org-test") -> dict:
-    payload = await build_minimal_payload(client, user_id=user_id, org_id=org_id)
-    payload.update(
-        {
-            # ... representative optional fields that exercise mapping/parsing ...
-        }
-    )
-    return payload
-```
-
-### Keep helpers small
-
-```python
-async def create_<resource>(client, payload=None) -> int:
-    payload = payload or await build_minimal_payload(client)
-    resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 200
-    return resp.json()["id"]
-
-
-async def get_first_child_id(client, path: str) -> int:
-    resp = await client.get(path)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] >= 1
-    return data["data"][0]["id"]
-```
-
----
-
-## Step 4 - Create `test_core.py`
-
-This file covers the top-level contract.
-
-Suggested header:
-
-```python
-"""Core <resource> endpoint coverage."""
-```
-
-Suggested imports:
-
-```python
-from tests.helpers.assertions import (
-    assert_fhir_<resource>,
-    assert_fhir_bundle,
-    assert_operation_outcome,
-    assert_paginated,
-    assert_plain_<resource>,
-)
-```
-
-### Behaviors that `test_core.py` should cover
-
-- minimal create
-- rich/full create if the resource has meaningful optional mapping
-- FHIR create response
-- extra-field rejection
-- get by id in plain and FHIR
-- get by id not found
-- patch of mutable fields
-- nullable-field clearing where supported
-- patch not found
-- delete
-- delete not found
-- list plain
-- list FHIR Bundle
-- pagination
-- resource-specific filters
-- empty list
-- `/me` behavior if the router exposes it
-- permission failure
-- content negotiation defaults
-
-### Create examples
-
-```python
-async def test_create_<resource>_minimal(client):
-    # Minimal payload proves the smallest supported contract works.
-    resp = await client.post(BASE + "/", json=await build_minimal_payload(client))
-    assert resp.status_code == 200
-    assert_plain_<resource>(resp.json(), ...)
-
-
-async def test_create_<resource>_full(client):
-    # Full payload proves richer optional-field mapping works.
-    resp = await client.post(BASE + "/", json=await build_full_payload(client))
-    assert resp.status_code == 200
-    ...
-
-
-async def test_create_<resource>_returns_fhir_format(client):
-    resp = await client.post(BASE + "/", json=await build_minimal_payload(client), headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    assert resp.json()["resourceType"] == "<Resource>"
-
-
-async def test_create_<resource>_extra_field_rejected(client):
-    payload = await build_minimal_payload(client)
-    resp = await client.post(BASE + "/", json={**payload, "bad_field": "value"})
-    assert_operation_outcome(resp.json(), expected_status=400, response_status=resp.status_code)
-```
-
-### Get by id examples
-
-```python
-async def test_get_<resource>_by_id_plain(client):
-    resource_id = await create_<resource>(client)
-    resp = await client.get(f"{BASE}/{resource_id}")
-    assert resp.status_code == 200
-    assert resp.json()["id"] == resource_id
-
-
-async def test_get_<resource>_by_id_fhir(client):
-    resource_id = await create_<resource>(client)
-    resp = await client.get(f"{BASE}/{resource_id}", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    assert resp.json()["resourceType"] == "<Resource>"
-    assert resp.json()["id"] == str(resource_id)
-
-
-async def test_get_<resource>_not_found(client):
-    resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-```
-
-### Authorization and ownership
-
-Only add cross-org negative tests if `app/auth/<resource>_deps.py` actually enforces that scope.
-
-Do not write tests for protections that the current implementation does not provide.
-
-### Patch examples
-
-```python
-async def test_patch_<resource>(client):
-    resource_id = await create_<resource>(client)
-    resp = await client.patch(f"{BASE}/{resource_id}", json={"<field>": "<new_value>"})
-    assert resp.status_code == 200
-    assert resp.json()["<field>"] == "<new_value>"
-
-
-async def test_patch_<resource>_not_found(client):
-    resp = await client.patch(f"{BASE}/999999", json={"<field>": "x"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-```
-
-### Delete examples
-
-```python
-async def test_delete_<resource>(client):
-    resource_id = await create_<resource>(client)
-    assert (await client.delete(f"{BASE}/{resource_id}")).status_code == 204
-    assert (await client.get(f"{BASE}/{resource_id}")).status_code == 404
-
-
-async def test_delete_<resource>_not_found(client):
-    resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-```
-
-### List examples
-
-```python
-async def test_list_<resource>s_plain(client):
-    await client.post(BASE + "/", json=await build_minimal_payload(client))
-    resp = await client.get(BASE + "/")
-    assert resp.status_code == 200
-    assert_paginated(resp.json(), min_total=1)
-
-
-async def test_list_<resource>s_fhir_bundle(client):
-    await client.post(BASE + "/", json=await build_minimal_payload(client))
-    resp = await client.get(BASE + "/", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    assert_fhir_bundle(resp.json(), min_total=1)
-
-
-async def test_list_<resource>s_pagination(client):
-    for idx in range(3):
-        await client.post(BASE + "/", json=await build_minimal_payload(client, user_id=f"u-{idx}"))
-    resp = await client.get(BASE + "/?limit=2&offset=0")
-    data = resp.json()
-    assert data["limit"] == 2
-    assert len(data["data"]) == 2
-    assert data["total"] >= 3
-
-
-async def test_list_<resource>s_empty(client):
-    resp = await client.get(BASE + "/")
-    data = resp.json()
-    assert data["total"] == 0
-    assert data["data"] == []
-```
-
-If the router exposes resource-specific filters, add explicit tests for them.
-
-### `/me` examples
-
-Only for resources that actually expose `/me` (`Patient` and `Practitioner` only).
-
-```python
-async def test_get_my_<resource>s_found(client):
-    await client.post(BASE + "/", json=await build_minimal_payload(client))
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    assert_paginated(resp.json(), min_total=1)
-
-
-async def test_get_my_<resource>s_org_isolation(client, other_client):
-    await client.post(BASE + "/", json=await build_minimal_payload(client))
-    resp = await other_client.get(BASE + "/me")
-    # Assert current runtime behavior: some resources return 404, some return an empty paginated result.
-```
-
-Do not assume all `/me` routes behave the same. Read the repository and auth dependency first.
-
-### Permission example
-
-```python
-async def test_create_<resource>_no_permission(client):
-    payload = await build_minimal_payload(client)
-    from app.main import app as _app
-    _app.dependency_overrides[get_current_user] = make_test_user(permissions=["<resource>:read"])
-    try:
-        resp = await client.post(BASE + "/", json=payload)
-        assert_operation_outcome(resp.json(), expected_status=403, response_status=resp.status_code)
-    finally:
-        _app.dependency_overrides[get_current_user] = make_test_user(
-            permissions=["<resource>:create", "<resource>:read", "<resource>:update", "<resource>:delete"]
-        )
-```
-
-Important:
-- build prerequisite payloads before downgrading permissions if the helper needs to create supporting resources
-- if the resource depends on patient/practitioner fixtures, include those permissions in the package `conftest.py`
-
----
-
-## Step 5 - Add either child-route files or `test_nested_fields.py`
-
-### Child-route files
-
-For each `POST /{id}/<subresource>` route family, add tests for all sibling routes:
-
-```python
-async def test_add_and_list_<subresource>(client):
-    resource_id = await create_<resource>(client)
-    payload = {...}
-    assert (await client.post(f"{BASE}/{resource_id}/<subresources>", json=payload)).status_code == 200
-
-    list_resp = await client.get(f"{BASE}/{resource_id}/<subresources>")
-    assert list_resp.status_code == 200
-    data = list_resp.json()
-    assert data["total"] == 1
-    assert "id" in data["data"][0]
-
-
-async def test_delete_<subresource>(client):
-    resource_id = await create_<resource>(client)
-    await client.post(f"{BASE}/{resource_id}/<subresources>", json={...})
-    sub_id = (await client.get(f"{BASE}/{resource_id}/<subresources>")).json()["data"][0]["id"]
-    assert (await client.delete(f"{BASE}/{resource_id}/<subresources>/{sub_id}")).status_code == 204
-```
-
-Do not stop at one or two child endpoints. If the router exposes the route family, test all of it.
-
-Also add at least one FHIR-format list test for each distinct child response shape family:
-- HumanName-like
-- Identifier-like
-- ContactPoint-like
-- Address-like
-- Attachment-like
-- more complex BackboneElement-like entries
-
-### `test_nested_fields.py`
-
-For resources without child routes but with large nested payloads, add a second file such as `test_nested_fields.py`.
-
-That file should:
-- verify representative nested fields in the plain mapper
-- verify representative nested fields in the FHIR mapper
-- test invalid reference formats for open references
-- test invalid resource types for closed-set references
-- test foreign-key resolution errors
-- avoid asserting every nullable field one-by-one
-
-This is the pattern used for `appointment`.
-
----
-
-## Step 6 - Update `tests/helpers/assertions.py`
-
-Add resource-specific helpers when the generic ones are insufficient:
-
-```python
-def assert_plain_<resource>(data: dict, **expected) -> None:
-    assert data.get("id") is not None
-    for field, value in expected.items():
-        assert data.get(field) == value, f"expected {field}={value!r}, got {data.get(field)!r}"
-
-
-def assert_fhir_<resource>(data: dict, **expected) -> None:
-    assert data.get("resourceType") == "<Resource>"
-    assert data.get("id") is not None
-    for field, value in expected.items():
-        assert data.get(field) == value
-```
-
-Keep these helpers small. They should assert structure and key scalars, not duplicate whole payloads.
-
----
-
-## Step 7 - Run and verify
+Request it only in the tests that need it. (A test that passes only because validation is off, or fails only because it is off, is a bug in the test.)
+
+### `test_search.py` must cover
+Seed a small fixture (a `people`-style fixture of 4 records with **distinct** values) and write helpers `_search(client, params)`, `_ids(bundle)` (match entries only), `_found(client, people, **params)` returning the keys found.
+
+- **One block per parameter**, using a value that can actually match (a test that searches a non-matching value and expects 0 results proves nothing): the default form, each modifier the registry lists, and the negatives (`:not` includes records with no value; `:missing=true/false`; wrong system → no match; unknown code → no match, not a 500).
+- **String:** starts-with (not contains) — `address=Erewhon` must **not** match the line `534 Erewhon St`; case-insensitive; accent-insensitive (`muller` finds `Müller`); `:exact` is case- and accent-sensitive; `:contains`.
+- **Token:** `code`, `system|code`, `|code`, `system|`; comma OR; `:not`; `:text`; `:of-type` (identifier); `:in`/`:below`/`:above` when the registry lists them (seed the terminology tables as Organization's `test_search.py` does).
+- **Reference:** `id`, `Type/id`, absolute URL of this server, absolute URL elsewhere (raw match), `:[type]`, `:identifier`, chaining, `:above`/`:below` where declared.
+- **Date:** each prefix and precision; `_lastUpdated`.
+- **Combination:** comma = OR; repeated parameter = AND; different parameters AND; `\,` is a literal comma.
+- **Result parameters:** `_sort` (asc/desc, multi-value rule, an unsupported sort → 400), `_count` (capped at `pagination.max_limit`; `0` = count only, no `entry`), `_offset`, `_total=none`, links (`self/first/next/previous/last`), `_summary`, `_elements` (SUBSETTED tag), `_include`/`_revinclude` + `:iterate` for every declared target.
+- **Handling:** unknown parameter → ignored with an `outcome` entry; **400** under `Prefer: handling=strict`; known parameter with a bad modifier or malformed value → 400; unimplemented common parameters (`_tag`, `_has`, ...) → ignored (200); `_query` → 400; a parameter with an empty value is ignored (R4).
+- **Bundle:** `resourceType`, `type=searchset`, `total`, `entry[].fullUrl` ends with `/<resources>/<id>`, `search.mode`; XML-only `Accept` → 406 on search too.
+- **POST `/_search`:** form-encoded body; query-string and body are combined.
+
+### `tests/conformance/test_<resource>_fhir.py`
+The mapper just stamps `id`/`meta` onto `content`, so the oracle (`google-fhir-r4`, dev-only) checks that **what we store and return is valid R4**. Build `<Resource>Model(...)` rows with `content=` documents (one parametrized case per stored shape: minimal, each optional element, every BackboneElement fully populated, the full payload, `updated_by`/`updated_at`), call `to_fhir_<resource>`, and `assert_valid(<resource>_pb2.<Resource>, ...)`. Include `test_mapper_serves_content_unchanged` and a `test_validator_rejects_invalid_fhir` of deliberately broken payloads (wrong types, misspelled element, bad required-binding code, missing required child) so a library bump that stops validating can't pass silently. Feed JSON **text**, not floats (`assert_valid` in `tests/conformance/support.py` does this).
+
+### `tests/helpers/assertions.py`
+`assert_fhir_<resource>(data, **expected)`: asserts `resourceType`, `id` present, and each expected field. There is no plain-format assertion.
+
+### `tests/integration/capability/test_metadata.py`
+Add `"<resource>": ("<Resource>", <resource>_search())` to the `expected` map: the statement must list exactly the registry's parameters.
+
+## Run
 
 ```bash
-uv run pytest tests/integration/<resource> -q
-uv run pytest tests/ -q
+uv run pytest tests/integration/<resource> tests/conformance/test_<resource>_fhir.py tests/integration/capability -q
 ```
-
-Common issues and fixes:
-
-| Symptom | Fix |
-|---|---|
-| `NotImplementedError: Dialect 'sqlite' does not support sequence increments` | `tests/conftest.py` sequence simulation is not active or app import order changed |
-| `429 Too Many Requests` in later tests | `RateLimitMiddleware.dispatch` override is not active |
-| `assert 200 == 201` on POST create | `format_response()` currently returns 200 at runtime; if you are not changing `app/`, assert 200 |
-| `assert 422 == 400` on validation error | error handling maps schema validation to 400 OperationOutcome; use 400 |
-| `404` or empty `/me` after create | payload `user_id` / `org_id` does not match the active fixture, or the resource scopes `/me` differently than you assumed |
-| permission test fails before hitting the target route | you downgraded auth before building a payload that creates prerequisite resources |
-| nested reference assertion fails | mapper field names differ between plain and FHIR forms; read both mapper files again |
-
----
+Integration suites are slow (each test builds a fresh engine and seeds the profile tables): run a resource's folder, not the whole tree, while iterating. Before committing, run the sibling content-based resources too — a change to `app/fhir/search/` or `app/repository/_content_index.py` affects all of them. Pre-existing failures that exist only because `fhir_validation.enabled` is `false` (Organization's "non-FHIR key" tests) are not caused by your change; don't "fix" them by touching the engine.
 
 ## Key invariants
 
-- Assert the current runtime behavior, not just the decorator metadata. Today, `format_response()`-based create endpoints return HTTP **200**.
-- Validation errors return HTTP **400** (`OperationOutcome`), not 422, when they are schema-level request validation failures.
-- Repository and service-raised invalid reference errors may still return HTTP **422**. Assert the actual runtime path.
-- Plain response field names are the mapper contract, not guesses. Read `plain.py`.
-- FHIR response field names are the mapper contract, not guesses. Read `fhir.py`.
-- Sub-resource list responses are `{"data": [...], "total": N}` and each child item includes `"id"` for delete coverage.
-- Minimal payloads used for `/me` tests must resolve to `"user_id": "u-test"` and `"org_id": "org-test"` unless the route is explicitly designed otherwise.
-- `other_client` shares the same database as `client`; use it for isolation checks.
-- Do not stop at status-code checks for errors. Assert the `OperationOutcome` shape too.
-- Production-grade does **not** mean testing every nullable field one-by-one. It means endpoint-complete coverage plus focused tests for all custom logic and risky mappings.
-- Add comments. The test files should explain intent, not just assert values.
-- Prefer package-per-resource structure. The repo now uses:
-  - `patient/` for many child routes
-  - `practitioner/` for many child routes
-  - `appointment/` for nested payload coverage without child routes
+- Every test creates its own data; never depend on another test's rows.
+- Assert on the **index** through search (`_found`) after create **and** after patch/delete — the index is where the bugs hide, not the stored document.
+- Cross-org access is **404, never 403**; an org-less token is 403.
+- Use values that can match; assert both the positive and the negative.
+- No sleeps, no real network; the Java validator sidecar and `tx.fhir.org` are not available in tests.

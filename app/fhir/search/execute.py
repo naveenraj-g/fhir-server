@@ -56,14 +56,21 @@ async def execute_search(
     request: SearchRequest,
     ctx: SearchContext,
     tiebreak,
+    extra_conditions: tuple | list = (),
 ) -> tuple[list, int | None, list[tuple[str, Any]]]:
     """(matches for this page, total or None, included (type, row) pairs).
 
-    Always scoped to ctx.tenant_id via `model.tenant_id`. `tiebreak` is a
+    Always scoped to ctx.tenant_id via `model.tenant_id`. `extra_conditions`
+    are ANDed on top, for a scope that isn't a search parameter (e.g.
+    Practitioner's `/me`, which restricts to one user_id). `tiebreak` is a
     unique column (the public id) appended to the ORDER BY so paging is
     stable. The total is skipped for `_total=none`; `_summary=count` /
     `_count=0` fetches no rows at all."""
-    conditions = [model.tenant_id == ctx.tenant_id, *where_conditions(registry, request, ctx)]
+    conditions = [
+        model.tenant_id == ctx.tenant_id,
+        *extra_conditions,
+        *where_conditions(registry, request, ctx),
+    ]
 
     rows: list = []
     if request.summary != "count" and request.count > 0:

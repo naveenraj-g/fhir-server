@@ -1,13 +1,4 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    Date,
-    Enum,
-    Sequence,
-    String,
-    text,
-)
+from sqlalchemy import BigInteger, Boolean, Column, Enum, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -21,22 +12,43 @@ practitioner_id_seq = Sequence(
 
 
 class PractitionerModel(TenantAuditMixin, Base):
-    """FHIR R4 Practitioner. No DB-level CHECK constraints — every R4 rule is
-    enforced by the FHIR validator layer (base -> country -> profile chain),
-    not by the database — same architecture choice as Organization/Location/
-    HealthcareService, see OrganizationModel's docstring
-    (app/models/organization/core.py) for the full reasoning.
+    """FHIR R4 Practitioner — Medplum-style storage, same as Organization
+    and Location.
 
-    Unlike Organization/Location/HealthcareService, Practitioner keeps a
-    plain `user_id` column alongside the JWT-derived `tenant_id`/
-    `created_by`/`updated_by` (TenantAuditMixin) — a Practitioner record is
-    naturally scoped to an individual end-user's own account (the
-    clinician), unlike those three shared tenant-level entities. This
-    mirrors this resource's own pre-existing documented behavior from before
-    it was removed in the mass resource cleanup (see CLAUDE.md's
-    Multi-Tenancy & Ownership section: "user_id is unchanged for Patient and
-    Practitioner").
-    """
+    `content` (JSONB) holds the whole resource exactly as validated on
+    write; it is the single source of truth, and GET serves it back as-is
+    (`id`/`meta` are stamped on at read time from this row's own columns —
+    see app.fhir.mappers.practitioner). Nothing else in this table or its
+    child tables is a second copy of the resource: every other column exists
+    only because a FHIR R4 Practitioner search parameter filters on it
+    (https://www.hl7.org/fhir/R4/practitioner.html#search), and is derived
+    from `content` on every write by app.repository.practitioner._indexer.
+
+    Search parameter -> storage:
+      active             -> active (0..1, column)
+      gender             -> gender (0..1, column)
+      name, family,
+      given, phonetic    -> PractitionerName (0..*, one row per HumanName)
+      identifier         -> PractitionerIdentifier (0..*)
+      telecom, phone,
+      email              -> PractitionerTelecom (0..*)
+      address, address-* -> PractitionerAddress (0..*)
+      communication      -> PractitionerCommunication (0..*, one row per coding)
+      _id                -> practitioner_id;  _lastUpdated -> updated_at/created_at
+
+    `user_id` is not a FHIR element and not a search parameter: it scopes the
+    `/me` route to the individual end-user the record belongs to. It is
+    carried in the resource as one extension (USER_ID_EXTENSION_URL,
+    `valueString`) — so the request body stays plain FHIR — and copied into
+    this column by the indexer. It is immutable after create.
+
+    String parameters are stored twice: as written (for `:exact`) and
+    normalized — accents stripped, case-folded (app.fhir.search.normalize) —
+    for R4's default case/accent-insensitive starts-with match and
+    `:contains`.
+
+    No DB-level CHECK constraints — every R4 rule is enforced by the FHIR
+    validator before anything is written."""
 
     __tablename__ = "practitioner"
 
@@ -50,30 +62,21 @@ class PractitionerModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
+
+    # The end-user this record belongs to (see the docstring). Derived from
+    # the user-id extension on create; never changed afterwards.
     user_id = Column(String, nullable=True, index=True)
 
+    # ── Search index (derived from `content`) ─────────────────────────────
     # active (0..1) — R4 removed the R3 default of true; absent means
-    # unknown, not false, so this has no default and is nullable.
+    # unknown, not false.
     active = Column(Boolean, nullable=True)
+    gender = Column(
+        Enum(AdministrativeGender, name="administrative_gender"), nullable=True
+    )
 
-    # gender (0..1 code, AdministrativeGender) — shared schema-layer enum,
-    # same as every other resource's datatype-code columns (ContactPointSystem,
-    # AddressUse, ...) — see app/schemas/enums.py, not a model-layer copy.
-    gender = Column(Enum(AdministrativeGender, name="administrative_gender"), nullable=True)
-
-    # birthDate (0..1 date) — FHIR `date`, not `dateTime`: no time-of-day,
-    # no timezone. SQL DATE matches exactly.
-    birth_date = Column(Date, nullable=True)
-
-    # Resource-level extension support. Raw [{url, valueType, value}, ...];
-    # validated against registered extension definitions by the
-    # (not-yet-built) profile pipeline, not by the database. No explicit
-    # ::jsonb cast — Postgres infers it from the column's own type in a
-    # DEFAULT clause, and the explicit cast is invalid SQL on SQLite (the
-    # test suite's engine), which has no cast syntax at all.
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Relationships
     identifiers = relationship(
         "PractitionerIdentifier",
         back_populates="practitioner",
@@ -89,14 +92,6 @@ class PractitionerModel(TenantAuditMixin, Base):
     )
     addresses = relationship(
         "PractitionerAddress",
-        back_populates="practitioner",
-        cascade="all, delete-orphan",
-    )
-    photos = relationship(
-        "PractitionerPhoto", back_populates="practitioner", cascade="all, delete-orphan"
-    )
-    qualifications = relationship(
-        "PractitionerQualification",
         back_populates="practitioner",
         cascade="all, delete-orphan",
     )

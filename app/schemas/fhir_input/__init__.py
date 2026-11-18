@@ -20,6 +20,7 @@ by base R4 validation, so a key that isn't FHIR is a 422.
 """
 
 from app.schemas.fhir_input.address import FhirAddressInput
+from app.schemas.fhir_input.attachment import FhirAttachmentInput
 from app.schemas.fhir_input.base import FhirInputModel
 from app.schemas.fhir_input.codeable_concept import FhirCodeableConceptInput
 from app.schemas.fhir_input.coding import FhirCodingInput
@@ -31,6 +32,7 @@ from app.schemas.fhir_input.reference import FhirReferenceInput
 
 __all__ = [
     "FhirAddressInput",
+    "FhirAttachmentInput",
     "FhirCodeableConceptInput",
     "FhirCodingInput",
     "FhirContactPointInput",

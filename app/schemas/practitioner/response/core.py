@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
     FHIRAddress,
@@ -10,16 +10,9 @@ from app.schemas.datatypes import (
     FHIRIdentifier,
     FHIRMeta,
 )
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
-from .address import PlainPractitionerAddress
-from .communication import PlainPractitionerCommunication
-from .identifier import PlainPractitionerIdentifier
-from .name import PlainPractitionerName
-from .photo import PlainPractitionerPhoto
-from .qualification import FHIRPractitionerQualification, PlainPractitionerQualification
-from .telecom import PlainPractitionerTelecom
-
-# ── FHIR (camelCase) ─────────────────────────────────────────────────────
+from .qualification import FHIRPractitionerQualification
 
 
 class FHIRPractitionerSchema(BaseModel):
@@ -31,102 +24,53 @@ class FHIRPractitionerSchema(BaseModel):
     )
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — includes the user-id extension when the record belongs to an end-user.",
     )
     identifier: list[FHIRIdentifier] | None = Field(
-        None, description="Identifiers for the person in this role."
+        None, description="An identifier for the person as this agent."
     )
     active: bool | None = Field(
         None, description="Whether this practitioner's record is in active use."
     )
     name: list[FHIRHumanName] | None = Field(
-        None, description="Name(s) associated with the practitioner."
+        None, description="The name(s) associated with the practitioner."
     )
     telecom: list[FHIRContactPoint] | None = Field(
-        None, description="Contact details applying to all roles."
+        None, description="A contact detail for the practitioner (that apply to all roles)."
     )
     address: list[FHIRAddress] | None = Field(
-        None, description="Non-role-specific addresses, typically home."
+        None, description="Address(es) of the practitioner that are not role specific."
     )
-    gender: str | None = Field(None, description="male|female|other|unknown.")
-    birthDate: str | None = Field(None, description="Date of birth.")
-    photo: list[FHIRAttachment] | None = Field(
-        None, description="Image(s) of the person."
+    gender: str | None = Field(None, description="male | female | other | unknown.")
+    birthDate: str | None = Field(
+        None, description="The date on which the practitioner was born."
     )
+    photo: list[FHIRAttachment] | None = Field(None, description="Image of the person.")
     qualification: list[FHIRPractitionerQualification] | None = Field(
-        None, description="Certifications, licenses, or training."
+        None, description="Certification, licenses, or training pertaining to the provision of care."
     )
     communication: list[FHIRCodeableConcept] | None = Field(
-        None, description="Languages the practitioner can use in patient communication."
+        None, description="A language the practitioner can use in patient communication."
     )
 
 
 class FHIRPractitionerBundleEntry(BaseModel):
-    resource: FHIRPractitionerSchema
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRPractitionerSchema | dict = Field(
+        ...,
+        description="A Practitioner (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED) or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
 class FHIRPractitionerBundle(FHIRBundle):
-    entry: list[FHIRPractitionerBundleEntry] | None = None
-
-
-# ── Plain (snake_case) ────────────────────────────────────────────────────
-
-
-class PlainPractitionerResponse(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    id: int = Field(..., description="Public practitioner_id.")
-    user_id: str | None = Field(
-        None, description="Gateway-forwarded acting end-user's own account ID."
-    )
-    active: bool | None = Field(
-        None, description="Whether this practitioner's record is in active use."
-    )
-    gender: str | None = Field(None, description="male|female|other|unknown.")
-    birth_date: str | None = Field(None, description="Date of birth.")
-    identifier: list[PlainPractitionerIdentifier] | None = Field(
-        None, description="Identifiers for the person in this role."
-    )
-    name: list[PlainPractitionerName] | None = Field(
-        None, description="Name(s) associated with the practitioner."
-    )
-    telecom: list[PlainPractitionerTelecom] | None = Field(
-        None, description="Contact details applying to all roles."
-    )
-    address: list[PlainPractitionerAddress] | None = Field(
-        None, description="Non-role-specific addresses, typically home."
-    )
-    photo: list[PlainPractitionerPhoto] | None = Field(
-        None, description="Image(s) of the person."
-    )
-    qualification: list[PlainPractitionerQualification] | None = Field(
-        None, description="Certifications, licenses, or training."
-    )
-    communication: list[PlainPractitionerCommunication] | None = Field(
-        None, description="Languages the practitioner can use in patient communication."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
-    )
-    org_id: str | None = Field(
-        None,
-        description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept. Internally this column is named tenant_id (see app/models/shared/tenant_audit.py) to avoid ambiguity with the Organization entity itself; the external field name stays org_id for consistency with every other resource's response contract.",
-    )
-    created_at: str | None = Field(None, description="When this row was created.")
-    updated_at: str | None = Field(None, description="When this row was last updated.")
-    created_by: str | None = Field(
-        None, description="Acting user who created this record, taken from the verified JWT's sub."
-    )
-    updated_by: str | None = Field(
-        None,
-        description="Acting user who last updated this record, taken from the verified JWT's sub.",
-    )
-
-
-class PaginatedPractitionerResponse(BaseModel):
     total: int | None = Field(
-        None, description="Total matching rows (null when total_mode=none)."
+        None,
+        description="Number of matches across all pages. Omitted with _total=none.",
     )
-    limit: int = Field(..., description="Page size used for this response.")
-    offset: int = Field(..., description="Number of rows skipped before this page.")
-    data: list[PlainPractitionerResponse]
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRPractitionerBundleEntry] | None = None

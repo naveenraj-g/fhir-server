@@ -251,7 +251,7 @@ routes:
     # - healthcare_service
     # - patient
     # - plan_definition
-    # - practitioner
+    - practitioner
     # - practitioner_role
     # - procedure
     # - questionnaire

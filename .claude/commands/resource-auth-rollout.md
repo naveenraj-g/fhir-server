@@ -1,5 +1,7 @@
 # Roll Out Direct JWT/RBAC Auth to a Resource
 
+> **Legacy.** Every resource currently built already has direct JWT/RBAC auth, and `/new-fhir-resource` builds new ones with it from the start. Only use this to convert a resource that was deliberately built on the old gateway-trusted pattern.
+
 **As of this writing, every currently-built FHIR resource in this codebase already validates JWTs directly and enforces RBAC** — there is no resource left on the old plain/gateway-trusted pattern (see CLAUDE.md's "Multi-Tenancy & Ownership", specifically its "History" subsection for how that got here: Patient/Practitioner/Organization first, then eight more, then Questionnaire converted after being built the other way, then QuestionnaireResponse/ServiceRequest/MedicationRequest/Observation/DiagnosticReport in one final pass). `/new-fhir-resource` now builds a brand-new resource auth-rolled-out from the start — **this skill is for the narrower case of converting an already-built plain-pattern resource after the fact**, which only comes up if a resource was deliberately built on the old pattern (or one shows up some other way) and now needs converting. Don't run this against a resource that's already auth-rolled-out — check `app/routers/<resource>/core.py` for `require_permission(...)` first.
 
 ## ARGUMENTS: $RESOURCE

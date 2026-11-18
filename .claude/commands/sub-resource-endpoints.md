@@ -1,5 +1,7 @@
 # Sub-Resource Endpoints
 
+> **Legacy — normalized resources only.** Content-based (Medplum-style) resources — Organization, Location, Practitioner, and every resource built per `/new-fhir-resource` — have **no sub-resource endpoints**: children are elements of one stored document, read and replaced through the parent's `GET`/`PATCH`. Don't use this skill for them. It still applies to the older fully-normalized resources until they are rebuilt.
+
 Complete pattern for adding GET and DELETE endpoints to any `0..*` child table (names, identifiers, telecom, addresses, photos, contacts, qualifications, communications, etc.).
 
 Every FHIR resource with sub-resource POST endpoints **must** also have GET + DELETE endpoints for each sub-resource. Every route must have `operation_id`, `summary`, `description`, and `responses=` with `inline_schema()`.

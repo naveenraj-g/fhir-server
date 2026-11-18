@@ -21,14 +21,16 @@ from app.core.config import settings
 from app.fhir.search import SearchParam, SearchRegistry
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
+from app.repository.practitioner.search import practitioner_search
 
 # routes.enabled name -> registry factory.
 SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "organization": organization_search,
     "location": location_search,
+    "practitioner": practitioner_search,
 }
 
-# Interactions the Organization/Location routers implement.
+# Interactions the Organization/Location/Practitioner routers implement.
 # (No `update`/PUT, no `vread`, no history.)
 _INTERACTIONS = ("read", "create", "patch", "delete", "search-type")
 

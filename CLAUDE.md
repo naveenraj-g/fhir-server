@@ -149,7 +149,7 @@ Router → Service → Repository → ORM Model
 For every one of the resources above:
 - `created_by`/`updated_by` come from the verified JWT's `sub` (`actor.sub`); `org_id` comes from the verified JWT's `activeOrganizationId` (`actor.org_id`) — **neither is a request body field**. `<Resource>CreateSchema`/`PatchSchema` (and every sub-resource Create/Patch schema that predates its own resource's rollout) don't accept them at all — `extra="forbid"` turns a caller still sending them into a clean 422.
 - **No org-less/super-admin bypass**: a token with no `activeOrganizationId` claim is rejected outright (403) — every operation requires an org-scoped actor. `create`/`create_full` reject a missing `actor.org_id`; `patch`/`patch_full`/`delete`/every sub-resource method 404 (never 403, to avoid leaking whether the resource exists in another org) if the caller's org doesn't match the target's stored `org_id` — enforced via a shared `get_<resource>_scoped()` helper on each service's core mixin plus a `<resource>_belongs_to_org()` repository check.
-- `user_id` is a separate, independent axis from this rollout: **`Patient` and `Practitioner` are the ONLY resources that have a `user_id` column and schema field** (as plain, gateway-forwarded input fields; both expose a `/me` route scoped to `user_id`). All other resources have **no `user_id` column or field at all** — dropped entirely end-to-end as shared tenant-level entities scoped strictly by `org_id` (see Standard Columns).
+- `user_id` is a separate, independent axis from this rollout: **`Patient` and `Practitioner` are the ONLY resources that have a `user_id` column and schema field** (as plain, gateway-forwarded input fields — except Practitioner, whose `user_id` is carried as the `user-id` extension in its FHIR body, see "Medplum-style storage"; both expose a `/me` route scoped to `user_id`). All other resources have **no `user_id` column or field at all** — dropped entirely end-to-end as shared tenant-level entities scoped strictly by `org_id` (see Standard Columns).
 - No `resolve_<resource>()` dependency exists for any of these — routes call `require_permission("<resource>", "<action>")` directly and the service layer does the org-scoping itself.
 
 **⚠️ A bearer JWT is required on literally every `/api/fhir/v1` route, regardless of resource.** `app/main.py`'s `mount_routers()` wires `dependencies=[Depends(get_current_user), Depends(log_route_entry)]` onto the *entire* `api_router` every mounted resource shares — `get_current_user` (JWKS signature/`iss`/`aud`/`exp` verification, see `app/auth/dependencies.py`) runs once for every request regardless of which resource it's for; `require_permission(...)` on top of that is what's resource-specific. A *future* plain-pattern resource (if one is ever deliberately built that way again — see `/resource-auth-rollout`'s own note that this is now opt-out, not opt-in) would still 401 on a missing/invalid/expired token even with no `require_permission` of its own.
@@ -186,7 +186,9 @@ Rules:
 
 ## Full-Flow Checklist (Field Change)
 
-When adding, renaming, or removing any field, walk every layer:
+**Content-based resources (Organization, Location, Practitioner, ...):** a field that no search parameter uses needs **no change at all** — it is already stored in `content`; only the `*CreateSchema`/`*PatchSchema`/`FHIR*Schema` OpenAPI models may want it documented. A new *searchable* field: add the index column/table, populate it in `_indexer.py`, backfill it from `content` in a migration, add the `SearchParam`.
+
+**Normalized resources only** — when adding, renaming, or removing any field, walk every layer:
 
 1. **ORM Model** — add/change Column, generate + apply Alembic migration
 2. **CreateSchema** — add field + example value (include `user_id`/`org_id` in example)
@@ -268,7 +270,9 @@ Rules:
 - References: stored as `(subject_type: Enum, subject_id: int)` → output as `"Patient/10001"` string via `fhir_enum()`
 - `fhir_enum(v)` handles both SQLAlchemy Enum objects and plain strings transparently
 
-### Medplum-style storage (Organization, Location)
+### Medplum-style storage (Organization, Location, Practitioner)
+
+**Practitioner is built the same way** (`app/models/practitioner/`, `app/repository/practitioner/{_indexer,search,full,core}.py`, migration `a7d3f19c2b64`; always FHIR R4 in and out, `GET/POST /practitioners`, `/_search`, `/me`, `/{id}`). Its search index is `practitioner` (`active`, `gender`, `user_id`) plus `practitioner_name` (one row per HumanName: `family`/`given`/`name`/`phonetic`), `practitioner_identifier`, `practitioner_telecom` (`telecom`/`phone`/`email`), `practitioner_address`, `practitioner_communication`; `photo` and `qualification` have no search parameter and live only in `content`. **`user_id` is not a FHIR element**, so it travels as the `https://fhir-server.dev/fhir/StructureDefinition/user-id` extension (`valueString`) in the resource body; the indexer copies it into the `user_id` column on create (that column scopes `/me`, which is the same search with `user_id = actor.sub` ANDed on), and it is immutable — a PATCH that adds, changes or drops it is a 422. Practitioner has no `_include`/`_revinclude` targets yet (nothing it references is on the engine, and PractitionerRole etc. aren't either). The migration's downgrade is not implemented (one-way; restore from backup).
 
 **Organization and Location store the whole FHIR resource in one `content` JSONB column and keep only search-index columns/tables** — the same model Medplum uses. The bullets below describe Organization; Location is built identically (`app/models/location/`, `app/repository/location/{_indexer,search,full,core}.py`, migration `8c41d2e7a9b3`), with its 0..1 `address` indexed as columns on `location` rather than a child table and `near` computed with plain trig in SQL (registered on the SQLite test DB in tests/conftest.py). Every other resource still uses the fully-normalized model described in the rest of this file.
 
@@ -561,12 +565,9 @@ Dev server: `uv run fastapi dev app/main.py` — OpenAPI at `http://localhost:80
 
 ## FHIR DB Model Design
 
-Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detailed rules on:
-- Fetching R4 spec + datatypes before modeling
-- Cardinality → storage mapping (0..1 flat, 0..* child table)
-- CodeableConcept / Reference / choice-type flattening
-- PostgreSQL enum creation + migration fixes
-- Shared enum types (`organization_reference_type`, `subject_reference_type`)
+New resources: use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) — Medplum-style: store the whole resource in `content`, index only what a search parameter filters on. Its rules apply to every resource built per `/new-fhir-resource`.
+
+**Everything under "Key invariants" below describes the older fully-normalized model** (about 40 resources until they are rebuilt; full rules in `docs/legacy/fhir-db-model-normalized.md`). For a content-based resource, only these carry over: R4 only (never R5 URLs); `CodeableReference` doesn't exist in R4; `organization_reference_type` and other shared PG enum types are always `create_type=False`; the same `postgresql.ENUM(..., create_type=False)` object is referenced by every `op.create_table` using the type; references store the **public** id with no FK; no DB constraints beyond what R4 itself requires; every `id`/FK is `BigInteger`.
 
 **Key invariants:**
 - R4 only — never `https://www.hl7.org/fhir/<resource>.html` (that's R5)
@@ -597,6 +598,8 @@ Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detaile
 
 ## What "End-to-End" Means
 
+_Working order (agreed): finish the fhir-server resources first, then do the fhir-gql half for all of them; the fhir-gql half is `/new-fhir-resource`'s Phase G._
+
 When a resource is asked for **"end to end,"** that phrase covers **both repos**, not just this one — a resource isn't end-to-end until a GraphQL client talking to the gateway can actually use it, on **both** connectors:
 
 1. **fhir-server (this repo)** — model → migration → schemas (input/response) → mapper (`fhir.py`/`plain.py`/`payload.py`) → repository → service → DI → router. The complete, authoritative checklist is `/new-fhir-resource`'s 17 steps — see below.
@@ -613,14 +616,15 @@ When a resource is asked for **"end to end,"** that phrase covers **both repos**
 
 ## Adding a New FHIR Resource
 
-Use the `/new-fhir-resource` skill (`.claude/commands/new-fhir-resource.md`) for the complete 17-step checklist covering model → migration → schemas → mapper → repository → service → DI → router. That skill covers the fhir-server half only — see "What 'End-to-End' Means" above for the fhir-gql half every resource also needs.
+**Build every new resource Medplum-style** — the whole FHIR resource in one `content` JSONB column, and only the elements a FHIR R4 search parameter filters on normalized into columns/child tables (the search index), with one `SearchRegistry` per resource. Organization, Location and Practitioner are the reference implementations; see "Medplum-style storage" above. Always work from the HL7 R4 documentation (resource page `#search` table, `search.html`, `searchparameter-registry.html`) — never R5, never from memory.
 
-**A new resource builds with direct JWT/RBAC auth by default now — not the old plain `resolve_<resource>()` pattern.** Every resource that currently exists has been rolled onto `require_permission(...)` + `get_<resource>_scoped()` (see Multi-Tenancy & Ownership), so `/new-fhir-resource`'s own steps assume that's the target shape, not an opt-in extra. Only reach for the plain pattern if explicitly told this particular resource should skip RBAC — that's now the rare exception, not the default, and should be called out here by name if it ever happens again.
+- **`/new-fhir-resource`** — the complete checklist and the list of files a new resource adds (model + index tables, migration, schemas, `fhir.py` mapper, repository with `_indexer.py` + `search.py`, service, DI, router, registrations, tests). Covers the fhir-server half; the fhir-gql half is its Phase G, done after the fhir-server resources.
+- **`/fhir-db-model`** — the modelling decisions: which search parameters to index and how each type maps to storage.
+- **`/add-resource-tests`** — the test files and what they must cover.
 
-One related skill, used opportunistically rather than as part of every new resource:
-- `/split-resource-package` — once a resource's model/repository/service/router/schema file grows large (many sub-resources), split it into a per-sub-resource package. Organization, Location, HealthcareService, Practitioner, PractitionerRole, Schedule, and Slot all do this across every layer; Appointment deliberately didn't (see the Schema Conventions section) despite being larger than any of them.
+A new resource builds with direct JWT/RBAC auth (`require_permission`, `get_<resource>_scoped`) by default. Only skip RBAC if explicitly told to, and then say so by name in "Multi-Tenancy & Ownership".
 
-`/resource-auth-rollout` still exists for the narrower case of *converting* an already-built plain-pattern resource after the fact (strip `tenant_id`/`created_by`/`updated_by` from its schemas, delete its `resolve_<resource>()` dep, add `get_<resource>_scoped()`, wire `require_permission(...)` on every route) — Questionnaire was the original worked example of this, and QuestionnaireResponse/ServiceRequest/MedicationRequest/Observation/DiagnosticReport were all converted the same way in one later pass. It isn't the thing to reach for when *building* a new resource — `/new-fhir-resource` already builds it auth-rolled-out from the start.
+The **older fully-normalized** resources (one column/table per element, `payload.py`/`plain.py`, flattened References, sub-resource routes) are being rebuilt one at a time; their old skills are kept in `docs/legacy/` (`new-fhir-resource-normalized.md`, `fhir-db-model-normalized.md`, `add-resource-tests-normalized.md`). Three skills apply only to those: `/sub-resource-endpoints`, `/split-resource-package` (mostly), `/resource-auth-rollout`. Converting one is a content-based rebuild plus a data migration (model it on `a7d3f19c2b64`, verified on a scratch DB).
 
 ---
 
@@ -635,6 +639,8 @@ Every router is still always imported in `app/routers/__init__.py` via `from . i
 ---
 
 ## Sub-Resource GET + DELETE Endpoints
+
+**Normalized resources only.** Content-based resources (Organization, Location, Practitioner, anything built per `/new-fhir-resource`) have no sub-resource endpoints — children are elements of the stored document, read and replaced through the parent.
 
 Use the `/sub-resource-endpoints` skill (`.claude/commands/sub-resource-endpoints.md`) for the complete pattern covering schemas, repository, service, and router for `GET /{id}/<sub>` and `DELETE /{id}/<sub>/{sub_id}` routes.
 

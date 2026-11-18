@@ -17,7 +17,7 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization and Location only**. Every other resource (Patient, Observation,
+The R4 search engine covers **Organization, Location and Practitioner** (Practitioner added 2026-11-18, with `/me`). Every other resource (Patient, Observation,
 Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 
@@ -27,12 +27,17 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 |---|---|---|---|
 | Organization | 13 | 13 | none |
 | Location | 15 | 15 | none |
+| Practitioner | 17 | 17 | none |
 | All other resources | - | 0 (old list filters) | everything: needs a registry each |
 
 - Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
   `address-use`, `endpoint`, `identifier`, `name`, `partof`, `phonetic`, `type`.
 - Location: the same address set, plus `endpoint`, `identifier`, `name`, `near`, `operational-status`,
   `organization`, `partof`, `status`, `type`.
+- Practitioner: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
+  `address-use`, `communication`, `email`, `family`, `gender`, `given`, `identifier`, `name`, `phone`, `phonetic`,
+  `telecom`. No `_include`/`_revinclude` targets yet; `_sort` works on every parameter except `given`, `name`, `phonetic`,
+  `email`, `phone`, `telecom` and `address`.
 
 ## 3. Implemented (engine level)
 
