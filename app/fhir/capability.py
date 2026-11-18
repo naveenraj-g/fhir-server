@@ -23,6 +23,7 @@ from app.repository.endpoint.search import endpoint_search
 from app.repository.healthcare_service.search import healthcare_service_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
+from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.practitioner.search import practitioner_search
 
 # routes.enabled name -> registry factory.
@@ -32,9 +33,10 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "practitioner": practitioner_search,
     "healthcare_service": healthcare_service_search,
     "endpoint": endpoint_search,
+    "practitioner_role": practitioner_role_search,
 }
 
-# Interactions the Organization/Location/Practitioner/HealthcareService/Endpoint routers implement.
+# Interactions the Organization/Location/Practitioner/HealthcareService/Endpoint/PractitionerRole routers implement.
 # (No `update`/PUT, no `vread`, no history.)
 _INTERACTIONS = ("read", "create", "patch", "delete", "search-type")
 

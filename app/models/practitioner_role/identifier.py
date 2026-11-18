@@ -1,111 +1,39 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    String,
-)
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
-
-# ---------------------------------------------------------------------------
-# identifier (0..*) child table
-# ---------------------------------------------------------------------------
 
 
-class PractitionerRoleIdentifier(TenantAuditMixin, Base):
-    """identifier[] — external business identifiers for this role.
+class PractitionerRoleIdentifier(Base):
+    """Search index for the `identifier` token parameter (0..*). Derived
+    from PractitionerRoleModel.content — never read to build a response.
 
-    type_text stays flattened (sibling of coding[], not part of it);
-    type's coding[] is a real 0..* child table
-    (PractitionerRoleIdentifierTypeCoding, below) rather than a single
-    flattened coding — same reasoning as HealthcareServiceIdentifier's own
-    type.coding[] promotion.
+    One row per PractitionerRole.identifier *per Identifier.type.coding* (one
+    row with no type when the identifier has no coded type), so that
+    `identifier:of-type=type-system|type-code|value` can match type and value
+    on the same row. A plain `identifier=` search is an EXISTS, so the
+    repetition never duplicates results.
 
-    No UniqueConstraint on (system, value) and no DB-level CHECK
-    constraints — same reasoning as OrganizationIdentifier, see
-    app/models/organization/identifier.py's docstring."""
+      identifier            -> system, value
+      identifier:of-type    -> type_system, type_code, value
+      identifier:text       -> type_text_norm / type_display_norm
+
+    No UniqueConstraint on (system, value): FHIR R4 doesn't require
+    identifier uniqueness — that's a profile decision, not a base rule."""
 
     __tablename__ = "practitioner_role_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    # Containment FK — named practitioner_role_pk, not practitioner_role_id,
-    # so it can never be confused with the public sequence ID.
+    # Named practitioner_role_pk (not practitioner_role_id) so it can't be
+    # confused with PractitionerRoleModel.practitioner_role_id, the public id.
     practitioner_role_pk = Column(
         BigInteger, ForeignKey("practitioner_role.id"), nullable=False, index=True
     )
-
-    use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
-    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
-    value = Column(String, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
+    value = Column(String, nullable=True, index=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_text_norm = Column(String, nullable=True)
+    type_display_norm = Column(String, nullable=True)
 
-    # assigner (0..1 Reference(Organization))
-    #
-    # assigner_reference is the raw literal string exactly as received —
-    # see OrganizationIdentifier.assigner_reference for the full reasoning.
-    assigner_reference = Column(String, nullable=True)
-    assigner_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    assigner_id = Column(BigInteger, nullable=True, index=True)
-    assigner_display = Column(String, nullable=True)
-
-    # assigner.identifier (0..1 Identifier) — logical-reference fallback
-    assigner_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use"), nullable=True
-    )
-    assigner_identifier_type_system = Column(String, nullable=True)
-    assigner_identifier_type_version = Column(String, nullable=True)
-    assigner_identifier_type_code = Column(String, nullable=True)
-    assigner_identifier_type_display = Column(String, nullable=True)
-    assigner_identifier_type_text = Column(String, nullable=True)
-    assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
-    assigner_identifier_system = Column(String, nullable=True)
-    assigner_identifier_value = Column(String, nullable=True)
-    assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    practitioner_role = relationship(
-        "PractitionerRoleModel", back_populates="identifiers"
-    )
-    type_codings = relationship(
-        "PractitionerRoleIdentifierTypeCoding",
-        back_populates="identifier",
-        cascade="all, delete-orphan",
-    )
-
-
-# ---------------------------------------------------------------------------
-# identifier.type.coding (0..*) grandchild table
-# ---------------------------------------------------------------------------
-
-
-class PractitionerRoleIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """One entry of PractitionerRole.identifier.type.coding (0..*)."""
-
-    __tablename__ = "practitioner_role_identifier_type_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    practitioner_role_identifier_id = Column(
-        BigInteger,
-        ForeignKey("practitioner_role_identifier.id"),
-        nullable=False,
-        index=True,
-    )
-
-    identifier = relationship(
-        "PractitionerRoleIdentifier", back_populates="type_codings"
-    )
+    practitioner_role = relationship("PractitionerRoleModel", back_populates="identifiers")

@@ -14,7 +14,7 @@ from __future__ import annotations
 import itertools
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, bindparam, case, exists, false, func, literal, or_, select
+from sqlalchemy import and_, bindparam, case, exists, false, func, literal, not_, or_, select
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.elements import ColumnElement
@@ -268,6 +268,58 @@ def date_match(column, value: str, now: datetime | None = None):
     now = now or datetime.now(UTC)
     slack = abs(now - lo) * 0.1
     return and_(column >= lo - slack, column < hi + slack)
+
+
+def period_match(start_col, end_col, value: str, now: datetime | None = None):
+    """A Period target — a `start` column and an `end` column — against a
+    prefixed date value (R4 search §2.21.1.5: a range target is matched by
+    its range, not a point).
+
+    Both columns hold *instants*, `start` = the first instant the period
+    covers and `end` = the first instant after it (a half-open [start, end)
+    range, however coarsely the FHIR dateTime was written); a missing start
+    means "since forever" and a missing end "still going". The search value is
+    the half-open range [lo, hi) it denotes at its written precision. With the
+    target T = [ts, te) and the search range S = [lo, hi):
+
+      eq  S fully contains T         ts >= lo and te <= hi   (open ends never)
+      ne  S doesn't fully contain T  not eq
+      gt  the range above S meets T   te > hi    or te open
+      lt  the range below S meets T   ts < lo    or ts open
+      ge  the range from lo up meets T  te > lo  or te open
+      le  the range up to hi meets T  ts < hi    or ts open
+      sa  T lies entirely above S     ts >= hi
+      eb  T lies entirely below S     te <= lo
+      ap  S widened by 10% of its distance from now overlaps T
+
+    A row with no period at all (both columns NULL) has no value, so it
+    matches nothing — `:missing` is how to find it."""
+    d = parse_date(value)
+    lo, hi = d.low, d.high
+    has_period = or_(start_col.is_not(None), end_col.is_not(None))
+    open_start, open_end = start_col.is_(None), end_col.is_(None)
+    contained = and_(start_col >= lo, end_col <= hi)  # NULL (an open end) -> not true
+    if d.prefix == "eq":
+        condition = contained
+    elif d.prefix == "ne":
+        condition = not_(func.coalesce(contained, false()))
+    elif d.prefix == "gt":
+        condition = or_(open_end, end_col > hi)
+    elif d.prefix == "lt":
+        condition = or_(open_start, start_col < lo)
+    elif d.prefix == "ge":
+        condition = or_(open_end, end_col > lo)
+    elif d.prefix == "le":
+        condition = or_(open_start, start_col < hi)
+    elif d.prefix == "sa":
+        condition = start_col >= hi
+    elif d.prefix == "eb":
+        condition = end_col <= lo
+    else:  # ap
+        now = now or datetime.now(UTC)
+        slack = abs(now - lo) * 0.1
+        condition = and_(or_(open_start, start_col < hi + slack), or_(open_end, end_col > lo - slack))
+    return and_(has_period, condition)
 
 
 # ── reference ────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.fhir.search import MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     array_string_match,
     coded_token_match,
@@ -233,6 +233,16 @@ def _telecom_present(system: str | None):
 
 
 # ── resource kind ────────────────────────────────────────────────────────────
+
+
+async def _revinclude_practitioner_role(session, ctx, practitioners):
+    """_revinclude=PractitionerRole:practitioner — the roles these
+    practitioners hold."""
+    from app.models.practitioner_role import PractitionerRoleModel as PR
+
+    ids = {p.practitioner_id for p in practitioners}
+    stmt = select(PR).where(PR.tenant_id == ctx.tenant_id, PR.practitioner_id.in_(ids))
+    return list((await session.execute(stmt)).scalars().all())
 
 
 def _register_kind() -> None:
@@ -483,6 +493,11 @@ def practitioner_search() -> SearchRegistry:
         # Encounter, ...) aren't on this engine yet, so there is nothing to
         # _revinclude either.
         includes=(),
-        revincludes=(),
+        # PractitionerRole.practitioner points here.
+        revincludes=(
+            IncludeTarget(
+                "PractitionerRole", "practitioner", "Practitioner", _revinclude_practitioner_role, reverse=True
+            ),
+        ),
         default_sort=lambda: [Prac.practitioner_id.desc()],
     )

@@ -1,20 +1,13 @@
 from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
+from app.models.enums import PractitionerReferenceType
 from app.models.practitioner_role import (
-    PractitionerRoleCode,
-    PractitionerRoleHealthcareService,
-    PractitionerRoleIdentifier,
-    PractitionerRoleLocation,
-    PractitionerRoleModel,
-    PractitionerRoleSpecialty,
-)
-from app.models.practitioner_role.enums import (
     PractitionerRoleEndpointReferenceType,
     PractitionerRoleHealthcareServiceReferenceType,
     PractitionerRoleLocationReferenceType,
+    PractitionerRoleModel,
 )
-from app.models.enums import PractitionerReferenceType
 from app.repository._reference_shared import (
     _IDENTIFIER_FALLBACK_SUFFIXES,
     _org_ref_kwargs,
@@ -25,53 +18,28 @@ from app.repository._reference_shared import (
 
 __all__ = [
     "_IDENTIFIER_FALLBACK_SUFFIXES",
-    "_SORTABLE_FIELDS",
-    "_healthcare_service_ref_kwargs",
-    "_location_ref_kwargs",
+    "REFERENCE_PARSERS",
     "_org_ref_kwargs",
     "_parse_endpoint_ref",
     "_parse_healthcare_service_ref",
     "_parse_location_ref",
     "_parse_org_ref",
     "_parse_practitioner_ref",
-    "_practitioner_ref_kwargs",
     "_reference_kwargs",
     "_validate_reference",
     "_with_relationships",
 ]
 
 
-# Sortable fields exposed via the `sort` list-query param (see
-# app.core.pagination.resolve_sort) — mirrors HealthcareService's _shared.py.
-_SORTABLE_FIELDS = {
-    "practitioner_role_id": PractitionerRoleModel.practitioner_role_id,
-    "created_at": PractitionerRoleModel.created_at,
-    "updated_at": PractitionerRoleModel.updated_at,
-}
-
-
 def _with_relationships(stmt):
-    """Eager-load all 9 practitioner_role sub-resources to avoid N+1 and
-    async lazy-load failures. identifier.type_codings, code.codings, and
-    specialty.codings are each a nested 0..* coding child table now (see
-    app.models.practitioner_role.*) — mirrors
-    app.repository.healthcare_service._shared._with_relationships."""
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from PractitionerRoleModel.content."""
     return stmt.options(
-        selectinload(PractitionerRoleModel.identifiers).selectinload(
-            PractitionerRoleIdentifier.type_codings
-        ),
-        selectinload(PractitionerRoleModel.codes).selectinload(
-            PractitionerRoleCode.codings
-        ),
-        selectinload(PractitionerRoleModel.specialties).selectinload(
-            PractitionerRoleSpecialty.codings
-        ),
-        selectinload(PractitionerRoleModel.locations),
-        selectinload(PractitionerRoleModel.healthcare_services),
-        selectinload(PractitionerRoleModel.telecoms),
-        selectinload(PractitionerRoleModel.available_times),
-        selectinload(PractitionerRoleModel.not_available),
-        selectinload(PractitionerRoleModel.endpoints),
+        *(
+            selectinload(getattr(PractitionerRoleModel, rel))
+            for rel in ("identifiers", "telecoms", "tokens", "references")
+        )
     )
 
 
@@ -80,52 +48,28 @@ def _parse_practitioner_ref(ref: str) -> tuple:
     return parse_reference(ref, PractitionerReferenceType)
 
 
-def _practitioner_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
-    """Build `{prefix}_type`/`{prefix}_id`/`{prefix}_display` ORM constructor
-    kwargs from a FHIR reference string (e.g. 'Practitioner/30001') for
-    PractitionerRole.practitioner."""
-    ref_type, ref_id = _parse_practitioner_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
-
-
 def _parse_location_ref(ref: str) -> tuple:
     """Parse 'Location/230001' → (PractitionerRoleLocationReferenceType.Location, 230001)."""
     return parse_reference(ref, PractitionerRoleLocationReferenceType)
 
 
-def _location_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
-    ref_type, ref_id = _parse_location_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
-
-
 def _parse_healthcare_service_ref(ref: str) -> tuple:
-    """Parse 'HealthcareService/150001' → (PractitionerRoleHealthcareServiceReferenceType.HealthcareService, 150001)."""
+    """Parse 'HealthcareService/150001'."""
     return parse_reference(ref, PractitionerRoleHealthcareServiceReferenceType)
 
 
-def _healthcare_service_ref_kwargs(
-    prefix: str, ref: str | None, display: str | None
-) -> dict:
-    ref_type, ref_id = _parse_healthcare_service_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
-
-
 def _parse_endpoint_ref(ref: str) -> tuple:
-    """Parse 'Endpoint/1' → (PractitionerRoleEndpointReferenceType.Endpoint, 1).
-    Endpoint isn't a modeled resource in this system (no RESOURCE_REGISTRY
-    entry) so — unlike location/healthcareService/practitioner/organization
-    — there's no existence check to run here; the identifier fallback (see
-    PractitionerRoleEndpointInput) is often the only populated half."""
+    """Parse 'Endpoint/620001'. Endpoint is a resource on this server
+    (RESOURCE_REGISTRY), so a relative Endpoint/<id> is existence-checked on
+    write; an endpoint given only by identifier/display simply has no index row."""
     return parse_reference(ref, PractitionerRoleEndpointReferenceType)
+
+
+# resource type of a local reference -> how to parse it into (enum, public id)
+REFERENCE_PARSERS = {
+    "Practitioner": _parse_practitioner_ref,
+    "Organization": _parse_org_ref,
+    "Location": _parse_location_ref,
+    "HealthcareService": _parse_healthcare_service_ref,
+    "Endpoint": _parse_endpoint_ref,
+}

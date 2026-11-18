@@ -427,6 +427,21 @@ async def _include_endpoint(session, ctx, locations):
     return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
 
 
+def _revinclude_practitioner_roles(param: str, key):
+    """_revinclude=PractitionerRole:<param> — roles whose `{param}` reference
+    points at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.practitioner_role import PractitionerRoleModel as PR
+        from app.models.practitioner_role import PractitionerRoleReference as Ref
+
+        ids = {key(r) for r in rows}
+        pks = select(Ref.practitioner_role_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
+        return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks)))
+
+    return fetch
+
+
 def _revinclude_healthcare_services(param: str):
     """_revinclude=HealthcareService:<param> — HealthcareServices whose
     `location` / `coverageArea` points at one of these locations."""
@@ -598,6 +613,13 @@ def location_search() -> SearchRegistry:
                 "coverage-area",
                 "Location",
                 _revinclude_healthcare_services("coverage-area"),
+                reverse=True,
+            ),
+            IncludeTarget(
+                "PractitionerRole",
+                "location",
+                "Location",
+                _revinclude_practitioner_roles("location", lambda loc: loc.location_id),
                 reverse=True,
             ),
         ),

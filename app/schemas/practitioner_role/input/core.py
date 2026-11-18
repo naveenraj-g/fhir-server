@@ -1,396 +1,125 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import IdentifierUse
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirContactPointInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
+)
 
-from .available_time import PractitionerRoleAvailableTimeInput
-from .code import PractitionerRoleCodeInput
-from .endpoint import PractitionerRoleEndpointInput
-from .healthcare_service import PractitionerRoleHealthcareServiceInput
-from .identifier import PractitionerRoleIdentifierInput
-from .location import PractitionerRoleLocationInput
-from .not_available import PractitionerRoleNotAvailableInput
-from .specialty import PractitionerRoleSpecialtyInput
-from .telecom import PractitionerRoleTelecomInput
+from .backbone import PractitionerRoleAvailableTimeInput, PractitionerRoleNotAvailableInput
+
+_EXAMPLE = {
+    "resourceType": "PractitionerRole",
+    "active": True,
+    "period": {"start": "2026-01-01T00:00:00Z"},
+    "practitioner": {"reference": "Practitioner/30001", "display": "Dr Adam Careful"},
+    "organization": {"reference": "Organization/190001", "display": "General Hospital"},
+    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/role-id", "value": "R-1"}],
+    "code": [{"coding": [{"code": "doctor", "display": "Doctor"}]}],
+    "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
+    "location": [{"reference": "Location/230001"}],
+    "healthcareService": [{"reference": "HealthcareService/150001"}],
+    "telecom": [{"system": "phone", "value": "555-0100", "use": "work"}],
+    "availableTime": [
+        {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"}
+    ],
+    "notAvailable": [{"description": "Conference week", "during": {"start": "2026-09-01T00:00:00Z"}}],
+    "availabilityExceptions": "Not on public holidays",
+    "endpoint": [{"reference": "Endpoint/620001"}],
+}
 
 
-class PractitionerRoleCreateSchema(BaseModel):
-    """Creates a PractitionerRole and any combination of its 9 sub-resource
-    lists atomically in one request — same set-once-then-patch shape as
-    Organization/HealthcareService, no separate scalar-only vs. full create
-    split. org_id and created_by both come from the verified JWT
-    (actor.org_id / actor.sub) — neither is a request body field. Like
-    Organization/Location/HealthcareService, PractitionerRole has no
-    user_id field at all — it's a shared tenant-level entity (a role
-    assignment), not scoped to an individual end-user."""
+class _PractitionerRoleFields(FhirInputModel):
+    """Every writable PractitionerRole element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/practitionerrole.html). Create and patch
+    accept exactly the same fields — PractitionerRole has no element that is
+    required at this layer.
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "active": True,
-                "period_start": "2026-01-01T00:00:00Z",
-                "period_end": "2026-12-31T23:59:59Z",
-                "practitioner": "Practitioner/30001",
-                "practitioner_display": "Dr. Jane Smith",
-                "organization": "Organization/190001",
-                "organization_display": "General Hospital",
-                "availability_exceptions": "Not available on public holidays",
-                "identifier": [],
-                "code": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/practitioner-role",
-                                "code": "doctor",
-                                "display": "Doctor",
-                            }
-                        ]
-                    }
-                ],
-                "specialty": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "408443003",
-                                "display": "General medical practice",
-                            }
-                        ]
-                    }
-                ],
-                "location": [],
-                "healthcare_service": [],
-                "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
-                "available_time": [
-                    {
-                        "days_of_week": ["mon", "tue", "wed", "thu", "fri"],
-                        "available_start_time": "09:00:00",
-                        "available_end_time": "17:00:00",
-                    }
-                ],
-                "not_available": [],
-                "endpoint": [],
-            }
-        },
+    The validated body is stored whole (PractitionerRoleModel.content), so any
+    valid R4 element is kept — including ones this model doesn't declare.
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    practitioner_role_id sequence) and `meta` (audit/tenant data, stamped on at
+    read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["PractitionerRole"] | None = Field(
+        None, description="Optional; if supplied it must be 'PractitionerRole'."
     )
-
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Business Identifiers that are specific to a role/location."
     )
     active: bool | None = Field(
         None, description="Whether this practitioner role record is in active use."
     )
-
-    period_start: datetime | None = Field(
-        None, description="Start of the period during which this role is valid."
+    period: FhirPeriodInput | None = Field(
+        None, description="The period during which the practitioner is authorized to perform in these role(s)."
     )
-    period_end: datetime | None = Field(
-        None, description="End of the period during which this role is valid."
-    )
-
-    # practitioner (0..1) Reference(Practitioner)
-    practitioner: str | None = Field(
+    practitioner: FhirReferenceInput | None = Field(
         None,
-        description="The practitioner who performs this role, as a FHIR reference string (e.g. 'Practitioner/30001').",
+        description="Practitioner that is able to provide the defined services for the organization — Reference(Practitioner). A relative 'Practitioner/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    practitioner_display: str | None = Field(
+    organization: FhirReferenceInput | None = Field(
         None,
-        description="Plain text narrative that identifies the practitioner in addition to the reference.",
+        description="Organization where the roles are available — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    practitioner_identifier_use: IdentifierUse | None = Field(
-        None,
-        description="Logical-identifier fallback for practitioner (used when the practitioner isn't a resource in this system) — identifies the purpose for that identifier, if known.",
-    )
-    practitioner_identifier_type_system: str | None = Field(
-        None,
-        description="Fallback identifier — the code system that defines the meaning of its type code.",
-    )
-    practitioner_identifier_type_version: str | None = Field(
-        None,
-        description="Fallback identifier — the version of the code system used for its type code.",
-    )
-    practitioner_identifier_type_code: str | None = Field(
-        None,
-        description="Fallback identifier — a symbol in syntax defined by the code system.",
-    )
-    practitioner_identifier_type_display: str | None = Field(
-        None,
-        description="Fallback identifier — a representation of the meaning of its type code.",
-    )
-    practitioner_identifier_type_text: str | None = Field(
-        None,
-        description="Fallback identifier — a human language representation of its type.",
-    )
-    practitioner_identifier_type_user_selected: bool | None = Field(
-        None,
-        description="Fallback identifier — whether its type coding was chosen by a user directly.",
-    )
-    practitioner_identifier_system: str | None = Field(
-        None, description="Fallback identifier — the namespace URL for the value."
-    )
-    practitioner_identifier_value: str | None = Field(
-        None,
-        description="Fallback identifier — the portion typically relevant to the user, unique within the system.",
-    )
-    practitioner_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of its validity period."
-    )
-    practitioner_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of its validity period."
-    )
-
-    # organization (0..1) Reference(Organization)
-    organization: str | None = Field(
-        None,
-        description="The organization this role is associated with, as a FHIR reference string (e.g. 'Organization/190001').",
-    )
-    organization_display: str | None = Field(
-        None,
-        description="Plain text narrative that identifies the organization in addition to the reference.",
-    )
-    organization_identifier_use: IdentifierUse | None = Field(
-        None,
-        description="Logical-identifier fallback for organization (used when it isn't a resource in this system) — identifies the purpose for that identifier, if known.",
-    )
-    organization_identifier_type_system: str | None = Field(
-        None,
-        description="Fallback identifier — the code system that defines the meaning of its type code.",
-    )
-    organization_identifier_type_version: str | None = Field(
-        None,
-        description="Fallback identifier — the version of the code system used for its type code.",
-    )
-    organization_identifier_type_code: str | None = Field(
-        None,
-        description="Fallback identifier — a symbol in syntax defined by the code system.",
-    )
-    organization_identifier_type_display: str | None = Field(
-        None,
-        description="Fallback identifier — a representation of the meaning of its type code.",
-    )
-    organization_identifier_type_text: str | None = Field(
-        None,
-        description="Fallback identifier — a human language representation of its type.",
-    )
-    organization_identifier_type_user_selected: bool | None = Field(
-        None,
-        description="Fallback identifier — whether its type coding was chosen by a user directly.",
-    )
-    organization_identifier_system: str | None = Field(
-        None, description="Fallback identifier — the namespace URL for the value."
-    )
-    organization_identifier_value: str | None = Field(
-        None,
-        description="Fallback identifier — the portion typically relevant to the user, unique within the system.",
-    )
-    organization_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of its validity period."
-    )
-    organization_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of its validity period."
-    )
-
-    availability_exceptions: str | None = Field(
-        None,
-        description="A description of site availability exceptions, e.g. public holiday availability.",
-    )
-
-    identifier: list[PractitionerRoleIdentifierInput] | None = Field(
-        None, description="Business identifiers for this role."
-    )
-    code: list[PractitionerRoleCodeInput] | None = Field(
+    code: list[FhirCodeableConceptInput] | None = Field(
         None, description="Roles which this practitioner may perform."
     )
-    specialty: list[PractitionerRoleSpecialtyInput] | None = Field(
+    specialty: list[FhirCodeableConceptInput] | None = Field(
         None, description="Specific specialty of the practitioner."
     )
-    location: list[PractitionerRoleLocationInput] | None = Field(
-        None, description="The location(s) at which this practitioner provides care."
-    )
-    healthcare_service: list[PractitionerRoleHealthcareServiceInput] | None = Field(
+    location: list[FhirReferenceInput] | None = Field(
         None,
-        description="The list of healthcare services that this worker provides for this role's organization/location(s).",
+        description="The location(s) at which this practitioner provides care — Reference(Location). A relative 'Location/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    telecom: list[PractitionerRoleTelecomInput] | None = Field(
-        None, description="Contact details specific to the role."
-    )
-    available_time: list[PractitionerRoleAvailableTimeInput] | None = Field(
-        None, description="Times the practitioner is available at this location/role."
-    )
-    not_available: list[PractitionerRoleNotAvailableInput] | None = Field(
+    healthcareService: list[FhirReferenceInput] | None = Field(
         None,
-        description="The practitioner is not available during this period, for the given reason.",
+        description="The list of healthcare services that this worker provides for this role's Organization/Location(s) — Reference(HealthcareService). A relative 'HealthcareService/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    endpoint: list[PractitionerRoleEndpointInput] | None = Field(
+    telecom: list[FhirContactPointInput] | None = Field(
+        None, description="Contact details that are specific to the role/location/service."
+    )
+    availableTime: list[PractitionerRoleAvailableTimeInput] | None = Field(
+        None, description="Times the Service Site is available."
+    )
+    notAvailable: list[PractitionerRoleNotAvailableInput] | None = Field(
+        None, description="Not available during this time due to provided reason."
+    )
+    availabilityExceptions: str | None = Field(
+        None, description="Description of availability exceptions."
+    )
+    endpoint: list[FhirReferenceInput] | None = Field(
         None,
-        description="Technical endpoints providing access to services operated for this role.",
+        description="Technical endpoints providing access to services operated for the practitioner with this role — Reference(Endpoint). A relative 'Endpoint/<id>' reference must exist in the caller's org (422 otherwise).",
     )
 
 
-class PractitionerRolePatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows wholesale;
-    omitted lists are left untouched. updated_by comes from the verified
-    JWT (actor.sub), not a request body field."""
+class PractitionerRoleCreateSchema(_PractitionerRoleFields):
+    """POST body — a FHIR R4 PractitionerRole resource. Creates the role and
+    every supplied nested element atomically in one transaction."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "active": False,
-                "telecom": [{"system": "phone", "value": "555-9999", "use": "work"}],
-            }
-        },
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
-    )
-    active: bool | None = Field(
-        None, description="Whether this practitioner role record is in active use."
-    )
 
-    period_start: datetime | None = Field(
-        None, description="Start of the period during which this role is valid."
-    )
-    period_end: datetime | None = Field(
-        None, description="End of the period during which this role is valid."
-    )
+class PractitionerRolePatchSchema(_PractitionerRoleFields):
+    """PATCH body — a partial FHIR R4 PractitionerRole (merge-patch semantics
+    on top-level elements). Only supplied elements are written; omitted ones
+    are left untouched. A supplied element replaces the stored value
+    wholesale — a list (even `[]`) replaces every existing entry, an object
+    such as `practitioner` or `period` replaces the whole value, and `null`
+    clears it."""
 
-    practitioner: str | None = Field(
-        None,
-        description="The practitioner who performs this role, as a FHIR reference string. Set to null to clear.",
-    )
-    practitioner_display: str | None = Field(
-        None,
-        description="Plain text narrative that identifies the practitioner in addition to the reference.",
-    )
-    practitioner_identifier_use: IdentifierUse | None = Field(
-        None,
-        description="Logical-identifier fallback for practitioner — identifies the purpose for that identifier, if known.",
-    )
-    practitioner_identifier_type_system: str | None = Field(
-        None,
-        description="Fallback identifier — the code system that defines the meaning of its type code.",
-    )
-    practitioner_identifier_type_version: str | None = Field(
-        None,
-        description="Fallback identifier — the version of the code system used for its type code.",
-    )
-    practitioner_identifier_type_code: str | None = Field(
-        None,
-        description="Fallback identifier — a symbol in syntax defined by the code system.",
-    )
-    practitioner_identifier_type_display: str | None = Field(
-        None,
-        description="Fallback identifier — a representation of the meaning of its type code.",
-    )
-    practitioner_identifier_type_text: str | None = Field(
-        None,
-        description="Fallback identifier — a human language representation of its type.",
-    )
-    practitioner_identifier_type_user_selected: bool | None = Field(
-        None,
-        description="Fallback identifier — whether its type coding was chosen by a user directly.",
-    )
-    practitioner_identifier_system: str | None = Field(
-        None, description="Fallback identifier — the namespace URL for the value."
-    )
-    practitioner_identifier_value: str | None = Field(
-        None,
-        description="Fallback identifier — the portion typically relevant to the user, unique within the system.",
-    )
-    practitioner_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of its validity period."
-    )
-    practitioner_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of its validity period."
-    )
-
-    organization: str | None = Field(
-        None,
-        description="The organization this role is associated with, as a FHIR reference string. Set to null to clear.",
-    )
-    organization_display: str | None = Field(
-        None,
-        description="Plain text narrative that identifies the organization in addition to the reference.",
-    )
-    organization_identifier_use: IdentifierUse | None = Field(
-        None,
-        description="Logical-identifier fallback for organization — identifies the purpose for that identifier, if known.",
-    )
-    organization_identifier_type_system: str | None = Field(
-        None,
-        description="Fallback identifier — the code system that defines the meaning of its type code.",
-    )
-    organization_identifier_type_version: str | None = Field(
-        None,
-        description="Fallback identifier — the version of the code system used for its type code.",
-    )
-    organization_identifier_type_code: str | None = Field(
-        None,
-        description="Fallback identifier — a symbol in syntax defined by the code system.",
-    )
-    organization_identifier_type_display: str | None = Field(
-        None,
-        description="Fallback identifier — a representation of the meaning of its type code.",
-    )
-    organization_identifier_type_text: str | None = Field(
-        None,
-        description="Fallback identifier — a human language representation of its type.",
-    )
-    organization_identifier_type_user_selected: bool | None = Field(
-        None,
-        description="Fallback identifier — whether its type coding was chosen by a user directly.",
-    )
-    organization_identifier_system: str | None = Field(
-        None, description="Fallback identifier — the namespace URL for the value."
-    )
-    organization_identifier_value: str | None = Field(
-        None,
-        description="Fallback identifier — the portion typically relevant to the user, unique within the system.",
-    )
-    organization_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of its validity period."
-    )
-    organization_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of its validity period."
-    )
-
-    availability_exceptions: str | None = Field(
-        None, description="A description of site availability exceptions."
-    )
-
-    identifier: list[PractitionerRoleIdentifierInput] | None = Field(
-        None, description="Business identifiers — replaces the full list if supplied."
-    )
-    code: list[PractitionerRoleCodeInput] | None = Field(
-        None, description="Roles — replaces the full list if supplied."
-    )
-    specialty: list[PractitionerRoleSpecialtyInput] | None = Field(
-        None, description="Specialties — replaces the full list if supplied."
-    )
-    location: list[PractitionerRoleLocationInput] | None = Field(
-        None, description="Location(s) — replaces the full list if supplied."
-    )
-    healthcare_service: list[PractitionerRoleHealthcareServiceInput] | None = Field(
-        None, description="Healthcare service(s) — replaces the full list if supplied."
-    )
-    telecom: list[PractitionerRoleTelecomInput] | None = Field(
-        None, description="Contact detail(s) — replaces the full list if supplied."
-    )
-    available_time: list[PractitionerRoleAvailableTimeInput] | None = Field(
-        None,
-        description="Available time window(s) — replaces the full list if supplied.",
-    )
-    not_available: list[PractitionerRoleNotAvailableInput] | None = Field(
-        None,
-        description="Not-available period(s) — replaces the full list if supplied.",
-    )
-    endpoint: list[PractitionerRoleEndpointInput] | None = Field(
-        None, description="Technical endpoint(s) — replaces the full list if supplied."
-    )
+    model_config = {
+        "json_schema_extra": {
+            "example": {"active": False, "period": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"}}
+        }
+    }

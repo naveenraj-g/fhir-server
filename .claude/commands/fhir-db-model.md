@@ -39,7 +39,7 @@ Every searched string is stored twice: **as written** (answers `:exact`, which i
 | reference, 0..1 | columns `{p}_reference` (the raw string exactly as received — an absolute URL to another server lives only here), `{p}_type` + `{p}_id` (resolved **public** id, relative `Type/id` only), `{p}_identifier_system`/`_value` (Reference.identifier, for `:identifier`). **No `ForeignKey`, no relationship** — the target type varies per row. |
 | reference, 0..* | child table with the same columns (see `*_endpoint` tables) |
 | date / dateTime / instant | timestamp (or `Date`) column |
-| Period | `start` and `end` columns |
+| Period | two columns `*_start` / `*_end` holding the **half-open range** [start, end): start = the first instant the period covers, end = the first instant *after* it (so `2026-12` ends at 2027-01-01T00:00Z), NULL = open. Fill them with `period_bounds()` and search with `period_match()` — never store the end as written, or coarse dates (`2026-12`) and open-ended periods search wrong |
 | number / quantity / uri / composite | the engine has no builder yet — add one to `app/fhir/search/sql.py` + `values.py` (with tests) before modelling the column |
 | `near`-style special | store the primitives it needs (lat/long columns) and write a custom matcher |
 

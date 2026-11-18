@@ -253,7 +253,7 @@ routes:
     # - patient
     # - plan_definition
     - practitioner
-    # - practitioner_role
+    - practitioner_role
     # - procedure
     # - questionnaire
     # - questionnaire_response

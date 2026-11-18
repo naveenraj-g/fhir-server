@@ -53,7 +53,8 @@ Never `https://www.hl7.org/fhir/<resource>.html` (that is R5). `CodeableReferenc
 | token on ContactPoint (`telecom`, `phone`, `email`) | child table (system, value, use). R4: the code matches `value`, the `system|` part matches `use` |
 | reference, 0..1 | columns `{p}_reference` (raw string), `{p}_type`, `{p}_id` (public id, relative refs only; **no FK**), `{p}_identifier_system`/`_value` — `reference_columns()` builds them |
 | reference, 0..* | child table with the same columns — `endpoint_row()` is the model |
-| date / dateTime / instant / Period | timestamp/date column(s); a Period gets start + end |
+| date / dateTime / instant | a timestamp (or date) column; matched with `date_match` |
+| Period (e.g. `PractitionerRole.period` -> `date`) | two timestamp columns from `period_bounds(period)` in `app/repository/_content_index.py`: `*_start` = first instant covered, `*_end` = first instant **after** it (half-open, NULL = open); matched with `period_match` in `app/fhir/search/sql.py`, which implements the R4 range table (`eq` = the search range wholly contains the period, `gt/lt/ge/le` = overlap above/below, `sa/eb` = entirely after/before) |
 | number, quantity, uri, composite | **not in the engine yet** — add a builder to `app/fhir/search/sql.py` + parser to `values.py` first, with tests |
 | `near`-style special | a custom matcher in the resource's `search.py` (see Location `near`) |
 

@@ -10,7 +10,31 @@ its own identical-shaped tables (OrganizationIdentifier / LocationIdentifier
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from app.fhir.search import normalize
+from app.fhir.search.values import parse_date
+
+
+def period_bounds(period: dict | None) -> tuple[datetime | None, datetime | None]:
+    """(start, end) instants for a FHIR Period's index columns — the half-open
+    [start, end) range the period covers (see app.fhir.search.sql.period_match),
+    in UTC. `start` is the first instant of Period.start (as precise as it was
+    written: `2026-01` -> 2026-01-01T00:00Z); `end` is the first instant *after*
+    Period.end at its written precision (`2026-12` -> 2027-01-01T00:00Z). A
+    missing or unparseable bound is None (open)."""
+    period = period or {}
+
+    def bound(value, which):
+        if not value:
+            return None
+        try:
+            parsed = parse_date(str(value))
+        except Exception:  # a malformed dateTime is the validator's to reject
+            return None
+        return getattr(parsed, which).astimezone(UTC)
+
+    return bound(period.get("start"), "low"), bound(period.get("end"), "high")
 
 
 def relative(reference: str | None, resource_type: str) -> str | None:

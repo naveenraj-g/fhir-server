@@ -199,6 +199,21 @@ async def _revinclude_healthcare_service_endpoint(session, ctx, endpoints):
     return await _fetch(session, select(HS).where(HS.tenant_id == ctx.tenant_id, HS.id.in_(pks)))
 
 
+def _revinclude_practitioner_roles(param: str, key):
+    """_revinclude=PractitionerRole:<param> — roles whose `{param}` reference
+    points at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.practitioner_role import PractitionerRoleModel as PR
+        from app.models.practitioner_role import PractitionerRoleReference as Ref
+
+        ids = {key(r) for r in rows}
+        pks = select(Ref.practitioner_role_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
+        return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks)))
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Endpoint rows — for
     Endpoint searches and for Endpoints included by others."""
@@ -285,6 +300,13 @@ def endpoint_search() -> SearchRegistry:
             IncludeTarget("Location", "endpoint", "Endpoint", _revinclude_location_endpoint, reverse=True),
             IncludeTarget(
                 "HealthcareService", "endpoint", "Endpoint", _revinclude_healthcare_service_endpoint, reverse=True
+            ),
+            IncludeTarget(
+                "PractitionerRole",
+                "endpoint",
+                "Endpoint",
+                _revinclude_practitioner_roles("endpoint", lambda e: e.endpoint_id),
+                reverse=True,
             ),
         ),
         default_sort=lambda: [E.endpoint_id.desc()],

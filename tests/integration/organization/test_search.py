@@ -552,7 +552,8 @@ async def test_revinclude_partof(client):
 
 async def test_include_unsupported(client):
     _rejected(await _get(client, {"_include": "Organization:nonsense"}), "not-supported")
-    _rejected(await _get(client, {"_revinclude": "PractitionerRole:organization"}), "not-supported")
+    # Schedule isn't on the search engine yet, so nothing can _revinclude it.
+    _rejected(await _get(client, {"_revinclude": "Schedule:actor"}), "not-supported")
     _rejected(await _get(client, {"_include": "Organization:partof", "_summary": "text"}))
 
 

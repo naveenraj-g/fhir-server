@@ -1,6 +1,14 @@
 """FHIR R4 conformance for `to_fhir_practitioner_role()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+PractitionerRole is stored Medplum-style (like Organization/Practitioner/
+HealthcareService/Endpoint): the resource lives whole in
+PractitionerRoleModel.content, and to_fhir_practitioner_role() only stamps `id`
+and `meta` onto it. So what can go wrong on the read side is that stamping
+(e.g. a malformed meta extension) or a stored document the server returns that
+isn't valid R4 — each case below is a `content` document as the write path
+would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,21 +16,8 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.practitioner_role import to_fhir_practitioner_role
-from app.models.practitioner_role import (
-    PractitionerRoleAvailableTime,
-    PractitionerRoleCode,
-    PractitionerRoleCodeCoding,
-    PractitionerRoleEndpoint,
-    PractitionerRoleHealthcareService,
-    PractitionerRoleIdentifier,
-    PractitionerRoleIdentifierTypeCoding,
-    PractitionerRoleLocation,
-    PractitionerRoleModel,
-    PractitionerRoleNotAvailable,
-    PractitionerRoleSpecialty,
-    PractitionerRoleSpecialtyCoding,
-    PractitionerRoleTelecom,
-)
+from app.models.practitioner_role import PractitionerRoleModel
+from tests.integration.practitioner_role.support import FULL
 
 from .support import assert_valid, fhir_json_text
 
@@ -33,284 +28,130 @@ practitioner_role_pb2 = pytest.importorskip(
 
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
-_CHILD_ATTRS = (
-    "identifiers", "codes", "specialties", "locations", "healthcare_services",
-    "telecoms", "available_times", "not_available", "endpoints",
-)
+
+def _stored(document: dict) -> dict:
+    """What the write path stores: everything but resourceType/id/meta."""
+    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
 
 
-def _pr(**overrides) -> PractitionerRoleModel:
-    """A PractitionerRole carrying only the columns the model marks NOT
-    NULL, plus empty sub-resource lists (nothing is lazy-loadable off a
-    session here)."""
+def _role(content: dict, **overrides) -> PractitionerRoleModel:
     fields = {
         "practitioner_role_id": 140001,
         "tenant_id": "org-test",
         "created_by": "u-test",
         "created_at": D,
+        "content": content,
     }
     fields.update(overrides)
-    pr = PractitionerRoleModel(**fields)
-    for attr in _CHILD_ATTRS:
-        if getattr(pr, attr, None) is None:
-            setattr(pr, attr, [])
-    return pr
+    return PractitionerRoleModel(**fields)
 
 
-def _with(attr, *rows) -> PractitionerRoleModel:
-    pr = _pr()
-    setattr(pr, attr, list(rows))
-    return pr
-
-
-def _identifier(**kw) -> PractitionerRoleIdentifier:
-    i = PractitionerRoleIdentifier(
-        **{
-            "id": 1, "tenant_id": "org-test", "system": "http://ex.org/ids",
-            "value": "PR-1", "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
-    if i.type_codings is None:
-        i.type_codings = []
-    return i
-
-
-# Each CodeableConcept-list field (code/specialty) is a real 0..* child
-# table with its own dedicated Coding grandchild table — this maps a parent
-# model class to its matching Coding class so one `_cc()` helper covers both.
-_CODING_CLASS = {
-    PractitionerRoleCode: PractitionerRoleCodeCoding,
-    PractitionerRoleSpecialty: PractitionerRoleSpecialtyCoding,
-}
-
-
-def _cc(model_cls, *, codings=None, **kw):
-    coding_cls = _CODING_CLASS[model_cls]
-    if codings is None:
-        codings = [
-            coding_cls(
-                id=1,
-                system="http://terminology.hl7.org/CodeSystem/practitioner-role",
-                code="doctor", display="Doctor",
-                created_by="u-test", created_at=D,
-            )
-        ]
-    return model_cls(
-        **{
-            "id": 1, "tenant_id": "org-test", "codings": codings,
-            "created_by": "u-test", "created_at": D, **kw,
-        }
-    )
-
-
-# Each case is one distinct shape the mapper can emit. Anything with a
-# conditional branch in app/fhir/mappers/practitioner_role/fhir.py should
-# appear here.
 CASES = {
-    "minimal": _pr(),
-
-    "active_true": _pr(active=True),
-    "active_false": _pr(active=False),
-
-    "period": _pr(period_start=D, period_end=D),
-
-    "practitioner_resolved": _pr(
-        practitioner_type="Practitioner", practitioner_id=30001,
-        practitioner_display="Dr. Jane Smith",
+    "minimal": _role({"active": True}),
+    "active_false": _role({"active": False}),
+    "updated_by_and_updated_at": _role({"active": True}, updated_by="u-other", updated_at=D),
+    "period": _role({"period": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"}}),
+    "open_ended_period": _role({"period": {"start": "2026-01-01"}}),
+    "practitioner_and_organization": _role(
+        {
+            "practitioner": {"reference": "Practitioner/30001", "type": "Practitioner", "display": "Dr Careful"},
+            "organization": {
+                "reference": "Organization/190001",
+                "identifier": {"system": "urn:org-registry", "value": "ORG-9"},
+            },
+        }
     ),
-    "practitioner_identifier_fallback": _pr(
-        practitioner_identifier_system="urn:practitioner-registry",
-        practitioner_identifier_value="PRACT-9",
-        practitioner_identifier_use="official",
+    "identifier_with_type_and_assigner": _role(
+        {
+            "identifier": [
+                {
+                    "use": "official",
+                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "ROLE"}]},
+                    "system": "https://fhir-server.dev/fhir/identifier-system/role-id",
+                    "value": "R-1",
+                    "assigner": {"reference": "Organization/190001"},
+                }
+            ]
+        }
     ),
-
-    "organization_resolved": _pr(
-        organization_type="Organization", organization_id=190001,
-        organization_display="General Hospital",
+    "code_and_specialty": _role(
+        {
+            "code": [{"coding": [{"code": "doctor", "display": "Doctor"}], "text": "Medical doctor"}, {"text": "Locum"}],
+            "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
+        }
     ),
-    "organization_identifier_fallback": _pr(
-        organization_identifier_system="urn:org-registry",
-        organization_identifier_value="ORG-9",
-        organization_identifier_use="official",
+    "locations_services_endpoints": _role(
+        {
+            "location": [{"reference": "Location/230001", "display": "North Wing"}],
+            "healthcareService": [{"reference": "HealthcareService/150001"}],
+            "endpoint": [{"reference": "Endpoint/620001"}],
+        }
     ),
-
-    "availability_exceptions": _pr(
-        availability_exceptions="Closed on public holidays."
+    "telecom": _role({"telecom": [{"system": "phone", "value": "555-0100", "use": "work", "rank": 1}]}),
+    "available_time": _role(
+        {
+            "availableTime": [
+                {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"},
+                {"daysOfWeek": ["sat"], "allDay": True},
+            ]
+        }
     ),
-
-    "identifier_with_type_and_period": _with(
-        "identifiers",
-        _identifier(
-            use="official",
-            type_codings=[
-                PractitionerRoleIdentifierTypeCoding(
-                    id=1,
-                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
-                    version="2.9", code="PRN", display="Provider number",
-                    user_selected=True, created_by="u-test", created_at=D,
-                )
-            ],
-            type_text="Provider number",
-            period_start=D,
-            period_end=D,
-        ),
+    "not_available": _role(
+        {
+            "notAvailable": [
+                {"description": "Away", "during": {"start": "2026-09-01T00:00:00Z", "end": "2026-09-08T00:00:00Z"}}
+            ]
+        }
     ),
-    "identifier_assigner_resolved": _with(
-        "identifiers",
-        _identifier(
-            assigner_type="Organization", assigner_id=190001, assigner_display="Acme"
-        ),
+    "availability_exceptions": _role({"availabilityExceptions": "Not on public holidays"}),
+    "extension": _role(
+        {"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}
     ),
-    "identifier_assigner_fallback": _with(
-        "identifiers",
-        _identifier(
-            assigner_identifier_system="urn:external-registry",
-            assigner_identifier_value="EXTERNAL-1",
-            assigner_identifier_use="official",
-        ),
-    ),
-
-    "code_with_text": _with(
-        "codes", _cc(PractitionerRoleCode, text="Doctor")
-    ),
-    "specialty_with_text": _with(
-        "specialties",
-        _cc(
-            PractitionerRoleSpecialty,
-            codings=[
-                PractitionerRoleSpecialtyCoding(
-                    id=1, system="http://snomed.info/sct", code="408443003",
-                    display="General medical practice",
-                    created_by="u-test", created_at=D,
-                )
-            ],
-            text="General medical practice",
-        ),
-    ),
-
-    "location_resolved": _with(
-        "locations",
-        PractitionerRoleLocation(
-            id=1, tenant_id="org-test", reference_type="Location", reference_id=230001,
-            reference_display="Main Building", created_by="u-test", created_at=D,
-        ),
-    ),
-    "location_identifier_fallback": _with(
-        "locations",
-        PractitionerRoleLocation(
-            id=1, tenant_id="org-test", reference_identifier_system="urn:loc-registry",
-            reference_identifier_value="LOC-9", created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "healthcare_service_resolved": _with(
-        "healthcare_services",
-        PractitionerRoleHealthcareService(
-            id=1, tenant_id="org-test", reference_type="HealthcareService",
-            reference_id=150001, reference_display="Physio",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "healthcare_service_identifier_fallback": _with(
-        "healthcare_services",
-        PractitionerRoleHealthcareService(
-            id=1, tenant_id="org-test",
-            reference_identifier_system="urn:hs-registry",
-            reference_identifier_value="HS-9", created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "telecoms_with_rank_and_period": _with(
-        "telecoms",
-        PractitionerRoleTelecom(
-            id=1, tenant_id="org-test", system="phone", value="2328", use="work",
-            rank=1, period_start=D, period_end=D, created_by="u-test", created_at=D,
-        ),
-        PractitionerRoleTelecom(
-            id=2, tenant_id="org-test", system="email", value="a@b.example",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "available_time_all_day_no_times": _with(
-        "available_times",
-        PractitionerRoleAvailableTime(
-            id=1, tenant_id="org-test", days_of_week=["sat", "sun"], all_day=True,
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "available_time_all_seven_days_edge_times": _with(
-        "available_times",
-        PractitionerRoleAvailableTime(
-            id=1, tenant_id="org-test",
-            days_of_week=["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-            all_day=False, available_start_time=dt.time(0, 0),
-            available_end_time=dt.time(23, 59, 59), created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "not_available_description_only": _with(
-        "not_available",
-        PractitionerRoleNotAvailable(
-            id=1, tenant_id="org-test", description="On leave.",
-            created_by="u-test", created_at=D,
-        ),
-    ),
-    "not_available_with_during": _with(
-        "not_available",
-        PractitionerRoleNotAvailable(
-            id=1, tenant_id="org-test", description="Annual leave.",
-            during_start=D, during_end=D, created_by="u-test", created_at=D,
-        ),
-    ),
-
-    "endpoint_resolved": _with(
-        "endpoints",
-        PractitionerRoleEndpoint(
-            id=1, tenant_id="org-test", reference_type="Endpoint", reference_id=7,
-            reference_display="Main endpoint", created_by="u-test", created_at=D,
-        ),
-    ),
-    "endpoint_identifier_fallback": _with(
-        "endpoints",
-        PractitionerRoleEndpoint(
-            id=1, tenant_id="org-test", reference_identifier_system="urn:ext-endpoint",
-            reference_identifier_value="EP-1", created_by="u-test", created_at=D,
-        ),
-    ),
+    "full_payload": _role(_stored(FULL)),
 }
 
 
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_practitioner_role_mapper_emits_valid_fhir_r4(case):
-    assert_valid(
-        practitioner_role_pb2.PractitionerRole, to_fhir_practitioner_role(CASES[case])
-    )
+    assert_valid(practitioner_role_pb2.PractitionerRole, to_fhir_practitioner_role(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = _stored(FULL)
+    out = to_fhir_practitioner_role(_role(content))
+    assert out["resourceType"] == "PractitionerRole"
+    assert out["id"] == "140001"
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
 # If google-fhir-r4 ever stops validating — a version bump, a changed API, a
 # silently-swallowed error — every test above would keep passing while checking
 # nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1.)
+
 
 @pytest.mark.parametrize(
     "label,broken",
     [
-        ("bad daysOfWeek code", {"availableTime": [{"daysOfWeek": ["funday"]}]}),
-        ("availableStartTime not a time", {"availableTime": [{"availableStartTime": "9am"}]}),
-        ("code as strings not CodeableConcepts", {"code": ["doctor"]}),
-        ("misspelled element", {"practitioner2": {"reference": "Practitioner/1"}}),
-        ("notAvailable missing required description", {"notAvailable": [{"during": {"start": "2026-01-01"}}]}),
         ("active as string not boolean", {"active": "yes"}),
-        ("identifier as string not object", {"identifier": ["PR-1"]}),
+        ("misspelled element", {"practitoner": {"reference": "Practitioner/1"}}),
+        ("period as string", {"period": "2026"}),
+        ("practitioner as string not Reference", {"practitioner": "Practitioner/30001"}),
+        ("organization as string not Reference", {"organization": "Organization/190001"}),
+        ("code as strings not CodeableConcepts", {"code": ["doctor"]}),
+        ("location as string not Reference", {"location": ["Location/230001"]}),
+        ("telecom as string not ContactPoint", {"telecom": ["555-0100"]}),
+        ("day of week outside the required binding", {"availableTime": [{"daysOfWeek": ["funday"]}]}),
+        ("notAvailable without its required description", {"notAvailable": [{"during": {"start": "2026-01-01T00:00:00Z"}}]}),
+        ("availabilityExceptions as list", {"availabilityExceptions": ["x"]}),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {
-        "resourceType": "PractitionerRole", "id": "140001", **broken,
-    }
+    payload = {"resourceType": "PractitionerRole", "id": "140001", "active": True, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(
             fhir_json_text(payload), practitioner_role_pb2.PractitionerRole, validate=True

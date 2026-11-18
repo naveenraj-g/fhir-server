@@ -1,19 +1,9 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Sequence,
-    String,
-    Text,
-    text,
-)
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType, PractitionerReferenceType
+from app.models.enums import OrganizationReferenceType, PractitionerReferenceType
 from app.models.shared import TenantAuditMixin
 
 practitioner_role_id_seq = Sequence(
@@ -21,42 +11,54 @@ practitioner_role_id_seq = Sequence(
 )
 
 
-# ---------------------------------------------------------------------------
-# Main table
-# ---------------------------------------------------------------------------
-
-
 class PractitionerRoleModel(TenantAuditMixin, Base):
-    """FHIR R4 PractitionerRole — https://www.hl7.org/fhir/R4/practitionerrole.html
+    """FHIR R4 PractitionerRole — Medplum-style storage, same as
+    Organization, Location, Practitioner, HealthcareService and Endpoint.
 
-    A specific set of Roles/Locations/specialties/services that a
-    practitioner may perform at an organization for a period of time.
+    `content` (JSONB) holds the whole resource exactly as validated on
+    write; it is the single source of truth, and GET serves it back as-is
+    (`id`/`meta` are stamped on at read time from this row's own columns —
+    see app.fhir.mappers.practitioner_role). Nothing else in this table or its
+    child tables is a second copy of the resource: every other column exists
+    only because a FHIR R4 PractitionerRole search parameter filters on it
+    (https://www.hl7.org/fhir/R4/practitionerrole.html#search), and is derived
+    from `content` on every write by app.repository.practitioner_role._indexer.
 
-    Modeled to the same conventions as Organization/Location/HealthcareService/
-    Practitioner: BigInteger internal PK + public sequence ID, TenantAuditMixin
-    (tenant_id, not a hand-declared org_id), flattened references
-    (`{prefix}_type`/`_id`/`_display`, storing the target's PUBLIC sequence ID
-    with no ForeignKey/relationship — see CLAUDE.md's FHIR DB Model Design
-    section) with an Identifier logical-reference fallback where the target
-    may live outside this system, and every CodeableConcept's coding[] as a
-    real 0..* child/grandchild table rather than a single flattened coding
-    (see code.py/specialty.py/identifier.py).
+    Search parameter -> storage:
+      active            -> active (0..1, column)
+      date              -> period_start / period_end (0..1 Period, two columns;
+                           matched as a range — see app.fhir.search.sql.period_match)
+      practitioner      -> practitioner_reference/_type/_id +
+                           practitioner_identifier_system/_value (0..1, columns)
+      organization      -> organization_reference/_type/_id +
+                           organization_identifier_system/_value (0..1, columns)
+      identifier        -> PractitionerRoleIdentifier (0..*)
+      telecom, phone,
+      email             -> PractitionerRoleTelecom (0..*)
+      role, specialty   -> PractitionerRoleToken (0..*, one row per coding,
+                           `param` says which search parameter it feeds)
+      location, service,
+      endpoint          -> PractitionerRoleReference (0..*, `param` says which)
+      _id               -> practitioner_role_id;  _lastUpdated -> updated_at/created_at
 
-    This resource IS part of the JWT auth rollout (see CLAUDE.md's
-    Multi-Tenancy & Ownership section) — org_id comes from the verified
-    JWT's activeOrganizationId claim, never a client-suppliable field.
-    There is deliberately no user_id: like Organization/Location/
-    HealthcareService, a PractitionerRole (the role assignment itself) is a
-    shared tenant-level entity, not scoped to one end user's own account.
-    """
+    Everything else PractitionerRole carries (availableTime, notAvailable,
+    availabilityExceptions, extension) has no search parameter and lives only
+    in `content`.
+
+    `period_start` is the first instant the period covers and `period_end`
+    the first instant *after* it (see app.repository._content_index.period_bounds),
+    NULL meaning open.
+
+    No `user_id`: a PractitionerRole is a shared tenant-level entity. No
+    DB-level CHECK constraints — every R4 rule is enforced by the FHIR
+    validator before anything is written."""
 
     __tablename__ = "practitioner_role"
+    __table_args__ = (
+        Index("ix_practitioner_role_period", "period_start", "period_end"),
+    )
 
-    # Internal PK — never exposed. BigInteger so every child table's FK shares
-    # the type.
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-
-    # Public ID — used in all API responses and FHIR output
     practitioner_role_id = Column(
         BigInteger,
         practitioner_role_id_seq,
@@ -66,147 +68,48 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    # ── active (0..1 boolean) ─────────────────────────────────────────────────
-    # Absent means unknown, not false — nullable with no default, same
-    # reasoning as PractitionerModel.active/OrganizationModel.active.
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
+    # ── Search index (derived from `content`) ─────────────────────────────
     active = Column(Boolean, nullable=True)
-
-    # ── period (0..1 Period) ──────────────────────────────────────────────────
-
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # ── practitioner (0..1 Reference(Practitioner)) ───────────────────────────
-    # practitioner_id stores Practitioner's PUBLIC practitioner_id — no FK, no
-    # relationship (see HealthcareServiceModel.provided_by_* for the same
-    # pattern). Shared PG enum type, created by this resource's own migration
-    # (Practitioner is the first/only resource this reference type targets so
-    # far) — create_type=False here since the migration owns creation.
-    #
-    # practitioner_reference is the raw literal string exactly as received —
-    # see OrganizationModel.partof_reference for the full reasoning.
+    # practitioner (0..1 Reference(Practitioner)) and organization (0..1
+    # Reference(Organization)). `*_reference` is the raw literal string exactly
+    # as received (relative, or an absolute URL to another system, kept whether
+    # or not it resolves locally); `*_type`/`*_id` are the resolved type and
+    # PUBLIC id for a relative `Type/<id>` (no FK — see CLAUDE.md's
+    # flattened-reference convention); `*_identifier_*` is Reference.identifier,
+    # for `<param>:identifier`.
     practitioner_reference = Column(String, nullable=True)
     practitioner_type = Column(
-        Enum(
-            PractitionerReferenceType,
-            name="practitioner_reference_type",
-            create_type=False,
-        ),
+        Enum(PractitionerReferenceType, name="practitioner_reference_type", create_type=False),
         nullable=True,
     )
     practitioner_id = Column(BigInteger, nullable=True, index=True)
-    practitioner_display = Column(String, nullable=True)
-
-    # practitioner.identifier (0..1 Identifier) — logical-reference fallback
-    # for when the practitioner isn't a resource in this system.
-    practitioner_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use"), nullable=True
-    )
-    practitioner_identifier_type_system = Column(String, nullable=True)
-    practitioner_identifier_type_version = Column(String, nullable=True)
-    practitioner_identifier_type_code = Column(String, nullable=True)
-    practitioner_identifier_type_display = Column(String, nullable=True)
-    practitioner_identifier_type_text = Column(String, nullable=True)
-    practitioner_identifier_type_user_selected = Column(Boolean, nullable=True)
     practitioner_identifier_system = Column(String, nullable=True)
     practitioner_identifier_value = Column(String, nullable=True)
-    practitioner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    practitioner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # ── organization (0..1 Reference(Organization)) ───────────────────────────
-    # Shared organization_reference_type PG enum — never created/dropped by
-    # this resource's migration.
-    #
-    # organization_reference is the raw literal string exactly as received —
-    # see OrganizationModel.partof_reference for the full reasoning.
     organization_reference = Column(String, nullable=True)
     organization_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
+        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
     organization_id = Column(BigInteger, nullable=True, index=True)
-    organization_display = Column(String, nullable=True)
-
-    # organization.identifier (0..1 Identifier) — logical-reference fallback
-    # for when the organization isn't a resource in this system.
-    organization_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use"), nullable=True
-    )
-    organization_identifier_type_system = Column(String, nullable=True)
-    organization_identifier_type_version = Column(String, nullable=True)
-    organization_identifier_type_code = Column(String, nullable=True)
-    organization_identifier_type_display = Column(String, nullable=True)
-    organization_identifier_type_text = Column(String, nullable=True)
-    organization_identifier_type_user_selected = Column(Boolean, nullable=True)
     organization_identifier_system = Column(String, nullable=True)
     organization_identifier_value = Column(String, nullable=True)
-    organization_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    organization_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # ── availabilityExceptions (0..1 string) ─────────────────────────────────
-
-    availability_exceptions = Column(Text, nullable=True)
-
-    # Resource-level extension support (0..* Extension, inherited from the
-    # base DomainResource type — not PractitionerRole-specific). Raw
-    # [{url, valueType, value}, ...]; validated against registered
-    # extension definitions by the (not-yet-built) profile pipeline, not by
-    # the database. Same shape as PractitionerModel.extension.
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
-    # come from TenantAuditMixin above — no hand-declared org_id here, same
-    # as OrganizationModel/LocationModel/HealthcareServiceModel.
-
-    # ── Relationships ─────────────────────────────────────────────────────────
 
     identifiers = relationship(
-        "PractitionerRoleIdentifier",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
-    )
-    codes = relationship(
-        "PractitionerRoleCode",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
-    )
-    specialties = relationship(
-        "PractitionerRoleSpecialty",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
-    )
-    locations = relationship(
-        "PractitionerRoleLocation",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
-    )
-    healthcare_services = relationship(
-        "PractitionerRoleHealthcareService",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
+        "PractitionerRoleIdentifier", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
     telecoms = relationship(
-        "PractitionerRoleTelecom",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
+        "PractitionerRoleTelecom", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
-    available_times = relationship(
-        "PractitionerRoleAvailableTime",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
+    tokens = relationship(
+        "PractitionerRoleToken", back_populates="practitioner_role", cascade="all, delete-orphan"
     )
-    not_available = relationship(
-        "PractitionerRoleNotAvailable",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
-    )
-    endpoints = relationship(
-        "PractitionerRoleEndpoint",
-        back_populates="practitioner_role",
-        cascade="all, delete-orphan",
+    references = relationship(
+        "PractitionerRoleReference", back_populates="practitioner_role", cascade="all, delete-orphan"
     )

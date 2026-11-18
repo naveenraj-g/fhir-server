@@ -392,6 +392,15 @@ async def _revinclude_endpoint_organization(session, ctx, orgs):
     )
 
 
+async def _revinclude_practitioner_role_organization(session, ctx, orgs):
+    """_revinclude=PractitionerRole:organization — the roles whose
+    `organization` is one of these organizations."""
+    from app.models.practitioner_role import PractitionerRoleModel as PR
+
+    ids = {o.organization_id for o in orgs}
+    return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.organization_id.in_(ids)))
+
+
 async def _revinclude_healthcare_service_organization(session, ctx, orgs):
     """_revinclude=HealthcareService:organization — HealthcareServices
     whose providedBy is one of these organizations."""
@@ -649,6 +658,13 @@ def organization_search() -> SearchRegistry:
                 "organization",
                 "Organization",
                 _revinclude_endpoint_organization,
+                reverse=True,
+            ),
+            IncludeTarget(
+                "PractitionerRole",
+                "organization",
+                "Organization",
+                _revinclude_practitioner_role_organization,
                 reverse=True,
             ),
         ),

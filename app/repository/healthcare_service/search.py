@@ -231,6 +231,21 @@ async def _include_endpoint(session, ctx, services):
     return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
 
 
+def _revinclude_practitioner_roles(param: str, key):
+    """_revinclude=PractitionerRole:<param> — roles whose `{param}` reference
+    points at one of these rows (matched on the public id `key(row)`)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.practitioner_role import PractitionerRoleModel as PR
+        from app.models.practitioner_role import PractitionerRoleReference as Ref
+
+        ids = {key(r) for r in rows}
+        pks = select(Ref.practitioner_role_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
+        return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks)))
+
+    return fetch
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders HealthcareService rows."""
     from app.fhir.mappers.healthcare_service import to_fhir_healthcare_service
@@ -367,8 +382,16 @@ def healthcare_service_search() -> SearchRegistry:
             IncludeTarget("HealthcareService", "coverage-area", "Location", _include_locations("coverage-area")),
             IncludeTarget("HealthcareService", "endpoint", "Endpoint", _include_endpoint),
         ),
-        # Nothing that references a HealthcareService is on the engine yet
-        # (PractitionerRole, Schedule, ... will add their _revinclude here).
-        revincludes=(),
+        # PractitionerRole.healthcareService points here (Schedule, ... will add
+        # theirs when they are rebuilt).
+        revincludes=(
+            IncludeTarget(
+                "PractitionerRole",
+                "service",
+                "HealthcareService",
+                _revinclude_practitioner_roles("service", lambda s: s.healthcare_service_id),
+                reverse=True,
+            ),
+        ),
         default_sort=lambda: [HS.healthcare_service_id.desc()],
     )
