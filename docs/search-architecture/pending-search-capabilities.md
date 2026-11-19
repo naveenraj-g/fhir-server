@@ -17,7 +17,7 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole, Schedule, Slot and Patient** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Observation,
+The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole, Schedule, Slot, Patient and Appointment** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Observation,
 Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 
@@ -32,6 +32,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 | Endpoint | 6 | 6 | none |
 | PractitionerRole | 13 | 13 | none |
 | Schedule | 7 | 7 | none |
+| Appointment | 17 | 17 | none |
 | All other resources | - | 0 (old list filters) | everything: needs a registry each |
 
 - Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
@@ -130,7 +131,7 @@ For each resource, follow the Organization/Location pattern:
   `HealthcareService:organization` (on Organization), `HealthcareService:location` / `:coverage-area` (on Location),
   `Endpoint:organization` (on Organization), `Organization:endpoint` / `Location:endpoint` / `HealthcareService:endpoint` (on Endpoint),
   `PractitionerRole:practitioner` / `:organization` / `:location` / `:service` / `:endpoint` (on Practitioner, Organization,
-  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), `Slot:schedule` (on Schedule), `Patient:general-practitioner` (on Practitioner, PractitionerRole and Organization), `Patient:organization` (on Organization) and `Patient:link` (on Patient).
+  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), `Slot:schedule` (on Schedule), `Patient:general-practitioner` (on Practitioner, PractitionerRole and Organization), `Patient:organization` (on Organization) `Patient:link` (on Patient), `Appointment:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location) and `Appointment:slot` (on Slot).
 - `_revinclude` from resources that point at Organization/Location (Encounter, ...)
   becomes possible only when those resources are on the engine.
 

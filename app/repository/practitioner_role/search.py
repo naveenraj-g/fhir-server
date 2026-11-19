@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._appointment_revinclude import participant_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -473,6 +474,7 @@ def practitioner_role_search() -> SearchRegistry:
         ),
         # Schedule.actor points here (Appointment, ... will add theirs when rebuilt).
         revincludes=(
+            *participant_revincludes('PractitionerRole', lambda r: r.practitioner_role_id, ('actor',)),
             IncludeTarget(
                 "Schedule", "actor", "PractitionerRole",
                 _revinclude_schedules("PractitionerRole", lambda r: r.practitioner_role_id), reverse=True,

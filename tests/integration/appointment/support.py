@@ -1,73 +1,94 @@
-from datetime import datetime, timezone
+"""Shared helpers and payloads for appointment integration tests.
+
+Request bodies are genuine FHIR R4 Appointment JSON (camelCase, nested
+datatypes), and every response is FHIR R4 too."""
+
+# The resources an Appointment points at are created through their own routers.
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_healthcare_service,
+    create_location,
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
+from tests.integration.schedule.support import create_schedule  # noqa: F401
+from tests.integration.slot.support import create_slot, slot_body  # noqa: F401
 
 BASE = "/api/fhir/v1/appointments"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
-PLAIN_ACCEPT = {"Accept": "application/json"}
+API = "/api/fhir/v1"
 
-D = datetime(2026, 6, 1, 9, 0, tzinfo=timezone.utc).isoformat()
-D2 = datetime(2026, 6, 1, 9, 30, tzinfo=timezone.utc).isoformat()
+APPT_IDS = "https://fhir-server.dev/fhir/identifier-system/appointment-id"
+CAT = "http://terminology.hl7.org/CodeSystem/service-category"
+TYPE = "http://terminology.hl7.org/CodeSystem/service-type"
+APPT = "http://terminology.hl7.org/CodeSystem/v2-0276"
+SCT = "http://snomed.info/sct"
 
-
-def minimal_appointment() -> dict:
-    return {
-        "status": "booked",
-        "start": D,
-        "end": D2,
-        "participant": [
-            {
-                "status": "accepted",
-                "actor": "Practitioner/30001",
-                "actor_display": "Dr. Smith",
-            }
-        ],
-    }
+START = "2026-06-01T09:00:00Z"
+END = "2026-06-01T09:30:00Z"
 
 
-def appointment_with_fallbacks() -> dict:
-    return {
-        "status": "booked",
-        "start": D,
-        "end": D2,
-        "description": "Consultation with external provider",
-        "identifier": [
+def participant(actor: str | None = None, status: str = "accepted", **extra) -> dict:
+    """One Appointment.participant (R4: `status` is required)."""
+    body = {"status": status, **extra}
+    if actor:
+        body["actor"] = {"reference": actor}
+    return body
+
+
+def appointment_body(patient_id: int | None = None, **changes) -> dict:
+    """A valid minimal Appointment: R4 requires `status` and at least one
+    participant (each with a `status`). With no patient, the participant is a
+    Patient that isn't a row here — an absolute reference isn't existence-checked."""
+    actor = f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"
+    return {"status": "booked", "participant": [participant(actor)], **changes}
+
+
+def full_body(patient_id: int, practitioner_id: int, location_id: int, slot_id: int) -> dict:
+    return appointment_body(
+        patient_id,
+        resourceType="Appointment",
+        identifier=[
             {
-                "system": "http://hospital.example.org/appointments",
-                "value": "APP-EXT-001",
-                "assigner_display": "Regional Health Authority",
-                "assigner_identifier_system": "http://gov.example.org/agencies",
-                "assigner_identifier_value": "RHA-101",
-                "assigner_identifier_use": "official",
+                "system": APPT_IDS,
+                "value": "AP-1001",
+                "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
             }
         ],
-        "participant": [
-            {
-                "status": "accepted",
-                "required": "required",
-                "actor_display": "Dr. External Attender",
-                "actor_identifier_system": "http://npi.example.org",
-                "actor_identifier_value": "NPI-555666",
-                "actor_identifier_use": "official",
-            }
+        cancelationReason={"text": "Patient unwell"},
+        serviceCategory=[{"coding": [{"system": CAT, "code": "17", "display": "General Practice"}], "text": "General"}],
+        serviceType=[{"coding": [{"system": TYPE, "code": "124", "display": "General Practice"}]}],
+        specialty=[{"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}],
+        appointmentType={"coding": [{"system": APPT, "code": "ROUTINE", "display": "Routine appointment"}], "text": "Routine"},
+        reasonCode=[{"coding": [{"system": SCT, "code": "413153004", "display": "Check-up"}], "text": "Annual check-up"}],
+        reasonReference=[{"reference": "Condition/120001"}],
+        priority=5,
+        description="Discussion on the results of the MRI",
+        supportingInformation=[{"reference": "Encounter/20001"}],
+        start=START,
+        end=END,
+        minutesDuration=30,
+        slot=[{"reference": f"Slot/{slot_id}"}],
+        created="2026-05-20T10:00:00Z",
+        comment="Further expand on the results of the MRI",
+        patientInstruction="Please arrive 15 minutes early",
+        basedOn=[{"reference": "ServiceRequest/80001"}],
+        participant=[
+            participant(
+                f"Patient/{patient_id}",
+                required="required",
+                type=[{"coding": [{"code": "ATND"}], "text": "attendee"}],
+                period={"start": START, "end": END},
+            ),
+            participant(f"Practitioner/{practitioner_id}", required="required"),
+            participant(f"Location/{location_id}", required="information-only", status="tentative"),
         ],
-        "reason_reference": [
-            {
-                "reference_display": "External Diagnosis",
-                "reference_identifier_system": "http://diagnoses.example.org",
-                "reference_identifier_value": "DIAG-1234",
-            }
-        ],
-        "supporting_information": [
-            {
-                "reference_display": "External Chart Summary",
-                "reference_identifier_system": "http://records.example.org",
-                "reference_identifier_value": "REC-987",
-            }
-        ],
-        "based_on": [
-            {
-                "reference_display": "External Service Request",
-                "reference_identifier_system": "http://referrals.example.org",
-                "reference_identifier_value": "SR-4455",
-            }
-        ],
-    }
+        requestedPeriod=[{"start": "2026-06-01", "end": "2026-06-07"}],
+    )
+
+
+async def create_appointment(client, body: dict) -> int:
+    """Create an appointment and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])

@@ -1,49 +1,32 @@
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter, apply_token_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.appointment import (
-    AppointmentIdentifier,
-    AppointmentModel,
-    AppointmentParticipant,
-    AppointmentServiceCategory,
-    AppointmentServiceCategoryCoding,
-    AppointmentServiceType,
-    AppointmentServiceTypeCoding,
-    AppointmentSlot,
-    AppointmentSpecialty,
-    AppointmentSpecialtyCoding,
-    AppointmentStatus,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.appointment import AppointmentModel
 
-from ._shared import _parse_actor_ref, _parse_slot_ref, _SORTABLE_FIELDS, _with_relationships
+from .search import appointment_search
 
 logger = get_logger(__name__)
 
 
 class _CoreMixin:
-    """Core CRUD for the Appointment parent row (no sub-resources)."""
+    """Reads, search and delete. Every read loads only the appointment row
+    itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
     async def get_by_appointment_id(self, appointment_id: int) -> AppointmentModel | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
-            )
+            stmt = select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_appointment_id_in_org(
-        self, appointment_id: int, org_id: str
-    ) -> AppointmentModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the appointment exists AND belongs to org_id."""
+    async def get_by_appointment_id_in_org(self, appointment_id: int, org_id: str) -> AppointmentModel | None:
+        """Lookup scoped to org_id — returns None unless the appointment
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(AppointmentModel).where(
-                    AppointmentModel.appointment_id == appointment_id,
-                    AppointmentModel.tenant_id == org_id,
-                )
+            stmt = select(AppointmentModel).where(
+                AppointmentModel.appointment_id == appointment_id,
+                AppointmentModel.tenant_id == org_id,
             )
             return (await session.execute(stmt)).scalars().first()
 
@@ -56,168 +39,44 @@ class _CoreMixin:
                 AppointmentModel.appointment_id == appointment_id,
                 AppointmentModel.tenant_id == org_id,
             )
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none() is not None
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id,
-        status: AppointmentStatus | None = None,
-        identifier: str | None = None,
-        service_category: str | None = None,
-        service_type: str | None = None,
-        specialty: str | None = None,
-        actor: str | None = None,
-        slot: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(AppointmentModel.tenant_id == org_id)
-        stmt = apply_token_filter(stmt, AppointmentModel.status, status)
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(AppointmentIdentifier.id).where(
-                    AppointmentIdentifier.appointment_pk == AppointmentModel.id,
-                    AppointmentIdentifier.value == identifier,
-                ),
-            )
-        if service_category:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(AppointmentServiceCategoryCoding.id)
-                .join(
-                    AppointmentServiceCategory,
-                    AppointmentServiceCategoryCoding.appointment_service_category_id
-                    == AppointmentServiceCategory.id,
-                )
-                .where(
-                    AppointmentServiceCategory.appointment_pk == AppointmentModel.id,
-                    AppointmentServiceCategoryCoding.code == service_category,
-                ),
-            )
-        if service_type:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(AppointmentServiceTypeCoding.id)
-                .join(
-                    AppointmentServiceType,
-                    AppointmentServiceTypeCoding.appointment_service_type_id
-                    == AppointmentServiceType.id,
-                )
-                .where(
-                    AppointmentServiceType.appointment_pk == AppointmentModel.id,
-                    AppointmentServiceTypeCoding.code == service_type,
-                ),
-            )
-        if specialty:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(AppointmentSpecialtyCoding.id)
-                .join(
-                    AppointmentSpecialty,
-                    AppointmentSpecialtyCoding.appointment_specialty_id
-                    == AppointmentSpecialty.id,
-                )
-                .where(
-                    AppointmentSpecialty.appointment_pk == AppointmentModel.id,
-                    AppointmentSpecialtyCoding.code == specialty,
-                ),
-            )
-        if actor:
-            a_type, a_id = _parse_actor_ref(actor)
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(AppointmentParticipant.id).where(
-                    AppointmentParticipant.appointment_pk == AppointmentModel.id,
-                    AppointmentParticipant.actor_type == a_type,
-                    AppointmentParticipant.actor_id == a_id,
-                ),
-            )
-        if slot:
-            s_type, s_id = _parse_slot_ref(slot)
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(AppointmentSlot.id).where(
-                    AppointmentSlot.appointment_pk == AppointmentModel.id,
-                    AppointmentSlot.reference_type == s_type,
-                    AppointmentSlot.reference_id == s_id,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str | None = None,
-        status: AppointmentStatus | None = None,
-        identifier: str | None = None,
-        service_category: str | None = None,
-        service_type: str | None = None,
-        specialty: str | None = None,
-        actor: str | None = None,
-        slot: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[AppointmentModel], int | None]:
-        """Paginated, filtered, sorted list of appointments. Returns
-        (rows, total) — total is None when total_mode="none"."""
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "status": status,
-                "identifier": identifier,
-                "service_category": service_category,
-                "service_type": service_type,
-                "specialty": specialty,
-                "actor": actor,
-                "slot": slot,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(AppointmentModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(AppointmentModel), **filter_kwargs
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=AppointmentModel.appointment_id,
-                default_desc=True,
-            )
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=AppointmentModel,
+                registry=appointment_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=AppointmentModel.appointment_id,
             )
         logger.debug(
-            "Appointments listed",
+            "Appointments searched",
             extra={
-                "event": "appointment.listed",
+                "event": "appointment.searched",
                 "returned": len(rows),
+                "included": len(included),
                 "total": total,
-                "limit": limit,
-                "offset": offset,
-                "filters": sorted(k for k, v in filter_kwargs.items() if v is not None),
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
             },
         )
-        return rows, total
+        return rows, total, included
 
     # ── Delete ────────────────────────────────────────────────────────────────
-    # create()/patch() live in full.py — Appointment has no separate
-    # scalar-only variant, see AppointmentCreateSchema's docstring.
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, appointment_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(AppointmentModel).where(
-                AppointmentModel.appointment_id == appointment_id
-            )
+            stmt = select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
             appointment = (await session.execute(stmt)).scalars().first()
             if not appointment:
                 return False

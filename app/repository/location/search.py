@@ -19,6 +19,7 @@ from functools import cache
 from sqlalchemy import Float, cast, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._appointment_revinclude import participant_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     ArrayAggregate,
@@ -620,6 +621,7 @@ def location_search() -> SearchRegistry:
             IncludeTarget("Location", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *participant_revincludes('Location', lambda l: l.location_id, ('actor', 'location')),
             IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),
             IncludeTarget(
                 "HealthcareService", "location", "Location", _revinclude_healthcare_services("location"), reverse=True

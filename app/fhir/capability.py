@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from app.core.config import settings
 from app.fhir.search import SearchParam, SearchRegistry
 from app.repository.endpoint.search import endpoint_search
+from app.repository.appointment.search import appointment_search
 from app.repository.healthcare_service.search import healthcare_service_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
@@ -40,6 +41,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "schedule": schedule_search,
     "slot": slot_search,
     "patient": patient_search,
+    "appointment": appointment_search,
 }
 
 # Interactions the Organization/Location/Practitioner/HealthcareService/Endpoint/PractitionerRole/Schedule routers implement.

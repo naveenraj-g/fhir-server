@@ -15,6 +15,7 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._appointment_revinclude import slot_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -248,8 +249,7 @@ def slot_search() -> SearchRegistry:
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"schedule", "status", "start", "end"}),
         includes=(IncludeTarget("Slot", "schedule", "Schedule", _include_schedule),),
-        # Nothing that references a Slot is on the engine yet (Appointment, ...
-        # will add its _revinclude here).
-        revincludes=(),
+        # Appointment.slot points here.
+        revincludes=slot_revincludes(lambda s: s.slot_id),
         default_sort=lambda: [S.slot_id.desc()],
     )

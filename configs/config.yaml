@@ -219,7 +219,7 @@ routes:
   enabled:
     # - activity_definition
     # - allergy_intolerance
-    # - appointment
+    - appointment
     # - appointment_response
     # - care_plan
     # - care_team
