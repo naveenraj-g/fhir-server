@@ -1,6 +1,6 @@
 # Add Tests for a FHIR Resource (content-based / Medplum-style)
 
-Checklist for the tests of a resource built per `/new-fhir-resource`. Reference implementations: `tests/integration/organization/`, `tests/integration/practitioner/`, `tests/conformance/test_practitioner_fhir.py`. The old normalized-resource test guide (plain + FHIR formats, `/me`, child routes) is preserved in `docs/legacy/add-resource-tests-normalized.md`.
+Checklist for the tests of a resource built per `/new-fhir-resource`. Reference implementations (newest and most complete first): `tests/integration/encounter/` and `tests/conformance/test_encounter_fhir.py` (quantity, Period, multi-target, bare Coding), `tests/integration/related_person/` (a compact one, plus cross-resource wiring), `tests/integration/appointment*/`, `tests/integration/patient/` (`/me`, `user` link), then `organization/` and `practitioner/`. The old normalized-resource test guide (plain + FHIR formats, `/me`, child routes) is preserved in `docs/legacy/add-resource-tests-normalized.md`.
 
 Stack: **pytest-asyncio** (`asyncio_mode = "auto"`), **httpx AsyncClient** against the real app, **SQLite in-memory**. `tests/conftest.py` provides the `client` / `other_client` fixtures, `make_test_user`, and SQLite shims for Postgres-only things (arrays, JSONB, `near` math). The resource package adds only auth overrides, payloads and test modules.
 
@@ -27,7 +27,8 @@ tests/integration/<resource>/support.py       BASE, MINIMAL, FULL, create_<resou
 tests/integration/<resource>/test_core.py     create / read / patch / delete / auth (+ /me, immutability)
 tests/integration/<resource>/test_search.py   one block per parameter, then result params
 tests/conformance/test_<resource>_fhir.py     mapper output vs google-fhir-r4
-tests/helpers/assertions.py                   assert_fhir_<resource>(data, **expected)
+tests/helpers/assertions.py                   assert_fhir_<resource>(data, **expected)   (optional: only if the tests call it)
+tests/unit/test_<matcher>.py                  only when you add an engine matcher (e.g. test_quantity_match.py)
 tests/integration/capability/test_metadata.py add the resource to the `expected` map
 ```
 
@@ -67,6 +68,8 @@ Seed a small fixture (a `people`-style fixture of 4 records with **distinct** va
 - **Token:** `code`, `system|code`, `|code`, `system|`; comma OR; `:not`; `:text`; `:of-type` (identifier); `:in`/`:below`/`:above` when the registry lists them (seed the terminology tables as Organization's `test_search.py` does).
 - **Reference:** `id`, `Type/id`, absolute URL of this server, absolute URL elsewhere (raw match), `:[type]`, `:identifier`, chaining, `:above`/`:below` where declared.
 - **Multi-target reference** (`Schedule.actor`): a bare id with no type is a 400; `Type/id` and `:Type=id` work for every type — including types that aren't resources on this server; the type is part of the match (`Patient/N` never matches `Location/N`; also test the reverse `_revinclude` with a clashing number); chaining needs a typed actor (`actor:Practitioner.family=`) and is a 400 for an untyped or unsearchable type; `_include=X:param` brings in every modeled target and `X:param:Type` just one.
+- **Quantity** (`Encounter.length`): `5` matches at the precision written (`4.5`–`5.4` yes, `5.5` no), `gt/lt/ge/le/sa/eb/ne/ap`, `number|system|code`, `||code` also matching the unit text, a wrong system → no match, a malformed number → 400. The pure semantics live in `tests/unit/test_quantity_match.py`.
+- **String matched against a line** (`address`): starts-with means `address=Main` does **not** find the line `1 Main St`; search `1 Main`.
 - **Date:** each prefix and precision; `_lastUpdated`. For a **Period** parameter (e.g. PractitionerRole `date`) test the range semantics with periods that are closed, open-ended, open-started and absent: the default `eq` means the search range wholly contains the period (a year-long period never fits inside a month), `gt/lt/ge/le` overlap, `sa/eb` entirely after/before, `ne`, `ap`, `:missing`, and that a row with no period never matches. The pure semantics are pinned in `tests/unit/test_period_match.py`.
 - **Combination:** comma = OR; repeated parameter = AND; different parameters AND; `\,` is a literal comma.
 - **Result parameters:** `_sort` (asc/desc, multi-value rule, an unsupported sort → 400), `_count` (capped at `pagination.max_limit`; `0` = count only, no `entry`), `_offset`, `_total=none`, links (`self/first/next/previous/last`), `_summary`, `_elements` (SUBSETTED tag), `_include`/`_revinclude` + `:iterate` for every declared target.
@@ -75,10 +78,23 @@ Seed a small fixture (a `people`-style fixture of 4 records with **distinct** va
 - **POST `/_search`:** form-encoded body; query-string and body are combined.
 
 ### `tests/conformance/test_<resource>_fhir.py`
-The mapper just stamps `id`/`meta` onto `content`, so the oracle (`google-fhir-r4`, dev-only) checks that **what we store and return is valid R4**. Build `<Resource>Model(...)` rows with `content=` documents (one parametrized case per stored shape: minimal, each optional element, every BackboneElement fully populated, the full payload, `updated_by`/`updated_at`), call `to_fhir_<resource>`, and `assert_valid(<resource>_pb2.<Resource>, ...)`. Include `test_mapper_serves_content_unchanged` and a `test_validator_rejects_invalid_fhir` of deliberately broken payloads (wrong types, misspelled element, bad required-binding code, missing required child) so a library bump that stops validating can't pass silently. Feed JSON **text**, not floats (`assert_valid` in `tests/conformance/support.py` does this).
+The mapper just stamps `id`/`meta` onto `content`, so the oracle (`google-fhir-r4`, dev-only) checks that **what we store and return is valid R4**. Build `<Resource>Model(...)` rows with `content=` documents (one parametrized case per stored shape: minimal, each optional element, every BackboneElement fully populated, the full payload, `updated_by`/`updated_at`), call `to_fhir_<resource>`, and `assert_valid(<resource>_pb2.<Resource>, ...)`. Include `test_mapper_serves_content_unchanged` and a `test_validator_rejects_invalid_fhir` of deliberately broken payloads (wrong types, misspelled element, bad required-binding code, missing required child) so a library bump that stops validating can't pass silently. Only include a guard case the oracle really rejects — it does **not** reject a single-element array for a 0..1 element or an unknown code for a required binding (drop those cases and say so in a comment; the integration tests cover them). Feed JSON **text**, not floats (`assert_valid` in `tests/conformance/support.py` does this).
 
 ### `tests/helpers/assertions.py`
-`assert_fhir_<resource>(data, **expected)`: asserts `resourceType`, `id` present, and each expected field. There is no plain-format assertion.
+Optional. If the integration tests use `assert_fhir_<resource>(data, **expected)`, it asserts `resourceType`, `id` present, and each expected field (there is no plain-format assertion). Newer suites (Encounter, AppointmentResponse, RelatedPerson) assert on the response body directly; don't add a helper nothing calls.
+
+### Rebuilding a resource other resources already reference
+When the new resource becomes an existence-checked reference target in resources that were built earlier (RelatedPerson → Patient `link`, Appointment/AppointmentResponse actors, Encounter participants):
+- Those resources' `conftest.py` permission lists gain `<new>:create` and `<new>:read`.
+- Tests that used a made-up id for that type must create a real row (through the new resource's router, or `tests/helpers/seed.py`) — and gain a "missing target → 422" test plus a "present target → 201" test.
+- Add chaining (`actor:RelatedPerson.name=`), `_include` and `_revinclude` tests on **both** sides, and assert a clashing id of another type does not match.
+- Re-run every one of those resources' folders; this is where regressions appear.
+
+### Regression tests worth copying
+- **`:missing` on a narrowed multi-target parameter** (`patient:missing=true`) with a record that holds only a logical-identifier reference — it must be reported as having the value (see Encounter / AppointmentResponse).
+- **A stale field from the old API** is a 422; build the body as `{**body(), **stale}` so a helper can't swallow the key.
+- **A partial date** (`1990`, `1990-05`) round-trips and is matched by range, not by equality.
+- **A text-only CodeableConcept** is findable by `:text` and has a code-less index row.
 
 ### `tests/integration/capability/test_metadata.py`
 Add `"<resource>": ("<Resource>", <resource>_search())` to the `expected` map: the statement must list exactly the registry's parameters.
@@ -88,7 +104,7 @@ Add `"<resource>": ("<Resource>", <resource>_search())` to the `expected` map: t
 ```bash
 uv run pytest tests/integration/<resource> tests/conformance/test_<resource>_fhir.py tests/integration/capability -q
 ```
-Integration suites are slow (each test builds a fresh engine and seeds the profile tables): run a resource's folder, not the whole tree, while iterating. Before committing, run the sibling content-based resources too — a change to `app/fhir/search/` or `app/repository/_content_index.py` affects all of them. Pre-existing failures that exist only because `fhir_validation.enabled` is `false` (Organization's "non-FHIR key" tests) are not caused by your change; don't "fix" them by touching the engine.
+Integration suites are slow (each test builds a fresh engine and seeds the profile tables; a resource's `test_search.py` can take ~3 minutes, the wide regression about an hour): run a resource's folder while iterating, use `run_in_background` for anything over two minutes and wait for the completion notification. `pytest tests` as a whole fails at collection (pre-existing) — always pass directories. Before committing, run the sibling content-based resources too — a change to `app/fhir/search/` or `app/repository/_content_index.py` affects all of them. Pre-existing failures that exist only because `fhir_validation.enabled` is `false` (Organization's "non-FHIR key" tests) are not caused by your change; don't "fix" them by touching the engine.
 
 ## Key invariants
 

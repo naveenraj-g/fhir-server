@@ -1,0 +1,118 @@
+# FHIR Resource Status
+
+The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
+
+_Last updated: 2026-11-20, after RelatedPerson (`c28a146`)._
+
+## Architecture in one line
+
+Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; only the elements a search parameter filters on are indexed into columns and child tables (derived from `content` on every write). One `SearchRegistry` per resource. FHIR R4 JSON in and out. Direct JWT/RBAC auth. One-way migrations. Details: `CLAUDE.md` ("Medplum-style storage") and `.claude/commands/new-fhir-resource.md`.
+
+---
+
+## 1. Rebuilt on the current architecture (13)
+
+"Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
+
+| # | Resource | Route | Params | Sequence | Migration | Commit | Notes |
+|---|---|---|---:|---|---|---|---|
+| 1 | Organization | `/organizations` | 13 | 190000 | `5b1969c2ec19` | `19a2298` | `partOf` hierarchy (`:above`/`:below`), `endpoint`, chaining |
+| 2 | Location | `/locations` | 15 | 230000 | `8c41d2e7a9b3` | `19a2298` | `near` search, `partOf` hierarchy |
+| 3 | Practitioner | `/practitioners` | 17 | 30000 | `a7d3f19c2b64` | `b7eebe8` | `user_id` link (`PUT/DELETE /{id}/user`), `/me` |
+| 4 | HealthcareService | `/healthcare-services` | 12 | 150000 | `c9f5b2d7e813` | `2afb7e0` | Shared `token` and `reference` index tables |
+| 5 | Endpoint | `/endpoints` | 6 | 620000 | `d1a6c3e8f924` | `8ac745d` | New resource (not a rebuild) |
+| 6 | PractitionerRole | `/practitioner-roles` | 13 | 140000 | `e2b7d4f9a035` | `0015133` | First Period (`date`) search |
+| 7 | Schedule | `/schedules` | 7 | 200000 | `f3c8e5a1b947` | `ccd1b17` | First multi-target reference (`actor`) |
+| 8 | Slot | `/slots` | 8 | 220000 | `g4d9f6b2c058` | `ccd1b17` | `schedule` chains into Schedule |
+| 9 | Patient | `/patients` | 23 | 10000 | `h5e0a7c3d169` | `8d505e3` | `user_id` link, `/me`, `?link_me=true`; partial-date ranges |
+| 10 | Appointment | `/appointments` | 17 | 40000 | `i6f1b8d4e27a` | `0c99fb8` | Participant table; multi-target `actor` |
+| 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
+| 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
+| 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
+
+All 13 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
+
+### What each resource existence-checks on write (relative `Type/<id>` → 422 if missing in the caller's org)
+
+| Resource | Checked | Stored as sent |
+|---|---|---|
+| Organization | `partOf`, `endpoint`, `identifier.assigner` | absolute URLs, logical references |
+| Location | `managingOrganization`, `partOf`, `endpoint`, `identifier.assigner` | absolute URLs, logical references |
+| Practitioner | `identifier.assigner`, `qualification.issuer` | absolute URLs, logical references |
+| HealthcareService | `providedBy`, `location`, `coverageArea`, `endpoint`, `identifier.assigner` | absolute URLs, logical references |
+| Endpoint | `managingOrganization`, `identifier.assigner` | absolute URLs, logical references |
+| PractitionerRole | `practitioner`, `organization`, `location`, `healthcareService`, `endpoint`, `identifier.assigner` | absolute URLs, logical references |
+| Schedule | `actor` of Practitioner / PractitionerRole / HealthcareService / Location, `identifier.assigner` | **Patient, RelatedPerson, Device actors**, absolute URLs |
+| Slot | `schedule`, `identifier.assigner` | absolute URLs, logical references |
+| Patient | `managingOrganization`, `generalPractitioner`, `link.other` (Patient, RelatedPerson), `contact.organization`, `identifier.assigner` | absolute URLs, logical references |
+| Appointment | `slot`, `participant.actor` (Patient, Practitioner, PractitionerRole, RelatedPerson, HealthcareService, Location), `identifier.assigner` | Device actors; `basedOn`, `reasonReference`, `supportingInformation` targets |
+| AppointmentResponse | `appointment`, `actor` (same types as Appointment), `identifier.assigner` | Device actors |
+| Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest, Condition/Procedure/Observation targets |
+| RelatedPerson | `patient`, `identifier.assigner` | absolute URLs, logical references |
+
+---
+
+## 2. Not yet rebuilt (36)
+
+Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
+
+| Group | Resources |
+|---|---|
+| Clinical records | Condition, AllergyIntolerance, Observation, DiagnosticReport, Procedure, FamilyMemberHistory, Immunization, ImmunizationRecommendation, ImmunizationEvaluation, RiskAssessment, ClinicalImpression, DetectedIssue |
+| Orders and medication | ServiceRequest, MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
+| Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Consent, Group |
+| Communication | Communication, CommunicationRequest |
+| Documents and specimens | DocumentReference, Specimen, SpecimenDefinition |
+| Definitions and measures | ActivityDefinition, PlanDefinition, ObservationDefinition, Measure, MeasureReport |
+| Forms | Questionnaire, QuestionnaireResponse |
+
+Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
+
+Suggested next: **Condition** (referenced by Encounter's `diagnosis` and `reason-reference`; its quantity searches use the engine's existing `quantity_match`). Alternative: AllergyIntolerance. Observation needs composite-search support in the engine first.
+
+---
+
+## 3. Open items and known gaps
+
+| Item | Detail | Where |
+|---|---|---|
+| Schedule `actor` | Patient and RelatedPerson actors are stored as sent: Schedule does not model them yet | Schedule |
+| Encounter references | Group, Account, EpisodeOfCare, ServiceRequest, Condition and similar targets are stored as sent until those resources are rebuilt | Encounter, Appointment |
+| Appointment operations | `$find` / `$book` not built; to be decided after reading the Medplum scheduling docs | Appointment |
+| fhir-gql | The GraphQL half (types, translators for **both** connectors, queries and mutations) is deferred until every fhir-server resource is done | `D:\code\work\projects\fhir-gql` |
+| Common search parameters | `_tag`, `_profile`, `_security`, `_source`, `_text`, `_content`, `_list`, `_has`, `_type`, `_filter` are ignored (reported in an `outcome` entry) | `docs/search-architecture/pending-search-capabilities.md` |
+| Search types missing from the engine | number, uri, composite | `app/fhir/search/` |
+| Cardinality minimums | R4 required elements (e.g. `status`, `participant`) are enforced only by the `java_validator` backend, not the native one | all resources |
+| Test-suite collection | `pytest tests` as a whole fails at collection (pre-existing); run per directory | tests |
+
+---
+
+## 4. Engine capabilities (what a new resource can reuse)
+
+| Capability | Introduced with | Module |
+|---|---|---|
+| string / token / reference / date, `:missing`, `_sort`, `_include`, `_revinclude`, chaining, hierarchy | Organization | `app/fhir/search/` |
+| `near` | Location | `app/repository/location/search.py` |
+| Period search (`period_match`) | PractitionerRole | `app/fhir/search/sql.py` |
+| Multi-target reference | Schedule | `app/fhir/search/` |
+| Partial-date range (`period_bounds`) | Patient | `app/repository/_content_index.py` |
+| Quantity search (`quantity_match`) | Encounter | `app/fhir/search/quantity.py` |
+
+---
+
+## Keeping this file current
+
+Update this file **in the same commit** whenever you:
+
+- **rebuild or add a resource**: add its row to section 1 (route, params, sequence, migration revision, commit hash once known), remove it from section 2, and fill its row in the existence-check table;
+- **wire one resource to another** (a new existence check, include or chain): edit the affected rows' "Checked" and "Stored as sent" cells, and close the matching item in section 3;
+- **add an engine capability** (a new search type, modifier or helper): add a row to section 4 and, if it closes a gap, remove it from section 3;
+- **find or close a known gap**: edit section 3;
+- **change the route prefix, sequence block or parameter count** of a resource.
+
+Then bump the "Last updated" line. Verify the parameter count with:
+
+```bash
+uv run python -c "from app.fhir.capability import SEARCH_REGISTRIES as R; print({k: len(list(f().params.values())) - 2 for k, f in R.items()})"
+```
+(each registry includes `_id` and `_lastUpdated`, hence the `- 2`), and the mounted list with `configs/config.yaml` → `routes.enabled`.
