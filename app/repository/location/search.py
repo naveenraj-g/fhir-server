@@ -24,6 +24,7 @@ from app.repository._appointment_response_revinclude import actor_response_revin
 from app.repository._encounter_revinclude import location_encounter_revincludes
 from app.repository._procedure_revinclude import location_procedure_revincludes
 from app.repository._diagnostic_report_revinclude import subject_report_revincludes
+from app.repository._immunization_revinclude import column_immunization_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     ArrayAggregate,
@@ -630,6 +631,7 @@ def location_search() -> SearchRegistry:
             *location_encounter_revincludes(lambda l: l.location_id),
             *location_procedure_revincludes(lambda l: l.location_id),
             *subject_report_revincludes('Location', lambda l: l.location_id, ('subject',)),
+            *column_immunization_revincludes('location', 'location', 'Location', lambda l: l.location_id),
             IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),
             IncludeTarget(
                 "HealthcareService", "location", "Location", _revinclude_healthcare_services("location"), reverse=True

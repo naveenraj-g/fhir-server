@@ -234,7 +234,7 @@ routes:
     # - episode_of_care
     # - flag
     # - group
-    # - immunization
+    - immunization
     # - immunization_evaluation
     # - immunization_recommendation
     - organization

@@ -1,371 +1,462 @@
-"""Core Immunization endpoint coverage.
+"""Core immunization endpoint coverage.
 
-Immunization has 5 endpoints (create/get/patch/list/delete), no sub-resource routes and no /me route.
-Every supplied sub-resource list on create/patch replaces corresponding rows wholesale.
+Immunization is stored Medplum-style (like Patient, Appointment, Encounter,
+Condition, Procedure, DiagnosticReport and the other content-based resources):
+the request body (genuine FHIR R4 Immunization JSON) is validated and stored
+whole in `content`, every response is FHIR R4 (`application/fhir+json`,
+regardless of Accept), and only the FHIR R4 search parameters are indexed
+(https://www.hl7.org/fhir/R4/immunization.html#search).
 
-This file holds:
-- create (minimal + full nested payload, FHIR format, validation, reference check)
-- read (plain + FHIR, not found)
-- patch (field updates, sub-list replace, not found)
-- list (plain, FHIR bundle, filters, pagination)
-- delete
-- auth: cross-org isolation and org-less rejection
+This file holds create, read, patch, delete and auth (org-less token, missing
+scope, cross-org isolation) plus the existence checks on every local reference
+(`patient`, `encounter`, `location`, `manufacturer`, `performer.actor`,
+`reasonReference`, `protocolApplied.authority`, `identifier.assigner`, note
+authors). Search lives in test_search.py.
+
+R4 requires `status`, `vaccineCode`, `patient` and `occurrence[x]`, but only the
+`java_validator` backend enforces cardinality minimums (the native structural
+check does not), so that is not asserted here.
 """
 
+import pytest
+from fastapi import Request
+
 from app.auth.dependencies import get_current_user
+from app.core.config import settings
 from app.main import app
 from tests.conftest import make_test_user
-from tests.helpers.assertions import (
-    assert_fhir_bundle,
-    assert_fhir_immunization,
-    assert_operation_outcome,
-    assert_paginated,
-    assert_plain_immunization,
-)
+from tests.helpers.assertions import assert_operation_outcome
+from tests.integration.immunization.conftest import IMMUNIZATION_PERMS
 from tests.integration.immunization.support import (
     BASE,
-    FHIR_ACCEPT,
+    condition_body,
+    create_condition,
+    create_encounter,
     create_immunization,
-    create_test_condition,
-    create_test_location,
-    create_test_organization,
-    create_test_patient,
-    create_test_practitioner,
-    full_immunization,
-    minimal_immunization,
+    create_location,
+    create_organization,
+    create_patient,
+    create_practitioner,
+    create_practitioner_role,
+    create_report,
+    encounter_body,
+    full_body,
+    immunization_body,
+    report_body,
 )
 
-IMMUNIZATION_PERMS = [
-    "immunization:create",
-    "immunization:read",
-    "immunization:update",
-    "immunization:delete",
-    "patient:create",
-    "patient:read",
-    "condition:create",
-    "condition:read",
-    "practitioner:create",
-    "practitioner:read",
-    "location:create",
-    "location:read",
-    "organization:create",
-    "organization:read",
-]
+
+@pytest.fixture
+def native_validation(monkeypatch):
+    """The base R4 validator may be switched off in configs/config.yaml
+    (`fhir_validation.enabled: false` skips it entirely). Tests that assert "a
+    key that isn't FHIR is a 422" need it on: the project's own structural
+    check (no sidecar needed)."""
+    monkeypatch.setattr(settings.fhir_validation, "enabled", True)
+    monkeypatch.setattr(settings.fhir_validation, "backend", "native")
 
 
-# ── Create ───────────────────────────────────────────────────────────────
+@pytest.fixture
+async def patient(client) -> int:
+    return await create_patient(client)
 
 
-async def test_create_immunization_minimal(client):
-    p_id = await create_test_patient(client)
-    resp = await client.post(BASE + "/", json=minimal_immunization(p_id))
+def _ids(bundle: dict) -> set[int]:
+    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+
+
+def _as_user(sub="u-test", org_id="org-test", permissions=IMMUNIZATION_PERMS):
+    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+
+
+async def _full(client, patient) -> tuple[int, dict]:
+    encounter = await create_encounter(client, encounter_body())
+    practitioner = await create_practitioner(client)
+    organization = await create_organization(client)
+    location = await create_location(client)
+    body = full_body(patient, encounter, practitioner, organization, location)
+    return await create_immunization(client, body), body
+
+
+# ── Create ───────────────────────────────────────────────────────────────────
+
+
+async def test_create_minimal(client, patient):
+    resp = await client.post(BASE + "/", json=immunization_body(patient))
     assert resp.status_code == 201, resp.text
+    assert "application/fhir+json" in resp.headers["content-type"]
     data = resp.json()
-    assert_plain_immunization(data)
-    assert data["patient"]["reference"] == f"Patient/{p_id}"
-    assert data["status"] == "completed"
-    assert data["primary_source"] is True
-    assert data["vaccine_code"]["text"] == "COVID-19 mRNA"
+    assert data["resourceType"] == "Immunization" and data["status"] == "completed"
+    assert data["patient"] == {"reference": f"Patient/{patient}"}
 
 
-async def test_create_immunization_full(client):
-    p_id = await create_test_patient(client)
-    c_id = await create_test_condition(client, p_id)
-    pr_id = await create_test_practitioner(client)
-    loc_id = await create_test_location(client)
-    org_id = await create_test_organization(client)
+async def test_create_full_round_trip(client, patient):
+    immunization, body = await _full(client, patient)
+    data = (await client.get(f"{BASE}/{immunization}")).json()
+    expected = {k: v for k, v in body.items() if k != "resourceType"}
+    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
 
-    payload = full_immunization(
-        p_id,
-        condition_id=c_id,
-        practitioner_id=pr_id,
-        location_id=loc_id,
-        org_id=org_id,
-    )
-    resp = await client.post(BASE + "/", json=payload)
+
+async def test_create_keeps_elements_nothing_searches_on(client, patient):
+    """`encounter`, `recorded`, `primarySource`, `expirationDate`, `doseQuantity`, `note`, `education`,
+    `reaction.reported` and the like live only in `content`."""
+    immunization, _ = await _full(client, patient)
+    data = (await client.get(f"{BASE}/{immunization}")).json()
+    assert data["recorded"] == "2023-01-15T10:00:00Z" and data["primarySource"] is True
+    assert data["expirationDate"] == "2025-02-15"
+    assert data["doseQuantity"] == {"value": 5, "system": "http://unitsofmeasure.org", "code": "mg"}
+    assert data["note"][0]["authorString"] == "Nurse Joy"
+    assert data["education"][0]["documentType"] == "flu-fact-sheet"
+    assert data["reaction"][0]["reported"] is True
+    assert data["protocolApplied"][0]["doseNumberPositiveInt"] == 1
+    assert data["isSubpotent"] is False
+
+
+@pytest.mark.parametrize(
+    "occurrence",
+    [{"occurrenceDateTime": "2023-01"}, {"occurrenceString": "last spring"}],
+    ids=["dateTime", "string"],
+)
+async def test_create_each_occurrence_choice_round_trips(client, patient, occurrence):
+    resp = await client.post(BASE + "/", json=immunization_body(patient, **occurrence))
     assert resp.status_code == 201, resp.text
-    data = resp.json()
-    assert_plain_immunization(data)
-    assert data["status"] == "completed"
-    assert data["patient"]["reference"] == f"Patient/{p_id}"
-    assert data["status_reason"]["text"] == "Medical precaution cleared"
-    assert data["location"]["reference"] == f"Location/{loc_id}"
-    assert data["manufacturer"]["reference"] == f"Organization/{org_id}"
-    assert len(data["performer"]) == 1
-    assert data["performer"][0]["actor"]["reference"] == f"Practitioner/{pr_id}"
-    assert len(data["reason_code"]) == 1
-    assert len(data["reason_reference"]) == 1
-    assert data["reason_reference"][0]["reference"] == f"Condition/{c_id}"
-    assert len(data["education"]) == 1
-    assert len(data["protocol_applied"]) == 1
-    assert data["protocol_applied"][0]["series"] == "COVID-19 Primary Series"
+    for key, value in occurrence.items():
+        assert resp.json()[key] == value
 
 
-async def test_create_immunization_fhir_format(client):
-    p_id = await create_test_patient(client)
-    resp = await client.post(
-        BASE + "/",
-        json=minimal_immunization(p_id),
-        headers=FHIR_ACCEPT,
-    )
+@pytest.mark.parametrize("status", ["completed", "entered-in-error", "not-done"])
+async def test_create_every_status_round_trips(client, patient, status):
+    resp = await client.post(BASE + "/", json=immunization_body(patient, status))
     assert resp.status_code == 201, resp.text
-    data = resp.json()
-    assert_fhir_immunization(data)
-    assert data["resourceType"] == "Immunization"
-    assert data["status"] == "completed"
-    assert data["patient"]["reference"] == f"Patient/{p_id}"
-    assert data["vaccineCode"]["text"] == "COVID-19 mRNA"
+    assert resp.json()["status"] == status
 
 
-async def test_create_immunization_invalid_status_422(client):
-    p_id = await create_test_patient(client)
-    payload = minimal_immunization(p_id)
-    payload["status"] = "invalid-status-value"
-    resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 422, resp.text
+async def test_create_ignores_server_managed_id_and_meta(client, patient):
+    body = immunization_body(patient, id="999", meta={"lastUpdated": "2000-01-01T00:00:00Z"})
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["id"] != "999"
+    assert not resp.json()["meta"]["lastUpdated"].startswith("2000")
 
 
-async def test_create_immunization_nonexistent_patient_422(client):
-    payload = minimal_immunization(999999)
-    resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 422, resp.text
-    assert_operation_outcome(resp.json(), 422, resp.status_code)
+async def test_create_bad_datatypes_rejected(client, patient):
+    for bad in ({"status": "robot"}, {"vaccineCode": "140"}, {"performer": {"actor": {"reference": "Practitioner/1"}}},
+                {"reasonCode": {"text": "x"}}, {"primarySource": "yes"}, {"doseQuantity": "5 mg"}):
+        resp = await client.post(BASE + "/", json=immunization_body(patient, **bad))
+        assert resp.status_code == 422, (bad, resp.text)
+    assert (await client.post(BASE + "/", json={"status": "completed", "patient": "Patient/1"})).status_code == 422
 
 
-# ── Read ──────────────────────────────────────────────────────────────────
+async def test_create_non_fhir_key_rejected(client, patient, native_validation):
+    assert (await client.post(BASE + "/", json=immunization_body(patient, not_a_fhir_element=1))).status_code == 422
 
 
-async def test_get_immunization_plain(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
+async def test_create_old_flat_fields_rejected(client, patient, native_validation):
+    for stale in ({"vaccine_code_text": "x"}, {"occurrence_date_time": "2020-01-01"}, {"org_id": "x"}):
+        resp = await client.post(BASE + "/", json={**immunization_body(patient), **stale})
+        assert resp.status_code == 422, (stale, resp.text)
 
-    resp = await client.get(f"{BASE}/{imm_id}")
+
+async def test_create_wrong_resource_type_rejected(client, patient):
+    assert (await client.post(BASE + "/", json=immunization_body(patient, resourceType="Patient"))).status_code == 422
+
+
+async def test_create_audit_meta_from_actor(client, patient):
+    data = (await client.post(BASE + "/", json=immunization_body(patient))).json()
+    exts = {e["url"].rsplit("/", 1)[1]: e for e in data["meta"]["extension"]}
+    assert exts["org-id"]["valueString"] == "org-test"
+    assert exts["created-by"]["valueString"] == "u-test"
+
+
+# ── Create: existence checks on local references ─────────────────────────────
+
+
+async def test_create_patient_must_exist(client):
+    assert (await client.post(BASE + "/", json=immunization_body(999999))).status_code == 422
+
+
+async def test_create_patient_in_another_org_is_rejected(client, other_client):
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        theirs = await create_patient(other_client)
+    finally:
+        _as_user()
+    assert (await client.post(BASE + "/", json=immunization_body(theirs))).status_code == 422
+
+
+async def test_create_encounter_location_manufacturer_must_exist(client, patient):
+    encounter = await create_encounter(client, encounter_body())
+    location = await create_location(client)
+    organization = await create_organization(client)
+    ok = immunization_body(
+        patient,
+        encounter={"reference": f"Encounter/{encounter}"},
+        location={"reference": f"Location/{location}"},
+        manufacturer={"reference": f"Organization/{organization}"},
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    for element, missing in (
+        ("encounter", "Encounter/999999"), ("location", "Location/999999"), ("manufacturer", "Organization/999999"),
+    ):
+        resp = await client.post(BASE + "/", json=immunization_body(patient, **{element: {"reference": missing}}))
+        assert resp.status_code == 422, (element, resp.text)
+
+
+async def test_create_performer_actor_is_checked(client, patient):
+    practitioner = await create_practitioner(client)
+    role = await create_practitioner_role(client)
+    organization = await create_organization(client)
+    for ref in (f"Practitioner/{practitioner}", f"PractitionerRole/{role}", f"Organization/{organization}"):
+        body = immunization_body(patient, performer=[{"actor": {"reference": ref}}])
+        resp = await client.post(BASE + "/", json=body)
+        assert resp.status_code == 201, (ref, resp.text)
+    for missing in ("Practitioner/999999", "PractitionerRole/999999", "Organization/999999"):
+        body = immunization_body(patient, performer=[{"actor": {"reference": missing}}])
+        resp = await client.post(BASE + "/", json=body)
+        assert resp.status_code == 422, (missing, resp.text)
+
+
+async def test_create_reason_reference_condition_and_report_are_checked(client, patient):
+    condition = await create_condition(client, condition_body(patient))
+    report = await create_report(client, report_body(patient))
+    body = immunization_body(
+        patient, reasonReference=[{"reference": f"Condition/{condition}"}, {"reference": f"DiagnosticReport/{report}"}]
+    )
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+    for missing in ("Condition/999999", "DiagnosticReport/999999"):
+        resp = await client.post(BASE + "/", json=immunization_body(patient, reasonReference=[{"reference": missing}]))
+        assert resp.status_code == 422, (missing, resp.text)
+
+
+async def test_create_protocol_authority_and_note_author_are_checked(client, patient):
+    organization = await create_organization(client)
+    practitioner = await create_practitioner(client)
+    ok = immunization_body(
+        patient,
+        protocolApplied=[{"authority": {"reference": f"Organization/{organization}"}, "doseNumberPositiveInt": 1}],
+        note=[{"text": "n", "authorReference": {"reference": f"Practitioner/{practitioner}"}}],
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    bad_authority = immunization_body(
+        patient, protocolApplied=[{"authority": {"reference": "Organization/999999"}, "doseNumberPositiveInt": 1}]
+    )
+    assert (await client.post(BASE + "/", json=bad_authority)).status_code == 422
+    bad_author = immunization_body(patient, note=[{"text": "n", "authorReference": {"reference": "Practitioner/999999"}}])
+    assert (await client.post(BASE + "/", json=bad_author)).status_code == 422
+
+
+async def test_create_identifier_assigner_must_exist(client, patient):
+    body = immunization_body(patient, identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}])
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+    org = await create_organization(client)
+    body = immunization_body(patient, identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}])
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_unrebuilt_targets_are_not_checked(client, patient):
+    """An Observation reason or reaction detail points at a resource this server does not rebuild:
+    stored as sent."""
+    body = immunization_body(
+        patient,
+        reasonReference=[{"reference": "Observation/999999"}],
+        reaction=[{"date": "2023-01-16", "detail": {"reference": "Observation/999999"}}],
+    )
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_absolute_and_logical_references_not_resolved(client):
+    absolute = "https://other.example.org/fhir/Patient/1"
+    resp = await client.post(BASE + "/", json=immunization_body(patient_id=None))
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["patient"] == {"reference": absolute}
+    logical = {"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "External"}
+    body = immunization_body(
+        None,
+        patient=logical,
+        performer=[{"actor": {"reference": "https://other.example.org/fhir/Practitioner/7"}}],
+    )
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["patient"] == logical
+    assert resp.json()["performer"] == [{"actor": {"reference": "https://other.example.org/fhir/Practitioner/7"}}]
+
+
+# ── Read ─────────────────────────────────────────────────────────────────────
+
+
+async def test_get_by_id(client, patient):
+    immunization, _ = await _full(client, patient)
+    resp = await client.get(f"{BASE}/{immunization}")
+    assert resp.status_code == 200 and resp.json()["id"] == str(immunization)
+
+
+async def test_get_is_fhir_regardless_of_accept(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient))
+    for accept in (None, "application/json", "*/*"):
+        headers = {"Accept": accept} if accept else {}
+        resp = await client.get(f"{BASE}/{immunization}", headers=headers)
+        assert resp.headers["content-type"].startswith("application/fhir+json"), accept
+        assert resp.json()["resourceType"] == "Immunization"
+
+
+async def test_xml_only_accept_is_406(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient))
+    resp = await client.get(f"{BASE}/{immunization}", headers={"Accept": "application/fhir+xml"})
+    assert resp.status_code == 406 and resp.json()["resourceType"] == "OperationOutcome"
+
+
+async def test_get_not_found(client):
+    resp = await client.get(f"{BASE}/999999")
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+
+
+# ── Patch ────────────────────────────────────────────────────────────────────
+
+
+async def test_patch_scalar_keeps_the_rest(client, patient):
+    immunization, _ = await _full(client, patient)
+    resp = await client.patch(f"{BASE}/{immunization}", json={"status": "entered-in-error", "lotNumber": "ZZ99"})
     assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_plain_immunization(data, id=imm_id, status="completed")
-    assert data["patient"]["reference"] == f"Patient/{p_id}"
+    assert resp.json()["status"] == "entered-in-error" and resp.json()["lotNumber"] == "ZZ99"
+    assert resp.json()["patient"] == {"reference": f"Patient/{patient}"}  # untouched
+    assert resp.json()["education"][0]["documentType"] == "flu-fact-sheet"
+    assert resp.json()["doseQuantity"]["value"] == 5
 
 
-async def test_get_immunization_fhir(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
+async def test_patch_reindexes_search(client, patient):
+    immunization, _ = await _full(client, patient)
+    await client.patch(
+        f"{BASE}/{immunization}",
+        json={"status": "not-done", "vaccineCode": {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "03"}]},
+              "occurrenceDateTime": "2024-05-01", "lotNumber": "NEWLOT"},
+    )
+    for param, old, new in (
+        ("status", "completed", "not-done"),
+        ("vaccine-code", "140", "03"),
+        ("date", "2023-01-15", "2024-05-01"),
+        ("lot-number", "AAJN11K", "NEWLOT"),
+    ):
+        assert immunization not in _ids((await client.get(BASE + "/", params={param: old})).json()), param
+        assert immunization in _ids((await client.get(BASE + "/", params={param: new})).json()), param
 
-    resp = await client.get(f"{BASE}/{imm_id}", headers=FHIR_ACCEPT)
+
+async def test_patch_patient_replaced_and_reindexed(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient))
+    other = await create_patient(client)
+    resp = await client.patch(f"{BASE}/{immunization}", json={"patient": {"reference": f"Patient/{other}"}})
     assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_fhir_immunization(data, id=str(imm_id), status="completed")
-    assert data["resourceType"] == "Immunization"
+    assert immunization not in _ids((await client.get(BASE + "/", params={"patient": str(patient)})).json())
+    assert immunization in _ids((await client.get(BASE + "/", params={"patient": str(other)})).json())
 
 
-async def test_get_immunization_not_found_404(client):
-    resp = await client.get(f"{BASE}/99999999")
-    assert resp.status_code == 404, resp.text
-    assert_operation_outcome(resp.json(), 404, resp.status_code)
-
-
-# ── Patch ─────────────────────────────────────────────────────────────────
-
-
-async def test_patch_immunization_fields(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
+async def test_patch_replaces_lists_and_empty_clears(client, patient):
+    immunization, _ = await _full(client, patient)
+    assert immunization in _ids((await client.get(BASE + "/", params={"series": "2-dose"})).json())
     resp = await client.patch(
-        f"{BASE}/{imm_id}",
-        json={"lot_number": "LOT-PATCHED", "is_subpotent": True},
+        f"{BASE}/{immunization}",
+        json={"performer": [], "reasonCode": [], "reasonReference": [], "reaction": [], "protocolApplied": [],
+              "identifier": [], "note": []},
     )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_plain_immunization(data, id=imm_id)
-    assert data["lot_number"] == "LOT-PATCHED"
-    assert data["is_subpotent"] is True
-    # unpatched fields preserved
-    assert data["status"] == "completed"
-    assert data["patient"]["reference"] == f"Patient/{p_id}"
+    for gone in ("performer", "reasonCode", "reasonReference", "reaction", "protocolApplied", "identifier", "note"):
+        assert gone not in resp.json()
+    assert resp.json()["lotNumber"] == "AAJN11K"  # untouched
+    for param, value in (
+        ("series", "2-dose"), ("target-disease", "6142004"), ("reason-code", "429060002"),
+        ("identifier", "IM-1001"), ("reaction", "Observation/160002"), ("reaction-date", "2023-01-16"),
+        ("reason-reference", "Observation/160001"),
+    ):
+        assert immunization not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+    assert immunization in _ids((await client.get(BASE + "/", params={"performer:missing": "true"})).json())
 
 
-async def test_patch_immunization_replace_sub_lists(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    # Add a note
+async def test_patch_clears_a_date_and_missing_follows(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient, occurrenceDateTime="2024-05-01"))
     resp = await client.patch(
-        f"{BASE}/{imm_id}",
-        json={
-            "note": [
-                {
-                    "text": "Initial post-vaccination check normal.",
-                    "time": "2026-01-15T10:10:00Z",
-                }
-            ]
-        },
+        f"{BASE}/{immunization}", json={"occurrenceDateTime": None, "occurrenceString": "sometime in May"}
     )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert len(data["note"]) == 1
-    assert data["note"][0]["text"] == "Initial post-vaccination check normal."
+    assert "occurrenceDateTime" not in resp.json()
+    assert immunization in _ids((await client.get(BASE + "/", params={"date:missing": "true"})).json())
 
-    # Replace note list
+
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient))
     resp = await client.patch(
-        f"{BASE}/{imm_id}",
-        json={
-            "note": [
-                {
-                    "text": "Updated note: mild soreness reported.",
-                    "time": "2026-01-15T12:00:00Z",
-                }
-            ]
-        },
+        f"{BASE}/{immunization}", json={"performer": [{"actor": {"reference": "Practitioner/999999"}}]}
     )
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert len(data["note"]) == 1
-    assert data["note"][0]["text"] == "Updated note: mild soreness reported."
+    assert resp.status_code == 422
+    assert "performer" not in (await client.get(f"{BASE}/{immunization}")).json()
 
 
-async def test_patch_immunization_not_found_404(client):
-    resp = await client.patch(
-        f"{BASE}/99999999",
-        json={"lot_number": "NONEXISTENT"},
-    )
-    assert resp.status_code == 404, resp.text
-    assert_operation_outcome(resp.json(), 404, resp.status_code)
+async def test_patch_invalid_value_rejected_and_nothing_written(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient, "completed"))
+    assert (await client.patch(f"{BASE}/{immunization}", json={"status": "broken"})).status_code == 422
+    assert (await client.get(f"{BASE}/{immunization}")).json()["status"] == "completed"
 
 
-# ── List ──────────────────────────────────────────────────────────────────
+async def test_patch_not_found(client):
+    resp = await client.patch(f"{BASE}/999999", json={"status": "entered-in-error"})
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 
 
-async def test_list_immunizations_plain(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    resp = await client.get(BASE + "/")
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_paginated(data)
-    ids = [item["id"] for item in data["data"]]
-    assert imm_id in ids
+# ── Delete ───────────────────────────────────────────────────────────────────
 
 
-async def test_list_immunizations_fhir_bundle(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    resp = await client.get(BASE + "/", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_fhir_bundle(data)
-    entry_ids = [e["resource"]["id"] for e in data.get("entry", [])]
-    assert str(imm_id) in entry_ids
+async def test_delete(client, patient):
+    immunization, _ = await _full(client, patient)
+    assert (await client.delete(f"{BASE}/{immunization}")).status_code == 204
+    assert (await client.get(f"{BASE}/{immunization}")).status_code == 404
+    # Its index rows are gone with it.
+    for param, value in (("identifier", "IM-1001"), ("vaccine-code", "140"), ("series", "2-dose"),
+                         ("target-disease", "6142004")):
+        assert immunization not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
 
 
-async def test_list_immunizations_filter_by_status(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    resp = await client.get(f"{BASE}/?status=completed")
-    assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert imm_id in ids
-
-    resp = await client.get(f"{BASE}/?status=not-done")
-    assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert imm_id not in ids
+async def test_delete_not_found(client):
+    resp = await client.delete(f"{BASE}/999999")
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 
 
-async def test_list_immunizations_filter_by_patient(client):
-    p1 = await create_test_patient(client)
-    p2 = await create_test_patient(client)
-    imm1 = await create_immunization(client, minimal_immunization(p1))
-    imm2 = await create_immunization(client, minimal_immunization(p2))
-
-    resp = await client.get(f"{BASE}/?patient=Patient/{p1}")
-    assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert imm1 in ids
-    assert imm2 not in ids
+# ── Auth ─────────────────────────────────────────────────────────────────────
 
 
-async def test_list_immunizations_filter_by_date(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    resp = await client.get(f"{BASE}/?date=2026-01-15")
-    assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert imm_id in ids
-
-    resp = await client.get(f"{BASE}/?date=2020-01-01")
-    assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert imm_id not in ids
+async def test_create_without_permission(client, patient):
+    _as_user(permissions=["immunization:read"])
+    assert (await client.post(BASE + "/", json=immunization_body(patient))).status_code == 403
 
 
-# ── Delete ────────────────────────────────────────────────────────────────
+async def test_org_less_token_rejected(client, patient):
+    immunization = await create_immunization(client, immunization_body(patient))
+
+    async def _no_org(request: Request):
+        request.state.user = {"sub": "u-test", "permissions": IMMUNIZATION_PERMS}
+
+    app.dependency_overrides[get_current_user] = _no_org
+    assert (await client.post(BASE + "/", json=immunization_body())).status_code == 403
+    assert (await client.get(BASE + "/")).status_code == 403
+    assert (await client.get(f"{BASE}/{immunization}")).status_code == 403
 
 
-async def test_delete_immunization(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    resp = await client.delete(f"{BASE}/{imm_id}")
-    assert resp.status_code == 204, resp.text
-
-    # Verify deleted
-    resp = await client.get(f"{BASE}/{imm_id}")
-    assert resp.status_code == 404, resp.text
-
-
-async def test_delete_immunization_not_found_404(client):
-    resp = await client.delete(f"{BASE}/99999999")
-    assert resp.status_code == 404, resp.text
-    assert_operation_outcome(resp.json(), 404, resp.status_code)
+async def test_cross_org_get_patch_delete_return_404(client, other_client):
+    _as_user()  # the other_client fixture resets the override
+    immunization = await create_immunization(client, immunization_body())
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        for resp in (
+            await other_client.get(f"{BASE}/{immunization}"),
+            await other_client.patch(f"{BASE}/{immunization}", json={"status": "entered-in-error"}),
+            await other_client.delete(f"{BASE}/{immunization}"),
+        ):
+            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    finally:
+        _as_user()
 
 
-# ── Multi-Tenancy & Auth ──────────────────────────────────────────────────
-
-
-async def test_immunization_cross_org_isolation_404(client):
-    p_id = await create_test_patient(client)
-    imm_id = await create_immunization(client, minimal_immunization(p_id))
-
-    # Switch to different org
-    app.dependency_overrides[get_current_user] = make_test_user(
-        org_id="other-org",
-        permissions=IMMUNIZATION_PERMS,
-    )
-
-    # Cross-org get returns 404, not 403 (never leaks existence)
-    resp = await client.get(f"{BASE}/{imm_id}")
-    assert resp.status_code == 404, resp.text
-
-    # Cross-org patch returns 404
-    resp = await client.patch(f"{BASE}/{imm_id}", json={"lot_number": "ATTACK"})
-    assert resp.status_code == 404, resp.text
-
-    # Cross-org delete returns 404
-    resp = await client.delete(f"{BASE}/{imm_id}")
-    assert resp.status_code == 404, resp.text
-
-    # Cross-org list does not contain resource from other org
-    resp = await client.get(BASE + "/")
-    assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert imm_id not in ids
-
-
-async def test_immunization_org_less_token_rejected_403(client):
-    # Set org-less user
-    app.dependency_overrides[get_current_user] = make_test_user(
-        org_id=None,
-        permissions=IMMUNIZATION_PERMS,
-    )
-
-    resp = await client.post(BASE + "/", json=minimal_immunization(10001))
-    assert resp.status_code == 403, resp.text
-    assert_operation_outcome(resp.json(), 403, resp.status_code)
-
-    resp = await client.get(BASE + "/")
-    assert resp.status_code == 403, resp.text
-    assert_operation_outcome(resp.json(), 403, resp.status_code)
+async def test_search_cross_tenant_isolation(client, other_client):
+    _as_user()
+    await create_immunization(client, immunization_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]))
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        bundle = (await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})).json()
+        assert bundle["total"] == 0
+    finally:
+        _as_user()

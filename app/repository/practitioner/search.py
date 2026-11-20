@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._immunization_revinclude import performer_immunization_revincludes
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes
 from app.repository._condition_revinclude import asserter_condition_revincludes
@@ -536,6 +537,7 @@ def practitioner_search() -> SearchRegistry:
             *actor_allergy_revincludes('Practitioner', lambda p: p.practitioner_id),
             *asserter_condition_revincludes('Practitioner', lambda p: p.practitioner_id),
             *performer_procedure_revincludes('Practitioner', lambda p: p.practitioner_id),
+            *performer_immunization_revincludes('Practitioner', lambda p: p.practitioner_id),
             *performer_report_revincludes('Practitioner', lambda p: p.practitioner_id),
             IncludeTarget(
                 "PractitionerRole", "practitioner", "Practitioner", _revinclude_practitioner_role, reverse=True

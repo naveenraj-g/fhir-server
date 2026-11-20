@@ -1,373 +1,234 @@
 """FHIR R4 conformance for `to_fhir_immunization()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Immunization is stored Medplum-style (like Patient, Appointment, Encounter,
+Condition, Procedure, DiagnosticReport and the other content-based resources):
+the resource lives whole in ImmunizationModel.content, and to_fhir_immunization()
+only stamps `id` and `meta` onto it. So what can go wrong on the read side is that
+stamping (e.g. a malformed meta extension) or a stored document the server returns
+that isn't valid R4 — each case below is a `content` document as the write path
+would store it, run through the real read mapper.
 """
 
 import datetime as dt
-from decimal import Decimal
 
 import pytest
 
 from app.fhir.mappers.immunization import to_fhir_immunization
-from app.models.enums import IdentifierUse
-from app.models.immunization import (
-    ImmunizationEducationModel,
-    ImmunizationEncounterReferenceType,
-    ImmunizationFundingSourceCodingModel,
-    ImmunizationIdentifierModel,
-    ImmunizationIdentifierTypeCodingModel,
-    ImmunizationLocationReferenceType,
-    ImmunizationManufacturerReferenceType,
-    ImmunizationModel,
-    ImmunizationNoteAuthorReferenceType,
-    ImmunizationNoteModel,
-    ImmunizationPatientReferenceType,
-    ImmunizationPerformerActorReferenceType,
-    ImmunizationPerformerFunctionCodingModel,
-    ImmunizationPerformerModel,
-    ImmunizationProgramEligibilityCodingModel,
-    ImmunizationProgramEligibilityModel,
-    ImmunizationProtocolAppliedAuthorityReferenceType,
-    ImmunizationProtocolAppliedModel,
-    ImmunizationProtocolAppliedTargetDiseaseCodingModel,
-    ImmunizationProtocolAppliedTargetDiseaseModel,
-    ImmunizationReactionDetailReferenceType,
-    ImmunizationReactionModel,
-    ImmunizationReasonCodeCodingModel,
-    ImmunizationReasonCodeModel,
-    ImmunizationReasonReferenceModel,
-    ImmunizationReasonReferenceType,
-    ImmunizationReportOriginCodingModel,
-    ImmunizationRouteCodingModel,
-    ImmunizationSiteCodingModel,
-    ImmunizationStatus,
-    ImmunizationStatusReasonCodingModel,
-    ImmunizationSubpotentReasonCodingModel,
-    ImmunizationSubpotentReasonModel,
-    ImmunizationVaccineCodingModel,
-)
+from app.models.immunization import ImmunizationModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
 immunization_pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.immunization_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-D_EXP = dt.date(2027, 1, 1)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "status_reason_codings",
-    "vaccine_codings",
-    "report_origin_codings",
-    "site_codings",
-    "route_codings",
-    "funding_source_codings",
-    "performers",
-    "notes",
-    "reason_codes",
-    "reason_references",
-    "subpotent_reasons",
-    "education_items",
-    "program_eligibilities",
-    "reactions",
-    "protocol_applied_items",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+PATIENT = {"reference": "Patient/10001"}
+VACCINE = {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "140", "display": "Influenza"}]}
+SCT = "http://snomed.info/sct"
+OCCURRED = "2023-01-15T09:30:00Z"
 
 
-def _immunization(**overrides) -> ImmunizationModel:
+def _immunization(content: dict, **overrides) -> ImmunizationModel:
     fields = {
-        "id": 1,
         "immunization_id": 330001,
         "tenant_id": "org-test",
-        "status": ImmunizationStatus.completed,
-        "vaccine_code_text": "COVID-19 Vaccine mRNA",
-        "patient_reference": "Patient/10001",
-        "patient_type": ImmunizationPatientReferenceType.Patient,
-        "patient_id": 10001,
-        "patient_display": "John Doe",
-        "occurrence_date_time": D,
-        "primary_source": True,
         "created_by": "u-test",
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = ImmunizationModel(**fields)
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
+    return ImmunizationModel(**fields)
 
 
-def test_immunization_minimal_conformance():
-    m = _immunization()
-    m.vaccine_codings = [
-        ImmunizationVaccineCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://hl7.org/fhir/sid/cvx",
-            code="207",
-            display="COVID-19, mRNA, LNP-S, PF, 100 mcg/0.5mL dose",
-        )
-    ]
-    resource = to_fhir_immunization(m)
-    assert_valid(immunization_pb2.Immunization, resource)
-
-
-def test_immunization_full_conformance():
-    m = _immunization(
-        status=ImmunizationStatus.completed,
-        status_reason_text="Patient requested postponement",
-        lot_number="LOT-9988",
-        expiration_date=D_EXP,
-        is_subpotent=False,
-        recorded=D,
-        dose_quantity_value=Decimal("0.5"),
-        dose_quantity_unit="mL",
-        dose_quantity_system="http://unitsofmeasure.org",
-        dose_quantity_code="mL",
-        encounter_reference="Encounter/20001",
-        encounter_type=ImmunizationEncounterReferenceType.Encounter,
-        encounter_id=20001,
-        encounter_display="Vaccination Clinic Visit",
-        location_reference="Location/230001",
-        location_type=ImmunizationLocationReferenceType.Location,
-        location_id=230001,
-        location_display="Main Clinic Room 1",
-        manufacturer_reference="Organization/190001",
-        manufacturer_type=ImmunizationManufacturerReferenceType.Organization,
-        manufacturer_id=190001,
-        manufacturer_display="Moderna US",
+def _with(**elements) -> ImmunizationModel:
+    return _immunization(
+        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED, **elements}
     )
 
-    m.identifiers = [
-        ImmunizationIdentifierModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            use=IdentifierUse.official,
-            system="http://example.org/immunizations",
-            value="IMM-2026-001",
-            type_codings=[
-                ImmunizationIdentifierTypeCodingModel(
-                    identifier_id=1,
-                    tenant_id="org-test",
-                    system="http://terminology.hl7.org/CodeSystem/v2-0203",
-                    code="MR",
-                    display="Medical Record Number",
-                )
-            ],
+
+CASES = {
+    "minimal": _with(),
+    "updated_by_and_updated_at": _immunization(
+        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED},
+        updated_by="u-other", updated_at=D,
+    ),
+    "identifier_with_type_and_assigner": _with(
+        identifier=[
+            {
+                "use": "official",
+                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "FILL"}]},
+                "system": "https://fhir-server.dev/fhir/identifier-system/immunization-id",
+                "value": "IM-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        ]
+    ),
+    **{
+        f"status_{s}": _immunization(
+            {"status": s, "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED}
         )
-    ]
+        for s in ("completed", "entered-in-error", "not-done")
+    },
+    "status_reason": _immunization(
+        {"status": "not-done", "statusReason": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActReason", "code": "PATOBJ"}], "text": "Objected"},
+         "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED}
+    ),
+    "vaccine_code_text_only": _immunization(
+        {"status": "completed", "vaccineCode": {"text": "Tetanus"}, "patient": PATIENT, "occurrenceDateTime": OCCURRED}
+    ),
+    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
+    "patient_logical": _immunization(
+        {"status": "completed", "vaccineCode": VACCINE, "occurrenceDateTime": OCCURRED,
+         "patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}
+    ),
+    "patient_absolute_url": _immunization(
+        {"status": "completed", "vaccineCode": VACCINE, "occurrenceDateTime": OCCURRED,
+         "patient": {"reference": "https://other.example.org/fhir/Patient/9"}}
+    ),
+    "encounter": _with(encounter={"reference": "Encounter/20001"}),
+    "occurrence_date_time_partial": _immunization(
+        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": "2023-01"}
+    ),
+    "occurrence_string": _immunization(
+        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceString": "last spring"}
+    ),
+    "recorded": _with(recorded="2023-01-15T10:00:00Z"),
+    "primary_source_true": _with(primarySource=True),
+    "primary_source_false": _with(primarySource=False, reportOrigin={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-origin", "code": "record"}]}),
+    "location": _with(location={"reference": "Location/230001"}),
+    "manufacturer": _with(manufacturer={"reference": "Organization/190001"}),
+    "lot_number_and_expiration": _with(lotNumber="AAJN11K", expirationDate="2025-02-15"),
+    "site_and_route": _with(
+        site={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActSite", "code": "LA", "display": "left arm"}]},
+        route={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration", "code": "IM"}]},
+    ),
+    "dose_quantity": _with(doseQuantity={"value": 5, "unit": "mg", "system": "http://unitsofmeasure.org", "code": "mg"}),
+    "performer_with_function": _with(
+        performer=[
+            {
+                "function": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0443", "code": "AP"}]},
+                "actor": {"reference": "Practitioner/30001"},
+            }
+        ]
+    ),
+    **{
+        f"performer_{t}": _with(performer=[{"actor": {"reference": f"{t}/1"}}])
+        for t in ("Practitioner", "PractitionerRole", "Organization")
+    },
+    "performer_logical": _with(performer=[{"actor": {"identifier": {"system": "urn:who", "value": "W-1"}}}]),
+    "note_author_string": _with(note=[{"text": "Given in left arm", "time": "2023-01-15T10:05:00Z", "authorString": "Nurse Joy"}]),
+    "note_author_reference": _with(note=[{"text": "n", "authorReference": {"reference": "Practitioner/30001"}}]),
+    "reason_code": _with(reasonCode=[{"coding": [{"system": SCT, "code": "429060002"}]}, {"text": "Other"}]),
+    **{
+        f"reason_reference_{t}": _with(reasonReference=[{"reference": f"{t}/1"}])
+        for t in ("Condition", "Observation", "DiagnosticReport")
+    },
+    "is_subpotent": _with(isSubpotent=True, subpotentReason=[{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-subpotent-reason", "code": "partial"}]}]),
+    "education": _with(
+        education=[
+            {"documentType": "flu-fact-sheet", "reference": "https://example.org/flu", "publicationDate": "2022-10-01", "presentationDate": "2023-01-15"},
+            {"reference": "https://example.org/other"},
+        ]
+    ),
+    "program_eligibility_and_funding": _with(
+        programEligibility=[{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-program-eligibility", "code": "ineligible"}]}],
+        fundingSource={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-funding-source", "code": "private"}]},
+    ),
+    "reaction": _with(
+        reaction=[{"date": "2023-01-16T08:00:00Z", "detail": {"reference": "Observation/160001"}, "reported": True}, {"reported": False}]
+    ),
+    "protocol_applied_positive_int": _with(
+        protocolApplied=[
+            {"series": "2-dose", "authority": {"reference": "Organization/190001"},
+             "targetDisease": [{"coding": [{"system": SCT, "code": "6142004"}]}],
+             "doseNumberPositiveInt": 1, "seriesDosesPositiveInt": 2}
+        ]
+    ),
+    "protocol_applied_string": _with(protocolApplied=[{"doseNumberString": "booster", "seriesDosesString": "many"}]),
+    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "full": _with(
+        identifier=[{"system": "urn:im", "value": "IM-1"}],
+        encounter={"reference": "Encounter/20001"},
+        recorded="2023-01-15T10:00:00Z",
+        primarySource=True,
+        location={"reference": "Location/230001"},
+        manufacturer={"reference": "Organization/190001"},
+        lotNumber="AAJN11K",
+        expirationDate="2025-02-15",
+        site={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActSite", "code": "LA"}]},
+        route={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration", "code": "IM"}]},
+        doseQuantity={"value": 5, "system": "http://unitsofmeasure.org", "code": "mg"},
+        performer=[{"actor": {"reference": "Practitioner/30001"}}],
+        note=[{"text": "n"}],
+        reasonCode=[{"coding": [{"system": SCT, "code": "429060002"}]}],
+        reasonReference=[{"reference": "Condition/120001"}],
+        isSubpotent=False,
+        reaction=[{"date": "2023-01-16", "detail": {"reference": "Observation/160001"}}],
+        protocolApplied=[{"series": "2-dose", "doseNumberPositiveInt": 1}],
+    ),
+}
 
-    m.vaccine_codings = [
-        ImmunizationVaccineCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://hl7.org/fhir/sid/cvx",
-            code="207",
-            display="COVID-19 mRNA",
-        )
-    ]
 
-    m.status_reason_codings = [
-        ImmunizationStatusReasonCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-ActReason",
-            code="MEDPREC",
-            display="medical precaution",
-        )
-    ]
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_immunization_mapper_emits_valid_fhir_r4(case):
+    assert_valid(immunization_pb2.Immunization, to_fhir_immunization(CASES[case]))
 
-    m.report_origin_codings = [
-        ImmunizationReportOriginCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/immunization-origin",
-            code="recall",
-            display="Parent/Guardian/Patient Recall",
-        )
-    ]
 
-    m.site_codings = [
-        ImmunizationSiteCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-ActSite",
-            code="LA",
-            display="Left Arm",
-        )
-    ]
+def test_mapper_serves_content_unchanged():
+    content = {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED, "lotNumber": "X1"}
+    out = to_fhir_immunization(_immunization(content))
+    assert out["resourceType"] == "Immunization"
+    assert out["id"] == "330001"
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
 
-    m.route_codings = [
-        ImmunizationRouteCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
-            code="IM",
-            display="Intramuscular",
-        )
-    ]
 
-    m.funding_source_codings = [
-        ImmunizationFundingSourceCodingModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/immunization-funding-source",
-            code="private",
-            display="Private",
-        )
-    ]
+# ── Guarding the oracle ────────────────────────────────────────────────────────
+# If google-fhir-r4 ever stops validating — a version bump, a changed API, a
+# silently-swallowed error — every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 — `patient` or `vaccineCode` as a one-item list; the
+# integration tests cover what they can.)
 
-    m.performers = [
-        ImmunizationPerformerModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            actor_reference="Practitioner/30001",
-            actor_type=ImmunizationPerformerActorReferenceType.Practitioner,
-            actor_id=30001,
-            actor_display="Dr. Alice Smith",
-            function_codings=[
-                ImmunizationPerformerFunctionCodingModel(
-                    performer_id=1,
-                    tenant_id="org-test",
-                    system="http://terminology.hl7.org/CodeSystem/v2-0443",
-                    code="AP",
-                    display="Administering Provider",
-                )
-            ],
-        )
-    ]
 
-    m.notes = [
-        ImmunizationNoteModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            author_reference="Practitioner/30001",
-            author_type=ImmunizationNoteAuthorReferenceType.Practitioner,
-            author_id=30001,
-            author_display="Dr. Alice Smith",
-            time=D,
-            text="Administered smoothly with no immediate adverse effects.",
-        )
-    ]
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("patient as string not a Reference", {"patient": "Patient/1"}),
+        ("status with an unknown code", {"status": "robot"}),
+        ("status as number", {"status": 1}),
+        ("vaccineCode as string not a CodeableConcept", {"vaccineCode": "140"}),
+        ("occurrenceDateTime not a dateTime", {"occurrenceDateTime": "yesterday"}),
+        ("recorded not a dateTime", {"recorded": "recently"}),
+        ("expirationDate not a date", {"expirationDate": "soon"}),
+        ("primarySource as string", {"primarySource": "yes"}),
+        ("isSubpotent as string", {"isSubpotent": "no"}),
+        ("lotNumber as number", {"lotNumber": 5}),
+        ("performer as object not a list", {"performer": {"actor": {"reference": "Practitioner/1"}}}),
+        ("performer actor as string", {"performer": [{"actor": "Practitioner/1"}]}),
+        ("note as object not a list", {"note": {"text": "x"}}),
+        ("note author as number", {"note": [{"text": "x", "authorString": 5}]}),
+        ("reasonCode as object not a list", {"reasonCode": {"text": "x"}}),
+        ("reasonReference as object not a list", {"reasonReference": {"reference": "Condition/1"}}),
+        ("reaction as object not a list", {"reaction": {"reported": True}}),
+        ("reaction detail as string", {"reaction": [{"detail": "Observation/1"}]}),
+        ("doseQuantity as string", {"doseQuantity": "5 mg"}),
+        ("protocolApplied as object not a list", {"protocolApplied": {"series": "x"}}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
 
-    m.reason_codes = [
-        ImmunizationReasonCodeModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            text="Annual vaccination requirement",
-            codings=[
-                ImmunizationReasonCodeCodingModel(
-                    reason_code_id=1,
-                    tenant_id="org-test",
-                    system="http://snomed.info/sct",
-                    code="429060002",
-                    display="Procedure to produce and evaluate active immunity",
-                )
-            ],
-        )
-    ]
-
-    m.reason_references = [
-        ImmunizationReasonReferenceModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            reference_reference="Condition/120001",
-            reference_type=ImmunizationReasonReferenceType.Condition,
-            reference_id=120001,
-            reference_display="High risk condition",
-        )
-    ]
-
-    m.subpotent_reasons = [
-        ImmunizationSubpotentReasonModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            text="Partial Dose",
-            codings=[
-                ImmunizationSubpotentReasonCodingModel(
-                    subpotent_reason_id=1,
-                    tenant_id="org-test",
-                    system="http://terminology.hl7.org/CodeSystem/immunization-subpotent-reason",
-                    code="partialdose",
-                    display="Partial Dose",
-                )
-            ],
-        )
-    ]
-
-    m.education_items = [
-        ImmunizationEducationModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            document_type="VIS",
-            publication_date=dt.date(2025, 8, 6),
-            presentation_date=dt.date(2026, 1, 1),
-            reference="https://www.cdc.gov/vaccines/hcp/vis/vis-statements/covid-19.pdf",
-        )
-    ]
-
-    m.program_eligibilities = [
-        ImmunizationProgramEligibilityModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            text="Not Eligible",
-            codings=[
-                ImmunizationProgramEligibilityCodingModel(
-                    program_eligibility_id=1,
-                    tenant_id="org-test",
-                    system="http://terminology.hl7.org/CodeSystem/immunization-program-eligibility",
-                    code="ineligible",
-                    display="Not Eligible",
-                )
-            ],
-        )
-    ]
-
-    m.reactions = [
-        ImmunizationReactionModel(
-            immunization_pk=1,
-            tenant_id="org-test",
-            date=D,
-            reported=True,
-            detail_reference="Observation/160001",
-            detail_type=ImmunizationReactionDetailReferenceType.Observation,
-            detail_id=160001,
-            detail_display="Mild injection site redness",
-        )
-    ]
-
-    proto = ImmunizationProtocolAppliedModel(
-        immunization_pk=1,
-        tenant_id="org-test",
-        series="COVID-19 Primary Series",
-        dose_number_positive_int=1,
-        series_doses_positive_int=2,
-        authority_reference="Organization/190001",
-        authority_type=ImmunizationProtocolAppliedAuthorityReferenceType.Organization,
-        authority_id=190001,
-        authority_display="CDC",
-    )
-    td = ImmunizationProtocolAppliedTargetDiseaseModel(
-        protocol_applied_id=1,
-        tenant_id="org-test",
-        text="COVID-19",
-        codings=[
-            ImmunizationProtocolAppliedTargetDiseaseCodingModel(
-                target_disease_id=1,
-                tenant_id="org-test",
-                system="http://snomed.info/sct",
-                code="840539006",
-                display="COVID-19",
-            )
-        ],
-    )
-    proto.target_diseases = [td]
-    m.protocol_applied_items = [proto]
-
-    resource = to_fhir_immunization(m)
-    assert_valid(immunization_pb2.Immunization, resource)
+    payload = {
+        "resourceType": "Immunization", "id": "330001", "status": "completed", "vaccineCode": VACCINE,
+        "patient": PATIENT, "occurrenceDateTime": OCCURRED, **broken,
+    }
+    with pytest.raises(Exception):  # noqa: B017 — the library raises several types
+        json_format.json_fhir_string_to_proto(fhir_json_text(payload), immunization_pb2.Immunization, validate=True)
