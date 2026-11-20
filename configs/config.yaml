@@ -218,7 +218,7 @@ routes:
   # /api/fhir/v1/fhir-profiles, not its own prefix.
   enabled:
     # - activity_definition
-    # - allergy_intolerance
+    - allergy_intolerance
     - appointment
     - appointment_response
     # - care_plan

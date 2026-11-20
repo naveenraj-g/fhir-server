@@ -1,608 +1,166 @@
-from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.models.allergy_intolerance.enums import (
-    AllergyIntoleranceCategory,
-    AllergyIntoleranceCriticality,
-    AllergyIntoleranceSeverity,
-    AllergyIntoleranceType,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
-from app.schemas.allergy_intolerance.input.codeable_concept import (
-    AllergyIntoleranceCodeableConceptInput,
-)
-from app.schemas.allergy_intolerance.input.identifier import (
-    AllergyIntoleranceIdentifierInput,
-)
-from app.schemas.allergy_intolerance.input.note import (
-    AllergyIntoleranceNoteInput,
-)
-from app.schemas.allergy_intolerance.input.reaction import (
-    AllergyIntoleranceReactionInput,
-)
-from app.schemas.enums import IdentifierUse
 
-_CREATE_EXAMPLE = {
-    "clinical_status": {
-        "coding": [
-            {
-                "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
-                "code": "active",
-                "display": "Active",
-            }
-        ],
-        "text": "Active",
+TypeCode = Literal["allergy", "intolerance"]
+CategoryCode = Literal["food", "medication", "environment", "biologic"]
+CriticalityCode = Literal["low", "high", "unable-to-assess"]
+SeverityCode = Literal["mild", "moderate", "severe"]
+
+_EXAMPLE = {
+    "resourceType": "AllergyIntolerance",
+    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/allergy-id", "value": "AI-1001"}],
+    "clinicalStatus": {
+        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]
     },
-    "verification_status": {
+    "verificationStatus": {
         "coding": [
-            {
-                "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
-                "code": "confirmed",
-                "display": "Confirmed",
-            }
-        ],
-        "text": "Confirmed",
+            {"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification", "code": "confirmed"}
+        ]
     },
     "type": "allergy",
     "category": ["food"],
     "criticality": "high",
-    "code": {
-        "coding": [
-            {
-                "system": "http://snomed.info/sct",
-                "code": "227493005",
-                "display": "Cashew nut allergy",
-            }
-        ],
-        "text": "Cashew nut allergy",
-    },
-    "patient": "Patient/10001",
-    "patient_display": "Jane Doe",
-    "encounter": "Encounter/20001",
-    "encounter_display": "Annual Physical",
-    "onset_date_time": "2023-01-15T09:30:00Z",
-    "recorded_date": "2023-01-15T10:00:00Z",
-    "recorder": "Practitioner/30001",
-    "recorder_display": "Dr. Alice Smith",
-    "asserter": "Patient/10001",
-    "asserter_display": "Jane Doe",
-    "last_occurrence": "2023-06-01T12:00:00Z",
-    "note": [
-        {
-            "text": "Patient experienced severe urticaria after cashew ingestion.",
-            "time": "2023-01-15T10:05:00Z",
-            "author_string": "Dr. Alice Smith",
-        }
-    ],
+    "code": {"coding": [{"system": "http://snomed.info/sct", "code": "227493005", "display": "Cashew nuts"}]},
+    "patient": {"reference": "Patient/10001"},
+    "encounter": {"reference": "Encounter/20001"},
+    "onsetDateTime": "2023-01-15T09:30:00Z",
+    "recordedDate": "2023-01-15T10:00:00Z",
+    "recorder": {"reference": "Practitioner/30001"},
+    "asserter": {"reference": "Patient/10001"},
+    "lastOccurrence": "2023-06-01T12:00:00Z",
+    "note": [{"text": "Severe urticaria after cashew ingestion.", "time": "2023-01-15T10:05:00Z"}],
     "reaction": [
         {
-            "substance": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "227493005",
-                        "display": "Cashew nut",
-                    }
-                ],
-                "text": "Cashew nut",
-            },
-            "manifestation": [
-                {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "64305001",
-                            "display": "Urticaria",
-                        }
-                    ],
-                    "text": "Urticaria",
-                }
-            ],
+            "substance": {"coding": [{"system": "http://snomed.info/sct", "code": "227493005"}]},
+            "manifestation": [{"coding": [{"system": "http://snomed.info/sct", "code": "64305001", "display": "Urticaria"}]}],
             "description": "Severe hives on face and neck",
             "onset": "2023-01-15T09:40:00Z",
             "severity": "severe",
-            "exposure_route": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "26643006",
-                        "display": "Oral route",
-                    }
-                ],
-                "text": "Oral route",
-            },
-            "note": [
-                {
-                    "text": "Resolved after administration of intramuscular epinephrine.",
-                    "time": "2023-01-15T10:15:00Z",
-                }
-            ],
+            "exposureRoute": {"coding": [{"system": "http://snomed.info/sct", "code": "26643006"}]},
         }
     ],
-    "identifier": [
-        {
-            "use": "official",
-            "system": "http://example.org/allergy-ids",
-            "value": "ALG-12345",
-        }
-    ],
-    "extension": [],
 }
 
 
-class AllergyIntoleranceCreateSchema(BaseModel):
-    """Payload for POST /api/fhir/v1/allergy-intolerances.
+class AllergyIntoleranceAnnotationInput(FhirInputModel):
+    """Annotation — a note with an author (a Reference or plain text) and a time."""
 
-    Tenant scoping (org_id) and created_by come from the verified JWT (actor.org_id / actor.sub).
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _CREATE_EXAMPLE},
-    )
-
-    clinical_status: AllergyIntoleranceCodeableConceptInput | None = Field(
-        None, description="active | recurrence | relapse | inactive | remission | resolved."
-    )
-    verification_status: AllergyIntoleranceCodeableConceptInput | None = Field(
-        None, description="unconfirmed | presumed | confirmed | refuted | entered-in-error."
-    )
-    type: AllergyIntoleranceType | None = Field(
-        None, description="allergy | intolerance - Underlying mechanism."
-    )
-    category: list[AllergyIntoleranceCategory] | None = Field(
-        None, description="food | medication | environment | biologic."
-    )
-    criticality: AllergyIntoleranceCriticality | None = Field(
-        None, description="low | high | unable-to-assess."
-    )
-    code: AllergyIntoleranceCodeableConceptInput | None = Field(
-        None, description="Code that identifies the allergy or intolerance."
-    )
-
-    # Reference(Patient) - 1..1
-    patient: str = Field(
-        ..., description="Who the sensitivity is for. Reference(Patient)"
-    )
-    patient_display: str | None = Field(
-        None, description="Display text for patient."
-    )
-    patient_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    patient_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    patient_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    patient_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    patient_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    patient_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    patient_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    patient_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    patient_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    patient_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    patient_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    # Reference(Encounter) - 0..1
-    encounter: str | None = Field(
-        None, description="Encounter when allergy or intolerance was asserted. Reference(Encounter)"
-    )
-    encounter_display: str | None = Field(
-        None, description="Display text for encounter."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    encounter_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    encounter_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    encounter_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    encounter_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    encounter_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    encounter_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    encounter_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    encounter_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    encounter_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    encounter_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    # Choice onset[x]
-    onset_date_time: datetime | None = Field(
-        None, description="When allergy or intolerance was identified (dateTime)."
-    )
-    onset_age: dict[str, Any] | None = Field(
-        None, description="When allergy or intolerance was identified (Age/Quantity)."
-    )
-    onset_period_start: datetime | None = Field(
-        None, description="When allergy or intolerance was identified (Period start)."
-    )
-    onset_period_end: datetime | None = Field(
-        None, description="When allergy or intolerance was identified (Period end)."
-    )
-    onset_range: dict[str, Any] | None = Field(
-        None, description="When allergy or intolerance was identified (Range)."
-    )
-    onset_string: str | None = Field(
-        None, description="When allergy or intolerance was identified (string)."
-    )
-
-    recorded_date: datetime | None = Field(
-        None, description="Date first version of the resource was recorded."
-    )
-
-    # Reference(recorder) - 0..1
-    recorder: str | None = Field(
-        None, description="Who recorded the sensitivity. Reference(Practitioner|PractitionerRole|Patient|RelatedPerson)"
-    )
-    recorder_display: str | None = Field(
-        None, description="Display text for recorder."
-    )
-    recorder_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    recorder_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    recorder_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    recorder_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    recorder_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    recorder_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    recorder_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    recorder_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    recorder_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    recorder_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    recorder_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    # Reference(asserter) - 0..1
-    asserter: str | None = Field(
-        None, description="Source of the information about the allergy. Reference(Patient|RelatedPerson|Practitioner|PractitionerRole)"
-    )
-    asserter_display: str | None = Field(
-        None, description="Display text for asserter."
-    )
-    asserter_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    asserter_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    asserter_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    asserter_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    asserter_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    asserter_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    asserter_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    asserter_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    asserter_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    asserter_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    asserter_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    last_occurrence: datetime | None = Field(
-        None, description="Date(/time) of last known occurrence of a reaction."
-    )
-    note: list[AllergyIntoleranceNoteInput] | None = Field(
-        None, description="Additional text not captured in other fields."
-    )
-    reaction: list[AllergyIntoleranceReactionInput] | None = Field(
-        None, description="Adverse Reaction Events linked to issue."
-    )
-    identifier: list[AllergyIntoleranceIdentifierInput] | None = Field(
-        None, description="External ids for this item."
-    )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+    authorReference: FhirReferenceInput | None = Field(
+        None,
+        description="Individual responsible for the annotation — Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    authorString: str | None = Field(None, description="Individual responsible for the annotation, as plain text.")
+    time: str | None = Field(None, description="When the annotation was made (a FHIR dateTime).")
+    text: str | None = Field(None, description="The annotation text, as markdown (required by R4).")
 
 
-class AllergyIntolerancePatchSchema(BaseModel):
-    """Payload for PATCH /api/fhir/v1/allergy-intolerances/{id}.
+class AllergyIntoleranceQuantityInput(FhirInputModel):
+    """Age (onsetAge) — a Quantity with a time unit."""
 
-    All fields optional. Immutable fields (id, allergy_intolerance_id, created_at, tenant_id, created_by) excluded.
-    """
+    value: float | int | None = Field(None, description="Numerical value (with implicit precision).")
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(None, description="< | <= | >= | > - how to understand the value.")
+    unit: str | None = Field(None, description="Unit representation.")
+    system: str | None = Field(None, description="System that defines coded unit form (usually http://unitsofmeasure.org).")
+    code: str | None = Field(None, description="Coded form of the unit.")
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+
+class AllergyIntoleranceRangeInput(FhirInputModel):
+    """Range (onsetRange) — a low and a high Quantity."""
+
+    low: AllergyIntoleranceQuantityInput | None = Field(None, description="Low limit.")
+    high: AllergyIntoleranceQuantityInput | None = Field(None, description="High limit.")
+
+
+class AllergyIntoleranceReactionInput(FhirInputModel):
+    """AllergyIntolerance.reaction — an adverse reaction event linked to exposure to the substance."""
+
+    substance: FhirCodeableConceptInput | None = Field(None, description="Specific substance or pharmaceutical product considered to be responsible for the event.")
+    manifestation: list[FhirCodeableConceptInput] | None = Field(None, description="Clinical symptoms/signs associated with the event (required by R4, at least one).")
+    description: str | None = Field(None, description="Description of the event as a whole.")
+    onset: str | None = Field(None, description="Date(/time) when manifestations showed (a FHIR dateTime).")
+    severity: SeverityCode | None = Field(None, description="mild | moderate | severe (of event as a whole).")
+    exposureRoute: FhirCodeableConceptInput | None = Field(None, description="How the subject was exposed to the substance.")
+    note: list[AllergyIntoleranceAnnotationInput] | None = Field(None, description="Text about event not captured in other fields.")
+
+
+class _AllergyIntoleranceFields(FhirInputModel):
+    """Every writable AllergyIntolerance element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/allergyintolerance.html). Create and patch
+    accept exactly the same fields. R4 requires `patient` (and rules ait-1/ait-2
+    tie `clinicalStatus` to `verificationStatus`); that is enforced by base R4
+    validation of the stored document (the `java_validator` backend — the native
+    structural check has no cardinality minimums or invariants), not by this
+    model. A PATCH may omit them: it is merged onto the current resource before
+    validating.
+
+    The validated body is stored whole (AllergyIntoleranceModel.content), so any
+    valid R4 element is kept — including ones this model does not declare.
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    allergy_intolerance_id sequence) and `meta` (audit/tenant data, stamped on at
+    read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["AllergyIntolerance"] | None = Field(None, description="Optional; if supplied it must be 'AllergyIntolerance'.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(None, description="External ids for this item.")
+    clinicalStatus: FhirCodeableConceptInput | None = Field(None, description="active | inactive | resolved (CodeableConcept; system http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical).")
+    verificationStatus: FhirCodeableConceptInput | None = Field(None, description="unconfirmed | confirmed | refuted | entered-in-error (CodeableConcept; system http://terminology.hl7.org/CodeSystem/allergyintolerance-verification).")
+    type: TypeCode | None = Field(None, description="allergy | intolerance - Underlying mechanism (if known).")
+    category: list[CategoryCode] | None = Field(None, description="food | medication | environment | biologic.")
+    criticality: CriticalityCode | None = Field(None, description="low | high | unable-to-assess - Estimate of the potential clinical harm, or seriousness, of the reaction to the identified substance.")
+    code: FhirCodeableConceptInput | None = Field(None, description="Code that identifies the allergy or intolerance (substance, condition, or negation).")
+    patient: FhirReferenceInput | None = Field(
+        None,
+        description="Who the sensitivity is for — Reference(Patient) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
+    )
+    encounter: FhirReferenceInput | None = Field(None, description="Encounter when the allergy or intolerance was asserted — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).")
+    onsetDateTime: str | None = Field(None, description="When allergy or intolerance was identified (a FHIR dateTime). One of the onset[x] choices.")
+    onsetAge: AllergyIntoleranceQuantityInput | None = Field(None, description="When allergy or intolerance was identified (an Age). One of the onset[x] choices.")
+    onsetPeriod: FhirPeriodInput | None = Field(None, description="When allergy or intolerance was identified (a Period). One of the onset[x] choices.")
+    onsetRange: AllergyIntoleranceRangeInput | None = Field(None, description="When allergy or intolerance was identified (a Range). One of the onset[x] choices.")
+    onsetString: str | None = Field(None, description="When allergy or intolerance was identified (text). One of the onset[x] choices.")
+    recordedDate: str | None = Field(None, description="Date first version of the resource instance was recorded (a FHIR dateTime).")
+    recorder: FhirReferenceInput | None = Field(None, description="Who recorded the sensitivity — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise).")
+    asserter: FhirReferenceInput | None = Field(None, description="Source of the information about the allergy — Reference(Patient | RelatedPerson | Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).")
+    lastOccurrence: str | None = Field(None, description="Date(/time) of last known occurrence of a reaction (a FHIR dateTime).")
+    note: list[AllergyIntoleranceAnnotationInput] | None = Field(None, description="Additional text not captured in other fields.")
+    reaction: list[AllergyIntoleranceReactionInput] | None = Field(None, description="Adverse Reaction Events linked to exposure to substance.")
+
+
+class AllergyIntoleranceCreateSchema(_AllergyIntoleranceFields):
+    """POST body — a FHIR R4 AllergyIntolerance resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class AllergyIntolerancePatchSchema(_AllergyIntoleranceFields):
+    """PATCH body — a partial FHIR R4 AllergyIntolerance (merge-patch semantics
+    on top-level elements). Only supplied elements are written; omitted ones are
+    left untouched. A supplied element replaces the stored value wholesale — a
+    list (even `[]`) replaces every existing entry, an object such as
+    `clinicalStatus` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
-                "clinical_status": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
-                            "code": "inactive",
-                            "display": "Inactive",
-                        }
-                    ],
-                    "text": "Inactive",
-                },
                 "criticality": "low",
+                "clinicalStatus": {
+                    "coding": [
+                        {"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "resolved"}
+                    ]
+                },
             }
-        },
-    )
-
-    clinical_status: AllergyIntoleranceCodeableConceptInput | None = Field(
-        None, description="active | recurrence | relapse | inactive | remission | resolved."
-    )
-    verification_status: AllergyIntoleranceCodeableConceptInput | None = Field(
-        None, description="unconfirmed | presumed | confirmed | refuted | entered-in-error."
-    )
-    type: AllergyIntoleranceType | None = Field(
-        None, description="allergy | intolerance - Underlying mechanism."
-    )
-    category: list[AllergyIntoleranceCategory] | None = Field(
-        None, description="food | medication | environment | biologic."
-    )
-    criticality: AllergyIntoleranceCriticality | None = Field(
-        None, description="low | high | unable-to-assess."
-    )
-    code: AllergyIntoleranceCodeableConceptInput | None = Field(
-        None, description="Code that identifies the allergy or intolerance."
-    )
-    patient: str | None = Field(
-        None, description="Who the sensitivity is for. Reference(Patient)"
-    )
-    patient_display: str | None = Field(
-        None, description="Display text for patient."
-    )
-    patient_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    patient_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    patient_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    patient_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    patient_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    patient_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    patient_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    patient_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    patient_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    patient_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    patient_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    encounter: str | None = Field(
-        None, description="Encounter when allergy was asserted. Reference(Encounter)"
-    )
-    encounter_display: str | None = Field(
-        None, description="Display text for encounter."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    encounter_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    encounter_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    encounter_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    encounter_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    encounter_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    encounter_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    encounter_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    encounter_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    encounter_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    encounter_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    onset_date_time: datetime | None = Field(
-        None, description="When allergy or intolerance was identified (dateTime)."
-    )
-    onset_age: dict[str, Any] | None = Field(
-        None, description="When allergy or intolerance was identified (Age/Quantity)."
-    )
-    onset_period_start: datetime | None = Field(
-        None, description="When allergy or intolerance was identified (Period start)."
-    )
-    onset_period_end: datetime | None = Field(
-        None, description="When allergy or intolerance was identified (Period end)."
-    )
-    onset_range: dict[str, Any] | None = Field(
-        None, description="When allergy or intolerance was identified (Range)."
-    )
-    onset_string: str | None = Field(
-        None, description="When allergy or intolerance was identified (string)."
-    )
-    recorded_date: datetime | None = Field(
-        None, description="Date first version of the resource was recorded."
-    )
-
-    recorder: str | None = Field(
-        None, description="Who recorded the sensitivity. Reference(Practitioner|PractitionerRole|Patient|RelatedPerson)"
-    )
-    recorder_display: str | None = Field(
-        None, description="Display text for recorder."
-    )
-    recorder_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    recorder_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    recorder_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    recorder_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    recorder_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    recorder_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    recorder_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    recorder_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    recorder_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    recorder_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    recorder_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    asserter: str | None = Field(
-        None, description="Source of the information about the allergy. Reference(Patient|RelatedPerson|Practitioner|PractitionerRole)"
-    )
-    asserter_display: str | None = Field(
-        None, description="Display text for asserter."
-    )
-    asserter_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — its purpose, if known."
-    )
-    asserter_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — code system for its type."
-    )
-    asserter_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — version of the type code system."
-    )
-    asserter_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — a symbol for its type."
-    )
-    asserter_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — display for its type."
-    )
-    asserter_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — whether this type coding was chosen directly by the user."
-    )
-    asserter_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — human language rendering of its type."
-    )
-    asserter_identifier_system: str | None = Field(
-        None, description="Fallback identifier — namespace URL for the value."
-    )
-    asserter_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value within the given system."
-    )
-    asserter_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — start of validity period."
-    )
-    asserter_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — end of validity period."
-    )
-
-    last_occurrence: datetime | None = Field(
-        None, description="Date(/time) of last known occurrence of a reaction."
-    )
-    note: list[AllergyIntoleranceNoteInput] | None = Field(
-        None, description="Additional text not captured in other fields."
-    )
-    reaction: list[AllergyIntoleranceReactionInput] | None = Field(
-        None, description="Adverse Reaction Events linked to issue."
-    )
-    identifier: list[AllergyIntoleranceIdentifierInput] | None = Field(
-        None, description="External ids for this item."
-    )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+        }
+    }

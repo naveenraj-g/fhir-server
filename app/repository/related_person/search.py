@@ -40,6 +40,7 @@ from app.models.related_person import (
     RelatedPersonTelecom,
 )
 from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import participant_encounter_revincludes
 from app.schemas.enums import AddressUse, AdministrativeGender
@@ -451,6 +452,7 @@ def related_person_search() -> SearchRegistry:
             *participant_revincludes("RelatedPerson", lambda r: r.related_person_id, ("actor",)),
             *actor_response_revincludes("RelatedPerson", lambda r: r.related_person_id, ("actor",)),
             *participant_encounter_revincludes("RelatedPerson", lambda r: r.related_person_id, ("participant",)),
+            *actor_allergy_revincludes("RelatedPerson", lambda r: r.related_person_id),
             IncludeTarget(
                 "Patient", "link", "RelatedPerson", _revinclude_patients_linking(lambda r: r.related_person_id),
                 reverse=True,

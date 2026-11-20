@@ -17,7 +17,7 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole, Schedule, Slot, Patient, Appointment, AppointmentResponse, Encounter and RelatedPerson** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Observation,
+The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole, Schedule, Slot, Patient, Appointment, AppointmentResponse, Encounter, RelatedPerson and AllergyIntolerance** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Observation,
 Condition, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 
@@ -36,6 +36,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 | AppointmentResponse | 7 | 7 | none |
 | Encounter | 23 | 23 | none |
 | RelatedPerson | 17 | 17 | none |
+| AllergyIntolerance | 16 | 16 | none |
 | All other resources | - | 0 (old list filters) | everything: needs a registry each |
 
 - Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
@@ -63,6 +64,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 - RelatedPerson: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`, `address-use`,
   `birthdate`, `email`, `gender`, `identifier`, `name`, `patient`, `phone`, `phonetic`, `relationship`, `telecom`. `birthdate` is a date held
   as the range it covers; `patient` chains into Patient; every parameter except `address`, `address-use`, `phonetic`, `phone`, `email` and `telecom` is sortable.
+- AllergyIntolerance: `asserter`, `category`, `clinical-status`, `code`, `criticality`, `date`, `identifier`, `last-date`, `manifestation`, `onset`, `patient`, `recorder`, `route`, `severity`, `type`, `verification-status`. `date`, `last-date` and `onset` are dateTimes held as the range they cover (`onset` reads `reaction.onset`); `code` also reads `reaction.substance`; `category`, `severity`, `type` and `criticality` are plain `code` elements bound to one system (`:not`/`:missing` only); `recorder` and `asserter` are multi-target (need a type; chain through `recorder|asserter:Practitioner|PractitionerRole|Patient|RelatedPerson`); `patient` chains into Patient; every parameter is sortable.
 - Schedule: `active`, `actor`, `date`, `identifier`, `service-category`, `service-type`, `specialty`. `actor` is a multi-target
   reference (needs a type; chains through `actor:Practitioner|PractitionerRole|HealthcareService|Location`); `date` is a Period search over
   `planningHorizon`; every parameter is sortable.
@@ -145,7 +147,7 @@ For each resource, follow the Organization/Location pattern:
   `HealthcareService:organization` (on Organization), `HealthcareService:location` / `:coverage-area` (on Location),
   `Endpoint:organization` (on Organization), `Organization:endpoint` / `Location:endpoint` / `HealthcareService:endpoint` (on Endpoint),
   `PractitionerRole:practitioner` / `:organization` / `:location` / `:service` / `:endpoint` (on Practitioner, Organization,
-  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), `Slot:schedule` (on Schedule), `Patient:general-practitioner` (on Practitioner, PractitionerRole and Organization), `Patient:organization` (on Organization) `Patient:link` (on Patient), `Appointment:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location) `Appointment:slot` (on Slot), `AppointmentResponse:appointment` (on Appointment) and `AppointmentResponse:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location), plus `Encounter:patient|subject` (on Patient), `Encounter:participant|practitioner` (on Practitioner; `participant` also on PractitionerRole), `Encounter:location` (on Location), `Encounter:appointment` (on Appointment), `Encounter:service-provider` (on Organization) and `Encounter:part-of` (on Encounter), plus `RelatedPerson:patient` (on Patient) and, on RelatedPerson, `Appointment:actor`, `AppointmentResponse:actor`, `Encounter:participant` and `Patient:link`.
+  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), `Slot:schedule` (on Schedule), `Patient:general-practitioner` (on Practitioner, PractitionerRole and Organization), `Patient:organization` (on Organization) `Patient:link` (on Patient), `Appointment:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location) `Appointment:slot` (on Slot), `AppointmentResponse:appointment` (on Appointment) and `AppointmentResponse:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location), plus `Encounter:patient|subject` (on Patient), `Encounter:participant|practitioner` (on Practitioner; `participant` also on PractitionerRole), `Encounter:location` (on Location), `Encounter:appointment` (on Appointment), `Encounter:service-provider` (on Organization) and `Encounter:part-of` (on Encounter), plus `RelatedPerson:patient` (on Patient) and, on RelatedPerson, `Appointment:actor`, `AppointmentResponse:actor`, `Encounter:participant` and `Patient:link`, plus `AllergyIntolerance:patient` (on Patient) and `AllergyIntolerance:recorder|asserter` (on Patient, Practitioner, PractitionerRole and RelatedPerson).
 - `_revinclude` from resources that point at Organization/Location (Observation, ...)
   becomes possible only when those resources are on the engine.
 

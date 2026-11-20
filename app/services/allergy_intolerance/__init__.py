@@ -7,4 +7,5 @@ __all__ = ["AllergyIntoleranceService"]
 
 @trace_methods
 class AllergyIntoleranceService(_CoreMixin):
-    """Orchestrates AllergyIntolerance CRUD operations and data transformations."""
+    """All AllergyIntolerance business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

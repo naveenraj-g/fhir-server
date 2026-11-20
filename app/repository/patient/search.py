@@ -20,6 +20,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes, patient_allergy_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import subject_encounter_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
@@ -646,6 +647,8 @@ def patient_search() -> SearchRegistry:
             *participant_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
             *actor_response_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
             *subject_encounter_revincludes(lambda p: p.patient_id),
+            *patient_allergy_revincludes(lambda p: p.patient_id),
+            *actor_allergy_revincludes('Patient', lambda p: p.patient_id),
             IncludeTarget("RelatedPerson", "patient", "Patient", _revinclude_related_persons, reverse=True),
             IncludeTarget(
                 "Patient", "link", "Patient", revinclude_patients_via_reference("link", "Patient", lambda p: p.patient_id),

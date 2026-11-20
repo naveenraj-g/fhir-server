@@ -1,12 +1,18 @@
+from app.core.logging import trace_methods
 from app.repository.base import BaseRepository
-from app.repository.allergy_intolerance.core import _CoreMixin
-from app.repository.allergy_intolerance.full import _FullMixin
 
-
-class AllergyIntoleranceRepository(_CoreMixin, _FullMixin, BaseRepository):
-    """Repository for AllergyIntolerance FHIR resource."""
-
-    pass
-
+from .core import _CoreMixin
+from .full import _FullMixin
 
 __all__ = ["AllergyIntoleranceRepository"]
+
+
+@trace_methods
+class AllergyIntoleranceRepository(_CoreMixin, _FullMixin, BaseRepository):
+    """All AllergyIntolerance DB I/O. Like Schedule/Slot/Appointment,
+    AllergyIntolerance has no standalone sub-resource endpoints
+    (create/patch always operate on the whole nested payload — see
+    full.py), so there are no per-sub-resource mixins beyond
+    _CoreMixin/_FullMixin. session_factory/__init__ and the generic
+    paginated-list execution (`_execute_paginated`) are inherited from
+    BaseRepository — see that class."""

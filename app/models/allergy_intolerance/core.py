@@ -1,67 +1,93 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Sequence,
-    String,
-    text,
-)
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.allergy_intolerance.enums import (
-    AllergyIntoleranceAsserterReferenceType,
-    AllergyIntoleranceCategory,
-    AllergyIntoleranceCriticality,
-    AllergyIntoleranceEncounterReferenceType,
-    AllergyIntolerancePatientReferenceType,
-    AllergyIntoleranceRecorderReferenceType,
-    AllergyIntoleranceType,
-)
-from app.models.enums import IdentifierUse
 from app.models.shared import TenantAuditMixin
+
+from .enums import AllergyIntoleranceCriticality, AllergyIntoleranceType
+
+allergy_intolerance_id_seq = Sequence("allergy_intolerance_pub_seq", start=260000, increment=1, metadata=Base.metadata)
+
+# The four R4 targets of both AllergyIntolerance.recorder and .asserter.
+ACTOR_TYPES = ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
 
 
 class AllergyIntoleranceModel(TenantAuditMixin, Base):
-    """SQLAlchemy ORM model for FHIR R4 AllergyIntolerance resource."""
+    """FHIR R4 AllergyIntolerance — Medplum-style storage, same as Patient,
+    Appointment, Encounter and the other content-based resources.
+
+    `content` (JSONB) holds the whole resource exactly as validated on write; it
+    is the single source of truth, and GET serves it back as-is (`id`/`meta` are
+    stamped on at read time from this row's own columns — see
+    app.fhir.mappers.allergy_intolerance). Nothing else in this table or its
+    child tables is a second copy of the resource: every other column exists
+    only because a FHIR R4 AllergyIntolerance search parameter filters on it
+    (https://www.hl7.org/fhir/R4/allergyintolerance.html#search), and is derived
+    from `content` on every write by app.repository.allergy_intolerance._indexer.
+
+    Search parameter -> storage:
+      type             -> type (0..1 code, Enum column, stored by value)
+      criticality      -> criticality (0..1 code, Enum column, stored by value so
+                          `unable-to-assess` is the real FHIR code)
+      date             -> recorded_date_start/_end (0..1 dateTime, columns; the
+                          half-open range the dateTime covers, so a partial
+                          dateTime works — see period_bounds)
+      last-date        -> last_occurrence_start/_end (0..1 dateTime, same shape)
+      patient          -> patient_reference/_type/_id +
+                          patient_identifier_system/_value (1..1
+                          Reference(Patient), columns)
+      recorder         -> recorder_reference/_type/_id + recorder_identifier_*
+                          (0..1 Reference to one of ACTOR_TYPES, columns)
+      asserter         -> asserter_reference/_type/_id + asserter_identifier_*
+                          (0..1 Reference to one of ACTOR_TYPES, columns)
+      identifier       -> AllergyIntoleranceIdentifier (0..*)
+      category, clinical-status, verification-status, code, manifestation,
+      route, severity  -> AllergyIntoleranceToken (0..*, one shared table; `code`
+                          also covers reaction.substance)
+      onset            -> AllergyIntoleranceReaction (one row per reaction.onset)
+      _id              -> allergy_intolerance_id;  _lastUpdated -> updated_at/created_at
+
+    `encounter`, `onset[x]`, `note` and every reaction element no search
+    parameter reads live only in `content`.
+
+    `recorder` and `asserter` can each point at four resource types, so
+    `*_type` records which one a relative `Type/<id>` names (a plain string, not
+    a Postgres enum): a search by bare id is ambiguous (`asserter=Type/id` or
+    `asserter:Type=id`).
+
+    All index columns are nullable: R4 makes `patient` mandatory (and rules
+    ait-1/ait-2 tie clinicalStatus to verificationStatus), but those are the
+    validator's rules (enforced by the `java_validator` backend), not the
+    database's. No `user_id`: an AllergyIntolerance is a shared tenant-level
+    entity. No DB-level CHECK constraints."""
 
     __tablename__ = "allergy_intolerance"
+    __table_args__ = (
+        Index("ix_allergy_intolerance_recorded_date", "recorded_date_start", "recorded_date_end"),
+        Index("ix_allergy_intolerance_recorder_type_id", "recorder_type", "recorder_id"),
+        Index("ix_allergy_intolerance_asserter_type_id", "asserter_type", "asserter_id"),
+    )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     allergy_intolerance_id = Column(
         BigInteger,
-        Sequence(
-            "allergy_intolerance_pub_seq",
-            start=260000,
-            increment=1,
-            metadata=Base.metadata,
-        ),
+        allergy_intolerance_id_seq,
+        server_default=allergy_intolerance_id_seq.next_value(),
         unique=True,
         index=True,
         nullable=False,
     )
 
-    clinical_status_text = Column(String, nullable=True)
-    verification_status_text = Column(String, nullable=True)
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
+    # ── Search index (derived from `content`) ─────────────────────────────
     type = Column(
         Enum(
             AllergyIntoleranceType,
             name="allergy_intolerance_type",
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
-        ),
-        nullable=True,
-    )
-    category = Column(
-        ARRAY(
-            Enum(
-                AllergyIntoleranceCategory,
-                name="allergy_intolerance_category",
-                values_callable=lambda enum_cls: [m.value for m in enum_cls],
-            )
         ),
         nullable=True,
     )
@@ -74,164 +100,39 @@ class AllergyIntoleranceModel(TenantAuditMixin, Base):
         nullable=True,
     )
 
-    code_text = Column(String, nullable=True)
+    # recordedDate / lastOccurrence are FHIR dateTimes that may be partial
+    # (`2024`, `2024-03`): held as the half-open [start, end) range of instants
+    # they cover (NULL = absent), matched with period_match.
+    recorded_date_start = Column(DateTime(timezone=True), nullable=True)
+    recorded_date_end = Column(DateTime(timezone=True), nullable=True)
+    last_occurrence_start = Column(DateTime(timezone=True), nullable=True)
+    last_occurrence_end = Column(DateTime(timezone=True), nullable=True)
 
-    # Reference(Patient) - 1..1
-    patient_reference = Column(String, nullable=False)
-    patient_type = Column(
-        Enum(
-            AllergyIntolerancePatientReferenceType,
-            name="allergy_intolerance_patient_reference_type",
-            values_callable=lambda enum_cls: [m.value for m in enum_cls],
-        ),
-        nullable=False,
-    )
-    patient_id = Column(BigInteger, nullable=True)
-    patient_display = Column(String, nullable=True)
-
-    patient_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    patient_identifier_type_system = Column(String, nullable=True)
-    patient_identifier_type_version = Column(String, nullable=True)
-    patient_identifier_type_code = Column(String, nullable=True)
-    patient_identifier_type_display = Column(String, nullable=True)
-    patient_identifier_type_user_selected = Column(Boolean, nullable=True)
-    patient_identifier_type_text = Column(String, nullable=True)
+    # patient (1..1 Reference(Patient)); `patient_type` is a plain string.
+    patient_reference = Column(String, nullable=True)
+    patient_type = Column(String, nullable=True)
+    patient_id = Column(BigInteger, nullable=True, index=True)
     patient_identifier_system = Column(String, nullable=True)
     patient_identifier_value = Column(String, nullable=True)
-    patient_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    patient_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # Reference(Encounter) - 0..1
-    encounter_reference = Column(String, nullable=True)
-    encounter_type = Column(
-        Enum(
-            AllergyIntoleranceEncounterReferenceType,
-            name="allergy_intolerance_encounter_reference_type",
-            values_callable=lambda enum_cls: [m.value for m in enum_cls],
-        ),
-        nullable=True,
-    )
-    encounter_id = Column(BigInteger, nullable=True)
-    encounter_display = Column(String, nullable=True)
-
-    encounter_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    encounter_identifier_type_system = Column(String, nullable=True)
-    encounter_identifier_type_version = Column(String, nullable=True)
-    encounter_identifier_type_code = Column(String, nullable=True)
-    encounter_identifier_type_display = Column(String, nullable=True)
-    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
-    encounter_identifier_type_text = Column(String, nullable=True)
-    encounter_identifier_system = Column(String, nullable=True)
-    encounter_identifier_value = Column(String, nullable=True)
-    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # Choice onset[x]: onsetDateTime, onsetAge, onsetPeriod, onsetRange, onsetString
-    onset_date_time = Column(DateTime(timezone=True), nullable=True)
-    onset_age = Column(JSONB, nullable=True)
-    onset_period_start = Column(DateTime(timezone=True), nullable=True)
-    onset_period_end = Column(DateTime(timezone=True), nullable=True)
-    onset_range = Column(JSONB, nullable=True)
-    onset_string = Column(String, nullable=True)
-
-    recorded_date = Column(DateTime(timezone=True), nullable=True)
-
-    # Reference(recorder) - 0..1
+    # recorder (0..1 Reference to one of ACTOR_TYPES)
     recorder_reference = Column(String, nullable=True)
-    recorder_type = Column(
-        Enum(
-            AllergyIntoleranceRecorderReferenceType,
-            name="allergy_intolerance_recorder_reference_type",
-            values_callable=lambda enum_cls: [m.value for m in enum_cls],
-        ),
-        nullable=True,
-    )
+    recorder_type = Column(String, nullable=True)
     recorder_id = Column(BigInteger, nullable=True)
-    recorder_display = Column(String, nullable=True)
-
-    recorder_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    recorder_identifier_type_system = Column(String, nullable=True)
-    recorder_identifier_type_version = Column(String, nullable=True)
-    recorder_identifier_type_code = Column(String, nullable=True)
-    recorder_identifier_type_display = Column(String, nullable=True)
-    recorder_identifier_type_user_selected = Column(Boolean, nullable=True)
-    recorder_identifier_type_text = Column(String, nullable=True)
     recorder_identifier_system = Column(String, nullable=True)
     recorder_identifier_value = Column(String, nullable=True)
-    recorder_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    recorder_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # Reference(asserter) - 0..1
+    # asserter (0..1 Reference to one of ACTOR_TYPES)
     asserter_reference = Column(String, nullable=True)
-    asserter_type = Column(
-        Enum(
-            AllergyIntoleranceAsserterReferenceType,
-            name="allergy_intolerance_asserter_reference_type",
-            values_callable=lambda enum_cls: [m.value for m in enum_cls],
-        ),
-        nullable=True,
-    )
+    asserter_type = Column(String, nullable=True)
     asserter_id = Column(BigInteger, nullable=True)
-    asserter_display = Column(String, nullable=True)
-
-    asserter_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    asserter_identifier_type_system = Column(String, nullable=True)
-    asserter_identifier_type_version = Column(String, nullable=True)
-    asserter_identifier_type_code = Column(String, nullable=True)
-    asserter_identifier_type_display = Column(String, nullable=True)
-    asserter_identifier_type_user_selected = Column(Boolean, nullable=True)
-    asserter_identifier_type_text = Column(String, nullable=True)
     asserter_identifier_system = Column(String, nullable=True)
     asserter_identifier_value = Column(String, nullable=True)
-    asserter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    asserter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    last_occurrence = Column(DateTime(timezone=True), nullable=True)
-
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Relationships
     identifiers = relationship(
-        "AllergyIntoleranceIdentifier",
-        back_populates="allergy_intolerance",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        "AllergyIntoleranceIdentifier", back_populates="allergy_intolerance", cascade="all, delete-orphan"
     )
-    clinical_status_codings = relationship(
-        "AllergyIntoleranceClinicalStatusCoding",
-        back_populates="allergy_intolerance",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-    verification_status_codings = relationship(
-        "AllergyIntoleranceVerificationStatusCoding",
-        back_populates="allergy_intolerance",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-    code_codings = relationship(
-        "AllergyIntoleranceCodeCoding",
-        back_populates="allergy_intolerance",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-    notes = relationship(
-        "AllergyIntoleranceNote",
-        back_populates="allergy_intolerance",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
+    tokens = relationship("AllergyIntoleranceToken", back_populates="allergy_intolerance", cascade="all, delete-orphan")
     reactions = relationship(
-        "AllergyIntoleranceReaction",
-        back_populates="allergy_intolerance",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        "AllergyIntoleranceReaction", back_populates="allergy_intolerance", cascade="all, delete-orphan"
     )

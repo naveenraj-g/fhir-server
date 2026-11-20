@@ -1,55 +1,20 @@
-from app.models.allergy_intolerance.coding import (
-    AllergyIntoleranceClinicalStatusCoding,
-    AllergyIntoleranceCodeCoding,
-    AllergyIntoleranceVerificationStatusCoding,
-)
-from app.models.allergy_intolerance.core import AllergyIntoleranceModel
-from app.models.allergy_intolerance.enums import (
-    AllergyIntoleranceAsserterReferenceType,
-    AllergyIntoleranceCategory,
-    AllergyIntoleranceCriticality,
-    AllergyIntoleranceEncounterReferenceType,
-    AllergyIntoleranceNoteAuthorReferenceType,
-    AllergyIntolerancePatientReferenceType,
-    AllergyIntoleranceRecorderReferenceType,
-    AllergyIntoleranceSeverity,
-    AllergyIntoleranceType,
-)
-from app.models.allergy_intolerance.identifier import (
-    AllergyIntoleranceIdentifier,
-    AllergyIntoleranceIdentifierTypeCoding,
-)
-from app.models.allergy_intolerance.note import AllergyIntoleranceNote
-from app.models.allergy_intolerance.reaction import (
-    AllergyIntoleranceReaction,
-    AllergyIntoleranceReactionExposureRouteCoding,
-    AllergyIntoleranceReactionManifestation,
-    AllergyIntoleranceReactionManifestationCoding,
-    AllergyIntoleranceReactionNote,
-    AllergyIntoleranceReactionSubstanceCoding,
-)
+from .core import ACTOR_TYPES, AllergyIntoleranceModel, allergy_intolerance_id_seq
+from .enums import AllergyIntoleranceCriticality, AllergyIntoleranceType
+from .identifier import AllergyIntoleranceIdentifier
+from .reaction import AllergyIntoleranceReaction
+from .token import CODE_SYSTEMS, CRITICALITY_SYSTEM, TOKEN_PARAMS, TYPE_SYSTEM, AllergyIntoleranceToken
 
 __all__ = [
-    "AllergyIntoleranceType",
-    "AllergyIntoleranceCategory",
+    "ACTOR_TYPES",
+    "CODE_SYSTEMS",
+    "CRITICALITY_SYSTEM",
+    "TOKEN_PARAMS",
+    "TYPE_SYSTEM",
     "AllergyIntoleranceCriticality",
-    "AllergyIntoleranceSeverity",
-    "AllergyIntolerancePatientReferenceType",
-    "AllergyIntoleranceEncounterReferenceType",
-    "AllergyIntoleranceRecorderReferenceType",
-    "AllergyIntoleranceAsserterReferenceType",
-    "AllergyIntoleranceNoteAuthorReferenceType",
-    "AllergyIntoleranceModel",
-    "AllergyIntoleranceClinicalStatusCoding",
-    "AllergyIntoleranceVerificationStatusCoding",
-    "AllergyIntoleranceCodeCoding",
     "AllergyIntoleranceIdentifier",
-    "AllergyIntoleranceIdentifierTypeCoding",
-    "AllergyIntoleranceNote",
+    "AllergyIntoleranceModel",
     "AllergyIntoleranceReaction",
-    "AllergyIntoleranceReactionSubstanceCoding",
-    "AllergyIntoleranceReactionManifestation",
-    "AllergyIntoleranceReactionManifestationCoding",
-    "AllergyIntoleranceReactionExposureRouteCoding",
-    "AllergyIntoleranceReactionNote",
+    "AllergyIntoleranceToken",
+    "AllergyIntoleranceType",
+    "allergy_intolerance_id_seq",
 ]

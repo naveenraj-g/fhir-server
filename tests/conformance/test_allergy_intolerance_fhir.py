@@ -1,6 +1,14 @@
 """FHIR R4 conformance for `to_fhir_allergy_intolerance()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+AllergyIntolerance is stored Medplum-style (like Patient, Appointment, Encounter
+and the other content-based resources): the resource lives whole in
+AllergyIntoleranceModel.content, and to_fhir_allergy_intolerance() only stamps
+`id` and `meta` onto it. So what can go wrong on the read side is that stamping
+(e.g. a malformed meta extension) or a stored document the server returns that
+isn't valid R4 — each case below is a `content` document as the write path would
+store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,317 +16,182 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.allergy_intolerance import to_fhir_allergy_intolerance
-from app.models.allergy_intolerance import (
-    AllergyIntoleranceAsserterReferenceType,
-    AllergyIntoleranceCategory,
-    AllergyIntoleranceClinicalStatusCoding,
-    AllergyIntoleranceCodeCoding,
-    AllergyIntoleranceCriticality,
-    AllergyIntoleranceEncounterReferenceType,
-    AllergyIntoleranceIdentifier,
-    AllergyIntoleranceIdentifierTypeCoding,
-    AllergyIntoleranceModel,
-    AllergyIntoleranceNote,
-    AllergyIntoleranceNoteAuthorReferenceType,
-    AllergyIntolerancePatientReferenceType,
-    AllergyIntoleranceReaction,
-    AllergyIntoleranceReactionExposureRouteCoding,
-    AllergyIntoleranceReactionManifestation,
-    AllergyIntoleranceReactionManifestationCoding,
-    AllergyIntoleranceReactionNote,
-    AllergyIntoleranceReactionSubstanceCoding,
-    AllergyIntoleranceRecorderReferenceType,
-    AllergyIntoleranceSeverity,
-    AllergyIntoleranceType,
-    AllergyIntoleranceVerificationStatusCoding,
-)
-from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.allergy_intolerance import AllergyIntoleranceModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
 allergy_pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.allergy_intolerance_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "clinical_status_codings",
-    "verification_status_codings",
-    "code_codings",
-    "notes",
-    "reactions",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+PATIENT = {"reference": "Patient/10001"}
+SCT = "http://snomed.info/sct"
+CLIN = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+VERIF = "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
 
 
-def _allergy_intolerance(**overrides) -> AllergyIntoleranceModel:
+def _allergy(content: dict, **overrides) -> AllergyIntoleranceModel:
     fields = {
-        "id": 1,
         "allergy_intolerance_id": 260001,
         "tenant_id": "org-test",
-        "patient_reference": "Patient/10001",
-        "patient_type": AllergyIntolerancePatientReferenceType.Patient,
-        "patient_id": 10001,
-        "patient_display": "Jane Doe",
         "created_by": "u-test",
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = AllergyIntoleranceModel(**fields)
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
+    return AllergyIntoleranceModel(**fields)
 
 
-def test_allergy_intolerance_minimal_conformance():
-    m = _allergy_intolerance()
-    fhir = to_fhir_allergy_intolerance(m)
-    assert_valid(allergy_pb2.AllergyIntolerance, fhir)
+def _with(**elements) -> AllergyIntoleranceModel:
+    return _allergy({"patient": PATIENT, **elements})
 
 
-def test_allergy_intolerance_full_conformance():
-    clin_coding = AllergyIntoleranceClinicalStatusCoding(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
-        code="active",
-        display="Active",
-        created_by="u-test",
-    )
-    ver_coding = AllergyIntoleranceVerificationStatusCoding(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
-        code="confirmed",
-        display="Confirmed",
-        created_by="u-test",
-    )
-    code_coding = AllergyIntoleranceCodeCoding(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="227493005",
-        display="Cashew nut allergy",
-        created_by="u-test",
-    )
-    ident = AllergyIntoleranceIdentifier(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="MRN",
-        system="http://hospital.example.org",
-        value="ALG-001",
-        created_by="u-test",
-    )
-    ident.type_codings = [
-        AllergyIntoleranceIdentifierTypeCoding(
-            identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="MR",
-            display="Medical Record Number",
-            created_by="u-test",
+REACTION = {
+    "substance": {"coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}], "text": "Cashew"},
+    "manifestation": [{"coding": [{"system": SCT, "code": "64305001", "display": "Urticaria"}]}, {"text": "Rash"}],
+    "description": "Severe hives",
+    "onset": "2023-01-15T09:40:00Z",
+    "severity": "severe",
+    "exposureRoute": {"coding": [{"system": SCT, "code": "26643006"}]},
+    "note": [{"authorString": "Nurse", "time": "2023-01-15T10:00:00Z", "text": "Resolved after epinephrine."}],
+}
+
+CASES = {
+    "minimal": _with(),
+    "updated_by_and_updated_at": _allergy({"patient": PATIENT}, updated_by="u-other", updated_at=D),
+    "identifier_with_type_and_assigner": _with(
+        identifier=[
+            {
+                "use": "official",
+                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "system": "https://fhir-server.dev/fhir/identifier-system/allergy-id",
+                "value": "AI-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        ]
+    ),
+    "clinical_status": _with(clinicalStatus={"coding": [{"system": CLIN, "code": "active"}]}),
+    **{
+        f"clinical_status_{c}": _with(
+            clinicalStatus={"coding": [{"system": CLIN, "code": c}]},
+            verificationStatus={"coding": [{"system": VERIF, "code": "confirmed"}]},
         )
-    ]
-    note = AllergyIntoleranceNote(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        text="Allergic to cashews and pistachios",
-        time=D,
-        author_string="Dr. Smith",
-        created_by="u-test",
-    )
-
-    rx = AllergyIntoleranceReaction(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        description="Severe facial hives",
-        onset=D,
-        severity=AllergyIntoleranceSeverity.severe,
-        substance_text="Cashew nut",
-        exposure_route_text="Oral",
-        created_by="u-test",
-    )
-    rx.substance_codings = [
-        AllergyIntoleranceReactionSubstanceCoding(
-            reaction_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="227493005",
-            display="Cashew nut",
-            created_by="u-test",
+        for c in ("active", "inactive", "resolved")
+    },
+    **{
+        f"verification_status_{v}": _with(
+            verificationStatus={"coding": [{"system": VERIF, "code": v}]},
+            **({} if v == "entered-in-error" else {"clinicalStatus": {"coding": [{"system": CLIN, "code": "active"}]}}),
         )
-    ]
-    rx.exposure_route_codings = [
-        AllergyIntoleranceReactionExposureRouteCoding(
-            reaction_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="26643006",
-            display="Oral route",
-            created_by="u-test",
+        for v in ("unconfirmed", "confirmed", "refuted", "entered-in-error")
+    },
+    **{f"type_{t}": _with(type=t) for t in ("allergy", "intolerance")},
+    "category_all": _with(category=["food", "medication", "environment", "biologic"]),
+    **{f"criticality_{c}": _with(criticality=c) for c in ("low", "high", "unable-to-assess")},
+    "code": _with(code={"coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}], "text": "Cashew"}),
+    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
+    "patient_logical": _allergy({"patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}),
+    "patient_absolute_url": _allergy({"patient": {"reference": "https://other.example.org/fhir/Patient/9"}}),
+    "encounter": _with(encounter={"reference": "Encounter/20001"}),
+    "onset_date_time": _with(onsetDateTime="2023-01-15T09:30:00Z"),
+    "onset_date_time_partial": _with(onsetDateTime="2023-01"),
+    "onset_age": _with(onsetAge={"value": 12, "unit": "years", "system": "http://unitsofmeasure.org", "code": "a"}),
+    "onset_period": _with(onsetPeriod={"start": "2020-01-01", "end": "2020-02-01"}),
+    "onset_range": _with(onsetRange={"low": {"value": 5, "unit": "years"}, "high": {"value": 10, "unit": "years"}}),
+    "onset_string": _with(onsetString="as a child"),
+    "recorded_date": _with(recordedDate="2023-01-15T10:00:00Z"),
+    **{
+        f"recorder_{t}": _with(recorder={"reference": f"{t}/1"})
+        for t in ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
+    },
+    **{
+        f"asserter_{t}": _with(asserter={"reference": f"{t}/1"})
+        for t in ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
+    },
+    "asserter_logical": _with(asserter={"identifier": {"system": "urn:who", "value": "W-1"}}),
+    "last_occurrence": _with(lastOccurrence="2023-06-01T12:00:00Z"),
+    "note_author_reference": _with(
+        note=[{"authorReference": {"reference": "Practitioner/30001"}, "time": "2023-01-15T10:05:00Z", "text": "Hives"}]
+    ),
+    "note_author_string": _with(note=[{"authorString": "Dr Smith", "text": "Hives"}]),
+    "reaction": _with(reaction=[REACTION]),
+    "reaction_minimal": _with(reaction=[{"manifestation": [{"text": "Rash"}]}]),
+    "reactions_two": _with(reaction=[REACTION, {"manifestation": [{"text": "Nausea"}], "severity": "mild"}]),
+    **{f"reaction_severity_{s}": _with(reaction=[{"manifestation": [{"text": "x"}], "severity": s}]) for s in ("mild", "moderate", "severe")},
+    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "full": _with(
+        identifier=[{"system": "urn:ai", "value": "AI-1"}],
+        clinicalStatus={"coding": [{"system": CLIN, "code": "active"}]},
+        verificationStatus={"coding": [{"system": VERIF, "code": "confirmed"}]},
+        type="allergy",
+        category=["food"],
+        criticality="high",
+        code={"coding": [{"system": SCT, "code": "227493005"}]},
+        encounter={"reference": "Encounter/20001"},
+        onsetDateTime="2023-01-15T09:30:00Z",
+        recordedDate="2023-01-15T10:00:00Z",
+        recorder={"reference": "Practitioner/30001"},
+        asserter={"reference": "Patient/10001"},
+        lastOccurrence="2023-06-01T12:00:00Z",
+        note=[{"text": "Hives"}],
+        reaction=[REACTION],
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_allergy_intolerance_mapper_emits_valid_fhir_r4(case):
+    assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = {"patient": PATIENT, "type": "allergy", "category": ["food"], "criticality": "high"}
+    out = to_fhir_allergy_intolerance(_allergy(content))
+    assert out["resourceType"] == "AllergyIntolerance"
+    assert out["id"] == "260001"
+    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+
+
+# ── Guarding the oracle ────────────────────────────────────────────────────────
+# If google-fhir-r4 ever stops validating — a version bump, a changed API, a
+# silently-swallowed error — every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 — `patient` as a one-item list — and rules ait-1 /
+# ait-2, which tie clinicalStatus to verificationStatus; the integration tests
+# cover what they can and the java_validator backend enforces the rest.)
+
+
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "allergy"}),
+        ("patient as string not a Reference", {"patient": "Patient/1"}),
+        ("clinicalStatus as string not a CodeableConcept", {"clinicalStatus": "active"}),
+        ("category as string not a list", {"category": "food"}),
+        ("category with an unknown code", {"category": ["cosmic"]}),
+        ("type as number", {"type": 1}),
+        ("type with an unknown code", {"type": "robot"}),
+        ("criticality with an unknown code", {"criticality": "extreme"}),
+        ("recordedDate not a dateTime", {"recordedDate": "tomorrow"}),
+        ("onsetDateTime not a dateTime", {"onsetDateTime": "yesterday"}),
+        ("lastOccurrence not a dateTime", {"lastOccurrence": "soon"}),
+        ("reaction as object not a list", {"reaction": {"severity": "mild"}}),
+        ("reaction severity with an unknown code", {"reaction": [{"manifestation": [{"text": "x"}], "severity": "dire"}]}),
+        ("manifestation as object not a list", {"reaction": [{"manifestation": {"text": "x"}}]}),
+        ("note as object not a list", {"note": {"text": "x"}}),
+        ("onsetAge value as string", {"onsetAge": {"value": "twelve"}}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {"resourceType": "AllergyIntolerance", "id": "260001", "patient": PATIENT, **broken}
+    with pytest.raises(Exception):  # noqa: B017 — the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), allergy_pb2.AllergyIntolerance, validate=True
         )
-    ]
-    manif = AllergyIntoleranceReactionManifestation(
-        reaction_id=1,
-        tenant_id="org-test",
-        text="Urticaria",
-        created_by="u-test",
-    )
-    manif.codings = [
-        AllergyIntoleranceReactionManifestationCoding(
-            manifestation_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="64305001",
-            display="Urticaria",
-            created_by="u-test",
-        )
-    ]
-    rx.manifestations = [manif]
-    rx.notes = [
-        AllergyIntoleranceReactionNote(
-            reaction_id=1,
-            tenant_id="org-test",
-            text="EpiPen administered",
-            time=D,
-            created_by="u-test",
-        )
-    ]
-
-    m = _allergy_intolerance(
-        clinical_status_text="Active",
-        verification_status_text="Confirmed",
-        type=AllergyIntoleranceType.allergy,
-        category=[AllergyIntoleranceCategory.food],
-        criticality=AllergyIntoleranceCriticality.high,
-        code_text="Cashew nut allergy",
-        encounter_reference="Encounter/20001",
-        encounter_type=AllergyIntoleranceEncounterReferenceType.Encounter,
-        encounter_id=20001,
-        encounter_display="ER visit",
-        onset_date_time=D,
-        recorded_date=D,
-        recorder_reference="Practitioner/30001",
-        recorder_type=AllergyIntoleranceRecorderReferenceType.Practitioner,
-        recorder_id=30001,
-        recorder_display="Dr. Smith",
-        asserter_reference="Patient/10001",
-        asserter_type=AllergyIntoleranceAsserterReferenceType.Patient,
-        asserter_id=10001,
-        asserter_display="Jane Doe",
-        last_occurrence=D,
-        clinical_status_codings=[clin_coding],
-        verification_status_codings=[ver_coding],
-        code_codings=[code_coding],
-        identifiers=[ident],
-        notes=[note],
-        reactions=[rx],
-    )
-
-    fhir = to_fhir_allergy_intolerance(m)
-    assert_valid(allergy_pb2.AllergyIntolerance, fhir)
-
-
-def test_allergy_intolerance_onset_choices():
-    # onsetAge
-    m_age = _allergy_intolerance(
-        onset_age={"value": 14, "unit": "a", "system": "http://unitsofmeasure.org", "code": "a"}
-    )
-    assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m_age))
-
-    # onsetPeriod
-    m_period = _allergy_intolerance(
-        onset_period_start=D,
-        onset_period_end=D + dt.timedelta(days=30),
-    )
-    assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m_period))
-
-    # onsetRange
-    m_range = _allergy_intolerance(
-        onset_range={
-            "low": {"value": 10, "unit": "a"},
-            "high": {"value": 15, "unit": "a"},
-        }
-    )
-    assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m_range))
-
-    # onsetString
-    m_str = _allergy_intolerance(onset_string="childhood")
-    assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m_str))
-
-
-def test_allergy_intolerance_categories_and_criticalities():
-    for cat in AllergyIntoleranceCategory:
-        m = _allergy_intolerance(category=[cat])
-        assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m))
-
-    for crit in AllergyIntoleranceCriticality:
-        m = _allergy_intolerance(criticality=crit)
-        assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(m))
-
-
-def test_allergy_intolerance_reference_fallback_identifiers():
-    ident = AllergyIntoleranceIdentifier(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="MRN",
-        system="http://hospital.example.org",
-        value="ALG-001",
-        assigner_reference=None,
-        assigner_type=None,
-        assigner_id=None,
-        assigner_identifier_system="http://hospital.example.org/orgs",
-        assigner_identifier_value="ORG-1111",
-        created_by="u-test",
-    )
-    note = AllergyIntoleranceNote(
-        allergy_intolerance_pk=1,
-        tenant_id="org-test",
-        text="Allergic to peanuts",
-        time=D,
-        author_reference=None,
-        author_reference_type=None,
-        author_reference_id=None,
-        author_reference_identifier_system="http://hospital.example.org/practitioners",
-        author_reference_identifier_value="PRAC-5555",
-        created_by="u-test",
-    )
-    m = _allergy_intolerance(
-        patient_reference=None,
-        patient_type=None,
-        patient_id=None,
-        patient_identifier_system="http://hospital.example.org/patients",
-        patient_identifier_value="PAT-9999",
-        patient_identifier_use=IdentifierUse.official,
-        encounter_reference=None,
-        encounter_type=None,
-        encounter_id=None,
-        encounter_identifier_system="http://hospital.example.org/encounters",
-        encounter_identifier_value="ENC-8888",
-        recorder_reference=None,
-        recorder_type=None,
-        recorder_id=None,
-        recorder_identifier_system="http://hospital.example.org/practitioners",
-        recorder_identifier_value="PRAC-7777",
-        asserter_reference=None,
-        asserter_type=None,
-        asserter_id=None,
-        asserter_identifier_system="http://hospital.example.org/practitioners",
-        asserter_identifier_value="PRAC-6666",
-        identifiers=[ident],
-        notes=[note],
-    )
-    out = to_fhir_allergy_intolerance(m)
-    assert out["patient"]["identifier"]["value"] == "PAT-9999"
-    assert out["encounter"]["identifier"]["value"] == "ENC-8888"
-    assert out["recorder"]["identifier"]["value"] == "PRAC-7777"
-    assert out["asserter"]["identifier"]["value"] == "PRAC-6666"
-    assert out["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-1111"
-    assert out["note"][0]["authorReference"]["identifier"]["value"] == "PRAC-5555"
-    assert_valid(allergy_pb2.AllergyIntolerance, out)

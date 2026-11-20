@@ -1,174 +1,95 @@
-"""Shared helpers and payloads for allergy_intolerance integration tests."""
+"""Shared helpers and payloads for allergy_intolerance integration tests.
+
+Request bodies are genuine FHIR R4 AllergyIntolerance JSON (camelCase, nested
+datatypes), and every response is FHIR R4 too."""
+
+# The resources an AllergyIntolerance points at (and that it is searched through)
+# are created through their own routers.
+from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
+from tests.integration.related_person.support import create_related_person, related_person_body  # noqa: F401
 
 BASE = "/api/fhir/v1/allergy-intolerances"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+AI_IDS = "https://fhir-server.dev/fhir/identifier-system/allergy-id"
+CLIN = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+VERIF = "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+CATEGORY = "http://hl7.org/fhir/allergy-intolerance-category"
+SEVERITY = "http://hl7.org/fhir/reaction-event-severity"
+TYPE_SYSTEM = "http://hl7.org/fhir/allergy-intolerance-type"
+CRITICALITY = "http://hl7.org/fhir/allergy-intolerance-criticality"
+SCT = "http://snomed.info/sct"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+def clinical(code: str = "active") -> dict:
+    return {"coding": [{"system": CLIN, "code": code}]}
 
 
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True, "name": [{"family": "Smith", "given": ["Alice"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+def verification(code: str = "confirmed") -> dict:
+    return {"coding": [{"system": VERIF, "code": code}]}
 
 
-async def create_test_encounter(client, patient_id: int) -> int:
-    """Create a minimal encounter and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/encounters/",
-        json={
-            "status": "in-progress",
-            "class_coding": {
-                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                "code": "AMB",
-                "display": "ambulatory",
-            },
-            "subject": f"Patient/{patient_id}",
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+def allergy_body(patient_id: int | None = None, **extra) -> dict:
+    """A valid minimal AllergyIntolerance: R4 requires `patient`. With no patient
+    the reference is an absolute URL (not existence-checked)."""
+    patient = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    return {"patient": patient, **extra}
 
 
-def minimal_allergy_intolerance(patient_id: int) -> dict:
-    return {
-        "patient": f"Patient/{patient_id}",
-        "patient_display": "Jane Doe",
-    }
-
-
-def full_allergy_intolerance(
-    patient_id: int,
-    practitioner_id: int | None = None,
-    encounter_id: int | None = None,
-) -> dict:
-    payload = {
-        "clinical_status": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
-                    "code": "active",
-                    "display": "Active",
-                }
-            ],
-            "text": "Active",
-        },
-        "verification_status": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
-                    "code": "confirmed",
-                    "display": "Confirmed",
-                }
-            ],
-            "text": "Confirmed",
-        },
-        "type": "allergy",
-        "category": ["food"],
-        "criticality": "high",
-        "code": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "227493005",
-                    "display": "Cashew nut allergy",
-                }
-            ],
-            "text": "Cashew nut allergy",
-        },
-        "patient": f"Patient/{patient_id}",
-        "patient_display": "Jane Doe",
-        "onset_date_time": "2023-01-15T09:30:00Z",
-        "recorded_date": "2023-01-15T10:00:00Z",
-        "last_occurrence": "2023-06-01T12:00:00Z",
-        "note": [
+def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int) -> dict:
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return allergy_body(
+        patient_id,
+        resourceType="AllergyIntolerance",
+        identifier=[
             {
-                "text": "Severe reaction to cashews",
-                "time": "2023-01-15T10:05:00Z",
-                "author_string": "Dr. Smith",
+                "system": AI_IDS,
+                "value": "AI-1001",
+                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "reaction": [
+        clinicalStatus=clinical("active"),
+        verificationStatus=verification("confirmed"),
+        type="allergy",
+        category=["food", "environment"],
+        criticality="high",
+        code={"coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}], "text": "Cashew nut allergy"},
+        encounter={"reference": f"Encounter/{encounter_id}"},
+        onsetDateTime="2023-01-15T09:30:00Z",
+        recordedDate="2023-01-15T10:00:00Z",
+        recorder={"reference": f"Practitioner/{practitioner_id}"},
+        asserter={"reference": f"Patient/{patient_id}"},
+        lastOccurrence="2023-06-01T12:00:00Z",
+        note=[
             {
-                "substance": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "227493005",
-                            "display": "Cashew nut",
-                        }
-                    ],
-                    "text": "Cashew nut",
-                },
-                "manifestation": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "64305001",
-                                "display": "Urticaria",
-                            }
-                        ],
-                        "text": "Urticaria",
-                    }
-                ],
-                "description": "Facial hives",
+                "authorReference": {"reference": f"Practitioner/{practitioner_id}"},
+                "time": "2023-01-15T10:05:00Z",
+                "text": "Severe urticaria after cashew ingestion.",
+            }
+        ],
+        reaction=[
+            {
+                "substance": {"coding": [{"system": SCT, "code": "227493005"}], "text": "Cashew"},
+                "manifestation": [{"coding": [{"system": SCT, "code": "64305001", "display": "Urticaria"}]}],
+                "description": "Severe hives on face and neck",
                 "onset": "2023-01-15T09:40:00Z",
                 "severity": "severe",
-                "exposure_route": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "26643006",
-                            "display": "Oral route",
-                        }
-                    ],
-                    "text": "Oral route",
-                },
-                "note": [
-                    {
-                        "text": "EpiPen given",
-                        "time": "2023-01-15T10:15:00Z",
-                    }
-                ],
+                "exposureRoute": {"coding": [{"system": SCT, "code": "26643006", "display": "Oral route"}]},
+                "note": [{"authorString": "Triage nurse", "text": "Resolved after epinephrine."}],
             }
         ],
-        "identifier": [
-            {
-                "use": "official",
-                "system": "http://example.org/allergies",
-                "value": "ALG-100",
-            }
-        ],
-    }
-    if practitioner_id:
-        payload["recorder"] = f"Practitioner/{practitioner_id}"
-        payload["recorder_display"] = "Dr. Alice Smith"
-        payload["asserter"] = f"Practitioner/{practitioner_id}"
-        payload["asserter_display"] = "Dr. Alice Smith"
-    if encounter_id:
-        payload["encounter"] = f"Encounter/{encounter_id}"
-        payload["encounter_display"] = "ER Visit"
-    return payload
+    )
 
 
-async def create_allergy_intolerance(client, payload: dict | None = None) -> dict:
-    """Helper creating an allergy intolerance and asserting 201."""
-    if payload is None:
-        p_id = await create_test_patient(client)
-        payload = minimal_allergy_intolerance(p_id)
-    resp = await client.post(BASE + "/", json=payload)
+async def create_allergy_intolerance(client, body: dict) -> int:
+    """Create an allergy / intolerance and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return int(resp.json()["id"])
