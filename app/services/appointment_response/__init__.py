@@ -7,5 +7,5 @@ __all__ = ["AppointmentResponseService"]
 
 @trace_methods
 class AppointmentResponseService(_CoreMixin):
-    """All AppointmentResponse business logic. __init__ (repository=...)
-    is inherited from _CoreMixin."""
+    """All AppointmentResponse business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

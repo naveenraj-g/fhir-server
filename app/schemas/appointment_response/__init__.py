@@ -1,29 +1,14 @@
-from .input import (
-    AppointmentResponseCreateSchema,
-    AppointmentResponseIdentifierInput,
-    AppointmentResponseParticipantTypeInput,
-    AppointmentResponsePatchSchema,
-)
-from .response import (
+from app.schemas.appointment_response.input import AppointmentResponseCreateSchema, AppointmentResponsePatchSchema
+from app.schemas.appointment_response.response import (
     FHIRAppointmentResponseBundle,
     FHIRAppointmentResponseBundleEntry,
     FHIRAppointmentResponseSchema,
-    PaginatedAppointmentResponseResponse,
-    PlainAppointmentResponseIdentifier,
-    PlainAppointmentResponseParticipantType,
-    PlainAppointmentResponseResponse,
 )
 
 __all__ = [
     "AppointmentResponseCreateSchema",
-    "AppointmentResponseIdentifierInput",
-    "AppointmentResponseParticipantTypeInput",
     "AppointmentResponsePatchSchema",
     "FHIRAppointmentResponseBundle",
     "FHIRAppointmentResponseBundleEntry",
     "FHIRAppointmentResponseSchema",
-    "PaginatedAppointmentResponseResponse",
-    "PlainAppointmentResponseIdentifier",
-    "PlainAppointmentResponseParticipantType",
-    "PlainAppointmentResponseResponse",
 ]

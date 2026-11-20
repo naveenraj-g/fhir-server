@@ -20,6 +20,7 @@ from sqlalchemy import Float, cast, exists, false, func, literal, or_, select, t
 from sqlalchemy.orm import aliased
 
 from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     ArrayAggregate,
@@ -622,6 +623,7 @@ def location_search() -> SearchRegistry:
         ),
         revincludes=(
             *participant_revincludes('Location', lambda l: l.location_id, ('actor', 'location')),
+            *actor_response_revincludes('Location', lambda l: l.location_id, ('actor', 'location')),
             IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),
             IncludeTarget(
                 "HealthcareService", "location", "Location", _revinclude_healthcare_services("location"), reverse=True

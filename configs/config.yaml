@@ -220,7 +220,7 @@ routes:
     # - activity_definition
     # - allergy_intolerance
     - appointment
-    # - appointment_response
+    - appointment_response
     # - care_plan
     # - care_team
     # - clinical_impression

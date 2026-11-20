@@ -28,6 +28,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._appointment_response_revinclude import appointment_response_revincludes
 from app.models.appointment import (
     ACTOR_TYPES,
     REFERENCE_TYPES,
@@ -498,8 +499,7 @@ def appointment_search() -> SearchRegistry:
             *narrowed_includes,
             IncludeTarget("Appointment", "slot", "Slot", _include_slots),
         ),
-        # Nothing that references an Appointment is on the engine yet
-        # (AppointmentResponse, Encounter, ...) — they add their own later.
-        revincludes=(),
+        # AppointmentResponse.appointment points here (Encounter, ... add theirs when rebuilt).
+        revincludes=appointment_response_revincludes(lambda a: a.appointment_id),
         default_sort=lambda: [A.appointment_id.desc()],
     )

@@ -20,6 +20,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     array_string_match,
@@ -632,6 +633,7 @@ def patient_search() -> SearchRegistry:
         # PractitionerRole and Organization.
         revincludes=(
             *participant_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
+            *actor_response_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
             IncludeTarget(
                 "Patient", "link", "Patient", revinclude_patients_via_reference("link", "Patient", lambda p: p.patient_id),
                 reverse=True,

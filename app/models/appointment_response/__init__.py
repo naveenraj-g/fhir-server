@@ -1,24 +1,11 @@
-from .core import AppointmentResponseModel, appointment_response_id_seq
-from .enums import (
-    AppointmentResponseActorReferenceType,
-    AppointmentResponseParticipantStatus,
-)
-from .identifier import (
-    AppointmentResponseIdentifier,
-    AppointmentResponseIdentifierTypeCoding,
-)
-from .participant_type import (
-    AppointmentResponseParticipantType,
-    AppointmentResponseParticipantTypeCoding,
-)
+from .core import ACTOR_TYPES, AppointmentResponseModel, appointment_response_id_seq
+from .enums import AppointmentResponseParticipantStatus
+from .identifier import AppointmentResponseIdentifier
 
 __all__ = [
-    "AppointmentResponseActorReferenceType",
+    "ACTOR_TYPES",
     "AppointmentResponseIdentifier",
-    "AppointmentResponseIdentifierTypeCoding",
     "AppointmentResponseModel",
     "AppointmentResponseParticipantStatus",
-    "AppointmentResponseParticipantType",
-    "AppointmentResponseParticipantTypeCoding",
     "appointment_response_id_seq",
 ]

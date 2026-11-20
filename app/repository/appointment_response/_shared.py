@@ -1,114 +1,50 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.models.appointment_response import (
-    AppointmentResponseIdentifier,
-    AppointmentResponseModel,
-    AppointmentResponseParticipantType,
-)
-from app.models.appointment_response.enums import AppointmentResponseActorReferenceType
-from app.models.enums import AppointmentReferenceType
-from app.repository._reference_shared import (
-    _IDENTIFIER_FALLBACK_SUFFIXES,
-    _org_ref_kwargs,
-    _parse_org_ref,
-    _reference_kwargs,
-    _validate_reference,
-)
+from app.models.appointment_response import ACTOR_TYPES, AppointmentResponseModel
+from app.repository._reference_shared import _validate_reference
 
 __all__ = [
-    "_IDENTIFIER_FALLBACK_SUFFIXES",
-    "_SORTABLE_FIELDS",
-    "_actor_ref_kwargs",
-    "_appointment_ref_kwargs",
-    "_org_ref_kwargs",
-    "_parse_actor_ref",
-    "_parse_appointment_ref",
-    "_parse_org_ref",
-    "_reference_kwargs",
-    "_validate_actor_reference",
+    "MODELED_ACTOR_TYPES",
     "_validate_reference",
     "_with_relationships",
+    "actor_type_and_id",
+    "appointment_id_of",
 ]
 
-# Of FHIR R4's seven allowed AppointmentResponse.actor target types, only
-# these four are modeled resources in this system (registered in
-# RESOURCE_REGISTRY — see app/core/reference_resolver.py). Patient/
-# RelatedPerson/Device rows always rely on the reference_identifier_*
-# logical-reference fallback instead — calling ensure_resource_exists() for
-# an unregistered type fails closed (422 on every valid reference to one),
-# so validation is skipped for those three — same reasoning as
-# app.repository.appointment._shared._MODELED_PARTICIPANT_ACTOR_TYPES.
-_MODELED_ACTOR_TYPES = {
-    AppointmentResponseActorReferenceType.Practitioner,
-    AppointmentResponseActorReferenceType.PractitionerRole,
-    AppointmentResponseActorReferenceType.HealthcareService,
-    AppointmentResponseActorReferenceType.Location,
-}
+# Of the seven AppointmentResponse.actor target types, these are resources on
+# this server (registered in RESOURCE_REGISTRY — see
+# app/core/reference_resolver.py). A relative RelatedPerson/Device reference is
+# accepted and indexed but not existence-checked: ensure_resource_exists()
+# fails closed for an unregistered type (422 on every valid reference to one).
+MODELED_ACTOR_TYPES = {"Patient", "Practitioner", "PractitionerRole", "HealthcareService", "Location"}
 
-
-# Sortable fields exposed via the `sort` list-query param (see
-# app.core.pagination.resolve_sort) — mirrors Appointment's _shared.py.
-_SORTABLE_FIELDS = {
-    "appointment_response_id": AppointmentResponseModel.appointment_response_id,
-    "start": AppointmentResponseModel.start,
-    "created_at": AppointmentResponseModel.created_at,
-    "updated_at": AppointmentResponseModel.updated_at,
-}
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
-    """Eager-load every AppointmentResponse sub-resource to avoid N+1 and
-    async lazy-load failures. identifier.type_codings and
-    participant_type.codings are each a nested 0..* coding child table —
-    mirrors app.repository.appointment._shared._with_relationships."""
-    return stmt.options(
-        selectinload(AppointmentResponseModel.identifiers).selectinload(
-            AppointmentResponseIdentifier.type_codings
-        ),
-        selectinload(AppointmentResponseModel.participant_types).selectinload(
-            AppointmentResponseParticipantType.codings
-        ),
-    )
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from AppointmentResponseModel.content."""
+    return stmt.options(selectinload(AppointmentResponseModel.identifiers))
 
 
-def _parse_appointment_ref(ref: str) -> tuple:
-    """Parse 'Appointment/40001' → (AppointmentReferenceType.Appointment, 40001)."""
-    return parse_reference(ref, AppointmentReferenceType)
+def _split(reference: str | None) -> tuple[str, int] | None:
+    match = _REF.match(reference or "")
+    return (match["type"], int(match["id"])) if match else None
 
 
-def _appointment_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
-    """Build `{prefix}_type`/`{prefix}_id`/`{prefix}_display` ORM constructor
-    kwargs from a FHIR reference string for the required
-    AppointmentResponse.appointment field."""
-    ref_type, ref_id = _parse_appointment_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
+def actor_type_and_id(reference: str | None) -> tuple[str, int] | None:
+    """('Practitioner', 30001) for a relative `Type/<id>` naming one of the
+    seven allowed actor types; None for an absolute URL, a contained reference
+    or any other shape (those match by their raw string only)."""
+    parsed = _split(reference)
+    return parsed if parsed and parsed[0] in ACTOR_TYPES else None
 
 
-def _parse_actor_ref(ref: str) -> tuple:
-    """Parse 'Practitioner/30001' → (AppointmentResponseActorReferenceType.Practitioner, 30001)."""
-    return parse_reference(ref, AppointmentResponseActorReferenceType)
-
-
-def _actor_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
-    """Build `{prefix}_type`/`{prefix}_id`/`{prefix}_display` ORM constructor
-    kwargs from a FHIR reference string for the actor polymorphic
-    Reference field."""
-    ref_type, ref_id = _parse_actor_ref(ref) if ref else (None, None)
-    return {
-        f"{prefix}_type": ref_type,
-        f"{prefix}_id": ref_id,
-        f"{prefix}_display": display,
-    }
-
-
-async def _validate_actor_reference(session, org_id, ref_type, ref_id) -> None:
-    """Same as `_validate_reference`, but only actually checks existence for
-    the four actor target types this system models — see
-    `_MODELED_ACTOR_TYPES`'s docstring above."""
-    if ref_type in _MODELED_ACTOR_TYPES:
-        await _validate_reference(session, org_id, ref_type, ref_id, "actor")
+def appointment_id_of(reference: str | None) -> int | None:
+    """The public id of a relative `Appointment/<id>` reference; None for any
+    other shape."""
+    parsed = _split(reference)
+    return parsed[1] if parsed and parsed[0] == "Appointment" else None
