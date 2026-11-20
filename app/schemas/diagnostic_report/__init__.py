@@ -1,22 +1,14 @@
-from .input import DiagnosticReportCreateSchema, DiagnosticReportPatchSchema
-from .response import (
-    FHIRDiagnosticReportAttachment,
+from app.schemas.diagnostic_report.input import DiagnosticReportCreateSchema, DiagnosticReportPatchSchema
+from app.schemas.diagnostic_report.response import (
     FHIRDiagnosticReportBundle,
     FHIRDiagnosticReportBundleEntry,
-    FHIRDiagnosticReportMedia,
     FHIRDiagnosticReportSchema,
-    PaginatedDiagnosticReportResponse,
-    PlainDiagnosticReportResponse,
 )
 
 __all__ = [
     "DiagnosticReportCreateSchema",
     "DiagnosticReportPatchSchema",
-    "FHIRDiagnosticReportAttachment",
     "FHIRDiagnosticReportBundle",
     "FHIRDiagnosticReportBundleEntry",
-    "FHIRDiagnosticReportMedia",
     "FHIRDiagnosticReportSchema",
-    "PaginatedDiagnosticReportResponse",
-    "PlainDiagnosticReportResponse",
 ]

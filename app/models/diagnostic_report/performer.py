@@ -1,53 +1,41 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    String,
-)
+from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.diagnostic_report.enums import DiagnosticReportActorReferenceType
-from app.models.enums import IdentifierUse
-from app.models.shared import TenantAuditMixin
+
+# The four R4 targets of DiagnosticReport.performer and .resultsInterpreter.
+PERFORMER_TYPES = ("Practitioner", "PractitionerRole", "Organization", "CareTeam")
+
+# Which search parameter a row feeds, and the DiagnosticReport element it is read from.
+PERFORMER_PARAMS = {"performer": "performer", "results-interpreter": "resultsInterpreter"}
 
 
-class DiagnosticReportPerformer(TenantAuditMixin, Base):
-    """performer[] — of the four allowed types, only Practitioner/
-    PractitionerRole/Organization are modeled resources — the existence
-    check is only ever attempted for that subset (see
-    app.repository.diagnostic_report._shared._MODELED_PERFORMER_TYPES).
+class DiagnosticReportPerformer(Base):
+    """Search index for `performer` (DiagnosticReport.performer, 0..*) and
+    `results-interpreter` (DiagnosticReport.resultsInterpreter, 0..*), which have the
+    same shape: one row per Reference that has a `reference` or an `identifier`.
+    `param` says which parameter the row belongs to (see PERFORMER_PARAMS).
+    Derived from DiagnosticReportModel.content — never read to build a response.
 
-    No UniqueConstraint on (diagnostic_report_pk, reference_type,
-    reference_id): R4 doesn't forbid listing the same reference twice — a
-    deployment that wants that as a rule expresses it as a profile-layer
-    invariant, not a base constraint."""
+    `reference_type` records which type a relative `Type/<id>` names — a plain
+    string, not a Postgres enum, because the target can be one of four types (a
+    search by bare id is ambiguous: `performer=Type/id` or `:Type=id`).
+
+      performer / results-interpreter
+                   -> reference_type/reference_id or reference_reference
+      <param>:identifier
+                   -> reference_identifier_system/_value"""
 
     __tablename__ = "diagnostic_report_performer"
+    __table_args__ = (Index("ix_diagnostic_report_performer_param_type_id", "param", "reference_type", "reference_id"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
-
+    param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
-    reference_type = Column(
-        Enum(DiagnosticReportActorReferenceType, name="diagnostic_report_actor_reference_type"), nullable=True
-    )
-    reference_id = Column(BigInteger, nullable=True, index=True)
-    reference_display = Column(String, nullable=True)
-
-    reference_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
-    reference_identifier_type_system = Column(String, nullable=True)
-    reference_identifier_type_version = Column(String, nullable=True)
-    reference_identifier_type_code = Column(String, nullable=True)
-    reference_identifier_type_display = Column(String, nullable=True)
-    reference_identifier_type_text = Column(String, nullable=True)
-    reference_identifier_type_user_selected = Column(Boolean, nullable=True)
+    reference_type = Column(String, nullable=True)
+    reference_id = Column(BigInteger, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     diagnostic_report = relationship("DiagnosticReportModel", back_populates="performers")

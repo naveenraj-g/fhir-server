@@ -227,7 +227,7 @@ routes:
     - condition
     # - consent
     # - detected_issue
-    # - diagnostic_report
+    - diagnostic_report
     # - document_reference
     - encounter
     - endpoint

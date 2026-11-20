@@ -41,7 +41,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     reference that must exist in the caller's org on write: identifier.assigner,
     `subject` (when a Patient), `encounter`, `location`, `recorder`, `asserter`,
     every performer's actor (of a type that is a resource here) and onBehalfOf,
-    `partOf` (Procedure), `reasonReference` (Condition / Procedure),
+    `partOf` (Procedure), `reasonReference` (Condition / Procedure / DiagnosticReport), `report` (DiagnosticReport),
     `complicationDetail` (Condition) and the author of every note. Absolute URLs,
     logical (identifier-only) references and targets that are not resources on
     this server (a Group subject, a Device, basedOn, report, usedReference, ...)
@@ -75,7 +75,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     for part_of in document.get("partOf") or []:
         add("partOf", part_of.get("reference"), "Procedure")
     for reason in document.get("reasonReference") or []:
-        add_typed("reasonReference", reason.get("reference"), ("Condition", "Procedure"))
+        add_typed("reasonReference", reason.get("reference"), ("Condition", "Procedure", "DiagnosticReport"))
+    for report in document.get("report") or []:
+        add("report", report.get("reference"), "DiagnosticReport")
     for detail in document.get("complicationDetail") or []:
         add("complicationDetail", detail.get("reference"), "Condition")
     for note in document.get("note") or []:

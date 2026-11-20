@@ -7,6 +7,8 @@ from tests.conftest import make_test_user
 # resources around it (its subject, encounter, recorder / asserter, and the
 # encounters / appointments that point back at it).
 CONDITION_PERMS = [
+    "diagnostic_report:create",
+    "diagnostic_report:read",
     "condition:create",
     "condition:read",
     "condition:update",

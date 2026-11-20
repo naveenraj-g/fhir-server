@@ -38,9 +38,10 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     """(element label, resource type, relative reference) for every local
     reference that must exist in the caller's org on write: identifier.assigner,
     `subject` (when a Patient), `encounter`, `recorder`, `asserter` and the
-    author of every note. Absolute URLs, logical (identifier-only) references and
-    targets that are not resources on this server (a Group subject,
-    stage.assessment, evidence.detail) point elsewhere and are not checked."""
+    author of every note, and a `stage.assessment` that is a DiagnosticReport. Absolute URLs,
+    logical (identifier-only) references and targets that are not resources on this server
+    (a Group subject, a ClinicalImpression / Observation assessment, evidence.detail) point
+    elsewhere and are not checked."""
     refs = []
 
     def add(label, reference, resource_type):
@@ -59,6 +60,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
     add_typed("recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES)
     add_typed("asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES)
+    for stage in document.get("stage") or []:
+        for assessment in stage.get("assessment") or []:
+            add("stage.assessment", assessment.get("reference"), "DiagnosticReport")
     for note in document.get("note") or []:
         add_typed("note.authorReference", (note.get("authorReference") or {}).get("reference"), _NOTE_AUTHOR_TYPES)
     return refs

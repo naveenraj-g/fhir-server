@@ -37,7 +37,9 @@ def procedure_body(patient_id: int | None = None, status: str = "completed", **e
     return {"status": status, "subject": subject, **extra}
 
 
-def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int, location_id: int) -> dict:
+def full_body(
+    patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int, location_id: int, report_id: int
+) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return procedure_body(
         patient_id,
@@ -71,7 +73,7 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
         reasonCode=[{"coding": [{"system": SCT, "code": "74400008", "display": "Appendicitis"}]}],
         bodySite=[{"coding": [{"system": SCT, "code": "66754008", "display": "Appendix"}]}],
         outcome={"coding": [{"system": SCT, "code": "385669000", "display": "Successful"}]},
-        report=[{"reference": "DiagnosticReport/110001"}],
+        report=[{"reference": f"DiagnosticReport/{report_id}"}],
         complication=[{"coding": [{"system": SCT, "code": "131148009", "display": "Bleeding"}]}],
         followUp=[{"text": "Review in two weeks"}],
         note=[
@@ -87,6 +89,16 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
         usedReference=[{"reference": "Device/7"}],
         usedCode=[{"coding": [{"system": SCT, "code": "86174004", "display": "Scalpel"}]}],
     )
+
+
+async def create_diagnostic_report(client, patient_id: int | None = None) -> int:
+    """A minimal DiagnosticReport a Procedure can name as a reason or a report; with no
+    patient the subject is an absolute URL (not existence-checked)."""
+    subject = f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"
+    body = {"status": "final", "code": {"text": "Report"}, "subject": {"reference": subject}}
+    resp = await client.post(f"{API}/diagnostic-reports/", json=body)
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])
 
 
 async def create_procedure(client, body: dict) -> int:

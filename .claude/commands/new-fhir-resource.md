@@ -178,6 +178,7 @@ uv run pytest tests/integration/<resource> tests/conformance/test_<resource>_fhi
 - **Included resources** need a registered `ResourceKind` (via `_register_kind()`) or `_include` of that type fails at render time.
 - **Clearing a package before cloning:** delete only the old modules, then recreate every `__init__.py` — `rm *.py` removes the package `__init__`s too (the schema `input/` and `response/` ones were lost once).
 - **Reference(Any)** (`Condition.evidence.detail`): index any relative `Type/<id>` with a plain-string type; the parser only accepts `:Type` for a declared target, so list the realistic clinical types in the `SearchParam` `targets=` (see `EVIDENCE_DETAIL_TYPES`); chain and include only the types that are resources here.
+- **Check `RESOURCE_REGISTRY` actually has the type** (`grep -n '"<Resource>"' app/core/reference_resolver.py`): old, not-yet-rebuilt models may be missing from it, and then every existence check against the new resource fails with "does not exist" even for a row that does. Add it, plus the model import, in the same change.
 - **Never `inspect.signature()` / `get_type_hints()` on repository classes** (see CLAUDE.md, Logging).
 
 ---

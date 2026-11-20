@@ -1,97 +1,112 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import DiagnosticReportStatus
-
-from .codeable_concept import DiagnosticReportCodeableConceptInput
-from .identifier import DiagnosticReportIdentifierInput
-from .media import DiagnosticReportMediaInput
-from .presented_form import DiagnosticReportPresentedFormInput
-from .reference import (
-    DiagnosticReportBasedOnInput,
-    DiagnosticReportEncounterInput,
-    DiagnosticReportImagingStudyInput,
-    DiagnosticReportPerformerInput,
-    DiagnosticReportResultInput,
-    DiagnosticReportResultsInterpreterInput,
-    DiagnosticReportSpecimenInput,
-    DiagnosticReportSubjectInput,
+from app.schemas.fhir_input import (
+    FhirAttachmentInput,
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
+StatusCode = Literal[
+    "registered", "partial", "preliminary", "final", "amended", "corrected", "appended", "cancelled",
+    "entered-in-error", "unknown",
+]
+
 _EXAMPLE = {
+    "resourceType": "DiagnosticReport",
+    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/report-id", "value": "DR-1001"}],
+    "basedOn": [{"reference": "ServiceRequest/80001"}],
     "status": "final",
-    "code": {"coding": [{"system": "http://loinc.org", "code": "58410-2", "display": "Complete blood count panel"}]},
+    "category": [
+        {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0074", "code": "LAB", "display": "Laboratory"}]}
+    ],
+    "code": {"coding": [{"system": "http://loinc.org", "code": "58410-2", "display": "CBC panel - Blood by Automated count"}]},
     "subject": {"reference": "Patient/10001"},
-    "conclusion": "No significant abnormalities detected.",
+    "encounter": {"reference": "Encounter/20001"},
+    "effectiveDateTime": "2023-01-15T09:30:00Z",
+    "issued": "2023-01-15T12:00:00Z",
+    "performer": [{"reference": "Practitioner/30001"}],
+    "resultsInterpreter": [{"reference": "Practitioner/30001"}],
+    "specimen": [{"reference": "Specimen/310001"}],
+    "result": [{"reference": "Observation/160001"}],
+    "conclusion": "Normal blood count.",
+    "conclusionCode": [{"coding": [{"system": "http://snomed.info/sct", "code": "17621005", "display": "Normal"}]}],
 }
 
 
-class DiagnosticReportCreateSchema(BaseModel):
-    """Creates a DiagnosticReport and any combination of its sub-resource
-    lists atomically in one request. JWT/RBAC auth-rollout pattern —
-    same as every other resource now: `org_id`/`created_by` come from
-    the verified JWT (`actor.org_id`/`actor.sub`), not the request body
-    — an org-less token is rejected outright (403)."""
+class DiagnosticReportMediaInput(FhirInputModel):
+    """DiagnosticReport.media — a key image associated with the report."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
+    comment: str | None = Field(None, description="Comment about the image (e.g. explanation).")
+    link: FhirReferenceInput | None = Field(None, description="Reference to the image source — Reference(Media) (required by R4).")
 
-    extension: list[dict] | None = Field(None, description="Resource-level FHIR extensions.")
 
-    identifier: list[DiagnosticReportIdentifierInput] | None = Field(None, description="Business identifiers assigned to the report.")
-    based_on: list[DiagnosticReportBasedOnInput] | None = Field(None, description="The request that was fulfilled by this report.")
-    status: DiagnosticReportStatus = Field(..., description="registered | partial | preliminary | final | amended | corrected | appended | cancelled | entered-in-error | unknown.")
-    category: list[DiagnosticReportCodeableConceptInput] | None = Field(None, description="Clinical service/discipline that produced the report.")
-    code: DiagnosticReportCodeableConceptInput = Field(..., description="Name/code for this diagnostic report.")
-    subject: DiagnosticReportSubjectInput | None = Field(None, description="The subject of the report, usually a patient.")
-    encounter: DiagnosticReportEncounterInput | None = Field(None, description="Healthcare event during which this report was created.")
+class _DiagnosticReportFields(FhirInputModel):
+    """Every writable DiagnosticReport element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/diagnosticreport.html). Create and patch accept
+    exactly the same fields. R4 requires `status` and `code`; that is enforced by
+    base R4 validation of the stored document (the `java_validator` backend — the
+    native structural check has no cardinality minimums), not by this model. A
+    PATCH may omit them: it is merged onto the current resource before validating.
 
-    # effective[x]
-    effective_date_time: datetime | None = Field(None, description="effective[x]: dateTime.")
-    effective_period_start: datetime | None = Field(None, description="effective[x]: Period — start.")
-    effective_period_end: datetime | None = Field(None, description="effective[x]: Period — end.")
+    The validated body is stored whole (DiagnosticReportModel.content), so any valid
+    R4 element is kept — including ones this model does not declare. Server-managed
+    elements are ignored if sent: `id` (assigned from the diagnostic_report_id
+    sequence) and `meta` (audit/tenant data, stamped on at read time). org_id and
+    created_by/updated_by come from the verified JWT (actor.org_id / actor.sub),
+    never the body. There is no user_id."""
 
-    issued: datetime | None = Field(None, description="When this version of the report was made available to providers.")
-    performer: list[DiagnosticReportPerformerInput] | None = Field(None, description="Diagnostic service responsible for issuing the report.")
-    results_interpreter: list[DiagnosticReportResultsInterpreterInput] | None = Field(None, description="Party responsible for the report's conclusions/interpretations.")
-    specimen: list[DiagnosticReportSpecimenInput] | None = Field(None, description="Specimens this report is based on.")
-    result: list[DiagnosticReportResultInput] | None = Field(None, description="Observations that are part of this report.")
-    imaging_study: list[DiagnosticReportImagingStudyInput] | None = Field(None, description="Full details of imaging performed during the investigation.")
+    resourceType: Literal["DiagnosticReport"] | None = Field(None, description="Optional; if supplied it must be 'DiagnosticReport'.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(None, description="Business identifier for report.")
+    basedOn: list[FhirReferenceInput] | None = Field(None, description="What was requested — Reference(CarePlan | ImmunizationRecommendation | MedicationRequest | NutritionOrder | ServiceRequest).")
+    status: StatusCode | None = Field(None, description="registered | partial | preliminary | final | amended | corrected | appended | cancelled | entered-in-error | unknown (required by R4).")
+    category: list[FhirCodeableConceptInput] | None = Field(None, description="Service category.")
+    code: FhirCodeableConceptInput | None = Field(None, description="Name/Code for this diagnostic report (required by R4).")
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="The subject of the report — Reference(Patient | Group | Device | Location). A relative 'Patient/<id>' or 'Location/<id>' reference must exist in the caller's org (422 otherwise).",
+    )
+    encounter: FhirReferenceInput | None = Field(None, description="Health care event when test ordered — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).")
+    effectiveDateTime: str | None = Field(None, description="Clinically relevant time/time-period for report (a FHIR dateTime). One of the effective[x] choices.")
+    effectivePeriod: FhirPeriodInput | None = Field(None, description="Clinically relevant time/time-period for report (a Period). One of the effective[x] choices.")
+    issued: str | None = Field(None, description="DateTime this version was made (a FHIR instant).")
+    performer: list[FhirReferenceInput] | None = Field(None, description="Responsible Diagnostic Service — Reference(Practitioner | PractitionerRole | Organization | CareTeam). A relative Practitioner, PractitionerRole or Organization must exist in the caller's org (422 otherwise).")
+    resultsInterpreter: list[FhirReferenceInput] | None = Field(None, description="Primary result interpreter — Reference(Practitioner | PractitionerRole | Organization | CareTeam). A relative Practitioner, PractitionerRole or Organization must exist in the caller's org (422 otherwise).")
+    specimen: list[FhirReferenceInput] | None = Field(None, description="Specimens this report is based on — Reference(Specimen).")
+    result: list[FhirReferenceInput] | None = Field(None, description="Observations — Reference(Observation).")
+    imagingStudy: list[FhirReferenceInput] | None = Field(None, description="Reference to full details of imaging associated with the diagnostic report — Reference(ImagingStudy).")
     media: list[DiagnosticReportMediaInput] | None = Field(None, description="Key images associated with this report.")
-    conclusion: str | None = Field(None, description="Concise clinical summary/interpretation of the results.")
-    conclusion_code: list[DiagnosticReportCodeableConceptInput] | None = Field(None, description="Codes for the clinical conclusion of this test.")
-    presented_form: list[DiagnosticReportPresentedFormInput] | None = Field(None, description="Full report as issued, e.g. a PDF.")
+    conclusion: str | None = Field(None, description="Clinical conclusion (interpretation) of test results.")
+    conclusionCode: list[FhirCodeableConceptInput] | None = Field(None, description="Codes for the clinical conclusion of test results.")
+    presentedForm: list[FhirAttachmentInput] | None = Field(None, description="Entire report as issued.")
 
 
-class DiagnosticReportPatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows
-    wholesale; omitted lists are left untouched. `org_id`/`created_by`/
-    `updated_by` all come from the verified JWT now — none are
-    request-body fields."""
+class DiagnosticReportCreateSchema(_DiagnosticReportFields):
+    """POST body — a FHIR R4 DiagnosticReport resource."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"status": "amended"}})
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    extension: list[dict] | None = Field(None, description="Replaces the full list if supplied.")
-    identifier: list[DiagnosticReportIdentifierInput] | None = Field(None, description="Replaces the full list if supplied.")
-    based_on: list[DiagnosticReportBasedOnInput] | None = Field(None, description="Replaces the full list if supplied.")
-    status: DiagnosticReportStatus | None = Field(None, description="registered | partial | preliminary | final | amended | corrected | appended | cancelled | entered-in-error | unknown.")
-    category: list[DiagnosticReportCodeableConceptInput] | None = Field(None, description="Replaces the full list if supplied.")
-    code: DiagnosticReportCodeableConceptInput | None = Field(None, description="Set to null to clear (not recommended — code is 1..1 in FHIR).")
-    subject: DiagnosticReportSubjectInput | None = Field(None, description="Set to null to clear.")
-    encounter: DiagnosticReportEncounterInput | None = Field(None, description="Set to null to clear.")
 
-    effective_date_time: datetime | None = Field(None, description="effective[x]: dateTime.")
-    effective_period_start: datetime | None = Field(None, description="effective[x]: Period — start.")
-    effective_period_end: datetime | None = Field(None, description="effective[x]: Period — end.")
+class DiagnosticReportPatchSchema(_DiagnosticReportFields):
+    """PATCH body — a partial FHIR R4 DiagnosticReport (merge-patch semantics on
+    top-level elements). Only supplied elements are written; omitted ones are left
+    untouched. A supplied element replaces the stored value wholesale — a list
+    (even `[]`) replaces every existing entry, an object such as `code` replaces
+    the whole value, and `null` clears it."""
 
-    issued: datetime | None = Field(None, description="When this version of the report was made available to providers.")
-    performer: list[DiagnosticReportPerformerInput] | None = Field(None, description="Replaces the full list if supplied.")
-    results_interpreter: list[DiagnosticReportResultsInterpreterInput] | None = Field(None, description="Replaces the full list if supplied.")
-    specimen: list[DiagnosticReportSpecimenInput] | None = Field(None, description="Replaces the full list if supplied.")
-    result: list[DiagnosticReportResultInput] | None = Field(None, description="Replaces the full list if supplied.")
-    imaging_study: list[DiagnosticReportImagingStudyInput] | None = Field(None, description="Replaces the full list if supplied.")
-    media: list[DiagnosticReportMediaInput] | None = Field(None, description="Replaces the full list if supplied.")
-    conclusion: str | None = Field(None, description="Set to null to clear.")
-    conclusion_code: list[DiagnosticReportCodeableConceptInput] | None = Field(None, description="Replaces the full list if supplied.")
-    presented_form: list[DiagnosticReportPresentedFormInput] | None = Field(None, description="Replaces the full list if supplied.")
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "amended",
+                "conclusion": "Corrected: borderline anaemia.",
+            }
+        }
+    }

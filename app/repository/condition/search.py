@@ -75,6 +75,8 @@ _MODELED = {
                       "app.repository.related_person.search", "related_person_search"),
     "Encounter": ("app.models.encounter", "EncounterModel", "encounter_id",
                   "app.repository.encounter.search", "encounter_search"),
+    "DiagnosticReport": ("app.models.diagnostic_report", "DiagnosticReportModel", "diagnostic_report_id",
+                         "app.repository.diagnostic_report.search", "diagnostic_report_search"),
 }
 
 
@@ -472,7 +474,7 @@ def condition_search() -> SearchRegistry:
         revincludes=(
             *reference_encounter_revincludes("Condition", lambda c: c.condition_id),
             *reason_appointment_revincludes("Condition", lambda c: c.condition_id),
-            *reason_procedure_revincludes(lambda c: c.condition_id),
+            *reason_procedure_revincludes("Condition", lambda c: c.condition_id),
         ),
         default_sort=lambda: [C.condition_id.desc()],
     )

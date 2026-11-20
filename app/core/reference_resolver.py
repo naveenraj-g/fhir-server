@@ -59,6 +59,7 @@ from app.models.patient import PatientModel
 from app.models.plan_definition import PlanDefinitionModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
+from app.models.diagnostic_report import DiagnosticReportModel
 from app.models.procedure import ProcedureModel
 from app.models.questionnaire_response import QuestionnaireResponseModel
 from app.models.related_person import RelatedPersonModel
@@ -137,6 +138,7 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "ActivityDefinition": (ActivityDefinitionModel, "activity_definition_id"),
     "PlanDefinition": (PlanDefinitionModel, "plan_definition_id"),
     "Procedure": (ProcedureModel, "procedure_id"),
+    "DiagnosticReport": (DiagnosticReportModel, "diagnostic_report_id"),
     "Group": (GroupModel, "group_id"),
     "Consent": (ConsentModel, "consent_id"),
     "AllergyIntolerance": (AllergyIntoleranceModel, "allergy_intolerance_id"),

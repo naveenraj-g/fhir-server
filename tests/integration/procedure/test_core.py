@@ -33,6 +33,7 @@ from tests.integration.procedure.support import (
     BASE,
     appointment_body,
     create_condition,
+    create_diagnostic_report,
     create_encounter,
     create_location,
     create_organization,
@@ -76,7 +77,8 @@ async def _full(client, patient) -> tuple[int, dict]:
     practitioner = await create_practitioner(client)
     organization = await create_organization(client)
     location = await create_location(client)
-    body = full_body(patient, encounter, practitioner, organization, location)
+    report = await create_diagnostic_report(client, patient)
+    body = full_body(patient, encounter, practitioner, organization, location, report)
     return await create_procedure(client, body), body
 
 
@@ -264,6 +266,16 @@ async def test_create_part_of_reason_reference_and_complication_detail_are_check
         assert (await client.post(BASE + "/", json=procedure_body(patient, **bad))).status_code == 422, bad
 
 
+async def test_create_report_and_reason_diagnostic_report_are_checked(client, patient):
+    report = await create_diagnostic_report(client, patient)
+    ok = procedure_body(
+        patient, report=[{"reference": f"DiagnosticReport/{report}"}], reasonReference=[{"reference": f"DiagnosticReport/{report}"}]
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    for bad in ({"report": [{"reference": "DiagnosticReport/999999"}]}, {"reasonReference": [{"reference": "DiagnosticReport/999999"}]}):
+        assert (await client.post(BASE + "/", json=procedure_body(patient, **bad))).status_code == 422, bad
+
+
 async def test_create_note_author_reference_is_checked(client, patient):
     note = [{"authorReference": {"reference": "Practitioner/999999"}, "text": "x"}]
     assert (await client.post(BASE + "/", json=procedure_body(patient, note=note))).status_code == 422
@@ -281,14 +293,14 @@ async def test_create_identifier_assigner_must_exist(client, patient):
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """basedOn, report, usedReference, focalDevice.manipulated and the reasonReference types that
-    are not rebuilt (Observation, DiagnosticReport, DocumentReference) are stored as sent."""
+    """basedOn, a report that is not a DiagnosticReport, usedReference, focalDevice.manipulated and the
+    reasonReference types that are not rebuilt (Observation, DocumentReference) are stored as sent."""
     body = procedure_body(
         patient,
         basedOn=[{"reference": "ServiceRequest/999999"}],
-        report=[{"reference": "DiagnosticReport/999999"}],
+        report=[{"reference": "DocumentReference/999999"}, {"reference": "Composition/999999"}],
         usedReference=[{"reference": "Device/999999"}],
-        reasonReference=[{"reference": "Observation/999999"}, {"reference": "DiagnosticReport/999999"}],
+        reasonReference=[{"reference": "Observation/999999"}, {"reference": "DocumentReference/999999"}],
         partOf=[{"reference": "Observation/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201

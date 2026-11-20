@@ -224,9 +224,21 @@ async def test_create_identifier_assigner_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
+async def test_create_stage_assessment_diagnostic_report_must_exist(client, patient):
+    missing = condition_body(patient, stage=[{"assessment": [{"reference": "DiagnosticReport/999999"}]}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+    resp = await client.post(
+        f"{API}/diagnostic-reports/",
+        json={"status": "final", "code": {"text": "Report"}, "subject": {"reference": f"Patient/{patient}"}},
+    )
+    assert resp.status_code == 201, resp.text
+    ok = condition_body(patient, stage=[{"assessment": [{"reference": f"DiagnosticReport/{resp.json()['id']}"}]}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+
+
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """stage.assessment and evidence.detail point at resources this server does not rebuild
-    (or at Any): stored as sent."""
+    """A stage.assessment that is not a DiagnosticReport, and evidence.detail (Reference(Any)),
+    point at resources this server does not check: stored as sent."""
     body = condition_body(
         patient,
         stage=[{"assessment": [{"reference": "Observation/999999"}]}],

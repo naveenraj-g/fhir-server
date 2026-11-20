@@ -79,6 +79,8 @@ _MODELED = {
                   "app.repository.condition.search", "condition_search"),
     "Procedure": ("app.models.procedure", "ProcedureModel", "procedure_id",
                   "app.repository.procedure.search", "procedure_search"),
+    "DiagnosticReport": ("app.models.diagnostic_report", "DiagnosticReportModel", "diagnostic_report_id",
+                         "app.repository.diagnostic_report.search", "diagnostic_report_search"),
 }
 
 
@@ -500,7 +502,7 @@ def procedure_search() -> SearchRegistry:
     )
     reason_includes = tuple(
         IncludeTarget("Procedure", "reason-reference", t, _include_child(_R, t, _R.param == "reason-reference"))
-        for t in ("Condition", "Procedure")
+        for t in ("Condition", "Procedure", "DiagnosticReport")
     )
 
     return SearchRegistry(

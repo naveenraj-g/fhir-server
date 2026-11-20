@@ -22,6 +22,7 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.repository._condition_revinclude import encounter_condition_revincludes
 from app.repository._procedure_revinclude import encounter_procedure_revincludes
+from app.repository._diagnostic_report_revinclude import encounter_report_revincludes
 from app.fhir.search.quantity import quantity_match
 from app.fhir.search.sql import (
     coded_token_match,
@@ -612,6 +613,7 @@ def encounter_search() -> SearchRegistry:
             # Condition.encounter points here.
             *encounter_condition_revincludes(lambda e: e.encounter_id),
             *encounter_procedure_revincludes(lambda e: e.encounter_id),
+            *encounter_report_revincludes(lambda e: e.encounter_id),
         ),
         default_sort=lambda: [E.encounter_id.desc()],
     )

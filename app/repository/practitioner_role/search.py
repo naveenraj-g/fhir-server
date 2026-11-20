@@ -20,6 +20,7 @@ from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes
 from app.repository._condition_revinclude import asserter_condition_revincludes
 from app.repository._procedure_revinclude import performer_procedure_revincludes
+from app.repository._diagnostic_report_revinclude import performer_report_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import participant_encounter_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
@@ -485,6 +486,7 @@ def practitioner_role_search() -> SearchRegistry:
             *actor_allergy_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
             *asserter_condition_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
             *performer_procedure_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
+            *performer_report_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
             IncludeTarget(
                 "Schedule", "actor", "PractitionerRole",
                 _revinclude_schedules("PractitionerRole", lambda r: r.practitioner_role_id), reverse=True,

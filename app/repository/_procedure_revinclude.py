@@ -59,16 +59,16 @@ def location_procedure_revincludes(key) -> tuple[IncludeTarget, ...]:
     return (IncludeTarget("Procedure", "location", "Location", fetch, reverse=True),)
 
 
-def reason_procedure_revincludes(key) -> tuple[IncludeTarget, ...]:
+def reason_procedure_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
     """Procedure:reason-reference — procedures whose reason is one of the matched
-    Conditions."""
+    rows of `resource_type` (Condition or DiagnosticReport)."""
 
     async def fetch(session, ctx, rows):
         from app.models.procedure import ProcedureReference
         from app.repository.procedure.search import revinclude_procedures_via_child
 
         return await revinclude_procedures_via_child(
-            ProcedureReference, "Condition", key, ProcedureReference.param == "reason-reference"
+            ProcedureReference, resource_type, key, ProcedureReference.param == "reason-reference"
         )(session, ctx, rows)
 
-    return (IncludeTarget("Procedure", "reason-reference", "Condition", fetch, reverse=True),)
+    return (IncludeTarget("Procedure", "reason-reference", resource_type, fetch, reverse=True),)

@@ -1,59 +1,77 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Sequence,
-    String,
-    text,
-)
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.diagnostic_report.enums import (
-    DiagnosticReportStatus,
-    DiagnosticReportSubjectReferenceType,
-)
-from app.models.enums import EncounterReferenceType, IdentifierUse
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
+from app.models.shared import TenantAuditMixin
 
-diagnostic_report_id_seq = Sequence(
-    "diagnostic_report_pub_seq", start=110000, increment=1, metadata=Base.metadata
-)
+from .enums import DiagnosticReportStatus
 
+diagnostic_report_id_seq = Sequence("diagnostic_report_pub_seq", start=110000, increment=1, metadata=Base.metadata)
 
-# ---------------------------------------------------------------------------
-# Main table
-# ---------------------------------------------------------------------------
+# R4 targets of DiagnosticReport.subject.
+SUBJECT_TYPES = ("Patient", "Group", "Device", "Location")
 
 
 class DiagnosticReportModel(TenantAuditMixin, Base):
-    """FHIR R4 DiagnosticReport — https://www.hl7.org/fhir/R4/diagnosticreport.html
+    """FHIR R4 DiagnosticReport — Medplum-style storage, same as Patient, Encounter,
+    Condition, Procedure and the other content-based resources.
 
-    The findings and interpretation of diagnostic tests performed on
-    patients, groups of patients, devices, and locations, and/or
-    specimens derived from these.
+    `content` (JSONB) holds the whole resource exactly as validated on write; it
+    is the single source of truth, and GET serves it back as-is (`id`/`meta` are
+    stamped on at read time from this row's own columns — see
+    app.fhir.mappers.diagnostic_report). Nothing else in this table or its child
+    tables is a second copy of the resource: every other column exists only
+    because a FHIR R4 DiagnosticReport search parameter filters on it
+    (https://www.hl7.org/fhir/R4/diagnosticreport.html#search), and is derived
+    from `content` on every write by app.repository.diagnostic_report._indexer.
 
-    Default (gateway-trusted) pattern — NOT part of the JWT auth rollout,
-    same as Observation/QuestionnaireResponse/ServiceRequest/
-    MedicationRequest: `tenant_id`/`created_by`/`updated_by` are plain,
-    gateway-forwarded request fields. Keeps a plain `user_id` column.
+    Search parameter -> storage:
+      status           -> status (1..1 code, Enum column, stored by value so
+                          `entered-in-error` is the real FHIR code)
+      date             -> effective_date_start/_end (effective[x] as a dateTime or
+                          a Period, columns; the half-open range covered,
+                          NULL = open)
+      issued           -> issued (0..1 instant, column)
+      subject, patient -> subject_reference/_type/_id + subject_identifier_*
+                          (0..1 Reference(Patient | Group | Device | Location),
+                          columns; `patient` is the same columns narrowed to
+                          Patient)
+      encounter        -> encounter_reference/_type/_id + encounter_identifier_*
+                          (0..1 Reference(Encounter), columns)
+      identifier       -> DiagnosticReportIdentifier (0..*)
+      category, code, conclusion
+                       -> DiagnosticReportToken (0..*, one shared table;
+                          `conclusion` reads conclusionCode)
+      based-on, media, result, specimen
+                       -> DiagnosticReportReference (0..*, one shared table;
+                          `media` reads media.link)
+      performer, results-interpreter
+                       -> DiagnosticReportPerformer (one row per performer /
+                          resultsInterpreter Reference, told apart by `param`)
+      _id              -> diagnostic_report_id;  _lastUpdated -> updated_at/created_at
 
-    `code` (1..1 CodeableConcept) is flattened with `_text` here, its own
-    `coding[]` promoted to a dedicated direct-child table — same
-    promotion pattern as every other 0..1/1..1 CodeableConcept in this
-    codebase. `effective[x]` here is only `dateTime | Period` (no
-    Timing/instant variants, unlike Observation's own `effective[x]`) —
-    per spec, DiagnosticReport doesn't carry those two choices at all.
-    """
+    `imagingStudy`, `media.comment`, `conclusion` (the string), `presentedForm` and
+    `extension` have no search parameter and live only in `content`.
+
+    `subject`, `performer`, `results-interpreter` and `based-on` can point at
+    several resource types, so `*_type` records which one a relative `Type/<id>`
+    names (a plain string, not a Postgres enum): a search by bare id is ambiguous
+    (`subject=Type/id` or `subject:Type=id`; `patient`, `encounter`, `media`,
+    `result` and `specimen` have one target so a bare id works).
+
+    All index columns are nullable: R4 makes `status` and `code` mandatory, but
+    that is the validator's rule (enforced by the `java_validator` backend), not
+    the database's. No `user_id`: a DiagnosticReport is a shared tenant-level
+    entity. No DB-level CHECK constraints."""
 
     __tablename__ = "diagnostic_report"
+    __table_args__ = (
+        Index("ix_diagnostic_report_effective_date", "effective_date_start", "effective_date_end"),
+        Index("ix_diagnostic_report_subject_type_id", "subject_type", "subject_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-
     diagnostic_report_id = Column(
         BigInteger,
         diagnostic_report_id_seq,
@@ -63,113 +81,43 @@ class DiagnosticReportModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    # ── status (1..1, required, modifier) ──────────────────────────────────
-    status = Column(Enum(DiagnosticReportStatus, name="diagnostic_report_status"), nullable=False)
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
-    # ── code (1..1 CodeableConcept) ─────────────────────────────────────────
-    code_text = Column(String, nullable=True)
-
-    # ── subject (0..1 Reference(Patient|Group|Device|Location)) ───────────
-    subject_reference = Column(String, nullable=True)
-    subject_type = Column(
-        Enum(DiagnosticReportSubjectReferenceType, name="diagnostic_report_subject_reference_type"),
+    # ── Search index (derived from `content`) ─────────────────────────────
+    status = Column(
+        Enum(
+            DiagnosticReportStatus,
+            name="diagnostic_report_status",
+            # Store `entered-in-error`, not the Python member name.
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
         nullable=True,
     )
-    subject_id = Column(BigInteger, nullable=True, index=True)
-    subject_display = Column(String, nullable=True)
-    subject_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
-    subject_identifier_type_system = Column(String, nullable=True)
-    subject_identifier_type_version = Column(String, nullable=True)
-    subject_identifier_type_code = Column(String, nullable=True)
-    subject_identifier_type_display = Column(String, nullable=True)
-    subject_identifier_type_text = Column(String, nullable=True)
-    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+
+    # effective[x] as a dateTime or a Period: the half-open [start, end) range of
+    # instants it covers (NULL = open / absent), matched with period_match.
+    effective_date_start = Column(DateTime(timezone=True), nullable=True)
+    effective_date_end = Column(DateTime(timezone=True), nullable=True)
+
+    # issued is an instant: matched with date_match.
+    issued = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # subject (0..1 Reference(Patient | Group | Device | Location))
+    subject_reference = Column(String, nullable=True)
+    subject_type = Column(String, nullable=True)
+    subject_id = Column(BigInteger, nullable=True)
     subject_identifier_system = Column(String, nullable=True)
     subject_identifier_value = Column(String, nullable=True)
-    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # ── encounter (0..1 Reference(Encounter)) ──────────────────────────────
+    # encounter (0..1 Reference(Encounter))
     encounter_reference = Column(String, nullable=True)
-    encounter_type = Column(Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False), nullable=True)
+    encounter_type = Column(String, nullable=True)
     encounter_id = Column(BigInteger, nullable=True, index=True)
-    encounter_display = Column(String, nullable=True)
-    encounter_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
-    encounter_identifier_type_system = Column(String, nullable=True)
-    encounter_identifier_type_version = Column(String, nullable=True)
-    encounter_identifier_type_code = Column(String, nullable=True)
-    encounter_identifier_type_display = Column(String, nullable=True)
-    encounter_identifier_type_text = Column(String, nullable=True)
-    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
     encounter_identifier_system = Column(String, nullable=True)
     encounter_identifier_value = Column(String, nullable=True)
-    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # ── effective[x] (0..1 choice: dateTime | Period) ──────────────────────
-    effective_date_time = Column(DateTime(timezone=True), nullable=True)
-    effective_period_start = Column(DateTime(timezone=True), nullable=True)
-    effective_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # ── issued (0..1 instant) ────────────────────────────────────────────────
-    issued = Column(DateTime(timezone=True), nullable=True)
-
-    # ── conclusion (0..1 string) ────────────────────────────────────────────
-    conclusion = Column(String, nullable=True)
-
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # ── Relationships ─────────────────────────────────────────────────────
-
-    code_codings = relationship(
-        "DiagnosticReportCodeCoding", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    identifiers = relationship(
-        "DiagnosticReportIdentifier", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    based_ons = relationship(
-        "DiagnosticReportBasedOn", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    categories = relationship(
-        "DiagnosticReportCategory", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    performers = relationship(
-        "DiagnosticReportPerformer", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    results_interpreters = relationship(
-        "DiagnosticReportResultsInterpreter", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    specimens = relationship(
-        "DiagnosticReportSpecimen", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    results = relationship(
-        "DiagnosticReportResult", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    imaging_studies = relationship(
-        "DiagnosticReportImagingStudy", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    media = relationship(
-        "DiagnosticReportMedia", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    conclusion_codes = relationship(
-        "DiagnosticReportConclusionCode", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-    presented_forms = relationship(
-        "DiagnosticReportPresentedForm", back_populates="diagnostic_report", cascade="all, delete-orphan"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Direct-child coding table for the main row's own 1..1 CodeableConcept
-# ---------------------------------------------------------------------------
-
-
-class DiagnosticReportCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """One entry of DiagnosticReport.code.coding (0..*)."""
-
-    __tablename__ = "diagnostic_report_code_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
-
-    diagnostic_report = relationship("DiagnosticReportModel", back_populates="code_codings")
+    identifiers = relationship("DiagnosticReportIdentifier", back_populates="diagnostic_report", cascade="all, delete-orphan")
+    tokens = relationship("DiagnosticReportToken", back_populates="diagnostic_report", cascade="all, delete-orphan")
+    references = relationship("DiagnosticReportReference", back_populates="diagnostic_report", cascade="all, delete-orphan")
+    performers = relationship("DiagnosticReportPerformer", back_populates="diagnostic_report", cascade="all, delete-orphan")

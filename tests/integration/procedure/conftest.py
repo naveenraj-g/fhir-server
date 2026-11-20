@@ -11,6 +11,8 @@ PROCEDURE_PERMS = [
     "procedure:read",
     "procedure:update",
     "procedure:delete",
+    "diagnostic_report:create",
+    "diagnostic_report:read",
     "condition:create",
     "condition:read",
     "patient:create",

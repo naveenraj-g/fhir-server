@@ -1,62 +1,37 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
-
-# ---------------------------------------------------------------------------
-# identifier (0..*) child table
-# ---------------------------------------------------------------------------
 
 
-class DiagnosticReportIdentifier(TenantAuditMixin, Base):
-    """DiagnosticReport.identifier (0..*) — mirrors
-    app.models.observation.identifier.ObservationIdentifier field-for-field."""
+class DiagnosticReportIdentifier(Base):
+    """Search index for the `identifier` token parameter (0..*). Derived
+    from DiagnosticReportModel.content — never read to build a response.
+
+    One row per DiagnosticReport.identifier *per Identifier.type.coding*
+    (one row with no type when the identifier has no coded type), so that
+    `identifier:of-type=type-system|type-code|value` can match type and
+    value on the same row. A plain `identifier=` search is an EXISTS, so
+    the repetition never duplicates results.
+
+      identifier            -> system, value
+      identifier:of-type    -> type_system, type_code, value
+      identifier:text       -> type_text_norm / type_display_norm
+
+    No UniqueConstraint on (system, value): FHIR R4 doesn't require
+    identifier uniqueness — that's a profile decision, not a base rule."""
 
     __tablename__ = "diagnostic_report_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # Named diagnostic_report_pk (not diagnostic_report_id) so it can't be
+    # confused with DiagnosticReportModel.diagnostic_report_id, the public id.
     diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
-
-    use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
-    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
-    value = Column(String, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    assigner_reference = Column(String, nullable=True)
-    assigner_id = Column(BigInteger, nullable=True, index=True)
-    assigner_type = Column(Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False), nullable=True)
-    assigner_display = Column(String, nullable=True)
-
-    assigner_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
-    assigner_identifier_type_system = Column(String, nullable=True)
-    assigner_identifier_type_version = Column(String, nullable=True)
-    assigner_identifier_type_code = Column(String, nullable=True)
-    assigner_identifier_type_display = Column(String, nullable=True)
-    assigner_identifier_type_text = Column(String, nullable=True)
-    assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
-    assigner_identifier_system = Column(String, nullable=True)
-    assigner_identifier_value = Column(String, nullable=True)
-    assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value = Column(String, nullable=True, index=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_text_norm = Column(String, nullable=True)
+    type_display_norm = Column(String, nullable=True)
 
     diagnostic_report = relationship("DiagnosticReportModel", back_populates="identifiers")
-    type_codings = relationship(
-        "DiagnosticReportIdentifierTypeCoding", back_populates="identifier", cascade="all, delete-orphan"
-    )
-
-
-class DiagnosticReportIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """One entry of DiagnosticReport.identifier.type.coding (0..*)."""
-
-    __tablename__ = "diagnostic_report_identifier_type_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    diagnostic_report_identifier_id = Column(
-        BigInteger, ForeignKey("diagnostic_report_identifier.id"), nullable=False, index=True
-    )
-
-    identifier = relationship("DiagnosticReportIdentifier", back_populates="type_codings")
