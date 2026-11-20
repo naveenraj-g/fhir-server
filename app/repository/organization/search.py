@@ -17,6 +17,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._encounter_revinclude import service_provider_encounter_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -649,6 +650,7 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *service_provider_encounter_revincludes(lambda o: o.organization_id),
             IncludeTarget(
                 "Organization",
                 "partof",

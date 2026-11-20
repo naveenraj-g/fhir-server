@@ -17,8 +17,8 @@ None of it needs to be built now. The intended order:
 
 ## 1. Scope today
 
-The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole, Schedule, Slot, Patient, Appointment and AppointmentResponse** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Observation,
-Encounter, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
+The R4 search engine covers **Organization, Location, Practitioner, HealthcareService, Endpoint, PractitionerRole, Schedule, Slot, Patient, Appointment, AppointmentResponse and Encounter** (Practitioner added 2026-11-18, with `/me`; the end-user link is a separate `PUT /practitioners/{id}/user`, not a search/FHIR concern). Every other resource (Observation,
+Condition, ...) still uses the old per-resource list filters: no modifiers, no chaining, no `_include`, no `_sort`
 beyond what each repository hand-rolled. Moving them onto the engine is the biggest pending item.
 
 ## 2. Resource-specific parameters
@@ -34,6 +34,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 | Schedule | 7 | 7 | none |
 | Appointment | 17 | 17 | none |
 | AppointmentResponse | 7 | 7 | none |
+| Encounter | 23 | 23 | none |
 | All other resources | - | 0 (old list filters) | everything: needs a registry each |
 
 - Organization: `active`, `address`, `address-city`, `address-country`, `address-postalcode`, `address-state`,
@@ -52,6 +53,12 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 - PractitionerRole: `active`, `date`, `email`, `endpoint`, `identifier`, `location`, `organization`, `phone`,
   `practitioner`, `role`, `service`, `specialty`, `telecom`. `date` is a Period search (range semantics, see below);
   `practitioner`, `organization`, `location` and `service` chain; every parameter is sortable.
+- Encounter: `account`, `appointment`, `based-on`, `class`, `date`, `diagnosis`, `episode-of-care`, `identifier`, `length`, `location`,
+  `location-period`, `part-of`, `participant`, `participant-type`, `patient`, `practitioner`, `reason-code`, `reason-reference`,
+  `service-provider`, `special-arrangement`, `status`, `subject`, `type`. `class` is a token on a bare Coding; `date` and `location-period`
+  are Period searches; `length` is a quantity search; `subject`, `participant`, `diagnosis` and `reason-reference` are multi-target
+  (need a type); `appointment`, `location`, `participant`, `patient`, `practitioner`, `part-of`, `service-provider` and `subject` chain
+  through the targets that are resources here; every parameter is sortable.
 - Schedule: `active`, `actor`, `date`, `identifier`, `service-category`, `service-type`, `specialty`. `actor` is a multi-target
   reference (needs a type; chains through `actor:Practitioner|PractitionerRole|HealthcareService|Location`); `date` is a Period search over
   `planningHorizon`; every parameter is sortable.
@@ -65,6 +72,7 @@ beyond what each repository hand-rolled. Moving them onto the engine is the bigg
 | reference: id, `Type/id`, absolute URL; `:[type]`, `:identifier`, `:above`, `:below` | done |
 | chaining (`partof.name=`), recursive | done |
 | date: 9 prefixes, precision-aware (point-in-time targets and **Period** targets via `period_match`) | done |
+| quantity: `[prefix]number[\|system\|code]`, precision-aware range, `\|\|code` also matches the unit text (no UCUM conversion) | done |
 | special: `near` (+ `location-distance` extension) | done |
 | `:missing` on every parameter | done |
 | comma = OR, repeat = AND, escaping | done |
@@ -99,7 +107,8 @@ This is spec-legal (R4 allows lenient handling) but still a capability gap.
 
 ### 4.2 Parameter types not implemented
 
-number, quantity, uri and composite. Organization and Location have none, but clinical resources will
+number, uri and composite (**quantity is done** — Encounter `length`, `app/fhir/search/quantity.py`: `[prefix]number[|system|code]`,
+precision-aware range for `eq`/`ne`, units compared as written with no UCUM conversion, `||code` also matches the human unit text). Organization and Location have none, but clinical resources will
 (Observation `value-quantity`, `code-value-quantity` composites, Patient `birthdate` is date, ValueSet `url` is uri, ...).
 Each needs a type builder in `app/fhir/search/sql.py` and a parser in `values.py`.
 
@@ -132,8 +141,8 @@ For each resource, follow the Organization/Location pattern:
   `HealthcareService:organization` (on Organization), `HealthcareService:location` / `:coverage-area` (on Location),
   `Endpoint:organization` (on Organization), `Organization:endpoint` / `Location:endpoint` / `HealthcareService:endpoint` (on Endpoint),
   `PractitionerRole:practitioner` / `:organization` / `:location` / `:service` / `:endpoint` (on Practitioner, Organization,
-  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), `Slot:schedule` (on Schedule), `Patient:general-practitioner` (on Practitioner, PractitionerRole and Organization), `Patient:organization` (on Organization) `Patient:link` (on Patient), `Appointment:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location) `Appointment:slot` (on Slot), `AppointmentResponse:appointment` (on Appointment) and `AppointmentResponse:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location).
-- `_revinclude` from resources that point at Organization/Location (Encounter, ...)
+  Location, HealthcareService and Endpoint respectively), `Schedule:actor` (on Practitioner, PractitionerRole, HealthcareService and Location), `Slot:schedule` (on Schedule), `Patient:general-practitioner` (on Practitioner, PractitionerRole and Organization), `Patient:organization` (on Organization) `Patient:link` (on Patient), `Appointment:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location) `Appointment:slot` (on Slot), `AppointmentResponse:appointment` (on Appointment) and `AppointmentResponse:actor|patient|practitioner|location` (on Patient, Practitioner, PractitionerRole, HealthcareService and Location), plus `Encounter:patient|subject` (on Patient), `Encounter:participant|practitioner` (on Practitioner; `participant` also on PractitionerRole), `Encounter:location` (on Location), `Encounter:appointment` (on Appointment), `Encounter:service-provider` (on Organization) and `Encounter:part-of` (on Encounter).
+- `_revinclude` from resources that point at Organization/Location (Observation, ...)
   becomes possible only when those resources are on the engine.
 
 ## 5. Suggested order after the resources exist
@@ -142,5 +151,5 @@ For each resource, follow the Organization/Location pattern:
 2. `CapabilityStatement` generated from the registries, so the server declares what it supports.
 3. `_tag` / `_profile` / `_security` / `_source` (with the `meta` storage change).
 4. `_has`.
-5. number / quantity / uri / composite types, as the clinical resources need them.
+5. number / uri / composite types, and UCUM unit conversion for quantity, as the clinical resources need them.
 6. Later or never: `_text`, `_content`, `_filter`, `_list`, `_contained`, `_history`, system-wide search.

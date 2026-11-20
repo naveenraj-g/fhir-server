@@ -18,6 +18,7 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
+from app.repository._encounter_revinclude import participant_encounter_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     array_string_match,
@@ -527,6 +528,7 @@ def practitioner_search() -> SearchRegistry:
         revincludes=(
             *participant_revincludes('Practitioner', lambda p: p.practitioner_id, ('actor', 'practitioner')),
             *actor_response_revincludes('Practitioner', lambda p: p.practitioner_id, ('actor', 'practitioner')),
+            *participant_encounter_revincludes('Practitioner', lambda p: p.practitioner_id, ('participant', 'practitioner')),
             IncludeTarget(
                 "PractitionerRole", "practitioner", "Practitioner", _revinclude_practitioner_role, reverse=True
             ),

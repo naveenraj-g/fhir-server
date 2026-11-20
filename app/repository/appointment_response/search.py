@@ -127,7 +127,9 @@ def _actor_param(targets: tuple[str, ...]):
     narrowed forms (`patient`, `practitioner`, `location` — the actor resolves
     to that single type). All read the actor_* columns."""
     narrowed = targets[0] if len(targets) == 1 else None
-    type_filter = (R.actor_type == narrowed,) if narrowed else ()
+    # `is_not(None)` keeps `NOT present` (`:missing=true`) from going NULL for a row whose
+    # actor has no resolved type (a logical, identifier-only reference).
+    type_filter = (R.actor_type.is_not(None), R.actor_type == narrowed) if narrowed else ()
 
     def match(value, modifier, ctx):
         if modifier == "identifier":

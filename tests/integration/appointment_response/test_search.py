@@ -223,6 +223,10 @@ async def test_actor_identifier_and_absolute(client, world):
     assert _ids(await _search(client, **{"actor:identifier": "urn:pts|P-9"})) == {logical}
     assert _ids(await _search(client, actor="https://other.example.org/fhir/Patient/1")) == {ext}
     assert logical not in _ids(await _search(client, actor=f"Patient/{world['p1']}"))
+    # A logical actor has no resolved type, so it is *missing* for every narrowed parameter.
+    for param in ("patient", "practitioner", "location"):
+        assert logical in _ids(await _search(client, **{f"{param}:missing": "true"})), param
+        assert logical not in _ids(await _search(client, **{f"{param}:missing": "false"})), param
 
 
 async def test_actor_missing(client, world):

@@ -229,7 +229,7 @@ routes:
     # - detected_issue
     # - diagnostic_report
     # - document_reference
-    # - encounter
+    - encounter
     - endpoint
     # - episode_of_care
     # - flag
