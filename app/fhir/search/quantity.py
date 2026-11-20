@@ -12,7 +12,9 @@ server choose; this one doesn't), so `length=2||d` does not find a length
 stored in hours.
 
 A Quantity is stored as four index columns (value, system, code, unit);
-`quantity_match()` builds the SQL over them.
+`quantity_match()` builds the SQL over them. An element that can be an Age *or*
+a Range (`Condition.onset`) is stored as a lower and an upper bound with one
+shared unit, and `quantity_range_match()` applies R4's range semantics to it.
 """
 
 from __future__ import annotations
@@ -91,5 +93,55 @@ def quantity_match(value_col, system_col, code_col, unit_col, value: str):
     if code is not None:
         # `||mg` (no system): the code or the human-readable unit; with a
         # system the code is the Quantity's code, precisely.
+        conditions.append(code_col == code if system is not None else or_(code_col == code, unit_col == code))
+    return and_(*conditions)
+
+
+def quantity_range_match(low_col, high_col, system_col, code_col, unit_col, value: str):
+    """A quantity held as a *range* — the lower and upper bound columns, with
+    one shared (system, code, unit) — against one search value. This is for an
+    element that can be an Age (a point: low == high) or a Range (`Condition.onset`,
+    `.abatement`). A NULL bound is open on that side; a row with neither bound
+    has no quantity and never matches.
+
+    R4's range semantics (search.html#prefix), for the target range [tl, th] and
+    the search value n whose own range is [low, high):
+
+      eq  the search range fully contains the target (both bounds present)
+      ne  it does not
+      gt  the range above n overlaps the target     th > n
+      lt  the range below n overlaps the target     tl < n
+      ge  th >= n          le  tl <= n
+      sa  the target lies above the search range    tl >= high
+      eb  the target lies below it                  th < low
+      ap  the target overlaps n +/- 10%
+    """
+    prefix, n, low, high, system, code, _ = parse_quantity(value)
+    n, low, high = float(n), float(low), float(high)
+    present = or_(low_col.is_not(None), high_col.is_not(None))
+    if prefix == "eq":
+        number = and_(low_col >= low, high_col < high)
+    elif prefix == "ne":
+        number = or_(low_col.is_(None), high_col.is_(None), low_col < low, high_col >= high)
+    elif prefix == "gt":
+        number = or_(high_col.is_(None), high_col > n)
+    elif prefix == "lt":
+        number = or_(low_col.is_(None), low_col < n)
+    elif prefix == "ge":
+        number = or_(high_col.is_(None), high_col >= n)
+    elif prefix == "le":
+        number = or_(low_col.is_(None), low_col <= n)
+    elif prefix == "sa":
+        number = low_col >= high
+    elif prefix == "eb":
+        number = high_col < low
+    else:  # ap
+        slack = abs(n) * 0.1
+        number = and_(or_(high_col.is_(None), high_col >= n - slack), or_(low_col.is_(None), low_col <= n + slack))
+
+    conditions = [present, number]
+    if system is not None:
+        conditions.append(system_col == system)
+    if code is not None:
         conditions.append(code_col == code if system is not None else or_(code_col == code, unit_col == code))
     return and_(*conditions)

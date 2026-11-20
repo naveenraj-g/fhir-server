@@ -53,6 +53,10 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         local = relative(slot.get("reference"), "Slot")
         if local:
             refs.append(("slot", "Slot", local))
+    for reason in document.get("reasonReference") or []:
+        local = relative(reason.get("reference"), "Condition")
+        if local:
+            refs.append(("reasonReference", "Condition", local))
     for participant in document.get("participant") or []:
         actor = participant.get("actor") or {}
         parsed = actor_type_and_id(actor.get("reference"))

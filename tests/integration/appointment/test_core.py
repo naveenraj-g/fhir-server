@@ -32,6 +32,7 @@ from tests.integration.appointment.support import (
     START,
     appointment_body,
     create_appointment,
+    create_condition,
     create_healthcare_service,
     create_location,
     create_organization,
@@ -83,7 +84,8 @@ async def _full(client, patient) -> dict:
     practitioner = await create_practitioner(client)
     location = await create_location(client)
     slot = await create_slot(client, slot_body(await create_schedule(client)))
-    return full_body(patient, practitioner, location, slot)
+    condition = await create_condition(client, patient)
+    return full_body(patient, practitioner, location, slot, condition)
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -237,15 +239,23 @@ async def _related_person(client) -> int:
 
 
 async def test_create_unrebuilt_reference_targets_are_not_checked(client, patient):
-    """basedOn / reasonReference / supportingInformation point at resources this
-    server doesn't rebuild: stored as sent."""
+    """basedOn / supportingInformation, and a reasonReference that is not a Condition,
+    point at resources this server does not rebuild: stored as sent."""
     body = appointment_body(
         patient,
         basedOn=[{"reference": "ServiceRequest/999999"}],
-        reasonReference=[{"reference": "Condition/999999"}],
+        reasonReference=[{"reference": "Observation/999999"}],
         supportingInformation=[{"reference": "DocumentReference/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_reason_reference_condition_must_exist(client, patient):
+    missing = appointment_body(patient, reasonReference=[{"reference": "Condition/999999"}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+    condition = await create_condition(client, patient)
+    ok = appointment_body(patient, reasonReference=[{"reference": f"Condition/{condition}"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
 
 
 async def test_create_identifier_assigner_must_exist(client, patient):

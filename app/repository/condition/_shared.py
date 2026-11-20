@@ -1,132 +1,36 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.condition import (
-    ConditionAsserterReferenceType,
-    ConditionBodySite,
-    ConditionCategory,
-    ConditionEvidence,
-    ConditionEvidenceCode,
-    ConditionIdentifier,
-    ConditionModel,
-    ConditionNoteAuthorReferenceType,
-    ConditionQuantityComparator as ConditionQuantityComparatorModel,
-    ConditionRecorderReferenceType,
-    ConditionStage,
-    ConditionStageAssessmentReferenceType,
-)
-from app.models.enums import (
-    EncounterReferenceType,
-    IdentifierUse as IdentifierUseModel,
-    OrganizationReferenceType,
-    SubjectReferenceType,
-)
+from app.models.condition import ConditionModel
+from app.repository._reference_shared import _validate_reference
 
-_IDENTIFIER_FALLBACK_SUFFIXES = (
-    "identifier_use",
-    "identifier_type_system",
-    "identifier_type_version",
-    "identifier_type_code",
-    "identifier_type_display",
-    "identifier_type_user_selected",
-    "identifier_type_text",
-    "identifier_system",
-    "identifier_value",
-    "identifier_period_start",
-    "identifier_period_end",
-)
+__all__ = ["INDEX_RELATIONSHIPS", "_validate_reference", "_with_relationships", "any_typed", "typed"]
 
-_SORTABLE_FIELDS = {
-    "condition_id": ConditionModel.condition_id,
-    "recorded_date": ConditionModel.recorded_date,
-    "created_at": ConditionModel.created_at,
-    "updated_at": ConditionModel.updated_at,
-}
+# Relationship attributes the search index owns — every one is rebuilt on each write.
+INDEX_RELATIONSHIPS = ("identifiers", "tokens", "evidence_details")
 
-
-def _reference_kwargs(prefix: str, payload) -> dict:
-    """Build {prefix}_identifier_* ORM constructor kwargs from payload."""
-    if payload is None:
-        return {}
-    res = {}
-    for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        val = getattr(payload, f"reference_{suffix}", None)
-        if suffix == "identifier_use" and val is not None:
-            res[f"{prefix}_{suffix}"] = IdentifierUseModel[val.name] if hasattr(val, "name") else val
-        else:
-            res[f"{prefix}_{suffix}"] = val
-    return res
-
-
-def _parse_subject_ref(ref: str) -> tuple:
-    return parse_reference(ref, SubjectReferenceType)
-
-
-def _parse_encounter_ref(ref: str) -> tuple:
-    return parse_reference(ref, EncounterReferenceType)
-
-
-def _parse_recorder_ref(ref: str) -> tuple:
-    return parse_reference(ref, ConditionRecorderReferenceType)
-
-
-def _parse_asserter_ref(ref: str) -> tuple:
-    return parse_reference(ref, ConditionAsserterReferenceType)
-
-
-def _parse_assessment_ref(ref: str) -> tuple:
-    return parse_reference(ref, ConditionStageAssessmentReferenceType)
-
-
-def _parse_org_ref(ref: str) -> tuple:
-    return parse_reference(ref, OrganizationReferenceType)
-
-
-def _parse_note_author_ref(ref: str) -> tuple:
-    return parse_reference(ref, ConditionNoteAuthorReferenceType)
-
-
-async def _validate_ref(session, org_id: str, ref_type, ref_id: int | None, field_name: str) -> None:
-    if not ref_type or ref_id is None:
-        return
-    type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
-    if type_str in RESOURCE_REGISTRY:
-        await ensure_resource_exists(
-            session, type_str, ref_id, org_id=org_id, field_name=field_name
-        )
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
-    """Eager-load all Condition sub-resources to avoid N+1 and async lazy-load failures."""
-    return stmt.options(
-        selectinload(ConditionModel.identifiers).selectinload(
-            ConditionIdentifier.type_codings
-        ),
-        selectinload(ConditionModel.clinical_status_codings),
-        selectinload(ConditionModel.verification_status_codings),
-        selectinload(ConditionModel.categories).selectinload(
-            ConditionCategory.codings
-        ),
-        selectinload(ConditionModel.severity_codings),
-        selectinload(ConditionModel.code_codings),
-        selectinload(ConditionModel.body_sites).selectinload(
-            ConditionBodySite.codings
-        ),
-        selectinload(ConditionModel.stages).selectinload(
-            ConditionStage.summary_codings
-        ),
-        selectinload(ConditionModel.stages).selectinload(
-            ConditionStage.type_codings
-        ),
-        selectinload(ConditionModel.stages).selectinload(
-            ConditionStage.assessments
-        ),
-        selectinload(ConditionModel.evidence)
-        .selectinload(ConditionEvidence.codes)
-        .selectinload(ConditionEvidenceCode.codings),
-        selectinload(ConditionModel.evidence).selectinload(
-            ConditionEvidence.details
-        ),
-        selectinload(ConditionModel.notes),
-    )
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from ConditionModel.content."""
+    return stmt.options(*(selectinload(getattr(ConditionModel, rel)) for rel in INDEX_RELATIONSHIPS))
+
+
+def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:
+    """('Practitioner', 30001) for a relative `Type/<id>` whose type is in
+    `allowed`; None for an absolute URL, a contained reference or any other
+    shape (those match by their raw string only)."""
+    match = _REF.match(reference or "")
+    if match and match["type"] in allowed:
+        return match["type"], int(match["id"])
+    return None
+
+
+def any_typed(reference: str | None) -> tuple[str, int] | None:
+    """`typed()` for a Reference(Any): any relative `Type/<id>` names a type."""
+    match = _REF.match(reference or "")
+    return (match["type"], int(match["id"])) if match else None

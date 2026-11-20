@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy import Column, Integer, MetaData, Numeric, String, Table, create_engine, select
 
 from app.fhir.search.errors import SearchError
-from app.fhir.search.quantity import parse_quantity, quantity_match
+from app.fhir.search.quantity import parse_quantity, quantity_match, quantity_range_match
 
 UCUM = "http://unitsofmeasure.org"
 
@@ -114,3 +114,84 @@ def test_parse_quantity_range_follows_the_written_precision():
 def test_bad_values_are_search_errors(bad):
     with pytest.raises(SearchError):
         parse_quantity(bad)
+
+
+# ── quantity_range_match: an Age (a point) or a Range held as low / high bounds ──
+# id -> (low, high, system, code, unit); None = open on that side.
+SPANS = {
+    1: (12, 12, UCUM, "a", "years"),  # an Age: low == high
+    2: (5, 10, UCUM, "a", "years"),
+    3: (20, None, UCUM, "a", "years"),  # open above
+    4: (None, 8, UCUM, "a", "years"),  # open below
+    5: (None, None, None, None, None),  # no quantity at all
+    6: (12, 30, UCUM, "mo", "months"),
+}
+spans = Table(
+    "spans",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("low", Numeric, nullable=True),
+    Column("high", Numeric, nullable=True),
+    Column("system", String, nullable=True),
+    Column("code", String, nullable=True),
+    Column("unit", String, nullable=True),
+)
+
+
+@pytest.fixture(scope="module")
+def span_engine():
+    eng = create_engine("sqlite://")
+    metadata.create_all(eng)
+    with eng.begin() as conn:
+        conn.execute(
+            spans.insert(),
+            [{"id": i, "low": lo, "high": hi, "system": s, "code": c, "unit": u} for i, (lo, hi, s, c, u) in SPANS.items()],
+        )
+    return eng
+
+
+def _span_match(engine, value: str) -> set[int]:
+    c = spans.c
+    cond = quantity_range_match(c.low, c.high, c.system, c.code, c.unit, value)
+    with engine.connect() as conn:
+        return {r[0] for r in conn.execute(select(c.id).where(cond))}
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("12", {1}),  # [11.5, 12.5) wholly contains only the point 12
+        ("1e1", {1, 2}),  # [5, 15) wholly contains the point 12 and the range 5-10
+        ("10", set()),  # [9.5, 10.5) contains no target range
+        ("ne12", {2, 3, 4, 6}),  # not wholly contained; an open end is never contained; row 5 has no quantity
+        ("gt15", {3, 6}),  # the range above 15 overlaps an open-ended and a 12-30 target
+        ("lt6", {2, 4}),  # the range below 6 overlaps 5-10 and the open-below one
+        ("ge10", {1, 2, 3, 6}),
+        ("le8", {2, 4}),
+        ("sa10", {1, 3, 6}),  # starts after [9.5, 10.5): low >= 10.5
+        ("eb10", {4}),  # ends before it: high < 9.5
+        ("ap10", {2}),  # overlaps [9, 11]
+    ],
+)
+def test_range_prefixes(span_engine, value, expected):
+    assert _span_match(span_engine, value) == expected
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (f"12|{UCUM}|a", {1}),
+        (f"gt1|{UCUM}|mo", {6}),
+        ("gt1||years", {1, 2, 3, 4}),  # code or the human unit, no system
+        ("gt1||months", {6}),
+        (f"12|{UCUM}|mo", set()),
+        ("12|http://wrong|a", set()),
+    ],
+)
+def test_range_units(span_engine, value, expected):
+    assert _span_match(span_engine, value) == expected
+
+
+def test_range_bad_values_are_search_errors():
+    with pytest.raises(SearchError):
+        quantity_range_match(spans.c.low, spans.c.high, spans.c.system, spans.c.code, spans.c.unit, "abc")

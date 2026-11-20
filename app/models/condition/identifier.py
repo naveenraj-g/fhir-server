@@ -1,85 +1,37 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    String,
-)
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 
-class ConditionIdentifier(TenantAuditMixin, Base):
-    """Condition.identifier (0..*) child table."""
+class ConditionIdentifier(Base):
+    """Search index for the `identifier` token parameter (0..*). Derived
+    from ConditionModel.content — never read to build a response.
+
+    One row per Condition.identifier *per Identifier.type.coding*
+    (one row with no type when the identifier has no coded type), so that
+    `identifier:of-type=type-system|type-code|value` can match type and
+    value on the same row. A plain `identifier=` search is an EXISTS, so
+    the repetition never duplicates results.
+
+      identifier            -> system, value
+      identifier:of-type    -> type_system, type_code, value
+      identifier:text       -> type_text_norm / type_display_norm
+
+    No UniqueConstraint on (system, value): FHIR R4 doesn't require
+    identifier uniqueness — that's a profile decision, not a base rule."""
 
     __tablename__ = "condition_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    condition_pk = Column(
-        BigInteger, ForeignKey("condition.id"), nullable=False, index=True
-    )
-
-    use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    type_text = Column(String, nullable=True)
+    # Named condition_pk (not condition_id) so it can't be
+    # confused with ConditionModel.condition_id, the public id.
+    condition_pk = Column(BigInteger, ForeignKey("condition.id"), nullable=False, index=True)
     system = Column(String, nullable=True)
-    value = Column(String, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # assigner (0..1 Reference(Organization))
-    assigner_reference = Column(String, nullable=True)
-    assigner_id = Column(BigInteger, nullable=True, index=True)
-    assigner_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    assigner_display = Column(String, nullable=True)
-
-    # assigner.identifier fallback
-    assigner_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    assigner_identifier_type_system = Column(String, nullable=True)
-    assigner_identifier_type_version = Column(String, nullable=True)
-    assigner_identifier_type_code = Column(String, nullable=True)
-    assigner_identifier_type_display = Column(String, nullable=True)
-    assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
-    assigner_identifier_type_text = Column(String, nullable=True)
-    assigner_identifier_system = Column(String, nullable=True)
-    assigner_identifier_value = Column(String, nullable=True)
-    assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value = Column(String, nullable=True, index=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_text_norm = Column(String, nullable=True)
+    type_display_norm = Column(String, nullable=True)
 
     condition = relationship("ConditionModel", back_populates="identifiers")
-    type_codings = relationship(
-        "ConditionIdentifierTypeCoding",
-        back_populates="identifier",
-        cascade="all, delete-orphan",
-    )
-
-
-class ConditionIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """One entry of Condition.identifier.type.coding (0..*)."""
-
-    __tablename__ = "condition_identifier_type_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    condition_identifier_id = Column(
-        BigInteger,
-        ForeignKey("condition_identifier.id"),
-        nullable=False,
-        index=True,
-    )
-
-    identifier = relationship("ConditionIdentifier", back_populates="type_codings")

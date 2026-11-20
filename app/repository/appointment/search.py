@@ -79,6 +79,8 @@ _MODELED = {
                  "app.repository.location.search", "location_search"),
     "Slot": ("app.models.slot", "SlotModel", "slot_id",
              "app.repository.slot.search", "slot_search"),
+    "Condition": ("app.models.condition", "ConditionModel", "condition_id",
+                  "app.repository.condition.search", "condition_search"),
 }
 
 
@@ -311,6 +313,33 @@ async def _include_slots(session, ctx, appointments):
     return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)))
 
 
+async def _include_reason_conditions(session, ctx, appointments):
+    """_include=Appointment:reason-reference — the Conditions these appointments
+    are for."""
+    model, id_col = _model("Condition")
+    referenced = select(_R.reference_id).where(
+        _R.appointment_pk.in_({a.id for a in appointments}),
+        _R.param == "reason-reference",
+        _R.reference_type == "Condition",
+        _R.reference_id.is_not(None),
+    )
+    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)))
+
+
+def revinclude_appointments_via_condition(key):
+    """_revinclude=Appointment:reason-reference — appointments whose reason is one
+    of these Conditions."""
+
+    async def fetch(session, ctx, rows):
+        ids = {key(r) for r in rows}
+        pks = select(_R.appointment_pk).where(
+            _R.param == "reason-reference", _R.reference_type == "Condition", _R.reference_id.in_(ids)
+        )
+        return await _fetch(session, select(A).where(A.tenant_id == ctx.tenant_id, A.id.in_(pks)))
+
+    return fetch
+
+
 def revinclude_appointments_via_participant(resource_type: str, key):
     """_revinclude=Appointment:actor / :patient / :practitioner / :location —
     appointments with a participant actor of this type pointing at one of
@@ -443,7 +472,7 @@ def appointment_search() -> SearchRegistry:
         token("reason-code", "Coded reason this appointment is scheduled", "Appointment.reasonCode", "http://snomed.info/sct|413153004"),
         reference(
             "reason-reference", "Reason the appointment is to take place (resource)", "Appointment.reasonReference",
-            "Condition/120001",
+            "Condition/120001", chain_types=("Condition",),
         ),
         token(
             "service-category",
@@ -477,7 +506,9 @@ def appointment_search() -> SearchRegistry:
     ]
 
     actor_includes = tuple(
-        IncludeTarget("Appointment", "actor", t, _include_participants(t)) for t in _MODELED if t != "Slot"
+        IncludeTarget("Appointment", "actor", t, _include_participants(t))
+        for t in _MODELED
+        if t not in ("Slot", "Condition")
     )
     narrowed_includes = tuple(
         IncludeTarget("Appointment", name, t, _include_participants(t))
@@ -501,6 +532,7 @@ def appointment_search() -> SearchRegistry:
             *actor_includes,
             *narrowed_includes,
             IncludeTarget("Appointment", "slot", "Slot", _include_slots),
+            IncludeTarget("Appointment", "reason-reference", "Condition", _include_reason_conditions),
         ),
         # AppointmentResponse.appointment points here (Encounter, ... add theirs when rebuilt).
         revincludes=(

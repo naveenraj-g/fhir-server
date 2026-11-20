@@ -23,6 +23,7 @@ from tests.integration.encounter.support import (
     UCUM,
     appointment_body,
     create_appointment,
+    create_condition,
     create_encounter,
     create_location,
     create_organization,
@@ -60,6 +61,7 @@ async def world(client):
     w["loc"] = await create_location(client, "North Wing", "Boston")
     w["org"] = await create_organization(client, "Providing Org")
     w["ap"] = await create_appointment(client, appointment_body(w["p1"], status="booked"))
+    w["cond"] = await create_condition(client, w["p1"])
     rp = await client.post(
         API + "/related-persons/",
         json={"patient": {"reference": f"Patient/{w['p1']}"}, "name": [{"family": "Relative"}]},
@@ -90,7 +92,7 @@ async def world(client):
                 ],
                 "serviceProvider": {"reference": f"Organization/{w['org']}"},
                 "hospitalization": {"specialArrangement": [{"coding": [{"system": SPECIAL, "code": "wheel"}]}]},
-                "diagnosis": [{"condition": {"reference": "Condition/120001"}}],
+                "diagnosis": [{"condition": {"reference": f"Condition/{w['cond']}"}}],
                 "reasonReference": [{"reference": "Observation/5"}],
                 "basedOn": [{"reference": "ServiceRequest/80001"}],
                 "episodeOfCare": [{"reference": "EpisodeOfCare/350001"}],
@@ -109,7 +111,7 @@ async def world(client):
             participant=[{"individual": {"reference": f"PractitionerRole/{w['role']}"}}],
             period={"start": "2026-05-01T00:00:00Z", "end": "2026-05-02T00:00:00Z"},
             length={"value": 5, "unit": "days", "system": UCUM, "code": "d"},
-            reasonReference=[{"reference": "Condition/120001"}],
+            reasonReference=[{"reference": f"Condition/{w['cond']}"}],
         ),
     )
     w["c"] = await create_encounter(
@@ -407,17 +409,18 @@ async def test_account_based_on_episode_of_care(client, world):
 
 
 async def test_diagnosis_and_reason_reference_need_a_type(client, world):
-    assert await _status(client, diagnosis="120001") == 400
-    assert await _status(client, **{"reason-reference": "120001"}) == 400
+    assert await _status(client, diagnosis=str(world["cond"])) == 400
+    assert await _status(client, **{"reason-reference": str(world["cond"])}) == 400
 
 
 async def test_diagnosis_and_reason_reference(client, world):
-    assert await _keys(client, world, diagnosis="Condition/120001") == {"a"}
-    assert await _keys(client, world, **{"diagnosis:Condition": "120001"}) == {"a"}
-    assert await _keys(client, world, diagnosis="Procedure/120001") == set()  # the type is part of the match
+    cond = world["cond"]
+    assert await _keys(client, world, diagnosis=f"Condition/{cond}") == {"a"}
+    assert await _keys(client, world, **{"diagnosis:Condition": str(cond)}) == {"a"}
+    assert await _keys(client, world, diagnosis=f"Procedure/{cond}") == set()  # the type is part of the match
     assert await _keys(client, world, **{"reason-reference": "Observation/5"}) == {"a"}
-    assert await _keys(client, world, **{"reason-reference": "Condition/120001"}) == {"b"}
-    assert await _keys(client, world, **{"reason-reference": "Observation/5,Condition/120001"}) == {"a", "b"}
+    assert await _keys(client, world, **{"reason-reference": f"Condition/{cond}"}) == {"b"}
+    assert await _keys(client, world, **{"reason-reference": f"Observation/5,Condition/{cond}"}) == {"a", "b"}
 
 
 # ── chaining ─────────────────────────────────────────────────────────────────

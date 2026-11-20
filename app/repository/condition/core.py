@@ -1,199 +1,83 @@
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter, apply_token_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.condition import (
-    ConditionCategory,
-    ConditionCategoryCoding,
-    ConditionClinicalStatusCoding,
-    ConditionCodeCoding,
-    ConditionIdentifier,
-    ConditionModel,
-    ConditionSeverityCoding,
-    ConditionVerificationStatusCoding,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.condition import ConditionModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import condition_search
 
 logger = get_logger(__name__)
 
+_M = ConditionModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for Condition."""
+    """Reads, search and delete. Every read loads only the condition
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_condition_id(self, condition_id: int) -> ConditionModel | None:
+    async def get_by_condition_id(self, condition_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ConditionModel).where(ConditionModel.condition_id == condition_id)
-            )
+            stmt = select(_M).where(_M.condition_id == condition_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_condition_id_in_org(
-        self, condition_id: int, org_id: str
-    ) -> ConditionModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    async def get_by_condition_id_in_org(self, condition_id: int, org_id: str) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the condition
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ConditionModel).where(
-                    ConditionModel.condition_id == condition_id,
-                    ConditionModel.tenant_id == org_id,
-                )
-            )
+            stmt = select(_M).where(_M.condition_id == condition_id, _M.tenant_id == org_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def condition_belongs_to_org(self, condition_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the condition exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(ConditionModel.id).where(
-                ConditionModel.condition_id == condition_id,
-                ConditionModel.tenant_id == org_id,
-            )
+            stmt = select(_M.id).where(_M.condition_id == condition_id, _M.tenant_id == org_id)
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str | None = None,
-        clinical_status: str | None = None,
-        verification_status: str | None = None,
-        category: str | None = None,
-        severity: str | None = None,
-        code: str | None = None,
-        subject: str | None = None,
-        encounter: str | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(ConditionModel.tenant_id == org_id)
-        if clinical_status:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ConditionClinicalStatusCoding.id).where(
-                    ConditionClinicalStatusCoding.condition_pk == ConditionModel.id,
-                    ConditionClinicalStatusCoding.code == clinical_status,
-                ),
-            )
-        if verification_status:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ConditionVerificationStatusCoding.id).where(
-                    ConditionVerificationStatusCoding.condition_pk == ConditionModel.id,
-                    ConditionVerificationStatusCoding.code == verification_status,
-                ),
-            )
-        if category:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ConditionCategoryCoding.id).join(
-                    ConditionCategory, ConditionCategoryCoding.condition_category_id == ConditionCategory.id
-                ).where(
-                    ConditionCategory.condition_pk == ConditionModel.id,
-                    ConditionCategoryCoding.code == category,
-                ),
-            )
-        if severity:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ConditionSeverityCoding.id).where(
-                    ConditionSeverityCoding.condition_pk == ConditionModel.id,
-                    ConditionSeverityCoding.code == severity,
-                ),
-            )
-        if code:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ConditionCodeCoding.id).where(
-                    ConditionCodeCoding.condition_pk == ConditionModel.id,
-                    ConditionCodeCoding.code == code,
-                ),
-            )
-        if subject:
-            stmt = stmt.where(ConditionModel.subject_reference == subject)
-        if encounter:
-            stmt = stmt.where(ConditionModel.encounter_reference == encounter)
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ConditionIdentifier.id).where(
-                    ConditionIdentifier.condition_pk == ConditionModel.id,
-                    ConditionIdentifier.value == identifier,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str | None = None,
-        clinical_status: str | None = None,
-        verification_status: str | None = None,
-        category: str | None = None,
-        severity: str | None = None,
-        code: str | None = None,
-        subject: str | None = None,
-        encounter: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ConditionModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "clinical_status": clinical_status,
-                "verification_status": verification_status,
-                "category": category,
-                "severity": severity,
-                "code": code,
-                "subject": subject,
-                "encounter": encounter,
-                "identifier": identifier,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(ConditionModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(ConditionModel), **filter_kwargs
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=ConditionModel.condition_id,
-                default_desc=True,
-            )
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=condition_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.condition_id,
             )
         logger.debug(
-            "Conditions listed",
+            "Conditions searched",
             extra={
-                "event": "condition.listed",
+                "event": "condition.searched",
                 "returned": len(rows),
+                "included": len(included),
                 "total": total,
-                "limit": limit,
-                "offset": offset,
-                "filters": sorted(k for k, v in filter_kwargs.items() if v is not None),
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
             },
         )
-        return rows, total
+        return rows, total, included
+
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, condition_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(ConditionModel).where(ConditionModel.condition_id == condition_id)
-            cond = (await session.execute(stmt)).scalars().first()
-            if not cond:
+            stmt = select(_M).where(_M.condition_id == condition_id)
+            condition = (await session.execute(stmt)).scalars().first()
+            if not condition:
                 return False
             try:
-                await session.delete(cond)
+                await session.delete(condition)
                 await session.commit()
                 return True
             except Exception:

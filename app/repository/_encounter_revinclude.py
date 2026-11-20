@@ -70,3 +70,21 @@ def service_provider_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
         return await revinclude_encounters_via_column("service_provider", "Organization", key)(session, ctx, rows)
 
     return (IncludeTarget("Encounter", "service-provider", "Organization", fetch, reverse=True),)
+
+
+def condition_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
+    """Encounter:diagnosis and :reason-reference — encounters whose diagnosis /
+    reason points at one of the matched Conditions."""
+
+    def make(param: str):
+        async def fetch(session, ctx, rows):
+            from app.repository.encounter.search import revinclude_encounters_via_condition
+
+            return await revinclude_encounters_via_condition(param, key)(session, ctx, rows)
+
+        return fetch
+
+    return tuple(
+        IncludeTarget("Encounter", param, "Condition", make(param), reverse=True)
+        for param in ("diagnosis", "reason-reference")
+    )

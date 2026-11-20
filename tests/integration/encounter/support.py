@@ -7,6 +7,7 @@ datatypes), and every response is FHIR R4 too."""
 from tests.integration.appointment.support import (  # noqa: F401
     appointment_body,
     create_appointment,
+    create_condition,
     create_healthcare_service,
     create_location,
     create_organization,
@@ -40,7 +41,9 @@ def encounter_body(status: str = "in-progress", class_code: str = "AMB", **extra
     return {"status": status, "class": cls(class_code), **extra}
 
 
-def full_body(patient_id: int, practitioner_id: int, location_id: int, organization_id: int, appointment_id: int) -> dict:
+def full_body(
+    patient_id: int, practitioner_id: int, location_id: int, organization_id: int, appointment_id: int, condition_id: int
+) -> dict:
     return encounter_body(
         resourceType="Encounter",
         identifier=[
@@ -70,8 +73,8 @@ def full_body(patient_id: int, practitioner_id: int, location_id: int, organizat
         period={"start": START, "end": END},
         length={"value": 40, "unit": "min", "system": UCUM, "code": "min"},
         reasonCode=[{"coding": [{"system": SCT, "code": "185347001"}], "text": "Check-up"}],
-        reasonReference=[{"reference": "Condition/120001"}],
-        diagnosis=[{"condition": {"reference": "Condition/120001"}, "use": {"text": "Admission"}, "rank": 1}],
+        reasonReference=[{"reference": f"Condition/{condition_id}"}],
+        diagnosis=[{"condition": {"reference": f"Condition/{condition_id}"}, "use": {"text": "Admission"}, "rank": 1}],
         account=[{"reference": "Account/7"}],
         hospitalization={
             "preAdmissionIdentifier": {"system": "urn:pre", "value": "PRE-1"},

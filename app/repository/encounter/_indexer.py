@@ -78,6 +78,10 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append(("participant.individual", parsed[0], reference))
     for location in document.get("location") or []:
         add("location.location", (location.get("location") or {}).get("reference"), "Location")
+    for diagnosis in document.get("diagnosis") or []:
+        add("diagnosis.condition", (diagnosis.get("condition") or {}).get("reference"), "Condition")
+    for reason in document.get("reasonReference") or []:
+        add("reasonReference", reason.get("reference"), "Condition")
     hospitalization = document.get("hospitalization") or {}
     for element in ("origin", "destination"):
         reference = (hospitalization.get(element) or {}).get("reference")

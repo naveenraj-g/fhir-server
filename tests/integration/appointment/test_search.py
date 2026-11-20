@@ -22,6 +22,7 @@ from tests.integration.appointment.support import (
     create_appointment,
     create_healthcare_service,
     create_location,
+    create_condition,
     create_patient,
     create_practitioner,
     create_practitioner_role,
@@ -60,6 +61,7 @@ async def world(client):
     w["loc"] = await create_location(client, "North Wing", "Boston")
     w["hs"] = await create_healthcare_service(client)
     w["role"] = await create_practitioner_role(client)
+    w["cond"] = await create_condition(client, w["p1"])
     w["s1"] = await create_slot(client, slot_body(await create_schedule(client), status="free"))
     w["s2"] = await create_slot(client, slot_body(await create_schedule(client), status="busy"))
 
@@ -78,7 +80,7 @@ async def world(client):
             reasonCode=[{"coding": [{"system": SCT, "code": "413153004"}], "text": "Annual check-up"}],
             slot=[{"reference": f"Slot/{w['s1']}"}],
             basedOn=[{"reference": "ServiceRequest/80001"}],
-            reasonReference=[{"reference": "Condition/120001"}],
+            reasonReference=[{"reference": f"Condition/{w['cond']}"}],
             supportingInformation=[{"reference": "Encounter/20001"}],
             participant=[
                 participant(f"Patient/{w['p1']}"),
@@ -352,10 +354,13 @@ async def test_based_on(client, world):
 
 
 async def test_reason_reference_needs_a_type(client, world):
-    assert (await client.get(BASE + "/", params={"reason-reference": "120001"})).status_code == 400
-    assert await _keys(client, world, **{"reason-reference": "Condition/120001"}) == {"a"}
+    cond = world["cond"]
+    assert (await client.get(BASE + "/", params={"reason-reference": str(cond)})).status_code == 400
+    assert await _keys(client, world, **{"reason-reference": f"Condition/{cond}"}) == {"a"}
+    assert await _keys(client, world, **{"reason-reference:Condition": str(cond)}) == {"a"}
     assert await _keys(client, world, **{"reason-reference:Observation": "160001"}) == {"b"}
-    assert await _keys(client, world, **{"reason-reference": "Condition/120001,Observation/160001"}) == {"a", "b"}
+    assert await _keys(client, world, **{"reason-reference": f"Condition/{cond},Observation/160001"}) == {"a", "b"}
+    assert await _keys(client, world, **{"reason-reference:Condition.clinical-status": "active"}) == set()  # the condition has none
 
 
 async def test_supporting_info(client, world):

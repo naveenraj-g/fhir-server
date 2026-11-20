@@ -31,6 +31,7 @@ from tests.integration.encounter.support import (
     START,
     appointment_body,
     create_appointment,
+    create_condition,
     create_encounter,
     create_location,
     create_organization,
@@ -66,11 +67,12 @@ async def refs(client) -> dict:
         "location": await create_location(client),
         "organization": await create_organization(client),
         "appointment": await create_appointment(client, appointment_body(patient)),
+        "condition": await create_condition(client, patient),
     }
 
 
 def _full(refs: dict) -> dict:
-    return full_body(refs["patient"], refs["practitioner"], refs["location"], refs["organization"], refs["appointment"])
+    return full_body(refs["patient"], refs["practitioner"], refs["location"], refs["organization"], refs["appointment"], refs["condition"])
 
 
 def _ids(bundle: dict) -> set[int]:
@@ -227,17 +229,29 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
 
 
 async def test_create_unmodeled_targets_are_not_checked(client):
-    """Group, Account, EpisodeOfCare, ServiceRequest, Condition ... are not resources on
+    """Group, Account, EpisodeOfCare, ServiceRequest, Observation ... are not resources on
     this server: stored as sent."""
     body = encounter_body(
         subject={"reference": "Group/5"},
         episodeOfCare=[{"reference": "EpisodeOfCare/5"}],
         basedOn=[{"reference": "ServiceRequest/5"}],
         account=[{"reference": "Account/5"}],
-        reasonReference=[{"reference": "Condition/5"}, {"reference": "Observation/5"}],
+        reasonReference=[{"reference": "Observation/5"}],
         diagnosis=[{"condition": {"reference": "Procedure/5"}}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_condition_references_must_exist(client, refs):
+    missing = "Condition/999999"
+    for body in (
+        encounter_body(diagnosis=[{"condition": {"reference": missing}}]),
+        encounter_body(reasonReference=[{"reference": missing}]),
+    ):
+        assert (await client.post(BASE + "/", json=body)).status_code == 422
+    ref = f"Condition/{refs['condition']}"
+    ok = encounter_body(diagnosis=[{"condition": {"reference": ref}}], reasonReference=[{"reference": ref}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
 
 
 async def test_create_related_person_participant_must_exist(client, refs):

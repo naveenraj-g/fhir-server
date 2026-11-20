@@ -20,6 +20,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
+from app.repository._condition_revinclude import encounter_condition_revincludes
 from app.fhir.search.quantity import quantity_match
 from app.fhir.search.sql import (
     coded_token_match,
@@ -72,6 +73,8 @@ _MODELED = {
                     "app.repository.appointment.search", "appointment_search"),
     "Encounter": ("app.models.encounter", "EncounterModel", "encounter_id",
                   "app.repository.encounter.search", "encounter_search"),
+    "Condition": ("app.models.condition", "ConditionModel", "condition_id",
+                  "app.repository.condition.search", "condition_search"),
 }
 
 
@@ -390,6 +393,12 @@ def revinclude_encounters_via_appointment(key):
     return revinclude_encounters_via_child(_R, "Appointment", key, _R.param == "appointment")
 
 
+def revinclude_encounters_via_condition(param: str, key):
+    """_revinclude=Encounter:diagnosis / :reason-reference — encounters whose
+    `param` reference points at one of these Conditions."""
+    return revinclude_encounters_via_child(_R, "Condition", key, _R.param == param)
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Encounter rows."""
     from app.fhir.mappers.encounter import to_fhir_encounter
@@ -476,7 +485,7 @@ def encounter_search() -> SearchRegistry:
         ),
         reference(
             "diagnosis", "The diagnosis or procedure relevant to the encounter", "Encounter.diagnosis.condition",
-            "Condition/120001",
+            "Condition/120001", chain_types=("Condition",),
         ),
         reference(
             "episode-of-care", "Episode(s) of care that this encounter should be recorded against",
@@ -533,7 +542,7 @@ def encounter_search() -> SearchRegistry:
         token("reason-code", "Coded reason the encounter takes place", "Encounter.reasonCode", "http://snomed.info/sct|185347001"),
         reference(
             "reason-reference", "Reason the encounter takes place (reference)", "Encounter.reasonReference",
-            "Condition/120001",
+            "Condition/120001", chain_types=("Condition",),
         ),
         column_ref(
             "service-provider", "The organization (facility) responsible for this encounter", "Encounter.serviceProvider",
@@ -580,6 +589,10 @@ def encounter_search() -> SearchRegistry:
             IncludeTarget("Encounter", "practitioner", "Practitioner", _include_child(_P, "Practitioner")),
             IncludeTarget("Encounter", "patient", "Patient", _include_column("subject", "Patient")),
             IncludeTarget("Encounter", "subject", "Patient", _include_column("subject", "Patient")),
+            IncludeTarget("Encounter", "diagnosis", "Condition", _include_child(_R, "Condition", _R.param == "diagnosis")),
+            IncludeTarget(
+                "Encounter", "reason-reference", "Condition", _include_child(_R, "Condition", _R.param == "reason-reference")
+            ),
             IncludeTarget("Encounter", "part-of", "Encounter", _include_column("part_of", "Encounter")),
             IncludeTarget("Encounter", "service-provider", "Organization", _include_column("service_provider", "Organization")),
         ),
@@ -589,6 +602,8 @@ def encounter_search() -> SearchRegistry:
                 "Encounter", "part-of", "Encounter",
                 revinclude_encounters_via_column("part_of", "Encounter", lambda e: e.encounter_id), reverse=True,
             ),
+            # Condition.encounter points here.
+            *encounter_condition_revincludes(lambda e: e.encounter_id),
         ),
         default_sort=lambda: [E.encounter_id.desc()],
     )

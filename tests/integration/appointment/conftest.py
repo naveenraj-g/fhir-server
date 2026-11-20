@@ -6,6 +6,8 @@ from tests.conftest import make_test_user
 # The appointment's own scopes, plus the scopes the tests need to create the
 # resources an Appointment points at (patient, practitioner, location, ...).
 APPOINTMENT_PERMS = [
+    "condition:create",
+    "condition:read",
     "related_person:create",
     "related_person:read",
     "appointment:create",

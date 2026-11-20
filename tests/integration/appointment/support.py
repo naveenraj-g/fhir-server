@@ -44,7 +44,7 @@ def appointment_body(patient_id: int | None = None, **changes) -> dict:
     return {"status": "booked", "participant": [participant(actor)], **changes}
 
 
-def full_body(patient_id: int, practitioner_id: int, location_id: int, slot_id: int) -> dict:
+def full_body(patient_id: int, practitioner_id: int, location_id: int, slot_id: int, condition_id: int) -> dict:
     return appointment_body(
         patient_id,
         resourceType="Appointment",
@@ -61,7 +61,7 @@ def full_body(patient_id: int, practitioner_id: int, location_id: int, slot_id: 
         specialty=[{"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}],
         appointmentType={"coding": [{"system": APPT, "code": "ROUTINE", "display": "Routine appointment"}], "text": "Routine"},
         reasonCode=[{"coding": [{"system": SCT, "code": "413153004", "display": "Check-up"}], "text": "Annual check-up"}],
-        reasonReference=[{"reference": "Condition/120001"}],
+        reasonReference=[{"reference": f"Condition/{condition_id}"}],
         priority=5,
         description="Discussion on the results of the MRI",
         supportingInformation=[{"reference": "Encounter/20001"}],
@@ -85,6 +85,15 @@ def full_body(patient_id: int, practitioner_id: int, location_id: int, slot_id: 
         ],
         requestedPeriod=[{"start": "2026-06-01", "end": "2026-06-07"}],
     )
+
+
+async def create_condition(client, patient_id: int | None = None) -> int:
+    """A minimal Condition an Appointment / Encounter can name as its reason; with
+    no patient the subject is an absolute URL (not existence-checked)."""
+    subject = f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"
+    resp = await client.post(f"{API}/conditions/", json={"subject": {"reference": subject}})
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])
 
 
 async def create_appointment(client, body: dict) -> int:

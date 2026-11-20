@@ -7,4 +7,5 @@ __all__ = ["ConditionService"]
 
 @trace_methods
 class ConditionService(_CoreMixin):
-    """All Condition business logic."""
+    """All Condition business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

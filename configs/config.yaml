@@ -224,7 +224,7 @@ routes:
     # - care_plan
     # - care_team
     # - clinical_impression
-    # - condition
+    - condition
     # - consent
     # - detected_issue
     # - diagnostic_report

@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-20, after AllergyIntolerance (`7d36dfc`)._
+_Last updated: 2026-11-20, after Condition (commit hash below)._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (14)
+## 1. Rebuilt on the current architecture (15)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -29,9 +29,10 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
+| 15 | Condition | `/conditions` | 21 | 120000 | `n1e6a3c9d725` | pending | Quantity search over an Age or a Range (`quantity_range_match`); `subject`/`asserter`/`evidence-detail` multi-target; now an existence-checked target of Encounter and Appointment |
 | 14 | AllergyIntolerance | `/allergy-intolerances` | 16 | 260000 | `m0d5f2b8c614` | `7d36dfc` | `recorder`/`asserter` multi-target over four rebuilt types; one shared token table for seven parameters; `onset` reads `reaction.onset` |
 
-All 14 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
+All 15 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
 
 ### What each resource existence-checks on write (relative `Type/<id>` → 422 if missing in the caller's org)
 
@@ -46,21 +47,22 @@ All 14 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | Schedule | `actor` of Practitioner / PractitionerRole / HealthcareService / Location, `identifier.assigner` | **Patient, RelatedPerson, Device actors**, absolute URLs |
 | Slot | `schedule`, `identifier.assigner` | absolute URLs, logical references |
 | Patient | `managingOrganization`, `generalPractitioner`, `link.other` (Patient, RelatedPerson), `contact.organization`, `identifier.assigner` | absolute URLs, logical references |
-| Appointment | `slot`, `participant.actor` (Patient, Practitioner, PractitionerRole, RelatedPerson, HealthcareService, Location), `identifier.assigner` | Device actors; `basedOn`, `reasonReference`, `supportingInformation` targets |
+| Appointment | `slot`, `participant.actor` (Patient, Practitioner, PractitionerRole, RelatedPerson, HealthcareService, Location), `reasonReference` (Condition), `identifier.assigner` | Device actors; `basedOn`, `supportingInformation` and non-Condition `reasonReference` targets |
 | AppointmentResponse | `appointment`, `actor` (same types as Appointment), `identifier.assigner` | Device actors |
-| Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest, Condition/Procedure/Observation targets |
+| Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `diagnosis.condition` and `reasonReference` (Condition), `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest, Procedure/Observation targets |
 | RelatedPerson | `patient`, `identifier.assigner` | absolute URLs, logical references |
+| Condition | `subject` (Patient), `encounter`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `note` `authorReference` (Practitioner, Patient, RelatedPerson, Organization), `identifier.assigner` | Group subject, `stage.assessment`, `evidence.detail`, absolute URLs, logical references |
 | AllergyIntolerance | `patient`, `encounter`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `note` / `reaction.note` `authorReference` (Practitioner, Patient, RelatedPerson, Organization), `identifier.assigner` | absolute URLs, logical references |
 
 ---
 
-## 2. Not yet rebuilt (35)
+## 2. Not yet rebuilt (34)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
-| Clinical records | Condition, Observation, DiagnosticReport, Procedure, FamilyMemberHistory, Immunization, ImmunizationRecommendation, ImmunizationEvaluation, RiskAssessment, ClinicalImpression, DetectedIssue |
+| Clinical records | Observation, DiagnosticReport, Procedure, FamilyMemberHistory, Immunization, ImmunizationRecommendation, ImmunizationEvaluation, RiskAssessment, ClinicalImpression, DetectedIssue |
 | Orders and medication | ServiceRequest, MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
 | Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Consent, Group |
 | Communication | Communication, CommunicationRequest |
@@ -70,7 +72,7 @@ Still on the old fully-normalized model and **not mounted** (commented out in `r
 
 Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
-Suggested next: **Condition** (referenced by Encounter's `diagnosis` and `reason-reference`; its quantity searches use the engine's existing `quantity_match`). Observation needs composite-search support in the engine first.
+Suggested next: **Observation** (needs composite-search support in the engine first) or a smaller one such as Procedure, Immunization or DiagnosticReport. Observation needs composite-search support in the engine first.
 
 ---
 
@@ -79,7 +81,7 @@ Suggested next: **Condition** (referenced by Encounter's `diagnosis` and `reason
 | Item | Detail | Where |
 |---|---|---|
 | Schedule `actor` | Patient and RelatedPerson actors are stored as sent: Schedule does not model them yet | Schedule |
-| Encounter references | Group, Account, EpisodeOfCare, ServiceRequest, Condition and similar targets are stored as sent until those resources are rebuilt | Encounter, Appointment |
+| Encounter references | Group, Account, EpisodeOfCare, ServiceRequest, Procedure, Observation and similar targets are stored as sent until those resources are rebuilt | Encounter, Appointment |
 | Appointment operations | `$find` / `$book` not built; to be decided after reading the Medplum scheduling docs | Appointment |
 | fhir-gql | The GraphQL half (types, translators for **both** connectors, queries and mutations) is deferred until every fhir-server resource is done | `D:\code\work\projects\fhir-gql` |
 | Common search parameters | `_tag`, `_profile`, `_security`, `_source`, `_text`, `_content`, `_list`, `_has`, `_type`, `_filter` are ignored (reported in an `outcome` entry) | `docs/search-architecture/pending-search-capabilities.md` |
@@ -99,6 +101,7 @@ Suggested next: **Condition** (referenced by Encounter's `diagnosis` and `reason
 | Multi-target reference | Schedule | `app/fhir/search/` |
 | Partial-date range (`period_bounds`) | Patient | `app/repository/_content_index.py` |
 | Quantity search (`quantity_match`) | Encounter | `app/fhir/search/quantity.py` |
+| Quantity search over an Age or a Range (`quantity_range_match`) | Condition | `app/fhir/search/quantity.py` |
 
 ---
 
