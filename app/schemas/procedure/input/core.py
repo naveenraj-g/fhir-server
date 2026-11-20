@@ -1,389 +1,166 @@
-from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field
 
-from app.models.enums import IdentifierUse
-from app.models.procedure.enums import ProcedureStatus
-from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
-from app.schemas.procedure.input.codeable_concept import (
-    ProcedureCodeableConceptInput,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
-from app.schemas.procedure.input.focal_device import ProcedureFocalDeviceInput
-from app.schemas.procedure.input.identifier import ProcedureIdentifierInput
-from app.schemas.procedure.input.note import ProcedureNoteInput
-from app.schemas.procedure.input.performer import ProcedurePerformerInput
-from app.schemas.procedure.input.reference import ProcedureReferenceInput
+
+StatusCode = Literal[
+    "preparation", "in-progress", "not-done", "on-hold", "stopped", "completed", "entered-in-error", "unknown"
+]
+
+_EXAMPLE = {
+    "resourceType": "Procedure",
+    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/procedure-id", "value": "PR-1001"}],
+    "status": "completed",
+    "category": {"coding": [{"system": "http://snomed.info/sct", "code": "387713003", "display": "Surgical procedure"}]},
+    "code": {"coding": [{"system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy"}]},
+    "subject": {"reference": "Patient/10001"},
+    "encounter": {"reference": "Encounter/20001"},
+    "performedPeriod": {"start": "2023-01-15T09:30:00Z", "end": "2023-01-15T10:45:00Z"},
+    "recorder": {"reference": "Practitioner/30001"},
+    "asserter": {"reference": "Practitioner/30001"},
+    "performer": [
+        {
+            "function": {"coding": [{"system": "http://snomed.info/sct", "code": "304292004", "display": "Surgeon"}]},
+            "actor": {"reference": "Practitioner/30001"},
+        }
+    ],
+    "location": {"reference": "Location/230001"},
+    "reasonCode": [{"coding": [{"system": "http://snomed.info/sct", "code": "74400008", "display": "Appendicitis"}]}],
+    "bodySite": [{"coding": [{"system": "http://snomed.info/sct", "code": "66754008", "display": "Appendix"}]}],
+    "outcome": {"coding": [{"system": "http://snomed.info/sct", "code": "385669000", "display": "Successful"}]},
+    "note": [{"text": "Uneventful.", "time": "2023-01-15T11:00:00Z"}],
+}
 
 
-class ProcedureCreateSchema(BaseModel):
-    """Schema for creating a Procedure resource (POST /api/fhir/v1/procedures)."""
+class ProcedureAnnotationInput(FhirInputModel):
+    """Annotation — a note with an author (a Reference or plain text) and a time."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "completed",
-                "code": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "80146002",
-                            "display": "Appendectomy",
-                        }
-                    ],
-                    "text": "Appendectomy",
-                },
-                "subject": "Patient/10001",
-                "subject_display": "John Doe",
-                "encounter": "Encounter/20001",
-                "performed_date_time": "2026-10-15T14:30:00Z",
-                "performer": [
-                    {
-                        "actor": "Practitioner/30001",
-                        "actor_display": "Dr. Sarah Surgeon",
-                        "function": {
-                            "coding": [
-                                {
-                                    "system": "http://snomed.info/sct",
-                                    "code": "304292004",
-                                    "display": "Surgeon",
-                                }
-                            ],
-                            "text": "Surgeon",
-                        },
-                    }
-                ],
-                "location": "Location/230001",
-                "reason_code": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "74400008",
-                                "display": "Appendicitis",
-                            }
-                        ],
-                        "text": "Acute Appendicitis",
-                    }
-                ],
-                "outcome": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "385669000",
-                            "display": "Successful",
-                        }
-                    ],
-                    "text": "Successful",
-                },
-            }
-        },
-    )
-
-    instantiates_canonical: list[str] | None = Field(
-        None, description="Instantiates FHIR protocol or definition."
-    )
-    instantiates_uri: list[str] | None = Field(
-        None, description="Instantiates external protocol or definition."
-    )
-    based_on: list[ProcedureReferenceInput | str] | None = Field(
-        None, description="A request for this procedure (CarePlan | ServiceRequest)."
-    )
-    part_of: list[ProcedureReferenceInput | str] | None = Field(
-        None, description="Part of referenced event (Procedure | Observation | MedicationAdministration)."
-    )
-    status: ProcedureStatus = Field(
-        ...,
-        description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown.",
-    )
-    status_reason: ProcedureCodeableConceptInput | None = Field(
-        None, description="Reason for current status."
-    )
-    category: ProcedureCodeableConceptInput | None = Field(
-        None, description="Classification of the procedure."
-    )
-    code: ProcedureCodeableConceptInput | None = Field(
-        None, description="Identification of the procedure."
-    )
-    subject: str | None = Field(
+    authorReference: FhirReferenceInput | None = Field(
         None,
-        description="Who the procedure was performed on (Patient | Group), e.g. Patient/10001.",
+        description="Individual responsible for the annotation — Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    subject_display: str | None = Field(
-        None, description="Plain text display for the subject."
-    )
-    subject_identifier_use: IdentifierUse | None = Field(None)
-    subject_identifier_type_system: str | None = Field(None)
-    subject_identifier_type_version: str | None = Field(None)
-    subject_identifier_type_code: str | None = Field(None)
-    subject_identifier_type_display: str | None = Field(None)
-    subject_identifier_type_text: str | None = Field(None)
-    subject_identifier_type_user_selected: bool | None = Field(None)
-    subject_identifier_system: str | None = Field(None)
-    subject_identifier_value: str | None = Field(None)
-    subject_identifier_period_start: datetime | None = Field(None)
-    subject_identifier_period_end: datetime | None = Field(None)
-
-    encounter: str | None = Field(
-        None, description="Encounter created as part of (e.g. Encounter/20001)."
-    )
-    encounter_display: str | None = Field(
-        None, description="Plain text display for the encounter."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(None)
-    encounter_identifier_type_system: str | None = Field(None)
-    encounter_identifier_type_version: str | None = Field(None)
-    encounter_identifier_type_code: str | None = Field(None)
-    encounter_identifier_type_display: str | None = Field(None)
-    encounter_identifier_type_text: str | None = Field(None)
-    encounter_identifier_type_user_selected: bool | None = Field(None)
-    encounter_identifier_system: str | None = Field(None)
-    encounter_identifier_value: str | None = Field(None)
-    encounter_identifier_period_start: datetime | None = Field(None)
-    encounter_identifier_period_end: datetime | None = Field(None)
-
-    performed_date_time: datetime | None = Field(
-        None, description="When the procedure was performed (dateTime)."
-    )
-    performed_period_start: datetime | None = Field(
-        None, description="Start of period when procedure was performed."
-    )
-    performed_period_end: datetime | None = Field(
-        None, description="End of period when procedure was performed."
-    )
-    performed_string: str | None = Field(
-        None, description="When procedure was performed as human language."
-    )
-    performed_age: dict[str, Any] | None = Field(
-        None, description="Age when procedure was performed."
-    )
-    performed_range: dict[str, Any] | None = Field(
-        None, description="Range of ages or periods when procedure was performed."
-    )
-    recorder: str | None = Field(
-        None, description="Who recorded the procedure (Patient | RelatedPerson | Practitioner | PractitionerRole)."
-    )
-    recorder_display: str | None = Field(
-        None, description="Plain text display for recorder."
-    )
-    recorder_identifier_use: IdentifierUse | None = Field(None)
-    recorder_identifier_type_system: str | None = Field(None)
-    recorder_identifier_type_version: str | None = Field(None)
-    recorder_identifier_type_code: str | None = Field(None)
-    recorder_identifier_type_display: str | None = Field(None)
-    recorder_identifier_type_text: str | None = Field(None)
-    recorder_identifier_type_user_selected: bool | None = Field(None)
-    recorder_identifier_system: str | None = Field(None)
-    recorder_identifier_value: str | None = Field(None)
-    recorder_identifier_period_start: datetime | None = Field(None)
-    recorder_identifier_period_end: datetime | None = Field(None)
-
-    asserter: str | None = Field(
-        None, description="Person who asserts this procedure (Patient | RelatedPerson | Practitioner | PractitionerRole)."
-    )
-    asserter_display: str | None = Field(
-        None, description="Plain text display for asserter."
-    )
-    asserter_identifier_use: IdentifierUse | None = Field(None)
-    asserter_identifier_type_system: str | None = Field(None)
-    asserter_identifier_type_version: str | None = Field(None)
-    asserter_identifier_type_code: str | None = Field(None)
-    asserter_identifier_type_display: str | None = Field(None)
-    asserter_identifier_type_text: str | None = Field(None)
-    asserter_identifier_type_user_selected: bool | None = Field(None)
-    asserter_identifier_system: str | None = Field(None)
-    asserter_identifier_value: str | None = Field(None)
-    asserter_identifier_period_start: datetime | None = Field(None)
-    asserter_identifier_period_end: datetime | None = Field(None)
-
-    performer: list[ProcedurePerformerInput] | None = Field(
-        None, description="The people/organizations/devices who performed the procedure."
-    )
-    location: str | None = Field(
-        None, description="Where the procedure happened (e.g. Location/230001)."
-    )
-    location_display: str | None = Field(
-        None, description="Plain text display for location."
-    )
-    location_identifier_use: IdentifierUse | None = Field(None)
-    location_identifier_type_system: str | None = Field(None)
-    location_identifier_type_version: str | None = Field(None)
-    location_identifier_type_code: str | None = Field(None)
-    location_identifier_type_display: str | None = Field(None)
-    location_identifier_type_text: str | None = Field(None)
-    location_identifier_type_user_selected: bool | None = Field(None)
-    location_identifier_system: str | None = Field(None)
-    location_identifier_value: str | None = Field(None)
-    location_identifier_period_start: datetime | None = Field(None)
-    location_identifier_period_end: datetime | None = Field(None)
-
-    reason_code: list[ProcedureCodeableConceptInput] | None = Field(
-        None, description="Coded reason procedure performed."
-    )
-    reason_reference: list[ProcedureReferenceInput | str] | None = Field(
-        None, description="The justification that the procedure was performed (Condition | Observation | Procedure | DiagnosticReport | DocumentReference)."
-    )
-    body_site: list[ProcedureCodeableConceptInput] | None = Field(
-        None, description="Target body sites."
-    )
-    outcome: ProcedureCodeableConceptInput | None = Field(
-        None, description="The result of procedure."
-    )
-    report: list[ProcedureReferenceInput | str] | None = Field(
-        None, description="Any report resulting from the procedure (DiagnosticReport | DocumentReference | Composition)."
-    )
-    complication: list[ProcedureCodeableConceptInput] | None = Field(
-        None, description="Complication following the procedure."
-    )
-    complication_detail: list[ProcedureReferenceInput | str] | None = Field(
-        None, description="A condition that is a result of the procedure (Condition)."
-    )
-    follow_up: list[ProcedureCodeableConceptInput] | None = Field(
-        None, description="Instructions for follow up."
-    )
-    note: list[ProcedureNoteInput] | None = Field(
-        None, description="Additional information about the procedure."
-    )
-    focal_device: list[ProcedureFocalDeviceInput] | None = Field(
-        None, description="Manipulated, implanted, or removed device."
-    )
-    used_reference: list[ProcedureReferenceInput | str] | None = Field(
-        None, description="Items used during procedure (Device | Medication | Substance)."
-    )
-    used_code: list[ProcedureCodeableConceptInput] | None = Field(
-        None, description="Coded items used during the procedure."
-    )
-    identifier: list[ProcedureIdentifierInput] | None = Field(
-        None, description="External identifiers for this procedure."
-    )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="May be used to represent additional information not part of the basic definition."
-    )
-
-    @model_validator(mode="after")
-    def validate_subject(self) -> "ProcedureCreateSchema":
-        has_ref = bool(self.subject)
-        has_ident = any(
-            getattr(self, f"subject_{suffix}") is not None
-            for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-        )
-        has_disp = bool(self.subject_display)
-        if not (has_ref or has_ident or has_disp):
-            raise ValueError(
-                "subject: at least one of subject reference string, subject display, or subject_identifier_* fallback must be provided."
-            )
-        return self
+    authorString: str | None = Field(None, description="Individual responsible for the annotation, as plain text.")
+    time: str | None = Field(None, description="When the annotation was made (a FHIR dateTime).")
+    text: str | None = Field(None, description="The annotation text, as markdown (required by R4).")
 
 
-class ProcedurePatchSchema(BaseModel):
-    """Schema for updating a Procedure resource (PATCH /api/fhir/v1/procedures/{id})."""
+class ProcedureQuantityInput(FhirInputModel):
+    """Age (performedAge) — a Quantity with a time unit."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+    value: float | int | None = Field(None, description="Numerical value (with implicit precision).")
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(None, description="< | <= | >= | > - how to understand the value.")
+    unit: str | None = Field(None, description="Unit representation.")
+    system: str | None = Field(None, description="System that defines coded unit form (usually http://unitsofmeasure.org).")
+    code: str | None = Field(None, description="Coded form of the unit.")
+
+
+class ProcedureRangeInput(FhirInputModel):
+    """Range (performedRange) — a low and a high Quantity."""
+
+    low: ProcedureQuantityInput | None = Field(None, description="Low limit.")
+    high: ProcedureQuantityInput | None = Field(None, description="High limit.")
+
+
+class ProcedurePerformerInput(FhirInputModel):
+    """Procedure.performer — who performed the procedure and what they did."""
+
+    function: FhirCodeableConceptInput | None = Field(None, description="Type of performance.")
+    actor: FhirReferenceInput | None = Field(
+        None,
+        description="Who performed the procedure — Reference(Practitioner | PractitionerRole | Organization | Patient | RelatedPerson | Device) (required by R4). A relative reference to one of the first five must exist in the caller's org (422 otherwise).",
+    )
+    onBehalfOf: FhirReferenceInput | None = Field(None, description="Organization the device or practitioner was acting for — Reference(Organization).")
+
+
+class ProcedureFocalDeviceInput(FhirInputModel):
+    """Procedure.focalDevice — a device changed in the procedure."""
+
+    action: FhirCodeableConceptInput | None = Field(None, description="Kind of change to device.")
+    manipulated: FhirReferenceInput | None = Field(None, description="Device that was changed — Reference(Device) (required by R4).")
+
+
+class _ProcedureFields(FhirInputModel):
+    """Every writable Procedure element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/procedure.html). Create and patch accept exactly
+    the same fields. R4 requires `status` and `subject`; that is enforced by base
+    R4 validation of the stored document (the `java_validator` backend — the
+    native structural check has no cardinality minimums), not by this model. A
+    PATCH may omit them: it is merged onto the current resource before validating.
+
+    The validated body is stored whole (ProcedureModel.content), so any valid R4
+    element is kept — including ones this model does not declare. Server-managed
+    elements are ignored if sent: `id` (assigned from the procedure_id sequence)
+    and `meta` (audit/tenant data, stamped on at read time). org_id and
+    created_by/updated_by come from the verified JWT (actor.org_id / actor.sub),
+    never the body. There is no user_id."""
+
+    resourceType: Literal["Procedure"] | None = Field(None, description="Optional; if supplied it must be 'Procedure'.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(None, description="External Identifiers for this procedure.")
+    instantiatesCanonical: list[str] | None = Field(None, description="Instantiates FHIR protocol or definition (canonical URLs).")
+    instantiatesUri: list[str] | None = Field(None, description="Instantiates external protocol or definition (URIs).")
+    basedOn: list[FhirReferenceInput] | None = Field(None, description="A request for this procedure — Reference(CarePlan | ServiceRequest).")
+    partOf: list[FhirReferenceInput] | None = Field(None, description="Part of referenced event — Reference(Procedure | Observation | MedicationAdministration). A relative `Procedure/<id>` must exist in the caller's org (422 otherwise).")
+    status: StatusCode | None = Field(None, description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown (required by R4).")
+    statusReason: FhirCodeableConceptInput | None = Field(None, description="Reason for current status.")
+    category: FhirCodeableConceptInput | None = Field(None, description="Classification of the procedure.")
+    code: FhirCodeableConceptInput | None = Field(None, description="Identification of the procedure.")
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="Who the procedure was performed on — Reference(Patient | Group) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
+    )
+    encounter: FhirReferenceInput | None = Field(None, description="Encounter created as part of — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).")
+    performedDateTime: str | None = Field(None, description="When the procedure was performed (a FHIR dateTime). One of the performed[x] choices.")
+    performedPeriod: FhirPeriodInput | None = Field(None, description="When the procedure was performed (a Period). One of the performed[x] choices.")
+    performedString: str | None = Field(None, description="When the procedure was performed, as text. One of the performed[x] choices.")
+    performedAge: ProcedureQuantityInput | None = Field(None, description="When the procedure was performed (an Age). One of the performed[x] choices.")
+    performedRange: ProcedureRangeInput | None = Field(None, description="When the procedure was performed (a Range). One of the performed[x] choices.")
+    recorder: FhirReferenceInput | None = Field(None, description="Who recorded the procedure — Reference(Patient | RelatedPerson | Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).")
+    asserter: FhirReferenceInput | None = Field(None, description="Person who asserts this procedure — Reference(Patient | RelatedPerson | Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).")
+    performer: list[ProcedurePerformerInput] | None = Field(None, description="The people who performed the procedure.")
+    location: FhirReferenceInput | None = Field(None, description="Where the procedure happened — Reference(Location). A relative reference must exist in the caller's org (422 otherwise).")
+    reasonCode: list[FhirCodeableConceptInput] | None = Field(None, description="Coded reason procedure performed.")
+    reasonReference: list[FhirReferenceInput] | None = Field(None, description="The justification that the procedure was performed — Reference(Condition | Observation | Procedure | DiagnosticReport | DocumentReference). A relative Condition or Procedure must exist in the caller's org (422 otherwise).")
+    bodySite: list[FhirCodeableConceptInput] | None = Field(None, description="Target body sites.")
+    outcome: FhirCodeableConceptInput | None = Field(None, description="The result of procedure.")
+    report: list[FhirReferenceInput] | None = Field(None, description="Any report resulting from the procedure — Reference(DiagnosticReport | DocumentReference | Composition).")
+    complication: list[FhirCodeableConceptInput] | None = Field(None, description="Complication following the procedure.")
+    complicationDetail: list[FhirReferenceInput] | None = Field(None, description="A condition that is a result of the procedure — Reference(Condition). A relative reference must exist in the caller's org (422 otherwise).")
+    followUp: list[FhirCodeableConceptInput] | None = Field(None, description="Instructions for follow up.")
+    note: list[ProcedureAnnotationInput] | None = Field(None, description="Additional information about the procedure.")
+    focalDevice: list[ProcedureFocalDeviceInput] | None = Field(None, description="Manipulated, implanted, or removed device.")
+    usedReference: list[FhirReferenceInput] | None = Field(None, description="Items used during procedure — Reference(Device | Medication | Substance).")
+    usedCode: list[FhirCodeableConceptInput] | None = Field(None, description="Coded items used during the procedure.")
+
+
+class ProcedureCreateSchema(_ProcedureFields):
+    """POST body — a FHIR R4 Procedure resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class ProcedurePatchSchema(_ProcedureFields):
+    """PATCH body — a partial FHIR R4 Procedure (merge-patch semantics on
+    top-level elements). Only supplied elements are written; omitted ones are left
+    untouched. A supplied element replaces the stored value wholesale — a list
+    (even `[]`) replaces every existing entry, an object such as `code` replaces
+    the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "completed",
+                "outcome": {"coding": [{"system": "http://snomed.info/sct", "code": "385669000", "display": "Successful"}]},
             }
-        },
-    )
-
-    instantiates_canonical: list[str] | None = Field(None, description="Instantiates FHIR protocol or definition.")
-    instantiates_uri: list[str] | None = Field(None, description="Instantiates external protocol or definition.")
-    based_on: list[ProcedureReferenceInput | str] | None = Field(None, description="A request for this procedure.")
-    part_of: list[ProcedureReferenceInput | str] | None = Field(None, description="Part of referenced event.")
-    status: ProcedureStatus | None = Field(None, description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown.")
-    status_reason: ProcedureCodeableConceptInput | None = Field(None, description="Reason for current status.")
-    category: ProcedureCodeableConceptInput | None = Field(None, description="Classification of the procedure.")
-    code: ProcedureCodeableConceptInput | None = Field(None, description="Identification of the procedure.")
-    subject: str | None = Field(None, description="Who the procedure was performed on.")
-    subject_display: str | None = Field(None, description="Plain text display for subject.")
-    subject_identifier_use: IdentifierUse | None = Field(None)
-    subject_identifier_type_system: str | None = Field(None)
-    subject_identifier_type_version: str | None = Field(None)
-    subject_identifier_type_code: str | None = Field(None)
-    subject_identifier_type_display: str | None = Field(None)
-    subject_identifier_type_text: str | None = Field(None)
-    subject_identifier_type_user_selected: bool | None = Field(None)
-    subject_identifier_system: str | None = Field(None)
-    subject_identifier_value: str | None = Field(None)
-    subject_identifier_period_start: datetime | None = Field(None)
-    subject_identifier_period_end: datetime | None = Field(None)
-
-    encounter: str | None = Field(None, description="Encounter created as part of.")
-    encounter_display: str | None = Field(None, description="Plain text display for encounter.")
-    encounter_identifier_use: IdentifierUse | None = Field(None)
-    encounter_identifier_type_system: str | None = Field(None)
-    encounter_identifier_type_version: str | None = Field(None)
-    encounter_identifier_type_code: str | None = Field(None)
-    encounter_identifier_type_display: str | None = Field(None)
-    encounter_identifier_type_text: str | None = Field(None)
-    encounter_identifier_type_user_selected: bool | None = Field(None)
-    encounter_identifier_system: str | None = Field(None)
-    encounter_identifier_value: str | None = Field(None)
-    encounter_identifier_period_start: datetime | None = Field(None)
-    encounter_identifier_period_end: datetime | None = Field(None)
-
-    performed_date_time: datetime | None = Field(None, description="When the procedure was performed.")
-    performed_period_start: datetime | None = Field(None, description="Start of period.")
-    performed_period_end: datetime | None = Field(None, description="End of period.")
-    performed_string: str | None = Field(None, description="When procedure was performed.")
-    performed_age: dict[str, Any] | None = Field(None, description="Age when performed.")
-    performed_range: dict[str, Any] | None = Field(None, description="Range when performed.")
-    recorder: str | None = Field(None, description="Who recorded the procedure.")
-    recorder_display: str | None = Field(None, description="Plain text display for recorder.")
-    recorder_identifier_use: IdentifierUse | None = Field(None)
-    recorder_identifier_type_system: str | None = Field(None)
-    recorder_identifier_type_version: str | None = Field(None)
-    recorder_identifier_type_code: str | None = Field(None)
-    recorder_identifier_type_display: str | None = Field(None)
-    recorder_identifier_type_text: str | None = Field(None)
-    recorder_identifier_type_user_selected: bool | None = Field(None)
-    recorder_identifier_system: str | None = Field(None)
-    recorder_identifier_value: str | None = Field(None)
-    recorder_identifier_period_start: datetime | None = Field(None)
-    recorder_identifier_period_end: datetime | None = Field(None)
-
-    asserter: str | None = Field(None, description="Person who asserts this procedure.")
-    asserter_display: str | None = Field(None, description="Plain text display for asserter.")
-    asserter_identifier_use: IdentifierUse | None = Field(None)
-    asserter_identifier_type_system: str | None = Field(None)
-    asserter_identifier_type_version: str | None = Field(None)
-    asserter_identifier_type_code: str | None = Field(None)
-    asserter_identifier_type_display: str | None = Field(None)
-    asserter_identifier_type_text: str | None = Field(None)
-    asserter_identifier_type_user_selected: bool | None = Field(None)
-    asserter_identifier_system: str | None = Field(None)
-    asserter_identifier_value: str | None = Field(None)
-    asserter_identifier_period_start: datetime | None = Field(None)
-    asserter_identifier_period_end: datetime | None = Field(None)
-
-    performer: list[ProcedurePerformerInput] | None = Field(None, description="The people who performed the procedure.")
-    location: str | None = Field(None, description="Where the procedure happened.")
-    location_display: str | None = Field(None, description="Plain text display for location.")
-    location_identifier_use: IdentifierUse | None = Field(None)
-    location_identifier_type_system: str | None = Field(None)
-    location_identifier_type_version: str | None = Field(None)
-    location_identifier_type_code: str | None = Field(None)
-    location_identifier_type_display: str | None = Field(None)
-    location_identifier_type_text: str | None = Field(None)
-    location_identifier_type_user_selected: bool | None = Field(None)
-    location_identifier_system: str | None = Field(None)
-    location_identifier_value: str | None = Field(None)
-    location_identifier_period_start: datetime | None = Field(None)
-    location_identifier_period_end: datetime | None = Field(None)
-
-    reason_code: list[ProcedureCodeableConceptInput] | None = Field(None, description="Coded reason procedure performed.")
-    reason_reference: list[ProcedureReferenceInput | str] | None = Field(None, description="The justification that the procedure was performed.")
-    body_site: list[ProcedureCodeableConceptInput] | None = Field(None, description="Target body sites.")
-    outcome: ProcedureCodeableConceptInput | None = Field(None, description="The result of procedure.")
-    report: list[ProcedureReferenceInput | str] | None = Field(None, description="Any report resulting from the procedure.")
-    complication: list[ProcedureCodeableConceptInput] | None = Field(None, description="Complication following the procedure.")
-    complication_detail: list[ProcedureReferenceInput | str] | None = Field(None, description="A condition resulting from the procedure.")
-    follow_up: list[ProcedureCodeableConceptInput] | None = Field(None, description="Instructions for follow up.")
-    note: list[ProcedureNoteInput] | None = Field(None, description="Additional information about the procedure.")
-    focal_device: list[ProcedureFocalDeviceInput] | None = Field(None, description="Manipulated device.")
-    used_reference: list[ProcedureReferenceInput | str] | None = Field(None, description="Items used during procedure.")
-    used_code: list[ProcedureCodeableConceptInput] | None = Field(None, description="Coded items used during the procedure.")
-    identifier: list[ProcedureIdentifierInput] | None = Field(None, description="External identifiers for this procedure.")
-    extension: list[dict[str, Any]] | None = Field(None, description="Extensions.")
+        }
+    }

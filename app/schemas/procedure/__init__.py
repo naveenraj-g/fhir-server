@@ -1,53 +1,14 @@
-from .input import (
-    ProcedureCodeableConceptInput,
-    ProcedureCreateSchema,
-    ProcedureFocalDeviceInput,
-    ProcedureIdentifierInput,
-    ProcedureNoteInput,
-    ProcedurePatchSchema,
-    ProcedurePerformerInput,
-    ProcedureReferenceInput,
-)
-from .response import (
+from app.schemas.procedure.input import ProcedureCreateSchema, ProcedurePatchSchema
+from app.schemas.procedure.response import (
     FHIRProcedureBundle,
     FHIRProcedureBundleEntry,
-    FHIRProcedureFocalDevice,
-    FHIRProcedurePerformer,
     FHIRProcedureSchema,
-    PaginatedProcedureResponse,
-    PlainProcedureConcept,
-    PlainProcedureFocalDevice,
-    PlainProcedureIdentifier,
-    PlainProcedureNote,
-    PlainProcedurePerformer,
-    PlainProcedureReference,
-    PlainProcedureResponse,
-    PlainProcedureSingleConcept,
 )
 
 __all__ = [
-    # Input
-    "ProcedureCodeableConceptInput",
-    "ProcedureIdentifierInput",
-    "ProcedurePerformerInput",
-    "ProcedureFocalDeviceInput",
-    "ProcedureNoteInput",
-    "ProcedureReferenceInput",
     "ProcedureCreateSchema",
     "ProcedurePatchSchema",
-    # Response
-    "PlainProcedureConcept",
-    "PlainProcedureSingleConcept",
-    "PlainProcedureIdentifier",
-    "FHIRProcedurePerformer",
-    "PlainProcedurePerformer",
-    "FHIRProcedureFocalDevice",
-    "PlainProcedureFocalDevice",
-    "PlainProcedureNote",
-    "PlainProcedureReference",
-    "FHIRProcedureSchema",
-    "PlainProcedureResponse",
-    "PaginatedProcedureResponse",
-    "FHIRProcedureBundleEntry",
     "FHIRProcedureBundle",
+    "FHIRProcedureBundleEntry",
+    "FHIRProcedureSchema",
 ]

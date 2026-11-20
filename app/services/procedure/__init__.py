@@ -7,4 +7,5 @@ __all__ = ["ProcedureService"]
 
 @trace_methods
 class ProcedureService(_CoreMixin):
-    """Orchestrates Procedure CRUD operations and data transformations."""
+    """All Procedure business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

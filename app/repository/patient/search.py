@@ -22,6 +22,7 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes, patient_allergy_revincludes
 from app.repository._condition_revinclude import asserter_condition_revincludes, subject_condition_revincludes
+from app.repository._procedure_revinclude import performer_procedure_revincludes, subject_procedure_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import subject_encounter_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
@@ -651,6 +652,8 @@ def patient_search() -> SearchRegistry:
             *patient_allergy_revincludes(lambda p: p.patient_id),
             *subject_condition_revincludes(lambda p: p.patient_id),
             *asserter_condition_revincludes('Patient', lambda p: p.patient_id),
+            *subject_procedure_revincludes(lambda p: p.patient_id),
+            *performer_procedure_revincludes('Patient', lambda p: p.patient_id),
             *actor_allergy_revincludes('Patient', lambda p: p.patient_id),
             IncludeTarget("RelatedPerson", "patient", "Patient", _revinclude_related_persons, reverse=True),
             IncludeTarget(

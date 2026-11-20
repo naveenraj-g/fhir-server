@@ -79,9 +79,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     for location in document.get("location") or []:
         add("location.location", (location.get("location") or {}).get("reference"), "Location")
     for diagnosis in document.get("diagnosis") or []:
-        add("diagnosis.condition", (diagnosis.get("condition") or {}).get("reference"), "Condition")
+        for resource_type in ("Condition", "Procedure"):
+            add("diagnosis.condition", (diagnosis.get("condition") or {}).get("reference"), resource_type)
     for reason in document.get("reasonReference") or []:
-        add("reasonReference", reason.get("reference"), "Condition")
+        for resource_type in ("Condition", "Procedure"):
+            add("reasonReference", reason.get("reference"), resource_type)
     hospitalization = document.get("hospitalization") or {}
     for element in ("origin", "destination"):
         reference = (hospitalization.get(element) or {}).get("reference")

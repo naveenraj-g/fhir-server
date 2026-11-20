@@ -237,7 +237,7 @@ async def test_create_unmodeled_targets_are_not_checked(client):
         basedOn=[{"reference": "ServiceRequest/5"}],
         account=[{"reference": "Account/5"}],
         reasonReference=[{"reference": "Observation/5"}],
-        diagnosis=[{"condition": {"reference": "Procedure/5"}}],
+        diagnosis=[{"condition": {"reference": "https://other.example.org/fhir/Procedure/5"}}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 

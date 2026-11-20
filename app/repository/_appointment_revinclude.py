@@ -36,13 +36,13 @@ def slot_revincludes(key) -> tuple[IncludeTarget, ...]:
     return (IncludeTarget("Appointment", "slot", "Slot", fetch, reverse=True),)
 
 
-def condition_appointment_revincludes(key) -> tuple[IncludeTarget, ...]:
+def reason_appointment_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
     """Appointment:reason-reference — appointments whose reason is one of the
-    matched Conditions."""
+    matched rows of `resource_type` (Condition or Procedure)."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.appointment.search import revinclude_appointments_via_condition
+        from app.repository.appointment.search import revinclude_appointments_via_reason
 
-        return await revinclude_appointments_via_condition(key)(session, ctx, rows)
+        return await revinclude_appointments_via_reason(resource_type, key)(session, ctx, rows)
 
-    return (IncludeTarget("Appointment", "reason-reference", "Condition", fetch, reverse=True),)
+    return (IncludeTarget("Appointment", "reason-reference", resource_type, fetch, reverse=True),)

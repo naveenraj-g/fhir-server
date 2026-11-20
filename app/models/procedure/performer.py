@@ -1,92 +1,36 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.procedure.enums import ProcedurePerformerActorReferenceType
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
+
+# The six R4 targets of Procedure.performer.actor.
+PERFORMER_TYPES = ("Practitioner", "PractitionerRole", "Organization", "Patient", "RelatedPerson", "Device")
 
 
-class ProcedurePerformer(TenantAuditMixin, Base):
-    """Procedure.performer (0..* BackboneElement) child table."""
+class ProcedurePerformer(Base):
+    """Search index for `performer` (Procedure.performer.actor, 0..* performers,
+    each with one actor Reference): one row per performer whose actor has a
+    `reference` or an `identifier`. Derived from ProcedureModel.content — never
+    read to build a response.
+
+    `reference_type` records which type a relative `Type/<id>` names — a plain
+    string, not a Postgres enum, because the actor can be one of six types (a
+    search by bare id is ambiguous: `performer=Type/id` or `:Type=id`).
+
+      performer             -> reference_type/reference_id or reference_reference
+      performer:identifier  -> reference_identifier_system/_value
+
+    `function` and `onBehalfOf` live only in `content`."""
 
     __tablename__ = "procedure_performer"
+    __table_args__ = (Index("ix_procedure_performer_type_id", "reference_type", "reference_id"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    procedure_pk = Column(
-        BigInteger, ForeignKey("procedure.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-
-    function_text = Column(String, nullable=True)
-
-    actor_reference = Column(String, nullable=True)
-    actor_type = Column(
-        Enum(
-            ProcedurePerformerActorReferenceType,
-            name="procedure_performer_actor_reference_type",
-        ),
-        nullable=True,
-    )
-    actor_id = Column(BigInteger, nullable=True, index=True)
-    actor_display = Column(String, nullable=True)
-    actor_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    actor_identifier_type_system = Column(String, nullable=True)
-    actor_identifier_type_version = Column(String, nullable=True)
-    actor_identifier_type_code = Column(String, nullable=True)
-    actor_identifier_type_display = Column(String, nullable=True)
-    actor_identifier_type_text = Column(String, nullable=True)
-    actor_identifier_type_user_selected = Column(Boolean, nullable=True)
-    actor_identifier_system = Column(String, nullable=True)
-    actor_identifier_value = Column(String, nullable=True)
-    actor_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    actor_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    on_behalf_of_reference = Column(String, nullable=True)
-    on_behalf_of_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    on_behalf_of_id = Column(BigInteger, nullable=True, index=True)
-    on_behalf_of_display = Column(String, nullable=True)
-    on_behalf_of_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    on_behalf_of_identifier_type_system = Column(String, nullable=True)
-    on_behalf_of_identifier_type_version = Column(String, nullable=True)
-    on_behalf_of_identifier_type_code = Column(String, nullable=True)
-    on_behalf_of_identifier_type_display = Column(String, nullable=True)
-    on_behalf_of_identifier_type_text = Column(String, nullable=True)
-    on_behalf_of_identifier_type_user_selected = Column(Boolean, nullable=True)
-    on_behalf_of_identifier_system = Column(String, nullable=True)
-    on_behalf_of_identifier_value = Column(String, nullable=True)
-    on_behalf_of_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    on_behalf_of_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    procedure_pk = Column(BigInteger, ForeignKey("procedure.id"), nullable=False, index=True)
+    reference_reference = Column(String, nullable=True)
+    reference_type = Column(String, nullable=True)
+    reference_id = Column(BigInteger, nullable=True)
+    reference_identifier_system = Column(String, nullable=True)
+    reference_identifier_value = Column(String, nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="performers")
-    function_codings = relationship(
-        "ProcedurePerformerFunctionCoding",
-        back_populates="performer",
-        cascade="all, delete-orphan",
-    )
-
-
-class ProcedurePerformerFunctionCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """Procedure.performer.function.coding (0..* Coding) grandchild table."""
-
-    __tablename__ = "procedure_performer_function_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    performer_id = Column(
-        BigInteger,
-        ForeignKey("procedure_performer.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    performer = relationship("ProcedurePerformer", back_populates="function_codings")

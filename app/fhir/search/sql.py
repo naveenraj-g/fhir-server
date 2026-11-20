@@ -354,3 +354,21 @@ def reference_match(
     if ref.url is not None:
         return raw_col == ref.url
     return and_(type_col == type_enum(ref.resource_type), id_col == int(ref.resource_id))
+
+
+# ── uri ──────────────────────────────────────────────────────────────────────
+
+
+def uri_match(uri_col, value: str, modifier: str | None):
+    """A `uri` search (R4 search.html#uri): the value is a URI, compared as a
+    whole string, case-sensitively — there is no normalization. `:below` matches
+    stored URIs that start with the value (`http://acme.org/fhir` finds
+    `http://acme.org/fhir/Protocol/1`); `:above` matches stored URIs that are a
+    prefix of the value (the search value is below the stored one)."""
+    value = unescape(value)
+    if modifier == "below":
+        # A substring comparison, not LIKE: it is case-sensitive on SQLite too and needs no escaping.
+        return func.substr(uri_col, 1, len(value)) == value
+    if modifier == "above":
+        return func.substr(literal(value), 1, func.length(uri_col)) == uri_col
+    return uri_col == value

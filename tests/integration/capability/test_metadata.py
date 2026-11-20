@@ -10,6 +10,7 @@ from app.repository.appointment_response.search import appointment_response_sear
 from app.repository.encounter.search import encounter_search
 from app.repository.allergy_intolerance.search import allergy_intolerance_search
 from app.repository.condition.search import condition_search
+from app.repository.procedure.search import procedure_search
 from app.repository.related_person.search import related_person_search
 from app.repository.location.search import location_search
 from app.repository.organization.search import organization_search
@@ -57,6 +58,7 @@ async def test_search_params_match_registries(client):
         "related_person": ("RelatedPerson", related_person_search()),
         "allergy_intolerance": ("AllergyIntolerance", allergy_intolerance_search()),
         "condition": ("Condition", condition_search()),
+        "procedure": ("Procedure", procedure_search()),
     }
     enabled = {k: v for k, v in expected.items() if k in settings.routes.enabled}
     assert set(by_type) == {t for t, _ in enabled.values()}  # only what is mounted

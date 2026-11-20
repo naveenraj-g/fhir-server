@@ -254,7 +254,7 @@ routes:
     # - plan_definition
     - practitioner
     - practitioner_role
-    # - procedure
+    - procedure
     # - questionnaire
     # - questionnaire_response
     - related_person

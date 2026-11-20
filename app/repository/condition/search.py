@@ -22,8 +22,9 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.quantity import quantity_range_match
-from app.repository._appointment_revinclude import condition_appointment_revincludes
-from app.repository._encounter_revinclude import condition_encounter_revincludes
+from app.repository._appointment_revinclude import reason_appointment_revincludes
+from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._procedure_revinclude import reason_procedure_revincludes
 from app.fhir.search.sql import (
     coded_token_match,
     date_match,
@@ -469,8 +470,9 @@ def condition_search() -> SearchRegistry:
         ),
         # Encounter.diagnosis / .reasonReference and Appointment.reasonReference point here.
         revincludes=(
-            *condition_encounter_revincludes(lambda c: c.condition_id),
-            *condition_appointment_revincludes(lambda c: c.condition_id),
+            *reference_encounter_revincludes("Condition", lambda c: c.condition_id),
+            *reason_appointment_revincludes("Condition", lambda c: c.condition_id),
+            *reason_procedure_revincludes(lambda c: c.condition_id),
         ),
         default_sort=lambda: [C.condition_id.desc()],
     )

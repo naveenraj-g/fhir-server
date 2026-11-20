@@ -1,211 +1,97 @@
-from datetime import datetime
-from typing import Any, Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
+    FHIRQuantity,
     FHIRRange,
     FHIRReference,
 )
-from app.schemas.procedure.response.codeable_concept import (
-    PlainProcedureConcept,
-    PlainProcedureSingleConcept,
-)
-from app.schemas.procedure.response.focal_device import (
-    FHIRProcedureFocalDevice,
-    PlainProcedureFocalDevice,
-)
-from app.schemas.procedure.response.identifier import PlainProcedureIdentifier
-from app.schemas.procedure.response.note import PlainProcedureNote
-from app.schemas.procedure.response.performer import (
-    FHIRProcedurePerformer,
-    PlainProcedurePerformer,
-)
-from app.schemas.procedure.response.reference import PlainProcedureReference
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+
+
+class FHIRProcedureAnnotation(BaseModel):
+    authorReference: FHIRReference | None = Field(None, description="Individual responsible for the annotation.")
+    authorString: str | None = Field(None, description="Individual responsible for the annotation, as plain text.")
+    time: str | None = Field(None, description="When the annotation was made.")
+    text: str | None = Field(None, description="The annotation text.")
+
+
+class FHIRProcedurePerformer(BaseModel):
+    function: FHIRCodeableConcept | None = Field(None, description="Type of performance.")
+    actor: FHIRReference | None = Field(None, description="Who performed the procedure.")
+    onBehalfOf: FHIRReference | None = Field(None, description="Organization the device or practitioner was acting for.")
+
+
+class FHIRProcedureFocalDevice(BaseModel):
+    action: FHIRCodeableConcept | None = Field(None, description="Kind of change to device.")
+    manipulated: FHIRReference | None = Field(None, description="Device that was changed.")
 
 
 class FHIRProcedureSchema(BaseModel):
-    """FHIR R4 Procedure resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Procedure"] = "Procedure"
-    id: str
-    meta: FHIRMeta | None = None
-    identifier: list[FHIRIdentifier] | None = None
-    instantiatesCanonical: list[str] | None = None
-    instantiatesUri: list[str] | None = None
-    basedOn: list[FHIRReference] | None = None
-    partOf: list[FHIRReference] | None = None
-    status: str
-    statusReason: FHIRCodeableConcept | None = None
-    category: FHIRCodeableConcept | None = None
-    code: FHIRCodeableConcept | None = None
-    subject: FHIRReference
-    encounter: FHIRReference | None = None
-    performedDateTime: str | None = None
-    performedPeriod: FHIRPeriod | None = None
-    performedString: str | None = None
-    performedAge: dict[str, Any] | None = None
-    performedRange: FHIRRange | None = None
-    recorder: FHIRReference | None = None
-    asserter: FHIRReference | None = None
-    performer: list[FHIRProcedurePerformer] | None = None
-    location: FHIRReference | None = None
-    reasonCode: list[FHIRCodeableConcept] | None = None
-    reasonReference: list[FHIRReference] | None = None
-    bodySite: list[FHIRCodeableConcept] | None = None
-    outcome: FHIRCodeableConcept | None = None
-    report: list[FHIRReference] | None = None
-    complication: list[FHIRCodeableConcept] | None = None
-    complicationDetail: list[FHIRReference] | None = None
-    followUp: list[FHIRCodeableConcept] | None = None
-    note: list[dict[str, Any]] | None = None
-    focalDevice: list[FHIRProcedureFocalDevice] | None = None
-    usedReference: list[FHIRReference] | None = None
-    usedCode: list[FHIRCodeableConcept] | None = None
-    extension: list[dict[str, Any]] | None = None
-
-
-class PlainProcedureResponse(BaseModel):
-    """Simplified snake_case Procedure response."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int
-    instantiates_canonical: list[str] | None = None
-    instantiates_uri: list[str] | None = None
-    based_on: list[PlainProcedureReference | str] | None = None
-    part_of: list[PlainProcedureReference | str] | None = None
-    status: str
-    status_reason: PlainProcedureSingleConcept | None = None
-    category: PlainProcedureSingleConcept | None = None
-    code: PlainProcedureSingleConcept | None = None
-    subject: str | None = None
-    subject_display: str | None = None
-    subject_identifier_use: str | None = None
-    subject_identifier_type_system: str | None = None
-    subject_identifier_type_version: str | None = None
-    subject_identifier_type_code: str | None = None
-    subject_identifier_type_display: str | None = None
-    subject_identifier_type_text: str | None = None
-    subject_identifier_type_user_selected: bool | None = None
-    subject_identifier_system: str | None = None
-    subject_identifier_value: str | None = None
-    subject_identifier_period_start: str | None = None
-    subject_identifier_period_end: str | None = None
-
-    encounter: str | None = None
-    encounter_display: str | None = None
-    encounter_identifier_use: str | None = None
-    encounter_identifier_type_system: str | None = None
-    encounter_identifier_type_version: str | None = None
-    encounter_identifier_type_code: str | None = None
-    encounter_identifier_type_display: str | None = None
-    encounter_identifier_type_text: str | None = None
-    encounter_identifier_type_user_selected: bool | None = None
-    encounter_identifier_system: str | None = None
-    encounter_identifier_value: str | None = None
-    encounter_identifier_period_start: str | None = None
-    encounter_identifier_period_end: str | None = None
-
-    performed_date_time: datetime | None = None
-    performed_period_start: datetime | None = None
-    performed_period_end: datetime | None = None
-    performed_string: str | None = None
-    performed_age: dict[str, Any] | None = None
-    performed_range: dict[str, Any] | None = None
-
-    recorder: str | None = None
-    recorder_display: str | None = None
-    recorder_identifier_use: str | None = None
-    recorder_identifier_type_system: str | None = None
-    recorder_identifier_type_version: str | None = None
-    recorder_identifier_type_code: str | None = None
-    recorder_identifier_type_display: str | None = None
-    recorder_identifier_type_text: str | None = None
-    recorder_identifier_type_user_selected: bool | None = None
-    recorder_identifier_system: str | None = None
-    recorder_identifier_value: str | None = None
-    recorder_identifier_period_start: str | None = None
-    recorder_identifier_period_end: str | None = None
-
-    asserter: str | None = None
-    asserter_display: str | None = None
-    asserter_identifier_use: str | None = None
-    asserter_identifier_type_system: str | None = None
-    asserter_identifier_type_version: str | None = None
-    asserter_identifier_type_code: str | None = None
-    asserter_identifier_type_display: str | None = None
-    asserter_identifier_type_text: str | None = None
-    asserter_identifier_type_user_selected: bool | None = None
-    asserter_identifier_system: str | None = None
-    asserter_identifier_value: str | None = None
-    asserter_identifier_period_start: str | None = None
-    asserter_identifier_period_end: str | None = None
-
-    performer: list[PlainProcedurePerformer] | None = None
-    location: str | None = None
-    location_display: str | None = None
-    location_identifier_use: str | None = None
-    location_identifier_type_system: str | None = None
-    location_identifier_type_version: str | None = None
-    location_identifier_type_code: str | None = None
-    location_identifier_type_display: str | None = None
-    location_identifier_type_text: str | None = None
-    location_identifier_type_user_selected: bool | None = None
-    location_identifier_system: str | None = None
-    location_identifier_value: str | None = None
-    location_identifier_period_start: str | None = None
-    location_identifier_period_end: str | None = None
-
-    reason_code: list[PlainProcedureConcept] | None = None
-    reason_reference: list[PlainProcedureReference | str] | None = None
-    body_site: list[PlainProcedureConcept] | None = None
-    outcome: PlainProcedureSingleConcept | None = None
-    report: list[PlainProcedureReference | str] | None = None
-    complication: list[PlainProcedureConcept] | None = None
-    complication_detail: list[PlainProcedureReference | str] | None = None
-    follow_up: list[PlainProcedureConcept] | None = None
-    note: list[PlainProcedureNote] | None = None
-    focal_device: list[PlainProcedureFocalDevice] | None = None
-    used_reference: list[PlainProcedureReference | str] | None = None
-    used_code: list[PlainProcedureConcept] | None = None
-    identifier: list[PlainProcedureIdentifier] | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-
-
-class PaginatedProcedureResponse(BaseModel):
-    """Paginated list response for Procedure resources."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    total: int | None = Field(None, description="Total number of matching resources.")
-    limit: int = Field(..., description="Page size.")
-    offset: int = Field(..., description="Page offset.")
-    data: list[PlainProcedureResponse] = Field(..., description="List of Procedure resources.")
+    resourceType: str = Field("Procedure", description="Always 'Procedure'.")
+    id: str = Field(..., description="Public procedure_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
+    )
+    identifier: list[FHIRIdentifier] | None = Field(None, description="External Identifiers for this procedure.")
+    instantiatesCanonical: list[str] | None = Field(None, description="Instantiates FHIR protocol or definition.")
+    instantiatesUri: list[str] | None = Field(None, description="Instantiates external protocol or definition.")
+    basedOn: list[FHIRReference] | None = Field(None, description="A request for this procedure.")
+    partOf: list[FHIRReference] | None = Field(None, description="Part of referenced event.")
+    status: str | None = Field(None, description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown.")
+    statusReason: FHIRCodeableConcept | None = Field(None, description="Reason for current status.")
+    category: FHIRCodeableConcept | None = Field(None, description="Classification of the procedure.")
+    code: FHIRCodeableConcept | None = Field(None, description="Identification of the procedure.")
+    subject: FHIRReference | None = Field(None, description="Who the procedure was performed on.")
+    encounter: FHIRReference | None = Field(None, description="Encounter created as part of.")
+    performedDateTime: str | None = Field(None, description="When the procedure was performed.")
+    performedPeriod: FHIRPeriod | None = Field(None, description="When the procedure was performed (Period).")
+    performedString: str | None = Field(None, description="When the procedure was performed, as text.")
+    performedAge: FHIRQuantity | None = Field(None, description="When the procedure was performed (Age).")
+    performedRange: FHIRRange | None = Field(None, description="When the procedure was performed (Range).")
+    recorder: FHIRReference | None = Field(None, description="Who recorded the procedure.")
+    asserter: FHIRReference | None = Field(None, description="Person who asserts this procedure.")
+    performer: list[FHIRProcedurePerformer] | None = Field(None, description="The people who performed the procedure.")
+    location: FHIRReference | None = Field(None, description="Where the procedure happened.")
+    reasonCode: list[FHIRCodeableConcept] | None = Field(None, description="Coded reason procedure performed.")
+    reasonReference: list[FHIRReference] | None = Field(None, description="The justification that the procedure was performed.")
+    bodySite: list[FHIRCodeableConcept] | None = Field(None, description="Target body sites.")
+    outcome: FHIRCodeableConcept | None = Field(None, description="The result of procedure.")
+    report: list[FHIRReference] | None = Field(None, description="Any report resulting from the procedure.")
+    complication: list[FHIRCodeableConcept] | None = Field(None, description="Complication following the procedure.")
+    complicationDetail: list[FHIRReference] | None = Field(None, description="A condition that is a result of the procedure.")
+    followUp: list[FHIRCodeableConcept] | None = Field(None, description="Instructions for follow up.")
+    note: list[FHIRProcedureAnnotation] | None = Field(None, description="Additional information about the procedure.")
+    focalDevice: list[FHIRProcedureFocalDevice] | None = Field(None, description="Manipulated, implanted, or removed device.")
+    usedReference: list[FHIRReference] | None = Field(None, description="Items used during procedure.")
+    usedCode: list[FHIRCodeableConcept] | None = Field(None, description="Coded items used during the procedure.")
 
 
 class FHIRProcedureBundleEntry(BaseModel):
-    """Entry in a FHIR Procedure Bundle."""
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRProcedureSchema | dict = Field(
+        ...,
+        description="A Procedure (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Practitioner / PractitionerRole / RelatedPerson / Organization / Encounter / Location / Condition / Procedure (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
-    model_config = ConfigDict(extra="forbid")
 
-    fullUrl: str | None = None
-    resource: FHIRProcedureSchema
-
-
-class FHIRProcedureBundle(BaseModel):
-    """FHIR Bundle containing Procedure resources."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: str = "searchset"
-    total: int | None = None
-    entry: list[FHIRProcedureBundleEntry] = []
+class FHIRProcedureBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRProcedureBundleEntry] | None = None
