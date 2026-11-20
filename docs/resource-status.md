@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-20, after Condition (commit hash below)._
+_Last updated: 2026-11-20, after Condition (`fbd1eb8`)._
 
 ## Architecture in one line
 
@@ -29,7 +29,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
-| 15 | Condition | `/conditions` | 21 | 120000 | `n1e6a3c9d725` | pending | Quantity search over an Age or a Range (`quantity_range_match`); `subject`/`asserter`/`evidence-detail` multi-target; now an existence-checked target of Encounter and Appointment |
+| 15 | Condition | `/conditions` | 21 | 120000 | `n1e6a3c9d725` | `fbd1eb8` | Quantity search over an Age or a Range (`quantity_range_match`); `subject`/`asserter`/`evidence-detail` multi-target; now an existence-checked target of Encounter and Appointment |
 | 14 | AllergyIntolerance | `/allergy-intolerances` | 16 | 260000 | `m0d5f2b8c614` | `7d36dfc` | `recorder`/`asserter` multi-target over four rebuilt types; one shared token table for seven parameters; `onset` reads `reaction.onset` |
 
 All 15 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
