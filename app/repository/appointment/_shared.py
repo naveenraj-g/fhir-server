@@ -15,10 +15,10 @@ __all__ = [
 
 # Of the seven Appointment.participant.actor target types, these are resources
 # on this server (registered in RESOURCE_REGISTRY — see
-# app/core/reference_resolver.py). A relative RelatedPerson/Device reference is
+# app/core/reference_resolver.py). A relative Device reference is
 # accepted and indexed but not existence-checked: ensure_resource_exists()
 # fails closed for an unregistered type (422 on every valid reference to one).
-MODELED_ACTOR_TYPES = {"Patient", "Practitioner", "PractitionerRole", "HealthcareService", "Location"}
+MODELED_ACTOR_TYPES = {"Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "HealthcareService", "Location"}
 
 _REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 

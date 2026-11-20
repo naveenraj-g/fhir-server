@@ -7,6 +7,8 @@ from tests.conftest import make_test_user
 # resources it points at (patient, practitioner, location, organization,
 # appointment, ...).
 ENCOUNTER_PERMS = [
+    "related_person:create",
+    "related_person:read",
     "encounter:create",
     "encounter:read",
     "encounter:update",

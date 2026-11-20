@@ -180,11 +180,17 @@ async def test_general_practitioner_resolves_for_every_modeled_type(client):
     assert resp.json()["generalPractitioner"] == refs
 
 
-async def test_link_other_patient_must_exist_but_related_person_is_not_checked(client):
+async def test_link_other_patient_and_related_person_must_exist(client):
     body = {**MINIMAL, "link": [{"other": {"reference": "Patient/999999"}, "type": "seealso"}]}
     assert (await client.post(BASE + "/", json=body)).status_code == 422
-    # RelatedPerson isn't a resource on this server: stored as sent.
-    body = {**MINIMAL, "link": [{"other": {"reference": "RelatedPerson/5"}, "type": "seealso"}]}
+    body = {**MINIMAL, "link": [{"other": {"reference": "RelatedPerson/999999"}, "type": "seealso"}]}
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+    owner = await create_patient(client)
+    rp = await client.post(
+        "/api/fhir/v1/related-persons/", json={"patient": {"reference": f"Patient/{owner}"}}
+    )
+    assert rp.status_code == 201, rp.text
+    body = {**MINIMAL, "link": [{"other": {"reference": f"RelatedPerson/{rp.json()['id']}"}, "type": "seealso"}]}
     assert (await client.post(BASE + "/", json=body)).status_code == 201
     other = await create_patient(client)
     body = {**MINIMAL, "link": [{"other": {"reference": f"Patient/{other}"}, "type": "replaces"}]}

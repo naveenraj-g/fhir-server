@@ -42,6 +42,12 @@ async def world(client):
     w["org2"] = await create_organization(client, "South Clinic")
 
     w["bare"] = await create_patient(client, {"name": [{"family": "Zed"}]})
+    rp = await client.post(
+        API + "/related-persons/",
+        json={"patient": {"reference": f"Patient/{w['bare']}"}, "name": [{"family": "Relative"}]},
+    )
+    assert rp.status_code == 201, rp.text
+    w["rp"] = int(rp.json()["id"])
     w["c"] = await create_patient(
         client,
         {
@@ -52,7 +58,7 @@ async def world(client):
             "address": [{"city": "Paris", "country": "FR", "postalCode": "75001"}],
             "communication": [{"language": {"text": "Francais"}}],
             "generalPractitioner": [{"reference": f"PractitionerRole/{w['role']}"}],
-            "link": [{"other": {"reference": "RelatedPerson/5"}, "type": "replaced-by"}],
+            "link": [{"other": {"reference": f"RelatedPerson/{w['rp']}"}, "type": "replaced-by"}],
         },
     )
     w["b"] = await create_patient(
@@ -367,14 +373,17 @@ async def test_general_practitioner_chain_through_a_typed_target(client, world):
 async def test_link(client, world):
     assert await _keys(client, world, link=f"Patient/{world['bare']}") == {"a"}
     assert await _keys(client, world, **{"link:Patient": str(world["bare"])}) == {"a"}
-    assert await _keys(client, world, link="RelatedPerson/5") == {"c"}
+    assert await _keys(client, world, link=f"RelatedPerson/{world['rp']}") == {"c"}
+    assert await _keys(client, world, link="RelatedPerson/5") == set()
     assert await _keys(client, world, **{"link:missing": "true"}) == {"b", "bare"}
 
 
 async def test_link_chain_through_patient(client, world):
     assert await _keys(client, world, **{"link:Patient.family": "Zed"}) == {"a"}
-    # RelatedPerson isn't a resource here, so there is nothing to chain through.
-    assert (await client.get(BASE + "/", params={"link:RelatedPerson.name": "x"})).status_code == 400
+    # ... and through a RelatedPerson, now that it is a resource here.
+    assert await _keys(client, world, **{"link:RelatedPerson.name": "Relative"}) == {"c"}
+    assert await _keys(client, world, **{"link:RelatedPerson.name": "Nobody"}) == set()
+    assert (await client.get(BASE + "/", params={"link:Practitioner.family": "x"})).status_code == 400
 
 
 # ── _sort / _count / _offset / _total ────────────────────────────────────────
@@ -458,9 +467,8 @@ async def test_include_general_practitioner_narrowed_to_one_type(client, world):
 async def test_include_link(client, world):
     bundle = await _search(client, _id=str(world["a"]), _include="Patient:link")
     assert _by_type(bundle, "include") == {"Patient": {str(world["bare"])}}
-    # A RelatedPerson isn't on this server: accepted, adds nothing.
     bundle = await _search(client, _id=str(world["c"]), _include="Patient:link")
-    assert _by_type(bundle, "include") == {}
+    assert _by_type(bundle, "include") == {"RelatedPerson": {str(world["rp"])}}
 
 
 async def test_revinclude_link(client, world):

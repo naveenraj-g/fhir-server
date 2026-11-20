@@ -24,10 +24,9 @@ __all__ = [
 
 # Of the types Patient's reference elements can point at, these are resources
 # on this server (registered in RESOURCE_REGISTRY — see
-# app/core/reference_resolver.py). A relative RelatedPerson reference is
-# accepted and indexed but not existence-checked: ensure_resource_exists()
-# fails closed for an unregistered type (422 on every valid reference to one).
-MODELED_TYPES = {"Organization", "Practitioner", "PractitionerRole", "Patient"}
+# app/core/reference_resolver.py). Every one is registered, so a
+# relative reference to one is existence-checked on write.
+MODELED_TYPES = {"Organization", "Practitioner", "PractitionerRole", "Patient", "RelatedPerson"}
 
 _REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 

@@ -65,6 +65,8 @@ _MODELED = {
                      "app.repository.organization.search", "organization_search"),
     "Patient": ("app.models.patient", "PatientModel", "patient_id",
                 "app.repository.patient.search", "patient_search"),
+    "RelatedPerson": ("app.models.related_person", "RelatedPersonModel", "related_person_id",
+                      "app.repository.related_person.search", "related_person_search"),
 }
 
 
@@ -432,6 +434,13 @@ async def revinclude_patients_by_organization(session, ctx, organizations):
     )
 
 
+async def _revinclude_related_persons(session, ctx, patients):
+    """_revinclude=RelatedPerson:patient — the people related to these patients."""
+    from app.repository.related_person.search import revinclude_related_persons_via_patient
+
+    return await revinclude_related_persons_via_patient(lambda p: p.patient_id)(session, ctx, patients)
+
+
 def _register_kind() -> None:
     """How the search engine identifies and renders Patient rows."""
     from app.fhir.mappers.patient import to_fhir_patient
@@ -569,7 +578,8 @@ def patient_search() -> SearchRegistry:
         SearchParam(
             "link", "reference", "All patients linked to the given patient", "Patient.link.other",
             link_match, link_present, frozenset({"identifier", "missing"}),
-            targets=LINK_TYPES, chain=link_chain, chain_targets={"Patient": _registry_of("Patient")},
+            targets=LINK_TYPES, chain=link_chain,
+            chain_targets={"Patient": _registry_of("Patient"), "RelatedPerson": _registry_of("RelatedPerson")},
             sort=link_sort, example="Patient/10002",
             modifier_docs={
                 "identifier": "`:identifier` — match the logical identifier of a linked patient that has no resource here."
@@ -627,7 +637,7 @@ def patient_search() -> SearchRegistry:
             ),
             IncludeTarget("Patient", "organization", "Organization", _include_organization),
             IncludeTarget("Patient", "link", "Patient", _include_via_reference("link", "Patient")),
-            IncludeTarget("Patient", "link", "RelatedPerson", None),
+            IncludeTarget("Patient", "link", "RelatedPerson", _include_via_reference("link", "RelatedPerson")),
         ),
         # Patients that link to these patients; the reverses for
         # general-practitioner / organization are declared on Practitioner,
@@ -636,6 +646,7 @@ def patient_search() -> SearchRegistry:
             *participant_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
             *actor_response_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
             *subject_encounter_revincludes(lambda p: p.patient_id),
+            IncludeTarget("RelatedPerson", "patient", "Patient", _revinclude_related_persons, reverse=True),
             IncludeTarget(
                 "Patient", "link", "Patient", revinclude_patients_via_reference("link", "Patient", lambda p: p.patient_id),
                 reverse=True,

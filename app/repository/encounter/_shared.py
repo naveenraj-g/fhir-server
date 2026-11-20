@@ -18,9 +18,8 @@ __all__ = [
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references", "participants", "locations")
 
 # Of the three Encounter.participant.individual target types, these are
-# resources on this server. A relative RelatedPerson reference is accepted and
-# indexed but not existence-checked.
-MODELED_PARTICIPANT_TYPES = {"Practitioner", "PractitionerRole"}
+# resources on this server, so a relative reference to one is existence-checked.
+MODELED_PARTICIPANT_TYPES = {"Practitioner", "PractitionerRole", "RelatedPerson"}
 
 _REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 

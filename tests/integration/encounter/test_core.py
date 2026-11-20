@@ -227,8 +227,8 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
 
 
 async def test_create_unmodeled_targets_are_not_checked(client):
-    """Group, RelatedPerson, Account, EpisodeOfCare, ServiceRequest, Condition ... are not
-    resources on this server: stored as sent."""
+    """Group, Account, EpisodeOfCare, ServiceRequest, Condition ... are not resources on
+    this server: stored as sent."""
     body = encounter_body(
         subject={"reference": "Group/5"},
         episodeOfCare=[{"reference": "EpisodeOfCare/5"}],
@@ -236,8 +236,18 @@ async def test_create_unmodeled_targets_are_not_checked(client):
         account=[{"reference": "Account/5"}],
         reasonReference=[{"reference": "Condition/5"}, {"reference": "Observation/5"}],
         diagnosis=[{"condition": {"reference": "Procedure/5"}}],
-        participant=[{"individual": {"reference": "RelatedPerson/5"}}],
     )
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_related_person_participant_must_exist(client, refs):
+    body = encounter_body(participant=[{"individual": {"reference": "RelatedPerson/999999"}}])
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+    rp = await client.post(
+        "/api/fhir/v1/related-persons/", json={"patient": {"reference": f"Patient/{refs['patient']}"}}
+    )
+    assert rp.status_code == 201, rp.text
+    body = encounter_body(participant=[{"individual": {"reference": f"RelatedPerson/{rp.json()['id']}"}}])
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 

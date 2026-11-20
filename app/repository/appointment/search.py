@@ -71,6 +71,8 @@ _MODELED = {
                      "app.repository.practitioner.search", "practitioner_search"),
     "PractitionerRole": ("app.models.practitioner_role", "PractitionerRoleModel", "practitioner_role_id",
                          "app.repository.practitioner_role.search", "practitioner_role_search"),
+    "RelatedPerson": ("app.models.related_person", "RelatedPersonModel", "related_person_id",
+                      "app.repository.related_person.search", "related_person_search"),
     "HealthcareService": ("app.models.healthcare_service", "HealthcareServiceModel", "healthcare_service_id",
                           "app.repository.healthcare_service.search", "healthcare_service_search"),
     "Location": ("app.models.location", "LocationModel", "location_id",

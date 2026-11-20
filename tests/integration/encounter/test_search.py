@@ -60,6 +60,12 @@ async def world(client):
     w["loc"] = await create_location(client, "North Wing", "Boston")
     w["org"] = await create_organization(client, "Providing Org")
     w["ap"] = await create_appointment(client, appointment_body(w["p1"], status="booked"))
+    rp = await client.post(
+        API + "/related-persons/",
+        json={"patient": {"reference": f"Patient/{w['p1']}"}, "name": [{"family": "Relative"}]},
+    )
+    assert rp.status_code == 201, rp.text
+    w["rp"] = int(rp.json()["id"])
 
     w["a"] = await create_encounter(
         client,
@@ -117,7 +123,7 @@ async def world(client):
     )
     w["d"] = await create_encounter(
         client,
-        encounter_body("cancelled", "AMB", participant=[{"individual": {"reference": "RelatedPerson/5"}}]),
+        encounter_body("cancelled", "AMB", participant=[{"individual": {"reference": f"RelatedPerson/{w['rp']}"}}]),
     )
     w["e"] = await create_encounter(
         client,
@@ -347,7 +353,8 @@ async def test_participant_needs_a_type(client, world):
 async def test_participant_by_type_and_id(client, world):
     assert await _keys(client, world, participant=f"Practitioner/{world['prac']}") == {"a"}
     assert await _keys(client, world, participant=f"PractitionerRole/{world['role']}") == {"b"}
-    assert await _keys(client, world, participant="RelatedPerson/5") == {"d"}
+    assert await _keys(client, world, participant=f"RelatedPerson/{world['rp']}") == {"d"}
+    assert await _keys(client, world, participant="RelatedPerson/5") == set()
     assert await _keys(client, world, **{"participant:Practitioner": str(world["prac"])}) == {"a"}
     assert await _keys(client, world, participant=f"Practitioner/{world['role']}") == set()  # the type is part of the match
     assert await _keys(client, world, **{"participant:missing": "true"}) == {"c", "e"}
@@ -426,6 +433,8 @@ async def test_participant_and_practitioner_chain(client, world):
     assert await _keys(client, world, **{"practitioner.family": "Careful"}) == {"a"}
     assert await _keys(client, world, **{"participant:Practitioner.family": "Careful"}) == {"a"}
     assert await _keys(client, world, **{"participant:PractitionerRole.active": "true"}) <= {"b"}
+    assert await _keys(client, world, **{"participant:RelatedPerson.name": "Relative"}) == {"d"}
+    assert await _keys(client, world, **{"participant:RelatedPerson.name": "Nobody"}) == set()
 
 
 async def test_location_service_provider_part_of_and_appointment_chain(client, world):
@@ -440,7 +449,7 @@ async def test_location_service_provider_part_of_and_appointment_chain(client, w
 async def test_bad_chains_are_400(client, world):
     assert await _status(client, **{"subject.family": "x"}) == 400  # untyped, two targets
     assert await _status(client, **{"subject:Group.name": "x"}) == 400  # Group is not a resource here
-    assert await _status(client, **{"participant:RelatedPerson.name": "x"}) == 400
+    assert await _status(client, **{"participant:Device.name": "x"}) == 400  # Device is not a resource here
     assert await _status(client, **{"patient.nonsense": "x"}) == 400
     assert await _status(client, **{"account.name": "x"}) == 400  # Account is not a resource here
     assert await _status(client, **{"status.x": "y"}) == 400
@@ -516,6 +525,7 @@ async def test_include_participant_brings_every_modeled_type(client, world):
     bundle = await _search(client, _id=f"{world['a']},{world['b']},{world['d']}", _include="Encounter:participant")
     assert _of_type(bundle, "Practitioner", "include") == {str(world["prac"])}
     assert _of_type(bundle, "PractitionerRole", "include") == {str(world["role"])}
+    assert _of_type(bundle, "RelatedPerson", "include") == {str(world["rp"])}
 
 
 async def test_include_participant_with_type_and_practitioner(client, world):
@@ -557,6 +567,8 @@ async def test_revinclude_on_practitioners_and_roles(client, world):
         assert _of_type(bundle, "Encounter", "include") == {str(world["a"])}, param
     bundle = await _other(client, "practitioner-roles", _id=str(world["role"]), _revinclude="Encounter:participant")
     assert _of_type(bundle, "Encounter", "include") == {str(world["b"])}
+    bundle = await _other(client, "related-persons", _id=str(world["rp"]), _revinclude="Encounter:participant")
+    assert _of_type(bundle, "Encounter", "include") == {str(world["d"])}
 
 
 async def test_revinclude_on_locations_appointments_and_organizations(client, world):

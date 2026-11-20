@@ -1,35 +1,48 @@
-from datetime import date
-
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
+from app.core.config import settings
 from app.core.content_negotiation import (
-    format_paginated_response,
-    format_response,
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
 )
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.related_person import get_related_person_service
-from app.schemas.related_person import (
-    RelatedPersonCreateSchema,
-    RelatedPersonPatchSchema,
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.related_person.search import related_person_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
 )
+from app.schemas.related_person import RelatedPersonCreateSchema, RelatedPersonPatchSchema
 from app.services.related_person import RelatedPersonService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# RelatedPerson always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -40,11 +53,14 @@ logger = get_logger(__name__)
     operation_id="create_related_person",
     summary="Create a new RelatedPerson resource",
     description=(
-        "A person that is related to a patient, but who is not a direct target of care. "
-        "Accepts the full nested payload atomically in one DB transaction. "
-        "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) "
-        "— an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "Records a person who is related to a patient, but is not a care provider — a parent, guardian, "
+        "emergency contact, caregiver. The request body is a FHIR R4 RelatedPerson resource (camelCase, nested "
+        "datatypes — https://www.hl7.org/fhir/R4/relatedperson.html); every supplied element (identifier, active, "
+        "patient, relationship, name, telecom, gender, birthDate, address, photo, period, communication) is "
+        "stored as sent. R4 requires `patient`. The body is checked against base FHIR R4: any valid R4 element "
+        "is accepted and stored as sent (server-managed `id`/`meta` are ignored); a key that is not FHIR at all "
+        "is rejected with 422. A relative `Patient/<id>` and `identifier.assigner` are rejected with 422 if they "
+        "do not exist in the caller's org; an absolute URL or logical reference is stored as sent. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -52,68 +68,171 @@ async def create_related_person(
     payload: RelatedPersonCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("related_person", "create")),
-    related_person_service: RelatedPersonService = Depends(
-        get_related_person_service
-    ),
+    related_person_service: RelatedPersonService = Depends(get_related_person_service),
 ):
+    """org_id and created_by both come from the verified JWT (actor.org_id /
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new RelatedPerson resource",
         extra={"event": "route.create_related_person"},
     )
     log_payload(logger, "related_person.create.payload", payload)
-    model = await related_person_service.create_related_person(
-        payload, actor.org_id, actor.sub
+    related_person = await related_person_service.create_related_person(
+        payload, actor.org_id, actor.sub, body=await request.json()
     )
-    return format_response(
-        related_person_service._to_fhir(model),
-        related_person_service._to_plain(model),
-        request,
+    return fhir_response(
+        related_person_service._to_fhir(related_person),
         status_code=status.HTTP_201_CREATED,
     )
 
 
-# ── Get by ID ──────────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# RelatedPerson search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = related_person_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    related_person_service: RelatedPersonService,
+):
+    search_url, fhir_base = search_urls(request, "search_related_persons")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await related_person_service.search_related_persons(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_related_persons",
+    summary="Search RelatedPerson resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_related_persons(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("related_person", "read")),
+    related_person_service: RelatedPersonService = Depends(get_related_person_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search RelatedPerson resources",
+        extra={"event": "route.search_related_persons"},
+    )
+    return await _search(request, get_query(request), actor, related_person_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_related_persons_post",
+    summary="Search RelatedPerson resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_related_persons_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("related_person", "read")),
+    related_person_service: RelatedPersonService = Depends(get_related_person_service),
+):
+    logger.info(
+        "Search RelatedPerson resources (POST _search)",
+        extra={"event": "route.search_related_persons_post"},
+    )
+    return await _search(request, await post_query(request), actor, related_person_service)
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{related_person_id}",
-    operation_id="get_related_person",
-    summary="Get a RelatedPerson resource by ID",
+    operation_id="get_related_person_by_id",
+    summary="Retrieve a RelatedPerson resource by public related_person_id",
     description=(
-        "Returns the full RelatedPerson resource with all sub-resources populated. "
-        "Scoped to the caller's own org — returns 404 (never 403) if the resource belongs "
-        "to a different org, to avoid leaking existence. " + _CONTENT_NEG
+        "Scoped to the caller's own org — get_related_person_scoped() raises "
+        "PermissionDeniedError (403) outright for an org-less token, or NotFoundError "
+        "(404, never 403) if it belongs to a different org, so existence isn't leaked."
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_related_person(
     request: Request,
     related_person_id: int = Path(
-        ..., ge=1, description="Public RelatedPerson identifier."
+        ..., ge=1, description="Public related_person identifier."
     ),
     actor: AuthUser = Depends(require_permission("related_person", "read")),
-    related_person_service: RelatedPersonService = Depends(
-        get_related_person_service
-    ),
+    related_person_service: RelatedPersonService = Depends(get_related_person_service),
 ):
     logger.info(
-        "Get a RelatedPerson resource by ID",
+        "Retrieve a RelatedPerson resource by public related_person_id",
         extra={
-            "event": "route.get_related_person",
+            "event": "route.get_related_person_by_id",
             "related_person_id": related_person_id,
         },
     )
-    model = await related_person_service.get_related_person_scoped(
+    related_person = await related_person_service.get_related_person_scoped(
         related_person_id, actor.org_id
     )
-    return format_response(
-        related_person_service._to_fhir(model),
-        related_person_service._to_plain(model),
-        request,
-    )
+    return fhir_response(related_person_service._to_fhir(related_person))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -121,9 +240,12 @@ async def get_related_person(
     operation_id="patch_related_person",
     summary="Update a RelatedPerson resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every "
-        "supplied sub-resource list atomically replaces corresponding rows. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if "
+        "The request body is a partial FHIR R4 RelatedPerson (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. A supplied list "
+        "(identifier, relationship, name, telecom, address — even `[]`) atomically replaces the stored entries, a "
+        "supplied `patient` or `period` replaces the whole value, and `null` clears an element. "
+        "Scoped to the caller's own org — patch_related_person() raises NotFoundError (404, not "
+        "403 — avoids leaking that a related person with this id exists in another org) if "
         "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
@@ -132,132 +254,29 @@ async def patch_related_person(
     payload: RelatedPersonPatchSchema,
     request: Request,
     related_person_id: int = Path(
-        ..., ge=1, description="Public RelatedPerson identifier."
+        ..., ge=1, description="Public related_person identifier."
     ),
     actor: AuthUser = Depends(require_permission("related_person", "update")),
-    related_person_service: RelatedPersonService = Depends(
-        get_related_person_service
-    ),
+    related_person_service: RelatedPersonService = Depends(get_related_person_service),
 ):
+    """updated_by comes from the verified JWT (actor.sub); patch_related_person()
+    raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a RelatedPerson resource",
-        extra={
-            "event": "route.patch_related_person",
-            "related_person_id": related_person_id,
-        },
+        extra={"event": "route.patch_related_person", "related_person_id": related_person_id},
     )
     log_payload(logger, "related_person.patch.payload", payload)
     updated = await related_person_service.patch_related_person(
-        related_person_id, payload, actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        related_person_service._to_fhir(updated),
-        related_person_service._to_plain(updated),
-        request,
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_related_persons",
-    summary="List all RelatedPerson resources",
-    description=(
-        "Returns a paginated list of RelatedPerson resources. Filter by active, "
-        "patient, relationship, name, telecom, gender, birth-date, address, "
-        "identifier, email, phone. "
-        "Always scoped to the caller's own org (from the verified token). "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_related_persons(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("related_person", "read")),
-    active: bool | None = Query(
-        None, description="Whether the related person record is in active use."
-    ),
-    patient: str | None = Query(
-        None, description="Patient reference or public ID."
-    ),
-    relationship: str | None = Query(
-        None, description="Relationship type text or coding."
-    ),
-    name: str | None = Query(
-        None, description="A portion of any name of the related person."
-    ),
-    telecom: str | None = Query(
-        None, description="The value in any kind of telecom detail."
-    ),
-    gender: str | None = Query(
-        None, description="Gender of the related person (male|female|other|unknown)."
-    ),
-    birth_date: date | None = Query(
-        None, description="The date on which the related person was born (YYYY-MM-DD)."
-    ),
-    address: str | None = Query(
-        None, description="A server defined search that may match any of the string fields in Address."
-    ),
-    address_city: str | None = Query(
-        None, description="A city specified in an address."
-    ),
-    address_state: str | None = Query(
-        None, description="A state specified in an address."
-    ),
-    address_postal_code: str | None = Query(
-        None, description="A postal code specified in an address."
-    ),
-    address_country: str | None = Query(
-        None, description="A country specified in an address."
-    ),
-    identifier: str | None = Query(
-        None, description="An identifier for the related person."
-    ),
-    email: str | None = Query(
-        None, description="A value in an email contact."
-    ),
-    phone: str | None = Query(
-        None, description="A value in a phone contact."
-    ),
-    pagination: ListParams = Depends(),
-    related_person_service: RelatedPersonService = Depends(
-        get_related_person_service
-    ),
-):
-    total, rows = await related_person_service.list_related_persons(
+        related_person_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        active=active,
-        patient=patient,
-        relationship=relationship,
-        name=name,
-        telecom=telecom,
-        gender=gender,
-        birth_date=birth_date,
-        address=address,
-        address_city=address_city,
-        address_state=address_state,
-        address_postal_code=address_postal_code,
-        address_country=address_country,
-        identifier=identifier,
-        email=email,
-        phone=phone,
-        limit=pagination.limit,
-        offset=pagination.offset,
-        sort=pagination.sort,
+        body=await request.json(),
     )
-    return format_paginated_response(
-        [related_person_service._to_fhir(r) for r in rows],
-        [related_person_service._to_plain(r) for r in rows],
-        total,
-        pagination.limit,
-        pagination.offset,
-        request,
-    )
+    return fhir_response(related_person_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -266,24 +285,21 @@ async def list_related_persons(
     operation_id="delete_related_person",
     summary="Delete a RelatedPerson resource",
     description=(
-        "Permanently deletes a RelatedPerson resource and all nested child records. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if "
-        "actor.org_id doesn't match. " + _CONTENT_NEG
+        "Permanently deletes the RelatedPerson and its search-index rows. "
+        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
+        "related_person exists but belongs to a different org. Returns 204 on success."
     ),
-    responses={
-        204: {"description": "RelatedPerson deleted successfully"},
-        **_ERR_NOT_FOUND,
-    },
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_related_person(
     related_person_id: int = Path(
-        ..., ge=1, description="Public RelatedPerson identifier."
+        ..., ge=1, description="Public related_person identifier."
     ),
     actor: AuthUser = Depends(require_permission("related_person", "delete")),
-    related_person_service: RelatedPersonService = Depends(
-        get_related_person_service
-    ),
+    related_person_service: RelatedPersonService = Depends(get_related_person_service),
 ):
+    """delete_related_person() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a RelatedPerson resource",
         extra={
@@ -291,6 +307,4 @@ async def delete_related_person(
             "related_person_id": related_person_id,
         },
     )
-    await related_person_service.delete_related_person(
-        related_person_id, org_id=actor.org_id
-    )
+    await related_person_service.delete_related_person(related_person_id, org_id=actor.org_id)

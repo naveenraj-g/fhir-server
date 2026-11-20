@@ -216,9 +216,24 @@ async def test_create_participant_actors_that_exist(client, patient):
 
 
 async def test_create_unmodeled_actor_types_are_not_checked(client):
-    """RelatedPerson and Device aren't resources on this server: stored as sent."""
-    body = {"status": "booked", "participant": [participant("RelatedPerson/5"), participant("Device/6")]}
+    """Device isn't a resource on this server: stored as sent."""
+    body = {"status": "booked", "participant": [participant("Device/6")]}
     assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_related_person_actor_must_exist(client):
+    body = {"status": "booked", "participant": [participant("RelatedPerson/999999")]}
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+    related_person = await _related_person(client)
+    body = {"status": "booked", "participant": [participant(f"RelatedPerson/{related_person}")]}
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def _related_person(client) -> int:
+    patient = await create_patient(client)
+    resp = await client.post("/api/fhir/v1/related-persons/", json={"patient": {"reference": f"Patient/{patient}"}})
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])
 
 
 async def test_create_unrebuilt_reference_targets_are_not_checked(client, patient):

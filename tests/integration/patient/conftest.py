@@ -17,6 +17,8 @@ PATIENT_PERMS = [
     "practitioner:read",
     "practitioner_role:create",
     "practitioner_role:read",
+    "related_person:create",
+    "related_person:read",
 ]
 
 

@@ -1,125 +1,59 @@
-"""Shared helpers and payloads for related_person integration tests."""
+"""Shared helpers and payloads for related-person integration tests.
 
-BASE = "/api/fhir/v1/related_persons"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+Request bodies are genuine FHIR R4 RelatedPerson JSON (camelCase, nested
+datatypes), and every response is FHIR R4 too."""
+
+# The resources a RelatedPerson points at (and that point at it) are created through their own routers.
+from tests.integration.appointment.support import (  # noqa: F401
+    appointment_body,
+    create_appointment,
+    create_organization,
+    create_patient,
+    create_practitioner,
+    participant,
+)
+
+BASE = "/api/fhir/v1/related-persons"
+API = "/api/fhir/v1"
+
+RP_IDS = "https://fhir-server.dev/fhir/identifier-system/related-person-id"
+ROLE = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
+def related_person_body(patient_id: int | None = None, **extra) -> dict:
+    """A valid minimal RelatedPerson: R4 requires `patient`. With no patient the
+    reference is an absolute URL (not existence-checked)."""
+    patient = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    return {"patient": patient, **extra}
+
+
+def full_body(patient_id: int, organization_id: int) -> dict:
+    return related_person_body(
+        patient_id,
+        resourceType="RelatedPerson",
+        identifier=[
+            {
+                "system": RP_IDS,
+                "value": "RP-1001",
+                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
+            }
+        ],
+        active=True,
+        relationship=[{"coding": [{"system": ROLE, "code": "MTH", "display": "mother"}], "text": "Mother"}],
+        name=[{"use": "official", "family": "Windsor", "given": ["Mary", "Ann"], "prefix": ["Mrs"]}],
+        telecom=[{"system": "phone", "value": "555-9988", "use": "mobile"}, {"system": "email", "value": "mary@example.org"}],
+        gender="female",
+        birthDate="1965-04-12",
+        address=[{"use": "home", "line": ["1 Main St"], "city": "Boston", "state": "MA", "postalCode": "02110", "country": "US"}],
+        photo=[{"contentType": "image/png", "url": "https://example.org/mary.png"}],
+        period={"start": "2020-01-01"},
+        communication=[{"language": {"coding": [{"code": "en"}]}, "preferred": True}],
     )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
 
 
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"name": "Good Health Clinic"},
-    )
+async def create_related_person(client, body: dict) -> int:
+    """Create a related person and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     return int(resp.json()["id"])
-
-
-def minimal_related_person(patient_id: int) -> dict:
-    return {
-        "patient": f"Patient/{patient_id}",
-        "patient_display": "Jane Doe",
-    }
-
-
-def full_related_person(patient_id: int, org_id: int | None = None) -> dict:
-    payload = {
-        "active": True,
-        "patient": f"Patient/{patient_id}",
-        "patient_display": "Jane Doe",
-        "relationship": [
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
-                        "code": "MTH",
-                        "display": "Mother",
-                    }
-                ],
-                "text": "Mother",
-            }
-        ],
-        "name": [
-            {
-                "use": "official",
-                "family": "Smith",
-                "given": ["Alice"],
-                "prefix": ["Dr."],
-                "suffix": ["MD"],
-                "text": "Dr. Alice Smith",
-            }
-        ],
-        "telecom": [
-            {
-                "system": "phone",
-                "value": "555-0100",
-                "use": "home",
-                "rank": 1,
-            }
-        ],
-        "gender": "female",
-        "birth_date": "1980-05-21",
-        "address": [
-            {
-                "use": "home",
-                "type": "postal",
-                "line": ["534 Erewhon St"],
-                "city": "Pleasantville",
-                "state": "Vic",
-                "postal_code": "3999",
-                "country": "AU",
-            }
-        ],
-        "photo": [
-            {
-                "content_type": "image/jpeg",
-                "url": "http://example.org/photo.jpg",
-                "title": "Photo",
-            }
-        ],
-        "period_start": "2020-01-01T00:00:00Z",
-        "period_end": "2030-01-01T00:00:00Z",
-        "communication": [
-            {
-                "language_coding": [
-                    {
-                        "system": "urn:ietf:bcp:47",
-                        "code": "en",
-                        "display": "English",
-                    }
-                ],
-                "language_text": "English",
-                "preferred": True,
-            }
-        ],
-        "identifier": [
-            {
-                "use": "official",
-                "type_coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                        "code": "MR",
-                        "display": "Medical Record Number",
-                    }
-                ],
-                "type_text": "Medical Record Number",
-                "system": "urn:oid:1.2.3.4",
-                "value": "RP12345",
-                "period_start": "2020-01-01T00:00:00Z",
-                "period_end": "2030-01-01T00:00:00Z",
-            }
-        ],
-    }
-    if org_id is not None:
-        payload["identifier"][0]["assigner"] = f"Organization/{org_id}"
-        payload["identifier"][0]["assigner_display"] = "Good Health Clinic"
-    return payload

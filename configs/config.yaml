@@ -257,7 +257,7 @@ routes:
     # - procedure
     # - questionnaire
     # - questionnaire_response
-    # - related_person
+    - related_person
     # - risk_assessment
     - schedule
     # - service_request

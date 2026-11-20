@@ -191,9 +191,22 @@ async def test_create_actors_that_exist(client, appointment, patient):
 
 
 async def test_create_unmodeled_actor_types_are_not_checked(client, appointment):
-    """RelatedPerson and Device are not resources on this server: stored as sent."""
-    for actor in ("RelatedPerson/5", "Device/6"):
-        assert (await client.post(BASE + "/", json=response_body(appointment, actor))).status_code == 201
+    """Device is not a resource on this server: stored as sent."""
+    assert (await client.post(BASE + "/", json=response_body(appointment, "Device/6"))).status_code == 201
+
+
+async def test_create_related_person_actor_must_exist(client, appointment):
+    assert (await client.post(BASE + "/", json=response_body(appointment, "RelatedPerson/999999"))).status_code == 422
+    related_person = await _related_person(client)
+    resp = await client.post(BASE + "/", json=response_body(appointment, f"RelatedPerson/{related_person}"))
+    assert resp.status_code == 201, resp.text
+
+
+async def _related_person(client) -> int:
+    patient = await create_patient(client)
+    resp = await client.post("/api/fhir/v1/related-persons/", json={"patient": {"reference": f"Patient/{patient}"}})
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])
 
 
 async def test_create_identifier_assigner_must_exist(client, appointment, patient):
