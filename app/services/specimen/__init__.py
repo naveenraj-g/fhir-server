@@ -7,4 +7,5 @@ __all__ = ["SpecimenService"]
 
 @trace_methods
 class SpecimenService(_CoreMixin):
-    """All Specimen business logic."""
+    """All Specimen business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

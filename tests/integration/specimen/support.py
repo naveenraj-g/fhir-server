@@ -1,186 +1,132 @@
-"""Shared helpers and payloads for specimen integration tests."""
+"""Shared helpers and payloads for specimen integration tests.
+
+Request bodies are genuine FHIR R4 Specimen JSON (camelCase, nested datatypes), and every
+response is FHIR R4 too."""
+
+# The resources a Specimen points at (and that point back at it) are created through their own
+# routers.
+from tests.integration.observation.support import (  # noqa: F401
+    create_observation,
+    observation_body,
+)
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_location,
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
 
 BASE = "/api/fhir/v1/specimens"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+SPECIMEN_IDS = "https://fhir-server.dev/fhir/identifier-system/specimen-id"
+ACCESSIONS = "http://lab.example.org/accessions"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+V2_0487 = "http://terminology.hl7.org/CodeSystem/v2-0487"
+SCT = "http://snomed.info/sct"
+UCUM = "http://unitsofmeasure.org"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_specimen(patient_id: int) -> dict:
+def concept(system: str, code: str, display: str | None = None) -> dict:
     return {
-        "status": "available",
-        "subject": {
-            "reference": f"Patient/{patient_id}",
-            "reference_display": "Jane Doe",
-        },
-        "type": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "122555007",
-                    "display": "Venous blood specimen",
-                }
-            ],
-            "text": "Venous blood",
-        },
+        "coding": [
+            {
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
+            }
+        ]
     }
 
 
-def full_specimen(patient_id: int) -> dict:
-    return {
-        "status": "available",
-        "type": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "122555007",
-                    "display": "Venous blood specimen",
-                }
-            ],
-            "text": "Venous blood",
-        },
-        "subject": {
-            "reference": f"Patient/{patient_id}",
-            "reference_display": "Jane Doe",
-        },
-        "received_time": "2026-01-01T12:00:00Z",
-        "accession_identifier": {
-            "use": "official",
-            "system": "http://lab.example.org/accession",
-            "value": "ACC-2026-001",
-            "type_text": "Accession ID",
-            "type_coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                    "code": "ACSN",
-                    "display": "Accession ID",
-                }
-            ],
-        },
-        "identifier": [
+def specimen_body(patient_id: int | None = None, **extra) -> dict:
+    """A valid minimal Specimen (every R4 element is optional). With a patient the `subject` is set."""
+    body = dict(extra)
+    if patient_id:
+        body["subject"] = {"reference": f"Patient/{patient_id}"}
+    return body
+
+
+def full_body(
+    patient_id: int,
+    practitioner_id: int,
+    organization_id: int,
+    parent_id: int,
+) -> dict:
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return specimen_body(
+        patient_id,
+        resourceType="Specimen",
+        identifier=[
             {
-                "use": "usual",
-                "system": "http://lab.example.org/specimens",
-                "value": "SPEC-001",
-                "type_text": "Specimen Identifier",
-                "type_coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                        "code": "PLAC",
-                        "display": "Placer Identifier",
-                    }
-                ],
+                "system": SPECIMEN_IDS,
+                "value": "SP-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "FILL"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "collection": {
-            "collected_date_time": "2026-01-01T11:00:00Z",
-            "quantity_value": 10.0,
-            "quantity_unit": "mL",
-            "quantity_system": "http://unitsofmeasure.org",
-            "quantity_code": "mL",
-            "method": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "28520004",
-                        "display": "Venipuncture",
-                    }
-                ],
-                "text": "Venipuncture",
-            },
-            "body_site": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "368208006",
-                        "display": "Left arm structure",
-                    }
-                ],
-                "text": "Left arm structure",
-            },
-            "fasting_status_codeable_concept": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v2-0255",
-                        "code": "F",
-                        "display": "Patient was fasting prior to the procedure.",
-                    }
-                ],
-                "text": "Patient was fasting prior to the procedure.",
-            },
+        accessionIdentifier={
+            "system": ACCESSIONS,
+            "value": "ACC-1",
+            "assigner": {"reference": f"Organization/{organization_id}"},
         },
-        "processing": [
+        status="available",
+        type=concept(V2_0487, "BLD", "Whole blood"),
+        receivedTime="2023-01-15T11:00:00Z",
+        parent=[{"reference": f"Specimen/{parent_id}"}],
+        request=[{"reference": "ServiceRequest/80001"}],
+        collection={
+            "collector": {"reference": f"Practitioner/{practitioner_id}"},
+            "collectedDateTime": "2023-01-15T09:30:00Z",
+            "duration": {"value": 5, "unit": "min", "system": UCUM, "code": "min"},
+            "quantity": {"value": 6, "unit": "mL", "system": UCUM, "code": "mL"},
+            "method": concept(SCT, "82078001", "Collection of blood specimen"),
+            "bodySite": concept(SCT, "368208006", "Left upper arm structure"),
+            "fastingStatusCodeableConcept": concept(
+                "http://terminology.hl7.org/CodeSystem/v2-0916",
+                "F",
+                "Patient was fasting",
+            ),
+        },
+        processing=[
             {
-                "description": "Centrifugation",
-                "procedure": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "84918000",
-                            "display": "Centrifugation",
-                        }
-                    ],
-                    "text": "Centrifugation",
-                },
-                "time_date_time": "2026-01-01T11:30:00Z",
+                "description": "Centrifuged",
+                "procedure": concept(SCT, "9265001", "Specimen centrifugation"),
+                "additive": [{"reference": "Substance/1"}],
+                "timeDateTime": "2023-01-15T11:30:00Z",
             }
         ],
-        "container": [
+        container=[
             {
+                "identifier": [{"system": "urn:containers", "value": "C-1"}],
                 "description": "Red top tube",
-                "type": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "706053007",
-                            "display": "General specimen container",
-                        }
-                    ],
-                    "text": "Blood tube",
+                "type": concept(SCT, "434746001", "Specimen vial"),
+                "capacity": {"value": 10, "unit": "mL", "system": UCUM, "code": "mL"},
+                "specimenQuantity": {
+                    "value": 6,
+                    "unit": "mL",
+                    "system": UCUM,
+                    "code": "mL",
                 },
-                "capacity_value": 10.0,
-                "capacity_unit": "mL",
-                "capacity_system": "http://unitsofmeasure.org",
-                "capacity_code": "mL",
-                "specimen_quantity_value": 8.0,
-                "specimen_quantity_unit": "mL",
-                "specimen_quantity_system": "http://unitsofmeasure.org",
-                "specimen_quantity_code": "mL",
+                "additiveCodeableConcept": concept(SCT, "118424005", "Heparin"),
             }
         ],
-        "condition": [
+        condition=[
+            concept("http://terminology.hl7.org/CodeSystem/v2-0493", "HEM", "Hemolyzed")
+        ],
+        note=[
             {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v2-0493",
-                        "code": "FROZ",
-                        "display": "Frozen",
-                    }
-                ],
-                "text": "Frozen",
+                "text": "Fasting sample.",
+                "time": "2023-01-15T09:31:00Z",
+                "authorString": "Nurse Joy",
             }
         ],
-        "note": [
-            {
-                "author_string": "Lab Tech",
-                "time": "2026-01-01T12:00:00Z",
-                "text": "Sample received in good condition.",
-            }
-        ],
-    }
+    )
 
 
-async def create_specimen(client, patient_id: int, **overrides) -> dict:
-    payload = minimal_specimen(patient_id)
-    payload.update(overrides)
-    resp = await client.post(BASE + "/", json=payload)
+async def create_specimen(client, body: dict) -> int:
+    """Create a specimen and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return int(resp.json()["id"])

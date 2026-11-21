@@ -29,6 +29,7 @@ from app.repository.patient.search import patient_search
 from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.schedule.search import schedule_search
 from app.repository.slot.search import slot_search
+from app.repository.specimen.search import specimen_search
 from app.repository.practitioner.search import practitioner_search
 
 URL = "/api/fhir/v1/metadata"
@@ -62,6 +63,7 @@ async def test_search_params_match_registries(client):
         "practitioner_role": ("PractitionerRole", practitioner_role_search()),
         "schedule": ("Schedule", schedule_search()),
         "slot": ("Slot", slot_search()),
+        "specimen": ("Specimen", specimen_search()),
         "patient": ("Patient", patient_search()),
         "appointment": ("Appointment", appointment_search()),
         "appointment_response": ("AppointmentResponse", appointment_response_search()),

@@ -78,6 +78,7 @@ _REBUILT = (
     "ClinicalImpression",
     "DetectedIssue",
     "Observation",
+    "Specimen",
 )
 
 
@@ -89,7 +90,7 @@ def _registered(types: tuple[str, ...]) -> tuple[str, ...]:
 def local_references(document: dict) -> list[tuple[str, str, str]]:
     """(element label, resource type, relative reference) for every local reference that must
     exist in the caller's org on write: identifier.assigner, `subject` (a Patient or Location),
-    `encounter`, every `basedOn`, `partOf`, `performer`, `hasMember`, `derivedFrom` and note
+    `encounter`, `specimen`, every `basedOn`, `partOf`, `performer`, `hasMember`, `derivedFrom` and note
     `authorReference` whose type is a rebuilt resource. Absolute URLs, logical (identifier-only)
     references and targets that are not rebuilt resources (a Group, Device or Specimen, an
     ImagingStudy, a Media, a MedicationRequest, a ServiceRequest, `focus` — Reference(Any)) point
@@ -114,6 +115,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         )
     add_typed("subject", document.get("subject"), SUBJECT_TYPES)
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
+    add_typed("specimen", document.get("specimen"), ("Specimen",))
     for element, types in (
         ("basedOn", BASED_ON_TYPES),
         ("partOf", PART_OF_TYPES),

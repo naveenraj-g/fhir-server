@@ -262,7 +262,7 @@ routes:
     - schedule
     # - service_request
     - slot
-    # - specimen
+    - specimen
     # - specimen_definition
     # - task
     # - goal

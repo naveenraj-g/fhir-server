@@ -1,139 +1,84 @@
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.specimen import (
-    SpecimenIdentifier,
-    SpecimenModel,
-    SpecimenTypeCoding,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.specimen import SpecimenModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import specimen_search
 
 logger = get_logger(__name__)
 
+_M = SpecimenModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for Specimen."""
+    """Reads, search and delete. Every read loads only the specimen
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_specimen_id(self, specimen_id: int) -> SpecimenModel | None:
+    async def get_by_specimen_id(self, specimen_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(SpecimenModel).where(SpecimenModel.specimen_id == specimen_id)
-            )
+            stmt = select(_M).where(_M.specimen_id == specimen_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_specimen_id_in_org(
         self, specimen_id: int, org_id: str
-    ) -> SpecimenModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the specimen
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(SpecimenModel).where(
-                    SpecimenModel.specimen_id == specimen_id,
-                    SpecimenModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.specimen_id == specimen_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalars().first()
 
     async def specimen_belongs_to_org(self, specimen_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the specimen exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(SpecimenModel.id).where(
-                SpecimenModel.specimen_id == specimen_id,
-                SpecimenModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.specimen_id == specimen_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str | None = None,
-        status: str | None = None,
-        type: str | None = None,
-        subject: str | None = None,
-        accession_identifier: str | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(SpecimenModel.tenant_id == org_id)
-        if status:
-            stmt = stmt.where(SpecimenModel.status == status)
-        if type:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(SpecimenTypeCoding.id).where(
-                    SpecimenTypeCoding.specimen_pk == SpecimenModel.id,
-                    SpecimenTypeCoding.code == type,
-                ),
-            )
-        if subject:
-            stmt = stmt.where(SpecimenModel.subject_reference == subject)
-        if accession_identifier:
-            stmt = stmt.where(
-                SpecimenModel.accession_identifier_value == accession_identifier
-            )
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(SpecimenIdentifier.id).where(
-                    SpecimenIdentifier.specimen_pk == SpecimenModel.id,
-                    SpecimenIdentifier.value == identifier,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str | None = None,
-        status: str | None = None,
-        type: str | None = None,
-        subject: str | None = None,
-        accession_identifier: str | None = None,
-        identifier: str | None = None,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[SpecimenModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "status": status,
-                "type": type,
-                "subject": subject,
-                "accession_identifier": accession_identifier,
-                "identifier": identifier,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(SpecimenModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(SpecimenModel), **filter_kwargs
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=SpecimenModel.specimen_id,
-                default_desc=True,
-            )
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=specimen_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.specimen_id,
             )
-            return list(rows), total
+        logger.debug(
+            "Specimens searched",
+            extra={
+                "event": "specimen.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
+
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, specimen_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(SpecimenModel).where(SpecimenModel.specimen_id == specimen_id)
+            stmt = select(_M).where(_M.specimen_id == specimen_id)
             specimen = (await session.execute(stmt)).scalars().first()
             if not specimen:
                 return False

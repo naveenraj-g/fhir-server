@@ -45,10 +45,10 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     reference that must exist in the caller's org on write: identifier.assigner,
     `subject` (a Patient or a Location), `encounter`, and every `performer` /
     `resultsInterpreter` that is a Practitioner, PractitionerRole or Organization, and
-    every `result` (an Observation).
+    every `result` (an Observation) and `specimen` (a Specimen).
     Absolute URLs, logical (identifier-only) references and targets that are not
     resources on this server (a Group or Device subject, a CareTeam, basedOn,
-    specimen, media, imagingStudy) point elsewhere and are not checked."""
+    media, imagingStudy) point elsewhere and are not checked."""
     refs = []
 
     def add(label, reference, resource_type):
@@ -71,10 +71,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             parsed = typed(ref.get("reference"), _MODELED_PERFORMERS)
             if parsed:
                 refs.append((element, parsed[0], ref["reference"]))
-    for ref in document.get("result") or []:
-        parsed = typed((ref or {}).get("reference"), ("Observation",))
-        if parsed:
-            refs.append(("result", parsed[0], ref["reference"]))
+    for element, target in (("result", "Observation"), ("specimen", "Specimen")):
+        for ref in document.get(element) or []:
+            parsed = typed((ref or {}).get("reference"), (target,))
+            if parsed:
+                refs.append((element, parsed[0], ref["reference"]))
     return refs
 
 

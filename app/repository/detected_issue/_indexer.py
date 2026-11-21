@@ -38,6 +38,7 @@ _MODELED_AUTHORS = ("Practitioner", "PractitionerRole")
 # the resources already rebuilt that an issue can involve.
 _MODELED_ANY = (
     "Observation",
+    "Specimen",
     "Patient",
     "Practitioner",
     "PractitionerRole",

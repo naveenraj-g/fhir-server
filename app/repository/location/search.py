@@ -24,6 +24,7 @@ from app.repository._appointment_response_revinclude import actor_response_revin
 from app.repository._encounter_revinclude import location_encounter_revincludes
 from app.repository._procedure_revinclude import location_procedure_revincludes
 from app.repository._diagnostic_report_revinclude import subject_report_revincludes
+from app.repository._specimen_revinclude import column_specimen_revincludes
 from app.repository._immunization_revinclude import column_immunization_revincludes
 from app.fhir.search import (
     IncludeTarget,
@@ -866,6 +867,9 @@ def location_search() -> SearchRegistry:
             IncludeTarget("Location", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_specimen_revincludes(
+                ("subject",), "subject", "Location", lambda l: l.location_id
+            ),
             *participant_revincludes(
                 "Location", lambda l: l.location_id, ("actor", "location")
             ),

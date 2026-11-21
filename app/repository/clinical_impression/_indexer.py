@@ -51,6 +51,7 @@ _MODELED_FINDINGS = ("Condition", "Observation")
 # already rebuilt that supporting information can be.
 _MODELED_INFORMATION = (
     "Observation",
+    "Specimen",
     "Patient",
     "Practitioner",
     "PractitionerRole",

@@ -46,6 +46,7 @@ from app.repository.practitioner.search import practitioner_search
 from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.schedule.search import schedule_search
 from app.repository.slot.search import slot_search
+from app.repository.specimen.search import specimen_search
 
 # routes.enabled name -> registry factory.
 SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
@@ -57,6 +58,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "practitioner_role": practitioner_role_search,
     "schedule": schedule_search,
     "slot": slot_search,
+    "specimen": specimen_search,
     "patient": patient_search,
     "appointment": appointment_search,
     "appointment_response": appointment_response_search,

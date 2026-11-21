@@ -76,19 +76,27 @@ def encounter_report_revincludes(key) -> tuple[IncludeTarget, ...]:
     )
 
 
-def result_report_revincludes(key) -> tuple[IncludeTarget, ...]:
-    """DiagnosticReport:result — reports whose `result` includes one of the matched
-    Observations."""
+def reference_report_revincludes(
+    param: str, resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
+    """DiagnosticReport:result / :specimen — reports whose reference-table parameter `param`
+    points at one of the matched rows of `resource_type`."""
 
     async def fetch(session, ctx, rows):
         from app.repository.diagnostic_report.search import (
             revinclude_reports_via_reference,
         )
 
-        return await revinclude_reports_via_reference("result", "Observation", key)(
+        return await revinclude_reports_via_reference(param, resource_type, key)(
             session, ctx, rows
         )
 
     return (
-        IncludeTarget("DiagnosticReport", "result", "Observation", fetch, reverse=True),
+        IncludeTarget("DiagnosticReport", param, resource_type, fetch, reverse=True),
     )
+
+
+def result_report_revincludes(key) -> tuple[IncludeTarget, ...]:
+    """DiagnosticReport:result — reports whose `result` includes one of the matched
+    Observations."""
+    return reference_report_revincludes("result", "Observation", key)

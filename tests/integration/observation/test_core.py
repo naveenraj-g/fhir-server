@@ -432,9 +432,7 @@ async def test_create_part_of_is_checked_for_a_procedure_or_immunization(
         assert resp.status_code == 422, (missing, resp.text)
 
 
-async def test_create_based_on_focus_specimen_and_device_are_not_checked(
-    client, patient
-):
+async def test_create_based_on_focus_and_device_are_not_checked(client, patient):
     body = observation_body(
         patient,
         basedOn=[
@@ -442,7 +440,6 @@ async def test_create_based_on_focus_specimen_and_device_are_not_checked(
             {"reference": "MedicationRequest/999999"},
         ],
         focus=[{"reference": "Condition/999999"}],
-        specimen={"reference": "Specimen/999999"},
         device={"reference": "Device/999999"},
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
@@ -764,3 +761,10 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_specimen_must_exist(client, patient):
+    ok = observation_body(patient, specimen={"reference": "Specimen/310001"})
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = observation_body(patient, specimen={"reference": "Specimen/999999"})
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

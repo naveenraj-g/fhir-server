@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after wiring Observation as a target (`fb0845e`)._
+_Last updated: 2026-11-21, after rebuilding Specimen._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (25)
+## 1. Rebuilt on the current architecture (26)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -30,6 +30,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
 | 25 | Observation | `/observations` | 38 | 160000 | `x1c6e3a9b705` | `0aaa272` | **the engine's first `composite` searches** (8, via a `slot` on the token and value tables) and the `combo-*` union parameters; `value-quantity` / `value-string` / `value-date` in one value table; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, RelatedPerson, Procedure, Immunization and itself |
+| 26 | Specimen | `/specimens` | 12 | 310000 | `y2d7f4b0c816` | _pending_ | `collected` reads a dateTime or a Period; `container-id` and `container` read every container; `parent` is a self-reference (`Specimen:parent` chains and includes); `subject` / `collector` are multi-target; a revinclude source on Patient, Location, Practitioner, PractitionerRole, Observation (`:specimen`) and DiagnosticReport (`:specimen`); **the target of `Observation.specimen` and `DiagnosticReport.specimen`** |
 | 24 | DetectedIssue | `/detected-issues` | 6 | 540000 | `w0b5d2f8a614` | `90ad106` | **no `status` / `severity` search (R4 defines none)**; `identified` reads a dateTime or a Period; `implicated` is Reference(Any) in a shared reference table; a revinclude source on Patient, Practitioner and PractitionerRole |
 | 23 | ClinicalImpression | `/clinical-impressions` | 13 | 530000 | `v9a4c1e7f503` | `afaa8b1` | four repeating references (`problem`, `investigation`, `finding-ref`, `supporting-info` [Reference(Any)]) share one reference table; `finding-code` reads every finding; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, Condition, AllergyIntolerance, DiagnosticReport, RiskAssessment, FamilyMemberHistory and itself (`previous`); Condition `stage.assessment` now checks it |
 | 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | `ddbfe2e` | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
@@ -61,7 +62,7 @@ All 25 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | AppointmentResponse | `appointment`, `actor` (same types as Appointment), `identifier.assigner` | Device actors |
 | Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `diagnosis.condition` and `reasonReference` (Condition, Procedure; a `reasonReference` may also be an Observation), `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest targets |
 | RelatedPerson | `patient`, `identifier.assigner` | absolute URLs, logical references |
-| Observation | `subject` (Patient, Location), `encounter`, `basedOn` (ImmunizationRecommendation), `partOf` (Procedure, Immunization), `performer` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `hasMember` and `derivedFrom` (Observation), `note.authorReference`, `identifier.assigner` | Group / Device subject, Specimen, Device, `focus` (Reference(Any)), MedicationRequest / ServiceRequest / CarePlan basedOn, CareTeam, QuestionnaireResponse / Media / ImagingStudy / DocumentReference targets, absolute URLs, logical references |
+| Observation | `subject` (Patient, Location), `encounter`, `specimen`, `basedOn` (ImmunizationRecommendation), `partOf` (Procedure, Immunization), `performer` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `hasMember` and `derivedFrom` (Observation), `note.authorReference`, `identifier.assigner` | Group / Device subject, Device, `focus` (Reference(Any)), MedicationRequest / ServiceRequest / CarePlan basedOn, CareTeam, QuestionnaireResponse / Media / ImagingStudy / DocumentReference targets, absolute URLs, logical references |
 | DetectedIssue | `patient`, `author` (Practitioner, PractitionerRole), `mitigation.author` (Practitioner, PractitionerRole), `implicated` and `evidence.detail` (any rebuilt resource), `identifier.assigner` | Device author, MedicationRequest / MedicationDispense / Observation and other not-rebuilt `implicated` / `evidence.detail` targets, absolute URLs, logical references |
 | ClinicalImpression | `subject` (Patient), `encounter`, `assessor` (Practitioner, PractitionerRole), `previous`, `problem` (Condition, AllergyIntolerance), `investigation.item` (Observation, RiskAssessment, FamilyMemberHistory, DiagnosticReport), `finding.itemReference` (Condition, Observation), `prognosisReference` (RiskAssessment), `supportingInfo` (any rebuilt resource), `note.authorReference`, `identifier.assigner` | Group subject, Media / ImagingStudy / QuestionnaireResponse investigations, Media findings, absolute URLs, logical references |
 | RiskAssessment | `subject` (Patient), `encounter`, `condition`, `performer` (Practitioner, PractitionerRole), `reasonReference` (Condition, Observation, DiagnosticReport), `note.authorReference`, `identifier.assigner` | Group subject, Device performer, `basedOn` / `parent` / `basis` (Reference(Any)), DocumentReference reasons, absolute URLs, logical references |
@@ -69,29 +70,30 @@ All 25 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | ImmunizationEvaluation | `patient`, `immunizationEvent` (Immunization), `authority` (Organization), `identifier.assigner` | absolute URLs, logical references |
 | ImmunizationRecommendation | `patient`, `authority`, `supportingImmunization` (Immunization, ImmunizationEvaluation), `supportingPatientInformation` (Patient, Practitioner, PractitionerRole, RelatedPerson, Organization, Location, Encounter, Appointment, Condition, Procedure, DiagnosticReport, AllergyIntolerance, Immunization), `identifier.assigner` | Observation targets, absolute URLs, logical references |
 | Immunization | `patient`, `encounter`, `location`, `manufacturer`, `performer.actor` (Practitioner, PractitionerRole, Organization), `reasonReference` (Condition, Observation, DiagnosticReport), `reaction.detail` (Observation), `protocolApplied.authority`, `note` `authorReference`, `identifier.assigner` | absolute URLs, logical references |
-| DiagnosticReport | `subject` (Patient or Location), `encounter`, `performer` and `resultsInterpreter` (Practitioner, PractitionerRole, Organization), `result` (Observation), `identifier.assigner` | Group/Device subject, CareTeam, `basedOn`, `specimen`, `imagingStudy`, `media.link`, absolute URLs, logical references |
+| DiagnosticReport | `subject` (Patient or Location), `encounter`, `performer` and `resultsInterpreter` (Practitioner, PractitionerRole, Organization), `result` (Observation), `specimen` (Specimen), `identifier.assigner` | Group/Device subject, CareTeam, `basedOn`, `imagingStudy`, `media.link`, absolute URLs, logical references |
+| Specimen | `subject` (Patient or Location), `collection.collector` (Practitioner, PractitionerRole), `parent` (Specimen), `note.authorReference` (Practitioner, PractitionerRole, Patient, RelatedPerson), every `identifier` / `accessionIdentifier` / `container.identifier` `assigner` | Group / Device / Substance subject, `request` (ServiceRequest), `processing.additive`, `container.additiveReference`, absolute URLs, logical references |
 | Procedure | `subject` (Patient), `encounter`, `location`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `performer.actor` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `performer.onBehalfOf`, `partOf` (Procedure), `reasonReference` (Condition, Procedure, DiagnosticReport, Observation), `report` (DiagnosticReport), `complicationDetail` (Condition), `note` `authorReference`, `identifier.assigner` | Group subject, Device performer, `basedOn`, `usedReference`, DocumentReference targets, absolute URLs, logical references |
 | Condition | `subject` (Patient), `encounter`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `note` `authorReference` (Practitioner, Patient, RelatedPerson, Organization), `stage.assessment` (DiagnosticReport, ClinicalImpression, Observation), `identifier.assigner` | Group subject, `evidence.detail`, absolute URLs, logical references |
 | AllergyIntolerance | `patient`, `encounter`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `note` / `reaction.note` `authorReference` (Practitioner, Patient, RelatedPerson, Organization), `identifier.assigner` | absolute URLs, logical references |
 
 ---
 
-## 2. Not yet rebuilt (24)
+## 2. Not yet rebuilt (26)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
-| Orders and medication | ServiceRequest, MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
-| Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Consent, Group |
+| Orders and medication | ServiceRequest, MedicationRequest, Medication, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
+| Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Task, Flag, Consent, Group |
 | Communication | Communication, CommunicationRequest |
-| Documents and specimens | DocumentReference, Specimen, SpecimenDefinition |
+| Documents and specimens | DocumentReference, SpecimenDefinition |
 | Definitions and measures | ActivityDefinition, PlanDefinition, ObservationDefinition, Measure, MeasureReport |
 | Forms | Questionnaire, QuestionnaireResponse |
 
 Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
-Suggested next: any of the resources in the list above; **ServiceRequest** and **MedicationRequest** are the ones Observation can point at (`basedOn`).
+Suggested next: any of the resources in the list above; **ServiceRequest** and **MedicationRequest** are the ones Observation, DiagnosticReport and Specimen (`request`) can point at.
 
 ---
 
@@ -109,6 +111,7 @@ Suggested next: any of the resources in the list above; **ServiceRequest** and *
 | DetectedIssue references | No `:implicated` revinclude (a DetectedIssue cannot be found from the resources it implicates); Condition `evidence-detail` does not chain to or include a DetectedIssue | DetectedIssue |
 | Observation as a target | Done for every element that names an Observation as an R4 target (existence check, chaining, `_include`, and the `_revinclude` on Observation). Left as sent: `Condition.evidence.detail` and `RiskAssessment.basis` (Reference(Any) elements outside the modeled-type lists), plus no `:supporting-info` / `:implicated` / `:information` revinclude | Condition, RiskAssessment |
 | Observation search | `SampledData` is not indexed for `value-quantity`; `value-string` has no `:exact`; `Observation:performer` is not declared on Organization (uncommitted edits in its registry file); a Timing `effective[x]` is indexed as the range from its earliest event to its latest | Observation |
+| Specimen references | `Specimen.request` (ServiceRequest), `processing.additive` and `container.additiveReference` (Substance) are stored as sent; no `:request` revinclude; `Specimen:subject` does not include a Group / Device / Substance (not resources here) | Specimen |
 | Cardinality minimums | R4 required elements (e.g. `status`, `participant`) are enforced only by the `java_validator` backend, not the native one | all resources |
 | Test-suite collection | `pytest tests` as a whole fails at collection (pre-existing); run per directory | tests |
 

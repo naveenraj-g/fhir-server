@@ -77,6 +77,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/observation-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "Specimen": (
+        "app.models.specimen",
+        "SpecimenModel",
+        "specimen_id",
+        "app.repository.specimen.search",
+        "specimen_search",
+    ),
     "Patient": (
         "app.models.patient",
         "PatientModel",
@@ -1122,6 +1129,12 @@ def observation_search() -> SearchRegistry:
                 _include_column("subject", "Patient"),
             ),
             *column_includes("subject", "subject", SUBJECT_TYPES),
+            IncludeTarget(
+                "Observation",
+                "specimen",
+                "Specimen",
+                _include_column("specimen", "Specimen"),
+            ),
             IncludeTarget(
                 "Observation",
                 "encounter",

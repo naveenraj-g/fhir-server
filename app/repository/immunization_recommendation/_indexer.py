@@ -39,6 +39,7 @@ _MODELED_SUPPORT = ("Immunization", "ImmunizationEvaluation")
 # the resources already rebuilt that a piece of patient information can be.
 _MODELED_INFORMATION = (
     "Observation",
+    "Specimen",
     "Patient",
     "Practitioner",
     "PractitionerRole",
