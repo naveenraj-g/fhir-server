@@ -1,214 +1,93 @@
-"""Shared helpers and payloads for RiskAssessment integration tests."""
+"""Shared helpers and payloads for risk_assessment integration tests.
+
+Request bodies are genuine FHIR R4 RiskAssessment JSON (camelCase, nested datatypes), and
+every response is FHIR R4 too."""
+
+# The resources a RiskAssessment points at (and that point back at it) are created through
+# their own routers.
+from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
+from tests.integration.diagnostic_report.support import create_report, report_body  # noqa: F401
+from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
 
 BASE = "/api/fhir/v1/risk-assessments"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+ASSESSMENT_IDS = "https://fhir-server.dev/fhir/identifier-system/risk-assessment-id"
+SCT = "http://snomed.info/sct"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+RISK = "http://terminology.hl7.org/CodeSystem/risk-probability"
+UCUM = "http://unitsofmeasure.org"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+def risk(code: str = "moderate", display: str | None = None) -> dict:
+    return {"coding": [{"system": RISK, "code": code, **({"display": display} if display else {})}]}
 
 
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True, "name": [{"family": "Smith", "given": ["Alice"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+def percent(value: float | int) -> dict:
+    return {"value": value, "unit": "%", "system": UCUM, "code": "%"}
 
 
-async def create_test_condition(client, patient_id: int) -> int:
-    """Create a minimal condition and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/conditions/",
-        json={
-            "clinical_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
-                        "code": "active",
-                    }
-                ]
+def assessment_body(patient_id: int | None = None, status: str = "final", **extra) -> dict:
+    """A valid minimal RiskAssessment: R4 requires `status` and `subject`. With no patient the
+    subject is an absolute URL (not existence-checked)."""
+    subject = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    return {"status": status, "subject": subject, **extra}
+
+
+def full_body(patient_id: int, encounter_id: int, condition_id: int, practitioner_id: int, organization_id: int) -> dict:
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return assessment_body(
+        patient_id,
+        resourceType="RiskAssessment",
+        identifier=[
+            {
+                "system": ASSESSMENT_IDS,
+                "value": "RA-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "FILL"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
+            }
+        ],
+        basedOn={"reference": "ServiceRequest/80001"},
+        parent={"reference": "Procedure/100001"},
+        method={"coding": [{"system": SCT, "code": "225338004", "display": "Risk assessment"}]},
+        code={"coding": [{"system": SCT, "code": "709510001", "display": "Assessment of risk for cardiovascular disease"}]},
+        encounter={"reference": f"Encounter/{encounter_id}"},
+        occurrenceDateTime="2023-01-15T09:30:00Z",
+        condition={"reference": f"Condition/{condition_id}"},
+        performer={"reference": f"Practitioner/{practitioner_id}"},
+        reasonCode=[{"text": "Family history of heart disease"}],
+        reasonReference=[{"reference": f"Condition/{condition_id}"}, {"reference": "Observation/160001"}],
+        basis=[{"reference": "Observation/160002"}],
+        prediction=[
+            {
+                "outcome": {"coding": [{"system": SCT, "code": "54329005", "display": "Acute myocardial infarction"}]},
+                "probabilityDecimal": 12.5,
+                "qualitativeRisk": risk("moderate", "moderate likelihood"),
+                "relativeRisk": 1.4,
+                "whenRange": {"low": {"value": 40, "unit": "yr", "system": UCUM, "code": "a"},
+                              "high": {"value": 50, "unit": "yr", "system": UCUM, "code": "a"}},
+                "rationale": "Based on lipid panel and blood pressure.",
             },
-            "verification_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
-                        "code": "confirmed",
-                    }
-                ]
+            {
+                "outcome": {"text": "Stroke"},
+                "probabilityRange": {"low": percent(5), "high": percent(10)},
+                "qualitativeRisk": risk("low"),
+                "whenPeriod": {"start": "2023-01-01", "end": "2033-01-01"},
             },
-            "subject": {"reference": f"Patient/{patient_id}"},
-        },
+        ],
+        mitigation="Statin therapy and lifestyle changes.",
+        note=[{"text": "Reassess in 12 months.", "time": "2023-01-15T10:00:00Z", "authorString": "Nurse Joy"}],
     )
+
+
+async def create_assessment(client, body: dict) -> int:
+    """Create a risk assessment and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_encounter(client, patient_id: int) -> int:
-    """Create a minimal encounter and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/encounters/",
-        json={
-            "status": "in-progress",
-            "class_coding": {
-                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                "code": "AMB",
-                "display": "ambulatory",
-            },
-            "subject": f"Patient/{patient_id}",
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_risk_assessment(patient_id: int) -> dict:
-    return {
-        "status": "final",
-        "subject": {"reference": f"Patient/{patient_id}"},
-    }
-
-
-async def create_risk_assessment(client, patient_id: int) -> int:
-    """Create a minimal risk assessment and return its public ID."""
-    resp = await client.post(
-        f"{BASE}/",
-        json=minimal_risk_assessment(patient_id),
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def full_risk_assessment(
-    patient_id: int,
-    condition_id: int | None = None,
-    practitioner_id: int | None = None,
-    encounter_id: int | None = None,
-) -> dict:
-    payload = {
-        "status": "final",
-        "subject": {
-            "reference": f"Patient/{patient_id}",
-            "reference_display": "Jane Doe",
-        },
-        "occurrence_date_time": "2026-02-01T10:00:00Z",
-        "method": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "709510001",
-                    "display": "Framingham risk score",
-                    "user_selected": True,
-                }
-            ],
-            "text": "Framingham 10-year risk assessment",
-        },
-        "code": {
-            "coding": [
-                {
-                    "system": "http://loinc.org",
-                    "code": "89243-0",
-                    "display": "Cardiovascular disease 10Y risk [Likelihood]",
-                    "user_selected": True,
-                }
-            ],
-            "text": "Cardiovascular disease 10Y risk",
-        },
-        "reason_code": [
-            {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "171121004",
-                        "display": "Screening for cardiovascular disease",
-                        "user_selected": True,
-                    }
-                ],
-                "text": "Screening for cardiovascular disease",
-            }
-        ],
-        "prediction": [
-            {
-                "outcome": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "49436004",
-                            "display": "Atrial fibrillation",
-                            "user_selected": True,
-                        }
-                    ],
-                    "text": "Atrial fibrillation",
-                },
-                "probability_decimal": 0.12,
-                "qualitative_risk": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/risk-probability",
-                            "code": "moderate",
-                            "display": "Moderate likelihood",
-                            "user_selected": True,
-                        }
-                    ],
-                    "text": "Moderate risk",
-                },
-                "relative_risk": 1.5,
-                "when_period": {
-                    "start": "2026-02-01T10:00:00Z",
-                    "end": "2036-02-01T10:00:00Z",
-                },
-                "rationale": "Elevated systolic BP and family history.",
-            }
-        ],
-        "mitigation": "Lifestyle modifications and low-dose antihypertensive therapy.",
-        "note": [
-            {
-                "text": "Re-evaluate in 12 months.",
-                "time": "2026-02-01T10:00:00Z",
-                "author_string": "Dr. Alice Smith",
-            }
-        ],
-        "identifier": [
-            {
-                "use": "official",
-                "system": "http://example.org/risk-assessment-ids",
-                "value": "RA-2026-001",
-                "period_start": "2026-02-01T10:00:00Z",
-                "period_end": "2027-02-01T10:00:00Z",
-            }
-        ],
-    }
-
-    if condition_id is not None:
-        payload["condition"] = {
-            "reference": f"Condition/{condition_id}",
-            "reference_display": "Hypertension",
-        }
-        payload["reason_reference"] = [
-            {
-                "reference": f"Condition/{condition_id}",
-                "reference_display": "Hypertension",
-            }
-        ]
-
-    if practitioner_id is not None:
-        payload["performer"] = {
-            "reference": f"Practitioner/{practitioner_id}",
-            "reference_display": "Dr. Alice Smith",
-        }
-
-    if encounter_id is not None:
-        payload["encounter"] = {
-            "reference": f"Encounter/{encounter_id}",
-            "reference_display": "Annual Physical",
-        }
-
-    return payload
+    return int(resp.json()["id"])

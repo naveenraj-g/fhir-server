@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._immunization_revinclude import performer_immunization_revincludes
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes
@@ -489,6 +490,9 @@ def practitioner_role_search() -> SearchRegistry:
             *performer_procedure_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
             *performer_immunization_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
             *performer_report_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
+            *column_risk_revincludes(
+                ('performer',), 'performer', 'PractitionerRole', lambda r: r.practitioner_role_id
+            ),
             IncludeTarget(
                 "Schedule", "actor", "PractitionerRole",
                 _revinclude_schedules("PractitionerRole", lambda r: r.practitioner_role_id), reverse=True,

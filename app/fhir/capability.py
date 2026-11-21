@@ -28,6 +28,7 @@ from app.repository.condition.search import condition_search
 from app.repository.diagnostic_report.search import diagnostic_report_search
 from app.repository.family_member_history.search import family_member_history_search
 from app.repository.immunization.search import immunization_search
+from app.repository.risk_assessment.search import risk_assessment_search
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
 from app.repository.immunization_recommendation.search import immunization_recommendation_search
 from app.repository.procedure.search import procedure_search
@@ -61,6 +62,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "diagnostic_report": diagnostic_report_search,
     "family_member_history": family_member_history_search,
     "immunization": immunization_search,
+    "risk_assessment": risk_assessment_search,
     "immunization_evaluation": immunization_evaluation_search,
     "immunization_recommendation": immunization_recommendation_search,
     "procedure": procedure_search,

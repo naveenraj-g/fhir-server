@@ -125,6 +125,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "RiskAssessments",
+        "description": (
+            "FHIR R4 RiskAssessment resources — an assessment of the likely outcome(s) for a patient or "
+            "other subject, with the probability of each (a decimal or a range, and a qualitative risk)."
+        ),
+    },
+    {
         "name": "Specimens",
         "description": (
             "FHIR R4 Specimen resources — biological material collected from a patient for "

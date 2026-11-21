@@ -258,7 +258,7 @@ routes:
     # - questionnaire
     # - questionnaire_response
     - related_person
-    # - risk_assessment
+    - risk_assessment
     - schedule
     # - service_request
     - slot
