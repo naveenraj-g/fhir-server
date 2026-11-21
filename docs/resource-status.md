@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after RiskAssessment (commit hash below)._
+_Last updated: 2026-11-21, after RiskAssessment (`ddbfe2e`)._
 
 ## Architecture in one line
 
@@ -29,7 +29,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
-| 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | pending | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
+| 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | `ddbfe2e` | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
 | 21 | FamilyMemberHistory | `/family-member-histories` | 9 | 490000 | `t7e2a9c5d381` | `a39d710` | `code` reads every condition; `instantiates-canonical`/`-uri` as on Procedure; many choice types (born/age/deceased/onset) live only in `content`; a revinclude source on Patient |
 | 20 | ImmunizationEvaluation | `/immunization-evaluations` | 7 | 610000 | `s6d1f8b4c270` | `d0b2cca` | smallest of the family; old reference-type enums held member names (`PATIENT`); now an existence-checked, chainable and includable `support` target of ImmunizationRecommendation, and a revinclude source on Patient and Immunization |
 | 19 | ImmunizationRecommendation | `/immunization-recommendations` | 8 | 510000 | `r5c0e7a3b169` | `d8effae` | tokens read inside the `recommendation` backbone (any entry matches); `information` is Reference(Any); now a revinclude source on Patient and Immunization |
