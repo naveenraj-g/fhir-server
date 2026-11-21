@@ -1,44 +1,17 @@
-from .code_coding import DetectedIssueCodeCodingModel
-from .core import DetectedIssueModel, detected_issue_pub_seq
-from .enums import (
-    DetectedIssueAuthorReferenceType,
-    DetectedIssueMitigationAuthorReferenceType,
-    DetectedIssuePatientReferenceType,
-    DetectedIssueSeverity,
-    DetectedIssueStatus,
-)
-from .evidence import (
-    DetectedIssueEvidenceCodeCodingModel,
-    DetectedIssueEvidenceCodeModel,
-    DetectedIssueEvidenceDetailModel,
-    DetectedIssueEvidenceModel,
-)
-from .identifier import (
-    DetectedIssueIdentifierModel,
-    DetectedIssueIdentifierTypeCodingModel,
-)
-from .implicated import DetectedIssueImplicatedModel
-from .mitigation import (
-    DetectedIssueMitigationActionCodingModel,
-    DetectedIssueMitigationModel,
-)
+from .core import AUTHOR_TYPES, DetectedIssueModel, detected_issue_id_seq
+from .identifier import DetectedIssueIdentifier
+from .reference import IMPLICATED_TYPES, REFERENCE_PARAMS, REFERENCE_TYPES, DetectedIssueReference
+from .token import TOKEN_PARAMS, DetectedIssueToken
 
 __all__ = [
-    "DetectedIssueAuthorReferenceType",
-    "DetectedIssueCodeCodingModel",
-    "DetectedIssueEvidenceCodeCodingModel",
-    "DetectedIssueEvidenceCodeModel",
-    "DetectedIssueEvidenceDetailModel",
-    "DetectedIssueEvidenceModel",
-    "DetectedIssueIdentifierModel",
-    "DetectedIssueIdentifierTypeCodingModel",
-    "DetectedIssueImplicatedModel",
-    "DetectedIssueMitigationActionCodingModel",
-    "DetectedIssueMitigationAuthorReferenceType",
-    "DetectedIssueMitigationModel",
+    "AUTHOR_TYPES",
+    "IMPLICATED_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "TOKEN_PARAMS",
+    "DetectedIssueIdentifier",
     "DetectedIssueModel",
-    "DetectedIssuePatientReferenceType",
-    "DetectedIssueSeverity",
-    "DetectedIssueStatus",
-    "detected_issue_pub_seq",
+    "DetectedIssueReference",
+    "DetectedIssueToken",
+    "detected_issue_id_seq",
 ]

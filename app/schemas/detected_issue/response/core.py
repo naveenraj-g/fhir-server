@@ -1,184 +1,69 @@
-from datetime import datetime
-from typing import Any, Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
     FHIRReference,
 )
-
-from .codeable_concept import PlainDetectedIssueCodeableConcept
-from .evidence import PlainDetectedIssueEvidence
-from .identifier import PlainDetectedIssueIdentifier
-from .mitigation import PlainDetectedIssueMitigation
-from .reference import PlainDetectedIssueReference
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
 class FHIRDetectedIssueEvidence(BaseModel):
-    """DetectedIssue.evidence FHIR element."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    code: list[FHIRCodeableConcept] | None = Field(
-        None, description="Manifestation of the issue."
-    )
-    detail: list[FHIRReference] | None = Field(
-        None, description="Supporting information / problem resource."
-    )
+    code: list[FHIRCodeableConcept] | None = Field(None, description="Manifestation.")
+    detail: list[FHIRReference] | None = Field(None, description="Supporting information.")
 
 
 class FHIRDetectedIssueMitigation(BaseModel):
-    """DetectedIssue.mitigation FHIR element."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    action: FHIRCodeableConcept = Field(
-        ..., description="What mitigation was taken."
-    )
+    action: FHIRCodeableConcept | None = Field(None, description="What mitigation?")
     date: str | None = Field(None, description="Date committed.")
-    author: FHIRReference | None = Field(
-        None, description="Who committed the mitigation."
-    )
+    author: FHIRReference | None = Field(None, description="Who is committing?")
 
 
 class FHIRDetectedIssueSchema(BaseModel):
-    """FHIR R4 DetectedIssue resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["DetectedIssue"] = "DetectedIssue"
-    id: str = Field(..., description="Logical id of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="Additional content defined by implementations."
+    resourceType: str = Field("DetectedIssue", description="Always 'DetectedIssue'.")
+    id: str = Field(..., description="Public detected_issue_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="Business identifier for issue."
+    extension: list[dict] | None = Field(
+        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
     )
-    status: str = Field(
-        ...,
-        description="registered | preliminary | final | amended | corrected | cancelled | entered-in-error | unknown",
-    )
-    code: FHIRCodeableConcept | None = Field(
-        None, description="Issue Category, e.g. drug-drug, contraindication."
-    )
-    severity: str | None = Field(
-        None, description="high | moderate | low"
-    )
-    patient: FHIRReference | None = Field(
-        None, description="Associated patient."
-    )
-    identifiedDateTime: str | None = Field(
-        None, description="When identified (dateTime)."
-    )
-    identifiedPeriod: FHIRPeriod | None = Field(
-        None, description="When identified (Period)."
-    )
-    author: FHIRReference | None = Field(
-        None, description="The provider or device that identified the issue."
-    )
-    implicated: list[FHIRReference] | None = Field(
-        None, description="Problem resource."
-    )
-    evidence: list[FHIRDetectedIssueEvidence] | None = Field(
-        None, description="Supporting evidence."
-    )
-    detail: str | None = Field(
-        None, description="Description and context."
-    )
-    reference: str | None = Field(
-        None, description="Authority for issue."
-    )
-    mitigation: list[FHIRDetectedIssueMitigation] | None = Field(
-        None, description="Step taken to address."
-    )
-
-
-class PlainDetectedIssueResponse(BaseModel):
-    """Plain snake_case DetectedIssue response schema."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: int = Field(..., description="Public sequence identifier.")
-    status: str = Field(..., description="Detected issue status.")
-    code: PlainDetectedIssueCodeableConcept | None = Field(
-        None, description="Issue Category."
-    )
-    severity: str | None = Field(
-        None, description="high | moderate | low."
-    )
-    patient: PlainDetectedIssueReference | None = Field(
-        None, description="Associated patient."
-    )
-    identified_date_time: datetime | None = Field(
-        None, description="When identified (dateTime)."
-    )
-    identified_period_start: datetime | None = Field(
-        None, description="When identified (Period start)."
-    )
-    identified_period_end: datetime | None = Field(
-        None, description="When identified (Period end)."
-    )
-    author: PlainDetectedIssueReference | None = Field(
-        None, description="Provider or device that identified the issue."
-    )
-    implicated: list[PlainDetectedIssueReference] | None = Field(
-        None, description="Problem resource(s)."
-    )
-    evidence: list[PlainDetectedIssueEvidence] | None = Field(
-        None, description="Supporting evidence."
-    )
-    detail: str | None = Field(
-        None, description="Description and context."
-    )
-    reference: str | None = Field(
-        None, description="Authority for issue."
-    )
-    mitigation: list[PlainDetectedIssueMitigation] | None = Field(
-        None, description="Steps taken to address."
-    )
-    identifier: list[PlainDetectedIssueIdentifier] | None = Field(
-        None, description="Business identifiers."
-    )
-    extension: dict[str, Any] | None = Field(
-        None, description="FHIR DomainResource extensions."
-    )
-
-
-class PaginatedDetectedIssueResponse(BaseModel):
-    """Paginated plain snake_case DetectedIssue response."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    total: int = Field(..., description="Total number of matching records.")
-    limit: int = Field(..., description="Page size limit.")
-    offset: int = Field(..., description="Page offset.")
-    data: list[PlainDetectedIssueResponse] = Field(
-        ..., description="List of matching DetectedIssue records."
-    )
+    identifier: list[FHIRIdentifier] | None = Field(None, description="Unique id for the detected issue.")
+    status: str | None = Field(None, description="registered | preliminary | final | amended | corrected | cancelled | entered-in-error | unknown.")
+    code: FHIRCodeableConcept | None = Field(None, description="Issue category, e.g. drug-drug, duplicate therapy.")
+    severity: str | None = Field(None, description="high | moderate | low.")
+    patient: FHIRReference | None = Field(None, description="Associated patient.")
+    identifiedDateTime: str | None = Field(None, description="When identified (dateTime).")
+    identifiedPeriod: FHIRPeriod | None = Field(None, description="When identified (Period).")
+    author: FHIRReference | None = Field(None, description="The provider or device that identified the issue.")
+    implicated: list[FHIRReference] | None = Field(None, description="Problem resource.")
+    evidence: list[FHIRDetectedIssueEvidence] | None = Field(None, description="Supporting evidence.")
+    detail: str | None = Field(None, description="Description and context.")
+    reference: str | None = Field(None, description="Authority for the issue.")
+    mitigation: list[FHIRDetectedIssueMitigation] | None = Field(None, description="Step taken to address.")
 
 
 class FHIRDetectedIssueBundleEntry(BaseModel):
-    """Entry in a FHIR DetectedIssue searchset Bundle."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    fullUrl: str = Field(..., description="Full URL for the resource.")
-    resource: FHIRDetectedIssueSchema = Field(..., description="DetectedIssue resource.")
-
-
-class FHIRDetectedIssueBundle(BaseModel):
-    """FHIR R4 searchset Bundle for DetectedIssue."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int = Field(..., description="Total number of matches.")
-    entry: list[FHIRDetectedIssueBundleEntry] = Field(
-        default_factory=list, description="Matched resources."
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
     )
+    resource: FHIRDetectedIssueSchema | dict = Field(
+        ...,
+        description="A DetectedIssue (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Practitioner / PractitionerRole / implicated resource (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
+
+
+class FHIRDetectedIssueBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRDetectedIssueBundleEntry] | None = None

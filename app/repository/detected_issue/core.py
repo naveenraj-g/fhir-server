@@ -1,220 +1,85 @@
-from datetime import date, datetime
-
-from sqlalchemy import delete, func
 from sqlalchemy.future import select
 
-from app.core.filters import (
-    apply_child_exists_filter,
-    apply_date_range_filter,
-    apply_token_filter,
-    parse_reference,
-)
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.detected_issue import (
-    DetectedIssueAuthorReferenceType,
-    DetectedIssueCodeCodingModel,
-    DetectedIssueEvidenceCodeCodingModel,
-    DetectedIssueEvidenceCodeModel,
-    DetectedIssueEvidenceDetailModel,
-    DetectedIssueEvidenceModel,
-    DetectedIssueIdentifierModel,
-    DetectedIssueIdentifierTypeCodingModel,
-    DetectedIssueMitigationActionCodingModel,
-    DetectedIssueMitigationModel,
-    DetectedIssueModel,
-    DetectedIssuePatientReferenceType,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.detected_issue import DetectedIssueModel
 
-from ._shared import (
-    _SORTABLE_FIELDS,
-    _with_relationships,
-)
+from .search import detected_issue_search
 
 logger = get_logger(__name__)
 
+_M = DetectedIssueModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for DetectedIssue."""
+    """Reads, search and delete. Every read loads only the detected_issue
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_detected_issue_id(
-        self, detected_issue_id: int
-    ) -> DetectedIssueModel | None:
+    async def get_by_detected_issue_id(self, detected_issue_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(DetectedIssueModel).where(
-                    DetectedIssueModel.detected_issue_id == detected_issue_id
-                )
-            )
+            stmt = select(_M).where(_M.detected_issue_id == detected_issue_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_detected_issue_id_in_org(
-        self, detected_issue_id: int, org_id: str
-    ) -> DetectedIssueModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    async def get_by_detected_issue_id_in_org(self, detected_issue_id: int, org_id: str) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the detected_issue
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(DetectedIssueModel).where(
-                    DetectedIssueModel.detected_issue_id == detected_issue_id,
-                    DetectedIssueModel.tenant_id == org_id,
-                )
-            )
+            stmt = select(_M).where(_M.detected_issue_id == detected_issue_id, _M.tenant_id == org_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def detected_issue_belongs_to_org(
-        self, detected_issue_id: int, org_id: str
-    ) -> bool:
-        """Cheap existence/ownership check (no joins, no sub-resources)."""
+    async def detected_issue_belongs_to_org(self, detected_issue_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the detected_issue exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(func.count(DetectedIssueModel.id)).where(
-                DetectedIssueModel.detected_issue_id == detected_issue_id,
-                DetectedIssueModel.tenant_id == org_id,
-            )
-            count = (await session.execute(stmt)).scalar() or 0
-            return count > 0
+            stmt = select(_M.id).where(_M.detected_issue_id == detected_issue_id, _M.tenant_id == org_id)
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str,
-        status: str | None = None,
-        patient: str | None = None,
-        author: str | None = None,
-        identified: date | datetime | str | None = None,
-        identifier: str | None = None,
-        code: str | None = None,
-    ):
-        stmt = stmt.where(DetectedIssueModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if status:
-            stmt = apply_token_filter(stmt, DetectedIssueModel.status, status)
-
-        if patient:
-            p_type, p_id = parse_reference(patient, DetectedIssuePatientReferenceType)
-            if p_type:
-                stmt = stmt.where(DetectedIssueModel.patient_type == p_type)
-            if p_id:
-                stmt = stmt.where(DetectedIssueModel.patient_id == p_id)
-            elif "/" in patient:
-                parts = patient.split("/")
-                if len(parts) == 2 and parts[1].isdigit():
-                    stmt = stmt.where(DetectedIssueModel.patient_id == int(parts[1]))
-            elif patient.isdigit():
-                stmt = stmt.where(DetectedIssueModel.patient_id == int(patient))
-
-        if author:
-            a_type, a_id = parse_reference(author, DetectedIssueAuthorReferenceType)
-            if a_type:
-                stmt = stmt.where(DetectedIssueModel.author_type == a_type)
-            if a_id:
-                stmt = stmt.where(DetectedIssueModel.author_id == a_id)
-            elif "/" in author:
-                parts = author.split("/")
-                if len(parts) == 2 and parts[1].isdigit():
-                    stmt = stmt.where(DetectedIssueModel.author_id == int(parts[1]))
-            elif author.isdigit():
-                stmt = stmt.where(DetectedIssueModel.author_id == int(author))
-
-        if identified:
-            stmt = apply_date_range_filter(
-                stmt, DetectedIssueModel.identified_date_time, identified
-            )
-
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                DetectedIssueIdentifierModel,
-                DetectedIssueIdentifierModel.detected_issue_pk == DetectedIssueModel.id,
-                DetectedIssueIdentifierModel.system,
-                DetectedIssueIdentifierModel.value,
-                identifier,
-            )
-
-        if code:
-            stmt = apply_child_exists_filter(
-                stmt,
-                DetectedIssueCodeCodingModel,
-                DetectedIssueCodeCodingModel.detected_issue_pk == DetectedIssueModel.id,
-                DetectedIssueCodeCodingModel.system,
-                DetectedIssueCodeCodingModel.code,
-                code,
-            )
-
-        return stmt
-
-    async def list(
-        self,
-        org_id: str,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-        status: str | None = None,
-        patient: str | None = None,
-        author: str | None = None,
-        identified: date | datetime | str | None = None,
-        identifier: str | None = None,
-        code: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[DetectedIssueModel], int]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            count_stmt = select(func.count(DetectedIssueModel.id))
-            count_stmt = self._apply_list_filters(
-                count_stmt,
-                org_id=org_id,
-                status=status,
-                patient=patient,
-                author=author,
-                identified=identified,
-                identifier=identifier,
-                code=code,
-            )
-
-            data_stmt = select(DetectedIssueModel)
-            data_stmt = self._apply_list_filters(
-                data_stmt,
-                org_id=org_id,
-                status=status,
-                patient=patient,
-                author=author,
-                identified=identified,
-                identifier=identifier,
-                code=code,
-            )
-            data_stmt = _with_relationships(data_stmt)
-
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                DetectedIssueModel.detected_issue_id,
-                default_desc=True,
-            )
-
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                data_stmt,
-                count_stmt,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=detected_issue_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.detected_issue_id,
             )
-            return list(rows), total or 0
+        logger.debug(
+            "DetectedIssues searched",
+            extra={
+                "event": "detected_issue.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-    async def delete(self, detected_issue_id: int, org_id: str) -> bool:
-        """Deletes a DetectedIssue resource if it belongs to org_id."""
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
+
+    async def delete(self, detected_issue_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(DetectedIssueModel).where(
-                    DetectedIssueModel.detected_issue_id == detected_issue_id,
-                    DetectedIssueModel.tenant_id == org_id,
-                )
-            )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            stmt = select(_M).where(_M.detected_issue_id == detected_issue_id)
+            detected_issue = (await session.execute(stmt)).scalars().first()
+            if not detected_issue:
                 return False
-
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(detected_issue)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

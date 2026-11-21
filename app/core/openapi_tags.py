@@ -132,6 +132,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "DetectedIssues",
+        "description": (
+            "FHIR R4 DetectedIssue resources — an actual or potential clinical problem detected for a patient, "
+            "such as a drug interaction or duplicate therapy, with its evidence and mitigation."
+        ),
+    },
+    {
         "name": "RiskAssessments",
         "description": (
             "FHIR R4 RiskAssessment resources — an assessment of the likely outcome(s) for a patient or "
