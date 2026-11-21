@@ -43,7 +43,11 @@ _MEDICATION_FIELDS = {
 }
 _MEDICATION_FHIR_KEYS = {"medicationCodeableConcept", "medicationReference"}
 
-_EFFECTIVE_FIELDS = {"effective_date_time", "effective_period_start", "effective_period_end"}
+_EFFECTIVE_FIELDS = {
+    "effective_date_time",
+    "effective_period_start",
+    "effective_period_end",
+}
 _EFFECTIVE_FHIR_KEYS = {"effectiveDateTime", "effectivePeriod"}
 
 _SUBJECT_FIELDS = {
@@ -187,7 +191,9 @@ def _reference_with_prefix_from_payload(obj: Any, prefix: str) -> dict:
     ):
         identifier: dict = {}
         if id_use:
-            identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+            identifier["use"] = (
+                id_use.value if hasattr(id_use, "value") else str(id_use)
+            )
         if (
             id_type_system
             or id_type_code
@@ -197,7 +203,13 @@ def _reference_with_prefix_from_payload(obj: Any, prefix: str) -> dict:
             or id_type_user_selected
         ):
             type_cc: dict = {}
-            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+            if (
+                id_type_system
+                or id_type_code
+                or id_type_display
+                or id_type_version
+                or id_type_user_selected
+            ):
                 type_cc["coding"] = [
                     {
                         k: v
@@ -222,8 +234,12 @@ def _reference_with_prefix_from_payload(obj: Any, prefix: str) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": id_period_start.isoformat() if hasattr(id_period_start, "isoformat") else (str(id_period_start) if id_period_start else None),
-                    "end": id_period_end.isoformat() if hasattr(id_period_end, "isoformat") else (str(id_period_end) if id_period_end else None),
+                    "start": id_period_start.isoformat()
+                    if hasattr(id_period_start, "isoformat")
+                    else (str(id_period_start) if id_period_start else None),
+                    "end": id_period_end.isoformat()
+                    if hasattr(id_period_end, "isoformat")
+                    else (str(id_period_end) if id_period_end else None),
                 }.items()
                 if v is not None
             }
@@ -272,7 +288,9 @@ def _reference_from_child_payload(obj: Any) -> dict:
     ):
         identifier: dict = {}
         if id_use:
-            identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+            identifier["use"] = (
+                id_use.value if hasattr(id_use, "value") else str(id_use)
+            )
         if (
             id_type_system
             or id_type_code
@@ -282,7 +300,13 @@ def _reference_from_child_payload(obj: Any) -> dict:
             or id_type_user_selected
         ):
             type_cc: dict = {}
-            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+            if (
+                id_type_system
+                or id_type_code
+                or id_type_display
+                or id_type_version
+                or id_type_user_selected
+            ):
                 type_cc["coding"] = [
                     {
                         k: v
@@ -307,8 +331,12 @@ def _reference_from_child_payload(obj: Any) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": id_period_start.isoformat() if hasattr(id_period_start, "isoformat") else (str(id_period_start) if id_period_start else None),
-                    "end": id_period_end.isoformat() if hasattr(id_period_end, "isoformat") else (str(id_period_end) if id_period_end else None),
+                    "start": id_period_start.isoformat()
+                    if hasattr(id_period_start, "isoformat")
+                    else (str(id_period_start) if id_period_start else None),
+                    "end": id_period_end.isoformat()
+                    if hasattr(id_period_end, "isoformat")
+                    else (str(id_period_end) if id_period_end else None),
                 }.items()
                 if v is not None
             }
@@ -318,7 +346,9 @@ def _reference_from_child_payload(obj: Any) -> dict:
     return entry
 
 
-def payload_medication_administration_identifier(i: MedicationAdministrationIdentifierInput | dict) -> dict:
+def payload_medication_administration_identifier(
+    i: MedicationAdministrationIdentifierInput | dict,
+) -> dict:
     res: dict = {}
     use = _val(i, "use")
     if use:
@@ -340,8 +370,12 @@ def payload_medication_administration_identifier(i: MedicationAdministrationIden
         res["period"] = {
             k: v
             for k, v in {
-                "start": start.isoformat() if hasattr(start, "isoformat") else (str(start) if start else None),
-                "end": end.isoformat() if hasattr(end, "isoformat") else (str(end) if end else None),
+                "start": start.isoformat()
+                if hasattr(start, "isoformat")
+                else (str(start) if start else None),
+                "end": end.isoformat()
+                if hasattr(end, "isoformat")
+                else (str(end) if end else None),
             }.items()
             if v is not None
         }
@@ -353,7 +387,9 @@ def payload_medication_administration_identifier(i: MedicationAdministrationIden
     return res
 
 
-def payload_medication_administration_performer(p: MedicationAdministrationPerformerInput | dict) -> dict:
+def payload_medication_administration_performer(
+    p: MedicationAdministrationPerformerInput | dict,
+) -> dict:
     res: dict = {}
     func = _val(p, "function")
     if func:
@@ -366,7 +402,9 @@ def payload_medication_administration_performer(p: MedicationAdministrationPerfo
     return res
 
 
-def payload_medication_administration_note(n: MedicationAdministrationNoteInput | dict) -> dict:
+def payload_medication_administration_note(
+    n: MedicationAdministrationNoteInput | dict,
+) -> dict:
     res: dict = {"text": _val(n, "text")}
     time = _val(n, "time")
     if time:
@@ -401,7 +439,9 @@ def _quantity_from_payload(q: SimpleQuantityInput | dict | None) -> dict | None:
     return res or None
 
 
-def payload_medication_administration_dosage(d: MedicationAdministrationDosageInput | dict | None) -> dict | None:
+def payload_medication_administration_dosage(
+    d: MedicationAdministrationDosageInput | dict | None,
+) -> dict | None:
     if not d:
         return None
     res: dict = {}
@@ -444,12 +484,18 @@ def payload_medication_administration_dosage(d: MedicationAdministrationDosageIn
     return res or None
 
 
-def payload_to_fhir_medication_administration(payload: MedicationAdministrationCreateSchema) -> dict:
+def payload_to_fhir_medication_administration(
+    payload: MedicationAdministrationCreateSchema,
+) -> dict:
     res: dict = {
         "resourceType": "MedicationAdministration",
     }
     if payload.status:
-        res["status"] = payload.status.value if hasattr(payload.status, "value") else str(payload.status)
+        res["status"] = (
+            payload.status.value
+            if hasattr(payload.status, "value")
+            else str(payload.status)
+        )
 
     if payload.category:
         cat = payload_medication_administration_codeable_concept(payload.category)
@@ -458,7 +504,9 @@ def payload_to_fhir_medication_administration(payload: MedicationAdministrationC
 
     # medication[x]
     if payload.medication_codeable_concept:
-        med_cc = payload_medication_administration_codeable_concept(payload.medication_codeable_concept)
+        med_cc = payload_medication_administration_codeable_concept(
+            payload.medication_codeable_concept
+        )
         if med_cc:
             res["medicationCodeableConcept"] = med_cc
     elif payload.medication_reference:
@@ -523,28 +571,38 @@ def payload_to_fhir_medication_administration(payload: MedicationAdministrationC
 
     # status_reason
     if payload.status_reason:
-        sr_list = [payload_medication_administration_codeable_concept(sr) for sr in payload.status_reason]
+        sr_list = [
+            payload_medication_administration_codeable_concept(sr)
+            for sr in payload.status_reason
+        ]
         sr_list = [sr for sr in sr_list if sr]
         if sr_list:
             res["statusReason"] = sr_list
 
     # supporting_information
     if payload.supporting_information:
-        si_list = [_reference_from_child_payload(si) for si in payload.supporting_information]
+        si_list = [
+            _reference_from_child_payload(si) for si in payload.supporting_information
+        ]
         si_list = [si for si in si_list if si]
         if si_list:
             res["supportingInformation"] = si_list
 
     # performer
     if payload.performer:
-        perf_list = [payload_medication_administration_performer(p) for p in payload.performer]
+        perf_list = [
+            payload_medication_administration_performer(p) for p in payload.performer
+        ]
         perf_list = [p for p in perf_list if p]
         if perf_list:
             res["performer"] = perf_list
 
     # reason_code
     if payload.reason_code:
-        rc_list = [payload_medication_administration_codeable_concept(rc) for rc in payload.reason_code]
+        rc_list = [
+            payload_medication_administration_codeable_concept(rc)
+            for rc in payload.reason_code
+        ]
         rc_list = [rc for rc in rc_list if rc]
         if rc_list:
             res["reasonCode"] = rc_list
@@ -585,7 +643,9 @@ def payload_to_fhir_medication_administration(payload: MedicationAdministrationC
 
     # identifier
     if payload.identifier:
-        identifiers = [payload_medication_administration_identifier(i) for i in payload.identifier]
+        identifiers = [
+            payload_medication_administration_identifier(i) for i in payload.identifier
+        ]
         identifiers = [i for i in identifiers if i]
         if identifiers:
             res["identifier"] = identifiers
@@ -606,31 +666,45 @@ def patch_fragment_to_fhir_medication_administration(
     if "status" in provided:
         touched.add("status")
         if payload.status:
-            fragment["status"] = payload.status.value if hasattr(payload.status, "value") else str(payload.status)
+            fragment["status"] = (
+                payload.status.value
+                if hasattr(payload.status, "value")
+                else str(payload.status)
+            )
 
     if "category" in provided:
         touched.add("category")
         if payload.category:
-            fragment["category"] = payload_medication_administration_codeable_concept(payload.category)
+            fragment["category"] = payload_medication_administration_codeable_concept(
+                payload.category
+            )
 
     if provided & _MEDICATION_FIELDS:
         touched |= _MEDICATION_FHIR_KEYS
         if payload.medication_codeable_concept:
-            fragment["medicationCodeableConcept"] = payload_medication_administration_codeable_concept(
-                payload.medication_codeable_concept
+            fragment["medicationCodeableConcept"] = (
+                payload_medication_administration_codeable_concept(
+                    payload.medication_codeable_concept
+                )
             )
         elif payload.medication_reference:
-            fragment["medicationReference"] = _reference_with_prefix_from_payload(payload, "medication")
+            fragment["medicationReference"] = _reference_with_prefix_from_payload(
+                payload, "medication"
+            )
 
     if provided & _SUBJECT_FIELDS:
         touched |= _SUBJECT_FHIR_KEYS
         if payload.subject:
-            fragment["subject"] = _reference_with_prefix_from_payload(payload, "subject")
+            fragment["subject"] = _reference_with_prefix_from_payload(
+                payload, "subject"
+            )
 
     if provided & _CONTEXT_FIELDS:
         touched |= _CONTEXT_FHIR_KEYS
         if payload.context:
-            fragment["context"] = _reference_with_prefix_from_payload(payload, "context")
+            fragment["context"] = _reference_with_prefix_from_payload(
+                payload, "context"
+            )
 
     if provided & _EFFECTIVE_FIELDS:
         touched |= _EFFECTIVE_FHIR_KEYS
@@ -665,7 +739,9 @@ def patch_fragment_to_fhir_medication_administration(
     if provided & _REQUEST_FIELDS:
         touched |= _REQUEST_FHIR_KEYS
         if payload.request:
-            fragment["request"] = _reference_with_prefix_from_payload(payload, "request")
+            fragment["request"] = _reference_with_prefix_from_payload(
+                payload, "request"
+            )
 
     if "instantiates" in provided:
         touched.add("instantiates")
@@ -681,31 +757,45 @@ def patch_fragment_to_fhir_medication_administration(
     if "status_reason" in provided:
         touched.add("statusReason")
         if payload.status_reason:
-            sr_list = [payload_medication_administration_codeable_concept(sr) for sr in payload.status_reason]
+            sr_list = [
+                payload_medication_administration_codeable_concept(sr)
+                for sr in payload.status_reason
+            ]
             fragment["statusReason"] = [sr for sr in sr_list if sr]
 
     if "supporting_information" in provided:
         touched.add("supportingInformation")
         if payload.supporting_information:
-            si_list = [_reference_from_child_payload(si) for si in payload.supporting_information]
+            si_list = [
+                _reference_from_child_payload(si)
+                for si in payload.supporting_information
+            ]
             fragment["supportingInformation"] = [si for si in si_list if si]
 
     if "performer" in provided:
         touched.add("performer")
         if payload.performer:
-            perf_list = [payload_medication_administration_performer(p) for p in payload.performer]
+            perf_list = [
+                payload_medication_administration_performer(p)
+                for p in payload.performer
+            ]
             fragment["performer"] = [p for p in perf_list if p]
 
     if "reason_code" in provided:
         touched.add("reasonCode")
         if payload.reason_code:
-            rc_list = [payload_medication_administration_codeable_concept(rc) for rc in payload.reason_code]
+            rc_list = [
+                payload_medication_administration_codeable_concept(rc)
+                for rc in payload.reason_code
+            ]
             fragment["reasonCode"] = [rc for rc in rc_list if rc]
 
     if "reason_reference" in provided:
         touched.add("reasonReference")
         if payload.reason_reference:
-            rr_list = [_reference_from_child_payload(rr) for rr in payload.reason_reference]
+            rr_list = [
+                _reference_from_child_payload(rr) for rr in payload.reason_reference
+            ]
             fragment["reasonReference"] = [rr for rr in rr_list if rr]
 
     if "device" in provided:
@@ -723,18 +813,25 @@ def patch_fragment_to_fhir_medication_administration(
     if "dosage" in provided:
         touched.add("dosage")
         if payload.dosage:
-            fragment["dosage"] = payload_medication_administration_dosage(payload.dosage)
+            fragment["dosage"] = payload_medication_administration_dosage(
+                payload.dosage
+            )
 
     if "event_history" in provided:
         touched.add("eventHistory")
         if payload.event_history:
-            eh_list = [_reference_from_child_payload(eh) for eh in payload.event_history]
+            eh_list = [
+                _reference_from_child_payload(eh) for eh in payload.event_history
+            ]
             fragment["eventHistory"] = [eh for eh in eh_list if eh]
 
     if "identifier" in provided:
         touched.add("identifier")
         if payload.identifier:
-            identifiers = [payload_medication_administration_identifier(i) for i in payload.identifier]
+            identifiers = [
+                payload_medication_administration_identifier(i)
+                for i in payload.identifier
+            ]
             fragment["identifier"] = [i for i in identifiers if i]
 
     if "extension" in provided:

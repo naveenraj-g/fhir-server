@@ -1,5 +1,8 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.healthcare_service import FHIRHealthcareServiceBundle, FHIRHealthcareServiceSchema
+from app.schemas.healthcare_service import (
+    FHIRHealthcareServiceBundle,
+    FHIRHealthcareServiceSchema,
+)
 
 # HealthcareService is stored Medplum-style (whole resource in `content`) and
 # always responds with FHIR R4 JSON — there is no plain representation.

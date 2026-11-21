@@ -5,9 +5,7 @@ from app.core.database import FHIRBase as Base
 from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 
-class CommunicationStatusReasonCoding(
-    FhirCodingMixin, TenantAuditMixin, Base
-):
+class CommunicationStatusReasonCoding(FhirCodingMixin, TenantAuditMixin, Base):
     """Communication.statusReason.coding (0..*) child table."""
 
     __tablename__ = "communication_status_reason_coding"
@@ -25,9 +23,7 @@ class CommunicationStatusReasonCoding(
     )
 
 
-class CommunicationTopicCoding(
-    FhirCodingMixin, TenantAuditMixin, Base
-):
+class CommunicationTopicCoding(FhirCodingMixin, TenantAuditMixin, Base):
     """Communication.topic.coding (0..*) child table."""
 
     __tablename__ = "communication_topic_coding"
@@ -40,6 +36,4 @@ class CommunicationTopicCoding(
         index=True,
     )
 
-    communication = relationship(
-        "CommunicationModel", back_populates="topic_codings"
-    )
+    communication = relationship("CommunicationModel", back_populates="topic_codings")

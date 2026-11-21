@@ -34,6 +34,4 @@ class PlanDefinitionGoalInput(BaseModel):
     documentation: list[dict] | None = Field(
         None, description="Supporting documentation for the goal."
     )
-    target: list[dict] | None = Field(
-        None, description="Target outcome for the goal."
-    )
+    target: list[dict] | None = Field(None, description="Target outcome for the goal.")

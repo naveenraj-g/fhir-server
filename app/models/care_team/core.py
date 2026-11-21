@@ -19,9 +19,7 @@ from app.models.care_team.enums import (
 from app.models.enums import IdentifierUse
 from app.models.shared import TenantAuditMixin
 
-care_team_pub_seq = Sequence(
-    "care_team_pub_seq", start=390000, metadata=Base.metadata
-)
+care_team_pub_seq = Sequence("care_team_pub_seq", start=390000, metadata=Base.metadata)
 
 
 class CareTeamModel(TenantAuditMixin, Base):

@@ -30,7 +30,10 @@ class PlanDefinitionAction(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     plan_definition_pk = Column(
-        BigInteger, ForeignKey("plan_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("plan_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     parent_action_id = Column(
         BigInteger,
@@ -72,7 +75,9 @@ class PlanDefinitionAction(TenantAuditMixin, Base):
     condition = Column(JSONB, nullable=True)  # 0..* PlanDefinition.action.condition
     input = Column(JSONB, nullable=True)  # 0..* DataRequirement
     output = Column(JSONB, nullable=True)  # 0..* DataRequirement
-    related_action = Column(JSONB, nullable=True)  # 0..* PlanDefinition.action.relatedAction
+    related_action = Column(
+        JSONB, nullable=True
+    )  # 0..* PlanDefinition.action.relatedAction
 
     # timing[x]
     timing_date_time = Column(DateTime(timezone=True), nullable=True)
@@ -125,7 +130,9 @@ class PlanDefinitionAction(TenantAuditMixin, Base):
     definition_canonical = Column(String, nullable=True)
     definition_uri = Column(String, nullable=True)
     transform = Column(String, nullable=True)
-    dynamic_value = Column(JSONB, nullable=True)  # 0..* PlanDefinition.action.dynamicValue
+    dynamic_value = Column(
+        JSONB, nullable=True
+    )  # 0..* PlanDefinition.action.dynamicValue
 
     plan_definition = relationship("PlanDefinitionModel", back_populates="actions")
     type_codings = relationship(

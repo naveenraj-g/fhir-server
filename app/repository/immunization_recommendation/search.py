@@ -46,23 +46,62 @@ _R = ImmunizationRecommendationReference
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Patient": ("app.models.patient", "PatientModel", "patient_id",
-                "app.repository.patient.search", "patient_search"),
-    "Encounter": ("app.models.encounter", "EncounterModel", "encounter_id",
-                  "app.repository.encounter.search", "encounter_search"),
-    "Condition": ("app.models.condition", "ConditionModel", "condition_id",
-                  "app.repository.condition.search", "condition_search"),
-    "Procedure": ("app.models.procedure", "ProcedureModel", "procedure_id",
-                  "app.repository.procedure.search", "procedure_search"),
-    "DiagnosticReport": ("app.models.diagnostic_report", "DiagnosticReportModel", "diagnostic_report_id",
-                         "app.repository.diagnostic_report.search", "diagnostic_report_search"),
-    "AllergyIntolerance": ("app.models.allergy_intolerance", "AllergyIntoleranceModel", "allergy_intolerance_id",
-                           "app.repository.allergy_intolerance.search", "allergy_intolerance_search"),
-    "Immunization": ("app.models.immunization", "ImmunizationModel", "immunization_id",
-                     "app.repository.immunization.search", "immunization_search"),
-    "ImmunizationEvaluation": ("app.models.immunization_evaluation", "ImmunizationEvaluationModel",
-                               "immunization_evaluation_id", "app.repository.immunization_evaluation.search",
-                               "immunization_evaluation_search"),
+    "Patient": (
+        "app.models.patient",
+        "PatientModel",
+        "patient_id",
+        "app.repository.patient.search",
+        "patient_search",
+    ),
+    "Encounter": (
+        "app.models.encounter",
+        "EncounterModel",
+        "encounter_id",
+        "app.repository.encounter.search",
+        "encounter_search",
+    ),
+    "Condition": (
+        "app.models.condition",
+        "ConditionModel",
+        "condition_id",
+        "app.repository.condition.search",
+        "condition_search",
+    ),
+    "Procedure": (
+        "app.models.procedure",
+        "ProcedureModel",
+        "procedure_id",
+        "app.repository.procedure.search",
+        "procedure_search",
+    ),
+    "DiagnosticReport": (
+        "app.models.diagnostic_report",
+        "DiagnosticReportModel",
+        "diagnostic_report_id",
+        "app.repository.diagnostic_report.search",
+        "diagnostic_report_search",
+    ),
+    "AllergyIntolerance": (
+        "app.models.allergy_intolerance",
+        "AllergyIntoleranceModel",
+        "allergy_intolerance_id",
+        "app.repository.allergy_intolerance.search",
+        "allergy_intolerance_search",
+    ),
+    "Immunization": (
+        "app.models.immunization",
+        "ImmunizationModel",
+        "immunization_id",
+        "app.repository.immunization.search",
+        "immunization_search",
+    ),
+    "ImmunizationEvaluation": (
+        "app.models.immunization_evaluation",
+        "ImmunizationEvaluationModel",
+        "immunization_evaluation_id",
+        "app.repository.immunization_evaluation.search",
+        "immunization_evaluation_search",
+    ),
 }
 
 
@@ -82,7 +121,11 @@ def _registry_of(resource_type: str):
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.immunization_recommendation_pk == M.id, *conditions))
+    return exists(
+        select(literal(1)).where(
+            model.immunization_recommendation_pk == M.id, *conditions
+        )
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -91,7 +134,9 @@ def _child_sort(column, model, *conditions):
 
     def agg(fn):
         return (
-            select(fn(column)).where(model.immunization_recommendation_pk == M.id, *conditions).scalar_subquery()
+            select(fn(column))
+            .where(model.immunization_recommendation_pk == M.id, *conditions)
+            .scalar_subquery()
         )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
@@ -110,7 +155,9 @@ def _referenced(target: str, inner, ctx):
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return M.immunization_recommendation_id == int(token.code)
 
@@ -122,10 +169,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -137,7 +191,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -158,7 +214,11 @@ def _patient_ref():
 
     def match(value, modifier, ctx):
         if modifier == "identifier":
-            return token_condition(M.patient_identifier_system, M.patient_identifier_value, parse_token(value))
+            return token_condition(
+                M.patient_identifier_system,
+                M.patient_identifier_value,
+                parse_token(value),
+            )
         return reference_match(type_, id_, ref, value, modifier, ctx, ("Patient",), str)
 
     def present(ctx):
@@ -183,23 +243,44 @@ def _reference_param(param: str):
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _R,
             _R.param == param,
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
             ),
         )
 
     def present(ctx):
         return _exists(
-            _R, _R.param == param, or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None))
+            _R,
+            _R.param == param,
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
-        return _exists(_R, _R.param == param, _R.reference_type == target, _R.reference_id.in_(_referenced(target, inner, ctx)))
+        return _exists(
+            _R,
+            _R.param == param,
+            _R.reference_type == target,
+            _R.reference_id.in_(_referenced(target, inner, ctx)),
+        )
 
     def sort():
         return _child_sort(_R.reference_id, _R, _R.param == param)
@@ -218,14 +299,20 @@ async def _load(session, ctx, resource_type: str, ids) -> list:
     if not ids:
         return []
     model, id_col = _model(resource_type)
-    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+    )
 
 
 def _include_patient():
     """_include=ImmunizationRecommendation:patient — the Patients these point at."""
 
     async def fetch(session, ctx, recommendations):
-        ids = {r.patient_id for r in recommendations if r.patient_type == "Patient" and r.patient_id}
+        ids = {
+            r.patient_id
+            for r in recommendations
+            if r.patient_type == "Patient" and r.patient_id
+        }
         return await _load(session, ctx, "Patient", ids)
 
     return fetch
@@ -241,7 +328,12 @@ def _include_reference(param: str, resource_type: str):
             _R.reference_type == resource_type,
             _R.reference_id.is_not(None),
         )
-        return await _load(session, ctx, resource_type, set((await session.execute(ids)).scalars().all()))
+        return await _load(
+            session,
+            ctx,
+            resource_type,
+            set((await session.execute(ids)).scalars().all()),
+        )
 
     return fetch
 
@@ -254,7 +346,11 @@ def revinclude_recommendations_via_patient(key):
         ids = {key(r) for r in rows}
         return await _fetch(
             session,
-            select(M).where(M.tenant_id == ctx.tenant_id, M.patient_type == "Patient", M.patient_id.in_(ids)),
+            select(M).where(
+                M.tenant_id == ctx.tenant_id,
+                M.patient_type == "Patient",
+                M.patient_id.in_(ids),
+            ),
         )
 
     return fetch
@@ -267,16 +363,22 @@ def revinclude_recommendations_via_reference(param: str, resource_type: str, key
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         pks = select(_R.immunization_recommendation_pk).where(
-            _R.param == param, _R.reference_type == resource_type, _R.reference_id.in_(ids)
+            _R.param == param,
+            _R.reference_type == resource_type,
+            _R.reference_id.in_(ids),
         )
-        return await _fetch(session, select(M).where(M.tenant_id == ctx.tenant_id, M.id.in_(pks)))
+        return await _fetch(
+            session, select(M).where(M.tenant_id == ctx.tenant_id, M.id.in_(pks))
+        )
 
     return fetch
 
 
 def _register_kind() -> None:
     """How the search engine identifies and renders ImmunizationRecommendation rows."""
-    from app.fhir.mappers.immunization_recommendation import to_fhir_immunization_recommendation
+    from app.fhir.mappers.immunization_recommendation import (
+        to_fhir_immunization_recommendation,
+    )
     from app.fhir.search.execute import ResourceKind, register_kind
 
     register_kind(
@@ -293,7 +395,9 @@ def _register_kind() -> None:
 
 _TOKEN = frozenset({"text", "not", "in", "not-in", "above", "below", "missing"})
 _REFERENCE = frozenset({"identifier", "missing"})
-_IDENTIFIER_DOC = {"identifier": "`:identifier` — match the logical identifier of a target that has no resource here."}
+_IDENTIFIER_DOC = {
+    "identifier": "`:identifier` — match the logical identifier of a target that has no resource here."
+}
 
 
 @cache
@@ -302,7 +406,17 @@ def immunization_recommendation_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
     def reference(name, description, expression, example):
         # The R4 search-parameter name is also the `param` value in the reference table.
@@ -310,8 +424,18 @@ def immunization_recommendation_search() -> SearchRegistry:
         match, present, chain, sort = _reference_param(name)
         modeled = [t for t in targets if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, chain=chain,
-            chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
@@ -319,64 +443,113 @@ def immunization_recommendation_search() -> SearchRegistry:
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public immunization recommendation id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: M.immunization_recommendation_id, example="510001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public immunization recommendation id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: M.immunization_recommendation_id,
+            example="510001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "date", "date", "Date recommendation(s) created", "ImmunizationRecommendation.date",
-            _date_match, lambda ctx: M.date_start.is_not(None), sort=lambda: M.date_start, example="ge2026-01-01",
+            "date",
+            "date",
+            "Date recommendation(s) created",
+            "ImmunizationRecommendation.date",
+            _date_match,
+            lambda ctx: M.date_start.is_not(None),
+            sort=lambda: M.date_start,
+            example="ge2026-01-01",
         ),
         SearchParam(
-            "identifier", "token", "Business identifier", "ImmunizationRecommendation.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:recommendations|IR-1",
+            "identifier",
+            "token",
+            "Business identifier",
+            "ImmunizationRecommendation.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:recommendations|IR-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         reference(
-            "information", "Patient observations supporting recommendation (Reference(Any): needs a type)",
-            "ImmunizationRecommendation.recommendation.supportingPatientInformation", "Observation/160001",
+            "information",
+            "Patient observations supporting recommendation (Reference(Any): needs a type)",
+            "ImmunizationRecommendation.recommendation.supportingPatientInformation",
+            "Observation/160001",
         ),
         SearchParam(
-            "patient", "reference", "Who this profile is for", "ImmunizationRecommendation.patient",
-            patient_match, patient_present, _REFERENCE, targets=("Patient",), chain=patient_chain,
-            chain_targets={"Patient": _registry_of("Patient")}, sort=patient_sort, example="Patient/10001",
+            "patient",
+            "reference",
+            "Who this profile is for",
+            "ImmunizationRecommendation.patient",
+            patient_match,
+            patient_present,
+            _REFERENCE,
+            targets=("Patient",),
+            chain=patient_chain,
+            chain_targets={"Patient": _registry_of("Patient")},
+            sort=patient_sort,
+            example="Patient/10001",
             modifier_docs=_IDENTIFIER_DOC,
         ),
         token(
-            "status", "Vaccine recommendation status", "ImmunizationRecommendation.recommendation.forecastStatus",
+            "status",
+            "Vaccine recommendation status",
+            "ImmunizationRecommendation.recommendation.forecastStatus",
             "http://terminology.hl7.org/CodeSystem/immunization-recommendation-status|due",
         ),
         reference(
-            "support", "Past immunizations supporting recommendation",
-            "ImmunizationRecommendation.recommendation.supportingImmunization", "Immunization/330001",
+            "support",
+            "Past immunizations supporting recommendation",
+            "ImmunizationRecommendation.recommendation.supportingImmunization",
+            "Immunization/330001",
         ),
         token(
-            "target-disease", "Disease to be immunized against",
-            "ImmunizationRecommendation.recommendation.targetDisease", "http://snomed.info/sct|40468003",
+            "target-disease",
+            "Disease to be immunized against",
+            "ImmunizationRecommendation.recommendation.targetDisease",
+            "http://snomed.info/sct|40468003",
         ),
         token(
-            "vaccine-type", "Vaccine or vaccine group recommendation applies to",
-            "ImmunizationRecommendation.recommendation.vaccineCode", "http://hl7.org/fhir/sid/cvx|140",
+            "vaccine-type",
+            "Vaccine or vaccine group recommendation applies to",
+            "ImmunizationRecommendation.recommendation.vaccineCode",
+            "http://hl7.org/fhir/sid/cvx|140",
         ),
     ]
 
     # One include per target type that is a resource here, so `_include=ImmunizationRecommendation:information`
     # brings in every modeled type and `...:information:Condition` just the Conditions.
     information_includes = tuple(
-        IncludeTarget("ImmunizationRecommendation", "information", t, _include_reference("information", t))
+        IncludeTarget(
+            "ImmunizationRecommendation",
+            "information",
+            t,
+            _include_reference("information", t),
+        )
         for t in REFERENCE_TYPES["information"]
         if t in _MODELED
     )
     support_includes = tuple(
-        IncludeTarget("ImmunizationRecommendation", "support", t, _include_reference("support", t))
+        IncludeTarget(
+            "ImmunizationRecommendation", "support", t, _include_reference("support", t)
+        )
         for t in REFERENCE_TYPES["support"]
         if t in _MODELED
     )
@@ -389,7 +562,9 @@ def immunization_recommendation_search() -> SearchRegistry:
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"patient", "date", "recommendation"}),
         includes=(
-            IncludeTarget("ImmunizationRecommendation", "patient", "Patient", _include_patient()),
+            IncludeTarget(
+                "ImmunizationRecommendation", "patient", "Patient", _include_patient()
+            ),
             *support_includes,
             *information_includes,
         ),

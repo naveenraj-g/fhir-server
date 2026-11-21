@@ -81,7 +81,9 @@ class _CoreMixin:
             if status:
                 stmt = stmt.where(FhirProfile.status == status)
 
-            count = await session.scalar(select(func.count()).select_from(stmt.subquery()))
+            count = await session.scalar(
+                select(func.count()).select_from(stmt.subquery())
+            )
             rows = await session.execute(
                 stmt.order_by(FhirProfile.id.desc()).limit(limit).offset(offset)
             )
@@ -148,16 +150,20 @@ class _CoreMixin:
                 return None
 
             previous_active = (
-                await session.execute(
-                    select(FhirProfile)
-                    .where(FhirProfile.resource_type == profile.resource_type)
-                    .where(FhirProfile.scope_level == profile.scope_level)
-                    .where(FhirProfile.scope_id == profile.scope_id)
-                    .where(FhirProfile.status == FhirProfileStatus.active)
-                    .where(FhirProfile.id != profile.id)
-                    .with_for_update()
+                (
+                    await session.execute(
+                        select(FhirProfile)
+                        .where(FhirProfile.resource_type == profile.resource_type)
+                        .where(FhirProfile.scope_level == profile.scope_level)
+                        .where(FhirProfile.scope_id == profile.scope_id)
+                        .where(FhirProfile.status == FhirProfileStatus.active)
+                        .where(FhirProfile.id != profile.id)
+                        .with_for_update()
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             for other in previous_active:
                 other.status = FhirProfileStatus.retired
 

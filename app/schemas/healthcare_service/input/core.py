@@ -22,7 +22,12 @@ _EXAMPLE = {
     "active": True,
     "name": "Cardiology Clinic",
     "providedBy": {"reference": "Organization/190001", "display": "General Hospital"},
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/service-id", "value": "SVC-1"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/service-id",
+            "value": "SVC-1",
+        }
+    ],
     "category": [{"coding": [{"code": "35", "display": "Specialist Medical"}]}],
     "type": [{"coding": [{"code": "124", "display": "General Practice"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
@@ -32,13 +37,25 @@ _EXAMPLE = {
     "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
     "appointmentRequired": True,
     "availableTime": [
-        {"daysOfWeek": ["mon", "tue", "wed"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"}
+        {
+            "daysOfWeek": ["mon", "tue", "wed"],
+            "availableStartTime": "08:00:00",
+            "availableEndTime": "17:00:00",
+        }
     ],
     "notAvailable": [
-        {"description": "Closed for the holidays", "during": {"start": "2026-12-24T00:00:00Z", "end": "2026-12-26T00:00:00Z"}}
+        {
+            "description": "Closed for the holidays",
+            "during": {"start": "2026-12-24T00:00:00Z", "end": "2026-12-26T00:00:00Z"},
+        }
     ],
     "endpoint": [
-        {"identifier": {"system": "https://fhir-server.dev/fhir/identifier-system/endpoint", "value": "EP-1"}}
+        {
+            "identifier": {
+                "system": "https://fhir-server.dev/fhir/identifier-system/endpoint",
+                "value": "EP-1",
+            }
+        }
     ],
 }
 
@@ -88,13 +105,16 @@ class _HealthcareServiceFields(FhirInputModel):
         description="Location(s) where service may be provided — Reference(Location). A relative 'Location/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     name: str | None = Field(
-        None, description="Description of service as presented to a consumer while searching."
+        None,
+        description="Description of service as presented to a consumer while searching.",
     )
     comment: str | None = Field(
-        None, description="Additional description and/or any specific issues not covered elsewhere."
+        None,
+        description="Additional description and/or any specific issues not covered elsewhere.",
     )
     extraDetails: str | None = Field(
-        None, description="Extra details about the service that can't be placed in the other fields (markdown)."
+        None,
+        description="Extra details about the service that can't be placed in the other fields (markdown).",
     )
     photo: FhirAttachmentInput | None = Field(
         None, description="Facilitates quick identification of the service."
@@ -110,7 +130,8 @@ class _HealthcareServiceFields(FhirInputModel):
         None, description="Conditions under which service is available/offered."
     )
     eligibility: list[HealthcareServiceEligibilityInput] | None = Field(
-        None, description="Specific eligibility requirements required to use the service."
+        None,
+        description="Specific eligibility requirements required to use the service.",
     )
     program: list[FhirCodeableConceptInput] | None = Field(
         None, description="Programs that this service is applicable to."

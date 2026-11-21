@@ -15,13 +15,9 @@ class _CoreMixin:
     itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_patient_id(
-        self, patient_id: int
-    ) -> PatientModel | None:
+    async def get_by_patient_id(self, patient_id: int) -> PatientModel | None:
         async with self.session_factory() as session:
-            stmt = select(PatientModel).where(
-                PatientModel.patient_id == patient_id
-            )
+            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_patient_id_in_org(
@@ -36,9 +32,7 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def patient_belongs_to_org(
-        self, patient_id: int, org_id: str
-    ) -> bool:
+    async def patient_belongs_to_org(self, patient_id: int, org_id: str) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the patient exists AND belongs
         to org_id."""
@@ -72,9 +66,7 @@ class _CoreMixin:
         """Link (or, with None, unlink) the end-user. Does not touch
         `content` or the search index."""
         async with self.session_factory() as session:
-            stmt = select(PatientModel).where(
-                PatientModel.patient_id == patient_id
-            )
+            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
             patient = (await session.execute(stmt)).scalars().first()
             if not patient:
                 return None
@@ -129,9 +121,7 @@ class _CoreMixin:
 
     async def delete(self, patient_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(PatientModel).where(
-                PatientModel.patient_id == patient_id
-            )
+            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
             patient = (await session.execute(stmt)).scalars().first()
             if not patient:
                 return False

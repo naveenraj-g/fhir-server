@@ -8,9 +8,9 @@ class _ConceptsMixin:
         self, q: str, system: str | None, limit: int, offset: int
     ) -> tuple[int, list[tuple]]:
         async with self.session_factory() as session:
-            trgm_where = text(
-                "terminology_concept.display ILIKE :pat"
-            ).bindparams(pat=f"%{q}%")
+            trgm_where = text("terminology_concept.display ILIKE :pat").bindparams(
+                pat=f"%{q}%"
+            )
             trgm_rank = text(
                 "similarity(terminology_concept.display, :q) DESC"
             ).bindparams(q=q)

@@ -22,10 +22,15 @@ class _CoreMixin:
     ServiceRequest: no org-scoped existence check or ownership
     enforcement here at all."""
 
-    async def get_by_medication_request_id(self, medication_request_id: int) -> MedicationRequestModel | None:
+    async def get_by_medication_request_id(
+        self, medication_request_id: int
+    ) -> MedicationRequestModel | None:
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(MedicationRequestModel).where(MedicationRequestModel.medication_request_id == medication_request_id)
+                select(MedicationRequestModel).where(
+                    MedicationRequestModel.medication_request_id
+                    == medication_request_id
+                )
             )
             return (await session.execute(stmt)).scalars().first()
 
@@ -37,13 +42,16 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(MedicationRequestModel).where(
-                    MedicationRequestModel.medication_request_id == medication_request_id,
+                    MedicationRequestModel.medication_request_id
+                    == medication_request_id,
                     MedicationRequestModel.tenant_id == org_id,
                 )
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def medication_request_belongs_to_org(self, medication_request_id: int, org_id: str) -> bool:
+    async def medication_request_belongs_to_org(
+        self, medication_request_id: int, org_id: str
+    ) -> bool:
         async with self.session_factory() as session:
             stmt = select(MedicationRequestModel.id).where(
                 MedicationRequestModel.medication_request_id == medication_request_id,
@@ -70,7 +78,8 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(MedicationRequestIdentifier.id).where(
-                    MedicationRequestIdentifier.medication_request_pk == MedicationRequestModel.id,
+                    MedicationRequestIdentifier.medication_request_pk
+                    == MedicationRequestModel.id,
                     MedicationRequestIdentifier.value == identifier,
                 ),
             )
@@ -96,16 +105,28 @@ class _CoreMixin:
                 "subject": subject,
                 "identifier": identifier,
             }
-            base = self._apply_list_filters(_with_relationships(select(MedicationRequestModel)), **filter_kwargs)
+            base = self._apply_list_filters(
+                _with_relationships(select(MedicationRequestModel)), **filter_kwargs
+            )
             count_base = self._apply_list_filters(
-                select(func.count()).select_from(MedicationRequestModel), **filter_kwargs
+                select(func.count()).select_from(MedicationRequestModel),
+                **filter_kwargs,
             )
             sort_column, sort_desc = resolve_sort(
-                sort, _SORTABLE_FIELDS, default_column=MedicationRequestModel.medication_request_id, default_desc=True
+                sort,
+                _SORTABLE_FIELDS,
+                default_column=MedicationRequestModel.medication_request_id,
+                default_desc=True,
             )
             rows, total = await self._execute_paginated(
-                session, base, count_base, sort_column=sort_column, sort_desc=sort_desc,
-                limit=limit, offset=offset, total_mode=total_mode,
+                session,
+                base,
+                count_base,
+                sort_column=sort_column,
+                sort_desc=sort_desc,
+                limit=limit,
+                offset=offset,
+                total_mode=total_mode,
             )
         logger.debug(
             "MedicationRequests listed",
@@ -127,7 +148,9 @@ class _CoreMixin:
         `session.delete()` with every relationship's own
         `cascade="all, delete-orphan"` is safe and sufficient."""
         async with self.session_factory() as session:
-            stmt = select(MedicationRequestModel).where(MedicationRequestModel.medication_request_id == medication_request_id)
+            stmt = select(MedicationRequestModel).where(
+                MedicationRequestModel.medication_request_id == medication_request_id
+            )
             mr = (await session.execute(stmt)).scalars().first()
             if not mr:
                 return False

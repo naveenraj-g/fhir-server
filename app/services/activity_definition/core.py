@@ -180,7 +180,10 @@ class _CoreMixin:
         if errors:
             logger.warning(
                 "ActivityDefinition failed base R4 validation",
-                extra={"event": "activity_definition.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "activity_definition.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

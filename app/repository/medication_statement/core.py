@@ -91,11 +91,15 @@ class _CoreMixin:
 
         subj_filter = subject or patient
         if subj_filter:
-            ref_type, ref_id = parse_reference(subj_filter, MedicationStatementSubjectReferenceType)
+            ref_type, ref_id = parse_reference(
+                subj_filter, MedicationStatementSubjectReferenceType
+            )
             if ref_id:
                 stmt = stmt.where(MedicationStatementModel.subject_id == ref_id)
             else:
-                stmt = stmt.where(MedicationStatementModel.subject_reference == subj_filter)
+                stmt = stmt.where(
+                    MedicationStatementModel.subject_reference == subj_filter
+                )
 
         if effective_val or effective_from or effective_to:
             stmt = apply_date_range_filter(
@@ -109,13 +113,19 @@ class _CoreMixin:
         if code:
             stmt = stmt.where(
                 or_(
-                    MedicationStatementModel.medication_codeable_concept_text.ilike(f"%{code}%"),
+                    MedicationStatementModel.medication_codeable_concept_text.ilike(
+                        f"%{code}%"
+                    ),
                     MedicationStatementModel.medication_reference.ilike(f"%{code}%"),
                     MedicationStatementModel.id.in_(
-                        select(MedicationStatementMedicationCoding.medication_statement_pk).where(
+                        select(
+                            MedicationStatementMedicationCoding.medication_statement_pk
+                        ).where(
                             or_(
                                 MedicationStatementMedicationCoding.code == code,
-                                MedicationStatementMedicationCoding.display.ilike(f"%{code}%"),
+                                MedicationStatementMedicationCoding.display.ilike(
+                                    f"%{code}%"
+                                ),
                             )
                         )
                     ),
@@ -127,10 +137,14 @@ class _CoreMixin:
                 or_(
                     MedicationStatementModel.category_text.ilike(f"%{category}%"),
                     MedicationStatementModel.id.in_(
-                        select(MedicationStatementCategoryCoding.medication_statement_pk).where(
+                        select(
+                            MedicationStatementCategoryCoding.medication_statement_pk
+                        ).where(
                             or_(
                                 MedicationStatementCategoryCoding.code == category,
-                                MedicationStatementCategoryCoding.display.ilike(f"%{category}%"),
+                                MedicationStatementCategoryCoding.display.ilike(
+                                    f"%{category}%"
+                                ),
                             )
                         )
                     ),

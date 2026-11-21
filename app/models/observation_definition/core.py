@@ -45,7 +45,6 @@ class ObservationDefinitionModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-
     # Resource-level extension support (0..* Extension)
     extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 

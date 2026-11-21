@@ -7,10 +7,16 @@ class PlainCarePlanNote(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: int = Field(..., description="Internal DB ID.")
     author_string: str | None = Field(None, description="author[x]: string.")
-    author_reference: str | None = Field(None, description="author[x]: Reference string.")
+    author_reference: str | None = Field(
+        None, description="author[x]: Reference string."
+    )
     author_id: int | None = Field(None, description="author[x]: Reference public ID.")
-    author_type: str | None = Field(None, description="author[x]: Reference resource type.")
-    author_display: str | None = Field(None, description="author[x]: Reference display.")
+    author_type: str | None = Field(
+        None, description="author[x]: Reference resource type."
+    )
+    author_display: str | None = Field(
+        None, description="author[x]: Reference display."
+    )
     author_identifier_use: str | None = None
     author_identifier_type_system: str | None = None
     author_identifier_type_version: str | None = None

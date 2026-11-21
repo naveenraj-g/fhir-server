@@ -150,7 +150,9 @@ async def _add_diagnoses(
     session, episode_of_care_pk: int, org_id: str, diagnoses, created_by: str
 ) -> None:
     for d in diagnoses or []:
-        c_type, c_id = _parse_condition_ref(d.condition) if d.condition else (None, None)
+        c_type, c_id = (
+            _parse_condition_ref(d.condition) if d.condition else (None, None)
+        )
         if c_type and c_id:
             await _validate_ref(session, org_id, c_type, c_id, "diagnosis.condition")
         diag = EpisodeOfCareDiagnosis(
@@ -183,7 +185,9 @@ async def _add_referral_requests(
     for r in referrals or []:
         kwargs = _child_reference_kwargs(r)
         ref_str = kwargs.get("reference_reference")
-        ref_type, ref_id = _parse_referral_request_ref(ref_str) if ref_str else (None, None)
+        ref_type, ref_id = (
+            _parse_referral_request_ref(ref_str) if ref_str else (None, None)
+        )
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "referralRequest")
         session.add(
@@ -251,7 +255,9 @@ class _FullMixin:
     ) -> EpisodeOfCareModel:
         async with self.session_factory() as session:
             # 1. References validation
-            p_type, p_id = _parse_patient_ref(payload.patient) if payload.patient else (None, None)
+            p_type, p_id = (
+                _parse_patient_ref(payload.patient) if payload.patient else (None, None)
+            )
             if p_type and p_id:
                 await _validate_ref(session, org_id, p_type, p_id, "patient")
 
@@ -261,7 +267,9 @@ class _FullMixin:
                 else (None, None)
             )
             if mo_type and mo_id:
-                await _validate_ref(session, org_id, mo_type, mo_id, "managingOrganization")
+                await _validate_ref(
+                    session, org_id, mo_type, mo_id, "managingOrganization"
+                )
 
             cm_type, cm_id = (
                 _parse_care_manager_ref(payload.care_manager)
@@ -302,7 +310,11 @@ class _FullMixin:
             await session.flush()
 
             # 3. Add child collections
-            if payload.identifiers if hasattr(payload, "identifiers") else payload.identifier:
+            if (
+                payload.identifiers
+                if hasattr(payload, "identifiers")
+                else payload.identifier
+            ):
                 await _add_identifiers(
                     session,
                     eoc.id,
@@ -418,9 +430,13 @@ class _FullMixin:
 
             if "managing_organization" in fields_set:
                 if payload.managing_organization:
-                    mo_type, mo_id = _parse_managing_org_ref(payload.managing_organization)
+                    mo_type, mo_id = _parse_managing_org_ref(
+                        payload.managing_organization
+                    )
                     if mo_type and mo_id:
-                        await _validate_ref(session, org_id, mo_type, mo_id, "managingOrganization")
+                        await _validate_ref(
+                            session, org_id, mo_type, mo_id, "managingOrganization"
+                        )
                     eoc.managing_organization_reference = payload.managing_organization
                     eoc.managing_organization_type = mo_type
                     eoc.managing_organization_id = mo_id
@@ -430,7 +446,9 @@ class _FullMixin:
                     eoc.managing_organization_id = None
 
             if "managing_organization_display" in fields_set:
-                eoc.managing_organization_display = payload.managing_organization_display
+                eoc.managing_organization_display = (
+                    payload.managing_organization_display
+                )
 
             for s in _IDENTIFIER_FALLBACK_SUFFIXES:
                 field = f"managing_organization_{s}"
@@ -447,7 +465,9 @@ class _FullMixin:
                 if payload.care_manager:
                     cm_type, cm_id = _parse_care_manager_ref(payload.care_manager)
                     if cm_type and cm_id:
-                        await _validate_ref(session, org_id, cm_type, cm_id, "careManager")
+                        await _validate_ref(
+                            session, org_id, cm_type, cm_id, "careManager"
+                        )
                     eoc.care_manager_reference = payload.care_manager
                     eoc.care_manager_type = cm_type
                     eoc.care_manager_id = cm_id
@@ -473,7 +493,11 @@ class _FullMixin:
                 )
                 if payload.identifier:
                     await _add_identifiers(
-                        session, eoc.id, org_id, payload.identifier, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.identifier,
+                        updated_by or eoc.created_by,
                     )
 
             if "status_history" in fields_set:
@@ -484,7 +508,11 @@ class _FullMixin:
                 )
                 if payload.status_history:
                     await _add_status_history(
-                        session, eoc.id, org_id, payload.status_history, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.status_history,
+                        updated_by or eoc.created_by,
                     )
 
             if "type" in fields_set:
@@ -495,7 +523,11 @@ class _FullMixin:
                 )
                 if payload.type:
                     await _add_types(
-                        session, eoc.id, org_id, payload.type, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.type,
+                        updated_by or eoc.created_by,
                     )
 
             if "diagnosis" in fields_set:
@@ -506,7 +538,11 @@ class _FullMixin:
                 )
                 if payload.diagnosis:
                     await _add_diagnoses(
-                        session, eoc.id, org_id, payload.diagnosis, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.diagnosis,
+                        updated_by or eoc.created_by,
                     )
 
             if "referral_request" in fields_set:
@@ -517,7 +553,11 @@ class _FullMixin:
                 )
                 if payload.referral_request:
                     await _add_referral_requests(
-                        session, eoc.id, org_id, payload.referral_request, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.referral_request,
+                        updated_by or eoc.created_by,
                     )
 
             if "team" in fields_set:
@@ -528,7 +568,11 @@ class _FullMixin:
                 )
                 if payload.team:
                     await _add_teams(
-                        session, eoc.id, org_id, payload.team, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.team,
+                        updated_by or eoc.created_by,
                     )
 
             if "account" in fields_set:
@@ -539,7 +583,11 @@ class _FullMixin:
                 )
                 if payload.account:
                     await _add_accounts(
-                        session, eoc.id, org_id, payload.account, updated_by or eoc.created_by
+                        session,
+                        eoc.id,
+                        org_id,
+                        payload.account,
+                        updated_by or eoc.created_by,
                     )
 
             eoc.updated_by = updated_by

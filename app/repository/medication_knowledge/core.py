@@ -36,7 +36,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(MedicationKnowledgeModel).where(
-                    MedicationKnowledgeModel.medication_knowledge_id == medication_knowledge_id
+                    MedicationKnowledgeModel.medication_knowledge_id
+                    == medication_knowledge_id
                 )
             )
             res = await session.execute(stmt)
@@ -48,7 +49,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(MedicationKnowledgeModel).where(
-                    MedicationKnowledgeModel.medication_knowledge_id == medication_knowledge_id,
+                    MedicationKnowledgeModel.medication_knowledge_id
+                    == medication_knowledge_id,
                     MedicationKnowledgeModel.tenant_id == org_id,
                 )
             )
@@ -59,9 +61,14 @@ class _CoreMixin:
         self, medication_knowledge_id: int, org_id: str
     ) -> bool:
         async with self.session_factory() as session:
-            stmt = select(func.count()).select_from(MedicationKnowledgeModel).where(
-                MedicationKnowledgeModel.medication_knowledge_id == medication_knowledge_id,
-                MedicationKnowledgeModel.tenant_id == org_id,
+            stmt = (
+                select(func.count())
+                .select_from(MedicationKnowledgeModel)
+                .where(
+                    MedicationKnowledgeModel.medication_knowledge_id
+                    == medication_knowledge_id,
+                    MedicationKnowledgeModel.tenant_id == org_id,
+                )
             )
             res = await session.execute(stmt)
             count = res.scalar() or 0
@@ -90,10 +97,14 @@ class _CoreMixin:
                 or_(
                     MedicationKnowledgeModel.code_text.ilike(f"%{code}%"),
                     MedicationKnowledgeModel.id.in_(
-                        select(MedicationKnowledgeCodeCoding.medication_knowledge_pk).where(
+                        select(
+                            MedicationKnowledgeCodeCoding.medication_knowledge_pk
+                        ).where(
                             or_(
                                 MedicationKnowledgeCodeCoding.code == code,
-                                MedicationKnowledgeCodeCoding.display.ilike(f"%{code}%"),
+                                MedicationKnowledgeCodeCoding.display.ilike(
+                                    f"%{code}%"
+                                ),
                             )
                         )
                     ),
@@ -118,10 +129,14 @@ class _CoreMixin:
                 or_(
                     MedicationKnowledgeModel.dose_form_text.ilike(f"%{dose_form}%"),
                     MedicationKnowledgeModel.id.in_(
-                        select(MedicationKnowledgeDoseFormCoding.medication_knowledge_pk).where(
+                        select(
+                            MedicationKnowledgeDoseFormCoding.medication_knowledge_pk
+                        ).where(
                             or_(
                                 MedicationKnowledgeDoseFormCoding.code == dose_form,
-                                MedicationKnowledgeDoseFormCoding.display.ilike(f"%{dose_form}%"),
+                                MedicationKnowledgeDoseFormCoding.display.ilike(
+                                    f"%{dose_form}%"
+                                ),
                             )
                         )
                     ),
@@ -131,10 +146,16 @@ class _CoreMixin:
         if monitoring_program:
             stmt = stmt.where(
                 MedicationKnowledgeModel.id.in_(
-                    select(MedicationKnowledgeMonitoringProgram.medication_knowledge_pk).where(
+                    select(
+                        MedicationKnowledgeMonitoringProgram.medication_knowledge_pk
+                    ).where(
                         or_(
-                            MedicationKnowledgeMonitoringProgram.name.ilike(f"%{monitoring_program}%"),
-                            MedicationKnowledgeMonitoringProgram.type_text.ilike(f"%{monitoring_program}%"),
+                            MedicationKnowledgeMonitoringProgram.name.ilike(
+                                f"%{monitoring_program}%"
+                            ),
+                            MedicationKnowledgeMonitoringProgram.type_text.ilike(
+                                f"%{monitoring_program}%"
+                            ),
                         )
                     )
                 )
@@ -147,15 +168,17 @@ class _CoreMixin:
             if res_id:
                 stmt = stmt.where(
                     MedicationKnowledgeModel.id.in_(
-                        select(MedicationKnowledgeIngredient.medication_knowledge_pk).where(
-                            MedicationKnowledgeIngredient.item_id == res_id
-                        )
+                        select(
+                            MedicationKnowledgeIngredient.medication_knowledge_pk
+                        ).where(MedicationKnowledgeIngredient.item_id == res_id)
                     )
                 )
             else:
                 stmt = stmt.where(
                     MedicationKnowledgeModel.id.in_(
-                        select(MedicationKnowledgeIngredient.medication_knowledge_pk).where(
+                        select(
+                            MedicationKnowledgeIngredient.medication_knowledge_pk
+                        ).where(
                             MedicationKnowledgeIngredient.item_reference.ilike(
                                 f"%{ingredient}%"
                             )
@@ -176,7 +199,8 @@ class _CoreMixin:
                                     MedicationKnowledgeIngredientItemCoding.medication_knowledge_ingredient_id
                                 ).where(
                                     or_(
-                                        MedicationKnowledgeIngredientItemCoding.code == ingredient_code,
+                                        MedicationKnowledgeIngredientItemCoding.code
+                                        == ingredient_code,
                                         MedicationKnowledgeIngredientItemCoding.display.ilike(
                                             f"%{ingredient_code}%"
                                         ),
@@ -238,7 +262,8 @@ class _CoreMixin:
     async def delete(self, medication_knowledge_id: int, org_id: str) -> bool:
         async with self.session_factory() as session:
             stmt = select(MedicationKnowledgeModel).where(
-                MedicationKnowledgeModel.medication_knowledge_id == medication_knowledge_id,
+                MedicationKnowledgeModel.medication_knowledge_id
+                == medication_knowledge_id,
                 MedicationKnowledgeModel.tenant_id == org_id,
             )
             res = await session.execute(stmt)

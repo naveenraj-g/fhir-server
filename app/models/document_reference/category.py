@@ -17,7 +17,9 @@ class DocumentReferenceCategory(TenantAuditMixin, Base):
 
     text = Column(String, nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="categories")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="categories"
+    )
     codings = relationship(
         "DocumentReferenceCategoryCoding",
         back_populates="category",

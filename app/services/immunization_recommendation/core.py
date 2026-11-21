@@ -5,13 +5,22 @@ from app.errors.domain import NotFoundError
 from app.errors.validation import FhirValidationError
 from app.fhir.datatypes import merge_patch_fragment
 from app.fhir.input_payload import fhir_create_document, fhir_patch_fragment
-from app.fhir.mappers.immunization_recommendation import to_fhir_immunization_recommendation
+from app.fhir.mappers.immunization_recommendation import (
+    to_fhir_immunization_recommendation,
+)
 from app.fhir.search import SearchContext, SearchRequest, parse_search
 from app.fhir.validation import validate_resource
 from app.models.immunization_recommendation import ImmunizationRecommendationModel
-from app.repository.immunization_recommendation import ImmunizationRecommendationRepository
-from app.repository.immunization_recommendation.search import immunization_recommendation_search
-from app.schemas.immunization_recommendation import ImmunizationRecommendationCreateSchema, ImmunizationRecommendationPatchSchema
+from app.repository.immunization_recommendation import (
+    ImmunizationRecommendationRepository,
+)
+from app.repository.immunization_recommendation.search import (
+    immunization_recommendation_search,
+)
+from app.schemas.immunization_recommendation import (
+    ImmunizationRecommendationCreateSchema,
+    ImmunizationRecommendationPatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -28,7 +37,9 @@ class _CoreMixin:
 
     # ── Formatters ────────────────────────────────────────────────────────
 
-    def _to_fhir(self, immunization_recommendation: ImmunizationRecommendationModel) -> dict:
+    def _to_fhir(
+        self, immunization_recommendation: ImmunizationRecommendationModel
+    ) -> dict:
         return to_fhir_immunization_recommendation(immunization_recommendation)
 
     # ── Read ──────────────────────────────────────────────────────────────
@@ -44,8 +55,10 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "ImmunizationRecommendation operation requires an org-scoped token"
             )
-        immunization_recommendation = await self.repository.get_by_immunization_recommendation_id_in_org(
-            immunization_recommendation_id, org_id
+        immunization_recommendation = (
+            await self.repository.get_by_immunization_recommendation_id_in_org(
+                immunization_recommendation_id, org_id
+            )
         )
         if not immunization_recommendation:
             raise NotFoundError("ImmunizationRecommendation not found")
@@ -59,7 +72,10 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
     ) -> tuple[
-        SearchRequest, list[ImmunizationRecommendationModel], int | None, list[ImmunizationRecommendationModel]
+        SearchRequest,
+        list[ImmunizationRecommendationModel],
+        int | None,
+        list[ImmunizationRecommendationModel],
     ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the ImmunizationRecommendation search
@@ -105,9 +121,13 @@ class _CoreMixin:
             )
         # The body is already a FHIR ImmunizationRecommendation — validate it as sent,
         # then store exactly that document.
-        document = fhir_create_document(self._raw(payload, body), "ImmunizationRecommendation")
+        document = fhir_create_document(
+            self._raw(payload, body), "ImmunizationRecommendation"
+        )
         await self._validate_base_r4(document, org_id)
-        immunization_recommendation = await self.repository.create_full(document, org_id, created_by)
+        immunization_recommendation = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "ImmunizationRecommendation created",
             extra={
@@ -145,12 +165,16 @@ class _CoreMixin:
             raise NotFoundError("ImmunizationRecommendation not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_immunization_recommendation(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_immunization_recommendation(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(immunization_recommendation_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            immunization_recommendation_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("ImmunizationRecommendation not found")
         logger.info(
@@ -167,8 +191,11 @@ class _CoreMixin:
         self, immunization_recommendation_id: int, org_id: str | None = None
     ) -> None:
         """Same org_id ownership gate as patch_immunization_recommendation."""
-        if not org_id or not await self.repository.immunization_recommendation_belongs_to_org(
-            immunization_recommendation_id, org_id
+        if (
+            not org_id
+            or not await self.repository.immunization_recommendation_belongs_to_org(
+                immunization_recommendation_id, org_id
+            )
         ):
             self._log_org_scope_miss("delete", immunization_recommendation_id, org_id)
             raise NotFoundError("ImmunizationRecommendation not found")
@@ -203,11 +230,16 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("ImmunizationRecommendation", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "ImmunizationRecommendation", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "ImmunizationRecommendation failed base R4 validation",
-                extra={"event": "immunization_recommendation.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "immunization_recommendation.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

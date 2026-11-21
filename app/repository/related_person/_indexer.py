@@ -24,7 +24,14 @@ from app.models.related_person import (
     RelatedPersonRelationship,
     RelatedPersonTelecom,
 )
-from app.repository._content_index import identifier_rows, norms, period_bounds, relative, strings, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    norms,
+    period_bounds,
+    relative,
+    strings,
+    type_rows,
+)
 from app.schemas.enums import AddressUse, AdministrativeGender
 
 from ._shared import typed
@@ -37,7 +44,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     elsewhere and are not checked."""
     refs = []
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
     local = relative((document.get("patient") or {}).get("reference"), "Patient")
@@ -73,7 +82,11 @@ def index_columns(document: dict) -> dict:
 
 
 def _name_row(n: dict) -> RelatedPersonName:
-    given, prefix, suffix = strings(n.get("given")), strings(n.get("prefix")), strings(n.get("suffix"))
+    given, prefix, suffix = (
+        strings(n.get("given")),
+        strings(n.get("prefix")),
+        strings(n.get("suffix")),
+    )
     phonetic_source = " ".join([n.get("family") or "", *(given or [])]).strip()
     return RelatedPersonName(
         text=n.get("text"),
@@ -93,7 +106,9 @@ def _name_row(n: dict) -> RelatedPersonName:
 def _telecom_row(t: dict) -> RelatedPersonTelecom | None:
     if not t.get("value"):
         return None
-    return RelatedPersonTelecom(system=t.get("system"), value=t["value"], use=t.get("use"))
+    return RelatedPersonTelecom(
+        system=t.get("system"), value=t["value"], use=t.get("use")
+    )
 
 
 def _address_row(a: dict) -> RelatedPersonAddress:
@@ -121,12 +136,18 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by RelatedPersonModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(RelatedPersonIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(RelatedPersonIdentifier, i)
         ],
         "names": [_name_row(n) for n in document.get("name") or []],
-        "telecoms": [r for t in document.get("telecom") or [] if (r := _telecom_row(t))],
+        "telecoms": [
+            r for t in document.get("telecom") or [] if (r := _telecom_row(t))
+        ],
         "addresses": [_address_row(a) for a in document.get("address") or []],
         "relationships": [
-            r for concept in document.get("relationship") or [] for r in type_rows(RelatedPersonRelationship, concept)
+            r
+            for concept in document.get("relationship") or []
+            for r in type_rows(RelatedPersonRelationship, concept)
         ],
     }

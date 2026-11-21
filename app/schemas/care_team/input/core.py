@@ -92,11 +92,10 @@ class CareTeamCreateSchema(BaseModel):
     category: list[CareTeamCodeableConceptInput] | None = Field(
         None, description="Type of team."
     )
-    name: str | None = Field(
-        None, description="Human-friendly name for the care team."
-    )
+    name: str | None = Field(None, description="Human-friendly name for the care team.")
     subject: str | None = Field(
-        None, description="Who the care team is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001')."
+        None,
+        description="Who the care team is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001').",
     )
     subject_display: str | None = Field(
         None, description="Display name for subject reference."
@@ -147,10 +146,12 @@ class CareTeamCreateSchema(BaseModel):
         None, description="Why the care team exists (Reference(Condition))."
     )
     managing_organization: list[CareTeamReferenceInput | str] | None = Field(
-        None, description="Organization responsible for the care team (Reference(Organization))."
+        None,
+        description="Organization responsible for the care team (Reference(Organization)).",
     )
     telecom: list[ContactPointInput] | None = Field(
-        None, description="A contact detail for the care team (that applies to all members)."
+        None,
+        description="A contact detail for the care team (that applies to all members).",
     )
     note: list[CareTeamNoteInput] | None = Field(
         None, description="Comments about the care team."
@@ -179,11 +180,10 @@ class CareTeamPatchSchema(BaseModel):
     category: list[CareTeamCodeableConceptInput] | None = Field(
         None, description="Type of team."
     )
-    name: str | None = Field(
-        None, description="Human-friendly name for the care team."
-    )
+    name: str | None = Field(None, description="Human-friendly name for the care team.")
     subject: str | None = Field(
-        None, description="Who the care team is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001')."
+        None,
+        description="Who the care team is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001').",
     )
     subject_display: str | None = Field(
         None, description="Display name for subject reference."
@@ -234,10 +234,12 @@ class CareTeamPatchSchema(BaseModel):
         None, description="Why the care team exists (Reference(Condition))."
     )
     managing_organization: list[CareTeamReferenceInput | str] | None = Field(
-        None, description="Organization responsible for the care team (Reference(Organization))."
+        None,
+        description="Organization responsible for the care team (Reference(Organization)).",
     )
     telecom: list[ContactPointInput] | None = Field(
-        None, description="A contact detail for the care team (that applies to all members)."
+        None,
+        description="A contact detail for the care team (that applies to all members).",
     )
     note: list[CareTeamNoteInput] | None = Field(
         None, description="Comments about the care team."

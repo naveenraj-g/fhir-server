@@ -20,15 +20,22 @@ class PlainGroupCharacteristic(BaseModel):
 
     id: int = Field(..., description="Internal DB ID.")
     code: PlainGroupCodeableConcept = Field(..., description="Kind of characteristic.")
-    exclude: bool = Field(False, description="Group includes or excludes members with this characteristic.")
+    exclude: bool = Field(
+        False,
+        description="Group includes or excludes members with this characteristic.",
+    )
     period_start: datetime | None = Field(None, description="Period start.")
     period_end: datetime | None = Field(None, description="Period end.")
     value_boolean: bool | None = Field(None, description="Value (boolean).")
-    value_codeable_concept: PlainGroupCodeableConcept | None = Field(None, description="Value (CodeableConcept).")
+    value_codeable_concept: PlainGroupCodeableConcept | None = Field(
+        None, description="Value (CodeableConcept)."
+    )
     value_quantity: dict[str, Any] | None = Field(None, description="Value (Quantity).")
     value_range: dict[str, Any] | None = Field(None, description="Value (Range).")
     value_reference: str | None = Field(None, description="Value (Reference).")
-    value_reference_display: str | None = Field(None, description="Display text for reference.")
+    value_reference_display: str | None = Field(
+        None, description="Display text for reference."
+    )
 
 
 class FHIRGroupCharacteristic(BaseModel):
@@ -42,5 +49,8 @@ class FHIRGroupCharacteristic(BaseModel):
     valueQuantity: FHIRQuantity | None = None
     valueRange: FHIRRange | None = None
     valueReference: FHIRReference | None = None
-    exclude: bool = Field(False, description="Group includes or excludes members with this characteristic.")
+    exclude: bool = Field(
+        False,
+        description="Group includes or excludes members with this characteristic.",
+    )
     period: FHIRPeriod | None = None

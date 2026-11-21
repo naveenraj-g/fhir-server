@@ -1,3 +1,11 @@
-from .core import FHIRImmunizationRecommendationBundle, FHIRImmunizationRecommendationBundleEntry, FHIRImmunizationRecommendationSchema
+from .core import (
+    FHIRImmunizationRecommendationBundle,
+    FHIRImmunizationRecommendationBundleEntry,
+    FHIRImmunizationRecommendationSchema,
+)
 
-__all__ = ["FHIRImmunizationRecommendationBundle", "FHIRImmunizationRecommendationBundleEntry", "FHIRImmunizationRecommendationSchema"]
+__all__ = [
+    "FHIRImmunizationRecommendationBundle",
+    "FHIRImmunizationRecommendationBundleEntry",
+    "FHIRImmunizationRecommendationSchema",
+]

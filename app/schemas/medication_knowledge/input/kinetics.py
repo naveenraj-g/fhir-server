@@ -17,5 +17,6 @@ class MedicationKnowledgeKineticsInput(BaseModel):
         None, description="The median lethal dose of a drug."
     )
     half_life_period: MedicationKnowledgeQuantityInput | None = Field(
-        None, description="The time required for half the quantity of drug to be eliminated."
+        None,
+        description="The time required for half the quantity of drug to be eliminated.",
     )

@@ -28,7 +28,9 @@ class EncounterToken(Base):
     __table_args__ = (Index("ix_encounter_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    encounter_pk = Column(BigInteger, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_pk = Column(
+        BigInteger, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)

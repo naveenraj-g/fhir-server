@@ -43,10 +43,8 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "PlanDefinition operation requires an org-scoped token"
             )
-        plan_definition = (
-            await self.repository.get_by_plan_definition_id_in_org(
-                plan_definition_id, org_id
-            )
+        plan_definition = await self.repository.get_by_plan_definition_id_in_org(
+            plan_definition_id, org_id
         )
         if not plan_definition:
             raise NotFoundError("PlanDefinition not found")
@@ -105,9 +103,7 @@ class _CoreMixin:
                 "PlanDefinition creation requires an authenticated actor"
             )
 
-        await self._validate_base_r4(
-            payload_to_fhir_plan_definition(payload), org_id
-        )
+        await self._validate_base_r4(payload_to_fhir_plan_definition(payload), org_id)
         pd = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "PlanDefinition created",
@@ -177,9 +173,7 @@ class _CoreMixin:
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
-        errors = await validate_resource(
-            "PlanDefinition", fhir_resource, org_id=org_id
-        )
+        errors = await validate_resource("PlanDefinition", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "PlanDefinition failed base R4 validation",

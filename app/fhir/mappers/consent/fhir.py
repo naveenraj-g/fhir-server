@@ -96,8 +96,13 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
                 coding["code"] = type_code
             if getattr(obj, f"{prefix}_identifier_type_display", None):
                 coding["display"] = getattr(obj, f"{prefix}_identifier_type_display")
-            if getattr(obj, f"{prefix}_identifier_type_user_selected", None) is not None:
-                coding["userSelected"] = getattr(obj, f"{prefix}_identifier_type_user_selected")
+            if (
+                getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+                is not None
+            ):
+                coding["userSelected"] = getattr(
+                    obj, f"{prefix}_identifier_type_user_selected"
+                )
 
             type_dict: dict[str, Any] = {}
             if coding:
@@ -223,8 +228,7 @@ def _fhir_provision(p: ConsentProvision) -> dict | None:
 
     if getattr(p, "codes", None):
         cds = [
-            _fhir_codeable_concept(getattr(c, "codings", None), c.text)
-            for c in p.codes
+            _fhir_codeable_concept(getattr(c, "codings", None), c.text) for c in p.codes
         ]
         cds = [c for c in cds if c]
         if cds:
@@ -291,19 +295,13 @@ def to_fhir_consent(model: ConsentModel) -> dict:
         res["dateTime"] = fhir_instant(model.date_time)
 
     if getattr(model, "performers", None):
-        perfs = [
-            _fhir_reference(p, "reference")
-            for p in model.performers
-        ]
+        perfs = [_fhir_reference(p, "reference") for p in model.performers]
         perfs = [p for p in perfs if p]
         if perfs:
             res["performer"] = perfs
 
     if getattr(model, "organizations", None):
-        orgs = [
-            _fhir_reference(o, "reference")
-            for o in model.organizations
-        ]
+        orgs = [_fhir_reference(o, "reference") for o in model.organizations]
         orgs = [o for o in orgs if o]
         if orgs:
             res["organization"] = orgs

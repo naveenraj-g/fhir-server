@@ -11,7 +11,10 @@ from app.fhir.validation import validate_resource
 from app.models.clinical_impression import ClinicalImpressionModel
 from app.repository.clinical_impression import ClinicalImpressionRepository
 from app.repository.clinical_impression.search import clinical_impression_search
-from app.schemas.clinical_impression import ClinicalImpressionCreateSchema, ClinicalImpressionPatchSchema
+from app.schemas.clinical_impression import (
+    ClinicalImpressionCreateSchema,
+    ClinicalImpressionPatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -44,8 +47,10 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "ClinicalImpression operation requires an org-scoped token"
             )
-        clinical_impression = await self.repository.get_by_clinical_impression_id_in_org(
-            clinical_impression_id, org_id
+        clinical_impression = (
+            await self.repository.get_by_clinical_impression_id_in_org(
+                clinical_impression_id, org_id
+            )
         )
         if not clinical_impression:
             raise NotFoundError("ClinicalImpression not found")
@@ -59,7 +64,10 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
     ) -> tuple[
-        SearchRequest, list[ClinicalImpressionModel], int | None, list[ClinicalImpressionModel]
+        SearchRequest,
+        list[ClinicalImpressionModel],
+        int | None,
+        list[ClinicalImpressionModel],
     ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the ClinicalImpression search
@@ -107,7 +115,9 @@ class _CoreMixin:
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "ClinicalImpression")
         await self._validate_base_r4(document, org_id)
-        clinical_impression = await self.repository.create_full(document, org_id, created_by)
+        clinical_impression = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "ClinicalImpression created",
             extra={
@@ -145,12 +155,16 @@ class _CoreMixin:
             raise NotFoundError("ClinicalImpression not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_clinical_impression(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_clinical_impression(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(clinical_impression_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            clinical_impression_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("ClinicalImpression not found")
         logger.info(
@@ -203,11 +217,16 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("ClinicalImpression", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "ClinicalImpression", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "ClinicalImpression failed base R4 validation",
-                extra={"event": "clinical_impression.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "clinical_impression.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

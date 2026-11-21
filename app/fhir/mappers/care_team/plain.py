@@ -84,7 +84,9 @@ def _plain_participant(p) -> dict:
         "member_id": p.member_id,
         "member_display": p.member_display,
         "on_behalf_of": p.on_behalf_of_reference,
-        "on_behalf_of_type": fhir_enum(p.on_behalf_of_type) if p.on_behalf_of_type else None,
+        "on_behalf_of_type": fhir_enum(p.on_behalf_of_type)
+        if p.on_behalf_of_type
+        else None,
         "on_behalf_of_id": p.on_behalf_of_id,
         "on_behalf_of_display": p.on_behalf_of_display,
         "period_start": p.period_start.isoformat() if p.period_start else None,
@@ -144,7 +146,9 @@ def _plain_note(n) -> dict:
         "time": n.time.isoformat() if n.time else None,
         "author_string": n.author_string,
         "author_reference": n.author_reference_reference,
-        "author_reference_type": fhir_enum(n.author_reference_type) if n.author_reference_type else None,
+        "author_reference_type": fhir_enum(n.author_reference_type)
+        if n.author_reference_type
+        else None,
         "author_reference_id": n.author_reference_id,
         "author_reference_display": n.author_reference_display,
     }
@@ -162,7 +166,9 @@ def to_plain_care_team(model: CareTeamModel) -> dict:
         "subject_display": model.subject_display,
         "encounter": model.encounter_reference,
         "encounter_id": model.encounter_id,
-        "encounter_type": fhir_enum(model.encounter_type) if model.encounter_type else None,
+        "encounter_type": fhir_enum(model.encounter_type)
+        if model.encounter_type
+        else None,
         "encounter_display": model.encounter_display,
         "period_start": model.period_start.isoformat() if model.period_start else None,
         "period_end": model.period_end.isoformat() if model.period_end else None,
@@ -171,7 +177,9 @@ def to_plain_care_team(model: CareTeamModel) -> dict:
         "participants": [_plain_participant(p) for p in model.participants or []],
         "reason_codes": [_plain_reason_code(r) for r in model.reason_codes or []],
         "reason_references": [_plain_ref_row(r) for r in model.reason_references or []],
-        "managing_organizations": [_plain_ref_row(m) for m in model.managing_organizations or []],
+        "managing_organizations": [
+            _plain_ref_row(m) for m in model.managing_organizations or []
+        ],
         "telecoms": [_plain_telecom(t) for t in model.telecoms or []],
         "notes": [_plain_note(n) for n in model.notes or []],
         "tenant_id": model.tenant_id,

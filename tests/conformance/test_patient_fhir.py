@@ -31,11 +31,19 @@ D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 def _patient(content: dict, **overrides) -> PatientModel:
-    fields = {"patient_id": 10001, "tenant_id": "org-test", "created_by": "u-test", "created_at": D, "content": content}
+    fields = {
+        "patient_id": 10001,
+        "tenant_id": "org-test",
+        "created_by": "u-test",
+        "created_at": D,
+        "content": content,
+    }
     fields.update(overrides)
     return PatientModel(**fields)
 
@@ -44,8 +52,13 @@ CASES = {
     "empty": _patient({}),
     "minimal": _patient(_stored(MINIMAL)),
     "active_false": _patient({"active": False}),
-    "updated_by_and_updated_at": _patient({"active": True}, updated_by="u-other", updated_at=D),
-    **{f"gender_{g}": _patient({"gender": g}) for g in ("male", "female", "other", "unknown")},
+    "updated_by_and_updated_at": _patient(
+        {"active": True}, updated_by="u-other", updated_at=D
+    ),
+    **{
+        f"gender_{g}": _patient({"gender": g})
+        for g in ("male", "female", "other", "unknown")
+    },
     "birth_date_full": _patient({"birthDate": "1974-12-25"}),
     "birth_date_year_month": _patient({"birthDate": "1990-05"}),
     "birth_date_year": _patient({"birthDate": "1990"}),
@@ -59,7 +72,14 @@ CASES = {
             "identifier": [
                 {
                     "use": "official",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "MR"}]},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "MR",
+                            }
+                        ]
+                    },
                     "system": "http://hospital.example.org/mrn",
                     "value": "MRN-1",
                     "period": {"start": "2020-01-01"},
@@ -71,8 +91,18 @@ CASES = {
     "names": _patient(
         {
             "name": [
-                {"use": "official", "family": "Chalmers", "given": ["Peter", "James"], "prefix": ["Mr"], "suffix": ["Jr"]},
-                {"use": "maiden", "text": "Peter C", "period": {"start": "1990-01-01", "end": "2000-01-01"}},
+                {
+                    "use": "official",
+                    "family": "Chalmers",
+                    "given": ["Peter", "James"],
+                    "prefix": ["Mr"],
+                    "suffix": ["Jr"],
+                },
+                {
+                    "use": "maiden",
+                    "text": "Peter C",
+                    "period": {"start": "1990-01-01", "end": "2000-01-01"},
+                },
             ]
         }
     ),
@@ -100,15 +130,28 @@ CASES = {
             ]
         }
     ),
-    "marital_status": _patient({"maritalStatus": {"coding": [{"code": "M", "display": "Married"}], "text": "Married"}}),
-    "photo": _patient({"photo": [{"url": "https://fhir-server.dev/fhir/assets/patient.png"}]}),
+    "marital_status": _patient(
+        {
+            "maritalStatus": {
+                "coding": [{"code": "M", "display": "Married"}],
+                "text": "Married",
+            }
+        }
+    ),
+    "photo": _patient(
+        {"photo": [{"url": "https://fhir-server.dev/fhir/assets/patient.png"}]}
+    ),
     "contact_with_every_part": _patient(
         {
             "contact": [
                 {
-                    "relationship": [{"coding": [{"code": "N", "display": "Next-of-Kin"}]}],
+                    "relationship": [
+                        {"coding": [{"code": "N", "display": "Next-of-Kin"}]}
+                    ],
                     "name": {"family": "Chalmers", "given": ["Sarah"]},
-                    "telecom": [{"system": "phone", "value": "555-9876", "use": "mobile"}],
+                    "telecom": [
+                        {"system": "phone", "value": "555-9876", "use": "mobile"}
+                    ],
                     "address": {"city": "Springfield", "line": ["1 Main St"]},
                     "gender": "female",
                     "organization": {"reference": "Organization/190001"},
@@ -117,11 +160,16 @@ CASES = {
             ]
         }
     ),
-    "contact_with_only_an_organization": _patient({"contact": [{"organization": {"display": "Employer"}}]}),
+    "contact_with_only_an_organization": _patient(
+        {"contact": [{"organization": {"display": "Employer"}}]}
+    ),
     "communication": _patient(
         {
             "communication": [
-                {"language": {"coding": [{"code": "en", "display": "English"}]}, "preferred": True},
+                {
+                    "language": {"coding": [{"code": "en", "display": "English"}]},
+                    "preferred": True,
+                },
                 {"language": {"text": "Francais"}},
             ]
         }
@@ -139,11 +187,21 @@ CASES = {
         {
             "generalPractitioner": [
                 {"reference": "https://other.example.org/fhir/Practitioner/9"},
-                {"identifier": {"system": "urn:gps", "value": "GP-7"}, "display": "External GP"},
+                {
+                    "identifier": {"system": "urn:gps", "value": "GP-7"},
+                    "display": "External GP",
+                },
             ]
         }
     ),
-    "managing_organization": _patient({"managingOrganization": {"reference": "Organization/190001", "display": "Hospital"}}),
+    "managing_organization": _patient(
+        {
+            "managingOrganization": {
+                "reference": "Organization/190001",
+                "display": "Hospital",
+            }
+        }
+    ),
     "links": _patient(
         {
             "link": [
@@ -154,7 +212,16 @@ CASES = {
             ]
         }
     ),
-    "extension": _patient({"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}),
+    "extension": _patient(
+        {
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ]
+        }
+    ),
     "full_payload": _patient(_stored(FULL)),
 }
 
@@ -169,7 +236,9 @@ def test_mapper_serves_content_unchanged():
     out = to_fhir_patient(_patient(content))
     assert out["resourceType"] == "Patient"
     assert out["id"] == "10001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -189,13 +258,25 @@ def test_mapper_serves_content_unchanged():
         ("deceasedBoolean as string", {"deceasedBoolean": "no"}),
         ("deceasedDateTime not a dateTime", {"deceasedDateTime": "tomorrow"}),
         ("name as strings not HumanNames", {"name": ["Peter Chalmers"]}),
-        ("telecom value as number", {"telecom": [{"system": "phone", "value": 5551234}]}),
+        (
+            "telecom value as number",
+            {"telecom": [{"system": "phone", "value": 5551234}]},
+        ),
         ("maritalStatus as string not CodeableConcept", {"maritalStatus": "M"}),
         ("multipleBirthInteger as string", {"multipleBirthInteger": "two"}),
-        ("generalPractitioner as strings not References", {"generalPractitioner": ["Practitioner/30001"]}),
-        ("managingOrganization as string not Reference", {"managingOrganization": "Organization/190001"}),
+        (
+            "generalPractitioner as strings not References",
+            {"generalPractitioner": ["Practitioner/30001"]},
+        ),
+        (
+            "managingOrganization as string not Reference",
+            {"managingOrganization": "Organization/190001"},
+        ),
         ("communication as strings not backbone elements", {"communication": ["en"]}),
-        ("link type not a link type", {"link": [{"other": {"reference": "Patient/1"}, "type": "friend"}]}),
+        (
+            "link type not a link type",
+            {"link": [{"other": {"reference": "Patient/1"}, "type": "friend"}]},
+        ),
         ("contact as an object not a list", {"contact": {"gender": "female"}}),
     ],
 )
@@ -204,4 +285,6 @@ def test_validator_rejects_invalid_fhir(label, broken):
 
     payload = {"resourceType": "Patient", "id": "10001", **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), patient_pb2.Patient, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), patient_pb2.Patient, validate=True
+        )

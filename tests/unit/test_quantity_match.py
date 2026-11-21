@@ -11,10 +11,23 @@ by hand from the R4 text.
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, Numeric, String, Table, create_engine, select
+from sqlalchemy import (
+    Column,
+    Integer,
+    MetaData,
+    Numeric,
+    String,
+    Table,
+    create_engine,
+    select,
+)
 
 from app.fhir.search.errors import SearchError
-from app.fhir.search.quantity import parse_quantity, quantity_match, quantity_range_match
+from app.fhir.search.quantity import (
+    parse_quantity,
+    quantity_match,
+    quantity_range_match,
+)
 
 UCUM = "http://unitsofmeasure.org"
 
@@ -47,13 +60,18 @@ def engine():
     with eng.begin() as conn:
         conn.execute(
             lengths.insert(),
-            [{"id": i, "value": v, "system": s, "code": c, "unit": u} for i, (v, s, c, u) in ROWS.items()],
+            [
+                {"id": i, "value": v, "system": s, "code": c, "unit": u}
+                for i, (v, s, c, u) in ROWS.items()
+            ],
         )
     return eng
 
 
 def _match(engine, value: str) -> set[int]:
-    cond = quantity_match(lengths.c.value, lengths.c.system, lengths.c.code, lengths.c.unit, value)
+    cond = quantity_match(
+        lengths.c.value, lengths.c.system, lengths.c.code, lengths.c.unit, value
+    )
     with engine.connect() as conn:
         return {r[0] for r in conn.execute(select(lengths.c.id).where(cond))}
 
@@ -103,14 +121,22 @@ def test_units(engine, value, expected):
 
 def test_parse_quantity_range_follows_the_written_precision():
     _, number, low, high, system, code, _ = parse_quantity("5|s|c")
-    assert (number, low, high, system, code) == (Decimal(5), Decimal("4.5"), Decimal("5.5"), "s", "c")
+    assert (number, low, high, system, code) == (
+        Decimal(5),
+        Decimal("4.5"),
+        Decimal("5.5"),
+        "s",
+        "c",
+    )
     _, _, low, high, *_ = parse_quantity("5.00")
     assert (low, high) == (Decimal("4.995"), Decimal("5.005"))
     _, _, low, high, *_ = parse_quantity("1e2")
     assert (low, high) == (Decimal(50), Decimal(150))
 
 
-@pytest.mark.parametrize("bad", ["", "abc", "gt", "5e", "NaN", "Infinity", "1|2|3|4", "gtx5"])
+@pytest.mark.parametrize(
+    "bad", ["", "abc", "gt", "5e", "NaN", "Infinity", "1|2|3|4", "gtx5"]
+)
 def test_bad_values_are_search_errors(bad):
     with pytest.raises(SearchError):
         parse_quantity(bad)
@@ -145,7 +171,10 @@ def span_engine():
     with eng.begin() as conn:
         conn.execute(
             spans.insert(),
-            [{"id": i, "low": lo, "high": hi, "system": s, "code": c, "unit": u} for i, (lo, hi, s, c, u) in SPANS.items()],
+            [
+                {"id": i, "low": lo, "high": hi, "system": s, "code": c, "unit": u}
+                for i, (lo, hi, s, c, u) in SPANS.items()
+            ],
         )
     return eng
 
@@ -163,8 +192,14 @@ def _span_match(engine, value: str) -> set[int]:
         ("12", {1}),  # [11.5, 12.5) wholly contains only the point 12
         ("1e1", {1, 2}),  # [5, 15) wholly contains the point 12 and the range 5-10
         ("10", set()),  # [9.5, 10.5) contains no target range
-        ("ne12", {2, 3, 4, 6}),  # not wholly contained; an open end is never contained; row 5 has no quantity
-        ("gt15", {3, 6}),  # the range above 15 overlaps an open-ended and a 12-30 target
+        (
+            "ne12",
+            {2, 3, 4, 6},
+        ),  # not wholly contained; an open end is never contained; row 5 has no quantity
+        (
+            "gt15",
+            {3, 6},
+        ),  # the range above 15 overlaps an open-ended and a 12-30 target
         ("lt6", {2, 4}),  # the range below 6 overlaps 5-10 and the open-below one
         ("ge10", {1, 2, 3, 6}),
         ("le8", {2, 4}),
@@ -194,4 +229,6 @@ def test_range_units(span_engine, value, expected):
 
 def test_range_bad_values_are_search_errors():
     with pytest.raises(SearchError):
-        quantity_range_match(spans.c.low, spans.c.high, spans.c.system, spans.c.code, spans.c.unit, "abc")
+        quantity_range_match(
+            spans.c.low, spans.c.high, spans.c.system, spans.c.code, spans.c.unit, "abc"
+        )

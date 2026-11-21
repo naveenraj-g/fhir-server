@@ -28,7 +28,13 @@ from app.repository._procedure_revinclude import performer_procedure_revincludes
 from app.repository._diagnostic_report_revinclude import performer_report_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import participant_encounter_revincludes
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     array_string_match,
     coded_token_match,
@@ -56,7 +62,9 @@ _GENDER_SYSTEM = "http://hl7.org/fhir/administrative-gender"
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.practitioner_pk == Prac.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.practitioner_pk == Prac.id, *conditions)
+    )
 
 
 def _child_sort(column, model):
@@ -64,7 +72,9 @@ def _child_sort(column, model):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.practitioner_pk == Prac.id).scalar_subquery()
+        return (
+            select(fn(column)).where(model.practitioner_pk == Prac.id).scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -78,7 +88,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return Prac.practitioner_id == int(token.code)
 
@@ -96,7 +108,9 @@ def _active_match(value, modifier, ctx):
 def _gender_match(value, modifier, ctx):
     token = parse_token(value)
     if token.system is not None and token.system != _GENDER_SYSTEM:
-        return false()  # another system, or `|code` (no system) — gender is always coded in its own
+        return (
+            false()
+        )  # another system, or `|code` (no system) — gender is always coded in its own
     if token.code is None:
         return Prac.gender.is_not(None)
     try:
@@ -176,7 +190,10 @@ def _address_match(value, modifier, ctx):
         _A,
         or_(
             array_string_match(_A.line, _A.line_norm, value, modifier),
-            *(string_match(raw, norm, value, modifier) for raw, norm in _ADDRESS_PARTS.values()),
+            *(
+                string_match(raw, norm, value, modifier)
+                for raw, norm in _ADDRESS_PARTS.values()
+            ),
         ),
     )
 
@@ -201,7 +218,9 @@ _C = PractitionerCommunication
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
         return _exists(
@@ -216,7 +235,9 @@ def _identifier_match(value, modifier, ctx):
 def _communication_match(value, modifier, ctx):
     return _exists(
         _C,
-        coded_token_match(_C.system, _C.code, value, modifier, (_C.text_norm, _C.display_norm)),
+        coded_token_match(
+            _C.system, _C.code, value, modifier, (_C.text_norm, _C.display_norm)
+        ),
     )
 
 
@@ -232,7 +253,11 @@ def _telecom_match(system: str | None):
 
     def match(value, modifier, ctx):
         condition = token_condition(_T.use, _T.value, parse_token(value))
-        return _exists(_T, condition, _T.system == system) if system else _exists(_T, condition)
+        return (
+            _exists(_T, condition, _T.system == system)
+            if system
+            else _exists(_T, condition)
+        )
 
     return match
 
@@ -266,7 +291,9 @@ def _revinclude_schedules(resource_type: str, key):
         from app.models.schedule import ScheduleModel as S
 
         ids = {key(r) for r in rows}
-        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        pks = select(A.schedule_pk).where(
+            A.reference_type == resource_type, A.reference_id.in_(ids)
+        )
         stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
         return list((await session.execute(stmt)).scalars().all())
 
@@ -280,7 +307,9 @@ def _revinclude_patients(param: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         from app.repository.patient.search import revinclude_patients_via_reference
 
-        return await revinclude_patients_via_reference(param, resource_type, key)(session, ctx, rows)
+        return await revinclude_patients_via_reference(param, resource_type, key)(
+            session, ctx, rows
+        )
 
     return fetch
 
@@ -346,7 +375,9 @@ def practitioner_search() -> SearchRegistry:
             frozenset({"not", "missing"}),
             sort=lambda: Prac.active,
             example="true",
-            modifier_docs={"not": "`:not` — active is not this value, or is not recorded at all."},
+            modifier_docs={
+                "not": "`:not` — active is not this value, or is not recorded at all."
+            },
         ),
         SearchParam(
             "address",
@@ -527,7 +558,17 @@ def practitioner_search() -> SearchRegistry:
     return SearchRegistry(
         resource_type="Practitioner",
         params={p.name: p for p in params},
-        summary_elements=frozenset({"identifier", "active", "name", "telecom", "address", "gender", "birthDate"}),
+        summary_elements=frozenset(
+            {
+                "identifier",
+                "active",
+                "name",
+                "telecom",
+                "address",
+                "gender",
+                "birthDate",
+            }
+        ),
         # Practitioner has no Reference elements of its own to _include, and
         # the resources that point at a Practitioner (PractitionerRole,
         # Encounter, ...) aren't on this engine yet, so there is nothing to
@@ -535,30 +576,63 @@ def practitioner_search() -> SearchRegistry:
         includes=(),
         # PractitionerRole.practitioner points here.
         revincludes=(
-            *participant_revincludes('Practitioner', lambda p: p.practitioner_id, ('actor', 'practitioner')),
-            *actor_response_revincludes('Practitioner', lambda p: p.practitioner_id, ('actor', 'practitioner')),
-            *participant_encounter_revincludes('Practitioner', lambda p: p.practitioner_id, ('participant', 'practitioner')),
-            *actor_allergy_revincludes('Practitioner', lambda p: p.practitioner_id),
-            *asserter_condition_revincludes('Practitioner', lambda p: p.practitioner_id),
-            *performer_procedure_revincludes('Practitioner', lambda p: p.practitioner_id),
-            *performer_immunization_revincludes('Practitioner', lambda p: p.practitioner_id),
-            *performer_report_revincludes('Practitioner', lambda p: p.practitioner_id),
-            *column_risk_revincludes(('performer',), 'performer', 'Practitioner', lambda p: p.practitioner_id),
-            *column_impression_revincludes(('assessor',), 'assessor', 'Practitioner', lambda p: p.practitioner_id),
-            *column_issue_revincludes(('author',), 'author', 'Practitioner', lambda p: p.practitioner_id),
-            *reference_observation_revincludes('performer', 'Practitioner', lambda p: p.practitioner_id),
+            *participant_revincludes(
+                "Practitioner", lambda p: p.practitioner_id, ("actor", "practitioner")
+            ),
+            *actor_response_revincludes(
+                "Practitioner", lambda p: p.practitioner_id, ("actor", "practitioner")
+            ),
+            *participant_encounter_revincludes(
+                "Practitioner",
+                lambda p: p.practitioner_id,
+                ("participant", "practitioner"),
+            ),
+            *actor_allergy_revincludes("Practitioner", lambda p: p.practitioner_id),
+            *asserter_condition_revincludes(
+                "Practitioner", lambda p: p.practitioner_id
+            ),
+            *performer_procedure_revincludes(
+                "Practitioner", lambda p: p.practitioner_id
+            ),
+            *performer_immunization_revincludes(
+                "Practitioner", lambda p: p.practitioner_id
+            ),
+            *performer_report_revincludes("Practitioner", lambda p: p.practitioner_id),
+            *column_risk_revincludes(
+                ("performer",), "performer", "Practitioner", lambda p: p.practitioner_id
+            ),
+            *column_impression_revincludes(
+                ("assessor",), "assessor", "Practitioner", lambda p: p.practitioner_id
+            ),
+            *column_issue_revincludes(
+                ("author",), "author", "Practitioner", lambda p: p.practitioner_id
+            ),
+            *reference_observation_revincludes(
+                "performer", "Practitioner", lambda p: p.practitioner_id
+            ),
             IncludeTarget(
-                "PractitionerRole", "practitioner", "Practitioner", _revinclude_practitioner_role, reverse=True
+                "PractitionerRole",
+                "practitioner",
+                "Practitioner",
+                _revinclude_practitioner_role,
+                reverse=True,
             ),
             # Schedule.actor points here.
             IncludeTarget(
-                "Schedule", "actor", "Practitioner",
-                _revinclude_schedules("Practitioner", lambda p: p.practitioner_id), reverse=True,
+                "Schedule",
+                "actor",
+                "Practitioner",
+                _revinclude_schedules("Practitioner", lambda p: p.practitioner_id),
+                reverse=True,
             ),
             # Patient.generalPractitioner points here.
             IncludeTarget(
-                "Patient", "general-practitioner", "Practitioner",
-                _revinclude_patients("general-practitioner", "Practitioner", lambda p: p.practitioner_id),
+                "Patient",
+                "general-practitioner",
+                "Practitioner",
+                _revinclude_patients(
+                    "general-practitioner", "Practitioner", lambda p: p.practitioner_id
+                ),
                 reverse=True,
             ),
         ),

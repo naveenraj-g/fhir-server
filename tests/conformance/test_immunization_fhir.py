@@ -27,7 +27,11 @@ immunization_pb2 = pytest.importorskip(
 
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 PATIENT = {"reference": "Patient/10001"}
-VACCINE = {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "140", "display": "Influenza"}]}
+VACCINE = {
+    "coding": [
+        {"system": "http://hl7.org/fhir/sid/cvx", "code": "140", "display": "Influenza"}
+    ]
+}
 SCT = "http://snomed.info/sct"
 OCCURRED = "2023-01-15T09:30:00Z"
 
@@ -46,21 +50,40 @@ def _immunization(content: dict, **overrides) -> ImmunizationModel:
 
 def _with(**elements) -> ImmunizationModel:
     return _immunization(
-        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED, **elements}
+        {
+            "status": "completed",
+            "vaccineCode": VACCINE,
+            "patient": PATIENT,
+            "occurrenceDateTime": OCCURRED,
+            **elements,
+        }
     )
 
 
 CASES = {
     "minimal": _with(),
     "updated_by_and_updated_at": _immunization(
-        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED},
-        updated_by="u-other", updated_at=D,
+        {
+            "status": "completed",
+            "vaccineCode": VACCINE,
+            "patient": PATIENT,
+            "occurrenceDateTime": OCCURRED,
+        },
+        updated_by="u-other",
+        updated_at=D,
     ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "FILL"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/immunization-id",
                 "value": "IM-1",
                 "period": {"start": "2020-01-01"},
@@ -70,48 +93,132 @@ CASES = {
     ),
     **{
         f"status_{s}": _immunization(
-            {"status": s, "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED}
+            {
+                "status": s,
+                "vaccineCode": VACCINE,
+                "patient": PATIENT,
+                "occurrenceDateTime": OCCURRED,
+            }
         )
         for s in ("completed", "entered-in-error", "not-done")
     },
     "status_reason": _immunization(
-        {"status": "not-done", "statusReason": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActReason", "code": "PATOBJ"}], "text": "Objected"},
-         "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED}
+        {
+            "status": "not-done",
+            "statusReason": {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-ActReason",
+                        "code": "PATOBJ",
+                    }
+                ],
+                "text": "Objected",
+            },
+            "vaccineCode": VACCINE,
+            "patient": PATIENT,
+            "occurrenceDateTime": OCCURRED,
+        }
     ),
     "vaccine_code_text_only": _immunization(
-        {"status": "completed", "vaccineCode": {"text": "Tetanus"}, "patient": PATIENT, "occurrenceDateTime": OCCURRED}
+        {
+            "status": "completed",
+            "vaccineCode": {"text": "Tetanus"},
+            "patient": PATIENT,
+            "occurrenceDateTime": OCCURRED,
+        }
     ),
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
     "patient_logical": _immunization(
-        {"status": "completed", "vaccineCode": VACCINE, "occurrenceDateTime": OCCURRED,
-         "patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}
+        {
+            "status": "completed",
+            "vaccineCode": VACCINE,
+            "occurrenceDateTime": OCCURRED,
+            "patient": {"identifier": {"system": "urn:pts", "value": "P-9"}},
+        }
     ),
     "patient_absolute_url": _immunization(
-        {"status": "completed", "vaccineCode": VACCINE, "occurrenceDateTime": OCCURRED,
-         "patient": {"reference": "https://other.example.org/fhir/Patient/9"}}
+        {
+            "status": "completed",
+            "vaccineCode": VACCINE,
+            "occurrenceDateTime": OCCURRED,
+            "patient": {"reference": "https://other.example.org/fhir/Patient/9"},
+        }
     ),
     "encounter": _with(encounter={"reference": "Encounter/20001"}),
     "occurrence_date_time_partial": _immunization(
-        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": "2023-01"}
+        {
+            "status": "completed",
+            "vaccineCode": VACCINE,
+            "patient": PATIENT,
+            "occurrenceDateTime": "2023-01",
+        }
     ),
     "occurrence_string": _immunization(
-        {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceString": "last spring"}
+        {
+            "status": "completed",
+            "vaccineCode": VACCINE,
+            "patient": PATIENT,
+            "occurrenceString": "last spring",
+        }
     ),
     "recorded": _with(recorded="2023-01-15T10:00:00Z"),
     "primary_source_true": _with(primarySource=True),
-    "primary_source_false": _with(primarySource=False, reportOrigin={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-origin", "code": "record"}]}),
+    "primary_source_false": _with(
+        primarySource=False,
+        reportOrigin={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/immunization-origin",
+                    "code": "record",
+                }
+            ]
+        },
+    ),
     "location": _with(location={"reference": "Location/230001"}),
     "manufacturer": _with(manufacturer={"reference": "Organization/190001"}),
-    "lot_number_and_expiration": _with(lotNumber="AAJN11K", expirationDate="2025-02-15"),
-    "site_and_route": _with(
-        site={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActSite", "code": "LA", "display": "left arm"}]},
-        route={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration", "code": "IM"}]},
+    "lot_number_and_expiration": _with(
+        lotNumber="AAJN11K", expirationDate="2025-02-15"
     ),
-    "dose_quantity": _with(doseQuantity={"value": 5, "unit": "mg", "system": "http://unitsofmeasure.org", "code": "mg"}),
+    "site_and_route": _with(
+        site={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActSite",
+                    "code": "LA",
+                    "display": "left arm",
+                }
+            ]
+        },
+        route={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+                    "code": "IM",
+                }
+            ]
+        },
+    ),
+    "dose_quantity": _with(
+        doseQuantity={
+            "value": 5,
+            "unit": "mg",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg",
+        }
+    ),
     "performer_with_function": _with(
         performer=[
             {
-                "function": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0443", "code": "AP"}]},
+                "function": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0443",
+                            "code": "AP",
+                        }
+                    ]
+                },
                 "actor": {"reference": "Practitioner/30001"},
             }
         ]
@@ -120,37 +227,107 @@ CASES = {
         f"performer_{t}": _with(performer=[{"actor": {"reference": f"{t}/1"}}])
         for t in ("Practitioner", "PractitionerRole", "Organization")
     },
-    "performer_logical": _with(performer=[{"actor": {"identifier": {"system": "urn:who", "value": "W-1"}}}]),
-    "note_author_string": _with(note=[{"text": "Given in left arm", "time": "2023-01-15T10:05:00Z", "authorString": "Nurse Joy"}]),
-    "note_author_reference": _with(note=[{"text": "n", "authorReference": {"reference": "Practitioner/30001"}}]),
-    "reason_code": _with(reasonCode=[{"coding": [{"system": SCT, "code": "429060002"}]}, {"text": "Other"}]),
+    "performer_logical": _with(
+        performer=[{"actor": {"identifier": {"system": "urn:who", "value": "W-1"}}}]
+    ),
+    "note_author_string": _with(
+        note=[
+            {
+                "text": "Given in left arm",
+                "time": "2023-01-15T10:05:00Z",
+                "authorString": "Nurse Joy",
+            }
+        ]
+    ),
+    "note_author_reference": _with(
+        note=[{"text": "n", "authorReference": {"reference": "Practitioner/30001"}}]
+    ),
+    "reason_code": _with(
+        reasonCode=[
+            {"coding": [{"system": SCT, "code": "429060002"}]},
+            {"text": "Other"},
+        ]
+    ),
     **{
         f"reason_reference_{t}": _with(reasonReference=[{"reference": f"{t}/1"}])
         for t in ("Condition", "Observation", "DiagnosticReport")
     },
-    "is_subpotent": _with(isSubpotent=True, subpotentReason=[{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-subpotent-reason", "code": "partial"}]}]),
+    "is_subpotent": _with(
+        isSubpotent=True,
+        subpotentReason=[
+            {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/immunization-subpotent-reason",
+                        "code": "partial",
+                    }
+                ]
+            }
+        ],
+    ),
     "education": _with(
         education=[
-            {"documentType": "flu-fact-sheet", "reference": "https://example.org/flu", "publicationDate": "2022-10-01", "presentationDate": "2023-01-15"},
+            {
+                "documentType": "flu-fact-sheet",
+                "reference": "https://example.org/flu",
+                "publicationDate": "2022-10-01",
+                "presentationDate": "2023-01-15",
+            },
             {"reference": "https://example.org/other"},
         ]
     ),
     "program_eligibility_and_funding": _with(
-        programEligibility=[{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-program-eligibility", "code": "ineligible"}]}],
-        fundingSource={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-funding-source", "code": "private"}]},
+        programEligibility=[
+            {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/immunization-program-eligibility",
+                        "code": "ineligible",
+                    }
+                ]
+            }
+        ],
+        fundingSource={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/immunization-funding-source",
+                    "code": "private",
+                }
+            ]
+        },
     ),
     "reaction": _with(
-        reaction=[{"date": "2023-01-16T08:00:00Z", "detail": {"reference": "Observation/160001"}, "reported": True}, {"reported": False}]
+        reaction=[
+            {
+                "date": "2023-01-16T08:00:00Z",
+                "detail": {"reference": "Observation/160001"},
+                "reported": True,
+            },
+            {"reported": False},
+        ]
     ),
     "protocol_applied_positive_int": _with(
         protocolApplied=[
-            {"series": "2-dose", "authority": {"reference": "Organization/190001"},
-             "targetDisease": [{"coding": [{"system": SCT, "code": "6142004"}]}],
-             "doseNumberPositiveInt": 1, "seriesDosesPositiveInt": 2}
+            {
+                "series": "2-dose",
+                "authority": {"reference": "Organization/190001"},
+                "targetDisease": [{"coding": [{"system": SCT, "code": "6142004"}]}],
+                "doseNumberPositiveInt": 1,
+                "seriesDosesPositiveInt": 2,
+            }
         ]
     ),
-    "protocol_applied_string": _with(protocolApplied=[{"doseNumberString": "booster", "seriesDosesString": "many"}]),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "protocol_applied_string": _with(
+        protocolApplied=[{"doseNumberString": "booster", "seriesDosesString": "many"}]
+    ),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:im", "value": "IM-1"}],
         encounter={"reference": "Encounter/20001"},
@@ -160,15 +337,31 @@ CASES = {
         manufacturer={"reference": "Organization/190001"},
         lotNumber="AAJN11K",
         expirationDate="2025-02-15",
-        site={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActSite", "code": "LA"}]},
-        route={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration", "code": "IM"}]},
+        site={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActSite",
+                    "code": "LA",
+                }
+            ]
+        },
+        route={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration",
+                    "code": "IM",
+                }
+            ]
+        },
         doseQuantity={"value": 5, "system": "http://unitsofmeasure.org", "code": "mg"},
         performer=[{"actor": {"reference": "Practitioner/30001"}}],
         note=[{"text": "n"}],
         reasonCode=[{"coding": [{"system": SCT, "code": "429060002"}]}],
         reasonReference=[{"reference": "Condition/120001"}],
         isSubpotent=False,
-        reaction=[{"date": "2023-01-16", "detail": {"reference": "Observation/160001"}}],
+        reaction=[
+            {"date": "2023-01-16", "detail": {"reference": "Observation/160001"}}
+        ],
         protocolApplied=[{"series": "2-dose", "doseNumberPositiveInt": 1}],
     ),
 }
@@ -180,11 +373,19 @@ def test_immunization_mapper_emits_valid_fhir_r4(case):
 
 
 def test_mapper_serves_content_unchanged():
-    content = {"status": "completed", "vaccineCode": VACCINE, "patient": PATIENT, "occurrenceDateTime": OCCURRED, "lotNumber": "X1"}
+    content = {
+        "status": "completed",
+        "vaccineCode": VACCINE,
+        "patient": PATIENT,
+        "occurrenceDateTime": OCCURRED,
+        "lotNumber": "X1",
+    }
     out = to_fhir_immunization(_immunization(content))
     assert out["resourceType"] == "Immunization"
     assert out["id"] == "330001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -210,12 +411,18 @@ def test_mapper_serves_content_unchanged():
         ("primarySource as string", {"primarySource": "yes"}),
         ("isSubpotent as string", {"isSubpotent": "no"}),
         ("lotNumber as number", {"lotNumber": 5}),
-        ("performer as object not a list", {"performer": {"actor": {"reference": "Practitioner/1"}}}),
+        (
+            "performer as object not a list",
+            {"performer": {"actor": {"reference": "Practitioner/1"}}},
+        ),
         ("performer actor as string", {"performer": [{"actor": "Practitioner/1"}]}),
         ("note as object not a list", {"note": {"text": "x"}}),
         ("note author as number", {"note": [{"text": "x", "authorString": 5}]}),
         ("reasonCode as object not a list", {"reasonCode": {"text": "x"}}),
-        ("reasonReference as object not a list", {"reasonReference": {"reference": "Condition/1"}}),
+        (
+            "reasonReference as object not a list",
+            {"reasonReference": {"reference": "Condition/1"}},
+        ),
         ("reaction as object not a list", {"reaction": {"reported": True}}),
         ("reaction detail as string", {"reaction": [{"detail": "Observation/1"}]}),
         ("doseQuantity as string", {"doseQuantity": "5 mg"}),
@@ -227,8 +434,15 @@ def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
     payload = {
-        "resourceType": "Immunization", "id": "330001", "status": "completed", "vaccineCode": VACCINE,
-        "patient": PATIENT, "occurrenceDateTime": OCCURRED, **broken,
+        "resourceType": "Immunization",
+        "id": "330001",
+        "status": "completed",
+        "vaccineCode": VACCINE,
+        "patient": PATIENT,
+        "occurrenceDateTime": OCCURRED,
+        **broken,
     }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), immunization_pb2.Immunization, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), immunization_pb2.Immunization, validate=True
+        )

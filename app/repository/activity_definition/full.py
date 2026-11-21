@@ -128,7 +128,12 @@ async def _add_identifiers(
 
 
 async def _add_contacts(
-    session, activity_definition_pk: int, org_id: str, contacts, role: ActivityDefinitionContactRole, created_by: str
+    session,
+    activity_definition_pk: int,
+    org_id: str,
+    contacts,
+    role: ActivityDefinitionContactRole,
+    created_by: str,
 ) -> None:
     for c in contacts or []:
         contact_row = ActivityDefinitionContact(
@@ -188,7 +193,10 @@ async def _add_use_contexts(
 
         q_comp = (
             ActivityDefinitionQuantityComparator(uc.value_quantity_comparator.value)
-            if (uc.value_quantity_comparator and hasattr(uc.value_quantity_comparator, "value"))
+            if (
+                uc.value_quantity_comparator
+                and hasattr(uc.value_quantity_comparator, "value")
+            )
             else ActivityDefinitionQuantityComparator(uc.value_quantity_comparator)
             if uc.value_quantity_comparator
             else None
@@ -490,9 +498,7 @@ async def _add_specimen_requirements(
     for r in refs or []:
         r_type, r_id = _parse_specimen_requirement_ref(r)
         if r_type and r_id:
-            await _validate_ref(
-                session, org_id, r_type, r_id, "specimen_requirement"
-            )
+            await _validate_ref(session, org_id, r_type, r_id, "specimen_requirement")
         session.add(
             ActivityDefinitionSpecimenRequirement(
                 activity_definition_pk=activity_definition_pk,
@@ -1149,12 +1155,15 @@ class _FullMixin:
                     )
                     await session.execute(
                         delete(ActivityDefinitionContactTelecom).where(
-                            ActivityDefinitionContactTelecom.activity_definition_contact_id.in_(c_subq)
+                            ActivityDefinitionContactTelecom.activity_definition_contact_id.in_(
+                                c_subq
+                            )
                         )
                     )
                     await session.execute(
                         delete(ActivityDefinitionContact).where(
-                            ActivityDefinitionContact.activity_definition_pk == model.id,
+                            ActivityDefinitionContact.activity_definition_pk
+                            == model.id,
                             ActivityDefinitionContact.role == role_enum,
                         )
                     )
@@ -1193,12 +1202,15 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(ActivityDefinitionJurisdictionCoding).where(
-                        ActivityDefinitionJurisdictionCoding.activity_definition_jurisdiction_id.in_(j_subq)
+                        ActivityDefinitionJurisdictionCoding.activity_definition_jurisdiction_id.in_(
+                            j_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ActivityDefinitionJurisdiction).where(
-                        ActivityDefinitionJurisdiction.activity_definition_pk == model.id
+                        ActivityDefinitionJurisdiction.activity_definition_pk
+                        == model.id
                     )
                 )
                 if payload.jurisdiction:
@@ -1213,7 +1225,9 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(ActivityDefinitionTopicCoding).where(
-                        ActivityDefinitionTopicCoding.activity_definition_topic_id.in_(t_subq)
+                        ActivityDefinitionTopicCoding.activity_definition_topic_id.in_(
+                            t_subq
+                        )
                     )
                 )
                 await session.execute(
@@ -1231,7 +1245,9 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(ActivityDefinitionBodySiteCoding).where(
-                        ActivityDefinitionBodySiteCoding.activity_definition_body_site_id.in_(b_subq)
+                        ActivityDefinitionBodySiteCoding.activity_definition_body_site_id.in_(
+                            b_subq
+                        )
                     )
                 )
                 await session.execute(
@@ -1286,22 +1302,30 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(ActivityDefinitionDosageSiteCoding).where(
-                        ActivityDefinitionDosageSiteCoding.activity_definition_dosage_id.in_(d_subq)
+                        ActivityDefinitionDosageSiteCoding.activity_definition_dosage_id.in_(
+                            d_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ActivityDefinitionDosageRouteCoding).where(
-                        ActivityDefinitionDosageRouteCoding.activity_definition_dosage_id.in_(d_subq)
+                        ActivityDefinitionDosageRouteCoding.activity_definition_dosage_id.in_(
+                            d_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ActivityDefinitionDosageMethodCoding).where(
-                        ActivityDefinitionDosageMethodCoding.activity_definition_dosage_id.in_(d_subq)
+                        ActivityDefinitionDosageMethodCoding.activity_definition_dosage_id.in_(
+                            d_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ActivityDefinitionDosageAsNeededCoding).where(
-                        ActivityDefinitionDosageAsNeededCoding.activity_definition_dosage_id.in_(d_subq)
+                        ActivityDefinitionDosageAsNeededCoding.activity_definition_dosage_id.in_(
+                            d_subq
+                        )
                     )
                 )
                 await session.execute(

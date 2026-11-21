@@ -8,7 +8,9 @@ class PlainGoalCategory(AuditFields):
 
     model_config = ConfigDict(extra="allow")
 
-    id: int | None = Field(None, description="DB primary key of this row (if child table).")
+    id: int | None = Field(
+        None, description="DB primary key of this row (if child table)."
+    )
     text: str | None = Field(None, description="Plain text representation.")
     codings: list[PlainCodingRow] | None = Field(
         None, description="Coding rows for this concept."

@@ -11,9 +11,7 @@ class TaskPerformerType(TenantAuditMixin, Base):
     __tablename__ = "task_performer_type"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     text = Column(String, nullable=True)
 

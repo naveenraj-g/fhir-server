@@ -22,8 +22,7 @@ class _CoreMixin:
     ) -> ActivityDefinitionModel | None:
         async with self.session_factory() as session:
             stmt = select(ActivityDefinitionModel).where(
-                ActivityDefinitionModel.activity_definition_id
-                == activity_definition_id
+                ActivityDefinitionModel.activity_definition_id == activity_definition_id
             )
             stmt = _with_relationships(stmt)
             result = await session.execute(stmt)
@@ -73,16 +72,24 @@ class _CoreMixin:
             stmt = stmt.where(ActivityDefinitionModel.title.ilike(f"%{title}%"))
         if status:
             val = status.value if hasattr(status, "value") else status
-            stmt = stmt.where(ActivityDefinitionModel.status == ActivityDefinitionStatus(val))
+            stmt = stmt.where(
+                ActivityDefinitionModel.status == ActivityDefinitionStatus(val)
+            )
         if kind:
             val = kind.value if hasattr(kind, "value") else kind
-            stmt = stmt.where(ActivityDefinitionModel.kind == ActivityDefinitionKind(val))
+            stmt = stmt.where(
+                ActivityDefinitionModel.kind == ActivityDefinitionKind(val)
+            )
         if intent:
             val = intent.value if hasattr(intent, "value") else intent
-            stmt = stmt.where(ActivityDefinitionModel.intent == ActivityDefinitionIntent(val))
+            stmt = stmt.where(
+                ActivityDefinitionModel.intent == ActivityDefinitionIntent(val)
+            )
         if priority:
             val = priority.value if hasattr(priority, "value") else priority
-            stmt = stmt.where(ActivityDefinitionModel.priority == ActivityDefinitionPriority(val))
+            stmt = stmt.where(
+                ActivityDefinitionModel.priority == ActivityDefinitionPriority(val)
+            )
         if identifier:
             stmt = apply_child_exists_filter(
                 stmt,
@@ -148,8 +155,7 @@ class _CoreMixin:
     async def delete(self, activity_definition_id: int) -> bool:
         async with self.session_factory() as session:
             stmt = sql_delete(ActivityDefinitionModel).where(
-                ActivityDefinitionModel.activity_definition_id
-                == activity_definition_id
+                ActivityDefinitionModel.activity_definition_id == activity_definition_id
             )
             result = await session.execute(stmt)
             await session.commit()

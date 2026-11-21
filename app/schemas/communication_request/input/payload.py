@@ -20,7 +20,8 @@ class CommunicationRequestPayloadInput(BaseModel):
         None, description="Message part content as Attachment."
     )
     content_reference: str | None = Field(
-        None, description="Message part content as Reference string (e.g. 'DocumentReference/320001')."
+        None,
+        description="Message part content as Reference string (e.g. 'DocumentReference/320001').",
     )
     content_reference_display: str | None = Field(
         None, description="Display narrative for content reference."

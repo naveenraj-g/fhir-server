@@ -15,20 +15,36 @@ def patient_recommendation_revincludes(key) -> tuple[IncludeTarget, ...]:
     Patients."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.immunization_recommendation.search import revinclude_recommendations_via_patient
+        from app.repository.immunization_recommendation.search import (
+            revinclude_recommendations_via_patient,
+        )
 
         return await revinclude_recommendations_via_patient(key)(session, ctx, rows)
 
-    return (IncludeTarget("ImmunizationRecommendation", "patient", "Patient", fetch, reverse=True),)
+    return (
+        IncludeTarget(
+            "ImmunizationRecommendation", "patient", "Patient", fetch, reverse=True
+        ),
+    )
 
 
-def support_recommendation_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
+def support_recommendation_revincludes(
+    resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
     """ImmunizationRecommendation:support — recommendations supported by one of the
     matched Immunizations / ImmunizationEvaluations."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.immunization_recommendation.search import revinclude_recommendations_via_reference
+        from app.repository.immunization_recommendation.search import (
+            revinclude_recommendations_via_reference,
+        )
 
-        return await revinclude_recommendations_via_reference("support", resource_type, key)(session, ctx, rows)
+        return await revinclude_recommendations_via_reference(
+            "support", resource_type, key
+        )(session, ctx, rows)
 
-    return (IncludeTarget("ImmunizationRecommendation", "support", resource_type, fetch, reverse=True),)
+    return (
+        IncludeTarget(
+            "ImmunizationRecommendation", "support", resource_type, fetch, reverse=True
+        ),
+    )

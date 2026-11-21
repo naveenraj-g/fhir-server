@@ -26,7 +26,9 @@ class DetectedIssueToken(Base):
     __table_args__ = (Index("ix_detected_issue_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    detected_issue_pk = Column(BigInteger, ForeignKey("detected_issue.id"), nullable=False, index=True)
+    detected_issue_pk = Column(
+        BigInteger, ForeignKey("detected_issue.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)

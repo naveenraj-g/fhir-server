@@ -62,7 +62,8 @@ logger = get_logger(__name__)
         "(server-managed `id`/`meta` are ignored); a key that is not FHIR at all is rejected with 422. A relative "
         "`Patient/<id>` subject, `Encounter/<id>`, a recorder/asserter (Practitioner, PractitionerRole, Patient, "
         "RelatedPerson), a note author and `identifier.assigner` are rejected with 422 if they do not exist in the "
-        "caller's org; an absolute URL, a Group subject or a logical reference is stored as sent. " + _CONTENT_NEG
+        "caller's org; an absolute URL, a Group subject or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -215,9 +216,7 @@ async def search_conditions_post(
 )
 async def get_condition(
     request: Request,
-    condition_id: int = Path(
-        ..., ge=1, description="Public condition identifier."
-    ),
+    condition_id: int = Path(..., ge=1, description="Public condition identifier."),
     actor: AuthUser = Depends(require_permission("condition", "read")),
     condition_service: ConditionService = Depends(get_condition_service),
 ):
@@ -228,9 +227,7 @@ async def get_condition(
             "condition_id": condition_id,
         },
     )
-    condition = await condition_service.get_condition_scoped(
-        condition_id, actor.org_id
-    )
+    condition = await condition_service.get_condition_scoped(condition_id, actor.org_id)
     return fhir_response(condition_service._to_fhir(condition))
 
 
@@ -255,9 +252,7 @@ async def get_condition(
 async def patch_condition(
     payload: ConditionPatchSchema,
     request: Request,
-    condition_id: int = Path(
-        ..., ge=1, description="Public condition identifier."
-    ),
+    condition_id: int = Path(..., ge=1, description="Public condition identifier."),
     actor: AuthUser = Depends(require_permission("condition", "update")),
     condition_service: ConditionService = Depends(get_condition_service),
 ):
@@ -294,9 +289,7 @@ async def patch_condition(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_condition(
-    condition_id: int = Path(
-        ..., ge=1, description="Public condition identifier."
-    ),
+    condition_id: int = Path(..., ge=1, description="Public condition identifier."),
     actor: AuthUser = Depends(require_permission("condition", "delete")),
     condition_service: ConditionService = Depends(get_condition_service),
 ):

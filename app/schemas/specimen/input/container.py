@@ -22,9 +22,7 @@ class SpecimenContainerInput(BaseModel):
     capacity_value: float | None = Field(
         None, description="Container volume or size value (SimpleQuantity.value)."
     )
-    capacity_unit: str | None = Field(
-        None, description="Container volume unit."
-    )
+    capacity_unit: str | None = Field(None, description="Container volume unit.")
     capacity_system: str | None = Field(
         None, description="System that defines container volume unit."
     )

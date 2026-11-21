@@ -7,8 +7,6 @@ from app.services.condition import ConditionService
 
 @inject
 def get_condition_service(
-    service: ConditionService = Depends(
-        Provide[Container.condition.condition_service]
-    ),
+    service: ConditionService = Depends(Provide[Container.condition.condition_service]),
 ) -> ConditionService:
     return service

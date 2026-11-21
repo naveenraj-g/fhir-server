@@ -13,7 +13,11 @@ class FamilyMemberHistoryInstantiatesUri(Base):
     __tablename__ = "family_member_history_instantiates_uri"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    family_member_history_pk = Column(BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True)
+    family_member_history_pk = Column(
+        BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True
+    )
     uri = Column(String, nullable=False, index=True)
 
-    family_member_history = relationship("FamilyMemberHistoryModel", back_populates="instantiates_uris")
+    family_member_history = relationship(
+        "FamilyMemberHistoryModel", back_populates="instantiates_uris"
+    )

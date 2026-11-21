@@ -30,9 +30,7 @@ class CommunicationRequestReasonCode(TenantAuditMixin, Base):
     )
 
 
-class CommunicationRequestReasonCodeCoding(
-    FhirCodingMixin, TenantAuditMixin, Base
-):
+class CommunicationRequestReasonCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
     """CommunicationRequest.reasonCode.coding (0..*) grandchild table."""
 
     __tablename__ = "communication_request_reason_code_coding"

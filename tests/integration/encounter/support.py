@@ -36,13 +36,20 @@ def cls(code: str = "AMB") -> dict:
     return {"system": ACT, "code": code}
 
 
-def encounter_body(status: str = "in-progress", class_code: str = "AMB", **extra) -> dict:
+def encounter_body(
+    status: str = "in-progress", class_code: str = "AMB", **extra
+) -> dict:
     """A valid minimal Encounter: R4 requires `status` and `class`."""
     return {"status": status, "class": cls(class_code), **extra}
 
 
 def full_body(
-    patient_id: int, practitioner_id: int, location_id: int, organization_id: int, appointment_id: int, condition_id: int
+    patient_id: int,
+    practitioner_id: int,
+    location_id: int,
+    organization_id: int,
+    appointment_id: int,
+    condition_id: int,
 ) -> dict:
     return encounter_body(
         resourceType="Encounter",
@@ -50,21 +57,65 @@ def full_body(
             {
                 "system": ENC_IDS,
                 "value": "E-1001",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "VN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "VN",
+                        }
+                    ]
+                },
                 "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        statusHistory=[{"status": "planned", "period": {"start": "2026-05-30T08:00:00Z", "end": START}}],
-        classHistory=[{"class": cls("IMP"), "period": {"start": "2026-05-30T08:00:00Z", "end": START}}],
-        type=[{"coding": [{"system": SCT, "code": "270427003", "display": "Patient-initiated encounter"}], "text": "Initial"}],
-        serviceType={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/service-type", "code": "124"}]},
-        priority={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActPriority", "code": "R"}]},
+        statusHistory=[
+            {
+                "status": "planned",
+                "period": {"start": "2026-05-30T08:00:00Z", "end": START},
+            }
+        ],
+        classHistory=[
+            {
+                "class": cls("IMP"),
+                "period": {"start": "2026-05-30T08:00:00Z", "end": START},
+            }
+        ],
+        type=[
+            {
+                "coding": [
+                    {
+                        "system": SCT,
+                        "code": "270427003",
+                        "display": "Patient-initiated encounter",
+                    }
+                ],
+                "text": "Initial",
+            }
+        ],
+        serviceType={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/service-type",
+                    "code": "124",
+                }
+            ]
+        },
+        priority={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActPriority",
+                    "code": "R",
+                }
+            ]
+        },
         subject={"reference": f"Patient/{patient_id}", "display": "A. Patient"},
         episodeOfCare=[{"reference": "EpisodeOfCare/350001"}],
         basedOn=[{"reference": "ServiceRequest/80001"}],
         participant=[
             {
-                "type": [{"coding": [{"system": PART, "code": "ATND"}], "text": "attender"}],
+                "type": [
+                    {"coding": [{"system": PART, "code": "ATND"}], "text": "attender"}
+                ],
                 "period": {"start": START},
                 "individual": {"reference": f"Practitioner/{practitioner_id}"},
             }
@@ -72,15 +123,25 @@ def full_body(
         appointment=[{"reference": f"Appointment/{appointment_id}"}],
         period={"start": START, "end": END},
         length={"value": 40, "unit": "min", "system": UCUM, "code": "min"},
-        reasonCode=[{"coding": [{"system": SCT, "code": "185347001"}], "text": "Check-up"}],
+        reasonCode=[
+            {"coding": [{"system": SCT, "code": "185347001"}], "text": "Check-up"}
+        ],
         reasonReference=[{"reference": f"Condition/{condition_id}"}],
-        diagnosis=[{"condition": {"reference": f"Condition/{condition_id}"}, "use": {"text": "Admission"}, "rank": 1}],
+        diagnosis=[
+            {
+                "condition": {"reference": f"Condition/{condition_id}"},
+                "use": {"text": "Admission"},
+                "rank": 1,
+            }
+        ],
         account=[{"reference": "Account/7"}],
         hospitalization={
             "preAdmissionIdentifier": {"system": "urn:pre", "value": "PRE-1"},
             "admitSource": {"text": "Referral"},
             "dietPreference": [{"text": "Vegetarian"}],
-            "specialArrangement": [{"coding": [{"system": SPECIAL, "code": "wheel"}], "text": "Wheelchair"}],
+            "specialArrangement": [
+                {"coding": [{"system": SPECIAL, "code": "wheel"}], "text": "Wheelchair"}
+            ],
             "dischargeDisposition": {"text": "Home"},
         },
         location=[

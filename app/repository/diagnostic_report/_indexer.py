@@ -27,7 +27,12 @@ from app.models.diagnostic_report import (
     DiagnosticReportStatus,
     DiagnosticReportToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import ref_type_and_id, typed
 
@@ -51,7 +56,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     subject = (document.get("subject") or {}).get("reference")
     add("subject", subject, "Patient")
     add("subject", subject, "Location")
@@ -115,7 +124,11 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(DiagnosticReportToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(DiagnosticReportToken, param=param), concept)
+        if concept
+        else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -149,7 +162,10 @@ def _reference_row(param: str, ref: dict | None) -> DiagnosticReportReference | 
 
 def _reference_rows(document: dict) -> list:
     rows = [_reference_row("based-on", r) for r in document.get("basedOn") or []]
-    rows += [_reference_row("media", (m or {}).get("link")) for m in document.get("media") or []]
+    rows += [
+        _reference_row("media", (m or {}).get("link"))
+        for m in document.get("media") or []
+    ]
     rows += [_reference_row("result", r) for r in document.get("result") or []]
     rows += [_reference_row("specimen", r) for r in document.get("specimen") or []]
     return [r for r in rows if r]
@@ -181,7 +197,9 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by DiagnosticReportModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(DiagnosticReportIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(DiagnosticReportIdentifier, i)
         ],
         "tokens": _token_rows(document),
         "references": _reference_rows(document),

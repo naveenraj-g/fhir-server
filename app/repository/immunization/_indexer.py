@@ -29,7 +29,12 @@ from app.models.immunization import (
     ImmunizationStatus,
     ImmunizationToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import typed
 
@@ -54,13 +59,23 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("patient", (document.get("patient") or {}).get("reference"), "Patient")
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
     add("location", (document.get("location") or {}).get("reference"), "Location")
-    add("manufacturer", (document.get("manufacturer") or {}).get("reference"), "Organization")
+    add(
+        "manufacturer",
+        (document.get("manufacturer") or {}).get("reference"),
+        "Organization",
+    )
     for performer in document.get("performer") or []:
-        parsed = typed(((performer or {}).get("actor") or {}).get("reference"), _MODELED_PERFORMERS)
+        parsed = typed(
+            ((performer or {}).get("actor") or {}).get("reference"), _MODELED_PERFORMERS
+        )
         if parsed:
             refs.append(("performer.actor", parsed[0], performer["actor"]["reference"]))
     for ref in document.get("reasonReference") or []:
@@ -68,12 +83,24 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         if parsed:
             refs.append(("reasonReference", parsed[0], ref["reference"]))
     for protocol in document.get("protocolApplied") or []:
-        add("protocolApplied.authority", ((protocol or {}).get("authority") or {}).get("reference"), "Organization")
+        add(
+            "protocolApplied.authority",
+            ((protocol or {}).get("authority") or {}).get("reference"),
+            "Organization",
+        )
     for note in document.get("note") or []:
-        parsed = typed(((note or {}).get("authorReference") or {}).get("reference"),
-                       ("Practitioner", "Patient", "RelatedPerson", "Organization"))
+        parsed = typed(
+            ((note or {}).get("authorReference") or {}).get("reference"),
+            ("Practitioner", "Patient", "RelatedPerson", "Organization"),
+        )
         if parsed:
-            refs.append(("note.authorReference", parsed[0], note["authorReference"]["reference"]))
+            refs.append(
+                (
+                    "note.authorReference",
+                    parsed[0],
+                    note["authorReference"]["reference"],
+                )
+            )
     return refs
 
 
@@ -122,7 +149,9 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(ImmunizationToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(ImmunizationToken, param=param), concept) if concept else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -197,14 +226,21 @@ def _performer_rows(document: dict) -> list:
 
 
 def _reason_reference_rows(document: dict) -> list:
-    rows = [_reference_row(ImmunizationReasonReference, r, REASON_TYPES) for r in document.get("reasonReference") or []]
+    rows = [
+        _reference_row(ImmunizationReasonReference, r, REASON_TYPES)
+        for r in document.get("reasonReference") or []
+    ]
     return [r for r in rows if r]
 
 
 def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by ImmunizationModel relationship name."""
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(ImmunizationIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ImmunizationIdentifier, i)
+        ],
         "tokens": _token_rows(document),
         "protocols": _protocol_rows(document),
         "reactions": _reaction_rows(document),

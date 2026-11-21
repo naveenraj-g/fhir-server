@@ -217,9 +217,7 @@ async def search_appointments_post(
 )
 async def get_appointment(
     request: Request,
-    appointment_id: int = Path(
-        ..., ge=1, description="Public appointment identifier."
-    ),
+    appointment_id: int = Path(..., ge=1, description="Public appointment identifier."),
     actor: AuthUser = Depends(require_permission("appointment", "read")),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
@@ -258,9 +256,7 @@ async def get_appointment(
 async def patch_appointment(
     payload: AppointmentPatchSchema,
     request: Request,
-    appointment_id: int = Path(
-        ..., ge=1, description="Public appointment identifier."
-    ),
+    appointment_id: int = Path(..., ge=1, description="Public appointment identifier."),
     actor: AuthUser = Depends(require_permission("appointment", "update")),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
@@ -297,9 +293,7 @@ async def patch_appointment(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_appointment(
-    appointment_id: int = Path(
-        ..., ge=1, description="Public appointment identifier."
-    ),
+    appointment_id: int = Path(..., ge=1, description="Public appointment identifier."),
     actor: AuthUser = Depends(require_permission("appointment", "delete")),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):

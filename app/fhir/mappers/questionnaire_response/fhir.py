@@ -46,7 +46,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -114,7 +116,9 @@ def _fhir_quantity(obj, prefix: str) -> dict:
         k: v
         for k, v in {
             "value": float(value) if value is not None else None,
-            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator)) if comparator else None,
+            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator))
+            if comparator
+            else None,
             "unit": getattr(obj, f"{prefix}_unit", None),
             "system": getattr(obj, f"{prefix}_system", None),
             "code": getattr(obj, f"{prefix}_code", None),
@@ -219,7 +223,12 @@ def _fhir_answer_value(a: QuestionnaireResponseAnswer) -> dict:
             }.items()
             if v is not None
         }
-    elif a.value_quantity_value is not None or a.value_quantity_unit or a.value_quantity_system or a.value_quantity_code:
+    elif (
+        a.value_quantity_value is not None
+        or a.value_quantity_unit
+        or a.value_quantity_system
+        or a.value_quantity_code
+    ):
         entry["valueQuantity"] = _fhir_quantity(a, "value_quantity")
     elif (
         a.value_reference_reference
@@ -285,7 +294,9 @@ def _build_response_item_tree(
                 entry["definition"] = item.definition
             if item.text:
                 entry["text"] = item.text
-            answer_entries = [render_answer(a) for a in answers_by_item.get(item.id, [])]
+            answer_entries = [
+                render_answer(a) for a in answers_by_item.get(item.id, [])
+            ]
             if answer_entries:
                 entry["answer"] = answer_entries
             children = render_items(items_by_parent_item.get(item.id, []))
@@ -313,11 +324,20 @@ def _fhir_meta(qr: QuestionnaireResponseModel) -> dict:
     if qr.tenant_id:
         extensions.append({"url": f"{_EXT_BASE}/org-id", "valueString": qr.tenant_id})
     if qr.created_by:
-        extensions.append({"url": f"{_EXT_BASE}/created-by", "valueString": qr.created_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": qr.created_by}
+        )
     if qr.updated_by:
-        extensions.append({"url": f"{_EXT_BASE}/updated-by", "valueString": qr.updated_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": qr.updated_by}
+        )
     if qr.created_at:
-        extensions.append({"url": f"{_EXT_BASE}/created-at", "valueDateTime": fhir_instant(qr.created_at)})
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": fhir_instant(qr.created_at),
+            }
+        )
     if extensions:
         meta["extension"] = extensions
 
@@ -341,12 +361,18 @@ def to_fhir_questionnaire_response(qr: QuestionnaireResponseModel) -> dict:
     if identifier:
         result["identifier"] = identifier
 
-    based_ons = [_fhir_reference_with_identifier_fallback(b, "reference") for b in (qr.based_ons or [])]
+    based_ons = [
+        _fhir_reference_with_identifier_fallback(b, "reference")
+        for b in (qr.based_ons or [])
+    ]
     based_ons = [b for b in based_ons if b]
     if based_ons:
         result["basedOn"] = based_ons
 
-    part_ofs = [_fhir_reference_with_identifier_fallback(p, "reference") for p in (qr.part_ofs or [])]
+    part_ofs = [
+        _fhir_reference_with_identifier_fallback(p, "reference")
+        for p in (qr.part_ofs or [])
+    ]
     part_ofs = [p for p in part_ofs if p]
     if part_ofs:
         result["partOf"] = part_ofs

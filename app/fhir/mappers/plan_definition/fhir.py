@@ -77,7 +77,9 @@ def _fhir_identifiers(identifiers) -> list[dict] | None:
         per = _fhir_period(i.period_start, i.period_end)
         if per:
             d["period"] = per
-        ass = _fhir_ref(i.assigner_reference, i.assigner_type, i.assigner_id, i.assigner_display)
+        ass = _fhir_ref(
+            i.assigner_reference, i.assigner_type, i.assigner_id, i.assigner_display
+        )
         if ass:
             d["assigner"] = ass
         if d:
@@ -134,7 +136,12 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
             d["valueCodeableConcept"] = _fhir_codeable_concept(
                 uc.value_codings, uc.value_codeable_concept_text
             )
-        elif uc.value_quantity_value is not None or uc.value_quantity_unit or uc.value_quantity_system or uc.value_quantity_code:
+        elif (
+            uc.value_quantity_value is not None
+            or uc.value_quantity_unit
+            or uc.value_quantity_system
+            or uc.value_quantity_code
+        ):
             vq: dict[str, Any] = {}
             if uc.value_quantity_value is not None:
                 vq["value"] = float(uc.value_quantity_value)
@@ -152,7 +159,12 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
             or uc.value_range_high_value is not None
         ):
             vr: dict[str, Any] = {}
-            if uc.value_range_low_value is not None or uc.value_range_low_unit or uc.value_range_low_system or uc.value_range_low_code:
+            if (
+                uc.value_range_low_value is not None
+                or uc.value_range_low_unit
+                or uc.value_range_low_system
+                or uc.value_range_low_code
+            ):
                 low_q: dict[str, Any] = {}
                 if uc.value_range_low_value is not None:
                     low_q["value"] = float(uc.value_range_low_value)
@@ -163,7 +175,12 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
                 if uc.value_range_low_code:
                     low_q["code"] = uc.value_range_low_code
                 vr["low"] = low_q
-            if uc.value_range_high_value is not None or uc.value_range_high_unit or uc.value_range_high_system or uc.value_range_high_code:
+            if (
+                uc.value_range_high_value is not None
+                or uc.value_range_high_unit
+                or uc.value_range_high_system
+                or uc.value_range_high_code
+            ):
                 high_q: dict[str, Any] = {}
                 if uc.value_range_high_value is not None:
                     high_q["value"] = float(uc.value_range_high_value)
@@ -175,7 +192,9 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
                     high_q["code"] = uc.value_range_high_code
                 vr["high"] = high_q
             d["valueRange"] = vr
-        elif uc.value_reference_reference or (uc.value_reference_type and uc.value_reference_id):
+        elif uc.value_reference_reference or (
+            uc.value_reference_type and uc.value_reference_id
+        ):
             ref = _fhir_ref(
                 uc.value_reference_reference,
                 uc.value_reference_type,
@@ -231,7 +250,9 @@ def _fhir_goals(goals) -> list[dict] | None:
         if g.category_codings or g.category_text:
             d["category"] = _fhir_codeable_concept(g.category_codings, g.category_text)
         if g.description_codings or g.description_text:
-            d["description"] = _fhir_codeable_concept(g.description_codings, g.description_text)
+            d["description"] = _fhir_codeable_concept(
+                g.description_codings, g.description_text
+            )
         if g.priority_codings or g.priority_text:
             d["priority"] = _fhir_codeable_concept(g.priority_codings, g.priority_text)
         if g.start_codings or g.start_text:

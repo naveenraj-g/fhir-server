@@ -2,7 +2,11 @@ from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
 from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType, ServiceRequestReferenceType
+from app.models.enums import (
+    IdentifierUse as IdentifierUseModel,
+    OrganizationReferenceType,
+    ServiceRequestReferenceType,
+)
 from app.models.specimen import (
     SpecimenAdditiveReferenceType,
     SpecimenCollectorReferenceType,
@@ -36,10 +40,7 @@ def _child_reference_kwargs(r, prefix: str = "reference") -> dict:
         or getattr(r, f"{prefix}_display", None)
         or getattr(r, "reference_display", None)
     )
-    ref = (
-        getattr(r, "reference", None)
-        or getattr(r, f"{prefix}_reference", None)
-    )
+    ref = getattr(r, "reference", None) or getattr(r, f"{prefix}_reference", None)
     kwargs = {
         f"{prefix}_reference": ref,
         f"{prefix}_display": display,
@@ -110,7 +111,9 @@ def _parse_note_author_ref(ref: str) -> tuple:
     return parse_reference(ref, SpecimenNoteAuthorReferenceType)
 
 
-async def _validate_ref(session, org_id: str, ref_type, ref_id: int | None, field_name: str) -> None:
+async def _validate_ref(
+    session, org_id: str, ref_type, ref_id: int | None, field_name: str
+) -> None:
     if not ref_type or ref_id is None:
         return
     type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
@@ -148,8 +151,6 @@ def _with_relationships(stmt):
         selectinload(SpecimenModel.containers).selectinload(
             SpecimenContainer.additive_codings
         ),
-        selectinload(SpecimenModel.conditions).selectinload(
-            SpecimenCondition.codings
-        ),
+        selectinload(SpecimenModel.conditions).selectinload(SpecimenCondition.codings),
         selectinload(SpecimenModel.notes),
     )

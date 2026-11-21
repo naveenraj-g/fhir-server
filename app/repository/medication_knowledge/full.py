@@ -140,7 +140,9 @@ def _money_kwargs(m, prefix: str) -> dict:
     return {f"{p}value": m.value, f"{p}currency": m.currency}
 
 
-async def _add_code_codings(session, mk_id: int, org_id: str, codings, actor: str) -> None:
+async def _add_code_codings(
+    session, mk_id: int, org_id: str, codings, actor: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationKnowledgeCodeCoding(
@@ -150,7 +152,9 @@ async def _add_code_codings(session, mk_id: int, org_id: str, codings, actor: st
         )
 
 
-async def _add_dose_form_codings(session, mk_id: int, org_id: str, codings, actor: str) -> None:
+async def _add_dose_form_codings(
+    session, mk_id: int, org_id: str, codings, actor: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationKnowledgeDoseFormCoding(
@@ -160,7 +164,9 @@ async def _add_dose_form_codings(session, mk_id: int, org_id: str, codings, acto
         )
 
 
-async def _add_packaging_type_codings(session, mk_id: int, org_id: str, codings, actor: str) -> None:
+async def _add_packaging_type_codings(
+    session, mk_id: int, org_id: str, codings, actor: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationKnowledgePackagingTypeCoding(
@@ -170,7 +176,9 @@ async def _add_packaging_type_codings(session, mk_id: int, org_id: str, codings,
         )
 
 
-async def _add_related_knowledge(session, mk_id: int, org_id: str, related_list, actor: str) -> None:
+async def _add_related_knowledge(
+    session, mk_id: int, org_id: str, related_list, actor: str
+) -> None:
     for item in related_list or []:
         rel = MedicationKnowledgeRelated(
             medication_knowledge_pk=mk_id,
@@ -211,10 +219,15 @@ async def _add_related_knowledge(session, mk_id: int, org_id: str, related_list,
                 )
 
 
-async def _add_associated_medications(session, mk_id: int, org_id: str, assoc_list, actor: str) -> None:
+async def _add_associated_medications(
+    session, mk_id: int, org_id: str, assoc_list, actor: str
+) -> None:
     for ref_str in assoc_list or []:
         ref_kwargs = _ref_kwargs(
-            "reference", ref_str, None, MedicationKnowledgeAssociatedMedicationReferenceType
+            "reference",
+            ref_str,
+            None,
+            MedicationKnowledgeAssociatedMedicationReferenceType,
         )
         await _validate_ref(
             session,
@@ -234,7 +247,9 @@ async def _add_associated_medications(session, mk_id: int, org_id: str, assoc_li
         )
 
 
-async def _add_product_types(session, mk_id: int, org_id: str, pt_list, actor: str) -> None:
+async def _add_product_types(
+    session, mk_id: int, org_id: str, pt_list, actor: str
+) -> None:
     for pt in pt_list or []:
         m_pt = MedicationKnowledgeProductType(
             medication_knowledge_pk=mk_id,
@@ -254,7 +269,9 @@ async def _add_product_types(session, mk_id: int, org_id: str, pt_list, actor: s
                 )
 
 
-async def _add_monographs(session, mk_id: int, org_id: str, mono_list, actor: str) -> None:
+async def _add_monographs(
+    session, mk_id: int, org_id: str, mono_list, actor: str
+) -> None:
     for mono in mono_list or []:
         source_kwargs = _single_reference_kwargs(
             "source", mono, MedicationKnowledgeMonographSourceReferenceType
@@ -285,7 +302,9 @@ async def _add_monographs(session, mk_id: int, org_id: str, mono_list, actor: st
                 )
 
 
-async def _add_ingredients(session, mk_id: int, org_id: str, ing_list, actor: str) -> None:
+async def _add_ingredients(
+    session, mk_id: int, org_id: str, ing_list, actor: str
+) -> None:
     for ing in ing_list or []:
         item_kwargs = _single_reference_kwargs(
             "item", ing, MedicationKnowledgeIngredientItemReferenceType
@@ -321,7 +340,9 @@ async def _add_ingredients(session, mk_id: int, org_id: str, ing_list, actor: st
                 )
 
 
-async def _add_intended_routes(session, mk_id: int, org_id: str, ir_list, actor: str) -> None:
+async def _add_intended_routes(
+    session, mk_id: int, org_id: str, ir_list, actor: str
+) -> None:
     for ir in ir_list or []:
         m_ir = MedicationKnowledgeIntendedRoute(
             medication_knowledge_pk=mk_id,
@@ -363,7 +384,9 @@ async def _add_costs(session, mk_id: int, org_id: str, cost_list, actor: str) ->
                 )
 
 
-async def _add_monitoring_programs(session, mk_id: int, org_id: str, mp_list, actor: str) -> None:
+async def _add_monitoring_programs(
+    session, mk_id: int, org_id: str, mp_list, actor: str
+) -> None:
     for mp in mp_list or []:
         m_mp = MedicationKnowledgeMonitoringProgram(
             medication_knowledge_pk=mk_id,
@@ -547,7 +570,9 @@ async def _add_drug_characteristics(
                 )
 
 
-async def _add_contraindications(session, mk_id: int, org_id: str, ci_list, actor: str) -> None:
+async def _add_contraindications(
+    session, mk_id: int, org_id: str, ci_list, actor: str
+) -> None:
     for ref_str in ci_list or []:
         ref_kwargs = _ref_kwargs(
             "reference", ref_str, None, MedicationKnowledgeContraindicationReferenceType
@@ -570,10 +595,14 @@ async def _add_contraindications(session, mk_id: int, org_id: str, ci_list, acto
         )
 
 
-async def _add_regulatory(session, mk_id: int, org_id: str, reg_list, actor: str) -> None:
+async def _add_regulatory(
+    session, mk_id: int, org_id: str, reg_list, actor: str
+) -> None:
     for reg in reg_list or []:
         auth_kwargs = _single_reference_kwargs(
-            "regulatory_authority", reg, MedicationKnowledgeRegulatoryAuthorityReferenceType
+            "regulatory_authority",
+            reg,
+            MedicationKnowledgeRegulatoryAuthorityReferenceType,
         )
         await _validate_ref(
             session,
@@ -732,24 +761,52 @@ class _FullMixin:
 
             # 3. Add sub-resources
             if payload.code and payload.code.coding:
-                await _add_code_codings(session, mk.id, org_id, payload.code.coding, created_by)
+                await _add_code_codings(
+                    session, mk.id, org_id, payload.code.coding, created_by
+                )
             if payload.dose_form and payload.dose_form.coding:
-                await _add_dose_form_codings(session, mk.id, org_id, payload.dose_form.coding, created_by)
+                await _add_dose_form_codings(
+                    session, mk.id, org_id, payload.dose_form.coding, created_by
+                )
             if pkg and pkg.type and pkg.type.coding:
-                await _add_packaging_type_codings(session, mk.id, org_id, pkg.type.coding, created_by)
-            await _add_related_knowledge(session, mk.id, org_id, payload.related_medication_knowledge, created_by)
-            await _add_associated_medications(session, mk.id, org_id, payload.associated_medication, created_by)
-            await _add_product_types(session, mk.id, org_id, payload.product_type, created_by)
+                await _add_packaging_type_codings(
+                    session, mk.id, org_id, pkg.type.coding, created_by
+                )
+            await _add_related_knowledge(
+                session, mk.id, org_id, payload.related_medication_knowledge, created_by
+            )
+            await _add_associated_medications(
+                session, mk.id, org_id, payload.associated_medication, created_by
+            )
+            await _add_product_types(
+                session, mk.id, org_id, payload.product_type, created_by
+            )
             await _add_monographs(session, mk.id, org_id, payload.monograph, created_by)
-            await _add_ingredients(session, mk.id, org_id, payload.ingredient, created_by)
-            await _add_intended_routes(session, mk.id, org_id, payload.intended_route, created_by)
+            await _add_ingredients(
+                session, mk.id, org_id, payload.ingredient, created_by
+            )
+            await _add_intended_routes(
+                session, mk.id, org_id, payload.intended_route, created_by
+            )
             await _add_costs(session, mk.id, org_id, payload.cost, created_by)
-            await _add_monitoring_programs(session, mk.id, org_id, payload.monitoring_program, created_by)
-            await _add_administration_guidelines(session, mk.id, org_id, payload.administration_guidelines, created_by)
-            await _add_medicine_classifications(session, mk.id, org_id, payload.medicine_classification, created_by)
-            await _add_drug_characteristics(session, mk.id, org_id, payload.drug_characteristic, created_by)
-            await _add_contraindications(session, mk.id, org_id, payload.contraindication, created_by)
-            await _add_regulatory(session, mk.id, org_id, payload.regulatory, created_by)
+            await _add_monitoring_programs(
+                session, mk.id, org_id, payload.monitoring_program, created_by
+            )
+            await _add_administration_guidelines(
+                session, mk.id, org_id, payload.administration_guidelines, created_by
+            )
+            await _add_medicine_classifications(
+                session, mk.id, org_id, payload.medicine_classification, created_by
+            )
+            await _add_drug_characteristics(
+                session, mk.id, org_id, payload.drug_characteristic, created_by
+            )
+            await _add_contraindications(
+                session, mk.id, org_id, payload.contraindication, created_by
+            )
+            await _add_regulatory(
+                session, mk.id, org_id, payload.regulatory, created_by
+            )
             await _add_kinetics(session, mk.id, org_id, payload.kinetics, created_by)
 
             pub_id = mk.medication_knowledge_id
@@ -766,7 +823,8 @@ class _FullMixin:
     ) -> MedicationKnowledgeModel | None:
         async with self.session_factory() as session:
             stmt = select(MedicationKnowledgeModel).where(
-                MedicationKnowledgeModel.medication_knowledge_id == medication_knowledge_id,
+                MedicationKnowledgeModel.medication_knowledge_id
+                == medication_knowledge_id,
                 MedicationKnowledgeModel.tenant_id == org_id,
             )
             res = await session.execute(stmt)
@@ -796,10 +854,13 @@ class _FullMixin:
                     )
 
             if "dose_form" in provided:
-                mk.dose_form_text = payload.dose_form.text if payload.dose_form else None
+                mk.dose_form_text = (
+                    payload.dose_form.text if payload.dose_form else None
+                )
                 await session.execute(
                     delete(MedicationKnowledgeDoseFormCoding).where(
-                        MedicationKnowledgeDoseFormCoding.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeDoseFormCoding.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 if payload.dose_form and payload.dose_form.coding:
@@ -809,7 +870,9 @@ class _FullMixin:
 
             if provided & _MANUFACTURER_FIELDS:
                 mfg_kwargs = _single_reference_kwargs(
-                    "manufacturer", payload, MedicationKnowledgeManufacturerReferenceType
+                    "manufacturer",
+                    payload,
+                    MedicationKnowledgeManufacturerReferenceType,
                 )
                 await _validate_ref(
                     session,
@@ -827,7 +890,9 @@ class _FullMixin:
                     setattr(mk, k, v)
 
             if "synonym" in provided:
-                mk.synonym = list(payload.synonym) if payload.synonym is not None else None
+                mk.synonym = (
+                    list(payload.synonym) if payload.synonym is not None else None
+                )
 
             if "preparation_instruction" in provided:
                 mk.preparation_instruction = payload.preparation_instruction
@@ -844,7 +909,8 @@ class _FullMixin:
                     setattr(mk, k, v)
                 await session.execute(
                     delete(MedicationKnowledgePackagingTypeCoding).where(
-                        MedicationKnowledgePackagingTypeCoding.medication_knowledge_pk == mk.id
+                        MedicationKnowledgePackagingTypeCoding.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 if pkg and pkg.type and pkg.type.coding:
@@ -862,13 +928,18 @@ class _FullMixin:
                     )
                 )
                 await _add_related_knowledge(
-                    session, mk.id, org_id, payload.related_medication_knowledge, updated_by
+                    session,
+                    mk.id,
+                    org_id,
+                    payload.related_medication_knowledge,
+                    updated_by,
                 )
 
             if "associated_medication" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeAssociatedMedication).where(
-                        MedicationKnowledgeAssociatedMedication.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeAssociatedMedication.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_associated_medications(
@@ -908,7 +979,8 @@ class _FullMixin:
             if "intended_route" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeIntendedRoute).where(
-                        MedicationKnowledgeIntendedRoute.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeIntendedRoute.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_intended_routes(
@@ -926,7 +998,8 @@ class _FullMixin:
             if "monitoring_program" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeMonitoringProgram).where(
-                        MedicationKnowledgeMonitoringProgram.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeMonitoringProgram.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_monitoring_programs(
@@ -936,17 +1009,23 @@ class _FullMixin:
             if "administration_guidelines" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeAdminGuideline).where(
-                        MedicationKnowledgeAdminGuideline.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeAdminGuideline.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_administration_guidelines(
-                    session, mk.id, org_id, payload.administration_guidelines, updated_by
+                    session,
+                    mk.id,
+                    org_id,
+                    payload.administration_guidelines,
+                    updated_by,
                 )
 
             if "medicine_classification" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeMedicineClassification).where(
-                        MedicationKnowledgeMedicineClassification.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeMedicineClassification.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_medicine_classifications(
@@ -956,7 +1035,8 @@ class _FullMixin:
             if "drug_characteristic" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeDrugCharacteristic).where(
-                        MedicationKnowledgeDrugCharacteristic.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeDrugCharacteristic.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_drug_characteristics(
@@ -966,7 +1046,8 @@ class _FullMixin:
             if "contraindication" in provided:
                 await session.execute(
                     delete(MedicationKnowledgeContraindication).where(
-                        MedicationKnowledgeContraindication.medication_knowledge_pk == mk.id
+                        MedicationKnowledgeContraindication.medication_knowledge_pk
+                        == mk.id
                     )
                 )
                 await _add_contraindications(

@@ -11,7 +11,10 @@ from app.fhir.validation import validate_resource
 from app.models.practitioner_role import PractitionerRoleModel
 from app.repository.practitioner_role import PractitionerRoleRepository
 from app.repository.practitioner_role.search import practitioner_role_search
-from app.schemas.practitioner_role import PractitionerRoleCreateSchema, PractitionerRolePatchSchema
+from app.schemas.practitioner_role import (
+    PractitionerRoleCreateSchema,
+    PractitionerRolePatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -59,7 +62,10 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
     ) -> tuple[
-        SearchRequest, list[PractitionerRoleModel], int | None, list[PractitionerRoleModel]
+        SearchRequest,
+        list[PractitionerRoleModel],
+        int | None,
+        list[PractitionerRoleModel],
     ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the PractitionerRole search
@@ -107,7 +113,9 @@ class _CoreMixin:
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "PractitionerRole")
         await self._validate_base_r4(document, org_id)
-        practitioner_role = await self.repository.create_full(document, org_id, created_by)
+        practitioner_role = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "PractitionerRole created",
             extra={
@@ -145,12 +153,16 @@ class _CoreMixin:
             raise NotFoundError("PractitionerRole not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_practitioner_role(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_practitioner_role(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(practitioner_role_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            practitioner_role_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("PractitionerRole not found")
         logger.info(
@@ -203,7 +215,9 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("PractitionerRole", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "PractitionerRole", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "PractitionerRole failed base R4 validation",

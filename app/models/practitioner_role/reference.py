@@ -32,7 +32,9 @@ class PractitionerRoleReference(Base):
     same reference twice. Same design as HealthcareServiceReference."""
 
     __tablename__ = "practitioner_role_reference"
-    __table_args__ = (Index("ix_practitioner_role_reference_param_id", "param", "reference_id"),)
+    __table_args__ = (
+        Index("ix_practitioner_role_reference_param_id", "param", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     practitioner_role_pk = Column(
@@ -45,4 +47,6 @@ class PractitionerRoleReference(Base):
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
 
-    practitioner_role = relationship("PractitionerRoleModel", back_populates="references")
+    practitioner_role = relationship(
+        "PractitionerRoleModel", back_populates="references"
+    )

@@ -22,7 +22,9 @@ class ServiceRequestBodySite(TenantAuditMixin, Base):
 
     service_request = relationship("ServiceRequestModel", back_populates="body_sites")
     codings = relationship(
-        "ServiceRequestBodySiteCoding", back_populates="body_site", cascade="all, delete-orphan"
+        "ServiceRequestBodySiteCoding",
+        back_populates="body_site",
+        cascade="all, delete-orphan",
     )
 
 
@@ -33,7 +35,10 @@ class ServiceRequestBodySiteCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_body_site_id = Column(
-        BigInteger, ForeignKey("service_request_body_site.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("service_request_body_site.id"),
+        nullable=False,
+        index=True,
     )
 
     body_site = relationship("ServiceRequestBodySite", back_populates="codings")

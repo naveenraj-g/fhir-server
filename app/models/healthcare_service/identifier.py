@@ -37,4 +37,6 @@ class HealthcareServiceIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    healthcare_service = relationship("HealthcareServiceModel", back_populates="identifiers")
+    healthcare_service = relationship(
+        "HealthcareServiceModel", back_populates="identifiers"
+    )

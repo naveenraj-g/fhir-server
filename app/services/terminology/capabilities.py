@@ -48,8 +48,14 @@ class _CapabilitiesMixin:
                 "incomplete": False,
                 "parameter": [
                     {"name": "url", "documentation": "Canonical ValueSet URL"},
-                    {"name": "valueSetVersion", "documentation": "Checked against the one stored version, not selected among several"},
-                    {"name": "filter", "documentation": "Free-text ILIKE filter on concept display"},
+                    {
+                        "name": "valueSetVersion",
+                        "documentation": "Checked against the one stored version, not selected among several",
+                    },
+                    {
+                        "name": "filter",
+                        "documentation": "Free-text ILIKE filter on concept display",
+                    },
                     {"name": "offset", "documentation": "Paging start"},
                     {"name": "count", "documentation": "Page size"},
                 ],

@@ -31,7 +31,9 @@ class MedicationKnowledgeMonitoringProgram(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeMonitoringProgramTypeCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeMonitoringProgramTypeCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.monitoringProgram.type.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_monitoring_program_type_coding"

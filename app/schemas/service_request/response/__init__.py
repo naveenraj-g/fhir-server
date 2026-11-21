@@ -1,4 +1,7 @@
-from .codeable_concept import PlainServiceRequestCode, PlainServiceRequestCodeableConcept
+from .codeable_concept import (
+    PlainServiceRequestCode,
+    PlainServiceRequestCodeableConcept,
+)
 from .core import (
     FHIRAnnotation,
     FHIRRatio,

@@ -100,8 +100,13 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
                 coding["code"] = type_code
             if getattr(obj, f"{prefix}_identifier_type_display", None):
                 coding["display"] = getattr(obj, f"{prefix}_identifier_type_display")
-            if getattr(obj, f"{prefix}_identifier_type_user_selected", None) is not None:
-                coding["userSelected"] = getattr(obj, f"{prefix}_identifier_type_user_selected")
+            if (
+                getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+                is not None
+            ):
+                coding["userSelected"] = getattr(
+                    obj, f"{prefix}_identifier_type_user_selected"
+                )
 
             type_dict: dict[str, Any] = {}
             if coding:
@@ -218,7 +223,10 @@ def _fhir_target(t: GoalTarget) -> dict | None:
         entry["detailBoolean"] = t.detail_boolean
     elif t.detail_integer is not None:
         entry["detailInteger"] = t.detail_integer
-    elif t.detail_ratio_numerator_value is not None or t.detail_ratio_denominator_value is not None:
+    elif (
+        t.detail_ratio_numerator_value is not None
+        or t.detail_ratio_denominator_value is not None
+    ):
         ratio: dict = {}
         if t.detail_ratio_numerator_value is not None:
             num: dict = {"value": float(t.detail_ratio_numerator_value)}
@@ -302,9 +310,7 @@ def to_fhir_goal(model: GoalModel) -> dict:
         if categories:
             result["category"] = categories
 
-    priority = _fhir_codeable_concept(
-        model.priority_codings, model.priority_text
-    )
+    priority = _fhir_codeable_concept(model.priority_codings, model.priority_text)
     if priority:
         result["priority"] = priority
 
@@ -357,9 +363,7 @@ def to_fhir_goal(model: GoalModel) -> dict:
 
     if model.notes:
         notes = [
-            item
-            for item in (_fhir_note(n) for n in model.notes)
-            if item is not None
+            item for item in (_fhir_note(n) for n in model.notes) if item is not None
         ]
         if notes:
             result["note"] = notes
@@ -379,9 +383,7 @@ def to_fhir_goal(model: GoalModel) -> dict:
     if model.outcome_references:
         outcome_refs = [
             item
-            for item in (
-                _fhir_reference_row(o) for o in model.outcome_references
-            )
+            for item in (_fhir_reference_row(o) for o in model.outcome_references)
             if item is not None
         ]
         if outcome_refs:

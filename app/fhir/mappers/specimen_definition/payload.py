@@ -139,7 +139,16 @@ def _reference_with_identifier_from_payload(ref_obj: Any) -> dict | None:
         if id_val:
             ident["value"] = id_val
         type_codings = []
-        if any(x is not None for x in (id_type_system, id_type_version, id_type_code, id_type_display, id_type_user_selected)):
+        if any(
+            x is not None
+            for x in (
+                id_type_system,
+                id_type_version,
+                id_type_code,
+                id_type_display,
+                id_type_user_selected,
+            )
+        ):
             tc = {}
             if id_type_system is not None:
                 tc["system"] = id_type_system
@@ -172,7 +181,9 @@ def _reference_with_identifier_from_payload(ref_obj: Any) -> dict | None:
     return res or None
 
 
-def _payload_quantity(value, comparator=None, unit=None, system=None, code=None) -> dict | None:
+def _payload_quantity(
+    value, comparator=None, unit=None, system=None, code=None
+) -> dict | None:
     if value is None and not unit and not code:
         return None
     res: dict[str, Any] = {}
@@ -190,7 +201,9 @@ def _payload_quantity(value, comparator=None, unit=None, system=None, code=None)
     return res or None
 
 
-def _payload_range(low_val, low_unit, low_sys, low_code, high_val, high_unit, high_sys, high_code) -> dict | None:
+def _payload_range(
+    low_val, low_unit, low_sys, low_code, high_val, high_unit, high_sys, high_code
+) -> dict | None:
     res: dict[str, Any] = {}
     low = _payload_quantity(low_val, None, low_unit, low_sys, low_code)
     if low:
@@ -251,7 +264,9 @@ def payload_specimen_definition_container_additive(a: Any) -> dict | None:
     if a is None:
         return None
     res: dict[str, Any] = {}
-    concept = payload_specimen_definition_codeable_concept(_val(a, "additive_codeable_concept", None))
+    concept = payload_specimen_definition_codeable_concept(
+        _val(a, "additive_codeable_concept", None)
+    )
     if concept:
         res["additiveCodeableConcept"] = concept
     ref = _reference_with_identifier_from_payload(_val(a, "additive_reference", None))
@@ -264,7 +279,9 @@ def payload_specimen_definition_handling(h: Any) -> dict | None:
     if h is None:
         return None
     res: dict[str, Any] = {}
-    qual = payload_specimen_definition_codeable_concept(_val(h, "temperature_qualifier", None))
+    qual = payload_specimen_definition_codeable_concept(
+        _val(h, "temperature_qualifier", None)
+    )
     if qual:
         res["temperatureQualifier"] = qual
     temp_range = _payload_range(
@@ -376,7 +393,9 @@ def payload_specimen_definition_type_tested(tt: Any) -> dict:
 
     rejections = _val(tt, "rejection_criterion", None)
     if rejections:
-        rej_list = [payload_specimen_definition_codeable_concept(rc) for rc in rejections]
+        rej_list = [
+            payload_specimen_definition_codeable_concept(rc) for rc in rejections
+        ]
         rej_list = [rc for rc in rej_list if rc]
         if rej_list:
             res["rejectionCriterion"] = rej_list
@@ -404,7 +423,9 @@ def payload_to_fhir_specimen_definition(
     if ident:
         result["identifier"] = ident
 
-    type_coll = payload_specimen_definition_codeable_concept(_val(payload, "type_collected", None))
+    type_coll = payload_specimen_definition_codeable_concept(
+        _val(payload, "type_collected", None)
+    )
     if type_coll:
         result["typeCollected"] = type_coll
 
@@ -451,29 +472,21 @@ def patch_fragment_to_fhir_specimen_definition(
         touched.add("identifier")
         ident = _val(payload, "identifier", None)
         fragment["identifier"] = (
-            payload_specimen_definition_identifier(ident)
-            if ident is not None
-            else None
+            payload_specimen_definition_identifier(ident) if ident is not None else None
         )
 
     if "type_collected" in provided:
         touched.add("typeCollected")
         tc = _val(payload, "type_collected", None)
         fragment["typeCollected"] = (
-            payload_specimen_definition_codeable_concept(tc)
-            if tc is not None
-            else None
+            payload_specimen_definition_codeable_concept(tc) if tc is not None else None
         )
 
     if "patient_preparation" in provided:
         touched.add("patientPreparation")
         preps = _val(payload, "patient_preparation", None)
         fragment["patientPreparation"] = (
-            [
-                payload_specimen_definition_codeable_concept(p)
-                for p in preps
-                if p
-            ]
+            [payload_specimen_definition_codeable_concept(p) for p in preps if p]
             if preps is not None
             else None
         )
@@ -486,11 +499,7 @@ def patch_fragment_to_fhir_specimen_definition(
         touched.add("collection")
         colls = _val(payload, "collection", None)
         fragment["collection"] = (
-            [
-                payload_specimen_definition_codeable_concept(c)
-                for c in colls
-                if c
-            ]
+            [payload_specimen_definition_codeable_concept(c) for c in colls if c]
             if colls is not None
             else None
         )
@@ -499,11 +508,7 @@ def patch_fragment_to_fhir_specimen_definition(
         touched.add("typeTested")
         tts = _val(payload, "type_tested", None)
         fragment["typeTested"] = (
-            [
-                payload_specimen_definition_type_tested(tt)
-                for tt in tts
-                if tt
-            ]
+            [payload_specimen_definition_type_tested(tt) for tt in tts if tt]
             if tts is not None
             else None
         )

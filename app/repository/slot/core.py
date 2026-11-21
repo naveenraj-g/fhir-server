@@ -15,13 +15,9 @@ class _CoreMixin:
     itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_slot_id(
-        self, slot_id: int
-    ) -> SlotModel | None:
+    async def get_by_slot_id(self, slot_id: int) -> SlotModel | None:
         async with self.session_factory() as session:
-            stmt = select(SlotModel).where(
-                SlotModel.slot_id == slot_id
-            )
+            stmt = select(SlotModel).where(SlotModel.slot_id == slot_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_slot_id_in_org(
@@ -36,9 +32,7 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def slot_belongs_to_org(
-        self, slot_id: int, org_id: str
-    ) -> bool:
+    async def slot_belongs_to_org(self, slot_id: int, org_id: str) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the slot exists AND belongs
         to org_id."""
@@ -85,9 +79,7 @@ class _CoreMixin:
 
     async def delete(self, slot_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(SlotModel).where(
-                SlotModel.slot_id == slot_id
-            )
+            stmt = select(SlotModel).where(SlotModel.slot_id == slot_id)
             slot = (await session.execute(stmt)).scalars().first()
             if not slot:
                 return False

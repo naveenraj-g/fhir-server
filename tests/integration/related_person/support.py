@@ -23,7 +23,11 @@ ROLE = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
 def related_person_body(patient_id: int | None = None, **extra) -> dict:
     """A valid minimal RelatedPerson: R4 requires `patient`. With no patient the
     reference is an absolute URL (not existence-checked)."""
-    patient = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    patient = {
+        "reference": f"Patient/{patient_id}"
+        if patient_id
+        else "https://other.example.org/fhir/Patient/1"
+    }
     return {"patient": patient, **extra}
 
 
@@ -35,17 +39,48 @@ def full_body(patient_id: int, organization_id: int) -> dict:
             {
                 "system": RP_IDS,
                 "value": "RP-1001",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "PRN",
+                        }
+                    ]
+                },
                 "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
         active=True,
-        relationship=[{"coding": [{"system": ROLE, "code": "MTH", "display": "mother"}], "text": "Mother"}],
-        name=[{"use": "official", "family": "Windsor", "given": ["Mary", "Ann"], "prefix": ["Mrs"]}],
-        telecom=[{"system": "phone", "value": "555-9988", "use": "mobile"}, {"system": "email", "value": "mary@example.org"}],
+        relationship=[
+            {
+                "coding": [{"system": ROLE, "code": "MTH", "display": "mother"}],
+                "text": "Mother",
+            }
+        ],
+        name=[
+            {
+                "use": "official",
+                "family": "Windsor",
+                "given": ["Mary", "Ann"],
+                "prefix": ["Mrs"],
+            }
+        ],
+        telecom=[
+            {"system": "phone", "value": "555-9988", "use": "mobile"},
+            {"system": "email", "value": "mary@example.org"},
+        ],
         gender="female",
         birthDate="1965-04-12",
-        address=[{"use": "home", "line": ["1 Main St"], "city": "Boston", "state": "MA", "postalCode": "02110", "country": "US"}],
+        address=[
+            {
+                "use": "home",
+                "line": ["1 Main St"],
+                "city": "Boston",
+                "state": "MA",
+                "postalCode": "02110",
+                "country": "US",
+            }
+        ],
         photo=[{"contentType": "image/png", "url": "https://example.org/mary.png"}],
         period={"start": "2020-01-01"},
         communication=[{"language": {"coding": [{"code": "en"}]}, "preferred": True}],

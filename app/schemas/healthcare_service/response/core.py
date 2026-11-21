@@ -19,39 +19,94 @@ from .backbone import (
 
 
 class FHIRHealthcareServiceSchema(BaseModel):
-    resourceType: str = Field("HealthcareService", description="Always 'HealthcareService'.")
+    resourceType: str = Field(
+        "HealthcareService", description="Always 'HealthcareService'."
+    )
     id: str = Field(..., description="Public healthcare_service_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
     extension: list[dict] | None = Field(
-        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
-    identifier: list[FHIRIdentifier] | None = Field(None, description="External identifiers for this item.")
-    active: bool | None = Field(None, description="Whether this HealthcareService record is in active use.")
-    providedBy: FHIRReference | None = Field(None, description="Organization that provides this service.")
-    category: list[FHIRCodeableConcept] | None = Field(None, description="Broad category of service being performed or delivered.")
-    type: list[FHIRCodeableConcept] | None = Field(None, description="Type of service that may be delivered or performed.")
-    specialty: list[FHIRCodeableConcept] | None = Field(None, description="Specialties handled by the HealthcareService.")
-    location: list[FHIRReference] | None = Field(None, description="Location(s) where service may be provided.")
-    name: str | None = Field(None, description="Description of service as presented to a consumer while searching.")
-    comment: str | None = Field(None, description="Additional description and/or any specific issues not covered elsewhere.")
-    extraDetails: str | None = Field(None, description="Extra details about the service (markdown).")
-    photo: FHIRAttachment | None = Field(None, description="Facilitates quick identification of the service.")
-    telecom: list[FHIRContactPoint] | None = Field(None, description="Contacts related to the healthcare service.")
-    coverageArea: list[FHIRReference] | None = Field(None, description="Location(s) service is intended for/available to.")
-    serviceProvisionCode: list[FHIRCodeableConcept] | None = Field(None, description="Conditions under which service is available/offered.")
-    eligibility: list[FHIRHealthcareServiceEligibility] | None = Field(None, description="Specific eligibility requirements required to use the service.")
-    program: list[FHIRCodeableConcept] | None = Field(None, description="Programs that this service is applicable to.")
-    characteristic: list[FHIRCodeableConcept] | None = Field(None, description="Collection of characteristics (attributes).")
-    communication: list[FHIRCodeableConcept] | None = Field(None, description="The language that this service is offered in.")
-    referralMethod: list[FHIRCodeableConcept] | None = Field(None, description="Ways that the service accepts referrals.")
-    appointmentRequired: bool | None = Field(None, description="If an appointment is required for access to this service.")
-    availableTime: list[FHIRHealthcareServiceAvailableTime] | None = Field(None, description="Times the Service Site is available.")
-    notAvailable: list[FHIRHealthcareServiceNotAvailable] | None = Field(None, description="Not available during this time due to provided reason.")
-    availabilityExceptions: str | None = Field(None, description="Description of availability exceptions.")
-    endpoint: list[FHIRReference] | None = Field(None, description="Technical endpoints providing access to electronic services operated for the healthcare service.")
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="External identifiers for this item."
+    )
+    active: bool | None = Field(
+        None, description="Whether this HealthcareService record is in active use."
+    )
+    providedBy: FHIRReference | None = Field(
+        None, description="Organization that provides this service."
+    )
+    category: list[FHIRCodeableConcept] | None = Field(
+        None, description="Broad category of service being performed or delivered."
+    )
+    type: list[FHIRCodeableConcept] | None = Field(
+        None, description="Type of service that may be delivered or performed."
+    )
+    specialty: list[FHIRCodeableConcept] | None = Field(
+        None, description="Specialties handled by the HealthcareService."
+    )
+    location: list[FHIRReference] | None = Field(
+        None, description="Location(s) where service may be provided."
+    )
+    name: str | None = Field(
+        None,
+        description="Description of service as presented to a consumer while searching.",
+    )
+    comment: str | None = Field(
+        None,
+        description="Additional description and/or any specific issues not covered elsewhere.",
+    )
+    extraDetails: str | None = Field(
+        None, description="Extra details about the service (markdown)."
+    )
+    photo: FHIRAttachment | None = Field(
+        None, description="Facilitates quick identification of the service."
+    )
+    telecom: list[FHIRContactPoint] | None = Field(
+        None, description="Contacts related to the healthcare service."
+    )
+    coverageArea: list[FHIRReference] | None = Field(
+        None, description="Location(s) service is intended for/available to."
+    )
+    serviceProvisionCode: list[FHIRCodeableConcept] | None = Field(
+        None, description="Conditions under which service is available/offered."
+    )
+    eligibility: list[FHIRHealthcareServiceEligibility] | None = Field(
+        None,
+        description="Specific eligibility requirements required to use the service.",
+    )
+    program: list[FHIRCodeableConcept] | None = Field(
+        None, description="Programs that this service is applicable to."
+    )
+    characteristic: list[FHIRCodeableConcept] | None = Field(
+        None, description="Collection of characteristics (attributes)."
+    )
+    communication: list[FHIRCodeableConcept] | None = Field(
+        None, description="The language that this service is offered in."
+    )
+    referralMethod: list[FHIRCodeableConcept] | None = Field(
+        None, description="Ways that the service accepts referrals."
+    )
+    appointmentRequired: bool | None = Field(
+        None, description="If an appointment is required for access to this service."
+    )
+    availableTime: list[FHIRHealthcareServiceAvailableTime] | None = Field(
+        None, description="Times the Service Site is available."
+    )
+    notAvailable: list[FHIRHealthcareServiceNotAvailable] | None = Field(
+        None, description="Not available during this time due to provided reason."
+    )
+    availabilityExceptions: str | None = Field(
+        None, description="Description of availability exceptions."
+    )
+    endpoint: list[FHIRReference] | None = Field(
+        None,
+        description="Technical endpoints providing access to electronic services operated for the healthcare service.",
+    )
 
 
 class FHIRHealthcareServiceBundleEntry(BaseModel):

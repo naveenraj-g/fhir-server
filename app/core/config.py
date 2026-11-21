@@ -369,7 +369,9 @@ class Settings(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
-    fhir_profile_cache: FhirProfileCacheConfig = Field(default_factory=FhirProfileCacheConfig)
+    fhir_profile_cache: FhirProfileCacheConfig = Field(
+        default_factory=FhirProfileCacheConfig
+    )
     pagination: PaginationConfig = Field(default_factory=PaginationConfig)
     routes: RoutesConfig = Field(default_factory=RoutesConfig)
     fhir_validation: FhirValidationConfig = Field(default_factory=FhirValidationConfig)

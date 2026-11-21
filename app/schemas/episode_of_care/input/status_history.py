@@ -11,7 +11,10 @@ class EpisodeOfCareStatusHistoryInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: EpisodeOfCareStatus = Field(
-        ..., description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error"
+        ...,
+        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error",
     )
-    period_start: datetime | None = Field(None, description="Starting time with status.")
+    period_start: datetime | None = Field(
+        None, description="Starting time with status."
+    )
     period_end: datetime | None = Field(None, description="Ending time with status.")

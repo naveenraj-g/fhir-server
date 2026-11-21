@@ -17,7 +17,9 @@ class DocumentReferenceSecurityLabel(TenantAuditMixin, Base):
 
     text = Column(String, nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="security_labels")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="security_labels"
+    )
     codings = relationship(
         "DocumentReferenceSecurityLabelCoding",
         back_populates="security_label",
@@ -38,4 +40,6 @@ class DocumentReferenceSecurityLabelCoding(FhirCodingMixin, TenantAuditMixin, Ba
         index=True,
     )
 
-    security_label = relationship("DocumentReferenceSecurityLabel", back_populates="codings")
+    security_label = relationship(
+        "DocumentReferenceSecurityLabel", back_populates="codings"
+    )

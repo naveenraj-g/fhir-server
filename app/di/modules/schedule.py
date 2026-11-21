@@ -5,7 +5,6 @@ from app.services.schedule import ScheduleService
 
 
 class ScheduleContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     schedule_repository = providers.Factory(

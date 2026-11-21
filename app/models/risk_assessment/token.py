@@ -28,7 +28,9 @@ class RiskAssessmentToken(Base):
     __table_args__ = (Index("ix_risk_assessment_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    risk_assessment_pk = Column(BigInteger, ForeignKey("risk_assessment.id"), nullable=False, index=True)
+    risk_assessment_pk = Column(
+        BigInteger, ForeignKey("risk_assessment.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)

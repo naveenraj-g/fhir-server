@@ -25,7 +25,10 @@ class ConsentPerformer(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     reference_reference = Column(String, nullable=True)
@@ -66,7 +69,10 @@ class ConsentOrganization(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     reference_reference = Column(String, nullable=True)
@@ -108,7 +114,10 @@ class ConsentPolicy(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     authority = Column(String, nullable=True)
@@ -124,7 +133,10 @@ class ConsentVerification(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     verified = Column(Boolean, nullable=False)
@@ -153,7 +165,9 @@ class ConsentVerification(TenantAuditMixin, Base):
     verified_with_identifier_type_user_selected = Column(Boolean, nullable=True)
     verified_with_identifier_system = Column(String, nullable=True)
     verified_with_identifier_value = Column(String, nullable=True)
-    verified_with_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    verified_with_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
     verified_with_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     verification_date = Column(DateTime(timezone=True), nullable=True)

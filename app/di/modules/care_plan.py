@@ -5,7 +5,6 @@ from app.services.care_plan import CarePlanService
 
 
 class CarePlanContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     care_plan_repository = providers.Factory(

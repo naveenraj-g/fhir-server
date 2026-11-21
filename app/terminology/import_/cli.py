@@ -1,4 +1,4 @@
-﻿"""Terminology import CLI.
+"""Terminology import CLI.
 
 Usage examples:
   uv run python -m app.terminology.import_.cli --source fhir-r4 --file terminology_data/valuesets.json
@@ -9,6 +9,7 @@ Usage examples:
   uv run python -m app.terminology.import_.cli --source snomed-icd10cm-map --file terminology_data/SNOMED_CT_to_ICD-10-CM_Resources_20260301/tls_Icd10cmHumanReadableMap_US1000124_20260301.tsv
     # (run --source snomed and --source icd10cm first — this one resolves against both)
 """
+
 import argparse
 import asyncio
 import sys
@@ -35,7 +36,9 @@ def build_parser() -> argparse.ArgumentParser:
         ],
         help="Which terminology to import",
     )
-    p.add_argument("--file", help="Input file path (fhir-r4 / loinc / icd10cm / rxnorm)")
+    p.add_argument(
+        "--file", help="Input file path (fhir-r4 / loinc / icd10cm / rxnorm)"
+    )
     p.add_argument("--dir", help="Input directory path (snomed RF2 Terminology/)")
 
     # --all mode individual paths
@@ -58,26 +61,31 @@ async def run(args: argparse.Namespace) -> None:
     if source == "fhir-r4":
         _require(args.file, "--file", source)
         from app.terminology.import_.loaders.fhir_r4 import FhirR4Loader
+
         tasks.append((FhirR4Loader, args.file))
 
     elif source == "loinc":
         _require(args.file, "--file", source)
         from app.terminology.import_.loaders.loinc import LoincLoader
+
         tasks.append((LoincLoader, args.file))
 
     elif source == "icd10cm":
         _require(args.file, "--file", source)
         from app.terminology.import_.loaders.icd10cm import Icd10cmLoader
+
         tasks.append((Icd10cmLoader, args.file))
 
     elif source == "rxnorm":
         _require(args.file, "--file", source)
         from app.terminology.import_.loaders.rxnorm import RxnormLoader
+
         tasks.append((RxnormLoader, args.file))
 
     elif source == "snomed":
         _require(args.dir, "--dir", source)
         from app.terminology.import_.loaders.snomed import SnomedLoader
+
         tasks.append((SnomedLoader, args.dir))
 
     elif source == "snomed-icd10cm-map":
@@ -85,26 +93,35 @@ async def run(args: argparse.Namespace) -> None:
         from app.terminology.import_.loaders.snomed_icd10cm_map import (
             SnomedIcd10cmMapLoader,
         )
+
         tasks.append((SnomedIcd10cmMapLoader, args.file))
 
     elif source == "all":
         if args.fhir_r4_file:
             from app.terminology.import_.loaders.fhir_r4 import FhirR4Loader
+
             tasks.append((FhirR4Loader, args.fhir_r4_file))
         if args.icd10cm_file:
             from app.terminology.import_.loaders.icd10cm import Icd10cmLoader
+
             tasks.append((Icd10cmLoader, args.icd10cm_file))
         if args.rxnorm_file:
             from app.terminology.import_.loaders.rxnorm import RxnormLoader
+
             tasks.append((RxnormLoader, args.rxnorm_file))
         if args.loinc_file:
             from app.terminology.import_.loaders.loinc import LoincLoader
+
             tasks.append((LoincLoader, args.loinc_file))
         if args.snomed_dir:
             from app.terminology.import_.loaders.snomed import SnomedLoader
+
             tasks.append((SnomedLoader, args.snomed_dir))
         if not tasks:
-            print("ERROR: --source all requires at least one file/dir argument.", file=sys.stderr)
+            print(
+                "ERROR: --source all requires at least one file/dir argument.",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     for loader_cls, path in tasks:

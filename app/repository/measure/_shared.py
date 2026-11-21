@@ -62,7 +62,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     disp_key = "display" if prefix == "reference" else f"{prefix}_display"
     if not ref_str:
         return {
@@ -120,7 +122,9 @@ def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
     return res
 
 
-async def _validate_ref(session, ref_type, ref_id, org_id: str | None, field_name: str) -> None:
+async def _validate_ref(
+    session, ref_type, ref_id, org_id: str | None, field_name: str
+) -> None:
     if not ref_type or not ref_id:
         return
     type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
@@ -136,28 +140,20 @@ def _with_relationships(stmt):
             MeasureIdentifier.type_codings
         ),
         selectinload(MeasureModel.subject_codings),
-        selectinload(MeasureModel.contacts).selectinload(
-            MeasureContact.telecoms
-        ),
+        selectinload(MeasureModel.contacts).selectinload(MeasureContact.telecoms),
         selectinload(MeasureModel.use_contexts).selectinload(
             MeasureUseContext.value_codings
         ),
         selectinload(MeasureModel.jurisdictions).selectinload(
             MeasureJurisdiction.codings
         ),
-        selectinload(MeasureModel.topics).selectinload(
-            MeasureTopic.codings
-        ),
+        selectinload(MeasureModel.topics).selectinload(MeasureTopic.codings),
         selectinload(MeasureModel.related_artifacts),
         selectinload(MeasureModel.scoring_codings),
         selectinload(MeasureModel.composite_scoring_codings),
-        selectinload(MeasureModel.types).selectinload(
-            MeasureType.codings
-        ),
+        selectinload(MeasureModel.types).selectinload(MeasureType.codings),
         selectinload(MeasureModel.improvement_notation_codings),
-        selectinload(MeasureModel.groups).selectinload(
-            MeasureGroup.code_codings
-        ),
+        selectinload(MeasureModel.groups).selectinload(MeasureGroup.code_codings),
         selectinload(MeasureModel.groups)
         .selectinload(MeasureGroup.populations)
         .selectinload(MeasureGroupPopulation.code_codings),

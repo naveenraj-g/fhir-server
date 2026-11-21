@@ -7,6 +7,8 @@ from app.services.questionnaire import QuestionnaireService
 
 @inject
 def get_questionnaire_service(
-    service: QuestionnaireService = Depends(Provide[Container.questionnaire.questionnaire_service]),
+    service: QuestionnaireService = Depends(
+        Provide[Container.questionnaire.questionnaire_service]
+    ),
 ) -> QuestionnaireService:
     return service

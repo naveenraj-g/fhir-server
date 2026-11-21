@@ -122,9 +122,7 @@ class MedicationDispenseService:
         await self._validate_base_r4(
             payload_to_fhir_medication_dispense(payload), org_id
         )
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "MedicationDispense created",
             extra={
@@ -192,9 +190,7 @@ class MedicationDispenseService:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource(
             "MedicationDispense", fhir_resource, org_id=org_id
         )

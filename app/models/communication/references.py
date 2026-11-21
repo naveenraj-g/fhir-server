@@ -43,9 +43,7 @@ class CommunicationBasedOn(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    communication = relationship(
-        "CommunicationModel", back_populates="based_on_list"
-    )
+    communication = relationship("CommunicationModel", back_populates="based_on_list")
 
 
 class CommunicationPartOf(TenantAuditMixin, Base):
@@ -80,9 +78,7 @@ class CommunicationPartOf(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    communication = relationship(
-        "CommunicationModel", back_populates="part_of_list"
-    )
+    communication = relationship("CommunicationModel", back_populates="part_of_list")
 
 
 class CommunicationInResponseTo(TenantAuditMixin, Base):
@@ -160,9 +156,7 @@ class CommunicationAbout(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    communication = relationship(
-        "CommunicationModel", back_populates="about_list"
-    )
+    communication = relationship("CommunicationModel", back_populates="about_list")
 
 
 class CommunicationRecipient(TenantAuditMixin, Base):
@@ -203,9 +197,7 @@ class CommunicationRecipient(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    communication = relationship(
-        "CommunicationModel", back_populates="recipients"
-    )
+    communication = relationship("CommunicationModel", back_populates="recipients")
 
 
 class CommunicationReasonReference(TenantAuditMixin, Base):

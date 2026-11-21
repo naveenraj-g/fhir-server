@@ -57,7 +57,9 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
     id_type_code = getattr(obj, "reference_identifier_type_code", None)
     id_type_display = getattr(obj, "reference_identifier_type_display", None)
     id_type_text = getattr(obj, "reference_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, "reference_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, "reference_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, "reference_identifier_system", None)
     id_value = getattr(obj, "reference_identifier_value", None)
     id_period_start = getattr(obj, "reference_identifier_period_start", None)
@@ -112,7 +114,9 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
     return entry
 
 
-def payload_questionnaire_response_identifier(i: QuestionnaireResponseIdentifierInput) -> dict:
+def payload_questionnaire_response_identifier(
+    i: QuestionnaireResponseIdentifierInput,
+) -> dict:
     entry: dict = {}
     if i.use:
         entry["use"] = i.use.value
@@ -200,35 +204,39 @@ def payload_questionnaire_response_answer(a: QuestionnaireResponseAnswerInput) -
             }.items()
             if v is not None
         }
-    elif a.value_quantity_value is not None or a.value_quantity_unit or a.value_quantity_system or a.value_quantity_code:
+    elif (
+        a.value_quantity_value is not None
+        or a.value_quantity_unit
+        or a.value_quantity_system
+        or a.value_quantity_code
+    ):
         entry["valueQuantity"] = {
             k: v
             for k, v in {
                 "value": a.value_quantity_value,
-                "comparator": a.value_quantity_comparator.value if a.value_quantity_comparator else None,
+                "comparator": a.value_quantity_comparator.value
+                if a.value_quantity_comparator
+                else None,
                 "unit": a.value_quantity_unit,
                 "system": a.value_quantity_system,
                 "code": a.value_quantity_code,
             }.items()
             if v is not None
         }
-    elif (
-        a.value_reference
-        or any(
-            getattr(a, f"value_reference_identifier_{attr}", None) is not None
-            for attr in (
-                "use",
-                "type_system",
-                "type_version",
-                "type_code",
-                "type_display",
-                "type_user_selected",
-                "type_text",
-                "system",
-                "value",
-                "period_start",
-                "period_end",
-            )
+    elif a.value_reference or any(
+        getattr(a, f"value_reference_identifier_{attr}", None) is not None
+        for attr in (
+            "use",
+            "type_system",
+            "type_version",
+            "type_code",
+            "type_display",
+            "type_user_selected",
+            "type_text",
+            "system",
+            "value",
+            "period_start",
+            "period_end",
         )
     ):
         ref: dict = {}
@@ -314,9 +322,13 @@ def payload_questionnaire_response_item(item: QuestionnaireResponseItemInput) ->
     if item.text:
         entry["text"] = item.text
     if item.answer:
-        entry["answer"] = [payload_questionnaire_response_answer(a) for a in item.answer]
+        entry["answer"] = [
+            payload_questionnaire_response_answer(a) for a in item.answer
+        ]
     if item.item:
-        entry["item"] = [payload_questionnaire_response_item(child) for child in item.item]
+        entry["item"] = [
+            payload_questionnaire_response_item(child) for child in item.item
+        ]
 
     return entry
 
@@ -334,7 +346,9 @@ _LIST_REFERENCE_FIELDS = {
 }
 
 
-def payload_to_fhir_questionnaire_response(payload: QuestionnaireResponseCreateSchema) -> dict:
+def payload_to_fhir_questionnaire_response(
+    payload: QuestionnaireResponseCreateSchema,
+) -> dict:
     """Full-resource conversion for CREATE: every field is considered
     present — unlike patch_fragment_to_fhir_questionnaire_response()'s
     tri-state handling."""
@@ -348,7 +362,10 @@ def payload_to_fhir_questionnaire_response(payload: QuestionnaireResponseCreateS
             result["identifier"] = identifier
 
     for field, fhir_key in _LIST_REFERENCE_FIELDS.items():
-        items = [_reference_with_identifier_fallback_from_payload(r) for r in (getattr(payload, field, None) or [])]
+        items = [
+            _reference_with_identifier_fallback_from_payload(r)
+            for r in (getattr(payload, field, None) or [])
+        ]
         items = [r for r in items if r]
         if items:
             result[fhir_key] = items
@@ -369,7 +386,9 @@ def payload_to_fhir_questionnaire_response(payload: QuestionnaireResponseCreateS
         result["authored"] = payload.authored.isoformat()
 
     if payload.item:
-        result["item"] = [payload_questionnaire_response_item(item) for item in payload.item]
+        result["item"] = [
+            payload_questionnaire_response_item(item) for item in payload.item
+        ]
 
     return result
 
@@ -400,7 +419,8 @@ def patch_fragment_to_fhir_questionnaire_response(
         if field in provided:
             touched.add(fhir_key)
             items = [
-                _reference_with_identifier_fallback_from_payload(r) for r in (getattr(payload, field, None) or [])
+                _reference_with_identifier_fallback_from_payload(r)
+                for r in (getattr(payload, field, None) or [])
             ]
             items = [r for r in items if r]
             if items:
@@ -432,6 +452,8 @@ def patch_fragment_to_fhir_questionnaire_response(
     if "item" in provided:
         touched.add("item")
         if payload.item:
-            fragment["item"] = [payload_questionnaire_response_item(item) for item in payload.item]
+            fragment["item"] = [
+                payload_questionnaire_response_item(item) for item in payload.item
+            ]
 
     return fragment, touched

@@ -29,16 +29,12 @@ class _CoreMixin:
     def _to_plain(self, model: TaskModel) -> dict:
         return to_plain_task(model)
 
-    async def get_task_scoped(
-        self, task_id: int, org_id: str | None
-    ) -> TaskModel:
+    async def get_task_scoped(self, task_id: int, org_id: str | None) -> TaskModel:
         """Requires an org-scoped actor — raises PermissionDeniedError (403)
         for an org-less token, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Task operation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Task operation requires an org-scoped token")
         model = await self.repository.get_by_task_id_in_org(task_id, org_id)
         if not model:
             raise NotFoundError("Task not found")
@@ -61,9 +57,7 @@ class _CoreMixin:
     ) -> tuple[int, list[TaskModel]]:
         """Raises PermissionDeniedError (403) for an org-less token."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Task operation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Task operation requires an org-scoped token")
         items, total = await self.repository.list(
             org_id=org_id,
             status=status,
@@ -87,20 +81,12 @@ class _CoreMixin:
         created_by: str | None,
     ) -> TaskModel:
         if not org_id:
-            raise PermissionDeniedError(
-                "Task creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Task creation requires an org-scoped token")
         if not created_by:
-            raise PermissionDeniedError(
-                "Task creation requires an authenticated actor"
-            )
+            raise PermissionDeniedError("Task creation requires an authenticated actor")
 
-        await self._validate_base_r4(
-            payload_to_fhir_task(payload), org_id
-        )
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        await self._validate_base_r4(payload_to_fhir_task(payload), org_id)
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Task created",
             extra={
@@ -147,15 +133,11 @@ class _CoreMixin:
         )
         return model
 
-    async def delete_task(
-        self, task_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_task(self, task_id: int, org_id: str | None = None) -> None:
         if not org_id:
             self._log_org_scope_miss("delete", task_id, org_id)
             raise NotFoundError("Task not found")
-        if not await self.repository.task_belongs_to_org(
-            task_id, org_id
-        ):
+        if not await self.repository.task_belongs_to_org(task_id, org_id):
             self._log_org_scope_miss("delete", task_id, org_id)
             raise NotFoundError("Task not found")
         deleted = await self.repository.delete(task_id, org_id=org_id)
@@ -170,12 +152,8 @@ class _CoreMixin:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
-        errors = await validate_resource(
-            "Task", fhir_resource, org_id=org_id
-        )
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+        errors = await validate_resource("Task", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "Task failed base R4 validation",
@@ -187,9 +165,7 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(
-        operation: str, task_id: int, org_id: str | None
-    ) -> None:
+    def _log_org_scope_miss(operation: str, task_id: int, org_id: str | None) -> None:
         logger.warning(
             "Task write rejected by org scope",
             extra={
@@ -203,4 +179,5 @@ class _CoreMixin:
 
 class TaskService(_CoreMixin):
     """Service orchestrating Task operations."""
+
     pass

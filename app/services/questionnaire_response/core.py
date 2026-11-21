@@ -56,8 +56,10 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "QuestionnaireResponse operation requires an org-scoped token"
             )
-        questionnaire_response = await self.repository.get_by_questionnaire_response_id_in_org(
-            questionnaire_response_id, org_id
+        questionnaire_response = (
+            await self.repository.get_by_questionnaire_response_id_in_org(
+                questionnaire_response_id, org_id
+            )
         )
         if not questionnaire_response:
             raise NotFoundError("QuestionnaireResponse not found")
@@ -108,8 +110,12 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "QuestionnaireResponse creation requires an org-scoped token"
             )
-        await self._validate_base_r4(payload_to_fhir_questionnaire_response(payload), org_id)
-        questionnaire_response = await self.repository.create_full(payload, org_id, created_by)
+        await self._validate_base_r4(
+            payload_to_fhir_questionnaire_response(payload), org_id
+        )
+        questionnaire_response = await self.repository.create_full(
+            payload, org_id, created_by
+        )
         logger.info(
             "QuestionnaireResponse created",
             extra={
@@ -145,10 +151,14 @@ class _CoreMixin:
             raise NotFoundError("QuestionnaireResponse not found")
 
         fragment, touched = patch_fragment_to_fhir_questionnaire_response(payload)
-        merged = merge_patch_fragment(to_fhir_questionnaire_response(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_questionnaire_response(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(questionnaire_response_id, payload, updated_by)
+        updated = await self.repository.patch_full(
+            questionnaire_response_id, payload, updated_by
+        )
         if not updated:
             raise NotFoundError("QuestionnaireResponse not found")
         logger.info(
@@ -165,8 +175,11 @@ class _CoreMixin:
         self, questionnaire_response_id: int, org_id: str | None = None
     ) -> None:
         """Same org_id ownership gate as patch_questionnaire_response."""
-        if not org_id or not await self.repository.questionnaire_response_belongs_to_org(
-            questionnaire_response_id, org_id
+        if (
+            not org_id
+            or not await self.repository.questionnaire_response_belongs_to_org(
+                questionnaire_response_id, org_id
+            )
         ):
             self._log_org_scope_miss("delete", questionnaire_response_id, org_id)
             raise NotFoundError("QuestionnaireResponse not found")
@@ -185,11 +198,16 @@ class _CoreMixin:
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
-        errors = await validate_resource("QuestionnaireResponse", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "QuestionnaireResponse", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "QuestionnaireResponse failed base R4 validation",
-                extra={"event": "questionnaire_response.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "questionnaire_response.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

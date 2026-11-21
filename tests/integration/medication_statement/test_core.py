@@ -172,9 +172,7 @@ async def test_patch_medication_statement_fields(client):
 
 async def test_patch_medication_statement_sublists_replaced(client):
     p_id = await create_test_patient(client)
-    created = await create_medication_statement(
-        client, full_medication_statement(p_id)
-    )
+    created = await create_medication_statement(client, full_medication_statement(p_id))
     ms_id = created["id"]
     assert len(created["note"]) == 1
 
@@ -306,9 +304,7 @@ async def test_medication_statement_cross_org_isolation(client):
         assert resp.status_code == 404, resp.text
         assert_operation_outcome(resp.json(), 404, resp.status_code)
 
-        patch_resp = await client.patch(
-            f"{BASE}/{ms_id}", json={"status": "completed"}
-        )
+        patch_resp = await client.patch(f"{BASE}/{ms_id}", json={"status": "completed"})
         assert patch_resp.status_code == 404
 
         del_resp = await client.delete(f"{BASE}/{ms_id}")

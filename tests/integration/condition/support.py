@@ -17,7 +17,10 @@ from tests.integration.practitioner_role.support import (  # noqa: F401
     create_practitioner,
     create_role as create_practitioner_role,
 )
-from tests.integration.related_person.support import create_related_person, related_person_body  # noqa: F401
+from tests.integration.related_person.support import (
+    create_related_person,
+    related_person_body,
+)  # noqa: F401
 
 BASE = "/api/fhir/v1/conditions"
 API = "/api/fhir/v1"
@@ -46,11 +49,17 @@ def category(code: str = "problem-list-item") -> dict:
 def condition_body(patient_id: int | None = None, **extra) -> dict:
     """A valid minimal Condition: R4 requires `subject`. With no patient the
     reference is an absolute URL (not existence-checked)."""
-    subject = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    subject = {
+        "reference": f"Patient/{patient_id}"
+        if patient_id
+        else "https://other.example.org/fhir/Patient/1"
+    }
     return {"subject": subject, **extra}
 
 
-def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int) -> dict:
+def full_body(
+    patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int
+) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return condition_body(
         patient_id,
@@ -67,8 +76,17 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
         verificationStatus=verification("confirmed"),
         category=[category("problem-list-item")],
         severity={"coding": [{"system": SCT, "code": "24484000", "display": "Severe"}]},
-        code={"coding": [{"system": SCT, "code": "38341003", "display": "Hypertension"}], "text": "High blood pressure"},
-        bodySite=[{"coding": [{"system": SCT, "code": "368208006", "display": "Left upper arm"}]}],
+        code={
+            "coding": [{"system": SCT, "code": "38341003", "display": "Hypertension"}],
+            "text": "High blood pressure",
+        },
+        bodySite=[
+            {
+                "coding": [
+                    {"system": SCT, "code": "368208006", "display": "Left upper arm"}
+                ]
+            }
+        ],
         encounter={"reference": f"Encounter/{encounter_id}"},
         onsetDateTime="2023-01-15T09:30:00Z",
         recordedDate="2023-01-15T10:00:00Z",
@@ -76,14 +94,24 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
         asserter={"reference": f"Patient/{patient_id}"},
         stage=[
             {
-                "summary": {"coding": [{"system": SCT, "code": "14803004", "display": "Temporary"}]},
+                "summary": {
+                    "coding": [
+                        {"system": SCT, "code": "14803004", "display": "Temporary"}
+                    ]
+                },
                 "assessment": [{"reference": "Observation/160001"}],
                 "type": {"text": "clinical"},
             }
         ],
         evidence=[
             {
-                "code": [{"coding": [{"system": SCT, "code": "29857009", "display": "Chest pain"}]}],
+                "code": [
+                    {
+                        "coding": [
+                            {"system": SCT, "code": "29857009", "display": "Chest pain"}
+                        ]
+                    }
+                ],
                 "detail": [{"reference": "Observation/160001"}],
             }
         ],

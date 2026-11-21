@@ -120,7 +120,9 @@ class GoalModel(TenantAuditMixin, Base):
     expressed_by_identifier_type_user_selected = Column(Boolean, nullable=True)
     expressed_by_identifier_system = Column(String, nullable=True)
     expressed_by_identifier_value = Column(String, nullable=True)
-    expressed_by_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    expressed_by_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
     expressed_by_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # extension (0..* Extension, JSONB)

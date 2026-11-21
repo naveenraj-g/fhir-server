@@ -12,7 +12,9 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
-from app.models.episode_of_care.enums import EpisodeOfCareDiagnosisConditionReferenceType
+from app.models.episode_of_care.enums import (
+    EpisodeOfCareDiagnosisConditionReferenceType,
+)
 from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 

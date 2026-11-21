@@ -18,19 +18,28 @@ def subject_condition_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.condition.search import revinclude_conditions_via_column
 
-        return await revinclude_conditions_via_column("subject", "Patient", key)(session, ctx, rows)
+        return await revinclude_conditions_via_column("subject", "Patient", key)(
+            session, ctx, rows
+        )
 
-    return tuple(IncludeTarget("Condition", param, "Patient", fetch, reverse=True) for param in ("subject", "patient"))
+    return tuple(
+        IncludeTarget("Condition", param, "Patient", fetch, reverse=True)
+        for param in ("subject", "patient")
+    )
 
 
-def asserter_condition_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
+def asserter_condition_revincludes(
+    resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
     """Condition:asserter — conditions whose asserter is one of the matched rows
     of `resource_type`."""
 
     async def fetch(session, ctx, rows):
         from app.repository.condition.search import revinclude_conditions_via_column
 
-        return await revinclude_conditions_via_column("asserter", resource_type, key)(session, ctx, rows)
+        return await revinclude_conditions_via_column("asserter", resource_type, key)(
+            session, ctx, rows
+        )
 
     return (IncludeTarget("Condition", "asserter", resource_type, fetch, reverse=True),)
 
@@ -42,6 +51,8 @@ def encounter_condition_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.condition.search import revinclude_conditions_via_column
 
-        return await revinclude_conditions_via_column("encounter", "Encounter", key)(session, ctx, rows)
+        return await revinclude_conditions_via_column("encounter", "Encounter", key)(
+            session, ctx, rows
+        )
 
     return (IncludeTarget("Condition", "encounter", "Encounter", fetch, reverse=True),)

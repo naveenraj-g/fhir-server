@@ -5,7 +5,6 @@ from app.services.endpoint import EndpointService
 
 
 class EndpointContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     endpoint_repository = providers.Factory(

@@ -79,22 +79,20 @@ class CarePlanCreateSchema(BaseModel):
         None, description="Part of referenced CarePlan."
     )
     status: CarePlanStatus = Field(
-        ..., description="draft | active | on-hold | revoked | completed | entered-in-error | unknown."
+        ...,
+        description="draft | active | on-hold | revoked | completed | entered-in-error | unknown.",
     )
-    intent: CarePlanIntent = Field(
-        ..., description="proposal | plan | order | option."
-    )
+    intent: CarePlanIntent = Field(..., description="proposal | plan | order | option.")
     category: list[CarePlanCodeableConceptInput] | None = Field(
         None, description="Type of plan."
     )
     title: str | None = Field(
         None, description="Human-friendly name for the care plan."
     )
-    description: str | None = Field(
-        None, description="Summary of nature of plan."
-    )
+    description: str | None = Field(None, description="Summary of nature of plan.")
     subject: str | None = Field(
-        None, description="Who the care plan is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001')."
+        None,
+        description="Who the care plan is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001').",
     )
     subject_display: str | None = Field(
         None, description="Display name for subject reference."

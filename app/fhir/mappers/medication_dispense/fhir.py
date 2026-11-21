@@ -68,7 +68,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -183,7 +185,9 @@ def _fhir_quantity(obj, prefix: str) -> dict | None:
 
 def _fhir_performer(p: MedicationDispensePerformer) -> dict:
     entry: dict = {}
-    func = fhir_medication_dispense_codeable_concept(p.function_codings, p.function_text)
+    func = fhir_medication_dispense_codeable_concept(
+        p.function_codings, p.function_text
+    )
     if func:
         entry["function"] = func
     actor = _fhir_reference_with_identifier_fallback(p, "actor")
@@ -310,11 +314,20 @@ def _fhir_meta(md: MedicationDispenseModel) -> dict:
     if md.tenant_id:
         extensions.append({"url": f"{_EXT_BASE}/org-id", "valueString": md.tenant_id})
     if md.created_by:
-        extensions.append({"url": f"{_EXT_BASE}/created-by", "valueString": md.created_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": md.created_by}
+        )
     if md.updated_by:
-        extensions.append({"url": f"{_EXT_BASE}/updated-by", "valueString": md.updated_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": md.updated_by}
+        )
     if md.created_at:
-        extensions.append({"url": f"{_EXT_BASE}/created-at", "valueDateTime": fhir_instant(md.created_at)})
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": fhir_instant(md.created_at),
+            }
+        )
     if extensions:
         meta["extension"] = extensions
     return meta

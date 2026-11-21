@@ -14,7 +14,9 @@ from app.fhir.search.errors import SearchError
 
 
 def test_splits_two_parts():
-    assert split_composite("http://loinc.org|8480-6$gt100|http://unitsofmeasure.org|mm[Hg]", 2) == [
+    assert split_composite(
+        "http://loinc.org|8480-6$gt100|http://unitsofmeasure.org|mm[Hg]", 2
+    ) == [
         "http://loinc.org|8480-6",
         "gt100|http://unitsofmeasure.org|mm[Hg]",
     ]

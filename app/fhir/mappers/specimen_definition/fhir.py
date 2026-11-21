@@ -79,7 +79,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{id_prefix}identifier_type_code", None)
     id_type_display = getattr(obj, f"{id_prefix}identifier_type_display", None)
     id_type_text = getattr(obj, f"{id_prefix}identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{id_prefix}identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{id_prefix}identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{id_prefix}identifier_system", None)
     id_value = getattr(obj, f"{id_prefix}identifier_value", None)
     id_period_start = getattr(obj, f"{id_prefix}identifier_period_start", None)
@@ -107,7 +109,16 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
         if id_use:
             identifier["use"] = fhir_enum(id_use)
         type_codings = []
-        if any(x is not None for x in (id_type_system, id_type_version, id_type_code, id_type_display, id_type_user_selected)):
+        if any(
+            x is not None
+            for x in (
+                id_type_system,
+                id_type_version,
+                id_type_code,
+                id_type_display,
+                id_type_user_selected,
+            )
+        ):
             tc = {}
             if id_type_system is not None:
                 tc["system"] = id_type_system
@@ -144,7 +155,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     return entry or None
 
 
-def _fhir_quantity(value, comparator=None, unit=None, system=None, code=None) -> dict | None:
+def _fhir_quantity(
+    value, comparator=None, unit=None, system=None, code=None
+) -> dict | None:
     if value is None and not unit and not code:
         return None
     res: dict = {}
@@ -162,7 +175,9 @@ def _fhir_quantity(value, comparator=None, unit=None, system=None, code=None) ->
     return res or None
 
 
-def _fhir_range(low_val, low_unit, low_sys, low_code, high_val, high_unit, high_sys, high_code) -> dict | None:
+def _fhir_range(
+    low_val, low_unit, low_sys, low_code, high_val, high_unit, high_sys, high_code
+) -> dict | None:
     res: dict = {}
     low = _fhir_quantity(low_val, None, low_unit, low_sys, low_code)
     if low:
@@ -202,9 +217,13 @@ def fhir_specimen_definition_identifier(model: SpecimenDefinitionModel) -> dict 
     return entry or None
 
 
-def fhir_specimen_definition_container_additive(a: SpecimenDefinitionContainerAdditive) -> dict | None:
+def fhir_specimen_definition_container_additive(
+    a: SpecimenDefinitionContainerAdditive,
+) -> dict | None:
     entry: dict = {}
-    concept = fhir_specimen_definition_codeable_concept(a.additive_codings, a.additive_codeable_concept_text)
+    concept = fhir_specimen_definition_codeable_concept(
+        a.additive_codings, a.additive_codeable_concept_text
+    )
     if concept:
         entry["additiveCodeableConcept"] = concept
     ref = _fhir_reference_with_identifier_fallback(a, "additive_reference")
@@ -213,9 +232,13 @@ def fhir_specimen_definition_container_additive(a: SpecimenDefinitionContainerAd
     return entry or None
 
 
-def fhir_specimen_definition_handling(h: SpecimenDefinitionTypeTestedHandling) -> dict | None:
+def fhir_specimen_definition_handling(
+    h: SpecimenDefinitionTypeTestedHandling,
+) -> dict | None:
     entry: dict = {}
-    qual = fhir_specimen_definition_codeable_concept(h.temperature_qualifier_codings, h.temperature_qualifier_text)
+    qual = fhir_specimen_definition_codeable_concept(
+        h.temperature_qualifier_codings, h.temperature_qualifier_text
+    )
     if qual:
         entry["temperatureQualifier"] = qual
     temp_range = _fhir_range(
@@ -268,13 +291,19 @@ def fhir_specimen_definition_type_tested(tt: SpecimenDefinitionTypeTested) -> di
 
     # container
     container: dict = {}
-    material = fhir_specimen_definition_codeable_concept(tt.container_material_codings, tt.container_material_text)
+    material = fhir_specimen_definition_codeable_concept(
+        tt.container_material_codings, tt.container_material_text
+    )
     if material:
         container["material"] = material
-    c_type = fhir_specimen_definition_codeable_concept(tt.container_type_codings, tt.container_type_text)
+    c_type = fhir_specimen_definition_codeable_concept(
+        tt.container_type_codings, tt.container_type_text
+    )
     if c_type:
         container["type"] = c_type
-    cap = fhir_specimen_definition_codeable_concept(tt.container_cap_codings, tt.container_cap_text)
+    cap = fhir_specimen_definition_codeable_concept(
+        tt.container_cap_codings, tt.container_cap_text
+    )
     if cap:
         container["cap"] = cap
     if tt.container_description:
@@ -321,10 +350,7 @@ def fhir_specimen_definition_type_tested(tt: SpecimenDefinitionTypeTested) -> di
     if rejections:
         entry["rejectionCriterion"] = rejections
 
-    handlings = [
-        fhir_specimen_definition_handling(h)
-        for h in (tt.handlings or [])
-    ]
+    handlings = [fhir_specimen_definition_handling(h) for h in (tt.handlings or [])]
     handlings = [h for h in handlings if h]
     if handlings:
         entry["handling"] = handlings
@@ -369,8 +395,7 @@ def to_fhir_specimen_definition(model: SpecimenDefinitionModel) -> dict:
         result["collection"] = collections
 
     types_tested = [
-        fhir_specimen_definition_type_tested(tt)
-        for tt in (model.types_tested or [])
+        fhir_specimen_definition_type_tested(tt) for tt in (model.types_tested or [])
     ]
     if types_tested:
         result["typeTested"] = types_tested

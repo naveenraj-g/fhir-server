@@ -25,13 +25,22 @@ START = "2026-06-01T09:00:00Z"
 END = "2026-06-01T09:30:00Z"
 
 
-def response_body(appointment_id: int | None = None, actor: str | None = None, status: str = "accepted", **extra) -> dict:
+def response_body(
+    appointment_id: int | None = None,
+    actor: str | None = None,
+    status: str = "accepted",
+    **extra,
+) -> dict:
     """A valid minimal AppointmentResponse: R4 requires `appointment` and
     `participantStatus`, and (apr-1) `participantType` or `actor`. With no
     appointment the reference is an absolute URL (not existence-checked); with
     no actor, a `participantType` stands in for apr-1."""
     body = {
-        "appointment": {"reference": f"Appointment/{appointment_id}" if appointment_id else "https://other.example.org/fhir/Appointment/1"},
+        "appointment": {
+            "reference": f"Appointment/{appointment_id}"
+            if appointment_id
+            else "https://other.example.org/fhir/Appointment/1"
+        },
         "participantStatus": status,
     }
     if actor:
@@ -49,7 +58,12 @@ def full_body(appointment_id: int, patient_id: int) -> dict:
             {
                 "system": AR_IDS,
                 "value": "AR-1001",
-                "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
+                "assigner": {
+                    "identifier": {
+                        "system": "urn:external-registry",
+                        "value": "EXTERNAL-1",
+                    }
+                },
             }
         ],
         "appointment": {"reference": f"Appointment/{appointment_id}"},

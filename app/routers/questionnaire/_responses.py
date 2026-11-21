@@ -34,7 +34,9 @@ _LIST_200 = {
         "description": "Paginated list of questionnaires",
         "content": {
             "application/json": {
-                "schema": inline_schema(PaginatedQuestionnaireResponse.model_json_schema())
+                "schema": inline_schema(
+                    PaginatedQuestionnaireResponse.model_json_schema()
+                )
             },
             "application/fhir+json": {
                 "schema": inline_schema(FHIRQuestionnaireBundle.model_json_schema())

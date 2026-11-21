@@ -56,16 +56,26 @@ class MeasureCreateSchema(BaseModel):
     extension: list[dict[str, Any]] | None = Field(
         None, description="May be used to represent additional information."
     )
-    url: str | None = Field(None, description="Canonical identifier for this measure, represented as a URI.")
+    url: str | None = Field(
+        None, description="Canonical identifier for this measure, represented as a URI."
+    )
     identifier: list[MeasureIdentifierInput] | None = Field(
         None, description="Additional identifier for the measure."
     )
     version: str | None = Field(None, description="Business version of the measure.")
-    name: str | None = Field(None, description="Name for this measure (computer friendly).")
-    title: str | None = Field(None, description="Name for this measure (human friendly).")
+    name: str | None = Field(
+        None, description="Name for this measure (computer friendly)."
+    )
+    title: str | None = Field(
+        None, description="Name for this measure (human friendly)."
+    )
     subtitle: str | None = Field(None, description="Subordinate title of the measure.")
-    status: MeasureStatus = Field(..., description="draft | active | retired | unknown.")
-    experimental: bool | None = Field(None, description="For testing purposes, not real usage.")
+    status: MeasureStatus = Field(
+        ..., description="draft | active | retired | unknown."
+    )
+    experimental: bool | None = Field(
+        None, description="For testing purposes, not real usage."
+    )
 
     # subject[x] (CodeableConcept | Reference(Group))
     subject_codeable_concept: MeasureCodeableConceptInput | None = Field(
@@ -79,11 +89,15 @@ class MeasureCreateSchema(BaseModel):
     )
 
     date: dt.datetime | None = Field(None, description="Date last changed.")
-    publisher: str | None = Field(None, description="Name of the publisher (organization or individual).")
+    publisher: str | None = Field(
+        None, description="Name of the publisher (organization or individual)."
+    )
     contact: list[MeasureContactInput] | None = Field(
         None, description="Contact details for the publisher."
     )
-    description: str | None = Field(None, description="Natural language description of the measure.")
+    description: str | None = Field(
+        None, description="Natural language description of the measure."
+    )
     use_context: list[MeasureUseContextInput] | None = Field(
         None, description="The context that the content is intended to support."
     )
@@ -91,10 +105,18 @@ class MeasureCreateSchema(BaseModel):
         None, description="Intended jurisdiction for measure (e.g. country)."
     )
     purpose: str | None = Field(None, description="Why this measure is defined.")
-    usage: str | None = Field(None, description="Describes the clinical usage of the measure.")
-    copyright: str | None = Field(None, description="Use and/or publishing restrictions.")
-    approval_date: dt.date | None = Field(None, description="When the measure was approved by publisher.")
-    last_review_date: dt.date | None = Field(None, description="When the measure was last reviewed.")
+    usage: str | None = Field(
+        None, description="Describes the clinical usage of the measure."
+    )
+    copyright: str | None = Field(
+        None, description="Use and/or publishing restrictions."
+    )
+    approval_date: dt.date | None = Field(
+        None, description="When the measure was approved by publisher."
+    )
+    last_review_date: dt.date | None = Field(
+        None, description="When the measure was last reviewed."
+    )
     effective_period_start: dt.datetime | None = Field(
         None, description="When the measure is expected to be used (start)."
     )
@@ -122,7 +144,9 @@ class MeasureCreateSchema(BaseModel):
     library: list[str] | None = Field(
         None, description="Logic used by the measure (canonical references)."
     )
-    disclaimer: str | None = Field(None, description="Disclaimer for use of the measure.")
+    disclaimer: str | None = Field(
+        None, description="Disclaimer for use of the measure."
+    )
     scoring: MeasureCodeableConceptInput | None = Field(
         None, description="proportion | ratio | continuous-variable | cohort."
     )
@@ -132,19 +156,28 @@ class MeasureCreateSchema(BaseModel):
     type: list[MeasureCodeableConceptInput] | None = Field(
         None, description="process | outcome | structure | process | composite."
     )
-    risk_adjustment: str | None = Field(None, description="How risk adjustment is applied for this measure.")
-    rate_aggregation: str | None = Field(None, description="How rate aggregation is performed for this measure.")
-    rationale: str | None = Field(None, description="Detailed description of rationale for measure.")
+    risk_adjustment: str | None = Field(
+        None, description="How risk adjustment is applied for this measure."
+    )
+    rate_aggregation: str | None = Field(
+        None, description="How rate aggregation is performed for this measure."
+    )
+    rationale: str | None = Field(
+        None, description="Detailed description of rationale for measure."
+    )
     clinical_recommendation_statement: str | None = Field(
         None, description="Summary of clinical guidelines or recommendations."
     )
     improvement_notation: MeasureCodeableConceptInput | None = Field(
-        None, description="Increased score indicates improvement / Decreased score indicates improvement."
+        None,
+        description="Increased score indicates improvement / Decreased score indicates improvement.",
     )
     definition: list[str] | None = Field(
         None, description="Defined terms used in the measure documentation."
     )
-    guidance: str | None = Field(None, description="Additional guidance for implementers.")
+    guidance: str | None = Field(
+        None, description="Additional guidance for implementers."
+    )
     group: list[MeasureGroupInput] | None = Field(
         None, description="What groups are in the measure."
     )

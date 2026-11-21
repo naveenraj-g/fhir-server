@@ -58,7 +58,9 @@ class _CoreMixin:
         *,
         strict: bool = False,
         fhir_base: str | None = None,
-    ) -> tuple[SearchRequest, list[LocationModel], int | None, list[tuple[str, object]]]:
+    ) -> tuple[
+        SearchRequest, list[LocationModel], int | None, list[tuple[str, object]]
+    ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list —
         parsed and validated here against the Location search registry
         (SearchError -> 400 OperationOutcome). `strict` is
@@ -68,7 +70,9 @@ class _CoreMixin:
         Returns (parsed request, matches, total, included (type, row) — an
         include can be another resource type, e.g. Organization)."""
         if not org_id:
-            raise PermissionDeniedError("Location operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "Location operation requires an org-scoped token"
+            )
         request = parse_search(
             query,
             location_search(),

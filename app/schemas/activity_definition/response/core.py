@@ -212,7 +212,9 @@ class PlainActivityDefinitionResponse(BaseModel):
     body_site: list[PlainActivityDefinitionConcept] | None = None
     specimen_requirement: list[PlainActivityDefinitionRequirement] | None = None
     observation_requirement: list[PlainActivityDefinitionRequirement] | None = None
-    observation_result_requirement: list[PlainActivityDefinitionRequirement] | None = None
+    observation_result_requirement: list[PlainActivityDefinitionRequirement] | None = (
+        None
+    )
     transform: str | None = None
     dynamic_value: list[PlainActivityDefinitionDynamicValue] | None = None
 
@@ -232,7 +234,9 @@ class PaginatedActivityDefinitionResponse(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    data: list[PlainActivityDefinitionResponse] = Field(..., description="List of activity definitions.")
+    data: list[PlainActivityDefinitionResponse] = Field(
+        ..., description="List of activity definitions."
+    )
     total: int | None = Field(None, description="Total matching records.")
     limit: int = Field(..., description="Page size.")
     offset: int = Field(..., description="Page offset.")
@@ -244,7 +248,9 @@ class FHIRActivityDefinitionBundleEntry(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     fullUrl: str | None = Field(None, description="Full URL for resource.")
-    resource: FHIRActivityDefinitionSchema = Field(..., description="ActivityDefinition resource.")
+    resource: FHIRActivityDefinitionSchema = Field(
+        ..., description="ActivityDefinition resource."
+    )
 
 
 class FHIRActivityDefinitionBundle(BaseModel):

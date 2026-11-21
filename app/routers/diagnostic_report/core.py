@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.diagnostic_report import DiagnosticReportCreateSchema, DiagnosticReportPatchSchema
+from app.schemas.diagnostic_report import (
+    DiagnosticReportCreateSchema,
+    DiagnosticReportPatchSchema,
+)
 from app.services.diagnostic_report import DiagnosticReportService
 
 from ._responses import (
@@ -72,7 +75,9 @@ async def create_diagnostic_report(
     payload: DiagnosticReportCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("diagnostic_report", "create")),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
+    diagnostic_report_service: DiagnosticReportService = Depends(
+        get_diagnostic_report_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -165,7 +170,9 @@ async def _search(
 async def search_diagnostic_reports(
     request: Request,
     actor: AuthUser = Depends(require_permission("diagnostic_report", "read")),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
+    diagnostic_report_service: DiagnosticReportService = Depends(
+        get_diagnostic_report_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -192,13 +199,17 @@ async def search_diagnostic_reports(
 async def search_diagnostic_reports_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("diagnostic_report", "read")),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
+    diagnostic_report_service: DiagnosticReportService = Depends(
+        get_diagnostic_report_service
+    ),
 ):
     logger.info(
         "Search DiagnosticReport resources (POST _search)",
         extra={"event": "route.search_diagnostic_reports_post"},
     )
-    return await _search(request, await post_query(request), actor, diagnostic_report_service)
+    return await _search(
+        request, await post_query(request), actor, diagnostic_report_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -221,7 +232,9 @@ async def get_diagnostic_report(
         ..., ge=1, description="Public diagnostic_report identifier."
     ),
     actor: AuthUser = Depends(require_permission("diagnostic_report", "read")),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
+    diagnostic_report_service: DiagnosticReportService = Depends(
+        get_diagnostic_report_service
+    ),
 ):
     logger.info(
         "Retrieve a DiagnosticReport resource by public diagnostic_report_id",
@@ -261,13 +274,18 @@ async def patch_diagnostic_report(
         ..., ge=1, description="Public diagnostic_report identifier."
     ),
     actor: AuthUser = Depends(require_permission("diagnostic_report", "update")),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
+    diagnostic_report_service: DiagnosticReportService = Depends(
+        get_diagnostic_report_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_diagnostic_report()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a DiagnosticReport resource",
-        extra={"event": "route.patch_diagnostic_report", "diagnostic_report_id": diagnostic_report_id},
+        extra={
+            "event": "route.patch_diagnostic_report",
+            "diagnostic_report_id": diagnostic_report_id,
+        },
     )
     log_payload(logger, "diagnostic_report.patch.payload", payload)
     updated = await diagnostic_report_service.patch_diagnostic_report(
@@ -300,7 +318,9 @@ async def delete_diagnostic_report(
         ..., ge=1, description="Public diagnostic_report identifier."
     ),
     actor: AuthUser = Depends(require_permission("diagnostic_report", "delete")),
-    diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
+    diagnostic_report_service: DiagnosticReportService = Depends(
+        get_diagnostic_report_service
+    ),
 ):
     """delete_diagnostic_report() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -311,4 +331,6 @@ async def delete_diagnostic_report(
             "diagnostic_report_id": diagnostic_report_id,
         },
     )
-    await diagnostic_report_service.delete_diagnostic_report(diagnostic_report_id, org_id=actor.org_id)
+    await diagnostic_report_service.delete_diagnostic_report(
+        diagnostic_report_id, org_id=actor.org_id
+    )

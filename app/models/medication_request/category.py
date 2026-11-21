@@ -15,11 +15,19 @@ class MedicationRequestCategory(TenantAuditMixin, Base):
     __tablename__ = "medication_request_category"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    medication_request_pk = Column(BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True)
+    medication_request_pk = Column(
+        BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True
+    )
     text = Column(String, nullable=True)
 
-    medication_request = relationship("MedicationRequestModel", back_populates="categories")
-    codings = relationship("MedicationRequestCategoryCoding", back_populates="category", cascade="all, delete-orphan")
+    medication_request = relationship(
+        "MedicationRequestModel", back_populates="categories"
+    )
+    codings = relationship(
+        "MedicationRequestCategoryCoding",
+        back_populates="category",
+        cascade="all, delete-orphan",
+    )
 
 
 class MedicationRequestCategoryCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -29,7 +37,10 @@ class MedicationRequestCategoryCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_category_id = Column(
-        BigInteger, ForeignKey("medication_request_category.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_category.id"),
+        nullable=False,
+        index=True,
     )
 
     category = relationship("MedicationRequestCategory", back_populates="codings")

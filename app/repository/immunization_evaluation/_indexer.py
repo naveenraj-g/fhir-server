@@ -22,7 +22,12 @@ from app.models.immunization_evaluation import (
     ImmunizationEvaluationStatus,
     ImmunizationEvaluationToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import typed
 
@@ -40,10 +45,18 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("patient", (document.get("patient") or {}).get("reference"), "Patient")
     add("authority", (document.get("authority") or {}).get("reference"), "Organization")
-    add("immunizationEvent", (document.get("immunizationEvent") or {}).get("reference"), "Immunization")
+    add(
+        "immunizationEvent",
+        (document.get("immunizationEvent") or {}).get("reference"),
+        "Immunization",
+    )
     return refs
 
 
@@ -72,18 +85,26 @@ def index_columns(document: dict) -> dict:
     except ValueError:
         status = None  # the validator rejects a bad code before we get here
     value = document.get("date")
-    start, end = period_bounds({"start": value, "end": value}) if value else (None, None)
+    start, end = (
+        period_bounds({"start": value, "end": value}) if value else (None, None)
+    )
     return {
         "status": status,
         "date_start": start,
         "date_end": end,
         **_ref_columns("patient", document.get("patient"), ("Patient",)),
-        **_ref_columns("immunization_event", document.get("immunizationEvent"), ("Immunization",)),
+        **_ref_columns(
+            "immunization_event", document.get("immunizationEvent"), ("Immunization",)
+        ),
     }
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(ImmunizationEvaluationToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(ImmunizationEvaluationToken, param=param), concept)
+        if concept
+        else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -96,7 +117,9 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by ImmunizationEvaluationModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(ImmunizationEvaluationIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ImmunizationEvaluationIdentifier, i)
         ],
         "tokens": _token_rows(document),
     }

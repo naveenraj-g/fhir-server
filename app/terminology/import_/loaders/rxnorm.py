@@ -28,6 +28,7 @@ Run:
   # or
   uv run python -m app.terminology.import_.cli --source rxnorm --file terminology_data/rrf/RXNCONSO.RRF
 """
+
 import time
 
 from app.terminology.import_.base import BaseLoader
@@ -35,7 +36,16 @@ from app.terminology.import_.base import BaseLoader
 RXNORM_URL = "http://www.nlm.nih.gov/research/umls/rxnorm"
 
 INCLUDED_TTY = {"IN", "PIN", "MIN", "BN", "SCD", "SBD", "GPCK", "BPCK"}
-TTY_PRIORITY = {"IN": 0, "SCD": 1, "BN": 2, "PIN": 3, "MIN": 4, "SBD": 5, "GPCK": 6, "BPCK": 7}
+TTY_PRIORITY = {
+    "IN": 0,
+    "SCD": 1,
+    "BN": 2,
+    "PIN": 3,
+    "MIN": 4,
+    "SBD": 5,
+    "GPCK": 6,
+    "BPCK": 7,
+}
 
 
 class RxnormLoader(BaseLoader):
@@ -79,8 +89,7 @@ class RxnormLoader(BaseLoader):
         self._log(f"Scanned {line_count:,} lines → {len(best):,} unique RxCUI concepts")
 
         records = [
-            (cs_id, rxcui, display, None)
-            for rxcui, (display, _) in best.items()
+            (cs_id, rxcui, display, None) for rxcui, (display, _) in best.items()
         ]
 
         await self.bulk_insert_concepts(records, total_hint=len(records))

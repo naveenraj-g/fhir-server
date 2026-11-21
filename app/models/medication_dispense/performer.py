@@ -65,7 +65,9 @@ class MedicationDispensePerformer(TenantAuditMixin, Base):
     )
 
 
-class MedicationDispensePerformerFunctionCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MedicationDispensePerformerFunctionCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """MedicationDispense.performer.function.coding (0..*) grandchild table."""
 
     __tablename__ = "medication_dispense_performer_function_coding"

@@ -134,10 +134,20 @@ _DESTINATION_FIELDS = {
 }
 _DESTINATION_FHIR_KEYS = {"destination"}
 
-_QUANTITY_FIELDS = {"quantity_value", "quantity_unit", "quantity_system", "quantity_code"}
+_QUANTITY_FIELDS = {
+    "quantity_value",
+    "quantity_unit",
+    "quantity_system",
+    "quantity_code",
+}
 _QUANTITY_FHIR_KEYS = {"quantity"}
 
-_DAYS_SUPPLY_FIELDS = {"days_supply_value", "days_supply_unit", "days_supply_system", "days_supply_code"}
+_DAYS_SUPPLY_FIELDS = {
+    "days_supply_value",
+    "days_supply_unit",
+    "days_supply_system",
+    "days_supply_code",
+}
 _DAYS_SUPPLY_FHIR_KEYS = {"daysSupply"}
 
 
@@ -220,7 +230,9 @@ def _reference_with_prefix_from_payload(obj: Any, prefix: str) -> dict | None:
     ):
         identifier: dict = {}
         if id_use:
-            identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+            identifier["use"] = (
+                id_use.value if hasattr(id_use, "value") else str(id_use)
+            )
         if (
             id_type_system
             or id_type_code
@@ -276,7 +288,9 @@ def _reference_from_child_payload(child: Any) -> dict | None:
     return _reference_with_prefix_from_payload(child, "reference")
 
 
-def payload_medication_dispense_identifier(i: MedicationDispenseIdentifierInput) -> dict:
+def payload_medication_dispense_identifier(
+    i: MedicationDispenseIdentifierInput,
+) -> dict:
     entry: dict = {}
     use = _val(i, "use")
     if use:
@@ -455,7 +469,9 @@ def payload_medication_dispense_substitution(
     return entry
 
 
-def payload_to_fhir_medication_dispense(payload: MedicationDispenseCreateSchema) -> dict:
+def payload_to_fhir_medication_dispense(
+    payload: MedicationDispenseCreateSchema,
+) -> dict:
     """Format a validated MedicationDispenseCreateSchema as a FHIR R4 JSON dict."""
     out: dict = {
         "resourceType": "MedicationDispense",
@@ -465,15 +481,12 @@ def payload_to_fhir_medication_dispense(payload: MedicationDispenseCreateSchema)
         out["extension"] = list(payload.extension)
 
     identifiers = [
-        payload_medication_dispense_identifier(i)
-        for i in (payload.identifier or [])
+        payload_medication_dispense_identifier(i) for i in (payload.identifier or [])
     ]
     if identifiers:
         out["identifier"] = identifiers
 
-    part_of = [
-        _reference_from_child_payload(p) for p in (payload.part_of or [])
-    ]
+    part_of = [_reference_from_child_payload(p) for p in (payload.part_of or [])]
     part_of = [p for p in part_of if p]
     if part_of:
         out["partOf"] = part_of
@@ -517,16 +530,14 @@ def payload_to_fhir_medication_dispense(payload: MedicationDispenseCreateSchema)
         out["context"] = context
 
     supporting_infos = [
-        _reference_from_child_payload(s)
-        for s in (payload.supporting_information or [])
+        _reference_from_child_payload(s) for s in (payload.supporting_information or [])
     ]
     supporting_infos = [s for s in supporting_infos if s]
     if supporting_infos:
         out["supportingInformation"] = supporting_infos
 
     performers = [
-        payload_medication_dispense_performer(p)
-        for p in (payload.performer or [])
+        payload_medication_dispense_performer(p) for p in (payload.performer or [])
     ]
     if performers:
         out["performer"] = performers
@@ -573,16 +584,12 @@ def payload_to_fhir_medication_dispense(payload: MedicationDispenseCreateSchema)
     if destination:
         out["destination"] = destination
 
-    receivers = [
-        _reference_from_child_payload(r) for r in (payload.receiver or [])
-    ]
+    receivers = [_reference_from_child_payload(r) for r in (payload.receiver or [])]
     receivers = [r for r in receivers if r]
     if receivers:
         out["receiver"] = receivers
 
-    notes = [
-        payload_medication_dispense_note(n) for n in (payload.note or [])
-    ]
+    notes = [payload_medication_dispense_note(n) for n in (payload.note or [])]
     if notes:
         out["note"] = notes
 
@@ -598,16 +605,14 @@ def payload_to_fhir_medication_dispense(payload: MedicationDispenseCreateSchema)
         out["substitution"] = substitution
 
     detected_issues = [
-        _reference_from_child_payload(d)
-        for d in (payload.detected_issue or [])
+        _reference_from_child_payload(d) for d in (payload.detected_issue or [])
     ]
     detected_issues = [d for d in detected_issues if d]
     if detected_issues:
         out["detectedIssue"] = detected_issues
 
     event_history = [
-        _reference_from_child_payload(e)
-        for e in (payload.event_history or [])
+        _reference_from_child_payload(e) for e in (payload.event_history or [])
     ]
     event_history = [e for e in event_history if e]
     if event_history:
@@ -641,9 +646,7 @@ def patch_fragment_to_fhir_medication_dispense(
             )
             if sr_cc:
                 fragment["statusReasonCodeableConcept"] = sr_cc
-        sr_ref = _reference_with_prefix_from_payload(
-            payload, "status_reason_reference"
-        )
+        sr_ref = _reference_with_prefix_from_payload(payload, "status_reason_reference")
         if sr_ref:
             fragment["statusReasonReference"] = sr_ref
 
@@ -737,8 +740,7 @@ def patch_fragment_to_fhir_medication_dispense(
         touched.add("identifier")
         if payload.identifier:
             fragment["identifier"] = [
-                payload_medication_dispense_identifier(i)
-                for i in payload.identifier
+                payload_medication_dispense_identifier(i) for i in payload.identifier
             ]
 
     if "part_of" in provided:
@@ -751,8 +753,7 @@ def patch_fragment_to_fhir_medication_dispense(
         touched.add("supportingInformation")
         if payload.supporting_information:
             si = [
-                _reference_from_child_payload(s)
-                for s in payload.supporting_information
+                _reference_from_child_payload(s) for s in payload.supporting_information
             ]
             fragment["supportingInformation"] = [s for s in si if s]
 
@@ -760,8 +761,7 @@ def patch_fragment_to_fhir_medication_dispense(
         touched.add("performer")
         if payload.performer:
             fragment["performer"] = [
-                payload_medication_dispense_performer(p)
-                for p in payload.performer
+                payload_medication_dispense_performer(p) for p in payload.performer
             ]
 
     if "authorizing_prescription" in provided:

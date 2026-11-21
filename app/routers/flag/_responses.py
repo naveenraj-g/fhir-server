@@ -20,14 +20,10 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PlainFlagResponse.model_json_schema()
-                )
+                "schema": inline_schema(PlainFlagResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRFlagSchema.model_json_schema()
-                )
+                "schema": inline_schema(FHIRFlagSchema.model_json_schema())
             },
         }
     }
@@ -38,14 +34,10 @@ _LIST_200 = {
         "description": "Paginated list of flags",
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PaginatedFlagResponse.model_json_schema()
-                )
+                "schema": inline_schema(PaginatedFlagResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRFlagBundle.model_json_schema()
-                )
+                "schema": inline_schema(FHIRFlagBundle.model_json_schema())
             },
         },
     }

@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Index, Sequence, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Index,
+    Sequence,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -7,7 +16,9 @@ from app.models.enums import OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 from app.schemas.enums import AdministrativeGender
 
-patient_id_seq = Sequence("patient_pub_seq", start=10000, increment=1, metadata=Base.metadata)
+patient_id_seq = Sequence(
+    "patient_pub_seq", start=10000, increment=1, metadata=Base.metadata
+)
 
 
 class PatientModel(TenantAuditMixin, Base):
@@ -88,7 +99,9 @@ class PatientModel(TenantAuditMixin, Base):
     # active (0..1) — R4 removed the R3 default of true; absent means
     # unknown, not false.
     active = Column(Boolean, nullable=True)
-    gender = Column(Enum(AdministrativeGender, name="administrative_gender"), nullable=True)
+    gender = Column(
+        Enum(AdministrativeGender, name="administrative_gender"), nullable=True
+    )
 
     # birthDate / deceasedDateTime are FHIR dates that may be partial
     # (`1990`, `1990-05`): each is held as the half-open [start, end) range of
@@ -102,16 +115,32 @@ class PatientModel(TenantAuditMixin, Base):
     # managingOrganization (0..1 Reference(Organization)) -> `organization`.
     managing_organization_reference = Column(String, nullable=True)
     managing_organization_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     managing_organization_id = Column(BigInteger, nullable=True, index=True)
     managing_organization_identifier_system = Column(String, nullable=True)
     managing_organization_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("PatientIdentifier", back_populates="patient", cascade="all, delete-orphan")
-    names = relationship("PatientName", back_populates="patient", cascade="all, delete-orphan")
-    telecoms = relationship("PatientTelecom", back_populates="patient", cascade="all, delete-orphan")
-    addresses = relationship("PatientAddress", back_populates="patient", cascade="all, delete-orphan")
-    communications = relationship("PatientCommunication", back_populates="patient", cascade="all, delete-orphan")
-    references = relationship("PatientReference", back_populates="patient", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "PatientIdentifier", back_populates="patient", cascade="all, delete-orphan"
+    )
+    names = relationship(
+        "PatientName", back_populates="patient", cascade="all, delete-orphan"
+    )
+    telecoms = relationship(
+        "PatientTelecom", back_populates="patient", cascade="all, delete-orphan"
+    )
+    addresses = relationship(
+        "PatientAddress", back_populates="patient", cascade="all, delete-orphan"
+    )
+    communications = relationship(
+        "PatientCommunication", back_populates="patient", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "PatientReference", back_populates="patient", cascade="all, delete-orphan"
+    )

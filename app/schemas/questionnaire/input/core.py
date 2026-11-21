@@ -61,25 +61,31 @@ class QuestionnaireCreateSchema(BaseModel):
         },
     )
 
-
     extension: list[dict] | None = Field(
         None,
         description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
     )
 
     url: str | None = Field(
-        None, description="Canonical identifier for this questionnaire, globally unique."
+        None,
+        description="Canonical identifier for this questionnaire, globally unique.",
     )
     identifier: list[QuestionnaireIdentifierInput] | None = Field(
         None, description="Additional identifiers for this questionnaire."
     )
-    version: str | None = Field(None, description="Business version of the questionnaire.")
-    name: str | None = Field(
-        None, description="Computer-friendly name for this questionnaire — should be usable as a code-generation identifier."
+    version: str | None = Field(
+        None, description="Business version of the questionnaire."
     )
-    title: str | None = Field(None, description="Human-friendly name for this questionnaire.")
+    name: str | None = Field(
+        None,
+        description="Computer-friendly name for this questionnaire — should be usable as a code-generation identifier.",
+    )
+    title: str | None = Field(
+        None, description="Human-friendly name for this questionnaire."
+    )
     derived_from: list[str] | None = Field(
-        None, description="The URL(s) of Questionnaire(s) this one is based on, as canonical references."
+        None,
+        description="The URL(s) of Questionnaire(s) this one is based on, as canonical references.",
     )
 
     # status (1..1) — required
@@ -91,24 +97,41 @@ class QuestionnaireCreateSchema(BaseModel):
         None, description="Whether this is meant for testing purposes (or real usage)."
     )
     subject_type: list[str] | None = Field(
-        None, description="Resource type(s) that can be the subject of a QuestionnaireResponse."
+        None,
+        description="Resource type(s) that can be the subject of a QuestionnaireResponse.",
     )
     date: datetime | None = Field(None, description="Date this was last changed.")
-    publisher: str | None = Field(None, description="Name of the publishing organization or individual.")
-    description: str | None = Field(None, description="Natural-language description of the questionnaire (markdown).")
-    purpose: str | None = Field(None, description="Why this questionnaire is defined (markdown).")
-    copyright: str | None = Field(None, description="Use and/or publishing restrictions (markdown).")
-    approval_date: date_type | None = Field(None, description="When the questionnaire was approved by publisher.")
-    last_review_date: date_type | None = Field(None, description="When the questionnaire was last reviewed.")
+    publisher: str | None = Field(
+        None, description="Name of the publishing organization or individual."
+    )
+    description: str | None = Field(
+        None,
+        description="Natural-language description of the questionnaire (markdown).",
+    )
+    purpose: str | None = Field(
+        None, description="Why this questionnaire is defined (markdown)."
+    )
+    copyright: str | None = Field(
+        None, description="Use and/or publishing restrictions (markdown)."
+    )
+    approval_date: date_type | None = Field(
+        None, description="When the questionnaire was approved by publisher."
+    )
+    last_review_date: date_type | None = Field(
+        None, description="When the questionnaire was last reviewed."
+    )
     effective_period_start: datetime | None = Field(
-        None, description="Start of the period during which this questionnaire version is in active use."
+        None,
+        description="Start of the period during which this questionnaire version is in active use.",
     )
     effective_period_end: datetime | None = Field(
-        None, description="End of the period during which this questionnaire version is in active use."
+        None,
+        description="End of the period during which this questionnaire version is in active use.",
     )
 
     code: list[CodingInput] | None = Field(
-        None, description="Concept(s) that represent the overall questionnaire (e.g. a LOINC code)."
+        None,
+        description="Concept(s) that represent the overall questionnaire (e.g. a LOINC code).",
     )
 
     contact: list[QuestionnaireContactInput] | None = Field(
@@ -147,47 +170,75 @@ class QuestionnairePatchSchema(BaseModel):
         description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries — replaces the full list if supplied.",
     )
 
-    url: str | None = Field(None, description="Canonical identifier. Set to null to clear.")
+    url: str | None = Field(
+        None, description="Canonical identifier. Set to null to clear."
+    )
     identifier: list[QuestionnaireIdentifierInput] | None = Field(
         None, description="Additional identifiers — replaces the full list if supplied."
     )
-    version: str | None = Field(None, description="Business version of the questionnaire.")
+    version: str | None = Field(
+        None, description="Business version of the questionnaire."
+    )
     name: str | None = Field(None, description="Computer-friendly name.")
     title: str | None = Field(None, description="Human-friendly name.")
     derived_from: list[str] | None = Field(
-        None, description="Canonical references to Questionnaire(s) this one is based on — replaces the full list if supplied."
+        None,
+        description="Canonical references to Questionnaire(s) this one is based on — replaces the full list if supplied.",
     )
 
     status: QuestionnaireStatus | None = Field(
         None, description="draft | active | retired | unknown."
     )
 
-    experimental: bool | None = Field(None, description="Whether this is meant for testing purposes.")
+    experimental: bool | None = Field(
+        None, description="Whether this is meant for testing purposes."
+    )
     subject_type: list[str] | None = Field(
-        None, description="Resource type(s) that can be the subject of a QuestionnaireResponse — replaces the full list if supplied."
+        None,
+        description="Resource type(s) that can be the subject of a QuestionnaireResponse — replaces the full list if supplied.",
     )
     date: datetime | None = Field(None, description="Date this was last changed.")
-    publisher: str | None = Field(None, description="Name of the publishing organization or individual.")
-    description: str | None = Field(None, description="Natural-language description (markdown).")
-    purpose: str | None = Field(None, description="Why this questionnaire is defined (markdown).")
-    copyright: str | None = Field(None, description="Use and/or publishing restrictions (markdown).")
-    approval_date: date_type | None = Field(None, description="When the questionnaire was approved by publisher.")
-    last_review_date: date_type | None = Field(None, description="When the questionnaire was last reviewed.")
-    effective_period_start: datetime | None = Field(None, description="Start of the active-use period.")
-    effective_period_end: datetime | None = Field(None, description="End of the active-use period.")
+    publisher: str | None = Field(
+        None, description="Name of the publishing organization or individual."
+    )
+    description: str | None = Field(
+        None, description="Natural-language description (markdown)."
+    )
+    purpose: str | None = Field(
+        None, description="Why this questionnaire is defined (markdown)."
+    )
+    copyright: str | None = Field(
+        None, description="Use and/or publishing restrictions (markdown)."
+    )
+    approval_date: date_type | None = Field(
+        None, description="When the questionnaire was approved by publisher."
+    )
+    last_review_date: date_type | None = Field(
+        None, description="When the questionnaire was last reviewed."
+    )
+    effective_period_start: datetime | None = Field(
+        None, description="Start of the active-use period."
+    )
+    effective_period_end: datetime | None = Field(
+        None, description="End of the active-use period."
+    )
 
     code: list[CodingInput] | None = Field(
-        None, description="Concept(s) representing the overall questionnaire — replaces the full list if supplied."
+        None,
+        description="Concept(s) representing the overall questionnaire — replaces the full list if supplied.",
     )
 
     contact: list[QuestionnaireContactInput] | None = Field(
-        None, description="Contact details for the publisher — replaces the full list if supplied."
+        None,
+        description="Contact details for the publisher — replaces the full list if supplied.",
     )
     use_context: list[QuestionnaireUseContextInput] | None = Field(
-        None, description="Context the content is intended to support — replaces the full list if supplied."
+        None,
+        description="Context the content is intended to support — replaces the full list if supplied.",
     )
     jurisdiction: list[QuestionnaireJurisdictionInput] | None = Field(
-        None, description="Intended jurisdiction(s) — replaces the full list if supplied."
+        None,
+        description="Intended jurisdiction(s) — replaces the full list if supplied.",
     )
 
     item: list[QuestionnaireItemInput] | None = Field(

@@ -41,8 +41,7 @@ logger = get_logger(__name__)
         "Describes the intended objective(s) for a patient, group or organization. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) "
-        "— an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "— an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -57,9 +56,7 @@ async def create_goal(
         extra={"event": "route.create_goal"},
     )
     log_payload(logger, "goal.create.payload", payload)
-    model = await goal_service.create_goal(
-        payload, actor.org_id, actor.sub
-    )
+    model = await goal_service.create_goal(payload, actor.org_id, actor.sub)
     return format_response(
         goal_service._to_fhir(model),
         goal_service._to_plain(model),
@@ -95,9 +92,7 @@ async def get_goal(
             "goal_id": goal_id,
         },
     )
-    model = await goal_service.get_goal_scoped(
-        goal_id, actor.org_id
-    )
+    model = await goal_service.get_goal_scoped(goal_id, actor.org_id)
     return format_response(
         goal_service._to_fhir(model),
         goal_service._to_plain(model),

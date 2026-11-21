@@ -37,7 +37,9 @@ REQUIRED = {
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 def _slot(content: dict, **overrides) -> SlotModel:
@@ -56,10 +58,18 @@ CASES = {
     "minimal": _slot({}),
     **{
         f"status_{s}": _slot({"status": s})
-        for s in ("busy", "free", "busy-unavailable", "busy-tentative", "entered-in-error")
+        for s in (
+            "busy",
+            "free",
+            "busy-unavailable",
+            "busy-tentative",
+            "entered-in-error",
+        )
     },
     "updated_by_and_updated_at": _slot({}, updated_by="u-other", updated_at=D),
-    "start_and_end_with_offset": _slot({"start": "2026-06-01T09:00:00+05:30", "end": "2026-06-01T09:30:00+05:30"}),
+    "start_and_end_with_offset": _slot(
+        {"start": "2026-06-01T09:00:00+05:30", "end": "2026-06-01T09:30:00+05:30"}
+    ),
     "overbooked_true": _slot({"overbooked": True}),
     "overbooked_false": _slot({"overbooked": False}),
     "comment": _slot({"comment": "Bring previous reports"}),
@@ -68,7 +78,14 @@ CASES = {
             "identifier": [
                 {
                     "use": "official",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "SLT"}]},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "SLT",
+                            }
+                        ]
+                    },
                     "system": "https://fhir-server.dev/fhir/identifier-system/slot-id",
                     "value": "SL-1",
                     "assigner": {"reference": "Organization/190001"},
@@ -78,23 +95,56 @@ CASES = {
     ),
     "categories_types_and_specialties": _slot(
         {
-            "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}], "text": "General"}],
+            "serviceCategory": [
+                {
+                    "coding": [{"code": "17", "display": "General Practice"}],
+                    "text": "General",
+                }
+            ],
             "serviceType": [{"coding": [{"code": "124"}]}, {"text": "Free text only"}],
             "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
         }
     ),
     "appointment_type_single_concept": _slot(
-        {"appointmentType": {"coding": [{"code": "ROUTINE", "display": "Routine appointment"}], "text": "Routine"}}
+        {
+            "appointmentType": {
+                "coding": [{"code": "ROUTINE", "display": "Routine appointment"}],
+                "text": "Routine",
+            }
+        }
     ),
-    "schedule_with_display": _slot({"schedule": {"reference": "Schedule/200001", "display": "Dr Careful clinic"}}),
-    "absolute_schedule": _slot({"schedule": {"reference": "https://other.example.org/fhir/Schedule/9"}}),
-    "logical_schedule": _slot({"schedule": {"identifier": {"system": "urn:schedules", "value": "SCH-9"}}}),
-    "extension": _slot({"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}),
+    "schedule_with_display": _slot(
+        {"schedule": {"reference": "Schedule/200001", "display": "Dr Careful clinic"}}
+    ),
+    "absolute_schedule": _slot(
+        {"schedule": {"reference": "https://other.example.org/fhir/Schedule/9"}}
+    ),
+    "logical_schedule": _slot(
+        {"schedule": {"identifier": {"system": "urn:schedules", "value": "SCH-9"}}}
+    ),
+    "extension": _slot(
+        {
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ]
+        }
+    ),
     "full_payload": SlotModel(
-        slot_id=220001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(full_body(200001))
+        slot_id=220001,
+        tenant_id="org-test",
+        created_by="u-test",
+        created_at=D,
+        content=_stored(full_body(200001)),
     ),
     "minimal_payload": SlotModel(
-        slot_id=220001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(slot_body(200001))
+        slot_id=220001,
+        tenant_id="org-test",
+        created_by="u-test",
+        created_at=D,
+        content=_stored(slot_body(200001)),
     ),
 }
 
@@ -106,10 +156,20 @@ def test_slot_mapper_emits_valid_fhir_r4(case):
 
 def test_mapper_serves_content_unchanged():
     content = _stored(full_body(200001))
-    out = to_fhir_slot(SlotModel(slot_id=220001, tenant_id="org-test", created_by="u-test", created_at=D, content=content))
+    out = to_fhir_slot(
+        SlotModel(
+            slot_id=220001,
+            tenant_id="org-test",
+            created_by="u-test",
+            created_at=D,
+            content=content,
+        )
+    )
     assert out["resourceType"] == "Slot"
     assert out["id"] == "220001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -130,8 +190,14 @@ def test_mapper_serves_content_unchanged():
         ("start not an instant", {"start": "tomorrow"}),
         ("start without a timezone", {"start": "2026-06-01T09:00:00"}),
         ("schedule as string not Reference", {"schedule": "Schedule/200001"}),
-        ("serviceCategory as strings not CodeableConcepts", {"serviceCategory": ["17"]}),
-        ("specialty as an object not a list", {"specialty": {"coding": [{"code": "x"}]}}),
+        (
+            "serviceCategory as strings not CodeableConcepts",
+            {"serviceCategory": ["17"]},
+        ),
+        (
+            "specialty as an object not a list",
+            {"specialty": {"coding": [{"code": "x"}]}},
+        ),
         ("identifier as strings not Identifiers", {"identifier": ["SL-1"]}),
         ("comment as list", {"comment": ["x"]}),
     ],
@@ -141,4 +207,6 @@ def test_validator_rejects_invalid_fhir(label, broken):
 
     payload = {"resourceType": "Slot", "id": "220001", **REQUIRED, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), slot_pb2.Slot, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), slot_pb2.Slot, validate=True
+        )

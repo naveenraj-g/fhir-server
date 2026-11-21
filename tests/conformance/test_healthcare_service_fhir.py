@@ -31,7 +31,9 @@ D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 def _service(content: dict, **overrides) -> HealthcareServiceModel:
@@ -49,7 +51,9 @@ def _service(content: dict, **overrides) -> HealthcareServiceModel:
 CASES = {
     "minimal": _service({"name": "Cardiology"}),
     "active_false": _service({"active": False, "name": "Cardiology"}),
-    "updated_by_and_updated_at": _service({"name": "Cardiology"}, updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _service(
+        {"name": "Cardiology"}, updated_by="u-other", updated_at=D
+    ),
     "provided_by": _service(
         {
             "providedBy": {
@@ -62,7 +66,12 @@ CASES = {
     ),
     "category_type_specialty": _service(
         {
-            "category": [{"coding": [{"code": "35", "display": "Specialist Medical"}], "text": "Specialist"}],
+            "category": [
+                {
+                    "coding": [{"code": "35", "display": "Specialist Medical"}],
+                    "text": "Specialist",
+                }
+            ],
             "type": [{"coding": [{"code": "124"}]}],
             "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
         }
@@ -78,7 +87,14 @@ CASES = {
             "identifier": [
                 {
                     "use": "official",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "SVC"}]},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "SVC",
+                            }
+                        ]
+                    },
                     "system": "https://fhir-server.dev/fhir/identifier-system/hs-ids",
                     "value": "HS-1",
                     "assigner": {"reference": "Organization/190001"},
@@ -88,15 +104,26 @@ CASES = {
     ),
     "telecom_and_photo": _service(
         {
-            "telecom": [{"system": "phone", "value": "555-0100", "use": "work", "rank": 1}],
-            "photo": {"url": "https://fhir-server.dev/fhir/assets/photo.png", "title": "Front desk"},
+            "telecom": [
+                {"system": "phone", "value": "555-0100", "use": "work", "rank": 1}
+            ],
+            "photo": {
+                "url": "https://fhir-server.dev/fhir/assets/photo.png",
+                "title": "Front desk",
+            },
         }
     ),
-    "eligibility": _service({"eligibility": [{"code": {"text": "Over 18"}, "comment": "Adults only"}]}),
+    "eligibility": _service(
+        {"eligibility": [{"code": {"text": "Over 18"}, "comment": "Adults only"}]}
+    ),
     "available_time": _service(
         {
             "availableTime": [
-                {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"},
+                {
+                    "daysOfWeek": ["mon", "tue"],
+                    "availableStartTime": "08:00:00",
+                    "availableEndTime": "17:00:00",
+                },
                 {"daysOfWeek": ["sat"], "allDay": True},
             ]
         }
@@ -104,7 +131,13 @@ CASES = {
     "not_available": _service(
         {
             "notAvailable": [
-                {"description": "Closed", "during": {"start": "2026-12-24T00:00:00Z", "end": "2026-12-26T00:00:00Z"}}
+                {
+                    "description": "Closed",
+                    "during": {
+                        "start": "2026-12-24T00:00:00Z",
+                        "end": "2026-12-26T00:00:00Z",
+                    },
+                }
             ]
         }
     ),
@@ -125,9 +158,18 @@ CASES = {
             "availabilityExceptions": "Closed on public holidays",
         }
     ),
-    "endpoint": _service({"endpoint": [{"identifier": {"system": "urn:ep", "value": "EP-1"}}]}),
+    "endpoint": _service(
+        {"endpoint": [{"identifier": {"system": "urn:ep", "value": "EP-1"}}]}
+    ),
     "extension": _service(
-        {"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}
+        {
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ]
+        }
     ),
     "full_payload": _service(_stored(FULL)),
 }
@@ -135,7 +177,10 @@ CASES = {
 
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_healthcare_service_mapper_emits_valid_fhir_r4(case):
-    assert_valid(healthcare_service_pb2.HealthcareService, to_fhir_healthcare_service(CASES[case]))
+    assert_valid(
+        healthcare_service_pb2.HealthcareService,
+        to_fhir_healthcare_service(CASES[case]),
+    )
 
 
 def test_mapper_serves_content_unchanged():
@@ -143,7 +188,9 @@ def test_mapper_serves_content_unchanged():
     out = to_fhir_healthcare_service(_service(content))
     assert out["resourceType"] == "HealthcareService"
     assert out["id"] == "150001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -163,16 +210,30 @@ def test_mapper_serves_content_unchanged():
         ("category as strings not CodeableConcepts", {"category": ["35"]}),
         ("providedBy as string not Reference", {"providedBy": "Organization/190001"}),
         ("location as string not Reference", {"location": ["Location/230001"]}),
-        ("day of week outside the required binding", {"availableTime": [{"daysOfWeek": ["funday"]}]}),
-        ("notAvailable without its required description", {"notAvailable": [{"during": {"start": "2026-01-01T00:00:00Z"}}]}),
+        (
+            "day of week outside the required binding",
+            {"availableTime": [{"daysOfWeek": ["funday"]}]},
+        ),
+        (
+            "notAvailable without its required description",
+            {"notAvailable": [{"during": {"start": "2026-01-01T00:00:00Z"}}]},
+        ),
         ("appointmentRequired as string", {"appointmentRequired": "yes"}),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "HealthcareService", "id": "150001", "active": True, "name": "Cardiology", **broken}
+    payload = {
+        "resourceType": "HealthcareService",
+        "id": "150001",
+        "active": True,
+        "name": "Cardiology",
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(
-            fhir_json_text(payload), healthcare_service_pb2.HealthcareService, validate=True
+            fhir_json_text(payload),
+            healthcare_service_pb2.HealthcareService,
+            validate=True,
         )

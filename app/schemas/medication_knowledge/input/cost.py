@@ -16,7 +16,9 @@ class MedicationKnowledgeCostInput(BaseModel):
     type: MedicationKnowledgeCodeableConceptInput = Field(
         ..., description="The category of the cost information."
     )
-    source: str | None = Field(None, description="The source or owner for the price information.")
+    source: str | None = Field(
+        None, description="The source or owner for the price information."
+    )
     cost: MedicationKnowledgeMoneyInput = Field(
         ..., description="The price of the medication."
     )

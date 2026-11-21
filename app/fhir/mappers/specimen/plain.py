@@ -51,16 +51,25 @@ def _plain_reference(obj, prefix: str) -> dict | None:
         return None
 
     return {
-        "reference": raw_reference or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
+        "reference": raw_reference
+        or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
         "id": ref_id,
         "type": fhir_enum(ref_type) if ref_type else None,
         "display": display,
         "identifier_use": fhir_enum(getattr(obj, f"{prefix}_identifier_use", None)),
-        "identifier_type_system": getattr(obj, f"{prefix}_identifier_type_system", None),
-        "identifier_type_version": getattr(obj, f"{prefix}_identifier_type_version", None),
+        "identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        "identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
         "identifier_type_code": getattr(obj, f"{prefix}_identifier_type_code", None),
-        "identifier_type_display": getattr(obj, f"{prefix}_identifier_type_display", None),
-        "identifier_type_user_selected": getattr(obj, f"{prefix}_identifier_type_user_selected", None),
+        "identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        "identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
         "identifier_type_text": getattr(obj, f"{prefix}_identifier_type_text", None),
         "identifier_system": getattr(obj, f"{prefix}_identifier_system", None),
         "identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
@@ -77,17 +86,37 @@ def _plain_reference(obj, prefix: str) -> dict | None:
     }
 
 
-def _plain_assigner_fields(obj, model_prefix: str = "assigner", out_prefix: str = "assigner") -> dict:
+def _plain_assigner_fields(
+    obj, model_prefix: str = "assigner", out_prefix: str = "assigner"
+) -> dict:
     return {
-        f"{out_prefix}_identifier_use": fhir_enum(getattr(obj, f"{model_prefix}_identifier_use", None)),
-        f"{out_prefix}_identifier_type_system": getattr(obj, f"{model_prefix}_identifier_type_system", None),
-        f"{out_prefix}_identifier_type_version": getattr(obj, f"{model_prefix}_identifier_type_version", None),
-        f"{out_prefix}_identifier_type_code": getattr(obj, f"{model_prefix}_identifier_type_code", None),
-        f"{out_prefix}_identifier_type_display": getattr(obj, f"{model_prefix}_identifier_type_display", None),
-        f"{out_prefix}_identifier_type_user_selected": getattr(obj, f"{model_prefix}_identifier_type_user_selected", None),
-        f"{out_prefix}_identifier_type_text": getattr(obj, f"{model_prefix}_identifier_type_text", None),
-        f"{out_prefix}_identifier_system": getattr(obj, f"{model_prefix}_identifier_system", None),
-        f"{out_prefix}_identifier_value": getattr(obj, f"{model_prefix}_identifier_value", None),
+        f"{out_prefix}_identifier_use": fhir_enum(
+            getattr(obj, f"{model_prefix}_identifier_use", None)
+        ),
+        f"{out_prefix}_identifier_type_system": getattr(
+            obj, f"{model_prefix}_identifier_type_system", None
+        ),
+        f"{out_prefix}_identifier_type_version": getattr(
+            obj, f"{model_prefix}_identifier_type_version", None
+        ),
+        f"{out_prefix}_identifier_type_code": getattr(
+            obj, f"{model_prefix}_identifier_type_code", None
+        ),
+        f"{out_prefix}_identifier_type_display": getattr(
+            obj, f"{model_prefix}_identifier_type_display", None
+        ),
+        f"{out_prefix}_identifier_type_user_selected": getattr(
+            obj, f"{model_prefix}_identifier_type_user_selected", None
+        ),
+        f"{out_prefix}_identifier_type_text": getattr(
+            obj, f"{model_prefix}_identifier_type_text", None
+        ),
+        f"{out_prefix}_identifier_system": getattr(
+            obj, f"{model_prefix}_identifier_system", None
+        ),
+        f"{out_prefix}_identifier_value": getattr(
+            obj, f"{model_prefix}_identifier_value", None
+        ),
         f"{out_prefix}_identifier_period_start": (
             getattr(obj, f"{model_prefix}_identifier_period_start").isoformat()
             if getattr(obj, f"{model_prefix}_identifier_period_start", None)
@@ -136,16 +165,26 @@ def plain_specimen_accession_identifier(model: SpecimenModel) -> dict | None:
         return None
 
     return {
-        "use": fhir_enum(model.accession_identifier_use) if model.accession_identifier_use else None,
+        "use": fhir_enum(model.accession_identifier_use)
+        if model.accession_identifier_use
+        else None,
         "type_text": model.accession_identifier_type_text,
-        "type_codings": [plain_coding(c) for c in (model.accession_identifier_type_codings or [])],
+        "type_codings": [
+            plain_coding(c) for c in (model.accession_identifier_type_codings or [])
+        ],
         "system": model.accession_identifier_system,
         "value": model.accession_identifier_value,
-        "period_start": model.accession_identifier_period_start.isoformat() if model.accession_identifier_period_start else None,
-        "period_end": model.accession_identifier_period_end.isoformat() if model.accession_identifier_period_end else None,
+        "period_start": model.accession_identifier_period_start.isoformat()
+        if model.accession_identifier_period_start
+        else None,
+        "period_end": model.accession_identifier_period_end.isoformat()
+        if model.accession_identifier_period_end
+        else None,
         "assigner_reference": model.accession_identifier_assigner_reference,
         "assigner_id": model.accession_identifier_assigner_id,
-        "assigner_type": fhir_enum(model.accession_identifier_assigner_type) if model.accession_identifier_assigner_type else None,
+        "assigner_type": fhir_enum(model.accession_identifier_assigner_type)
+        if model.accession_identifier_assigner_type
+        else None,
         "assigner_display": model.accession_identifier_assigner_display,
         **_plain_assigner_fields(model, "accession_identifier_assigner", "assigner"),
     }
@@ -154,24 +193,30 @@ def plain_specimen_accession_identifier(model: SpecimenModel) -> dict | None:
 def plain_specimen_collection(model: SpecimenModel) -> dict | None:
     collector = _plain_reference(model, "collection_collector")
     method_codings = [plain_coding(c) for c in (model.collection_method_codings or [])]
-    body_site_codings = [plain_coding(c) for c in (model.collection_body_site_codings or [])]
-    fasting_codings = [plain_coding(c) for c in (model.collection_fasting_status_codings or [])]
+    body_site_codings = [
+        plain_coding(c) for c in (model.collection_body_site_codings or [])
+    ]
+    fasting_codings = [
+        plain_coding(c) for c in (model.collection_fasting_status_codings or [])
+    ]
 
-    has_data = any([
-        collector,
-        model.collection_collected_date_time,
-        model.collection_collected_period_start,
-        model.collection_collected_period_end,
-        model.collection_duration_value is not None,
-        model.collection_quantity_value is not None,
-        model.collection_method_text,
-        method_codings,
-        model.collection_body_site_text,
-        body_site_codings,
-        model.collection_fasting_status_text,
-        fasting_codings,
-        model.collection_fasting_status_duration_value is not None,
-    ])
+    has_data = any(
+        [
+            collector,
+            model.collection_collected_date_time,
+            model.collection_collected_period_start,
+            model.collection_collected_period_end,
+            model.collection_duration_value is not None,
+            model.collection_quantity_value is not None,
+            model.collection_method_text,
+            method_codings,
+            model.collection_body_site_text,
+            body_site_codings,
+            model.collection_fasting_status_text,
+            fasting_codings,
+            model.collection_fasting_status_duration_value is not None,
+        ]
+    )
     if not has_data:
         return None
 
@@ -198,23 +243,43 @@ def plain_specimen_collection(model: SpecimenModel) -> dict | None:
 
     return {
         "collector": collector,
-        "collected_date_time": model.collection_collected_date_time.isoformat() if model.collection_collected_date_time else None,
-        "collected_period_start": model.collection_collected_period_start.isoformat() if model.collection_collected_period_start else None,
-        "collected_period_end": model.collection_collected_period_end.isoformat() if model.collection_collected_period_end else None,
-        "duration_value": float(model.collection_duration_value) if model.collection_duration_value is not None else None,
-        "duration_comparator": fhir_enum(model.collection_duration_comparator) if model.collection_duration_comparator else None,
+        "collected_date_time": model.collection_collected_date_time.isoformat()
+        if model.collection_collected_date_time
+        else None,
+        "collected_period_start": model.collection_collected_period_start.isoformat()
+        if model.collection_collected_period_start
+        else None,
+        "collected_period_end": model.collection_collected_period_end.isoformat()
+        if model.collection_collected_period_end
+        else None,
+        "duration_value": float(model.collection_duration_value)
+        if model.collection_duration_value is not None
+        else None,
+        "duration_comparator": fhir_enum(model.collection_duration_comparator)
+        if model.collection_duration_comparator
+        else None,
         "duration_unit": model.collection_duration_unit,
         "duration_system": model.collection_duration_system,
         "duration_code": model.collection_duration_code,
-        "quantity_value": float(model.collection_quantity_value) if model.collection_quantity_value is not None else None,
+        "quantity_value": float(model.collection_quantity_value)
+        if model.collection_quantity_value is not None
+        else None,
         "quantity_unit": model.collection_quantity_unit,
         "quantity_system": model.collection_quantity_system,
         "quantity_code": model.collection_quantity_code,
         "method": method,
         "body_site": body_site,
         "fasting_status_codeable_concept": fasting_status,
-        "fasting_status_duration_value": float(model.collection_fasting_status_duration_value) if model.collection_fasting_status_duration_value is not None else None,
-        "fasting_status_duration_comparator": fhir_enum(model.collection_fasting_status_duration_comparator) if model.collection_fasting_status_duration_comparator else None,
+        "fasting_status_duration_value": float(
+            model.collection_fasting_status_duration_value
+        )
+        if model.collection_fasting_status_duration_value is not None
+        else None,
+        "fasting_status_duration_comparator": fhir_enum(
+            model.collection_fasting_status_duration_comparator
+        )
+        if model.collection_fasting_status_duration_comparator
+        else None,
         "fasting_status_duration_unit": model.collection_fasting_status_duration_unit,
         "fasting_status_duration_system": model.collection_fasting_status_duration_system,
         "fasting_status_duration_code": model.collection_fasting_status_duration_code,
@@ -240,7 +305,9 @@ def plain_specimen_processing(p) -> dict:
             if _plain_reference(a, "reference") is not None
         ],
         "time_date_time": p.time_date_time.isoformat() if p.time_date_time else None,
-        "time_period_start": p.time_period_start.isoformat() if p.time_period_start else None,
+        "time_period_start": p.time_period_start.isoformat()
+        if p.time_period_start
+        else None,
         "time_period_end": p.time_period_end.isoformat() if p.time_period_end else None,
         **_audit_fields(p),
     }
@@ -270,11 +337,15 @@ def plain_specimen_container(c) -> dict:
         "identifier": [plain_specimen_identifier(i) for i in (c.identifiers or [])],
         "description": c.description,
         "type": ctype,
-        "capacity_value": float(c.capacity_value) if c.capacity_value is not None else None,
+        "capacity_value": float(c.capacity_value)
+        if c.capacity_value is not None
+        else None,
         "capacity_unit": c.capacity_unit,
         "capacity_system": c.capacity_system,
         "capacity_code": c.capacity_code,
-        "specimen_quantity_value": float(c.specimen_quantity_value) if c.specimen_quantity_value is not None else None,
+        "specimen_quantity_value": float(c.specimen_quantity_value)
+        if c.specimen_quantity_value is not None
+        else None,
         "specimen_quantity_unit": c.specimen_quantity_unit,
         "specimen_quantity_system": c.specimen_quantity_system,
         "specimen_quantity_code": c.specimen_quantity_code,
@@ -304,14 +375,22 @@ def plain_specimen_note(n) -> dict:
         "author_display": ref["display"] if ref else None,
         "author_identifier_use": ref["identifier_use"] if ref else None,
         "author_identifier_type_system": ref["identifier_type_system"] if ref else None,
-        "author_identifier_type_version": ref["identifier_type_version"] if ref else None,
+        "author_identifier_type_version": ref["identifier_type_version"]
+        if ref
+        else None,
         "author_identifier_type_code": ref["identifier_type_code"] if ref else None,
-        "author_identifier_type_display": ref["identifier_type_display"] if ref else None,
-        "author_identifier_type_user_selected": ref["identifier_type_user_selected"] if ref else None,
+        "author_identifier_type_display": ref["identifier_type_display"]
+        if ref
+        else None,
+        "author_identifier_type_user_selected": ref["identifier_type_user_selected"]
+        if ref
+        else None,
         "author_identifier_type_text": ref["identifier_type_text"] if ref else None,
         "author_identifier_system": ref["identifier_system"] if ref else None,
         "author_identifier_value": ref["identifier_value"] if ref else None,
-        "author_identifier_period_start": ref["identifier_period_start"] if ref else None,
+        "author_identifier_period_start": ref["identifier_period_start"]
+        if ref
+        else None,
         "author_identifier_period_end": ref["identifier_period_end"] if ref else None,
         "time": n.time.isoformat() if n.time else None,
         "text": n.text,
@@ -331,12 +410,16 @@ def to_plain_specimen(specimen: SpecimenModel) -> dict:
 
     return {
         "id": specimen.specimen_id,
-        "identifier": [plain_specimen_identifier(i) for i in (specimen.identifiers or [])],
+        "identifier": [
+            plain_specimen_identifier(i) for i in (specimen.identifiers or [])
+        ],
         "accession_identifier": plain_specimen_accession_identifier(specimen),
         "status": fhir_enum(specimen.status) if specimen.status else None,
         "type": type_concept,
         "subject": _plain_reference(specimen, "subject"),
-        "received_time": specimen.received_time.isoformat() if specimen.received_time else None,
+        "received_time": specimen.received_time.isoformat()
+        if specimen.received_time
+        else None,
         "parent": [
             _plain_reference(p, "reference")
             for p in (specimen.parents or [])
@@ -348,9 +431,13 @@ def to_plain_specimen(specimen: SpecimenModel) -> dict:
             if _plain_reference(r, "reference") is not None
         ],
         "collection": plain_specimen_collection(specimen),
-        "processing": [plain_specimen_processing(p) for p in (specimen.processings or [])],
+        "processing": [
+            plain_specimen_processing(p) for p in (specimen.processings or [])
+        ],
         "container": [plain_specimen_container(c) for c in (specimen.containers or [])],
-        "condition": [plain_specimen_condition(cond) for cond in (specimen.conditions or [])],
+        "condition": [
+            plain_specimen_condition(cond) for cond in (specimen.conditions or [])
+        ],
         "note": [plain_specimen_note(n) for n in (specimen.notes or [])],
         "extension": specimen.extension or [],
         **_audit_fields(specimen),

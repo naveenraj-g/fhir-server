@@ -26,7 +26,9 @@ class AllergyIntoleranceIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named allergy_intolerance_pk (not allergy_intolerance_id) so it can't be
     # confused with AllergyIntoleranceModel.allergy_intolerance_id, the public id.
-    allergy_intolerance_pk = Column(BigInteger, ForeignKey("allergy_intolerance.id"), nullable=False, index=True)
+    allergy_intolerance_pk = Column(
+        BigInteger, ForeignKey("allergy_intolerance.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)
@@ -34,4 +36,6 @@ class AllergyIntoleranceIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    allergy_intolerance = relationship("AllergyIntoleranceModel", back_populates="identifiers")
+    allergy_intolerance = relationship(
+        "AllergyIntoleranceModel", back_populates="identifiers"
+    )

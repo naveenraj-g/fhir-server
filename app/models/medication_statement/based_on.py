@@ -11,7 +11,9 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
-from app.models.medication_statement.enums import MedicationStatementBasedOnReferenceType
+from app.models.medication_statement.enums import (
+    MedicationStatementBasedOnReferenceType,
+)
 from app.models.shared import TenantAuditMixin
 
 

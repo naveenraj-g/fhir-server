@@ -54,18 +54,15 @@ class FHIRCommunicationRequestSchema(BaseModel):
     category: list[FHIRCodeableConcept] | None = Field(
         None, description="Message category."
     )
-    priority: str | None = Field(
-        None, description="routine | urgent | asap | stat."
-    )
+    priority: str | None = Field(None, description="routine | urgent | asap | stat.")
     doNotPerform: bool | None = Field(
-        None, description="True if request is prohibiting action rather than directing action."
+        None,
+        description="True if request is prohibiting action rather than directing action.",
     )
     medium: list[FHIRCodeableConcept] | None = Field(
         None, description="A channel of communication."
     )
-    subject: FHIRReference | None = Field(
-        None, description="Focus of message."
-    )
+    subject: FHIRReference | None = Field(None, description="Focus of message.")
     about: list[FHIRReference] | None = Field(
         None, description="Resources that pertain to this communication request."
     )
@@ -90,9 +87,7 @@ class FHIRCommunicationRequestSchema(BaseModel):
     recipient: list[FHIRReference] | None = Field(
         None, description="Message recipient."
     )
-    sender: FHIRReference | None = Field(
-        None, description="Message sender."
-    )
+    sender: FHIRReference | None = Field(None, description="Message sender.")
     reasonCode: list[FHIRCodeableConcept] | None = Field(
         None, description="Why is communication needed?"
     )
@@ -102,9 +97,7 @@ class FHIRCommunicationRequestSchema(BaseModel):
     note: list[FHIRCommunicationRequestAnnotation] | None = Field(
         None, description="Comments made about communication request."
     )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="FHIR extensions."
-    )
+    extension: list[dict[str, Any]] | None = Field(None, description="FHIR extensions.")
 
 
 class FHIRCommunicationRequestBundleEntry(BaseModel):

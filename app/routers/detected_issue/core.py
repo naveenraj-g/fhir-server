@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.detected_issue import DetectedIssueCreateSchema, DetectedIssuePatchSchema
+from app.schemas.detected_issue import (
+    DetectedIssueCreateSchema,
+    DetectedIssuePatchSchema,
+)
 from app.services.detected_issue import DetectedIssueService
 
 from ._responses import (
@@ -64,7 +67,8 @@ logger = get_logger(__name__)
         "`Patient/<id>`, a Practitioner or PractitionerRole author or mitigation author, an `implicated` or "
         "`evidence.detail` reference to a resource this server holds, and `identifier.assigner` are rejected "
         "with 422 if they do not exist in the caller's org; a Device author, a reference to a resource not "
-        "held here (e.g. a MedicationRequest), an absolute URL or a logical reference is stored as sent. " + _CONTENT_NEG
+        "held here (e.g. a MedicationRequest), an absolute URL or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -198,7 +202,9 @@ async def search_detected_issues_post(
         "Search DetectedIssue resources (POST _search)",
         extra={"event": "route.search_detected_issues_post"},
     )
-    return await _search(request, await post_query(request), actor, detected_issue_service)
+    return await _search(
+        request, await post_query(request), actor, detected_issue_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -267,7 +273,10 @@ async def patch_detected_issue(
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a DetectedIssue resource",
-        extra={"event": "route.patch_detected_issue", "detected_issue_id": detected_issue_id},
+        extra={
+            "event": "route.patch_detected_issue",
+            "detected_issue_id": detected_issue_id,
+        },
     )
     log_payload(logger, "detected_issue.patch.payload", payload)
     updated = await detected_issue_service.patch_detected_issue(
@@ -311,4 +320,6 @@ async def delete_detected_issue(
             "detected_issue_id": detected_issue_id,
         },
     )
-    await detected_issue_service.delete_detected_issue(detected_issue_id, org_id=actor.org_id)
+    await detected_issue_service.delete_detected_issue(
+        detected_issue_id, org_id=actor.org_id
+    )

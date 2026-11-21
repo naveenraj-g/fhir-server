@@ -25,7 +25,13 @@ from app.repository._encounter_revinclude import location_encounter_revincludes
 from app.repository._procedure_revinclude import location_procedure_revincludes
 from app.repository._diagnostic_report_revinclude import subject_report_revincludes
 from app.repository._immunization_revinclude import column_immunization_revincludes
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     ArrayAggregate,
     array_string_match,
@@ -77,8 +83,12 @@ def _name_sort():
     """_sort key for `name`, whose expression is `name | alias`: the name or
     any alias, whichever comes first in the requested order."""
     return MultiValueSort(
-        ascending=earliest(Loc.name_norm, ArrayAggregate(Loc.alias_norm, "min"), descending=False),
-        descending=earliest(Loc.name_norm, ArrayAggregate(Loc.alias_norm, "max"), descending=True),
+        ascending=earliest(
+            Loc.name_norm, ArrayAggregate(Loc.alias_norm, "min"), descending=False
+        ),
+        descending=earliest(
+            Loc.name_norm, ArrayAggregate(Loc.alias_norm, "max"), descending=True
+        ),
     )
 
 
@@ -91,7 +101,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return Loc.location_id == int(token.code)
 
@@ -144,7 +156,10 @@ def _address_match(value, modifier, ctx):
     # its own, city, district, state, country, postalCode, text.
     return or_(
         array_string_match(Loc.address_line, Loc.address_line_norm, value, modifier),
-        *(string_match(raw, norm, value, modifier) for raw, norm in _ADDRESS_PARTS.values()),
+        *(
+            string_match(raw, norm, value, modifier)
+            for raw, norm in _ADDRESS_PARTS.values()
+        ),
     )
 
 
@@ -171,15 +186,27 @@ _T = LocationType
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
 def _type_match(value, modifier, ctx):
-    return _exists(_T, coded_token_match(_T.system, _T.code, value, modifier, (_T.text_norm, _T.display_norm)))
+    return _exists(
+        _T,
+        coded_token_match(
+            _T.system, _T.code, value, modifier, (_T.text_norm, _T.display_norm)
+        ),
+    )
 
 
 def _operational_status_match(value, modifier, ctx):
@@ -204,8 +231,14 @@ def _organization_match(value, modifier, ctx):
             parse_token(value),
         )
     return reference_match(
-        Loc.managing_organization_type, Loc.managing_organization_id, Loc.managing_organization_reference,
-        value, modifier, ctx, ("Organization",), OrganizationReferenceType,
+        Loc.managing_organization_type,
+        Loc.managing_organization_id,
+        Loc.managing_organization_reference,
+        value,
+        modifier,
+        ctx,
+        ("Organization",),
+        OrganizationReferenceType,
     )
 
 
@@ -221,28 +254,48 @@ def _organization_chain(target, inner, ctx):
     (same tenant) matching any Organization search parameter."""
     from app.models.organization import OrganizationModel as Org
 
-    referenced = select(Org.organization_id).where(Org.tenant_id == ctx.tenant_id, inner).correlate(None)
+    referenced = (
+        select(Org.organization_id)
+        .where(Org.tenant_id == ctx.tenant_id, inner)
+        .correlate(None)
+    )
     return Loc.managing_organization_id.in_(referenced)
 
 
 def _partof_match(value, modifier, ctx):
     if modifier == "identifier":
-        return token_condition(Loc.part_of_identifier_system, Loc.part_of_identifier_value, parse_token(value))
+        return token_condition(
+            Loc.part_of_identifier_system,
+            Loc.part_of_identifier_value,
+            parse_token(value),
+        )
     return reference_match(
-        Loc.part_of_type, Loc.part_of_id, Loc.part_of_reference, value, modifier, ctx,
-        ("Location",), LocationPartOfReferenceType,
+        Loc.part_of_type,
+        Loc.part_of_id,
+        Loc.part_of_reference,
+        value,
+        modifier,
+        ctx,
+        ("Location",),
+        LocationPartOfReferenceType,
     )
 
 
 def _partof_present(ctx):
-    return or_(Loc.part_of_reference.is_not(None), Loc.part_of_identifier_value.is_not(None))
+    return or_(
+        Loc.part_of_reference.is_not(None), Loc.part_of_identifier_value.is_not(None)
+    )
 
 
 def _partof_chain(target, inner, ctx):
     """`partof.<param>=v`: partOf is a Location (same tenant) matching
     `<param>=v`. Doesn't correlate to the outer row — it ranges over the
     referenced Location."""
-    referenced = select(Loc.location_id).where(Loc.tenant_id == ctx.tenant_id, inner).correlate(None)
+    referenced = (
+        select(Loc.location_id)
+        .where(Loc.tenant_id == ctx.tenant_id, inner)
+        .correlate(None)
+    )
     return Loc.part_of_id.in_(referenced)
 
 
@@ -264,18 +317,26 @@ def _partof_hierarchy(value, direction, ctx, max_depth: int = 100):
         )
         tree = tree.union_all(
             select(step.location_id, tree.c.depth + 1).where(
-                step.part_of_id == tree.c.lid, step.tenant_id == ctx.tenant_id, tree.c.depth < max_depth
+                step.part_of_id == tree.c.lid,
+                step.tenant_id == ctx.tenant_id,
+                tree.c.depth < max_depth,
             )
         )
         return Loc.location_id.in_(select(tree.c.lid))
     tree = (
-        select(seed.location_id.label("lid"), seed.part_of_id.label("pid"), literal(1).label("depth"))
+        select(
+            seed.location_id.label("lid"),
+            seed.part_of_id.label("pid"),
+            literal(1).label("depth"),
+        )
         .where(seed.location_id == x, seed.tenant_id == ctx.tenant_id)
         .cte(name=name, recursive=True)
     )
     tree = tree.union_all(
         select(step.location_id, step.part_of_id, tree.c.depth + 1).where(
-            step.location_id == tree.c.pid, step.tenant_id == ctx.tenant_id, tree.c.depth < max_depth
+            step.location_id == tree.c.pid,
+            step.tenant_id == ctx.tenant_id,
+            tree.c.depth < max_depth,
         )
     )
     return or_(Loc.part_of_id == x, Loc.part_of_id.in_(select(tree.c.lid)))
@@ -287,13 +348,24 @@ _E = LocationEndpoint
 def _endpoint_match(value, modifier, ctx):
     if modifier == "identifier":
         return _exists(
-            _E, token_condition(_E.reference_identifier_system, _E.reference_identifier_value, parse_token(value))
+            _E,
+            token_condition(
+                _E.reference_identifier_system,
+                _E.reference_identifier_value,
+                parse_token(value),
+            ),
         )
     return _exists(
         _E,
         reference_match(
-            _E.reference_type, _E.reference_id, _E.reference_reference, value, modifier, ctx,
-            ("Endpoint",), LocationEndpointReferenceType,
+            _E.reference_type,
+            _E.reference_id,
+            _E.reference_reference,
+            value,
+            modifier,
+            ctx,
+            ("Endpoint",),
+            LocationEndpointReferenceType,
         ),
     )
 
@@ -324,17 +396,29 @@ def parse_near(value: str) -> tuple[float, float, float, str]:
     """(latitude, longitude, distance_km, unit as given) — 400 when malformed."""
     parts = [unescape(p) for p in split_escaped(value, "|")]
     if len(parts) < 2 or len(parts) > 4:
-        raise SearchError(value, f"Invalid near '{value}': expected latitude|longitude[|distance[|units]].")
+        raise SearchError(
+            value,
+            f"Invalid near '{value}': expected latitude|longitude[|distance[|units]].",
+        )
     try:
         lat, lon = float(parts[0]), float(parts[1])
         distance = float(parts[2]) if len(parts) > 2 and parts[2] != "" else None
     except ValueError:
-        raise SearchError(value, f"Invalid near '{value}': latitude, longitude and distance must be numbers.") from None
+        raise SearchError(
+            value,
+            f"Invalid near '{value}': latitude, longitude and distance must be numbers.",
+        ) from None
     unit = (parts[3] if len(parts) > 3 else "") or "km"
     if unit not in _UNITS_IN_KM:
-        raise SearchError(value, f"Invalid near units '{unit}': expected one of {', '.join(_UNITS_IN_KM)}.")
+        raise SearchError(
+            value,
+            f"Invalid near units '{unit}': expected one of {', '.join(_UNITS_IN_KM)}.",
+        )
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-        raise SearchError(value, "Invalid near: latitude must be within [-90, 90], longitude within [-180, 180].")
+        raise SearchError(
+            value,
+            "Invalid near: latitude must be within [-90, 90], longitude within [-180, 180].",
+        )
     if distance is not None and distance < 0:
         raise SearchError(value, "Invalid near: distance must not be negative.")
     km = DEFAULT_NEAR_KM if distance is None else distance * _UNITS_IN_KM[unit]
@@ -349,9 +433,9 @@ def _great_circle_km(lat: float, lon: float):
     lat_rad, lon_rad = math.radians(lat), math.radians(lon)
     row_lat = func.radians(cast(Loc.position_latitude, Float))
     row_lon = func.radians(cast(Loc.position_longitude, Float))
-    cosine = func.sin(lat_rad) * func.sin(row_lat) + func.cos(lat_rad) * func.cos(row_lat) * func.cos(
-        row_lon - lon_rad
-    )
+    cosine = func.sin(lat_rad) * func.sin(row_lat) + func.cos(lat_rad) * func.cos(
+        row_lat
+    ) * func.cos(row_lon - lon_rad)
     return _EARTH_RADIUS_KM * func.acos(func.least(1.0, func.greatest(-1.0, cosine)))
 
 
@@ -363,7 +447,9 @@ def _near_match(value, modifier, ctx):
 def _distance_km(lat1, lon1, lat2, lon2) -> float:
     """The same distance in Python, for the result's location-distance extension."""
     p1, p2 = math.radians(lat1), math.radians(lat2)
-    cosine = math.sin(p1) * math.sin(p2) + math.cos(p1) * math.cos(p2) * math.cos(math.radians(lon2 - lon1))
+    cosine = math.sin(p1) * math.sin(p2) + math.cos(p1) * math.cos(p2) * math.cos(
+        math.radians(lon2 - lon1)
+    )
     return _EARTH_RADIUS_KM * math.acos(max(-1.0, min(1.0, cosine)))
 
 
@@ -373,7 +459,10 @@ def near_distance_extensions(request, loc) -> list[dict] | None:
     (comma OR, or repeated), the distance to the closest is reported, in the
     first point's units."""
     points = [
-        parse_near(v) for c in request.clauses if c.name == "near" and c.chain is None for v in c.values
+        parse_near(v)
+        for c in request.clauses
+        if c.name == "near" and c.chain is None
+        for v in c.values
     ]
     if not points or loc.position_latitude is None:
         return None
@@ -385,7 +474,12 @@ def near_distance_extensions(request, loc) -> list[dict] | None:
     return [
         {
             "url": LOCATION_DISTANCE_URL,
-            "valueDistance": {"value": value, "unit": unit, "system": "http://unitsofmeasure.org", "code": code},
+            "valueDistance": {
+                "value": value,
+                "unit": unit,
+                "system": "http://unitsofmeasure.org",
+                "code": code,
+            },
         }
     ]
 
@@ -401,10 +495,17 @@ async def _include_organization(session, ctx, locations):
     """_include=Location:organization — the managing organizations."""
     from app.models.organization import OrganizationModel as Org
 
-    ids = {loc.managing_organization_id for loc in locations if loc.managing_organization_id is not None}
+    ids = {
+        loc.managing_organization_id
+        for loc in locations
+        if loc.managing_organization_id is not None
+    }
     if not ids:
         return []
-    return await _fetch(session, select(Org).where(Org.tenant_id == ctx.tenant_id, Org.organization_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Org).where(Org.tenant_id == ctx.tenant_id, Org.organization_id.in_(ids)),
+    )
 
 
 async def _include_partof(session, ctx, locations):
@@ -412,13 +513,19 @@ async def _include_partof(session, ctx, locations):
     ids = {loc.part_of_id for loc in locations if loc.part_of_id is not None}
     if not ids:
         return []
-    return await _fetch(session, select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.location_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.location_id.in_(ids)),
+    )
 
 
 async def _revinclude_partof(session, ctx, locations):
     """_revinclude=Location:partof — the locations inside these ones."""
     ids = {loc.location_id for loc in locations}
-    return await _fetch(session, select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.part_of_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.part_of_id.in_(ids)),
+    )
 
 
 async def _include_endpoint(session, ctx, locations):
@@ -430,7 +537,10 @@ async def _include_endpoint(session, ctx, locations):
         LocationEndpoint.location_pk.in_({loc.id for loc in locations}),
         LocationEndpoint.reference_id.is_not(None),
     )
-    return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)),
+    )
 
 
 def _revinclude_practitioner_roles(param: str, key):
@@ -442,8 +552,12 @@ def _revinclude_practitioner_roles(param: str, key):
         from app.models.practitioner_role import PractitionerRoleReference as Ref
 
         ids = {key(r) for r in rows}
-        pks = select(Ref.practitioner_role_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
-        return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks)))
+        pks = select(Ref.practitioner_role_pk).where(
+            Ref.param == param, Ref.reference_id.in_(ids)
+        )
+        return await _fetch(
+            session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks))
+        )
 
     return fetch
 
@@ -457,7 +571,9 @@ def _revinclude_schedules(resource_type: str, key):
         from app.models.schedule import ScheduleModel as S
 
         ids = {key(r) for r in rows}
-        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        pks = select(A.schedule_pk).where(
+            A.reference_type == resource_type, A.reference_id.in_(ids)
+        )
         stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
         return list((await session.execute(stmt)).scalars().all())
 
@@ -473,8 +589,12 @@ def _revinclude_healthcare_services(param: str):
         from app.models.healthcare_service import HealthcareServiceReference as Ref
 
         ids = {loc.location_id for loc in locations}
-        pks = select(Ref.healthcare_service_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
-        return await _fetch(session, select(HS).where(HS.tenant_id == ctx.tenant_id, HS.id.in_(pks)))
+        pks = select(Ref.healthcare_service_pk).where(
+            Ref.param == param, Ref.reference_id.in_(ids)
+        )
+        return await _fetch(
+            session, select(HS).where(HS.tenant_id == ctx.tenant_id, HS.id.in_(pks))
+        )
 
     return fetch
 
@@ -485,7 +605,11 @@ def _register_kind() -> None:
     from app.fhir.mappers.location import to_fhir_location
     from app.fhir.search.execute import ResourceKind, register_kind
 
-    register_kind(ResourceKind("Location", lambda loc: loc.location_id, to_fhir_location, "locations"))
+    register_kind(
+        ResourceKind(
+            "Location", lambda loc: loc.location_id, to_fhir_location, "locations"
+        )
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────────────────
@@ -507,109 +631,214 @@ def location_search() -> SearchRegistry:
     organization_search()  # make sure Organization's kind is registered for includes
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public location id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: Loc.location_id, example="230001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public location id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: Loc.location_id,
+            example="230001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "address", "string",
+            "address",
+            "string",
             "A (part of the) address of the location — any of line, city, district, state, country, "
             "postalCode, text",
-            "Location.address", _address_match, _address_present, _STRING, example="Main St",
+            "Location.address",
+            _address_match,
+            _address_present,
+            _STRING,
+            example="Main St",
         ),
         SearchParam(
-            "address-city", "string", "A city specified in an address", "Location.address.city",
-            _city, _city_present, _STRING, sort=lambda: Loc.address_city_norm, example="Springfield",
+            "address-city",
+            "string",
+            "A city specified in an address",
+            "Location.address.city",
+            _city,
+            _city_present,
+            _STRING,
+            sort=lambda: Loc.address_city_norm,
+            example="Springfield",
         ),
         SearchParam(
-            "address-country", "string", "A country specified in an address", "Location.address.country",
-            _country, _country_present, _STRING, sort=lambda: Loc.address_country_norm, example="US",
+            "address-country",
+            "string",
+            "A country specified in an address",
+            "Location.address.country",
+            _country,
+            _country_present,
+            _STRING,
+            sort=lambda: Loc.address_country_norm,
+            example="US",
         ),
         SearchParam(
-            "address-postalcode", "string", "A postal code specified in an address",
-            "Location.address.postalCode", _postal, _postal_present, _STRING,
-            sort=lambda: Loc.address_postal_code_norm, example="62701",
+            "address-postalcode",
+            "string",
+            "A postal code specified in an address",
+            "Location.address.postalCode",
+            _postal,
+            _postal_present,
+            _STRING,
+            sort=lambda: Loc.address_postal_code_norm,
+            example="62701",
         ),
         SearchParam(
-            "address-state", "string", "A state specified in an address", "Location.address.state",
-            _state, _state_present, _STRING, sort=lambda: Loc.address_state_norm, example="IL",
+            "address-state",
+            "string",
+            "A state specified in an address",
+            "Location.address.state",
+            _state,
+            _state_present,
+            _STRING,
+            sort=lambda: Loc.address_state_norm,
+            example="IL",
         ),
         SearchParam(
-            "address-use", "token",
+            "address-use",
+            "token",
             f"A use code specified in an address (home | work | temp | old | billing; system {_ADDRESS_USE_SYSTEM})",
-            "Location.address.use", _fixed_system_token(Loc.address_use, _ADDRESS_USE_SYSTEM, AddressUse),
-            lambda ctx: Loc.address_use.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: Loc.address_use, example="work",
+            "Location.address.use",
+            _fixed_system_token(Loc.address_use, _ADDRESS_USE_SYSTEM, AddressUse),
+            lambda ctx: Loc.address_use.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: Loc.address_use,
+            example="work",
         ),
         SearchParam(
-            "endpoint", "reference", "Technical endpoints providing access to services operated for the location",
-            "Location.endpoint", _endpoint_match, lambda ctx: _exists(_E), frozenset({"identifier", "missing"}),
-            targets=("Endpoint",), example="Endpoint/1",
+            "endpoint",
+            "reference",
+            "Technical endpoints providing access to services operated for the location",
+            "Location.endpoint",
+            _endpoint_match,
+            lambda ctx: _exists(_E),
+            frozenset({"identifier", "missing"}),
+            targets=("Endpoint",),
+            example="Endpoint/1",
         ),
         SearchParam(
-            "identifier", "token", "An identifier for the location", "Location.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
+            "identifier",
+            "token",
+            "An identifier for the location",
+            "Location.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
             sort=lambda: _child_sort(_I.value, _I),
             example="https://fhir-server.dev/fhir/identifier-system/location-ids|B1-S.F2",
-            modifier_docs={"text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."},
+            modifier_docs={
+                "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
+            },
         ),
         SearchParam(
-            "name", "string", "A portion of the location's name or alias", "Location.name | Location.alias",
-            _name_match, lambda ctx: or_(Loc.name.is_not(None), Loc.alias.is_not(None)), _STRING,
-            sort=_name_sort, example="South Wing",
+            "name",
+            "string",
+            "A portion of the location's name or alias",
+            "Location.name | Location.alias",
+            _name_match,
+            lambda ctx: or_(Loc.name.is_not(None), Loc.alias.is_not(None)),
+            _STRING,
+            sort=_name_sort,
+            example="South Wing",
         ),
         SearchParam(
-            "near", "special",
+            "near",
+            "special",
             "Search for locations where the location.position is near to, or within a specified distance of, "
             "the provided coordinates (WGS84): `latitude|longitude|distance|units`, e.g. "
             "`42.256500|-83.694810|11.20|km`. Units: km (default), m, [mi_i] / mi, [ft_i] / ft; without a "
             f"distance, {DEFAULT_NEAR_KM:g} km. Each match reports its distance in the entry's `search` element "
             f"({LOCATION_DISTANCE_URL}). Comma-separated points are OR'd.",
-            "Location.position", _near_match, lambda ctx: Loc.position_latitude.is_not(None), frozenset(),
+            "Location.position",
+            _near_match,
+            lambda ctx: Loc.position_latitude.is_not(None),
+            frozenset(),
             example="42.256500|-83.694810|11.20|km",
         ),
         SearchParam(
-            "operational-status", "token",
+            "operational-status",
+            "token",
             "Searches for locations (typically bed/room) that have an operational status (e.g. contaminated, "
             "housekeeping)",
-            "Location.operationalStatus", _operational_status_match,
-            lambda ctx: or_(Loc.operational_status_code.is_not(None), Loc.operational_status_system.is_not(None)),
-            _CODED, sort=lambda: Loc.operational_status_code,
+            "Location.operationalStatus",
+            _operational_status_match,
+            lambda ctx: or_(
+                Loc.operational_status_code.is_not(None),
+                Loc.operational_status_system.is_not(None),
+            ),
+            _CODED,
+            sort=lambda: Loc.operational_status_code,
             example="http://terminology.hl7.org/CodeSystem/v2-0116|U",
-            modifier_docs={"text": "`:text` — string search (starts-with) on the operationalStatus Coding's display."},
+            modifier_docs={
+                "text": "`:text` — string search (starts-with) on the operationalStatus Coding's display."
+            },
         ),
         SearchParam(
-            "organization", "reference", "Searches for locations that are managed by the provided organization",
-            "Location.managingOrganization", _organization_match, _organization_present,
-            frozenset({"identifier", "missing"}), targets=("Organization",), chain=_organization_chain,
-            chain_targets={"Organization": organization_search}, sort=lambda: Loc.managing_organization_id,
+            "organization",
+            "reference",
+            "Searches for locations that are managed by the provided organization",
+            "Location.managingOrganization",
+            _organization_match,
+            _organization_present,
+            frozenset({"identifier", "missing"}),
+            targets=("Organization",),
+            chain=_organization_chain,
+            chain_targets={"Organization": organization_search},
+            sort=lambda: Loc.managing_organization_id,
             example="Organization/190001",
         ),
         SearchParam(
-            "partof", "reference", "A location of which this location is a part", "Location.partOf",
-            _partof_match, _partof_present, frozenset({"identifier", "above", "below", "missing"}),
-            targets=("Location",), chain=_partof_chain, chain_targets={"Location": location_search},
-            hierarchy=_partof_hierarchy, sort=lambda: Loc.part_of_id, example="Location/230001",
+            "partof",
+            "reference",
+            "A location of which this location is a part",
+            "Location.partOf",
+            _partof_match,
+            _partof_present,
+            frozenset({"identifier", "above", "below", "missing"}),
+            targets=("Location",),
+            chain=_partof_chain,
+            chain_targets={"Location": location_search},
+            hierarchy=_partof_hierarchy,
+            sort=lambda: Loc.part_of_id,
+            example="Location/230001",
             modifier_docs={
                 "below": "`:below` — locations anywhere inside the given one (rooms in a wing in a building, ...).",
                 "above": "`:above` — locations whose partOf is the given one or any location containing it.",
             },
         ),
         SearchParam(
-            "status", "token", f"Searches for locations with a specific kind of status (active | suspended | "
+            "status",
+            "token",
+            f"Searches for locations with a specific kind of status (active | suspended | "
             f"inactive; system {_STATUS_SYSTEM})",
-            "Location.status", _fixed_system_token(Loc.status, _STATUS_SYSTEM, LocationStatus),
-            lambda ctx: Loc.status.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: Loc.status, example="active",
+            "Location.status",
+            _fixed_system_token(Loc.status, _STATUS_SYSTEM, LocationStatus),
+            lambda ctx: Loc.status.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: Loc.status,
+            example="active",
         ),
         SearchParam(
-            "type", "token", "A code for the type of location", "Location.type",
-            _type_match, lambda ctx: _exists(_T), _CODED, sort=lambda: _child_sort(_T.code, _T),
+            "type",
+            "token",
+            "A code for the type of location",
+            "Location.type",
+            _type_match,
+            lambda ctx: _exists(_T),
+            _CODED,
+            sort=lambda: _child_sort(_T.code, _T),
             example="http://terminology.hl7.org/CodeSystem/v3-RoleCode|HOSP",
         ),
     ]
@@ -617,24 +846,49 @@ def location_search() -> SearchRegistry:
         resource_type="Location",
         params={p.name: p for p in params},
         summary_elements=frozenset(
-            {"identifier", "status", "operationalStatus", "name", "description", "mode", "type",
-             "physicalType", "managingOrganization"}
+            {
+                "identifier",
+                "status",
+                "operationalStatus",
+                "name",
+                "description",
+                "mode",
+                "type",
+                "physicalType",
+                "managingOrganization",
+            }
         ),
         includes=(
-            IncludeTarget("Location", "organization", "Organization", _include_organization),
+            IncludeTarget(
+                "Location", "organization", "Organization", _include_organization
+            ),
             IncludeTarget("Location", "partof", "Location", _include_partof),
             IncludeTarget("Location", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
-            *participant_revincludes('Location', lambda l: l.location_id, ('actor', 'location')),
-            *actor_response_revincludes('Location', lambda l: l.location_id, ('actor', 'location')),
+            *participant_revincludes(
+                "Location", lambda l: l.location_id, ("actor", "location")
+            ),
+            *actor_response_revincludes(
+                "Location", lambda l: l.location_id, ("actor", "location")
+            ),
             *location_encounter_revincludes(lambda l: l.location_id),
             *location_procedure_revincludes(lambda l: l.location_id),
-            *subject_report_revincludes('Location', lambda l: l.location_id, ('subject',)),
-            *column_immunization_revincludes('location', 'location', 'Location', lambda l: l.location_id),
-            IncludeTarget("Location", "partof", "Location", _revinclude_partof, reverse=True),
+            *subject_report_revincludes(
+                "Location", lambda l: l.location_id, ("subject",)
+            ),
+            *column_immunization_revincludes(
+                "location", "location", "Location", lambda l: l.location_id
+            ),
             IncludeTarget(
-                "HealthcareService", "location", "Location", _revinclude_healthcare_services("location"), reverse=True
+                "Location", "partof", "Location", _revinclude_partof, reverse=True
+            ),
+            IncludeTarget(
+                "HealthcareService",
+                "location",
+                "Location",
+                _revinclude_healthcare_services("location"),
+                reverse=True,
             ),
             IncludeTarget(
                 "HealthcareService",
@@ -651,8 +905,11 @@ def location_search() -> SearchRegistry:
                 reverse=True,
             ),
             IncludeTarget(
-                "Schedule", "actor", "Location",
-                _revinclude_schedules("Location", lambda loc: loc.location_id), reverse=True,
+                "Schedule",
+                "actor",
+                "Location",
+                _revinclude_schedules("Location", lambda loc: loc.location_id),
+                reverse=True,
             ),
         ),
         default_sort=lambda: [Loc.location_id.desc()],

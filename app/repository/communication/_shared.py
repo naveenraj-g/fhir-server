@@ -46,6 +46,7 @@ def _child_reference_identifier_kwargs(ref_item) -> dict:
         for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
     }
 
+
 _SORTABLE_FIELDS = {
     "communication_id": CommunicationModel.communication_id,
     "status": CommunicationModel.status,

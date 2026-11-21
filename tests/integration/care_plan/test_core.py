@@ -161,9 +161,7 @@ async def test_patch_care_plan_scalar_fields(client):
 async def test_patch_care_plan_replace_sub_resources(client):
     cp = await create_care_plan(
         client,
-        category=[
-            {"text": "Initial Category"}
-        ],
+        category=[{"text": "Initial Category"}],
     )
     assert len(cp["categories"]) == 1
 
@@ -365,7 +363,10 @@ async def test_create_care_plan_with_reference_identifier_fallback(client):
     assert data["author"]["identifier"]["value"] == "PRAC-7777"
     assert data["basedOn"][0]["identifier"]["value"] == "PROTO-1"
     assert data["activity"][0]["detail"]["location"]["identifier"]["value"] == "LOC-123"
-    assert data["activity"][0]["detail"]["productReference"]["identifier"]["value"] == "DRUG-456"
+    assert (
+        data["activity"][0]["detail"]["productReference"]["identifier"]["value"]
+        == "DRUG-456"
+    )
 
     # Test plain JSON representation
     resp2 = await client.get(f"{BASE}/{data['id']}")
@@ -375,5 +376,9 @@ async def test_create_care_plan_with_reference_identifier_fallback(client):
     assert plain_data["encounter_identifier_value"] == "ENC-8888"
     assert plain_data["author_identifier_value"] == "PRAC-7777"
     assert plain_data["based_on"][0]["identifier_value"] == "PROTO-1"
-    assert plain_data["activities"][0]["detail"]["location_identifier_value"] == "LOC-123"
-    assert plain_data["activities"][0]["detail"]["product_identifier_value"] == "DRUG-456"
+    assert (
+        plain_data["activities"][0]["detail"]["location_identifier_value"] == "LOC-123"
+    )
+    assert (
+        plain_data["activities"][0]["detail"]["product_identifier_value"] == "DRUG-456"
+    )

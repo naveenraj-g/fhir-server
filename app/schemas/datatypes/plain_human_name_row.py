@@ -10,15 +10,18 @@ class PlainHumanNameRow(AuditFields):
     child table (Practitioner.name, ...)."""
 
     id: int = Field(..., description="Internal row ID.")
-    use: Optional[str] = Field(
-        None, description="Identifies the purpose of this name."
-    )
+    use: Optional[str] = Field(None, description="Identifies the purpose of this name.")
     text: Optional[str] = Field(
-        None, description="Text representation of the full name, as it would normally be displayed."
+        None,
+        description="Text representation of the full name, as it would normally be displayed.",
     )
-    family: Optional[str] = Field(None, description="Family name (often called 'surname').")
+    family: Optional[str] = Field(
+        None, description="Family name (often called 'surname')."
+    )
     given: Optional[List[str]] = Field(None, description="Given name(s).")
-    prefix: Optional[List[str]] = Field(None, description="Name prefix(es) (e.g. titles).")
+    prefix: Optional[List[str]] = Field(
+        None, description="Name prefix(es) (e.g. titles)."
+    )
     suffix: Optional[List[str]] = Field(None, description="Name suffix(es).")
     period_start: Optional[str] = Field(
         None, description="Start of the period during which this name was/is in use."

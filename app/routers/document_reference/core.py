@@ -163,7 +163,8 @@ async def patch_document_reference(
         "Returns a paginated list of DocumentReference resources. Filter by status, "
         "doc_status, type, category, subject, author, custodian, authenticator, "
         "relates_to, identifier, description. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
@@ -191,7 +192,8 @@ async def list_document_references(
         None, description="Authenticator reference string, e.g. Practitioner/30001."
     ),
     relates_to: str | None = Query(
-        None, description="Relates-to target reference string, e.g. DocumentReference/320002."
+        None,
+        description="Relates-to target reference string, e.g. DocumentReference/320002.",
     ),
     identifier: str | None = Query(
         None, description="Exact match on identifier value."

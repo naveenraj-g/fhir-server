@@ -18,9 +18,7 @@ class MeasureReportIdentifierInput(BaseModel):
         None, description="The namespace for the identifier value."
     )
     value: str | None = Field(None, description="The value that is unique.")
-    type_text: str | None = Field(
-        None, description="Description of identifier type."
-    )
+    type_text: str | None = Field(None, description="Description of identifier type.")
     type_coding: list[CodingInput] | None = Field(
         None, description="Coding for identifier type."
     )
@@ -33,9 +31,7 @@ class MeasureReportIdentifierInput(BaseModel):
     assigner: str | None = Field(
         None, description="Organization that issued id (Organization/123)."
     )
-    assigner_display: str | None = Field(
-        None, description="Organization display text."
-    )
+    assigner_display: str | None = Field(None, description="Organization display text.")
 
     # Assigner fallback identifier
     assigner_identifier_use: IdentifierUse | None = Field(

@@ -7,8 +7,6 @@ from app.services.endpoint import EndpointService
 
 @inject
 def get_endpoint_service(
-    service: EndpointService = Depends(
-        Provide[Container.endpoint.endpoint_service]
-    ),
+    service: EndpointService = Depends(Provide[Container.endpoint.endpoint_service]),
 ) -> EndpointService:
     return service

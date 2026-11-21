@@ -21,9 +21,7 @@ class FlagIdentifier(TenantAuditMixin, Base):
     __tablename__ = "flag_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    flag_pk = Column(
-        BigInteger, ForeignKey("flag.id"), nullable=False, index=True
-    )
+    flag_pk = Column(BigInteger, ForeignKey("flag.id"), nullable=False, index=True)
 
     use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True

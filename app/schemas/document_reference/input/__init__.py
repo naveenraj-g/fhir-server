@@ -7,11 +7,15 @@ from app.schemas.document_reference.input.core import (
     DocumentReferenceCreateSchema,
     DocumentReferencePatchSchema,
 )
-from app.schemas.document_reference.input.identifier import DocumentReferenceIdentifierInput
+from app.schemas.document_reference.input.identifier import (
+    DocumentReferenceIdentifierInput,
+)
 from app.schemas.document_reference.input.reference import (
     DocumentReferenceReferenceInput,
 )
-from app.schemas.document_reference.input.relates_to import DocumentReferenceRelatesToInput
+from app.schemas.document_reference.input.relates_to import (
+    DocumentReferenceRelatesToInput,
+)
 
 __all__ = [
     "DocumentReferenceCodeableConceptInput",

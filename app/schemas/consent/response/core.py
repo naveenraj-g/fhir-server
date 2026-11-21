@@ -96,9 +96,7 @@ class PlainConsentResponse(BaseModel):
     source_attachment: dict[str, Any] | None = Field(
         None, description="Source attachment as FHIR Attachment dict."
     )
-    source_reference: str | None = Field(
-        None, description="Source reference string."
-    )
+    source_reference: str | None = Field(None, description="Source reference string.")
     source_reference_display: str | None = Field(
         None, description="Display name for source reference."
     )
@@ -128,9 +126,7 @@ class PlainConsentResponse(BaseModel):
     identifier: list[PlainConsentIdentifier] | None = Field(
         None, description="External identifiers."
     )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="Extensions."
-    )
+    extension: list[dict[str, Any]] | None = Field(None, description="Extensions.")
 
 
 class PaginatedConsentResponse(BaseModel):

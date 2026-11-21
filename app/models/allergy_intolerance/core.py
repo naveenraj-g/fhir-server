@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import AllergyIntoleranceCriticality, AllergyIntoleranceType
 
-allergy_intolerance_id_seq = Sequence("allergy_intolerance_pub_seq", start=260000, increment=1, metadata=Base.metadata)
+allergy_intolerance_id_seq = Sequence(
+    "allergy_intolerance_pub_seq", start=260000, increment=1, metadata=Base.metadata
+)
 
 # The four R4 targets of both AllergyIntolerance.recorder and .asserter.
 ACTOR_TYPES = ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
@@ -64,9 +66,17 @@ class AllergyIntoleranceModel(TenantAuditMixin, Base):
 
     __tablename__ = "allergy_intolerance"
     __table_args__ = (
-        Index("ix_allergy_intolerance_recorded_date", "recorded_date_start", "recorded_date_end"),
-        Index("ix_allergy_intolerance_recorder_type_id", "recorder_type", "recorder_id"),
-        Index("ix_allergy_intolerance_asserter_type_id", "asserter_type", "asserter_id"),
+        Index(
+            "ix_allergy_intolerance_recorded_date",
+            "recorded_date_start",
+            "recorded_date_end",
+        ),
+        Index(
+            "ix_allergy_intolerance_recorder_type_id", "recorder_type", "recorder_id"
+        ),
+        Index(
+            "ix_allergy_intolerance_asserter_type_id", "asserter_type", "asserter_id"
+        ),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
@@ -130,9 +140,17 @@ class AllergyIntoleranceModel(TenantAuditMixin, Base):
     asserter_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "AllergyIntoleranceIdentifier", back_populates="allergy_intolerance", cascade="all, delete-orphan"
+        "AllergyIntoleranceIdentifier",
+        back_populates="allergy_intolerance",
+        cascade="all, delete-orphan",
     )
-    tokens = relationship("AllergyIntoleranceToken", back_populates="allergy_intolerance", cascade="all, delete-orphan")
+    tokens = relationship(
+        "AllergyIntoleranceToken",
+        back_populates="allergy_intolerance",
+        cascade="all, delete-orphan",
+    )
     reactions = relationship(
-        "AllergyIntoleranceReaction", back_populates="allergy_intolerance", cascade="all, delete-orphan"
+        "AllergyIntoleranceReaction",
+        back_populates="allergy_intolerance",
+        cascade="all, delete-orphan",
     )

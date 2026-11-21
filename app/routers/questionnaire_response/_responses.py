@@ -20,10 +20,14 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(PlainQuestionnaireResponseResponse.model_json_schema())
+                "schema": inline_schema(
+                    PlainQuestionnaireResponseResponse.model_json_schema()
+                )
             },
             "application/fhir+json": {
-                "schema": inline_schema(FHIRQuestionnaireResponseSchema.model_json_schema())
+                "schema": inline_schema(
+                    FHIRQuestionnaireResponseSchema.model_json_schema()
+                )
             },
         }
     }
@@ -34,10 +38,14 @@ _LIST_200 = {
         "description": "Paginated list of questionnaire responses",
         "content": {
             "application/json": {
-                "schema": inline_schema(PaginatedQuestionnaireResponseResponse.model_json_schema())
+                "schema": inline_schema(
+                    PaginatedQuestionnaireResponseResponse.model_json_schema()
+                )
             },
             "application/fhir+json": {
-                "schema": inline_schema(FHIRQuestionnaireResponseBundle.model_json_schema())
+                "schema": inline_schema(
+                    FHIRQuestionnaireResponseBundle.model_json_schema()
+                )
             },
         },
     }

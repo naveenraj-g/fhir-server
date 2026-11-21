@@ -29,7 +29,10 @@ _EXAMPLE = {
         "display": "Unoccupied",
     },
     "name": "South Wing, second floor",
-    "alias": ["BU MC, SW, F2", "Burgers University Medical Center, South Wing, second floor"],
+    "alias": [
+        "BU MC, SW, F2",
+        "Burgers University Medical Center, South Wing, second floor",
+    ],
     "description": "Second floor of the Old South Wing, formerly in use by Psychiatry",
     "mode": "instance",
     "type": [
@@ -62,7 +65,10 @@ _EXAMPLE = {
     },
     "position": {"longitude": -83.6945691, "latitude": 42.25475478, "altitude": 0},
     "managingOrganization": {"reference": "Organization/190001"},
-    "partOf": {"reference": "Location/230001", "display": "Burgers University Medical Center"},
+    "partOf": {
+        "reference": "Location/230001",
+        "display": "Burgers University Medical Center",
+    },
     "hoursOfOperation": [
         {
             "daysOfWeek": ["mon", "tue", "wed", "thu", "fri"],
@@ -100,19 +106,23 @@ class _LocationFields(FhirInputModel):
         None, description="Unique code or number identifying the location to its users."
     )
     status: Literal["active", "suspended", "inactive"] | None = Field(
-        None, description="active | suspended | inactive (required binding LocationStatus)."
+        None,
+        description="active | suspended | inactive (required binding LocationStatus).",
     )
     operationalStatus: FhirCodingInput | None = Field(
         None,
         description="The operational status of the location (typically only for a bed/room), e.g. contaminated, housekeeping.",
     )
-    name: str | None = Field(None, description="Name of the location as used by humans.")
+    name: str | None = Field(
+        None, description="Name of the location as used by humans."
+    )
     alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the location is known as, or was known as, in the past.",
     )
     description: str | None = Field(
-        None, description="Additional details about the location that could be displayed as further information."
+        None,
+        description="Additional details about the location that could be displayed as further information.",
     )
     mode: Literal["instance", "kind"] | None = Field(
         None,
@@ -124,9 +134,12 @@ class _LocationFields(FhirInputModel):
     telecom: list[FhirContactPointInput] | None = Field(
         None, description="Contact details of the location."
     )
-    address: FhirAddressInput | None = Field(None, description="Physical location (0..1).")
+    address: FhirAddressInput | None = Field(
+        None, description="Physical location (0..1)."
+    )
     physicalType: FhirCodeableConceptInput | None = Field(
-        None, description="Physical form of the location, e.g. building, room, vehicle, road."
+        None,
+        description="Physical form of the location, e.g. building, room, vehicle, road.",
     )
     position: LocationPositionInput | None = Field(
         None,

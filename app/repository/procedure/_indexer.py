@@ -28,7 +28,12 @@ from app.models.procedure import (
     ProcedureStatus,
     ProcedureToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import ref_type_and_id, typed
 
@@ -59,29 +64,49 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, parsed[0], reference))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("subject", (document.get("subject") or {}).get("reference"), "Patient")
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
     add("location", (document.get("location") or {}).get("reference"), "Location")
-    add_typed("recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES)
-    add_typed("asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES)
+    add_typed(
+        "recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES
+    )
+    add_typed(
+        "asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES
+    )
     for performer in document.get("performer") or []:
         add_typed(
             "performer.actor",
             (performer.get("actor") or {}).get("reference"),
             tuple(t for t in PERFORMER_TYPES if t != "Device"),
         )
-        add("performer.onBehalfOf", (performer.get("onBehalfOf") or {}).get("reference"), "Organization")
+        add(
+            "performer.onBehalfOf",
+            (performer.get("onBehalfOf") or {}).get("reference"),
+            "Organization",
+        )
     for part_of in document.get("partOf") or []:
         add("partOf", part_of.get("reference"), "Procedure")
     for reason in document.get("reasonReference") or []:
-        add_typed("reasonReference", reason.get("reference"), ("Condition", "Procedure", "DiagnosticReport"))
+        add_typed(
+            "reasonReference",
+            reason.get("reference"),
+            ("Condition", "Procedure", "DiagnosticReport"),
+        )
     for report in document.get("report") or []:
         add("report", report.get("reference"), "DiagnosticReport")
     for detail in document.get("complicationDetail") or []:
         add("complicationDetail", detail.get("reference"), "Condition")
     for note in document.get("note") or []:
-        add_typed("note.authorReference", (note.get("authorReference") or {}).get("reference"), _NOTE_AUTHOR_TYPES)
+        add_typed(
+            "note.authorReference",
+            (note.get("authorReference") or {}).get("reference"),
+            _NOTE_AUTHOR_TYPES,
+        )
     return refs
 
 
@@ -199,9 +224,17 @@ def _performer_rows(document: dict) -> list:
 def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by ProcedureModel relationship name."""
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(ProcedureIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ProcedureIdentifier, i)
+        ],
         "tokens": _token_rows(document),
         "references": _reference_rows(document),
         "performers": _performer_rows(document),
-        "instantiates_uris": [ProcedureInstantiatesUri(uri=u) for u in document.get("instantiatesUri") or [] if u],
+        "instantiates_uris": [
+            ProcedureInstantiatesUri(uri=u)
+            for u in document.get("instantiatesUri") or []
+            if u
+        ],
     }

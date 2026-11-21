@@ -14,6 +14,7 @@ Run:
   # or
   uv run python -m app.terminology.import_.cli --source icd10cm --file terminology_data/icd10cm_codes_2026.txt
 """
+
 import time
 
 from app.terminology.import_.base import BaseLoader

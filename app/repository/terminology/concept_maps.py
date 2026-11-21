@@ -11,7 +11,11 @@ from app.models.terminology.terminology import (
 
 class _ConceptMapsMixin:
     async def list_concept_maps(
-        self, source_system: str | None, target_system: str | None, limit: int, offset: int
+        self,
+        source_system: str | None,
+        target_system: str | None,
+        limit: int,
+        offset: int,
     ) -> tuple[int, list[tuple]]:
         SrcConceptAlias = aliased(TerminologyConcept, name="src_concept")
         TgtConceptAlias = aliased(TerminologyConcept, name="tgt_concept")
@@ -20,10 +24,22 @@ class _ConceptMapsMixin:
 
         async with self.session_factory() as session:
             stmt = (
-                select(TerminologyConceptMap, SrcConceptAlias, SrcCSAlias, TgtConceptAlias, TgtCSAlias)
-                .join(SrcConceptAlias, TerminologyConceptMap.source_concept_id == SrcConceptAlias.id)
+                select(
+                    TerminologyConceptMap,
+                    SrcConceptAlias,
+                    SrcCSAlias,
+                    TgtConceptAlias,
+                    TgtCSAlias,
+                )
+                .join(
+                    SrcConceptAlias,
+                    TerminologyConceptMap.source_concept_id == SrcConceptAlias.id,
+                )
                 .join(SrcCSAlias, SrcConceptAlias.code_system_id == SrcCSAlias.id)
-                .join(TgtConceptAlias, TerminologyConceptMap.target_concept_id == TgtConceptAlias.id)
+                .join(
+                    TgtConceptAlias,
+                    TerminologyConceptMap.target_concept_id == TgtConceptAlias.id,
+                )
                 .join(TgtCSAlias, TgtConceptAlias.code_system_id == TgtCSAlias.id)
             )
             if source_system:
@@ -39,7 +55,9 @@ class _ConceptMapsMixin:
                 select(func.count()).select_from(stmt.subquery())
             )
             rows = await session.execute(
-                stmt.order_by(TerminologyConceptMap.confidence.desc()).limit(limit).offset(offset)
+                stmt.order_by(TerminologyConceptMap.confidence.desc())
+                .limit(limit)
+                .offset(offset)
             )
             return count or 0, list(rows.all())
 

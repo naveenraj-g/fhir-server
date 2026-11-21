@@ -60,11 +60,17 @@ async def patient(client) -> int:
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _as_user(sub="u-test", org_id="org-test", permissions=REPORT_PERMS):
-    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        sub=sub, org_id=org_id, permissions=permissions
+    )
 
 
 async def _full(client, patient) -> tuple[int, dict]:
@@ -91,7 +97,9 @@ async def test_create_full_round_trip(client, patient):
     report, body = await _full(client, patient)
     data = (await client.get(f"{BASE}/{report}")).json()
     expected = {k: v for k, v in body.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
 
 
 async def test_create_keeps_elements_nothing_searches_on(client, patient):
@@ -106,7 +114,10 @@ async def test_create_keeps_elements_nothing_searches_on(client, patient):
 
 @pytest.mark.parametrize(
     "effective",
-    [{"effectiveDateTime": "2023-01"}, {"effectivePeriod": {"start": "2020-01-01", "end": "2020-02-01"}}],
+    [
+        {"effectiveDateTime": "2023-01"},
+        {"effectivePeriod": {"start": "2020-01-01", "end": "2020-02-01"}},
+    ],
     ids=["dateTime", "period"],
 )
 async def test_create_each_effective_choice_round_trips(client, patient, effective):
@@ -118,7 +129,18 @@ async def test_create_each_effective_choice_round_trips(client, patient, effecti
 
 @pytest.mark.parametrize(
     "status",
-    ["registered", "partial", "preliminary", "final", "amended", "corrected", "appended", "cancelled", "entered-in-error", "unknown"],
+    [
+        "registered",
+        "partial",
+        "preliminary",
+        "final",
+        "amended",
+        "corrected",
+        "appended",
+        "cancelled",
+        "entered-in-error",
+        "unknown",
+    ],
 )
 async def test_create_every_status_round_trips(client, patient, status):
     resp = await client.post(BASE + "/", json=report_body(patient, status))
@@ -135,25 +157,39 @@ async def test_create_ignores_server_managed_id_and_meta(client, patient):
 
 
 async def test_create_bad_datatypes_rejected(client, patient):
-    for bad in ({"status": "robot"}, {"code": "58410-2"}, {"performer": {"reference": "Practitioner/1"}},
-                {"category": {"text": "x"}}):
+    for bad in (
+        {"status": "robot"},
+        {"code": "58410-2"},
+        {"performer": {"reference": "Practitioner/1"}},
+        {"category": {"text": "x"}},
+    ):
         resp = await client.post(BASE + "/", json=report_body(patient, **bad))
         assert resp.status_code == 422, (bad, resp.text)
-    assert (await client.post(BASE + "/", json={"status": "final", "subject": "Patient/1"})).status_code == 422
+    assert (
+        await client.post(BASE + "/", json={"status": "final", "subject": "Patient/1"})
+    ).status_code == 422
 
 
 async def test_create_non_fhir_key_rejected(client, patient, native_validation):
-    assert (await client.post(BASE + "/", json=report_body(patient, not_a_fhir_element=1))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=report_body(patient, not_a_fhir_element=1))
+    ).status_code == 422
 
 
 async def test_create_old_flat_fields_rejected(client, patient, native_validation):
-    for stale in ({"code_text": "x"}, {"effective_date_time": "2020-01-01"}, {"org_id": "x"}):
+    for stale in (
+        {"code_text": "x"},
+        {"effective_date_time": "2020-01-01"},
+        {"org_id": "x"},
+    ):
         resp = await client.post(BASE + "/", json={**report_body(patient), **stale})
         assert resp.status_code == 422, (stale, resp.text)
 
 
 async def test_create_wrong_resource_type_rejected(client, patient):
-    assert (await client.post(BASE + "/", json=report_body(patient, resourceType="Patient"))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=report_body(patient, resourceType="Patient"))
+    ).status_code == 422
 
 
 async def test_create_audit_meta_from_actor(client, patient):
@@ -181,12 +217,24 @@ async def test_create_subject_in_another_org_is_rejected(client, other_client):
 
 async def test_create_location_subject_is_checked_but_group_and_device_are_not(client):
     location = await create_location(client)
-    ok = {"status": "final", "code": {"text": "x"}, "subject": {"reference": f"Location/{location}"}}
+    ok = {
+        "status": "final",
+        "code": {"text": "x"},
+        "subject": {"reference": f"Location/{location}"},
+    }
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    missing = {"status": "final", "code": {"text": "x"}, "subject": {"reference": "Location/999999"}}
+    missing = {
+        "status": "final",
+        "code": {"text": "x"},
+        "subject": {"reference": "Location/999999"},
+    }
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
     for stored_as_sent in ("Group/5", "Device/5"):
-        body = {"status": "final", "code": {"text": "x"}, "subject": {"reference": stored_as_sent}}
+        body = {
+            "status": "final",
+            "code": {"text": "x"},
+            "subject": {"reference": stored_as_sent},
+        }
         resp = await client.post(BASE + "/", json=body)
         assert resp.status_code == 201, (stored_as_sent, resp.text)
         assert resp.json()["subject"] == {"reference": stored_as_sent}
@@ -197,28 +245,57 @@ async def test_create_encounter_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
     encounter = await create_encounter(client, encounter_body())
     assert (
-        await client.post(BASE + "/", json=report_body(patient, encounter={"reference": f"Encounter/{encounter}"}))
+        await client.post(
+            BASE + "/",
+            json=report_body(
+                patient, encounter={"reference": f"Encounter/{encounter}"}
+            ),
+        )
     ).status_code == 201
 
 
 @pytest.mark.parametrize("element", ["performer", "resultsInterpreter"])
-async def test_create_performer_and_interpreter_are_checked_except_a_care_team(client, patient, element):
+async def test_create_performer_and_interpreter_are_checked_except_a_care_team(
+    client, patient, element
+):
     practitioner = await create_practitioner(client)
     role = await create_practitioner_role(client)
     organization = await create_organization(client)
-    for ref in (f"Practitioner/{practitioner}", f"PractitionerRole/{role}", f"Organization/{organization}", "CareTeam/999999"):
-        resp = await client.post(BASE + "/", json=report_body(patient, **{element: [{"reference": ref}]}))
-        assert resp.status_code == 201, (ref, resp.text)  # a CareTeam is not a resource here: stored as sent
-    for missing in ("Practitioner/999999", "PractitionerRole/999999", "Organization/999999"):
-        resp = await client.post(BASE + "/", json=report_body(patient, **{element: [{"reference": missing}]}))
+    for ref in (
+        f"Practitioner/{practitioner}",
+        f"PractitionerRole/{role}",
+        f"Organization/{organization}",
+        "CareTeam/999999",
+    ):
+        resp = await client.post(
+            BASE + "/", json=report_body(patient, **{element: [{"reference": ref}]})
+        )
+        assert resp.status_code == 201, (
+            ref,
+            resp.text,
+        )  # a CareTeam is not a resource here: stored as sent
+    for missing in (
+        "Practitioner/999999",
+        "PractitionerRole/999999",
+        "Organization/999999",
+    ):
+        resp = await client.post(
+            BASE + "/", json=report_body(patient, **{element: [{"reference": missing}]})
+        )
         assert resp.status_code == 422, (missing, resp.text)
 
 
 async def test_create_identifier_assigner_must_exist(client, patient):
-    body = report_body(patient, identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}])
+    body = report_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 422
     org = await create_organization(client)
-    body = report_body(patient, identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}])
+    body = report_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
@@ -238,29 +315,54 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
 
 async def test_create_absolute_and_logical_references_not_resolved(client):
     absolute = "https://other.example.org/fhir/Patient/1"
-    resp = await client.post(BASE + "/", json={"status": "final", "code": {"text": "x"}, "subject": {"reference": absolute}})
+    resp = await client.post(
+        BASE + "/",
+        json={
+            "status": "final",
+            "code": {"text": "x"},
+            "subject": {"reference": absolute},
+        },
+    )
     assert resp.status_code == 201, resp.text
     assert resp.json()["subject"] == {"reference": absolute}
-    logical = {"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "External"}
-    body = {"status": "final", "code": {"text": "x"}, "subject": logical,
-            "performer": [{"reference": "https://other.example.org/fhir/Practitioner/7"}]}
+    logical = {
+        "identifier": {"system": "urn:pts", "value": "P-9"},
+        "display": "External",
+    }
+    body = {
+        "status": "final",
+        "code": {"text": "x"},
+        "subject": logical,
+        "performer": [{"reference": "https://other.example.org/fhir/Practitioner/7"}],
+    }
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     assert resp.json()["subject"] == logical
-    assert resp.json()["performer"] == [{"reference": "https://other.example.org/fhir/Practitioner/7"}]
+    assert resp.json()["performer"] == [
+        {"reference": "https://other.example.org/fhir/Practitioner/7"}
+    ]
 
 
 # ── A DiagnosticReport is now a real target of the references that name one ──
 
 
-async def test_references_to_a_diagnostic_report_are_checked_and_resolve(client, patient):
+async def test_references_to_a_diagnostic_report_are_checked_and_resolve(
+    client, patient
+):
     report = await create_report(client, report_body(patient))
     ref = f"DiagnosticReport/{report}"
-    proc = {"status": "completed", "subject": {"reference": f"Patient/{patient}"},
-            "report": [{"reference": ref}], "reasonReference": [{"reference": ref}]}
+    proc = {
+        "status": "completed",
+        "subject": {"reference": f"Patient/{patient}"},
+        "report": [{"reference": ref}],
+        "reasonReference": [{"reference": ref}],
+    }
     resp = await client.post(f"{API}/procedures/", json=proc)
     assert resp.status_code == 201, resp.text
-    cond = {"subject": {"reference": f"Patient/{patient}"}, "stage": [{"assessment": [{"reference": ref}]}]}
+    cond = {
+        "subject": {"reference": f"Patient/{patient}"},
+        "stage": [{"assessment": [{"reference": ref}]}],
+    }
     resp = await client.post(f"{API}/conditions/", json=cond)
     assert resp.status_code == 201, resp.text
 
@@ -270,7 +372,11 @@ async def test_references_to_a_missing_diagnostic_report_are_rejected(client, pa
     subject = {"reference": f"Patient/{patient}"}
     for proc in (
         {"status": "completed", "subject": subject, "report": [{"reference": ref}]},
-        {"status": "completed", "subject": subject, "reasonReference": [{"reference": ref}]},
+        {
+            "status": "completed",
+            "subject": subject,
+            "reasonReference": [{"reference": ref}],
+        },
     ):
         assert (await client.post(f"{API}/procedures/", json=proc)).status_code == 422
     cond = {"subject": subject, "stage": [{"assessment": [{"reference": ref}]}]}
@@ -297,13 +403,17 @@ async def test_get_is_fhir_regardless_of_accept(client, patient):
 
 async def test_xml_only_accept_is_406(client, patient):
     report = await create_report(client, report_body(patient))
-    resp = await client.get(f"{BASE}/{report}", headers={"Accept": "application/fhir+xml"})
+    resp = await client.get(
+        f"{BASE}/{report}", headers={"Accept": "application/fhir+xml"}
+    )
     assert resp.status_code == 406 and resp.json()["resourceType"] == "OperationOutcome"
 
 
 async def test_get_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -311,9 +421,13 @@ async def test_get_not_found(client):
 
 async def test_patch_scalar_keeps_the_rest(client, patient):
     report, _ = await _full(client, patient)
-    resp = await client.patch(f"{BASE}/{report}", json={"status": "amended", "conclusion": "Corrected."})
+    resp = await client.patch(
+        f"{BASE}/{report}", json={"status": "amended", "conclusion": "Corrected."}
+    )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "amended" and resp.json()["conclusion"] == "Corrected."
+    assert (
+        resp.json()["status"] == "amended" and resp.json()["conclusion"] == "Corrected."
+    )
     assert resp.json()["subject"] == {"reference": f"Patient/{patient}"}  # untouched
     assert resp.json()["presentedForm"][0]["title"] == "Report"
     assert resp.json()["media"][0]["comment"] == "Slide 1"
@@ -323,8 +437,13 @@ async def test_patch_reindexes_search(client, patient):
     report, _ = await _full(client, patient)
     await client.patch(
         f"{BASE}/{report}",
-        json={"status": "amended", "code": {"coding": [{"system": "http://loinc.org", "code": "24323-8"}]},
-              "effectivePeriod": None, "effectiveDateTime": "2024-05-01", "issued": "2024-05-02T10:00:00Z"},
+        json={
+            "status": "amended",
+            "code": {"coding": [{"system": "http://loinc.org", "code": "24323-8"}]},
+            "effectivePeriod": None,
+            "effectiveDateTime": "2024-05-01",
+            "issued": "2024-05-02T10:00:00Z",
+        },
     )
     for param, old, new in (
         ("status", "final", "amended"),
@@ -332,64 +451,120 @@ async def test_patch_reindexes_search(client, patient):
         ("date", "2023-01-15", "2024-05-01"),
         ("issued", "2023-01-15", "2024-05-02"),
     ):
-        assert report not in _ids((await client.get(BASE + "/", params={param: old})).json()), param
-        assert report in _ids((await client.get(BASE + "/", params={param: new})).json()), param
+        assert report not in _ids(
+            (await client.get(BASE + "/", params={param: old})).json()
+        ), param
+        assert report in _ids(
+            (await client.get(BASE + "/", params={param: new})).json()
+        ), param
 
 
 async def test_patch_subject_replaced_and_reindexed(client, patient):
     report = await create_report(client, report_body(patient))
     other = await create_patient(client)
-    resp = await client.patch(f"{BASE}/{report}", json={"subject": {"reference": f"Patient/{other}"}})
+    resp = await client.patch(
+        f"{BASE}/{report}", json={"subject": {"reference": f"Patient/{other}"}}
+    )
     assert resp.status_code == 200, resp.text
-    assert report not in _ids((await client.get(BASE + "/", params={"patient": str(patient)})).json())
-    assert report in _ids((await client.get(BASE + "/", params={"patient": str(other)})).json())
+    assert report not in _ids(
+        (await client.get(BASE + "/", params={"patient": str(patient)})).json()
+    )
+    assert report in _ids(
+        (await client.get(BASE + "/", params={"patient": str(other)})).json()
+    )
 
 
 async def test_patch_replaces_lists_and_empty_clears(client, patient):
     report, _ = await _full(client, patient)
-    assert report in _ids((await client.get(BASE + "/", params={"conclusion": "17621005"})).json())
+    assert report in _ids(
+        (await client.get(BASE + "/", params={"conclusion": "17621005"})).json()
+    )
     resp = await client.patch(
         f"{BASE}/{report}",
-        json={"performer": [], "resultsInterpreter": [], "category": [], "conclusionCode": [], "identifier": [],
-              "result": [], "specimen": [], "media": [], "basedOn": []},
+        json={
+            "performer": [],
+            "resultsInterpreter": [],
+            "category": [],
+            "conclusionCode": [],
+            "identifier": [],
+            "result": [],
+            "specimen": [],
+            "media": [],
+            "basedOn": [],
+        },
     )
-    for gone in ("performer", "resultsInterpreter", "category", "conclusionCode", "identifier", "result", "specimen",
-                 "media", "basedOn"):
+    for gone in (
+        "performer",
+        "resultsInterpreter",
+        "category",
+        "conclusionCode",
+        "identifier",
+        "result",
+        "specimen",
+        "media",
+        "basedOn",
+    ):
         assert gone not in resp.json()
     assert resp.json()["conclusion"] == "Normal blood count."  # untouched
     for param, value in (
-        ("conclusion", "17621005"), ("category", "LAB"), ("identifier", "DR-1001"), ("result", "Observation/160001"),
-        ("specimen", "310001"), ("media", "9"), ("based-on", "ServiceRequest/80001"),
+        ("conclusion", "17621005"),
+        ("category", "LAB"),
+        ("identifier", "DR-1001"),
+        ("result", "Observation/160001"),
+        ("specimen", "310001"),
+        ("media", "9"),
+        ("based-on", "ServiceRequest/80001"),
     ):
-        assert report not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+        assert report not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
     for param in ("performer", "results-interpreter"):
-        assert report in _ids((await client.get(BASE + "/", params={f"{param}:missing": "true"})).json()), param
+        assert report in _ids(
+            (await client.get(BASE + "/", params={f"{param}:missing": "true"})).json()
+        ), param
 
 
 async def test_patch_clears_a_date_and_missing_follows(client, patient):
-    report = await create_report(client, report_body(patient, effectiveDateTime="2024-05-01", issued="2024-05-02T00:00:00Z"))
-    resp = await client.patch(f"{BASE}/{report}", json={"effectiveDateTime": None, "issued": None})
+    report = await create_report(
+        client,
+        report_body(
+            patient, effectiveDateTime="2024-05-01", issued="2024-05-02T00:00:00Z"
+        ),
+    )
+    resp = await client.patch(
+        f"{BASE}/{report}", json={"effectiveDateTime": None, "issued": None}
+    )
     assert "effectiveDateTime" not in resp.json() and "issued" not in resp.json()
     for param in ("date", "issued"):
-        assert report in _ids((await client.get(BASE + "/", params={f"{param}:missing": "true"})).json()), param
+        assert report in _ids(
+            (await client.get(BASE + "/", params={f"{param}:missing": "true"})).json()
+        ), param
 
 
-async def test_patch_nonexistent_reference_rejected_and_nothing_written(client, patient):
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(
+    client, patient
+):
     report = await create_report(client, report_body(patient))
-    resp = await client.patch(f"{BASE}/{report}", json={"performer": [{"reference": "Practitioner/999999"}]})
+    resp = await client.patch(
+        f"{BASE}/{report}", json={"performer": [{"reference": "Practitioner/999999"}]}
+    )
     assert resp.status_code == 422
     assert "performer" not in (await client.get(f"{BASE}/{report}")).json()
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client, patient):
     report = await create_report(client, report_body(patient, "final"))
-    assert (await client.patch(f"{BASE}/{report}", json={"status": "broken"})).status_code == 422
+    assert (
+        await client.patch(f"{BASE}/{report}", json={"status": "broken"})
+    ).status_code == 422
     assert (await client.get(f"{BASE}/{report}")).json()["status"] == "final"
 
 
 async def test_patch_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"status": "amended"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -400,13 +575,22 @@ async def test_delete(client, patient):
     assert (await client.delete(f"{BASE}/{report}")).status_code == 204
     assert (await client.get(f"{BASE}/{report}")).status_code == 404
     # Its index rows are gone with it.
-    for param, value in (("identifier", "DR-1001"), ("code", "58410-2"), ("category", "LAB"), ("conclusion", "17621005")):
-        assert report not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+    for param, value in (
+        ("identifier", "DR-1001"),
+        ("code", "58410-2"),
+        ("category", "LAB"),
+        ("conclusion", "17621005"),
+    ):
+        assert report not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
 
 
 async def test_delete_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -439,17 +623,23 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
             await other_client.patch(f"{BASE}/{report}", json={"status": "amended"}),
             await other_client.delete(f"{BASE}/{report}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
 
 async def test_search_cross_tenant_isolation(client, other_client):
     _as_user()
-    await create_report(client, report_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]))
+    await create_report(
+        client, report_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}])
+    )
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0
     finally:
         _as_user()

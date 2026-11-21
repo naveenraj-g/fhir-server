@@ -123,7 +123,9 @@ def _reference_with_prefix_from_payload(obj: Any, prefix: str) -> dict | None:
     ):
         identifier: dict = {}
         if id_use:
-            identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+            identifier["use"] = (
+                id_use.value if hasattr(id_use, "value") else str(id_use)
+            )
         if (
             id_type_system
             or id_type_code
@@ -234,7 +236,9 @@ def payload_medication_identifier(i: MedicationIdentifierInput) -> dict:
     if start or end:
         period: dict = {}
         if start:
-            period["start"] = start.isoformat() if hasattr(start, "isoformat") else str(start)
+            period["start"] = (
+                start.isoformat() if hasattr(start, "isoformat") else str(start)
+            )
         if end:
             period["end"] = end.isoformat() if hasattr(end, "isoformat") else str(end)
         entry["period"] = period
@@ -272,7 +276,9 @@ def _payload_batch(b: MedicationBatchInput | dict | None) -> dict | None:
     if lot:
         res["lotNumber"] = lot
     if exp:
-        res["expirationDate"] = exp.isoformat() if hasattr(exp, "isoformat") else str(exp)
+        res["expirationDate"] = (
+            exp.isoformat() if hasattr(exp, "isoformat") else str(exp)
+        )
     return res
 
 
@@ -285,10 +291,7 @@ def payload_to_fhir_medication(payload: MedicationCreateSchema) -> dict:
     if payload.extension:
         out["extension"] = list(payload.extension)
 
-    identifiers = [
-        payload_medication_identifier(i)
-        for i in (payload.identifier or [])
-    ]
+    identifiers = [payload_medication_identifier(i) for i in (payload.identifier or [])]
     if identifiers:
         out["identifier"] = identifiers
 
@@ -316,8 +319,7 @@ def payload_to_fhir_medication(payload: MedicationCreateSchema) -> dict:
         out["amount"] = amount
 
     ingredients = [
-        payload_medication_ingredient(ing)
-        for ing in (payload.ingredient or [])
+        payload_medication_ingredient(ing) for ing in (payload.ingredient or [])
     ]
     if ingredients:
         out["ingredient"] = ingredients

@@ -283,9 +283,7 @@ async def test_cross_org_isolation(client):
     assert resp.status_code == 404, resp.text
 
     # Patch -> 404
-    resp = await client.patch(
-        f"{BASE}/{actdef['id']}", json={"title": "Leak Attempt"}
-    )
+    resp = await client.patch(f"{BASE}/{actdef['id']}", json={"title": "Leak Attempt"})
     assert resp.status_code == 404, resp.text
 
     # Delete -> 404

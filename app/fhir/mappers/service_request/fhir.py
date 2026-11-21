@@ -54,7 +54,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -105,7 +107,10 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
         if id_period_start or id_period_end:
             identifier["period"] = {
                 k: v
-                for k, v in {"start": fhir_instant(id_period_start), "end": fhir_instant(id_period_end)}.items()
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
                 if v
             }
         entry["identifier"] = identifier
@@ -119,7 +124,9 @@ def _fhir_quantity(obj, prefix: str) -> dict:
         k: v
         for k, v in {
             "value": float(value) if value is not None else None,
-            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator)) if comparator else None,
+            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator))
+            if comparator
+            else None,
             "unit": getattr(obj, f"{prefix}_unit", None),
             "system": getattr(obj, f"{prefix}_system", None),
             "code": getattr(obj, f"{prefix}_code", None),
@@ -159,7 +166,12 @@ def fhir_service_request_identifier(obj, prefix: str = "") -> dict:
     period_end = getattr(obj, f"{p}period_end", None)
     if period_start or period_end:
         entry["period"] = {
-            k: v for k, v in {"start": fhir_instant(period_start), "end": fhir_instant(period_end)}.items() if v
+            k: v
+            for k, v in {
+                "start": fhir_instant(period_start),
+                "end": fhir_instant(period_end),
+            }.items()
+            if v
         }
     assigner = _fhir_reference_with_identifier_fallback(obj, f"{p}assigner")
     if assigner:
@@ -207,11 +219,20 @@ def _fhir_meta(sr: ServiceRequestModel) -> dict:
     if sr.tenant_id:
         extensions.append({"url": f"{_EXT_BASE}/org-id", "valueString": sr.tenant_id})
     if sr.created_by:
-        extensions.append({"url": f"{_EXT_BASE}/created-by", "valueString": sr.created_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": sr.created_by}
+        )
     if sr.updated_by:
-        extensions.append({"url": f"{_EXT_BASE}/updated-by", "valueString": sr.updated_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": sr.updated_by}
+        )
     if sr.created_at:
-        extensions.append({"url": f"{_EXT_BASE}/created-at", "valueDateTime": fhir_instant(sr.created_at)})
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": fhir_instant(sr.created_at),
+            }
+        )
     if extensions:
         meta["extension"] = extensions
     return meta
@@ -234,12 +255,18 @@ def to_fhir_service_request(sr: ServiceRequestModel) -> dict:
     if sr.instantiates_uri:
         result["instantiatesUri"] = list(sr.instantiates_uri)
 
-    based_ons = [_fhir_reference_with_identifier_fallback(b, "reference") for b in (sr.based_ons or [])]
+    based_ons = [
+        _fhir_reference_with_identifier_fallback(b, "reference")
+        for b in (sr.based_ons or [])
+    ]
     based_ons = [b for b in based_ons if b]
     if based_ons:
         result["basedOn"] = based_ons
 
-    replaces = [_fhir_reference_with_identifier_fallback(r, "reference") for r in (sr.replaces or [])]
+    replaces = [
+        _fhir_reference_with_identifier_fallback(r, "reference")
+        for r in (sr.replaces or [])
+    ]
     replaces = [r for r in replaces if r]
     if replaces:
         result["replaces"] = replaces
@@ -253,7 +280,10 @@ def to_fhir_service_request(sr: ServiceRequestModel) -> dict:
     if sr.intent:
         result["intent"] = fhir_enum(sr.intent).replace("_", "-")
 
-    categories = [fhir_service_request_codeable_concept(c.codings, c.text) for c in (sr.categories or [])]
+    categories = [
+        fhir_service_request_codeable_concept(c.codings, c.text)
+        for c in (sr.categories or [])
+    ]
     categories = [c for c in categories if c]
     if categories:
         result["category"] = categories
@@ -267,7 +297,10 @@ def to_fhir_service_request(sr: ServiceRequestModel) -> dict:
     if code:
         result["code"] = code
 
-    order_details = [fhir_service_request_codeable_concept(o.codings, o.text) for o in (sr.order_details or [])]
+    order_details = [
+        fhir_service_request_codeable_concept(o.codings, o.text)
+        for o in (sr.order_details or [])
+    ]
     order_details = [o for o in order_details if o]
     if order_details:
         result["orderDetail"] = order_details
@@ -319,7 +352,9 @@ def to_fhir_service_request(sr: ServiceRequestModel) -> dict:
     if sr.as_needed_boolean is not None:
         result["asNeededBoolean"] = sr.as_needed_boolean
     else:
-        as_needed_cc = fhir_service_request_codeable_concept(sr.as_needed_codings, sr.as_needed_codeable_concept_text)
+        as_needed_cc = fhir_service_request_codeable_concept(
+            sr.as_needed_codings, sr.as_needed_codeable_concept_text
+        )
         if as_needed_cc:
             result["asNeededCodeableConcept"] = as_needed_cc
 
@@ -330,51 +365,80 @@ def to_fhir_service_request(sr: ServiceRequestModel) -> dict:
     if requester:
         result["requester"] = requester
 
-    performer_type = fhir_service_request_codeable_concept(sr.performer_type_codings, sr.performer_type_text)
+    performer_type = fhir_service_request_codeable_concept(
+        sr.performer_type_codings, sr.performer_type_text
+    )
     if performer_type:
         result["performerType"] = performer_type
 
-    performers = [_fhir_reference_with_identifier_fallback(p, "reference") for p in (sr.performers or [])]
+    performers = [
+        _fhir_reference_with_identifier_fallback(p, "reference")
+        for p in (sr.performers or [])
+    ]
     performers = [p for p in performers if p]
     if performers:
         result["performer"] = performers
 
-    location_codes = [fhir_service_request_codeable_concept(lc.codings, lc.text) for lc in (sr.location_codes or [])]
+    location_codes = [
+        fhir_service_request_codeable_concept(lc.codings, lc.text)
+        for lc in (sr.location_codes or [])
+    ]
     location_codes = [lc for lc in location_codes if lc]
     if location_codes:
         result["locationCode"] = location_codes
 
-    location_refs = [_fhir_reference_with_identifier_fallback(lr, "reference") for lr in (sr.location_references or [])]
+    location_refs = [
+        _fhir_reference_with_identifier_fallback(lr, "reference")
+        for lr in (sr.location_references or [])
+    ]
     location_refs = [lr for lr in location_refs if lr]
     if location_refs:
         result["locationReference"] = location_refs
 
-    reason_codes = [fhir_service_request_codeable_concept(rc.codings, rc.text) for rc in (sr.reason_codes or [])]
+    reason_codes = [
+        fhir_service_request_codeable_concept(rc.codings, rc.text)
+        for rc in (sr.reason_codes or [])
+    ]
     reason_codes = [rc for rc in reason_codes if rc]
     if reason_codes:
         result["reasonCode"] = reason_codes
 
-    reason_refs = [_fhir_reference_with_identifier_fallback(rr, "reference") for rr in (sr.reason_references or [])]
+    reason_refs = [
+        _fhir_reference_with_identifier_fallback(rr, "reference")
+        for rr in (sr.reason_references or [])
+    ]
     reason_refs = [rr for rr in reason_refs if rr]
     if reason_refs:
         result["reasonReference"] = reason_refs
 
-    insurances = [_fhir_reference_with_identifier_fallback(ins, "reference") for ins in (sr.insurances or [])]
+    insurances = [
+        _fhir_reference_with_identifier_fallback(ins, "reference")
+        for ins in (sr.insurances or [])
+    ]
     insurances = [ins for ins in insurances if ins]
     if insurances:
         result["insurance"] = insurances
 
-    supporting_infos = [_fhir_reference_with_identifier_fallback(si, "reference") for si in (sr.supporting_infos or [])]
+    supporting_infos = [
+        _fhir_reference_with_identifier_fallback(si, "reference")
+        for si in (sr.supporting_infos or [])
+    ]
     supporting_infos = [si for si in supporting_infos if si]
     if supporting_infos:
         result["supportingInfo"] = supporting_infos
 
-    specimens = [_fhir_reference_with_identifier_fallback(sp, "reference") for sp in (sr.specimens or [])]
+    specimens = [
+        _fhir_reference_with_identifier_fallback(sp, "reference")
+        for sp in (sr.specimens or [])
+    ]
     specimens = [sp for sp in specimens if sp]
     if specimens:
         result["specimen"] = specimens
 
-    body_sites = [fhir_service_request_codeable_concept(bs.codings, bs.text) for bs in (sr.body_sites or [])]
+    body_sites = [
+        fhir_service_request_codeable_concept(bs.codings, bs.text)
+        for bs in (sr.body_sites or [])
+    ]
     body_sites = [bs for bs in body_sites if bs]
     if body_sites:
         result["bodySite"] = body_sites
@@ -388,7 +452,8 @@ def to_fhir_service_request(sr: ServiceRequestModel) -> dict:
         result["patientInstruction"] = sr.patient_instruction
 
     relevant_histories = [
-        _fhir_reference_with_identifier_fallback(rh, "reference") for rh in (sr.relevant_histories or [])
+        _fhir_reference_with_identifier_fallback(rh, "reference")
+        for rh in (sr.relevant_histories or [])
     ]
     relevant_histories = [rh for rh in relevant_histories if rh]
     if relevant_histories:

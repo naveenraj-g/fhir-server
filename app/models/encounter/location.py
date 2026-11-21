@@ -22,10 +22,14 @@ class EncounterLocation(Base):
     UniqueConstraint."""
 
     __tablename__ = "encounter_location"
-    __table_args__ = (Index("ix_encounter_location_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_encounter_location_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    encounter_pk = Column(BigInteger, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_pk = Column(
+        BigInteger, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)

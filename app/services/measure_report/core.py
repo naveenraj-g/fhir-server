@@ -166,9 +166,7 @@ class MeasureReportService:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource("MeasureReport", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(

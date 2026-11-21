@@ -8,7 +8,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import EndpointStatus
 
-endpoint_id_seq = Sequence("endpoint_pub_seq", start=620000, increment=1, metadata=Base.metadata)
+endpoint_id_seq = Sequence(
+    "endpoint_pub_seq", start=620000, increment=1, metadata=Base.metadata
+)
 
 
 class EndpointModel(TenantAuditMixin, Base):

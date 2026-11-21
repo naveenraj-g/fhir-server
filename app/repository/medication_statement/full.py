@@ -84,7 +84,9 @@ def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
     }
 
 
-async def _add_identifiers(session, ms_pk: int, org_id: str, identifiers, created_by: str) -> None:
+async def _add_identifiers(
+    session, ms_pk: int, org_id: str, identifiers, created_by: str
+) -> None:
     for i in identifiers or []:
         a_type, a_id = _parse_org_ref(i.assigner) if i.assigner else (None, None)
         if a_type and a_id:
@@ -135,7 +137,9 @@ async def _insert_sub_resources(
 
     for b in payload.based_on or []:
         kwargs = _list_reference_kwargs(b, MedicationStatementBasedOnReferenceType)
-        await _validate_ref(session, org_id, "basedOn", kwargs["reference_type"], kwargs["reference_id"])
+        await _validate_ref(
+            session, org_id, "basedOn", kwargs["reference_type"], kwargs["reference_id"]
+        )
         session.add(
             MedicationStatementBasedOn(
                 medication_statement_pk=ms_pk,
@@ -147,7 +151,9 @@ async def _insert_sub_resources(
 
     for p in payload.part_of or []:
         kwargs = _list_reference_kwargs(p, MedicationStatementPartOfReferenceType)
-        await _validate_ref(session, org_id, "partOf", kwargs["reference_type"], kwargs["reference_id"])
+        await _validate_ref(
+            session, org_id, "partOf", kwargs["reference_type"], kwargs["reference_id"]
+        )
         session.add(
             MedicationStatementPartOf(
                 medication_statement_pk=ms_pk,
@@ -184,7 +190,10 @@ async def _insert_sub_resources(
                 )
             )
 
-    if payload.medication_codeable_concept and payload.medication_codeable_concept.coding:
+    if (
+        payload.medication_codeable_concept
+        and payload.medication_codeable_concept.coding
+    ):
         for coding in payload.medication_codeable_concept.coding:
             session.add(
                 MedicationStatementMedicationCoding(
@@ -224,7 +233,13 @@ async def _insert_sub_resources(
 
     for rr in payload.reason_reference or []:
         kwargs = _list_reference_kwargs(rr, MedicationStatementReasonReferenceType)
-        await _validate_ref(session, org_id, "reasonReference", kwargs["reference_type"], kwargs["reference_id"])
+        await _validate_ref(
+            session,
+            org_id,
+            "reasonReference",
+            kwargs["reference_type"],
+            kwargs["reference_id"],
+        )
         session.add(
             MedicationStatementReasonReference(
                 medication_statement_pk=ms_pk,
@@ -236,10 +251,19 @@ async def _insert_sub_resources(
 
     for n in payload.note or []:
         author_kwargs = _ref_kwargs(
-            "author", n.author_reference, n.author_display, MedicationStatementNoteAuthorReferenceType
+            "author",
+            n.author_reference,
+            n.author_display,
+            MedicationStatementNoteAuthorReferenceType,
         )
         if n.author_reference:
-            await _validate_ref(session, org_id, "note.author", author_kwargs["author_type"], author_kwargs["author_id"])
+            await _validate_ref(
+                session,
+                org_id,
+                "note.author",
+                author_kwargs["author_type"],
+                author_kwargs["author_id"],
+            )
         session.add(
             MedicationStatementNote(
                 medication_statement_pk=ms_pk,
@@ -274,7 +298,9 @@ async def _insert_sub_resources(
             timing=d.timing,
             as_needed_boolean=d.as_needed_boolean,
             as_needed_codeable_concept_text=(
-                d.as_needed_codeable_concept.text if d.as_needed_codeable_concept else None
+                d.as_needed_codeable_concept.text
+                if d.as_needed_codeable_concept
+                else None
             ),
             site_text=d.site.text if d.site else None,
             route_text=d.route.text if d.route else None,
@@ -335,7 +361,11 @@ async def _insert_sub_resources(
                 )
             )
 
-        for coding in (d.as_needed_codeable_concept.coding if d.as_needed_codeable_concept else None) or []:
+        for coding in (
+            d.as_needed_codeable_concept.coding
+            if d.as_needed_codeable_concept
+            else None
+        ) or []:
             session.add(
                 MedicationStatementDosageAsNeededCoding(
                     medication_statement_dosage_id=dosage.id,
@@ -355,22 +385,50 @@ class _FullMixin:
     ) -> MedicationStatementModel:
         actor_id = created_by or "system"
         async with self.session_factory() as session:
-            subject_kwargs = _single_reference_kwargs("subject", payload.subject, MedicationStatementSubjectReferenceType)
-            medication_reference_kwargs = _single_reference_kwargs(
-                "medication", payload.medication_reference, MedicationStatementMedicationReferenceType
+            subject_kwargs = _single_reference_kwargs(
+                "subject", payload.subject, MedicationStatementSubjectReferenceType
             )
-            context_kwargs = _single_reference_kwargs("context", payload.context, MedicationStatementContextReferenceType)
+            medication_reference_kwargs = _single_reference_kwargs(
+                "medication",
+                payload.medication_reference,
+                MedicationStatementMedicationReferenceType,
+            )
+            context_kwargs = _single_reference_kwargs(
+                "context", payload.context, MedicationStatementContextReferenceType
+            )
             info_source_kwargs = _single_reference_kwargs(
-                "information_source", payload.information_source, MedicationStatementInformationSourceReferenceType
+                "information_source",
+                payload.information_source,
+                MedicationStatementInformationSourceReferenceType,
             )
 
-            await _validate_ref(session, org_id, "subject", subject_kwargs["subject_type"], subject_kwargs["subject_id"])
             await _validate_ref(
-                session, org_id, "medicationReference", medication_reference_kwargs["medication_type"], medication_reference_kwargs["medication_id"]
+                session,
+                org_id,
+                "subject",
+                subject_kwargs["subject_type"],
+                subject_kwargs["subject_id"],
             )
-            await _validate_ref(session, org_id, "context", context_kwargs["context_type"], context_kwargs["context_id"])
             await _validate_ref(
-                session, org_id, "informationSource", info_source_kwargs["information_source_type"], info_source_kwargs["information_source_id"]
+                session,
+                org_id,
+                "medicationReference",
+                medication_reference_kwargs["medication_type"],
+                medication_reference_kwargs["medication_id"],
+            )
+            await _validate_ref(
+                session,
+                org_id,
+                "context",
+                context_kwargs["context_type"],
+                context_kwargs["context_id"],
+            )
+            await _validate_ref(
+                session,
+                org_id,
+                "informationSource",
+                info_source_kwargs["information_source_type"],
+                info_source_kwargs["information_source_id"],
             )
 
             model = MedicationStatementModel(
@@ -383,7 +441,9 @@ class _FullMixin:
                 ),
                 category_text=payload.category.text if payload.category else None,
                 medication_codeable_concept_text=(
-                    payload.medication_codeable_concept.text if payload.medication_codeable_concept else None
+                    payload.medication_codeable_concept.text
+                    if payload.medication_codeable_concept
+                    else None
                 ),
                 **medication_reference_kwargs,
                 **subject_kwargs,
@@ -401,7 +461,9 @@ class _FullMixin:
             await _insert_sub_resources(session, model.id, payload, org_id, actor_id)
 
             await session.commit()
-            return await self.get_by_medication_statement_id_in_org(model.medication_statement_id, org_id)
+            return await self.get_by_medication_statement_id_in_org(
+                model.medication_statement_id, org_id
+            )
 
     async def patch_full(
         self,
@@ -413,7 +475,8 @@ class _FullMixin:
         actor_id = updated_by or "system"
         async with self.session_factory() as session:
             stmt = select(MedicationStatementModel).where(
-                MedicationStatementModel.medication_statement_id == medication_statement_id,
+                MedicationStatementModel.medication_statement_id
+                == medication_statement_id,
                 MedicationStatementModel.tenant_id == org_id,
             )
             model = (await session.execute(stmt)).scalars().first()
@@ -435,46 +498,77 @@ class _FullMixin:
                     setattr(model, field, value)
 
             if "subject" in data:
-                subj_kwargs = _single_reference_kwargs("subject", payload.subject, MedicationStatementSubjectReferenceType)
+                subj_kwargs = _single_reference_kwargs(
+                    "subject", payload.subject, MedicationStatementSubjectReferenceType
+                )
                 if payload.subject:
-                    await _validate_ref(session, org_id, "subject", subj_kwargs["subject_type"], subj_kwargs["subject_id"])
+                    await _validate_ref(
+                        session,
+                        org_id,
+                        "subject",
+                        subj_kwargs["subject_type"],
+                        subj_kwargs["subject_id"],
+                    )
                 for k, v in subj_kwargs.items():
                     setattr(model, k, v)
 
             if "medication_reference" in data:
                 med_ref_kwargs = _single_reference_kwargs(
-                    "medication", payload.medication_reference, MedicationStatementMedicationReferenceType
+                    "medication",
+                    payload.medication_reference,
+                    MedicationStatementMedicationReferenceType,
                 )
                 if payload.medication_reference:
                     await _validate_ref(
-                        session, org_id, "medicationReference", med_ref_kwargs["medication_type"], med_ref_kwargs["medication_id"]
+                        session,
+                        org_id,
+                        "medicationReference",
+                        med_ref_kwargs["medication_type"],
+                        med_ref_kwargs["medication_id"],
                     )
                 for k, v in med_ref_kwargs.items():
                     setattr(model, k, v)
 
             if "context" in data:
-                ctx_kwargs = _single_reference_kwargs("context", payload.context, MedicationStatementContextReferenceType)
+                ctx_kwargs = _single_reference_kwargs(
+                    "context", payload.context, MedicationStatementContextReferenceType
+                )
                 if payload.context:
-                    await _validate_ref(session, org_id, "context", ctx_kwargs["context_type"], ctx_kwargs["context_id"])
+                    await _validate_ref(
+                        session,
+                        org_id,
+                        "context",
+                        ctx_kwargs["context_type"],
+                        ctx_kwargs["context_id"],
+                    )
                 for k, v in ctx_kwargs.items():
                     setattr(model, k, v)
 
             if "information_source" in data:
                 info_kwargs = _single_reference_kwargs(
-                    "information_source", payload.information_source, MedicationStatementInformationSourceReferenceType
+                    "information_source",
+                    payload.information_source,
+                    MedicationStatementInformationSourceReferenceType,
                 )
                 if payload.information_source:
                     await _validate_ref(
-                        session, org_id, "informationSource", info_kwargs["information_source_type"], info_kwargs["information_source_id"]
+                        session,
+                        org_id,
+                        "informationSource",
+                        info_kwargs["information_source_type"],
+                        info_kwargs["information_source_id"],
                     )
                 for k, v in info_kwargs.items():
                     setattr(model, k, v)
 
             if "category" in data:
-                model.category_text = payload.category.text if payload.category else None
+                model.category_text = (
+                    payload.category.text if payload.category else None
+                )
                 await session.execute(
                     delete(MedicationStatementCategoryCoding).where(
-                        MedicationStatementCategoryCoding.medication_statement_pk == model.id
+                        MedicationStatementCategoryCoding.medication_statement_pk
+                        == model.id
                     )
                 )
                 if payload.category and payload.category.coding:
@@ -488,14 +582,20 @@ class _FullMixin:
 
             if "medication_codeable_concept" in data:
                 model.medication_codeable_concept_text = (
-                    payload.medication_codeable_concept.text if payload.medication_codeable_concept else None
+                    payload.medication_codeable_concept.text
+                    if payload.medication_codeable_concept
+                    else None
                 )
                 await session.execute(
                     delete(MedicationStatementMedicationCoding).where(
-                        MedicationStatementMedicationCoding.medication_statement_pk == model.id
+                        MedicationStatementMedicationCoding.medication_statement_pk
+                        == model.id
                     )
                 )
-                if payload.medication_codeable_concept and payload.medication_codeable_concept.coding:
+                if (
+                    payload.medication_codeable_concept
+                    and payload.medication_codeable_concept.coding
+                ):
                     for c in payload.medication_codeable_concept.coding:
                         session.add(
                             MedicationStatementMedicationCoding(
@@ -510,15 +610,20 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationStatementIdentifierTypeCoding).where(
-                        MedicationStatementIdentifierTypeCoding.medication_statement_identifier_id.in_(ident_ids_subq)
+                        MedicationStatementIdentifierTypeCoding.medication_statement_identifier_id.in_(
+                            ident_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementIdentifier).where(
-                        MedicationStatementIdentifier.medication_statement_pk == model.id
+                        MedicationStatementIdentifier.medication_statement_pk
+                        == model.id
                     )
                 )
-                await _add_identifiers(session, model.id, org_id, payload.identifier, actor_id)
+                await _add_identifiers(
+                    session, model.id, org_id, payload.identifier, actor_id
+                )
 
             if "based_on" in data:
                 await session.execute(
@@ -527,8 +632,16 @@ class _FullMixin:
                     )
                 )
                 for b in payload.based_on or []:
-                    kwargs = _list_reference_kwargs(b, MedicationStatementBasedOnReferenceType)
-                    await _validate_ref(session, org_id, "basedOn", kwargs["reference_type"], kwargs["reference_id"])
+                    kwargs = _list_reference_kwargs(
+                        b, MedicationStatementBasedOnReferenceType
+                    )
+                    await _validate_ref(
+                        session,
+                        org_id,
+                        "basedOn",
+                        kwargs["reference_type"],
+                        kwargs["reference_id"],
+                    )
                     session.add(
                         MedicationStatementBasedOn(
                             medication_statement_pk=model.id,
@@ -545,8 +658,16 @@ class _FullMixin:
                     )
                 )
                 for p in payload.part_of or []:
-                    kwargs = _list_reference_kwargs(p, MedicationStatementPartOfReferenceType)
-                    await _validate_ref(session, org_id, "partOf", kwargs["reference_type"], kwargs["reference_id"])
+                    kwargs = _list_reference_kwargs(
+                        p, MedicationStatementPartOfReferenceType
+                    )
+                    await _validate_ref(
+                        session,
+                        org_id,
+                        "partOf",
+                        kwargs["reference_type"],
+                        kwargs["reference_id"],
+                    )
                     session.add(
                         MedicationStatementPartOf(
                             medication_statement_pk=model.id,
@@ -562,12 +683,15 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationStatementStatusReasonCoding).where(
-                        MedicationStatementStatusReasonCoding.medication_statement_status_reason_id.in_(sr_ids_subq)
+                        MedicationStatementStatusReasonCoding.medication_statement_status_reason_id.in_(
+                            sr_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementStatusReason).where(
-                        MedicationStatementStatusReason.medication_statement_pk == model.id
+                        MedicationStatementStatusReason.medication_statement_pk
+                        == model.id
                     )
                 )
                 for sr in payload.status_reason or []:
@@ -591,7 +715,8 @@ class _FullMixin:
             if "derived_from" in data:
                 await session.execute(
                     delete(MedicationStatementDerivedFrom).where(
-                        MedicationStatementDerivedFrom.medication_statement_pk == model.id
+                        MedicationStatementDerivedFrom.medication_statement_pk
+                        == model.id
                     )
                 )
                 for df in payload.derived_from or []:
@@ -611,12 +736,15 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationStatementReasonCodeCoding).where(
-                        MedicationStatementReasonCodeCoding.medication_statement_reason_code_id.in_(rc_ids_subq)
+                        MedicationStatementReasonCodeCoding.medication_statement_reason_code_id.in_(
+                            rc_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementReasonCode).where(
-                        MedicationStatementReasonCode.medication_statement_pk == model.id
+                        MedicationStatementReasonCode.medication_statement_pk
+                        == model.id
                     )
                 )
                 for rc in payload.reason_code or []:
@@ -640,12 +768,21 @@ class _FullMixin:
             if "reason_reference" in data:
                 await session.execute(
                     delete(MedicationStatementReasonReference).where(
-                        MedicationStatementReasonReference.medication_statement_pk == model.id
+                        MedicationStatementReasonReference.medication_statement_pk
+                        == model.id
                     )
                 )
                 for rr in payload.reason_reference or []:
-                    kwargs = _list_reference_kwargs(rr, MedicationStatementReasonReferenceType)
-                    await _validate_ref(session, org_id, "reasonReference", kwargs["reference_type"], kwargs["reference_id"])
+                    kwargs = _list_reference_kwargs(
+                        rr, MedicationStatementReasonReferenceType
+                    )
+                    await _validate_ref(
+                        session,
+                        org_id,
+                        "reasonReference",
+                        kwargs["reference_type"],
+                        kwargs["reference_id"],
+                    )
                     session.add(
                         MedicationStatementReasonReference(
                             medication_statement_pk=model.id,
@@ -663,10 +800,19 @@ class _FullMixin:
                 )
                 for n in payload.note or []:
                     author_kwargs = _ref_kwargs(
-                        "author", n.author_reference, n.author_display, MedicationStatementNoteAuthorReferenceType
+                        "author",
+                        n.author_reference,
+                        n.author_display,
+                        MedicationStatementNoteAuthorReferenceType,
                     )
                     if n.author_reference:
-                        await _validate_ref(session, org_id, "note.author", author_kwargs["author_type"], author_kwargs["author_id"])
+                        await _validate_ref(
+                            session,
+                            org_id,
+                            "note.author",
+                            author_kwargs["author_type"],
+                            author_kwargs["author_id"],
+                        )
                     session.add(
                         MedicationStatementNote(
                             medication_statement_pk=model.id,
@@ -694,8 +840,12 @@ class _FullMixin:
                 dosage_ids_subq = select(MedicationStatementDosage.id).where(
                     MedicationStatementDosage.medication_statement_pk == model.id
                 )
-                ai_ids_subq = select(MedicationStatementDosageAdditionalInstruction.id).where(
-                    MedicationStatementDosageAdditionalInstruction.medication_statement_dosage_id.in_(dosage_ids_subq)
+                ai_ids_subq = select(
+                    MedicationStatementDosageAdditionalInstruction.id
+                ).where(
+                    MedicationStatementDosageAdditionalInstruction.medication_statement_dosage_id.in_(
+                        dosage_ids_subq
+                    )
                 )
                 await session.execute(
                     delete(MedicationStatementDosageAdditionalInstructionCoding).where(
@@ -706,27 +856,37 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationStatementDosageAdditionalInstruction).where(
-                        MedicationStatementDosageAdditionalInstruction.medication_statement_dosage_id.in_(dosage_ids_subq)
+                        MedicationStatementDosageAdditionalInstruction.medication_statement_dosage_id.in_(
+                            dosage_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementDosageSiteCoding).where(
-                        MedicationStatementDosageSiteCoding.medication_statement_dosage_id.in_(dosage_ids_subq)
+                        MedicationStatementDosageSiteCoding.medication_statement_dosage_id.in_(
+                            dosage_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementDosageRouteCoding).where(
-                        MedicationStatementDosageRouteCoding.medication_statement_dosage_id.in_(dosage_ids_subq)
+                        MedicationStatementDosageRouteCoding.medication_statement_dosage_id.in_(
+                            dosage_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementDosageMethodCoding).where(
-                        MedicationStatementDosageMethodCoding.medication_statement_dosage_id.in_(dosage_ids_subq)
+                        MedicationStatementDosageMethodCoding.medication_statement_dosage_id.in_(
+                            dosage_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(MedicationStatementDosageAsNeededCoding).where(
-                        MedicationStatementDosageAsNeededCoding.medication_statement_dosage_id.in_(dosage_ids_subq)
+                        MedicationStatementDosageAsNeededCoding.medication_statement_dosage_id.in_(
+                            dosage_ids_subq
+                        )
                     )
                 )
                 await session.execute(
@@ -746,7 +906,9 @@ class _FullMixin:
                         timing=d.timing,
                         as_needed_boolean=d.as_needed_boolean,
                         as_needed_codeable_concept_text=(
-                            d.as_needed_codeable_concept.text if d.as_needed_codeable_concept else None
+                            d.as_needed_codeable_concept.text
+                            if d.as_needed_codeable_concept
+                            else None
                         ),
                         site_text=d.site.text if d.site else None,
                         route_text=d.route.text if d.route else None,
@@ -807,7 +969,11 @@ class _FullMixin:
                             )
                         )
 
-                    for coding in (d.as_needed_codeable_concept.coding if d.as_needed_codeable_concept else None) or []:
+                    for coding in (
+                        d.as_needed_codeable_concept.coding
+                        if d.as_needed_codeable_concept
+                        else None
+                    ) or []:
                         session.add(
                             MedicationStatementDosageAsNeededCoding(
                                 medication_statement_dosage_id=dosage.id,
@@ -817,4 +983,6 @@ class _FullMixin:
 
             model.updated_by = actor_id
             await session.commit()
-            return await self.get_by_medication_statement_id_in_org(medication_statement_id, org_id)
+            return await self.get_by_medication_statement_id_in_org(
+                medication_statement_id, org_id
+            )

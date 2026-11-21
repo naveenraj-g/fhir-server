@@ -12,8 +12,10 @@ class FhirPeriodInput(FhirInputModel):
     dateTime requires an offset whenever a time is present)."""
 
     start: datetime | None = Field(
-        None, description="Starting time with inclusive boundary (ISO 8601, with timezone offset)."
+        None,
+        description="Starting time with inclusive boundary (ISO 8601, with timezone offset).",
     )
     end: datetime | None = Field(
-        None, description="End time with inclusive boundary, if not ongoing (ISO 8601, with timezone offset)."
+        None,
+        description="End time with inclusive boundary, if not ongoing (ISO 8601, with timezone offset).",
     )

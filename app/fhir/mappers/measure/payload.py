@@ -130,14 +130,14 @@ def payload_measure_identifier(ident: Any) -> dict | None:
     if period:
         result["period"] = period
 
-    assigner_ref = _val(ident, "assigner", None) or _val(ident, "assigner_reference", None)
+    assigner_ref = _val(ident, "assigner", None) or _val(
+        ident, "assigner_reference", None
+    )
     assigner_type = _val(ident, "assigner_type", None)
     assigner_id = _val(ident, "assigner_id", None)
     if not assigner_ref and assigner_type and assigner_id:
         assigner_ref = f"{fhir_enum(assigner_type)}/{assigner_id}"
-    assigner = payload_measure_ref(
-        assigner_ref, _val(ident, "assigner_display", None)
-    )
+    assigner = payload_measure_ref(assigner_ref, _val(ident, "assigner_display", None))
     if assigner:
         result["assigner"] = assigner
 
@@ -208,7 +208,9 @@ def payload_measure_use_context(uc: Any) -> dict | None:
         result["code"] = code_dict
 
     # value[x]
-    val_codings = _val(uc, "value_codeable_concept_coding", None) or _val(uc, "value_codings", None)
+    val_codings = _val(uc, "value_codeable_concept_coding", None) or _val(
+        uc, "value_codings", None
+    )
     val_text = _val(uc, "value_codeable_concept_text", None)
     if val_codings or val_text:
         vcc: dict[str, Any] = {}
@@ -242,9 +244,7 @@ def payload_measure_use_context(uc: Any) -> dict | None:
     ):
         vr: dict[str, Any] = {}
         if _val(uc, "value_range_low_value", None) is not None:
-            low_q: dict[str, Any] = {
-                "value": float(_val(uc, "value_range_low_value"))
-            }
+            low_q: dict[str, Any] = {"value": float(_val(uc, "value_range_low_value"))}
             if _val(uc, "value_range_low_unit", None):
                 low_q["unit"] = _val(uc, "value_range_low_unit")
             if _val(uc, "value_range_low_system", None):
@@ -265,11 +265,14 @@ def payload_measure_use_context(uc: Any) -> dict | None:
             vr["high"] = high_q
         result["valueRange"] = vr
     elif _val(uc, "value_reference", None) or (
-        _val(uc, "value_reference_type", None)
-        and _val(uc, "value_reference_id", None)
+        _val(uc, "value_reference_type", None) and _val(uc, "value_reference_id", None)
     ):
         vref = _val(uc, "value_reference", None)
-        if not vref and _val(uc, "value_reference_type", None) and _val(uc, "value_reference_id", None):
+        if (
+            not vref
+            and _val(uc, "value_reference_type", None)
+            and _val(uc, "value_reference_id", None)
+        ):
             vref = f"{fhir_enum(_val(uc, 'value_reference_type'))}/{_val(uc, 'value_reference_id')}"
         ref_dict = payload_measure_ref(vref, _val(uc, "value_reference_display", None))
         if ref_dict:
@@ -727,9 +730,7 @@ def patch_fragment_to_fhir_measure(
         touched.add("useContext")
         ucs = _val(payload, "use_context", None)
         fragment["useContext"] = (
-            [payload_measure_use_context(uc) for uc in ucs]
-            if ucs is not None
-            else None
+            [payload_measure_use_context(uc) for uc in ucs] if ucs is not None else None
         )
 
     if "jurisdiction" in provided:
@@ -871,9 +872,7 @@ def patch_fragment_to_fhir_measure(
         touched.add("group")
         groups = _val(payload, "group", None)
         fragment["group"] = (
-            [payload_measure_group(g) for g in groups]
-            if groups is not None
-            else None
+            [payload_measure_group(g) for g in groups] if groups is not None else None
         )
 
     if "supplemental_data" in provided:

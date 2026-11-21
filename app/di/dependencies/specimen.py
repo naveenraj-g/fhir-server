@@ -7,8 +7,6 @@ from app.services.specimen import SpecimenService
 
 @inject
 def get_specimen_service(
-    service: SpecimenService = Depends(
-        Provide[Container.specimen.specimen_service]
-    ),
+    service: SpecimenService = Depends(Provide[Container.specimen.specimen_service]),
 ) -> SpecimenService:
     return service

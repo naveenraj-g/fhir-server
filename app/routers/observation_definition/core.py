@@ -164,7 +164,8 @@ async def patch_observation_definition(
     description=(
         "Returns a paginated list of ObservationDefinition resources. Filter by code, "
         "category, method, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )

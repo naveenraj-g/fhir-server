@@ -15,12 +15,18 @@ class _CoreMixin:
     itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_appointment_id(self, appointment_id: int) -> AppointmentModel | None:
+    async def get_by_appointment_id(
+        self, appointment_id: int
+    ) -> AppointmentModel | None:
         async with self.session_factory() as session:
-            stmt = select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
+            stmt = select(AppointmentModel).where(
+                AppointmentModel.appointment_id == appointment_id
+            )
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_appointment_id_in_org(self, appointment_id: int, org_id: str) -> AppointmentModel | None:
+    async def get_by_appointment_id_in_org(
+        self, appointment_id: int, org_id: str
+    ) -> AppointmentModel | None:
         """Lookup scoped to org_id — returns None unless the appointment
         exists AND belongs to org_id."""
         async with self.session_factory() as session:
@@ -30,7 +36,9 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def appointment_belongs_to_org(self, appointment_id: int, org_id: str) -> bool:
+    async def appointment_belongs_to_org(
+        self, appointment_id: int, org_id: str
+    ) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the appointment exists AND belongs
         to org_id."""
@@ -76,7 +84,9 @@ class _CoreMixin:
 
     async def delete(self, appointment_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
+            stmt = select(AppointmentModel).where(
+                AppointmentModel.appointment_id == appointment_id
+            )
             appointment = (await session.execute(stmt)).scalars().first()
             if not appointment:
                 return False

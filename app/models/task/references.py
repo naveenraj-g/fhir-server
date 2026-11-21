@@ -20,9 +20,7 @@ class TaskBasedOn(TenantAuditMixin, Base):
     __tablename__ = "task_based_on"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
@@ -53,9 +51,7 @@ class TaskPartOf(TenantAuditMixin, Base):
     __tablename__ = "task_part_of"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
@@ -89,9 +85,7 @@ class TaskInsurance(TenantAuditMixin, Base):
     __tablename__ = "task_insurance"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
@@ -125,9 +119,7 @@ class TaskRelevantHistory(TenantAuditMixin, Base):
     __tablename__ = "task_relevant_history"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
@@ -166,9 +158,7 @@ class TaskRestrictionRecipient(TenantAuditMixin, Base):
     __tablename__ = "task_restriction_recipient"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(

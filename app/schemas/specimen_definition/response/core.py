@@ -56,33 +56,23 @@ class PlainSpecimenDefinitionResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: int = Field(..., description="Sequence-based public identifier.")
-    identifier: PlainIdentifier | None = Field(
-        None, description="Business identifier."
-    )
+    identifier: PlainIdentifier | None = Field(None, description="Business identifier.")
     type_collected: PlainSpecimenDefinitionCodeableConcept | None = Field(
         None, description="Kind of specimen to collect."
     )
     patient_preparation: list[PlainSpecimenDefinitionChildConcept] | None = Field(
         None, description="Patient preparation before collection."
     )
-    time_aspect: str | None = Field(
-        None, description="Time aspect for collection."
-    )
+    time_aspect: str | None = Field(None, description="Time aspect for collection.")
     collection: list[PlainSpecimenDefinitionChildConcept] | None = Field(
         None, description="Specimen collection procedure."
     )
     type_tested: list[PlainSpecimenDefinitionTypeTested] | None = Field(
         None, description="Specimen in container tested."
     )
-    created_at: datetime | None = Field(
-        None, description="Timestamp of creation."
-    )
-    updated_at: datetime | None = Field(
-        None, description="Timestamp of last update."
-    )
-    created_by: str = Field(
-        ..., description="Subject that created the record."
-    )
+    created_at: datetime | None = Field(None, description="Timestamp of creation.")
+    updated_at: datetime | None = Field(None, description="Timestamp of last update.")
+    created_by: str = Field(..., description="Subject that created the record.")
     updated_by: str | None = Field(
         None, description="Subject that last updated the record."
     )

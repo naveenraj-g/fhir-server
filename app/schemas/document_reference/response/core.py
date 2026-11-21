@@ -30,52 +30,100 @@ class FHIRDocumentReferenceContent(BaseModel):
     """FHIR R4 DocumentReference.content."""
 
     attachment: FHIRAttachment = Field(..., description="Where to access the document.")
-    format: FHIRCoding | None = Field(None, description="Format/content rules for the document.")
+    format: FHIRCoding | None = Field(
+        None, description="Format/content rules for the document."
+    )
 
 
 class FHIRDocumentReferenceContext(BaseModel):
     """FHIR R4 DocumentReference.context."""
 
-    encounter: list[FHIRReference] | None = Field(None, description="Context of the document content.")
-    event: list[FHIRCodeableConcept] | None = Field(None, description="Main clinical acts being documented.")
-    period: FHIRPeriod | None = Field(None, description="Time of service that is being documented.")
-    facilityType: FHIRCodeableConcept | None = Field(None, description="Kind of organization where admission occurred.")
-    practiceSetting: FHIRCodeableConcept | None = Field(None, description="Additional details about where the content was created.")
-    sourcePatientInfo: FHIRReference | None = Field(None, description="Patient demographics from source.")
-    related: list[FHIRReference] | None = Field(None, description="Related identifiers or resources.")
+    encounter: list[FHIRReference] | None = Field(
+        None, description="Context of the document content."
+    )
+    event: list[FHIRCodeableConcept] | None = Field(
+        None, description="Main clinical acts being documented."
+    )
+    period: FHIRPeriod | None = Field(
+        None, description="Time of service that is being documented."
+    )
+    facilityType: FHIRCodeableConcept | None = Field(
+        None, description="Kind of organization where admission occurred."
+    )
+    practiceSetting: FHIRCodeableConcept | None = Field(
+        None, description="Additional details about where the content was created."
+    )
+    sourcePatientInfo: FHIRReference | None = Field(
+        None, description="Patient demographics from source."
+    )
+    related: list[FHIRReference] | None = Field(
+        None, description="Related identifiers or resources."
+    )
 
 
 class FHIRDocumentReferenceSchema(BaseModel):
     """FHIR R4 DocumentReference resource representation."""
 
-    resourceType: Literal["DocumentReference"] = Field("DocumentReference", description="Always 'DocumentReference'.")
+    resourceType: Literal["DocumentReference"] = Field(
+        "DocumentReference", description="Always 'DocumentReference'."
+    )
     id: str = Field(..., description="Public document_reference_id as a string.")
     meta: FHIRMeta | None = Field(None, description="Resource metadata.")
     extension: list[dict] | None = Field(None, description="Resource extensions.")
-    masterIdentifier: FHIRIdentifier | None = Field(None, description="Master business identifier.")
-    identifier: list[FHIRIdentifier] | None = Field(None, description="Other identifiers for the document.")
+    masterIdentifier: FHIRIdentifier | None = Field(
+        None, description="Master business identifier."
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="Other identifiers for the document."
+    )
     status: str = Field(..., description="current | superseded | entered-in-error.")
-    docStatus: str | None = Field(None, description="preliminary | final | amended | entered-in-error.")
+    docStatus: str | None = Field(
+        None, description="preliminary | final | amended | entered-in-error."
+    )
     type: FHIRCodeableConcept | None = Field(None, description="Kind of document.")
-    category: list[FHIRCodeableConcept] | None = Field(None, description="Categorization of document.")
-    subject: FHIRReference | None = Field(None, description="Who/what is the subject of the document.")
-    date: str | None = Field(None, description="When this document reference was created.")
-    author: list[FHIRReference] | None = Field(None, description="Who and/or what authored the document.")
-    authenticator: FHIRReference | None = Field(None, description="Who/what authenticated the document.")
-    custodian: FHIRReference | None = Field(None, description="Organization which maintains the document.")
-    relatesTo: list[FHIRDocumentReferenceRelatesTo] | None = Field(None, description="Relationships to other documents.")
+    category: list[FHIRCodeableConcept] | None = Field(
+        None, description="Categorization of document."
+    )
+    subject: FHIRReference | None = Field(
+        None, description="Who/what is the subject of the document."
+    )
+    date: str | None = Field(
+        None, description="When this document reference was created."
+    )
+    author: list[FHIRReference] | None = Field(
+        None, description="Who and/or what authored the document."
+    )
+    authenticator: FHIRReference | None = Field(
+        None, description="Who/what authenticated the document."
+    )
+    custodian: FHIRReference | None = Field(
+        None, description="Organization which maintains the document."
+    )
+    relatesTo: list[FHIRDocumentReferenceRelatesTo] | None = Field(
+        None, description="Relationships to other documents."
+    )
     description: str | None = Field(None, description="Human-readable description.")
-    securityLabel: list[FHIRCodeableConcept] | None = Field(None, description="Document security-tags.")
-    content: list[FHIRDocumentReferenceContent] = Field(..., description="Document referenced (1..*).")
-    context: FHIRDocumentReferenceContext | None = Field(None, description="Clinical context of document.")
+    securityLabel: list[FHIRCodeableConcept] | None = Field(
+        None, description="Document security-tags."
+    )
+    content: list[FHIRDocumentReferenceContent] = Field(
+        ..., description="Document referenced (1..*)."
+    )
+    context: FHIRDocumentReferenceContext | None = Field(
+        None, description="Clinical context of document."
+    )
 
 
 class FHIRDocumentReferenceBundleEntry(FHIRBundleEntry):
-    resource: FHIRDocumentReferenceSchema = Field(..., description="DocumentReference resource.")
+    resource: FHIRDocumentReferenceSchema = Field(
+        ..., description="DocumentReference resource."
+    )
 
 
 class FHIRDocumentReferenceBundle(FHIRBundle):
-    entry: list[FHIRDocumentReferenceBundleEntry] | None = Field(None, description="Bundle entries.")
+    entry: list[FHIRDocumentReferenceBundleEntry] | None = Field(
+        None, description="Bundle entries."
+    )
 
 
 # ── Plain Response Schemas (snake_case) ──────────────────────────────────────────

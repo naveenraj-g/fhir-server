@@ -29,12 +29,19 @@ def audit_meta(row) -> dict:
     if row.tenant_id:
         extensions.append({"url": f"{EXT_BASE}/org-id", "valueString": row.tenant_id})
     if row.created_by:
-        extensions.append({"url": f"{EXT_BASE}/created-by", "valueString": row.created_by})
+        extensions.append(
+            {"url": f"{EXT_BASE}/created-by", "valueString": row.created_by}
+        )
     if row.updated_by:
-        extensions.append({"url": f"{EXT_BASE}/updated-by", "valueString": row.updated_by})
+        extensions.append(
+            {"url": f"{EXT_BASE}/updated-by", "valueString": row.updated_by}
+        )
     if row.created_at:
         extensions.append(
-            {"url": f"{EXT_BASE}/created-at", "valueDateTime": fhir_instant(row.created_at)}
+            {
+                "url": f"{EXT_BASE}/created-at",
+                "valueDateTime": fhir_instant(row.created_at),
+            }
         )
     if extensions:
         meta["extension"] = extensions

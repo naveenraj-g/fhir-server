@@ -8,7 +8,14 @@ from app.repository._reference_shared import _validate_reference
 __all__ = ["INDEX_RELATIONSHIPS", "_validate_reference", "_with_relationships", "typed"]
 
 # Relationship attributes the search index owns — every one is rebuilt on each write.
-INDEX_RELATIONSHIPS = ("identifiers", "tokens", "protocols", "reactions", "performers", "reason_references")
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "tokens",
+    "protocols",
+    "reactions",
+    "performers",
+    "reason_references",
+)
 
 _REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
@@ -17,7 +24,9 @@ def _with_relationships(stmt):
     """Eager-load the search-index child rows. Only needed when a write is
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from ImmunizationModel.content."""
-    return stmt.options(*(selectinload(getattr(ImmunizationModel, rel)) for rel in INDEX_RELATIONSHIPS))
+    return stmt.options(
+        *(selectinload(getattr(ImmunizationModel, rel)) for rel in INDEX_RELATIONSHIPS)
+    )
 
 
 def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:

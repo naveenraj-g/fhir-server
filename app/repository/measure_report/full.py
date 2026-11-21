@@ -59,7 +59,9 @@ def _parse_comparator(val: Any) -> MeasureReportQuantityComparator | None:
         return MeasureReportQuantityComparator[v]
 
 
-def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureReportIdentifier]:
+def _build_identifiers(
+    identifiers, org_id: str, actor_id: str
+) -> list[MeasureReportIdentifier]:
     res = []
     for ident in identifiers or []:
         ass_kwargs = _single_reference_kwargs(
@@ -69,7 +71,11 @@ def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureR
             ass_kwargs["assigner_display"] = ident.assigner_display
 
         type_codings = []
-        tc_list = getattr(ident, "type_coding", None) or getattr(ident, "type_codings", None) or []
+        tc_list = (
+            getattr(ident, "type_coding", None)
+            or getattr(ident, "type_codings", None)
+            or []
+        )
         for tc in tc_list:
             type_codings.append(
                 MeasureReportIdentifierTypeCoding(
@@ -86,7 +92,9 @@ def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureR
 
         mi = MeasureReportIdentifier(
             use=(
-                IdentifierUseModel(ident.use.value if hasattr(ident.use, "value") else str(ident.use))
+                IdentifierUseModel(
+                    ident.use.value if hasattr(ident.use, "value") else str(ident.use)
+                )
                 if ident.use
                 else None
             ),
@@ -146,7 +154,9 @@ def _build_groups(groups, org_id: str, actor_id: str) -> list[MeasureReportGroup
     res = []
     for g in groups or []:
         g_codings = []
-        tc_list = getattr(g, "code_coding", None) or getattr(g, "code_codings", None) or []
+        tc_list = (
+            getattr(g, "code_coding", None) or getattr(g, "code_codings", None) or []
+        )
         for c in tc_list:
             g_codings.append(
                 MeasureReportGroupCodeCoding(
@@ -164,7 +174,11 @@ def _build_groups(groups, org_id: str, actor_id: str) -> list[MeasureReportGroup
         pops = []
         for p in getattr(g, "population", None) or []:
             p_codings = []
-            ptc_list = getattr(p, "code_coding", None) or getattr(p, "code_codings", None) or []
+            ptc_list = (
+                getattr(p, "code_coding", None)
+                or getattr(p, "code_codings", None)
+                or []
+            )
             for c in ptc_list:
                 p_codings.append(
                     MeasureReportGroupPopulationCodeCoding(
@@ -198,7 +212,9 @@ def _build_groups(groups, org_id: str, actor_id: str) -> list[MeasureReportGroup
             codes = []
             for sc in getattr(s, "code", None) or []:
                 s_codings = []
-                stc_list = getattr(sc, "coding", None) or getattr(sc, "codings", None) or []
+                stc_list = (
+                    getattr(sc, "coding", None) or getattr(sc, "codings", None) or []
+                )
                 for c in stc_list:
                     s_codings.append(
                         MeasureReportGroupStratifierCodeCoding(
@@ -436,7 +452,9 @@ class _FullMixin:
                 for p in g.population or []:
                     if p.subject_results:
                         sr_kwargs = _single_reference_kwargs(
-                            "subject_results", p, MeasureReportSubjectResultsReferenceType
+                            "subject_results",
+                            p,
+                            MeasureReportSubjectResultsReferenceType,
                         )
                         await _validate_ref(
                             session,
@@ -625,6 +643,4 @@ class _FullMixin:
 
             model.updated_by = actor_id
             await session.commit()
-            return await self.get_by_measure_report_id_in_org(
-                measure_report_id, org_id
-            )
+            return await self.get_by_measure_report_id_in_org(measure_report_id, org_id)

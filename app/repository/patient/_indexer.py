@@ -39,7 +39,14 @@ from app.schemas.enums import AddressUse, AdministrativeGender
 from ._shared import MODELED_TYPES, _parse_org_ref, ref_type_and_id
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
-INDEX_RELATIONSHIPS = ("identifiers", "names", "telecoms", "addresses", "communications", "references")
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "names",
+    "telecoms",
+    "addresses",
+    "communications",
+    "references",
+)
 
 
 def local_references(document: dict) -> list[tuple[str, str, str]]:
@@ -51,14 +58,20 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     aren't checked."""
     refs = []
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
-    local = relative((document.get("managingOrganization") or {}).get("reference"), "Organization")
+    local = relative(
+        (document.get("managingOrganization") or {}).get("reference"), "Organization"
+    )
     if local:
         refs.append(("managingOrganization", "Organization", local))
     for contact in document.get("contact") or []:
-        local = relative((contact.get("organization") or {}).get("reference"), "Organization")
+        local = relative(
+            (contact.get("organization") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("contact.organization", "Organization", local))
     for gp in document.get("generalPractitioner") or []:
@@ -103,13 +116,20 @@ def index_columns(document: dict) -> dict:
         "death_date_end": death_end,
         "deceased": _deceased(document),
         **reference_columns(
-            "managing_organization", document.get("managingOrganization"), "Organization", _parse_org_ref
+            "managing_organization",
+            document.get("managingOrganization"),
+            "Organization",
+            _parse_org_ref,
         ),
     }
 
 
 def _name_row(n: dict) -> PatientName:
-    given, prefix, suffix = strings(n.get("given")), strings(n.get("prefix")), strings(n.get("suffix"))
+    given, prefix, suffix = (
+        strings(n.get("given")),
+        strings(n.get("prefix")),
+        strings(n.get("suffix")),
+    )
     phonetic_source = " ".join([n.get("family") or "", *(given or [])]).strip()
     return PatientName(
         text=n.get("text"),
@@ -175,13 +195,25 @@ def _reference_row(param: str, ref: dict | None) -> PatientReference | None:
 def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by PatientModel relationship name."""
     references = [
-        r for gp in document.get("generalPractitioner") or [] if (r := _reference_row("general-practitioner", gp))
+        r
+        for gp in document.get("generalPractitioner") or []
+        if (r := _reference_row("general-practitioner", gp))
     ]
-    references += [r for link in document.get("link") or [] if (r := _reference_row("link", link.get("other")))]
+    references += [
+        r
+        for link in document.get("link") or []
+        if (r := _reference_row("link", link.get("other")))
+    ]
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(PatientIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(PatientIdentifier, i)
+        ],
         "names": [_name_row(n) for n in document.get("name") or []],
-        "telecoms": [r for t in document.get("telecom") or [] if (r := _telecom_row(t))],
+        "telecoms": [
+            r for t in document.get("telecom") or [] if (r := _telecom_row(t))
+        ],
         "addresses": [_address_row(a) for a in document.get("address") or []],
         "communications": [
             r

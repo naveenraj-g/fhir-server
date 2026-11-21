@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.risk_assessment import RiskAssessmentCreateSchema, RiskAssessmentPatchSchema
+from app.schemas.risk_assessment import (
+    RiskAssessmentCreateSchema,
+    RiskAssessmentPatchSchema,
+)
 from app.services.risk_assessment import RiskAssessmentService
 
 from ._responses import (
@@ -65,7 +68,8 @@ logger = get_logger(__name__)
         "performer, a Condition or DiagnosticReport reason, a note author (Practitioner, PractitionerRole, "
         "Patient, RelatedPerson, Organization) and `identifier.assigner` are rejected with 422 if they do not "
         "exist in the caller's org; a Group subject, a Device performer, basedOn, parent, basis, an Observation "
-        "or DocumentReference reason, an absolute URL or a logical reference is stored as sent. " + _CONTENT_NEG
+        "or DocumentReference reason, an absolute URL or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -73,7 +77,9 @@ async def create_risk_assessment(
     payload: RiskAssessmentCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("risk_assessment", "create")),
-    risk_assessment_service: RiskAssessmentService = Depends(get_risk_assessment_service),
+    risk_assessment_service: RiskAssessmentService = Depends(
+        get_risk_assessment_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -166,7 +172,9 @@ async def _search(
 async def search_risk_assessments(
     request: Request,
     actor: AuthUser = Depends(require_permission("risk_assessment", "read")),
-    risk_assessment_service: RiskAssessmentService = Depends(get_risk_assessment_service),
+    risk_assessment_service: RiskAssessmentService = Depends(
+        get_risk_assessment_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -193,13 +201,17 @@ async def search_risk_assessments(
 async def search_risk_assessments_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("risk_assessment", "read")),
-    risk_assessment_service: RiskAssessmentService = Depends(get_risk_assessment_service),
+    risk_assessment_service: RiskAssessmentService = Depends(
+        get_risk_assessment_service
+    ),
 ):
     logger.info(
         "Search RiskAssessment resources (POST _search)",
         extra={"event": "route.search_risk_assessments_post"},
     )
-    return await _search(request, await post_query(request), actor, risk_assessment_service)
+    return await _search(
+        request, await post_query(request), actor, risk_assessment_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -222,7 +234,9 @@ async def get_risk_assessment(
         ..., ge=1, description="Public risk_assessment identifier."
     ),
     actor: AuthUser = Depends(require_permission("risk_assessment", "read")),
-    risk_assessment_service: RiskAssessmentService = Depends(get_risk_assessment_service),
+    risk_assessment_service: RiskAssessmentService = Depends(
+        get_risk_assessment_service
+    ),
 ):
     logger.info(
         "Retrieve an RiskAssessment resource by public risk_assessment_id",
@@ -262,13 +276,18 @@ async def patch_risk_assessment(
         ..., ge=1, description="Public risk_assessment identifier."
     ),
     actor: AuthUser = Depends(require_permission("risk_assessment", "update")),
-    risk_assessment_service: RiskAssessmentService = Depends(get_risk_assessment_service),
+    risk_assessment_service: RiskAssessmentService = Depends(
+        get_risk_assessment_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_risk_assessment()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update an RiskAssessment resource",
-        extra={"event": "route.patch_risk_assessment", "risk_assessment_id": risk_assessment_id},
+        extra={
+            "event": "route.patch_risk_assessment",
+            "risk_assessment_id": risk_assessment_id,
+        },
     )
     log_payload(logger, "risk_assessment.patch.payload", payload)
     updated = await risk_assessment_service.patch_risk_assessment(
@@ -301,7 +320,9 @@ async def delete_risk_assessment(
         ..., ge=1, description="Public risk_assessment identifier."
     ),
     actor: AuthUser = Depends(require_permission("risk_assessment", "delete")),
-    risk_assessment_service: RiskAssessmentService = Depends(get_risk_assessment_service),
+    risk_assessment_service: RiskAssessmentService = Depends(
+        get_risk_assessment_service
+    ),
 ):
     """delete_risk_assessment() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -312,4 +333,6 @@ async def delete_risk_assessment(
             "risk_assessment_id": risk_assessment_id,
         },
     )
-    await risk_assessment_service.delete_risk_assessment(risk_assessment_id, org_id=actor.org_id)
+    await risk_assessment_service.delete_risk_assessment(
+        risk_assessment_id, org_id=actor.org_id
+    )

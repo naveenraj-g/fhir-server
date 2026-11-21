@@ -9,9 +9,7 @@ class QuestionnaireContactInput(BaseModel):
     address)."""
 
     model_config = ConfigDict(extra="forbid")
-    name: str | None = Field(
-        None, description="Name of an individual to contact."
-    )
+    name: str | None = Field(None, description="Name of an individual to contact.")
     telecom: list[ContactPointInput] | None = Field(
         None, description="Contact details for individual or organization."
     )

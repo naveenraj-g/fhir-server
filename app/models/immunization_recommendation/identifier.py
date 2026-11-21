@@ -26,7 +26,12 @@ class ImmunizationRecommendationIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named immunization_recommendation_pk (not immunization_recommendation_id) so it can't be
     # confused with ImmunizationRecommendationModel.immunization_recommendation_id, the public id.
-    immunization_recommendation_pk = Column(BigInteger, ForeignKey("immunization_recommendation.id"), nullable=False, index=True)
+    immunization_recommendation_pk = Column(
+        BigInteger,
+        ForeignKey("immunization_recommendation.id"),
+        nullable=False,
+        index=True,
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)
@@ -34,4 +39,6 @@ class ImmunizationRecommendationIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    immunization_recommendation = relationship("ImmunizationRecommendationModel", back_populates="identifiers")
+    immunization_recommendation = relationship(
+        "ImmunizationRecommendationModel", back_populates="identifiers"
+    )

@@ -7,10 +7,20 @@ from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
 from app.di.dependencies.service_request import get_service_request_service
 from app.schemas.enums import ServiceRequestIntent, ServiceRequestStatus
-from app.schemas.service_request import ServiceRequestCreateSchema, ServiceRequestPatchSchema
+from app.schemas.service_request import (
+    ServiceRequestCreateSchema,
+    ServiceRequestPatchSchema,
+)
 from app.services.service_request import ServiceRequestService
 
-from ._responses import _CONTENT_NEG, _ERR_NOT_FOUND, _ERR_VALIDATION, _LIST_200, _SINGLE_200, _SINGLE_201
+from ._responses import (
+    _CONTENT_NEG,
+    _ERR_NOT_FOUND,
+    _ERR_VALIDATION,
+    _LIST_200,
+    _SINGLE_200,
+    _SINGLE_201,
+)
 
 router = APIRouter()
 
@@ -37,9 +47,14 @@ async def create_service_request(
     payload: ServiceRequestCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("service_request", "create")),
-    service_request_service: ServiceRequestService = Depends(get_service_request_service),
+    service_request_service: ServiceRequestService = Depends(
+        get_service_request_service
+    ),
 ):
-    logger.info("Create a new ServiceRequest resource", extra={"event": "route.create_service_request"})
+    logger.info(
+        "Create a new ServiceRequest resource",
+        extra={"event": "route.create_service_request"},
+    )
     log_payload(logger, "service_request.create.payload", payload)
     service_request = await service_request_service.create_service_request(
         payload, actor.org_id, actor.sub
@@ -69,13 +84,20 @@ async def create_service_request(
 )
 async def get_service_request(
     request: Request,
-    service_request_id: int = Path(..., ge=1, description="Public service_request identifier."),
+    service_request_id: int = Path(
+        ..., ge=1, description="Public service_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("service_request", "read")),
-    service_request_service: ServiceRequestService = Depends(get_service_request_service),
+    service_request_service: ServiceRequestService = Depends(
+        get_service_request_service
+    ),
 ):
     logger.info(
         "Retrieve a ServiceRequest resource by public service_request_id",
-        extra={"event": "route.get_service_request_by_id", "service_request_id": service_request_id},
+        extra={
+            "event": "route.get_service_request_by_id",
+            "service_request_id": service_request_id,
+        },
     )
     service_request = await service_request_service.get_service_request_scoped(
         service_request_id, actor.org_id
@@ -106,11 +128,21 @@ async def get_service_request(
 async def patch_service_request(
     payload: ServiceRequestPatchSchema,
     request: Request,
-    service_request_id: int = Path(..., ge=1, description="Public service_request identifier."),
+    service_request_id: int = Path(
+        ..., ge=1, description="Public service_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("service_request", "update")),
-    service_request_service: ServiceRequestService = Depends(get_service_request_service),
+    service_request_service: ServiceRequestService = Depends(
+        get_service_request_service
+    ),
 ):
-    logger.info("Update a ServiceRequest resource", extra={"event": "route.patch_service_request", "service_request_id": service_request_id})
+    logger.info(
+        "Update a ServiceRequest resource",
+        extra={
+            "event": "route.patch_service_request",
+            "service_request_id": service_request_id,
+        },
+    )
     log_payload(logger, "service_request.patch.payload", payload)
     updated = await service_request_service.patch_service_request(
         service_request_id, payload, actor.sub, org_id=actor.org_id
@@ -144,24 +176,47 @@ async def list_service_requests(
     request: Request,
     actor: AuthUser = Depends(require_permission("service_request", "read")),
     service_request_status: ServiceRequestStatus | None = Query(
-        None, alias="status", description="draft | active | on-hold | revoked | completed | entered-in-error | unknown."
+        None,
+        alias="status",
+        description="draft | active | on-hold | revoked | completed | entered-in-error | unknown.",
     ),
-    intent: ServiceRequestIntent | None = Query(None, description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option."),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
+    intent: ServiceRequestIntent | None = Query(
+        None,
+        description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option.",
+    ),
+    subject: str | None = Query(
+        None, description="Exact match on the subject reference string."
+    ),
+    identifier: str | None = Query(
+        None, description="Exact match on the business identifier value."
+    ),
     params: ListParams = Depends(),
-    service_request_service: ServiceRequestService = Depends(get_service_request_service),
+    service_request_service: ServiceRequestService = Depends(
+        get_service_request_service
+    ),
 ):
-    logger.info("List all ServiceRequest resources", extra={"event": "route.list_service_requests"})
+    logger.info(
+        "List all ServiceRequest resources",
+        extra={"event": "route.list_service_requests"},
+    )
     items, total = await service_request_service.list_service_requests(
-        org_id=actor.org_id, status=service_request_status, intent=intent,
-        subject=subject, identifier=identifier, limit=params.limit, offset=params.offset,
-        sort=params.sort, total_mode=params.total_mode,
+        org_id=actor.org_id,
+        status=service_request_status,
+        intent=intent,
+        subject=subject,
+        identifier=identifier,
+        limit=params.limit,
+        offset=params.offset,
+        sort=params.sort,
+        total_mode=params.total_mode,
     )
     return format_paginated_response(
         [service_request_service._to_fhir(sr) for sr in items],
         [service_request_service._to_plain(sr) for sr in items],
-        total, params.limit, params.offset, request,
+        total,
+        params.limit,
+        params.offset,
+        request,
     )
 
 
@@ -181,9 +236,21 @@ async def list_service_requests(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_service_request(
-    service_request_id: int = Path(..., ge=1, description="Public service_request identifier."),
+    service_request_id: int = Path(
+        ..., ge=1, description="Public service_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("service_request", "delete")),
-    service_request_service: ServiceRequestService = Depends(get_service_request_service),
+    service_request_service: ServiceRequestService = Depends(
+        get_service_request_service
+    ),
 ):
-    logger.info("Delete a ServiceRequest resource", extra={"event": "route.delete_service_request", "service_request_id": service_request_id})
-    await service_request_service.delete_service_request(service_request_id, org_id=actor.org_id)
+    logger.info(
+        "Delete a ServiceRequest resource",
+        extra={
+            "event": "route.delete_service_request",
+            "service_request_id": service_request_id,
+        },
+    )
+    await service_request_service.delete_service_request(
+        service_request_id, org_id=actor.org_id
+    )

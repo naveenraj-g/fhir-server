@@ -135,26 +135,68 @@ class MedicationCreateSchema(BaseModel):
 class MedicationPatchSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    identifier: list[MedicationIdentifierInput] | None = Field(None, description="Business identifier for this medication.")
-    code: MedicationCodeableConceptInput | None = Field(None, description="Codes that identify this medication.")
-    status: MedicationStatus | None = Field(None, description="active | inactive | entered-in-error.")
+    identifier: list[MedicationIdentifierInput] | None = Field(
+        None, description="Business identifier for this medication."
+    )
+    code: MedicationCodeableConceptInput | None = Field(
+        None, description="Codes that identify this medication."
+    )
+    status: MedicationStatus | None = Field(
+        None, description="active | inactive | entered-in-error."
+    )
 
-    manufacturer: str | None = Field(None, description="Manufacturer of the item. Reference(Organization).")
-    manufacturer_display: str | None = Field(None, description="Display text for manufacturer reference.")
-    manufacturer_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier — purpose.")
-    manufacturer_identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
-    manufacturer_identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
-    manufacturer_identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
-    manufacturer_identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
-    manufacturer_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user selected.")
-    manufacturer_identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
-    manufacturer_identifier_system: str | None = Field(None, description="Fallback identifier — system.")
-    manufacturer_identifier_value: str | None = Field(None, description="Fallback identifier — value.")
-    manufacturer_identifier_period_start: datetime | None = Field(None, description="Fallback identifier — period start.")
-    manufacturer_identifier_period_end: datetime | None = Field(None, description="Fallback identifier — period end.")
+    manufacturer: str | None = Field(
+        None, description="Manufacturer of the item. Reference(Organization)."
+    )
+    manufacturer_display: str | None = Field(
+        None, description="Display text for manufacturer reference."
+    )
+    manufacturer_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — purpose."
+    )
+    manufacturer_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — type system."
+    )
+    manufacturer_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — type version."
+    )
+    manufacturer_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — type code."
+    )
+    manufacturer_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — type display."
+    )
+    manufacturer_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — type user selected."
+    )
+    manufacturer_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — type text."
+    )
+    manufacturer_identifier_system: str | None = Field(
+        None, description="Fallback identifier — system."
+    )
+    manufacturer_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value."
+    )
+    manufacturer_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — period start."
+    )
+    manufacturer_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — period end."
+    )
 
-    form: MedicationCodeableConceptInput | None = Field(None, description="powder | tablets | capsule +")
-    amount: MedicationRatioInput | None = Field(None, description="Amount of drug in package.")
-    ingredient: list[MedicationIngredientInput] | None = Field(None, description="Active or inactive ingredient.")
-    batch: MedicationBatchInput | None = Field(None, description="Details about packaged medications.")
-    extension: list[dict] | None = Field(None, description="Additional content defined by implementations.")
+    form: MedicationCodeableConceptInput | None = Field(
+        None, description="powder | tablets | capsule +"
+    )
+    amount: MedicationRatioInput | None = Field(
+        None, description="Amount of drug in package."
+    )
+    ingredient: list[MedicationIngredientInput] | None = Field(
+        None, description="Active or inactive ingredient."
+    )
+    batch: MedicationBatchInput | None = Field(
+        None, description="Details about packaged medications."
+    )
+    extension: list[dict] | None = Field(
+        None, description="Additional content defined by implementations."
+    )

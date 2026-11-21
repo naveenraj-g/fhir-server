@@ -35,7 +35,8 @@ class TaskNoteInput(BaseModel):
         None, description="Representation defined by the system for identifier type."
     )
     author_identifier_type_user_selected: bool | None = Field(
-        None, description="If this identifier type coding was chosen directly by the user."
+        None,
+        description="If this identifier type coding was chosen directly by the user.",
     )
     author_identifier_type_text: str | None = Field(
         None, description="Plain text representation of the identifier type."
@@ -44,7 +45,8 @@ class TaskNoteInput(BaseModel):
         None, description="The namespace for the identifier value."
     )
     author_identifier_value: str | None = Field(
-        None, description="The portion of the identifier typically relevant to the user."
+        None,
+        description="The portion of the identifier typically relevant to the user.",
     )
     author_identifier_period_start: datetime | None = Field(
         None, description="Time period when id is/was valid for use - start."
@@ -52,9 +54,5 @@ class TaskNoteInput(BaseModel):
     author_identifier_period_end: datetime | None = Field(
         None, description="Time period when id is/was valid for use - end."
     )
-    time: datetime | None = Field(
-        None, description="When the annotation was made."
-    )
-    text: str = Field(
-        ..., description="The annotation text content."
-    )
+    time: datetime | None = Field(None, description="When the annotation was made.")
+    text: str = Field(..., description="The annotation text content.")

@@ -136,7 +136,9 @@ async def test_patch_specimen_definition_fhir(client):
     patch_payload = {
         "time_aspect": "postprandial",
     }
-    resp = await client.patch(f"{BASE}/{res_id}", json=patch_payload, headers=FHIR_ACCEPT)
+    resp = await client.patch(
+        f"{BASE}/{res_id}", json=patch_payload, headers=FHIR_ACCEPT
+    )
     assert resp.status_code == 200, resp.text
     assert_fhir_specimen_definition(resp.json(), timeAspect="postprandial")
 
@@ -177,7 +179,9 @@ async def test_list_specimen_definitions_filter_identifier(client):
     )
     assert resp.status_code == 201, resp.text
 
-    resp = await client.get(f"{BASE}/?identifier=http://example.org/spec-defs|FLT-TEST-001")
+    resp = await client.get(
+        f"{BASE}/?identifier=http://example.org/spec-defs|FLT-TEST-001"
+    )
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["total"] >= 1

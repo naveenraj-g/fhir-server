@@ -15,13 +15,9 @@ class _CoreMixin:
     itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_endpoint_id(
-        self, endpoint_id: int
-    ) -> EndpointModel | None:
+    async def get_by_endpoint_id(self, endpoint_id: int) -> EndpointModel | None:
         async with self.session_factory() as session:
-            stmt = select(EndpointModel).where(
-                EndpointModel.endpoint_id == endpoint_id
-            )
+            stmt = select(EndpointModel).where(EndpointModel.endpoint_id == endpoint_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_endpoint_id_in_org(
@@ -36,9 +32,7 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def endpoint_belongs_to_org(
-        self, endpoint_id: int, org_id: str
-    ) -> bool:
+    async def endpoint_belongs_to_org(self, endpoint_id: int, org_id: str) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the endpoint exists AND belongs
         to org_id."""
@@ -85,9 +79,7 @@ class _CoreMixin:
 
     async def delete(self, endpoint_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(EndpointModel).where(
-                EndpointModel.endpoint_id == endpoint_id
-            )
+            stmt = select(EndpointModel).where(EndpointModel.endpoint_id == endpoint_id)
             endpoint = (await session.execute(stmt)).scalars().first()
             if not endpoint:
                 return False

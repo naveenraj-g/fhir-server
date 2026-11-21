@@ -11,7 +11,10 @@ from app.schemas.fhir_input import (
     FhirReferenceInput,
 )
 
-from .backbone import PractitionerRoleAvailableTimeInput, PractitionerRoleNotAvailableInput
+from .backbone import (
+    PractitionerRoleAvailableTimeInput,
+    PractitionerRoleNotAvailableInput,
+)
 
 _EXAMPLE = {
     "resourceType": "PractitionerRole",
@@ -19,16 +22,27 @@ _EXAMPLE = {
     "period": {"start": "2026-01-01T00:00:00Z"},
     "practitioner": {"reference": "Practitioner/30001", "display": "Dr Adam Careful"},
     "organization": {"reference": "Organization/190001", "display": "General Hospital"},
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/role-id", "value": "R-1"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/role-id",
+            "value": "R-1",
+        }
+    ],
     "code": [{"coding": [{"code": "doctor", "display": "Doctor"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
     "location": [{"reference": "Location/230001"}],
     "healthcareService": [{"reference": "HealthcareService/150001"}],
     "telecom": [{"system": "phone", "value": "555-0100", "use": "work"}],
     "availableTime": [
-        {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"}
+        {
+            "daysOfWeek": ["mon", "tue"],
+            "availableStartTime": "08:00:00",
+            "availableEndTime": "17:00:00",
+        }
     ],
-    "notAvailable": [{"description": "Conference week", "during": {"start": "2026-09-01T00:00:00Z"}}],
+    "notAvailable": [
+        {"description": "Conference week", "during": {"start": "2026-09-01T00:00:00Z"}}
+    ],
     "availabilityExceptions": "Not on public holidays",
     "endpoint": [{"reference": "Endpoint/620001"}],
 }
@@ -61,7 +75,8 @@ class _PractitionerRoleFields(FhirInputModel):
         None, description="Whether this practitioner role record is in active use."
     )
     period: FhirPeriodInput | None = Field(
-        None, description="The period during which the practitioner is authorized to perform in these role(s)."
+        None,
+        description="The period during which the practitioner is authorized to perform in these role(s).",
     )
     practitioner: FhirReferenceInput | None = Field(
         None,
@@ -86,7 +101,8 @@ class _PractitionerRoleFields(FhirInputModel):
         description="The list of healthcare services that this worker provides for this role's Organization/Location(s) — Reference(HealthcareService). A relative 'HealthcareService/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     telecom: list[FhirContactPointInput] | None = Field(
-        None, description="Contact details that are specific to the role/location/service."
+        None,
+        description="Contact details that are specific to the role/location/service.",
     )
     availableTime: list[PractitionerRoleAvailableTimeInput] | None = Field(
         None, description="Times the Service Site is available."
@@ -120,6 +136,12 @@ class PractitionerRolePatchSchema(_PractitionerRoleFields):
 
     model_config = {
         "json_schema_extra": {
-            "example": {"active": False, "period": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"}}
+            "example": {
+                "active": False,
+                "period": {
+                    "start": "2026-01-01T00:00:00Z",
+                    "end": "2026-12-31T23:59:59Z",
+                },
+            }
         }
     }

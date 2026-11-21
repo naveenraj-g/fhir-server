@@ -5,7 +5,6 @@ from app.services.observation_definition import ObservationDefinitionService
 
 
 class ObservationDefinitionContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     observation_definition_repository = providers.Factory(

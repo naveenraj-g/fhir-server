@@ -103,11 +103,15 @@ class _CoreMixin:
                 if cm_type:
                     stmt = stmt.where(EpisodeOfCareModel.care_manager_type == cm_type)
             else:
-                stmt = stmt.where(EpisodeOfCareModel.care_manager_reference == care_manager)
+                stmt = stmt.where(
+                    EpisodeOfCareModel.care_manager_reference == care_manager
+                )
         if organization:
             org_type, org_id_val = _parse_managing_org_ref(organization)
             if org_id_val:
-                stmt = stmt.where(EpisodeOfCareModel.managing_organization_id == org_id_val)
+                stmt = stmt.where(
+                    EpisodeOfCareModel.managing_organization_id == org_id_val
+                )
                 if org_type:
                     stmt = stmt.where(
                         EpisodeOfCareModel.managing_organization_type == org_type

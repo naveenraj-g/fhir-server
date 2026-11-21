@@ -80,8 +80,12 @@ class PlainMedicationKnowledgeResponse(BaseModel):
     intended_route: list[MedicationKnowledgeCodeableConceptResponse] | None = None
     cost: list[PlainMedicationKnowledgeCost] | None = None
     monitoring_program: list[PlainMedicationKnowledgeMonitoringProgram] | None = None
-    administration_guidelines: list[PlainMedicationKnowledgeAdminGuideline] | None = None
-    medicine_classification: list[PlainMedicationKnowledgeMedicineClassification] | None = None
+    administration_guidelines: list[PlainMedicationKnowledgeAdminGuideline] | None = (
+        None
+    )
+    medicine_classification: (
+        list[PlainMedicationKnowledgeMedicineClassification] | None
+    ) = None
     packaging: PlainMedicationKnowledgePackaging | None = None
     drug_characteristic: list[PlainMedicationKnowledgeDrugCharacteristic] | None = None
     contraindication: list[PlainMedicationKnowledgeReference] | None = None
@@ -95,7 +99,9 @@ class PaginatedMedicationKnowledgeResponse(BaseModel):
     total: int = Field(..., description="Total number of resources matching the query.")
     limit: int = Field(..., description="Page size.")
     offset: int = Field(..., description="Offset.")
-    data: list[PlainMedicationKnowledgeResponse] = Field(..., description="List of medications in plain format.")
+    data: list[PlainMedicationKnowledgeResponse] = Field(
+        ..., description="List of medications in plain format."
+    )
 
 
 class FHIRMedicationKnowledgeBundleEntry(BaseModel):

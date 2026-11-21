@@ -66,7 +66,8 @@ logger = get_logger(__name__)
         "PractitionerRole, Patient, RelatedPerson), a performer actor (Practitioner, PractitionerRole, Organization, "
         "Patient, RelatedPerson), `partOf` and `reasonReference` (Procedure, Condition), `complicationDetail`, a "
         "note author and `identifier.assigner` are rejected with 422 if they do not exist in the caller's org; an "
-        "absolute URL, a Group subject, a Device or a logical reference is stored as sent. " + _CONTENT_NEG
+        "absolute URL, a Group subject, a Device or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -219,9 +220,7 @@ async def search_procedures_post(
 )
 async def get_procedure(
     request: Request,
-    procedure_id: int = Path(
-        ..., ge=1, description="Public procedure identifier."
-    ),
+    procedure_id: int = Path(..., ge=1, description="Public procedure identifier."),
     actor: AuthUser = Depends(require_permission("procedure", "read")),
     procedure_service: ProcedureService = Depends(get_procedure_service),
 ):
@@ -232,9 +231,7 @@ async def get_procedure(
             "procedure_id": procedure_id,
         },
     )
-    procedure = await procedure_service.get_procedure_scoped(
-        procedure_id, actor.org_id
-    )
+    procedure = await procedure_service.get_procedure_scoped(procedure_id, actor.org_id)
     return fhir_response(procedure_service._to_fhir(procedure))
 
 
@@ -259,9 +256,7 @@ async def get_procedure(
 async def patch_procedure(
     payload: ProcedurePatchSchema,
     request: Request,
-    procedure_id: int = Path(
-        ..., ge=1, description="Public procedure identifier."
-    ),
+    procedure_id: int = Path(..., ge=1, description="Public procedure identifier."),
     actor: AuthUser = Depends(require_permission("procedure", "update")),
     procedure_service: ProcedureService = Depends(get_procedure_service),
 ):
@@ -298,9 +293,7 @@ async def patch_procedure(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_procedure(
-    procedure_id: int = Path(
-        ..., ge=1, description="Public procedure identifier."
-    ),
+    procedure_id: int = Path(..., ge=1, description="Public procedure identifier."),
     actor: AuthUser = Depends(require_permission("procedure", "delete")),
     procedure_service: ProcedureService = Depends(get_procedure_service),
 ):

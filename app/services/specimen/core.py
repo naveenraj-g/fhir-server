@@ -37,7 +37,9 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("Specimen operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "Specimen operation requires an org-scoped token"
+            )
         specimen = await self.repository.get_by_specimen_id_in_org(specimen_id, org_id)
         if not specimen:
             raise NotFoundError("Specimen not found")
@@ -58,7 +60,9 @@ class _CoreMixin:
     ) -> tuple[list[SpecimenModel], int | None]:
         """Raises PermissionDeniedError (403) for an org-less token."""
         if not org_id:
-            raise PermissionDeniedError("Specimen operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "Specimen operation requires an org-scoped token"
+            )
         return await self.repository.list(
             org_id=org_id,
             status=status,
@@ -79,9 +83,13 @@ class _CoreMixin:
         created_by: str | None,
     ) -> SpecimenModel:
         if not org_id:
-            raise PermissionDeniedError("Specimen creation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "Specimen creation requires an org-scoped token"
+            )
         if not created_by:
-            raise PermissionDeniedError("Specimen creation requires an authenticated actor")
+            raise PermissionDeniedError(
+                "Specimen creation requires an authenticated actor"
+            )
 
         await self._validate_base_r4(payload_to_fhir_specimen(payload), org_id)
         specimen = await self.repository.create_full(payload, org_id, created_by)
@@ -125,8 +133,12 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_specimen(self, specimen_id: int, org_id: str | None = None) -> None:
-        if not org_id or not await self.repository.specimen_belongs_to_org(specimen_id, org_id):
+    async def delete_specimen(
+        self, specimen_id: int, org_id: str | None = None
+    ) -> None:
+        if not org_id or not await self.repository.specimen_belongs_to_org(
+            specimen_id, org_id
+        ):
             self._log_org_scope_miss("delete", specimen_id, org_id)
             raise NotFoundError("Specimen not found")
         deleted = await self.repository.delete(specimen_id)
@@ -148,7 +160,9 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(operation: str, specimen_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, specimen_id: int, org_id: str | None
+    ) -> None:
         logger.warning(
             "Specimen write rejected by org scope",
             extra={

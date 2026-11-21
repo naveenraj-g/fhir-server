@@ -3,6 +3,7 @@
 Uses asyncpg directly (not SQLAlchemy) for bulk-insert performance.
 Batches of BATCH_SIZE rows, idempotent via ON CONFLICT DO NOTHING.
 """
+
 import time
 from collections.abc import Sequence
 
@@ -59,7 +60,12 @@ class BaseLoader:
                 updated_at   = NOW()
             RETURNING id
             """,
-            canonical_url, name, title, version, publisher, content_mode,
+            canonical_url,
+            name,
+            title,
+            version,
+            publisher,
+            content_mode,
         )
         return row["id"]
 
@@ -100,7 +106,8 @@ class BaseLoader:
         return inserted
 
     async def bulk_insert_synonyms(
-        self, records: Sequence[tuple]  # (concept_db_id, synonym)
+        self,
+        records: Sequence[tuple],  # (concept_db_id, synonym)
     ) -> int:
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
@@ -111,7 +118,10 @@ class BaseLoader:
         return len(records)
 
     async def bulk_insert_relationships(
-        self, records: Sequence[tuple]  # (parent_concept_db_id, child_concept_db_id, relationship_type)
+        self,
+        records: Sequence[
+            tuple
+        ],  # (parent_concept_db_id, child_concept_db_id, relationship_type)
     ) -> int:
         for i in range(0, len(records), BATCH_SIZE):
             batch = records[i : i + BATCH_SIZE]
@@ -127,7 +137,10 @@ class BaseLoader:
         return len(records)
 
     async def bulk_insert_concept_maps(
-        self, records: Sequence[tuple]  # (source_concept_db_id, target_concept_db_id, equivalence, confidence)
+        self,
+        records: Sequence[
+            tuple
+        ],  # (source_concept_db_id, target_concept_db_id, equivalence, confidence)
     ) -> int:
         """`equivalence` must be one of the real `ConceptMapEquivalence`
         string values (app/models/terminology/enums.py) — this loader

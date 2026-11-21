@@ -20,7 +20,8 @@ class QuestionnaireItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     link_id: str = Field(
-        ..., description="Unique id for this particular item in this questionnaire, used to link to a QuestionnaireResponse."
+        ...,
+        description="Unique id for this particular item in this questionnaire, used to link to a QuestionnaireResponse.",
     )
     definition: str | None = Field(
         None,
@@ -30,10 +31,12 @@ class QuestionnaireItemInput(BaseModel):
         None, description="Terminology code(s) for this item (e.g. LOINC)."
     )
     prefix: str | None = Field(
-        None, description="A short label for a particular group, question, or set of display text, e.g. '1(a)'."
+        None,
+        description="A short label for a particular group, question, or set of display text, e.g. '1(a)'.",
     )
     text: str | None = Field(
-        None, description="Primary text for the item (section name, question text, or display text)."
+        None,
+        description="Primary text for the item (section name, question text, or display text).",
     )
     type: QuestionnaireItemType = Field(
         ...,
@@ -49,17 +52,14 @@ class QuestionnaireItemInput(BaseModel):
     required: bool | None = Field(
         None, description="Whether the item must be included in data results."
     )
-    repeats: bool | None = Field(
-        None, description="Whether the item may repeat."
-    )
-    read_only: bool | None = Field(
-        None, description="Don't allow human editing."
-    )
+    repeats: bool | None = Field(None, description="Whether the item may repeat.")
+    read_only: bool | None = Field(None, description="Don't allow human editing.")
     max_length: int | None = Field(
         None, description="No more than this many characters."
     )
     answer_value_set: str | None = Field(
-        None, description="Valueset containing permitted answers, as a canonical reference (uri)."
+        None,
+        description="Valueset containing permitted answers, as a canonical reference (uri).",
     )
     answer_option: list[QuestionnaireItemAnswerOptionInput] | None = Field(
         None, description="Permitted answer values."

@@ -13,7 +13,12 @@ from app.schemas.fhir_input import (
 _EXAMPLE = {
     "resourceType": "Schedule",
     "active": True,
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/schedule-id", "value": "S-1"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/schedule-id",
+            "value": "S-1",
+        }
+    ],
     "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}]}],
     "serviceType": [{"coding": [{"code": "124", "display": "General Practice"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
@@ -71,9 +76,7 @@ class _ScheduleFields(FhirInputModel):
     planningHorizon: FhirPeriodInput | None = Field(
         None, description="Period of time covered by schedule."
     )
-    comment: str | None = Field(
-        None, description="Comments on availability."
-    )
+    comment: str | None = Field(None, description="Comments on availability.")
 
 
 class ScheduleCreateSchema(_ScheduleFields):
@@ -92,6 +95,12 @@ class SchedulePatchSchema(_ScheduleFields):
 
     model_config = {
         "json_schema_extra": {
-            "example": {"active": False, "planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-06-30T23:59:59Z"}}
+            "example": {
+                "active": False,
+                "planningHorizon": {
+                    "start": "2026-01-01T00:00:00Z",
+                    "end": "2026-06-30T23:59:59Z",
+                },
+            }
         }
     }

@@ -12,13 +12,21 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "DocumentReference not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainDocumentReferenceResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRDocumentReferenceSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PlainDocumentReferenceResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRDocumentReferenceSchema.model_json_schema())
+            },
         }
     }
 }
@@ -27,8 +35,14 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of document references",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedDocumentReferenceResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRDocumentReferenceBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PaginatedDocumentReferenceResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRDocumentReferenceBundle.model_json_schema())
+            },
         },
     }
 }

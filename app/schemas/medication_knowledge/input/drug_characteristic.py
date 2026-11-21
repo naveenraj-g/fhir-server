@@ -14,7 +14,8 @@ class MedicationKnowledgeDrugCharacteristicInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: MedicationKnowledgeCodeableConceptInput | None = Field(
-        None, description="Code specifying the type of characteristic of medicinal product."
+        None,
+        description="Code specifying the type of characteristic of medicinal product.",
     )
     value_codeable_concept: MedicationKnowledgeCodeableConceptInput | None = Field(
         None, description="Description of the characteristic as a CodeableConcept."

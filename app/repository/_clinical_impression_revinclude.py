@@ -18,21 +18,36 @@ def column_impression_revincludes(
     an Encounter, `assessor` for a Practitioner / PractitionerRole)."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.clinical_impression.search import revinclude_impressions_via_column
+        from app.repository.clinical_impression.search import (
+            revinclude_impressions_via_column,
+        )
 
-        return await revinclude_impressions_via_column(prefix, resource_type, key)(session, ctx, rows)
+        return await revinclude_impressions_via_column(prefix, resource_type, key)(
+            session, ctx, rows
+        )
 
-    return tuple(IncludeTarget("ClinicalImpression", param, resource_type, fetch, reverse=True) for param in params)
+    return tuple(
+        IncludeTarget("ClinicalImpression", param, resource_type, fetch, reverse=True)
+        for param in params
+    )
 
 
-def reference_impression_revincludes(param: str, resource_type: str, key) -> tuple[IncludeTarget, ...]:
+def reference_impression_revincludes(
+    param: str, resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
     """ClinicalImpression:<param> (`problem` for a Condition / AllergyIntolerance, `investigation`
     for a RiskAssessment / FamilyMemberHistory / DiagnosticReport) — impressions with a reference
     row pointing at one of the matched rows of `resource_type`."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.clinical_impression.search import revinclude_impressions_via_reference
+        from app.repository.clinical_impression.search import (
+            revinclude_impressions_via_reference,
+        )
 
-        return await revinclude_impressions_via_reference(param, resource_type, key)(session, ctx, rows)
+        return await revinclude_impressions_via_reference(param, resource_type, key)(
+            session, ctx, rows
+        )
 
-    return (IncludeTarget("ClinicalImpression", param, resource_type, fetch, reverse=True),)
+    return (
+        IncludeTarget("ClinicalImpression", param, resource_type, fetch, reverse=True),
+    )

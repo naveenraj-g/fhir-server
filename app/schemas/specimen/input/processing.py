@@ -15,7 +15,8 @@ class SpecimenProcessingInput(BaseModel):
         None, description="Textual description of procedure."
     )
     procedure: SpecimenCodeableConceptInput | None = Field(
-        None, description="Indicates the mechanism used by the specimen processing step."
+        None,
+        description="Indicates the mechanism used by the specimen processing step.",
     )
     additive: list[SpecimenAdditiveReferenceInput] | None = Field(
         None, description="Material used in the processing step (Reference(Substance))."

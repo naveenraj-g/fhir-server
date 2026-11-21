@@ -57,9 +57,7 @@ class FlagCreateSchema(BaseModel):
     identifier: list[FlagIdentifierInput] | None = Field(
         None, description="Business identifier for each flag."
     )
-    status: FlagStatus = Field(
-        ..., description="active | inactive | entered-in-error."
-    )
+    status: FlagStatus = Field(..., description="active | inactive | entered-in-error.")
     category: list[FlagCategoryInput] | None = Field(
         None, description="Clinical, administrative, etc."
     )
@@ -202,7 +200,11 @@ class FlagCreateSchema(BaseModel):
             raise ValueError(
                 "Flag.code is required (at least code_coding or code_text must be provided)"
             )
-        if not self.subject and not self.subject_identifier_value and not self.subject_display:
+        if (
+            not self.subject
+            and not self.subject_identifier_value
+            and not self.subject_display
+        ):
             raise ValueError(
                 "Flag.subject is required (at least subject reference, identifier, or display must be provided)"
             )

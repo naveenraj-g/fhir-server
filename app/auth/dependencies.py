@@ -89,7 +89,11 @@ async def get_current_user(request: Request) -> dict:
         # traceback because the 401 the caller sees says nothing useful.
         logger.error(
             "Authentication failed unexpectedly",
-            extra={"event": "auth.failed", "reason": "internal", "path": request.url.path},
+            extra={
+                "event": "auth.failed",
+                "reason": "internal",
+                "path": request.url.path,
+            },
             exc_info=exc,
         )
         raise AuthenticationError("Invalid or expired token")

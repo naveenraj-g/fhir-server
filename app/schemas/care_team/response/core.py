@@ -55,9 +55,7 @@ class FHIRCareTeamSchema(BaseModel):
     encounter: FHIRReference | None = Field(
         None, description="Encounter created as part of."
     )
-    period: FHIRPeriod | None = Field(
-        None, description="Time period team covers."
-    )
+    period: FHIRPeriod | None = Field(None, description="Time period team covers.")
     participant: list[FHIRCareTeamParticipant] | None = Field(
         None, description="Members of the team."
     )

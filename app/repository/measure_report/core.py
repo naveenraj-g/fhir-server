@@ -19,7 +19,9 @@ logger = get_logger(__name__)
 class _CoreMixin:
     """Core CRUD and list operations for MeasureReport."""
 
-    async def get_by_measure_report_id(self, measure_report_id: int) -> MeasureReportModel | None:
+    async def get_by_measure_report_id(
+        self, measure_report_id: int
+    ) -> MeasureReportModel | None:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(MeasureReportModel).where(
@@ -42,7 +44,9 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def measure_report_belongs_to_org(self, measure_report_id: int, org_id: str) -> bool:
+    async def measure_report_belongs_to_org(
+        self, measure_report_id: int, org_id: str
+    ) -> bool:
         """Cheap existence/ownership check (no joins, no sub-resources)."""
         async with self.session_factory() as session:
             stmt = select(func.count(MeasureReportModel.id)).where(
@@ -67,7 +71,9 @@ class _CoreMixin:
         stmt = stmt.where(MeasureReportModel.tenant_id == org_id)
 
         if identifier:
-            conditions = [MeasureReportIdentifier.measure_report_pk == MeasureReportModel.id]
+            conditions = [
+                MeasureReportIdentifier.measure_report_pk == MeasureReportModel.id
+            ]
             if "|" in identifier:
                 sys, val = identifier.split("|", 1)
                 if sys:

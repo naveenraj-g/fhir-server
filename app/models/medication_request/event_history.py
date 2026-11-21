@@ -11,7 +11,9 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
-from app.models.medication_request.enums import MedicationRequestEventHistoryReferenceType
+from app.models.medication_request.enums import (
+    MedicationRequestEventHistoryReferenceType,
+)
 from app.models.shared import TenantAuditMixin
 
 
@@ -27,17 +29,24 @@ class MedicationRequestEventHistory(TenantAuditMixin, Base):
     __tablename__ = "medication_request_event_history"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    medication_request_pk = Column(BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True)
+    medication_request_pk = Column(
+        BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True
+    )
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
-        Enum(MedicationRequestEventHistoryReferenceType, name="medication_request_event_history_reference_type"),
+        Enum(
+            MedicationRequestEventHistoryReferenceType,
+            name="medication_request_event_history_reference_type",
+        ),
         nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
-    reference_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     reference_identifier_type_system = Column(String, nullable=True)
     reference_identifier_type_version = Column(String, nullable=True)
     reference_identifier_type_code = Column(String, nullable=True)
@@ -49,4 +58,6 @@ class MedicationRequestEventHistory(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    medication_request = relationship("MedicationRequestModel", back_populates="event_histories")
+    medication_request = relationship(
+        "MedicationRequestModel", back_populates="event_histories"
+    )

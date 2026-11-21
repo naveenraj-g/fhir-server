@@ -87,9 +87,7 @@ class MeasureService:
         created_by: str | None,
     ) -> MeasureModel:
         if not org_id:
-            raise PermissionDeniedError(
-                "Measure creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Measure creation requires an org-scoped token")
         if not created_by:
             raise PermissionDeniedError(
                 "Measure creation requires an authenticated actor"
@@ -116,22 +114,16 @@ class MeasureService:
         if not org_id:
             self._log_org_scope_miss("patch", measure_id, org_id)
             raise NotFoundError("Measure not found")
-        existing = await self.repository.get_by_measure_id_in_org(
-            measure_id, org_id
-        )
+        existing = await self.repository.get_by_measure_id_in_org(measure_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", measure_id, org_id)
             raise NotFoundError("Measure not found")
 
         fragment, touched = patch_fragment_to_fhir_measure(payload)
-        merged = merge_patch_fragment(
-            to_fhir_measure(existing), fragment, touched
-        )
+        merged = merge_patch_fragment(to_fhir_measure(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch(
-            measure_id, payload, org_id, updated_by
-        )
+        updated = await self.repository.patch(measure_id, payload, org_id, updated_by)
         if not updated:
             raise NotFoundError("Measure not found")
         logger.info(
@@ -144,9 +136,7 @@ class MeasureService:
         )
         return updated
 
-    async def delete_measure(
-        self, measure_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_measure(self, measure_id: int, org_id: str | None = None) -> None:
         if not org_id or not await self.repository.measure_belongs_to_org(
             measure_id, org_id
         ):
@@ -164,9 +154,7 @@ class MeasureService:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource("Measure", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(

@@ -18,7 +18,13 @@ from sqlalchemy import exists, false, func, literal, or_, select, true
 
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     coded_token_match,
     date_match,
@@ -45,7 +51,9 @@ _R = HealthcareServiceReference
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.healthcare_service_pk == HS.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.healthcare_service_pk == HS.id, *conditions)
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -71,7 +79,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return HS.healthcare_service_id == int(token.code)
 
@@ -92,10 +102,17 @@ def _name_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -110,7 +127,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -128,16 +147,27 @@ def _token_param(param: str):
 def _organization_match(value, modifier, ctx):
     if modifier == "identifier":
         return token_condition(
-            HS.provided_by_identifier_system, HS.provided_by_identifier_value, parse_token(value)
+            HS.provided_by_identifier_system,
+            HS.provided_by_identifier_value,
+            parse_token(value),
         )
     return reference_match(
-        HS.provided_by_type, HS.provided_by_id, HS.provided_by_reference,
-        value, modifier, ctx, ("Organization",), OrganizationReferenceType,
+        HS.provided_by_type,
+        HS.provided_by_id,
+        HS.provided_by_reference,
+        value,
+        modifier,
+        ctx,
+        ("Organization",),
+        OrganizationReferenceType,
     )
 
 
 def _organization_present(ctx):
-    return or_(HS.provided_by_reference.is_not(None), HS.provided_by_identifier_value.is_not(None))
+    return or_(
+        HS.provided_by_reference.is_not(None),
+        HS.provided_by_identifier_value.is_not(None),
+    )
 
 
 def _organization_chain(target, inner, ctx):
@@ -146,7 +176,11 @@ def _organization_chain(target, inner, ctx):
     correlate to the outer row — it ranges over the referenced Organization."""
     from app.models.organization import OrganizationModel as Org
 
-    referenced = select(Org.organization_id).where(Org.tenant_id == ctx.tenant_id, inner).correlate(None)
+    referenced = (
+        select(Org.organization_id)
+        .where(Org.tenant_id == ctx.tenant_id, inner)
+        .correlate(None)
+    )
     return HS.provided_by_id.in_(referenced)
 
 
@@ -159,15 +193,25 @@ def _reference_param(param: str, resource_type: str):
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _R,
             _R.param == param,
             # reference_type is a plain string here (the value is fixed by `param`).
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference,
-                value, modifier, ctx, (resource_type,), str,
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                (resource_type,),
+                str,
             ),
         )
 
@@ -175,7 +219,10 @@ def _reference_param(param: str, resource_type: str):
         return _exists(
             _R,
             _R.param == param,
-            or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None)),
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
@@ -183,7 +230,11 @@ def _reference_param(param: str, resource_type: str):
         `<p>=v`."""
         from app.models.location import LocationModel as Loc
 
-        referenced = select(Loc.location_id).where(Loc.tenant_id == ctx.tenant_id, inner).correlate(None)
+        referenced = (
+            select(Loc.location_id)
+            .where(Loc.tenant_id == ctx.tenant_id, inner)
+            .correlate(None)
+        )
         return _exists(_R, _R.param == param, _R.reference_id.in_(referenced))
 
     def sort():
@@ -206,7 +257,10 @@ async def _include_organization(session, ctx, services):
     ids = {s.provided_by_id for s in services if s.provided_by_id is not None}
     if not ids:
         return []
-    return await _fetch(session, select(Org).where(Org.tenant_id == ctx.tenant_id, Org.organization_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Org).where(Org.tenant_id == ctx.tenant_id, Org.organization_id.in_(ids)),
+    )
 
 
 def _include_locations(param: str):
@@ -215,9 +269,16 @@ def _include_locations(param: str):
 
         pks = {s.id for s in services}
         referenced = select(_R.reference_id).where(
-            _R.healthcare_service_pk.in_(pks), _R.param == param, _R.reference_id.is_not(None)
+            _R.healthcare_service_pk.in_(pks),
+            _R.param == param,
+            _R.reference_id.is_not(None),
         )
-        return await _fetch(session, select(Loc).where(Loc.tenant_id == ctx.tenant_id, Loc.location_id.in_(referenced)))
+        return await _fetch(
+            session,
+            select(Loc).where(
+                Loc.tenant_id == ctx.tenant_id, Loc.location_id.in_(referenced)
+            ),
+        )
 
     return fetch
 
@@ -228,9 +289,14 @@ async def _include_endpoint(session, ctx, services):
     from app.models.endpoint import EndpointModel as Ep
 
     ids = select(_R.reference_id).where(
-        _R.healthcare_service_pk.in_({s.id for s in services}), _R.param == "endpoint", _R.reference_id.is_not(None)
+        _R.healthcare_service_pk.in_({s.id for s in services}),
+        _R.param == "endpoint",
+        _R.reference_id.is_not(None),
     )
-    return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)),
+    )
 
 
 def _revinclude_practitioner_roles(param: str, key):
@@ -242,8 +308,12 @@ def _revinclude_practitioner_roles(param: str, key):
         from app.models.practitioner_role import PractitionerRoleReference as Ref
 
         ids = {key(r) for r in rows}
-        pks = select(Ref.practitioner_role_pk).where(Ref.param == param, Ref.reference_id.in_(ids))
-        return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks)))
+        pks = select(Ref.practitioner_role_pk).where(
+            Ref.param == param, Ref.reference_id.in_(ids)
+        )
+        return await _fetch(
+            session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.id.in_(pks))
+        )
 
     return fetch
 
@@ -257,7 +327,9 @@ def _revinclude_schedules(resource_type: str, key):
         from app.models.schedule import ScheduleModel as S
 
         ids = {key(r) for r in rows}
-        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        pks = select(A.schedule_pk).where(
+            A.reference_type == resource_type, A.reference_id.in_(ids)
+        )
         stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
         return list((await session.execute(stmt)).scalars().all())
 
@@ -303,86 +375,162 @@ def healthcare_service_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
     def reference(name, description, expression, example, resource_type):
         match, present, chain, sort = _reference_param(name, resource_type)
         return SearchParam(
-            name, "reference", description, expression, match, present,
-            frozenset({"identifier", "missing"}), targets=(resource_type,),
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            frozenset({"identifier", "missing"}),
+            targets=(resource_type,),
             chain=chain if resource_type == "Location" else None,
-            chain_targets={"Location": _location_search} if resource_type == "Location" else {},
-            sort=sort, example=example,
+            chain_targets={"Location": _location_search}
+            if resource_type == "Location"
+            else {},
+            sort=sort,
+            example=example,
         )
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public healthcare service id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: HS.healthcare_service_id, example="150001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public healthcare service id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: HS.healthcare_service_id,
+            example="150001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "active", "token", "The Healthcare Service is currently marked as active", "HealthcareService.active",
-            _active_match, lambda ctx: HS.active.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: HS.active, example="true",
-            modifier_docs={"not": "`:not` — active is not this value, or is not recorded at all."},
+            "active",
+            "token",
+            "The Healthcare Service is currently marked as active",
+            "HealthcareService.active",
+            _active_match,
+            lambda ctx: HS.active.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: HS.active,
+            example="true",
+            modifier_docs={
+                "not": "`:not` — active is not this value, or is not recorded at all."
+            },
         ),
         token(
-            "characteristic", "One of the HealthcareService's characteristics",
-            "HealthcareService.characteristic", "http://example.org/chars|wheelchair",
+            "characteristic",
+            "One of the HealthcareService's characteristics",
+            "HealthcareService.characteristic",
+            "http://example.org/chars|wheelchair",
         ),
         reference(
-            "coverage-area", "Location(s) service is intended for/available to",
-            "HealthcareService.coverageArea", "Location/230001", "Location",
+            "coverage-area",
+            "Location(s) service is intended for/available to",
+            "HealthcareService.coverageArea",
+            "Location/230001",
+            "Location",
         ),
         reference(
-            "endpoint", "Technical endpoints providing access to electronic services operated for the healthcare service",
-            "HealthcareService.endpoint", "Endpoint/1", "Endpoint",
+            "endpoint",
+            "Technical endpoints providing access to electronic services operated for the healthcare service",
+            "HealthcareService.endpoint",
+            "Endpoint/1",
+            "Endpoint",
         ),
         SearchParam(
-            "identifier", "token", "External identifiers for this item", "HealthcareService.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:facility|12345",
+            "identifier",
+            "token",
+            "External identifiers for this item",
+            "HealthcareService.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:facility|12345",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         reference(
-            "location", "The location of the Healthcare Service", "HealthcareService.location",
-            "Location/230001", "Location",
+            "location",
+            "The location of the Healthcare Service",
+            "HealthcareService.location",
+            "Location/230001",
+            "Location",
         ),
         SearchParam(
-            "name", "string", "A portion of the Healthcare service name", "HealthcareService.name",
-            _name_match, lambda ctx: HS.name.is_not(None), _STRING,
-            sort=lambda: HS.name_norm, example="Cardiology",
+            "name",
+            "string",
+            "A portion of the Healthcare service name",
+            "HealthcareService.name",
+            _name_match,
+            lambda ctx: HS.name.is_not(None),
+            _STRING,
+            sort=lambda: HS.name_norm,
+            example="Cardiology",
         ),
         SearchParam(
-            "organization", "reference", "The organization providing the Healthcare service",
-            "HealthcareService.providedBy", _organization_match, _organization_present,
-            frozenset({"identifier", "missing"}), targets=("Organization",),
-            chain=_organization_chain, chain_targets={"Organization": _organization_search},
-            sort=lambda: HS.provided_by_id, example="Organization/190001",
+            "organization",
+            "reference",
+            "The organization providing the Healthcare service",
+            "HealthcareService.providedBy",
+            _organization_match,
+            _organization_present,
+            frozenset({"identifier", "missing"}),
+            targets=("Organization",),
+            chain=_organization_chain,
+            chain_targets={"Organization": _organization_search},
+            sort=lambda: HS.provided_by_id,
+            example="Organization/190001",
         ),
         token(
-            "program", "One of the Programs supported by this HealthcareService",
-            "HealthcareService.program", "http://example.org/programs|diabetes",
+            "program",
+            "One of the Programs supported by this HealthcareService",
+            "HealthcareService.program",
+            "http://example.org/programs|diabetes",
         ),
         token(
-            "service-category", "Service Category of the Healthcare Service", "HealthcareService.category",
+            "service-category",
+            "Service Category of the Healthcare Service",
+            "HealthcareService.category",
             "http://terminology.hl7.org/CodeSystem/service-category|35",
         ),
         token(
-            "service-type", "The type of service provided by this healthcare service", "HealthcareService.type",
+            "service-type",
+            "The type of service provided by this healthcare service",
+            "HealthcareService.type",
             "http://terminology.hl7.org/CodeSystem/service-type|124",
         ),
         token(
-            "specialty", "The specialty of the service provided by this healthcare service",
-            "HealthcareService.specialty", "http://snomed.info/sct|394579002",
+            "specialty",
+            "The specialty of the service provided by this healthcare service",
+            "HealthcareService.specialty",
+            "http://snomed.info/sct|394579002",
         ),
     ]
 
@@ -391,30 +539,69 @@ def healthcare_service_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 HealthcareService definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "active", "providedBy", "category", "type", "specialty", "location", "name", "comment", "photo"}
+            {
+                "identifier",
+                "active",
+                "providedBy",
+                "category",
+                "type",
+                "specialty",
+                "location",
+                "name",
+                "comment",
+                "photo",
+            }
         ),
         mandatory_elements=frozenset(),
         includes=(
-            IncludeTarget("HealthcareService", "organization", "Organization", _include_organization),
-            IncludeTarget("HealthcareService", "location", "Location", _include_locations("location")),
-            IncludeTarget("HealthcareService", "coverage-area", "Location", _include_locations("coverage-area")),
-            IncludeTarget("HealthcareService", "endpoint", "Endpoint", _include_endpoint),
+            IncludeTarget(
+                "HealthcareService",
+                "organization",
+                "Organization",
+                _include_organization,
+            ),
+            IncludeTarget(
+                "HealthcareService",
+                "location",
+                "Location",
+                _include_locations("location"),
+            ),
+            IncludeTarget(
+                "HealthcareService",
+                "coverage-area",
+                "Location",
+                _include_locations("coverage-area"),
+            ),
+            IncludeTarget(
+                "HealthcareService", "endpoint", "Endpoint", _include_endpoint
+            ),
         ),
         # PractitionerRole.healthcareService points here (Schedule, ... will add
         # theirs when they are rebuilt).
         revincludes=(
-            *participant_revincludes('HealthcareService', lambda s: s.healthcare_service_id, ('actor',)),
-            *actor_response_revincludes('HealthcareService', lambda s: s.healthcare_service_id, ('actor',)),
+            *participant_revincludes(
+                "HealthcareService", lambda s: s.healthcare_service_id, ("actor",)
+            ),
+            *actor_response_revincludes(
+                "HealthcareService", lambda s: s.healthcare_service_id, ("actor",)
+            ),
             IncludeTarget(
                 "PractitionerRole",
                 "service",
                 "HealthcareService",
-                _revinclude_practitioner_roles("service", lambda s: s.healthcare_service_id),
+                _revinclude_practitioner_roles(
+                    "service", lambda s: s.healthcare_service_id
+                ),
                 reverse=True,
             ),
             IncludeTarget(
-                "Schedule", "actor", "HealthcareService",
-                _revinclude_schedules("HealthcareService", lambda s: s.healthcare_service_id), reverse=True,
+                "Schedule",
+                "actor",
+                "HealthcareService",
+                _revinclude_schedules(
+                    "HealthcareService", lambda s: s.healthcare_service_id
+                ),
+                reverse=True,
             ),
         ),
         default_sort=lambda: [HS.healthcare_service_id.desc()],

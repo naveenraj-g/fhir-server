@@ -12,7 +12,10 @@ class PlanDefinitionTopic(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     plan_definition_pk = Column(
-        BigInteger, ForeignKey("plan_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("plan_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 

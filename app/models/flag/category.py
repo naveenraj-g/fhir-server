@@ -11,9 +11,7 @@ class FlagCategory(TenantAuditMixin, Base):
     __tablename__ = "flag_category"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    flag_pk = Column(
-        BigInteger, ForeignKey("flag.id"), nullable=False, index=True
-    )
+    flag_pk = Column(BigInteger, ForeignKey("flag.id"), nullable=False, index=True)
     text = Column(String, nullable=True)
 
     flag = relationship("FlagModel", back_populates="categories")

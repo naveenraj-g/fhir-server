@@ -30,7 +30,13 @@ PART = {"actor": {"reference": "Patient/10001"}, "status": "accepted"}
 
 
 def _appointment(content: dict, **overrides) -> AppointmentModel:
-    fields = {"appointment_id": 40001, "tenant_id": "org-test", "created_by": "u-test", "created_at": D, "content": content}
+    fields = {
+        "appointment_id": 40001,
+        "tenant_id": "org-test",
+        "created_by": "u-test",
+        "created_at": D,
+        "content": content,
+    }
     fields.update(overrides)
     return AppointmentModel(**fields)
 
@@ -41,17 +47,36 @@ def _with(**elements) -> AppointmentModel:
 
 CASES = {
     "minimal": _with(),
-    "updated_by_and_updated_at": _appointment({"status": "booked", "participant": [PART]}, updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _appointment(
+        {"status": "booked", "participant": [PART]}, updated_by="u-other", updated_at=D
+    ),
     **{
         f"status_{s}": _with(status=s)
-        for s in ("proposed", "pending", "booked", "arrived", "fulfilled", "cancelled", "noshow",
-                  "entered-in-error", "checked-in", "waitlist")
+        for s in (
+            "proposed",
+            "pending",
+            "booked",
+            "arrived",
+            "fulfilled",
+            "cancelled",
+            "noshow",
+            "entered-in-error",
+            "checked-in",
+            "waitlist",
+        )
     },
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "VN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "VN",
+                        }
+                    ]
+                },
                 "system": "http://hospital.example.org/appointments",
                 "value": "AP-1",
                 "period": {"start": "2020-01-01"},
@@ -60,13 +85,29 @@ CASES = {
         ]
     ),
     "cancelation_reason": _with(
-        status="cancelled", cancelationReason={"coding": [{"code": "pat", "display": "Patient"}], "text": "Patient unwell"}
+        status="cancelled",
+        cancelationReason={
+            "coding": [{"code": "pat", "display": "Patient"}],
+            "text": "Patient unwell",
+        },
     ),
-    "service_category": _with(serviceCategory=[{"coding": [{"code": "17", "display": "General Practice"}], "text": "GP"}]),
+    "service_category": _with(
+        serviceCategory=[
+            {"coding": [{"code": "17", "display": "General Practice"}], "text": "GP"}
+        ]
+    ),
     "service_type": _with(serviceType=[{"coding": [{"code": "124"}]}]),
-    "specialty": _with(specialty=[{"coding": [{"code": "394579002", "display": "Cardiology"}]}]),
-    "appointment_type": _with(appointmentType={"coding": [{"code": "ROUTINE", "display": "Routine appointment"}]}),
-    "reason_code": _with(reasonCode=[{"coding": [{"code": "413153004"}], "text": "Check-up"}]),
+    "specialty": _with(
+        specialty=[{"coding": [{"code": "394579002", "display": "Cardiology"}]}]
+    ),
+    "appointment_type": _with(
+        appointmentType={
+            "coding": [{"code": "ROUTINE", "display": "Routine appointment"}]
+        }
+    ),
+    "reason_code": _with(
+        reasonCode=[{"coding": [{"code": "413153004"}], "text": "Check-up"}]
+    ),
     "reason_references_of_every_type": _with(
         reasonReference=[
             {"reference": "Condition/120001"},
@@ -75,22 +116,41 @@ CASES = {
             {"reference": "ImmunizationRecommendation/510001"},
         ]
     ),
-    "priority_and_description": _with(priority=5, description="Discussion on the results of your MRI"),
-    "supporting_information": _with(
-        supportingInformation=[{"reference": "Encounter/20001"}, {"reference": "https://other.example.org/fhir/Patient/9"}]
+    "priority_and_description": _with(
+        priority=5, description="Discussion on the results of your MRI"
     ),
-    "start_end_duration": _with(start="2026-06-01T09:00:00Z", end="2026-06-01T09:30:00Z", minutesDuration=30),
+    "supporting_information": _with(
+        supportingInformation=[
+            {"reference": "Encounter/20001"},
+            {"reference": "https://other.example.org/fhir/Patient/9"},
+        ]
+    ),
+    "start_end_duration": _with(
+        start="2026-06-01T09:00:00Z", end="2026-06-01T09:30:00Z", minutesDuration=30
+    ),
     "start_with_offset": _with(start="2026-06-01T09:00:00+02:00"),
     "slots": _with(slot=[{"reference": "Slot/220001"}, {"reference": "Slot/220002"}]),
     "created_comment_instruction": _with(
-        created="2026-05-20T10:00:00Z", comment="Bring reports", patientInstruction="Arrive early"
+        created="2026-05-20T10:00:00Z",
+        comment="Bring reports",
+        patientInstruction="Arrive early",
     ),
     "based_on": _with(basedOn=[{"reference": "ServiceRequest/80001"}]),
     "participants_of_every_actor_type": _with(
         participant=[
             {"actor": {"reference": f"{t}/{i}"}, "status": "accepted"}
-            for i, t in enumerate(("Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Device",
-                                   "HealthcareService", "Location"), 1)
+            for i, t in enumerate(
+                (
+                    "Patient",
+                    "Practitioner",
+                    "PractitionerRole",
+                    "RelatedPerson",
+                    "Device",
+                    "HealthcareService",
+                    "Location",
+                ),
+                1,
+            )
         ]
     ),
     "participant_with_every_part": _with(
@@ -100,23 +160,52 @@ CASES = {
                 "actor": {"reference": "Practitioner/30001", "display": "Dr Careful"},
                 "required": "information-only",
                 "status": "needs-action",
-                "period": {"start": "2026-06-01T09:00:00Z", "end": "2026-06-01T09:30:00Z"},
+                "period": {
+                    "start": "2026-06-01T09:00:00Z",
+                    "end": "2026-06-01T09:30:00Z",
+                },
             }
         ]
     ),
-    "participant_with_only_a_type": _with(participant=[{"type": [{"text": "interpreter"}], "status": "tentative"}]),
+    "participant_with_only_a_type": _with(
+        participant=[{"type": [{"text": "interpreter"}], "status": "tentative"}]
+    ),
     "participant_logical_actor": _with(
-        participant=[{"actor": {"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "Ext"}, "status": "declined"}]
+        participant=[
+            {
+                "actor": {
+                    "identifier": {"system": "urn:pts", "value": "P-9"},
+                    "display": "Ext",
+                },
+                "status": "declined",
+            }
+        ]
     ),
     "every_participation_status_and_required": _with(
         participant=[
             {"actor": {"reference": "Patient/1"}, "required": r, "status": s}
-            for r, s in (("required", "accepted"), ("optional", "declined"), ("information-only", "tentative"),
-                         ("required", "needs-action"))
+            for r, s in (
+                ("required", "accepted"),
+                ("optional", "declined"),
+                ("information-only", "tentative"),
+                ("required", "needs-action"),
+            )
         ]
     ),
-    "requested_periods": _with(requestedPeriod=[{"start": "2026-06-01", "end": "2026-06-07"}, {"start": "2026-07-01"}]),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "requested_periods": _with(
+        requestedPeriod=[
+            {"start": "2026-06-01", "end": "2026-06-07"},
+            {"start": "2026-07-01"},
+        ]
+    ),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:ap", "value": "AP-1"}],
         serviceCategory=[{"text": "GP"}],
@@ -146,7 +235,9 @@ def test_mapper_serves_content_unchanged():
     out = to_fhir_appointment(_appointment(content))
     assert out["resourceType"] == "Appointment"
     assert out["id"] == "40001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -168,7 +259,10 @@ def test_mapper_serves_content_unchanged():
         ("comment as number", {"comment": 5}),
         ("slot as strings not References", {"slot": ["Slot/1"]}),
         ("basedOn as string not a list", {"basedOn": "ServiceRequest/1"}),
-        ("appointmentType as string not CodeableConcept", {"appointmentType": "ROUTINE"}),
+        (
+            "appointmentType as string not CodeableConcept",
+            {"appointmentType": "ROUTINE"},
+        ),
         ("serviceCategory as object not a list", {"serviceCategory": {"text": "x"}}),
         ("participant as object not a list", {"participant": {"status": "accepted"}}),
         ("requestedPeriod as strings", {"requestedPeriod": ["2026-06-01"]}),
@@ -177,6 +271,14 @@ def test_mapper_serves_content_unchanged():
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "Appointment", "id": "40001", "status": "booked", "participant": [PART], **broken}
+    payload = {
+        "resourceType": "Appointment",
+        "id": "40001",
+        "status": "booked",
+        "participant": [PART],
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), appointment_pb2.Appointment, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), appointment_pb2.Appointment, validate=True
+        )

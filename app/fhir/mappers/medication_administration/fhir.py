@@ -39,7 +39,9 @@ def _fhir_coding_list(codings) -> list[dict]:
     return result
 
 
-def fhir_medication_administration_codeable_concept(codings, text: str | None) -> dict | None:
+def fhir_medication_administration_codeable_concept(
+    codings, text: str | None
+) -> dict | None:
     coding_list = _fhir_coding_list(codings)
     result: dict = {}
     if coding_list:
@@ -68,7 +70,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -135,11 +139,15 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     return entry
 
 
-def fhir_medication_administration_identifier(i: MedicationAdministrationIdentifier) -> dict:
+def fhir_medication_administration_identifier(
+    i: MedicationAdministrationIdentifier,
+) -> dict:
     entry: dict = {}
     if i.use:
         entry["use"] = fhir_enum(i.use)
-    type_cc = fhir_medication_administration_codeable_concept(i.type_codings, i.type_text)
+    type_cc = fhir_medication_administration_codeable_concept(
+        i.type_codings, i.type_text
+    )
     if type_cc:
         entry["type"] = type_cc
     if i.system:
@@ -166,17 +174,25 @@ def fhir_medication_administration_part_of(p: MedicationAdministrationPartOf) ->
     return _fhir_reference_with_identifier_fallback(p, "reference")
 
 
-def fhir_medication_administration_status_reason(sr: MedicationAdministrationStatusReason) -> dict:
+def fhir_medication_administration_status_reason(
+    sr: MedicationAdministrationStatusReason,
+) -> dict:
     return fhir_medication_administration_codeable_concept(sr.codings, sr.text) or {}
 
 
-def fhir_medication_administration_supporting_info(si: MedicationAdministrationSupportingInformation) -> dict:
+def fhir_medication_administration_supporting_info(
+    si: MedicationAdministrationSupportingInformation,
+) -> dict:
     return _fhir_reference_with_identifier_fallback(si, "reference")
 
 
-def fhir_medication_administration_performer(p: MedicationAdministrationPerformer) -> dict:
+def fhir_medication_administration_performer(
+    p: MedicationAdministrationPerformer,
+) -> dict:
     entry: dict = {}
-    func = fhir_medication_administration_codeable_concept(p.function_codings, p.function_text)
+    func = fhir_medication_administration_codeable_concept(
+        p.function_codings, p.function_text
+    )
     if func:
         entry["function"] = func
     actor = _fhir_reference_with_identifier_fallback(p, "actor")
@@ -185,11 +201,15 @@ def fhir_medication_administration_performer(p: MedicationAdministrationPerforme
     return entry
 
 
-def fhir_medication_administration_reason_code(rc: MedicationAdministrationReasonCode) -> dict:
+def fhir_medication_administration_reason_code(
+    rc: MedicationAdministrationReasonCode,
+) -> dict:
     return fhir_medication_administration_codeable_concept(rc.codings, rc.text) or {}
 
 
-def fhir_medication_administration_reason_reference(rr: MedicationAdministrationReasonReference) -> dict:
+def fhir_medication_administration_reason_reference(
+    rr: MedicationAdministrationReasonReference,
+) -> dict:
     return _fhir_reference_with_identifier_fallback(rr, "reference")
 
 
@@ -210,24 +230,34 @@ def fhir_medication_administration_note(n: MedicationAdministrationNote) -> dict
     return entry
 
 
-def fhir_medication_administration_event_history(eh: MedicationAdministrationEventHistory) -> dict:
+def fhir_medication_administration_event_history(
+    eh: MedicationAdministrationEventHistory,
+) -> dict:
     return _fhir_reference_with_identifier_fallback(eh, "reference")
 
 
-def fhir_medication_administration_dosage(model: MedicationAdministrationModel) -> dict | None:
+def fhir_medication_administration_dosage(
+    model: MedicationAdministrationModel,
+) -> dict | None:
     d: dict = {}
     if model.dosage_text:
         d["text"] = model.dosage_text
     if model.dosage_site_codings or model.dosage_site_text:
-        site = fhir_medication_administration_codeable_concept(model.dosage_site_codings, model.dosage_site_text)
+        site = fhir_medication_administration_codeable_concept(
+            model.dosage_site_codings, model.dosage_site_text
+        )
         if site:
             d["site"] = site
     if model.dosage_route_codings or model.dosage_route_text:
-        route = fhir_medication_administration_codeable_concept(model.dosage_route_codings, model.dosage_route_text)
+        route = fhir_medication_administration_codeable_concept(
+            model.dosage_route_codings, model.dosage_route_text
+        )
         if route:
             d["route"] = route
     if model.dosage_method_codings or model.dosage_method_text:
-        method = fhir_medication_administration_codeable_concept(model.dosage_method_codings, model.dosage_method_text)
+        method = fhir_medication_administration_codeable_concept(
+            model.dosage_method_codings, model.dosage_method_text
+        )
         if method:
             d["method"] = method
     if model.dosage_dose_value is not None:
@@ -309,7 +339,9 @@ def to_fhir_medication_administration(model: MedicationAdministrationModel) -> d
         res["meta"] = meta
 
     if model.category_codings or model.category_text:
-        cat = fhir_medication_administration_codeable_concept(model.category_codings, model.category_text)
+        cat = fhir_medication_administration_codeable_concept(
+            model.category_codings, model.category_text
+        )
         if cat:
             res["category"] = cat
 
@@ -342,8 +374,12 @@ def to_fhir_medication_administration(model: MedicationAdministrationModel) -> d
         res["effectivePeriod"] = {
             k: v
             for k, v in {
-                "start": fhir_instant(model.effective_period_start) if model.effective_period_start else None,
-                "end": fhir_instant(model.effective_period_end) if model.effective_period_end else None,
+                "start": fhir_instant(model.effective_period_start)
+                if model.effective_period_start
+                else None,
+                "end": fhir_instant(model.effective_period_end)
+                if model.effective_period_end
+                else None,
             }.items()
             if v is not None
         }
@@ -364,31 +400,45 @@ def to_fhir_medication_administration(model: MedicationAdministrationModel) -> d
         res["partOf"] = po_list
 
     # statusReason
-    sr_list = [fhir_medication_administration_status_reason(sr) for sr in (model.status_reasons or [])]
+    sr_list = [
+        fhir_medication_administration_status_reason(sr)
+        for sr in (model.status_reasons or [])
+    ]
     sr_list = [sr for sr in sr_list if sr]
     if sr_list:
         res["statusReason"] = sr_list
 
     # supportingInformation
-    si_list = [fhir_medication_administration_supporting_info(si) for si in (model.supporting_informations or [])]
+    si_list = [
+        fhir_medication_administration_supporting_info(si)
+        for si in (model.supporting_informations or [])
+    ]
     si_list = [si for si in si_list if si]
     if si_list:
         res["supportingInformation"] = si_list
 
     # performer
-    perf_list = [fhir_medication_administration_performer(p) for p in (model.performers or [])]
+    perf_list = [
+        fhir_medication_administration_performer(p) for p in (model.performers or [])
+    ]
     perf_list = [p for p in perf_list if p]
     if perf_list:
         res["performer"] = perf_list
 
     # reasonCode
-    rc_list = [fhir_medication_administration_reason_code(rc) for rc in (model.reason_codes or [])]
+    rc_list = [
+        fhir_medication_administration_reason_code(rc)
+        for rc in (model.reason_codes or [])
+    ]
     rc_list = [rc for rc in rc_list if rc]
     if rc_list:
         res["reasonCode"] = rc_list
 
     # reasonReference
-    rr_list = [fhir_medication_administration_reason_reference(rr) for rr in (model.reason_references or [])]
+    rr_list = [
+        fhir_medication_administration_reason_reference(rr)
+        for rr in (model.reason_references or [])
+    ]
     rr_list = [rr for rr in rr_list if rr]
     if rr_list:
         res["reasonReference"] = rr_list
@@ -411,13 +461,18 @@ def to_fhir_medication_administration(model: MedicationAdministrationModel) -> d
         res["dosage"] = dosage
 
     # eventHistory
-    eh_list = [fhir_medication_administration_event_history(eh) for eh in (model.event_history or [])]
+    eh_list = [
+        fhir_medication_administration_event_history(eh)
+        for eh in (model.event_history or [])
+    ]
     eh_list = [eh for eh in eh_list if eh]
     if eh_list:
         res["eventHistory"] = eh_list
 
     # identifier
-    identifiers = [fhir_medication_administration_identifier(i) for i in (model.identifiers or [])]
+    identifiers = [
+        fhir_medication_administration_identifier(i) for i in (model.identifiers or [])
+    ]
     identifiers = [i for i in identifiers if i]
     if identifiers:
         res["identifier"] = identifiers

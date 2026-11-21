@@ -30,7 +30,10 @@ D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
 _FIXTURE = (
     Path(__file__).parents[1]
-    / "integration" / "organization" / "fixtures" / "r4_full_organization.json"
+    / "integration"
+    / "organization"
+    / "fixtures"
+    / "r4_full_organization.json"
 )
 
 
@@ -48,7 +51,9 @@ def _org(content: dict, **overrides) -> OrganizationModel:
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 CASES = {
@@ -57,19 +62,28 @@ CASES = {
     "updated_by_and_updated_at": _org(
         {"name": "Acme Health"}, updated_by="u-other", updated_at=D
     ),
-    "partof_with_type_and_identifier": _org({
-        "name": "Acme Clinic",
-        "partOf": {
-            "reference": "Organization/190000",
-            "type": "Organization",
-            "display": "Acme Group",
-            "identifier": {"system": "urn:org-registry", "value": "ORG-9"},
-        },
-    }),
-    "extension": _org({
-        "name": "Acme Health",
-        "extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}],
-    }),
+    "partof_with_type_and_identifier": _org(
+        {
+            "name": "Acme Clinic",
+            "partOf": {
+                "reference": "Organization/190000",
+                "type": "Organization",
+                "display": "Acme Group",
+                "identifier": {"system": "urn:org-registry", "value": "ORG-9"},
+            },
+        }
+    ),
+    "extension": _org(
+        {
+            "name": "Acme Health",
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ],
+        }
+    ),
     "full_r4_payload": _org(_stored(json.loads(_FIXTURE.read_text()))),
 }
 
@@ -84,13 +98,16 @@ def test_mapper_serves_content_unchanged():
     out = to_fhir_organization(_org(content))
     assert out["resourceType"] == "Organization"
     assert out["id"] == "190001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
 # If google-fhir-r4 ever stops validating — a version bump, a changed API, a
 # silently-swallowed error — every test above would keep passing while checking
 # nothing. These deliberately-broken payloads prove the check still has teeth.
+
 
 @pytest.mark.parametrize(
     "label,broken",
@@ -101,15 +118,21 @@ def test_mapper_serves_content_unchanged():
         ("type as strings not CodeableConcepts", {"type": ["prov"]}),
         ("alias as objects not strings", {"alias": [{"value": "Acme"}]}),
         ("partOf as string not Reference", {"partOf": "Organization/190000"}),
-        ("contact.address as string not Address", {"contact": [{"address": "somewhere"}]}),
+        (
+            "contact.address as string not Address",
+            {"contact": [{"address": "somewhere"}]},
+        ),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
     payload = {
-        "resourceType": "Organization", "id": "190001", "active": True,
-        "name": "Acme Health", **broken,
+        "resourceType": "Organization",
+        "id": "190001",
+        "active": True,
+        "name": "Acme Health",
+        **broken,
     }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(

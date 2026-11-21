@@ -18,12 +18,19 @@ def subject_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.encounter.search import revinclude_encounters_via_column
 
-        return await revinclude_encounters_via_column("subject", "Patient", key)(session, ctx, rows)
+        return await revinclude_encounters_via_column("subject", "Patient", key)(
+            session, ctx, rows
+        )
 
-    return tuple(IncludeTarget("Encounter", param, "Patient", fetch, reverse=True) for param in ("subject", "patient"))
+    return tuple(
+        IncludeTarget("Encounter", param, "Patient", fetch, reverse=True)
+        for param in ("subject", "patient")
+    )
 
 
-def participant_encounter_revincludes(resource_type: str, key, params: tuple[str, ...]) -> tuple[IncludeTarget, ...]:
+def participant_encounter_revincludes(
+    resource_type: str, key, params: tuple[str, ...]
+) -> tuple[IncludeTarget, ...]:
     """Encounter:participant (and :practitioner for a Practitioner) —
     encounters with a participant individual of `resource_type` pointing at one
     of the matched rows."""
@@ -32,9 +39,14 @@ def participant_encounter_revincludes(resource_type: str, key, params: tuple[str
         from app.models.encounter import EncounterParticipant
         from app.repository.encounter.search import revinclude_encounters_via_child
 
-        return await revinclude_encounters_via_child(EncounterParticipant, resource_type, key)(session, ctx, rows)
+        return await revinclude_encounters_via_child(
+            EncounterParticipant, resource_type, key
+        )(session, ctx, rows)
 
-    return tuple(IncludeTarget("Encounter", param, resource_type, fetch, reverse=True) for param in params)
+    return tuple(
+        IncludeTarget("Encounter", param, resource_type, fetch, reverse=True)
+        for param in params
+    )
 
 
 def location_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
@@ -44,7 +56,9 @@ def location_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
         from app.models.encounter import EncounterLocation
         from app.repository.encounter.search import revinclude_encounters_via_child
 
-        return await revinclude_encounters_via_child(EncounterLocation, "Location", key)(session, ctx, rows)
+        return await revinclude_encounters_via_child(
+            EncounterLocation, "Location", key
+        )(session, ctx, rows)
 
     return (IncludeTarget("Encounter", "location", "Location", fetch, reverse=True),)
 
@@ -54,11 +68,15 @@ def appointment_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
     Appointments."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.encounter.search import revinclude_encounters_via_appointment
+        from app.repository.encounter.search import (
+            revinclude_encounters_via_appointment,
+        )
 
         return await revinclude_encounters_via_appointment(key)(session, ctx, rows)
 
-    return (IncludeTarget("Encounter", "appointment", "Appointment", fetch, reverse=True),)
+    return (
+        IncludeTarget("Encounter", "appointment", "Appointment", fetch, reverse=True),
+    )
 
 
 def service_provider_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
@@ -67,21 +85,33 @@ def service_provider_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.encounter.search import revinclude_encounters_via_column
 
-        return await revinclude_encounters_via_column("service_provider", "Organization", key)(session, ctx, rows)
+        return await revinclude_encounters_via_column(
+            "service_provider", "Organization", key
+        )(session, ctx, rows)
 
-    return (IncludeTarget("Encounter", "service-provider", "Organization", fetch, reverse=True),)
+    return (
+        IncludeTarget(
+            "Encounter", "service-provider", "Organization", fetch, reverse=True
+        ),
+    )
 
 
-def reference_encounter_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
+def reference_encounter_revincludes(
+    resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
     """Encounter:diagnosis and :reason-reference — encounters whose diagnosis /
     reason points at one of the matched rows of `resource_type` (Condition or
     Procedure)."""
 
     def make(param: str):
         async def fetch(session, ctx, rows):
-            from app.repository.encounter.search import revinclude_encounters_via_reference
+            from app.repository.encounter.search import (
+                revinclude_encounters_via_reference,
+            )
 
-            return await revinclude_encounters_via_reference(param, resource_type, key)(session, ctx, rows)
+            return await revinclude_encounters_via_reference(param, resource_type, key)(
+                session, ctx, rows
+            )
 
         return fetch
 

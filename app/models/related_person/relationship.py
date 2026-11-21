@@ -18,7 +18,9 @@ class RelatedPersonRelationship(Base):
     __tablename__ = "related_person_relationship"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    related_person_pk = Column(BigInteger, ForeignKey("related_person.id"), nullable=False, index=True)
+    related_person_pk = Column(
+        BigInteger, ForeignKey("related_person.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     code = Column(String, nullable=True, index=True)
     display_norm = Column(String, nullable=True)

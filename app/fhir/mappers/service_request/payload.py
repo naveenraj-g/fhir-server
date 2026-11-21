@@ -17,7 +17,9 @@ if TYPE_CHECKING:
         ServiceRequestNoteInput,
         ServiceRequestPatchSchema,
     )
-    from app.schemas.service_request.input.codeable_concept import ServiceRequestCodeableConceptInput
+    from app.schemas.service_request.input.codeable_concept import (
+        ServiceRequestCodeableConceptInput,
+    )
 
 
 def _coding_list(codings) -> list[dict]:
@@ -42,7 +44,10 @@ def _coding_list(codings) -> list[dict]:
 def _period(start, end) -> dict | None:
     period = {
         k: v
-        for k, v in {"start": start.isoformat() if start else None, "end": end.isoformat() if end else None}.items()
+        for k, v in {
+            "start": start.isoformat() if start else None,
+            "end": end.isoformat() if end else None,
+        }.items()
         if v
     }
     return period or None
@@ -64,7 +69,9 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
     id_type_version = getattr(obj, "reference_identifier_type_version", None)
     id_type_code = getattr(obj, "reference_identifier_type_code", None)
     id_type_display = getattr(obj, "reference_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, "reference_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, "reference_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, "reference_identifier_type_text", None)
     id_system = getattr(obj, "reference_identifier_system", None)
     id_value = getattr(obj, "reference_identifier_value", None)
@@ -163,7 +170,9 @@ def payload_service_request_identifier(i: ServiceRequestIdentifierInput) -> dict
     return entry
 
 
-def payload_service_request_codeable_concept(cc: ServiceRequestCodeableConceptInput) -> dict:
+def payload_service_request_codeable_concept(
+    cc: ServiceRequestCodeableConceptInput,
+) -> dict:
     entry: dict = {}
     coding = _coding_list(cc.coding)
     if coding:
@@ -177,23 +186,20 @@ def payload_service_request_note(n: ServiceRequestNoteInput) -> dict:
     entry: dict = {}
     if n.author_string:
         entry["authorString"] = n.author_string
-    elif (
-        n.author_reference
-        or any(
-            getattr(n, f"author_identifier_{attr}", None) is not None
-            for attr in (
-                "use",
-                "type_system",
-                "type_version",
-                "type_code",
-                "type_display",
-                "type_user_selected",
-                "type_text",
-                "system",
-                "value",
-                "period_start",
-                "period_end",
-            )
+    elif n.author_reference or any(
+        getattr(n, f"author_identifier_{attr}", None) is not None
+        for attr in (
+            "use",
+            "type_system",
+            "type_version",
+            "type_code",
+            "type_display",
+            "type_user_selected",
+            "type_text",
+            "system",
+            "value",
+            "period_start",
+            "period_end",
         )
     ):
         ref: dict = {}
@@ -310,7 +316,9 @@ def _as_needed_choice(payload) -> dict | None:
     if payload.as_needed_boolean is not None:
         return {"asNeededBoolean": payload.as_needed_boolean}
     if payload.as_needed_codeable_concept:
-        cc = payload_service_request_codeable_concept(payload.as_needed_codeable_concept)
+        cc = payload_service_request_codeable_concept(
+            payload.as_needed_codeable_concept
+        )
         if cc:
             return {"asNeededCodeableConcept": cc}
     return None
@@ -325,19 +333,35 @@ _LIST_FIELDS = {
     "order_detail": ("orderDetail", payload_service_request_codeable_concept),
     "performer": ("performer", _reference_with_identifier_fallback_from_payload),
     "location_code": ("locationCode", payload_service_request_codeable_concept),
-    "location_reference": ("locationReference", _reference_with_identifier_fallback_from_payload),
+    "location_reference": (
+        "locationReference",
+        _reference_with_identifier_fallback_from_payload,
+    ),
     "reason_code": ("reasonCode", payload_service_request_codeable_concept),
-    "reason_reference": ("reasonReference", _reference_with_identifier_fallback_from_payload),
+    "reason_reference": (
+        "reasonReference",
+        _reference_with_identifier_fallback_from_payload,
+    ),
     "insurance": ("insurance", _reference_with_identifier_fallback_from_payload),
-    "supporting_info": ("supportingInfo", _reference_with_identifier_fallback_from_payload),
+    "supporting_info": (
+        "supportingInfo",
+        _reference_with_identifier_fallback_from_payload,
+    ),
     "specimen": ("specimen", _reference_with_identifier_fallback_from_payload),
     "body_site": ("bodySite", payload_service_request_codeable_concept),
     "note": ("note", payload_service_request_note),
-    "relevant_history": ("relevantHistory", _reference_with_identifier_fallback_from_payload),
+    "relevant_history": (
+        "relevantHistory",
+        _reference_with_identifier_fallback_from_payload,
+    ),
 }
 
 # field -> fhir key for every single 0..1 nested-object field.
-_SINGLE_REFERENCE_FIELDS = {"subject": "subject", "encounter": "encounter", "requester": "requester"}
+_SINGLE_REFERENCE_FIELDS = {
+    "subject": "subject",
+    "encounter": "encounter",
+    "requester": "requester",
+}
 _SINGLE_CC_FIELDS = {"code": "code", "performer_type": "performerType"}
 
 
@@ -411,7 +435,9 @@ def payload_to_fhir_service_request(payload: ServiceRequestCreateSchema) -> dict
     return result
 
 
-def patch_fragment_to_fhir_service_request(payload: ServiceRequestPatchSchema) -> tuple[dict, set[str]]:
+def patch_fragment_to_fhir_service_request(
+    payload: ServiceRequestPatchSchema,
+) -> tuple[dict, set[str]]:
     """Tri-state conversion for PATCH — see
     app.fhir.datatypes.merge_patch_fragment's docstring for the full
     reasoning."""
@@ -471,14 +497,29 @@ def patch_fragment_to_fhir_service_request(payload: ServiceRequestPatchSchema) -
                 fragment["code"] = code
 
     if provided & {
-        "quantity_quantity_value", "quantity_quantity_comparator", "quantity_quantity_unit",
-        "quantity_quantity_system", "quantity_quantity_code",
-        "quantity_ratio_numerator_value", "quantity_ratio_numerator_comparator", "quantity_ratio_numerator_unit",
-        "quantity_ratio_numerator_system", "quantity_ratio_numerator_code",
-        "quantity_ratio_denominator_value", "quantity_ratio_denominator_comparator", "quantity_ratio_denominator_unit",
-        "quantity_ratio_denominator_system", "quantity_ratio_denominator_code",
-        "quantity_range_low_value", "quantity_range_low_unit", "quantity_range_low_system", "quantity_range_low_code",
-        "quantity_range_high_value", "quantity_range_high_unit", "quantity_range_high_system", "quantity_range_high_code",
+        "quantity_quantity_value",
+        "quantity_quantity_comparator",
+        "quantity_quantity_unit",
+        "quantity_quantity_system",
+        "quantity_quantity_code",
+        "quantity_ratio_numerator_value",
+        "quantity_ratio_numerator_comparator",
+        "quantity_ratio_numerator_unit",
+        "quantity_ratio_numerator_system",
+        "quantity_ratio_numerator_code",
+        "quantity_ratio_denominator_value",
+        "quantity_ratio_denominator_comparator",
+        "quantity_ratio_denominator_unit",
+        "quantity_ratio_denominator_system",
+        "quantity_ratio_denominator_code",
+        "quantity_range_low_value",
+        "quantity_range_low_unit",
+        "quantity_range_low_system",
+        "quantity_range_low_code",
+        "quantity_range_high_value",
+        "quantity_range_high_unit",
+        "quantity_range_high_system",
+        "quantity_range_high_code",
     }:
         touched.add("quantityQuantity")
         touched.add("quantityRatio")
@@ -496,7 +537,12 @@ def patch_fragment_to_fhir_service_request(payload: ServiceRequestPatchSchema) -
                 if ref:
                     fragment[fhir_key] = ref
 
-    if provided & {"occurrence_date_time", "occurrence_period_start", "occurrence_period_end", "occurrence_timing"}:
+    if provided & {
+        "occurrence_date_time",
+        "occurrence_period_start",
+        "occurrence_period_end",
+        "occurrence_timing",
+    }:
         touched.add("occurrenceDateTime")
         touched.add("occurrencePeriod")
         touched.add("occurrenceTiming")

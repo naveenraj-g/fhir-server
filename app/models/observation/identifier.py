@@ -26,7 +26,9 @@ class ObservationIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named observation_pk (not observation_id) so it can't be
     # confused with ObservationModel.observation_id, the public id.
-    observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)
+    observation_pk = Column(
+        BigInteger, ForeignKey("observation.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

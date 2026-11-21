@@ -7,6 +7,8 @@ from app.services.appointment import AppointmentService
 
 @inject
 def get_appointment_service(
-    service: AppointmentService = Depends(Provide[Container.appointment.appointment_service]),
+    service: AppointmentService = Depends(
+        Provide[Container.appointment.appointment_service]
+    ),
 ) -> AppointmentService:
     return service

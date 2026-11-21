@@ -8,9 +8,13 @@ from app.schemas.enums import IdentifierUse
 class MedicationStatementNoteInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    text: str = Field(..., description="The annotation content — markdown syntax is allowed.")
+    text: str = Field(
+        ..., description="The annotation content — markdown syntax is allowed."
+    )
     time: datetime | None = Field(None, description="When the annotation was made.")
-    author_string: str | None = Field(None, description="Individual responsible for the annotation — string.")
+    author_string: str | None = Field(
+        None, description="Individual responsible for the annotation — string."
+    )
     author_reference: str | None = Field(
         None,
         description="Individual responsible for the annotation — Reference(Practitioner|Patient|RelatedPerson|Organization), e.g. 'Practitioner/30001'.",

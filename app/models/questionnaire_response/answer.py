@@ -15,7 +15,9 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
-from app.models.questionnaire_response.enums import QuestionnaireResponseQuantityComparator
+from app.models.questionnaire_response.enums import (
+    QuestionnaireResponseQuantityComparator,
+)
 from app.models.shared import FhirAttachmentMixin, FhirCodingMixin, TenantAuditMixin
 
 # ---------------------------------------------------------------------------
@@ -24,7 +26,9 @@ from app.models.shared import FhirAttachmentMixin, FhirCodingMixin, TenantAuditM
 # ---------------------------------------------------------------------------
 
 
-class QuestionnaireResponseAnswer(FhirCodingMixin, FhirAttachmentMixin, TenantAuditMixin, Base):
+class QuestionnaireResponseAnswer(
+    FhirCodingMixin, FhirAttachmentMixin, TenantAuditMixin, Base
+):
     """QuestionnaireResponse.item.answer (0..*) —
     https://www.hl7.org/fhir/R4/questionnaireresponse-definitions.html#QuestionnaireResponse.item.answer
 
@@ -59,7 +63,10 @@ class QuestionnaireResponseAnswer(FhirCodingMixin, FhirAttachmentMixin, TenantAu
         BigInteger, ForeignKey("questionnaire_response.id"), nullable=False, index=True
     )
     item_id = Column(
-        BigInteger, ForeignKey("questionnaire_response_item.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("questionnaire_response_item.id"),
+        nullable=False,
+        index=True,
     )
 
     value_boolean = Column(Boolean, nullable=True)
@@ -100,10 +107,16 @@ class QuestionnaireResponseAnswer(FhirCodingMixin, FhirAttachmentMixin, TenantAu
     value_reference_identifier_type_text = Column(String, nullable=True)
     value_reference_identifier_system = Column(String, nullable=True)
     value_reference_identifier_value = Column(String, nullable=True)
-    value_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    value_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    value_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    questionnaire_response = relationship("QuestionnaireResponseModel", back_populates="answers")
+    questionnaire_response = relationship(
+        "QuestionnaireResponseModel", back_populates="answers"
+    )
     item = relationship(
         "QuestionnaireResponseItem", back_populates="answers", foreign_keys=[item_id]
     )

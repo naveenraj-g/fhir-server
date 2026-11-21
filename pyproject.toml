@@ -38,6 +38,13 @@ dev = [
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+[tool.ruff]
+# Matches the editor's format-on-save (the VS Code Ruff extension with no override uses Ruff's defaults).
+line-length = 88
+target-version = "py312"
+# Historical migrations are frozen; scratch / mock data are not application code; Markdown is prose (ruff 0.17 would reformat the code blocks in it).
+extend-exclude = ["migrations/versions", "scratch", "mock-data", "**/*.md"]
+
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
     "fastapi.Depends",

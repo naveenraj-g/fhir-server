@@ -35,7 +35,9 @@ class MedicationKnowledgeMedicineClassification(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeMedicineClassificationTypeCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeMedicineClassificationTypeCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.medicineClassification.type.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_med_class_type_coding"
@@ -79,7 +81,9 @@ class MedicationKnowledgeMedicineClassificationItem(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeMedicineClassificationItemCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeMedicineClassificationItemCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.medicineClassification.classification.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_med_class_item_coding"

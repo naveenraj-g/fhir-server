@@ -21,8 +21,12 @@ class AllergyIntoleranceReaction(Base):
     __tablename__ = "allergy_intolerance_reaction"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    allergy_intolerance_pk = Column(BigInteger, ForeignKey("allergy_intolerance.id"), nullable=False, index=True)
+    allergy_intolerance_pk = Column(
+        BigInteger, ForeignKey("allergy_intolerance.id"), nullable=False, index=True
+    )
     onset_start = Column(DateTime(timezone=True), nullable=True)
     onset_end = Column(DateTime(timezone=True), nullable=True)
 
-    allergy_intolerance = relationship("AllergyIntoleranceModel", back_populates="reactions")
+    allergy_intolerance = relationship(
+        "AllergyIntoleranceModel", back_populates="reactions"
+    )

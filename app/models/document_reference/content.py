@@ -33,4 +33,6 @@ class DocumentReferenceContent(FhirAttachmentMixin, TenantAuditMixin, Base):
     format_display = Column(String, nullable=True)
     format_user_selected = Column(Boolean, nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="contents")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="contents"
+    )

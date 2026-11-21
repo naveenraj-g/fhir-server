@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Index, Sequence, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Index,
+    Sequence,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -85,7 +94,11 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
     # for `<param>:identifier`.
     practitioner_reference = Column(String, nullable=True)
     practitioner_type = Column(
-        Enum(PractitionerReferenceType, name="practitioner_reference_type", create_type=False),
+        Enum(
+            PractitionerReferenceType,
+            name="practitioner_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     practitioner_id = Column(BigInteger, nullable=True, index=True)
@@ -94,7 +107,11 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
 
     organization_reference = Column(String, nullable=True)
     organization_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     organization_id = Column(BigInteger, nullable=True, index=True)
@@ -102,14 +119,22 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
     organization_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "PractitionerRoleIdentifier", back_populates="practitioner_role", cascade="all, delete-orphan"
+        "PractitionerRoleIdentifier",
+        back_populates="practitioner_role",
+        cascade="all, delete-orphan",
     )
     telecoms = relationship(
-        "PractitionerRoleTelecom", back_populates="practitioner_role", cascade="all, delete-orphan"
+        "PractitionerRoleTelecom",
+        back_populates="practitioner_role",
+        cascade="all, delete-orphan",
     )
     tokens = relationship(
-        "PractitionerRoleToken", back_populates="practitioner_role", cascade="all, delete-orphan"
+        "PractitionerRoleToken",
+        back_populates="practitioner_role",
+        cascade="all, delete-orphan",
     )
     references = relationship(
-        "PractitionerRoleReference", back_populates="practitioner_role", cascade="all, delete-orphan"
+        "PractitionerRoleReference",
+        back_populates="practitioner_role",
+        cascade="all, delete-orphan",
     )

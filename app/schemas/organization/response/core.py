@@ -14,6 +14,7 @@ from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLin
 
 from .contact import FHIROrganizationContact
 
+
 class FHIROrganizationSchema(BaseModel):
     resourceType: str = Field("Organization", description="Always 'Organization'.")
     id: str = Field(..., description="Public organization_id as a string.")

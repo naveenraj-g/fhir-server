@@ -39,15 +39,31 @@ class FHIRMedicationSchema(BaseModel):
     resourceType: Literal["Medication"] = "Medication"
     id: str = Field(..., description="Logical id of this artifact.")
     meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    extension: list[dict] | None = Field(None, description="Additional content defined by implementations.")
-    identifier: list[FHIRIdentifier] | None = Field(None, description="Business identifier for this medication.")
-    code: FHIRCodeableConcept | None = Field(None, description="Codes that identify this medication.")
-    status: str | None = Field(None, description="active | inactive | entered-in-error.")
-    manufacturer: FHIRReference | None = Field(None, description="Manufacturer of the item (Reference(Organization)).")
-    form: FHIRCodeableConcept | None = Field(None, description="powder | tablets | capsule +")
+    extension: list[dict] | None = Field(
+        None, description="Additional content defined by implementations."
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="Business identifier for this medication."
+    )
+    code: FHIRCodeableConcept | None = Field(
+        None, description="Codes that identify this medication."
+    )
+    status: str | None = Field(
+        None, description="active | inactive | entered-in-error."
+    )
+    manufacturer: FHIRReference | None = Field(
+        None, description="Manufacturer of the item (Reference(Organization))."
+    )
+    form: FHIRCodeableConcept | None = Field(
+        None, description="powder | tablets | capsule +"
+    )
     amount: FHIRRatio | None = Field(None, description="Amount of drug in package.")
-    ingredient: list[FHIRMedicationIngredient] | None = Field(None, description="Active or inactive ingredient.")
-    batch: FHIRMedicationBatch | None = Field(None, description="Details about packaged medications.")
+    ingredient: list[FHIRMedicationIngredient] | None = Field(
+        None, description="Active or inactive ingredient."
+    )
+    batch: FHIRMedicationBatch | None = Field(
+        None, description="Details about packaged medications."
+    )
 
 
 class PlainMedicationResponse(BaseModel):

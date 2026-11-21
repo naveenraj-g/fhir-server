@@ -7,11 +7,15 @@ from app.schemas.document_reference.input.codeable_concept import (
 )
 from app.schemas.document_reference.input.content import DocumentReferenceContentInput
 from app.schemas.document_reference.input.context import DocumentReferenceContextInput
-from app.schemas.document_reference.input.identifier import DocumentReferenceIdentifierInput
+from app.schemas.document_reference.input.identifier import (
+    DocumentReferenceIdentifierInput,
+)
 from app.schemas.document_reference.input.reference import (
     DocumentReferenceReferenceInput,
 )
-from app.schemas.document_reference.input.relates_to import DocumentReferenceRelatesToInput
+from app.schemas.document_reference.input.relates_to import (
+    DocumentReferenceRelatesToInput,
+)
 from app.schemas.enums import (
     DocumentReferenceDocStatus,
     DocumentReferenceStatus,
@@ -97,7 +101,8 @@ class DocumentReferenceCreateSchema(BaseModel):
         None, description="Categorization of document."
     )
     subject: str | None = Field(
-        None, description="Who/what is the subject of the document (Patient/Practitioner/Group/Device)."
+        None,
+        description="Who/what is the subject of the document (Patient/Practitioner/Group/Device).",
     )
     subject_display: str | None = Field(
         None, description="Display text for the subject reference."
@@ -159,9 +164,7 @@ class DocumentReferenceCreateSchema(BaseModel):
     relates_to: list[DocumentReferenceRelatesToInput] | None = Field(
         None, description="Relationships to other documents."
     )
-    description: str | None = Field(
-        None, description="Human-readable description."
-    )
+    description: str | None = Field(None, description="Human-readable description.")
     security_label: list[DocumentReferenceCodeableConceptInput] | None = Field(
         None, description="Document security-tags."
     )
@@ -270,9 +273,7 @@ class DocumentReferencePatchSchema(BaseModel):
     relates_to: list[DocumentReferenceRelatesToInput] | None = Field(
         None, description="Relationships to other documents."
     )
-    description: str | None = Field(
-        None, description="Human-readable description."
-    )
+    description: str | None = Field(None, description="Human-readable description.")
     security_label: list[DocumentReferenceCodeableConceptInput] | None = Field(
         None, description="Document security-tags."
     )

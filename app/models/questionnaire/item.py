@@ -57,7 +57,9 @@ class QuestionnaireItem(TenantAuditMixin, Base):
     definition = Column(String, nullable=True)
     prefix = Column(String, nullable=True)
     text = Column(String, nullable=True)
-    type = Column(Enum(QuestionnaireItemType, name="questionnaire_item_type"), nullable=False)
+    type = Column(
+        Enum(QuestionnaireItemType, name="questionnaire_item_type"), nullable=False
+    )
     enable_behavior = Column(
         Enum(QuestionnaireEnableBehavior, name="questionnaire_enable_behavior"),
         nullable=True,

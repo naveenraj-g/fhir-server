@@ -12,13 +12,23 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "ActivityDefinition not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainActivityDefinitionResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRActivityDefinitionSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PlainActivityDefinitionResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRActivityDefinitionSchema.model_json_schema()
+                )
+            },
         }
     }
 }
@@ -27,8 +37,16 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of activity definitions",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedActivityDefinitionResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRActivityDefinitionBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PaginatedActivityDefinitionResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRActivityDefinitionBundle.model_json_schema()
+                )
+            },
         },
     }
 }

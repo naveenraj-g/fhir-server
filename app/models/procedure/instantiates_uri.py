@@ -14,7 +14,9 @@ class ProcedureInstantiatesUri(Base):
     __tablename__ = "procedure_instantiates_uri"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    procedure_pk = Column(BigInteger, ForeignKey("procedure.id"), nullable=False, index=True)
+    procedure_pk = Column(
+        BigInteger, ForeignKey("procedure.id"), nullable=False, index=True
+    )
     uri = Column(String, nullable=False, index=True)
 
     procedure = relationship("ProcedureModel", back_populates="instantiates_uris")

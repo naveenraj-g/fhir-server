@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.practitioner_role import PractitionerRoleCreateSchema, PractitionerRolePatchSchema
+from app.schemas.practitioner_role import (
+    PractitionerRoleCreateSchema,
+    PractitionerRolePatchSchema,
+)
 from app.services.practitioner_role import PractitionerRoleService
 
 from ._responses import (
@@ -71,7 +74,9 @@ async def create_practitioner_role(
     payload: PractitionerRoleCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("practitioner_role", "create")),
-    practitioner_role_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+    practitioner_role_service: PractitionerRoleService = Depends(
+        get_practitioner_role_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -164,7 +169,9 @@ async def _search(
 async def search_practitioner_roles(
     request: Request,
     actor: AuthUser = Depends(require_permission("practitioner_role", "read")),
-    practitioner_role_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+    practitioner_role_service: PractitionerRoleService = Depends(
+        get_practitioner_role_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -191,13 +198,17 @@ async def search_practitioner_roles(
 async def search_practitioner_roles_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("practitioner_role", "read")),
-    practitioner_role_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+    practitioner_role_service: PractitionerRoleService = Depends(
+        get_practitioner_role_service
+    ),
 ):
     logger.info(
         "Search PractitionerRole resources (POST _search)",
         extra={"event": "route.search_practitioner_roles_post"},
     )
-    return await _search(request, await post_query(request), actor, practitioner_role_service)
+    return await _search(
+        request, await post_query(request), actor, practitioner_role_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -220,7 +231,9 @@ async def get_practitioner_role(
         ..., ge=1, description="Public practitioner_role identifier."
     ),
     actor: AuthUser = Depends(require_permission("practitioner_role", "read")),
-    practitioner_role_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+    practitioner_role_service: PractitionerRoleService = Depends(
+        get_practitioner_role_service
+    ),
 ):
     logger.info(
         "Retrieve a PractitionerRole resource by public practitioner_role_id",
@@ -262,13 +275,18 @@ async def patch_practitioner_role(
         ..., ge=1, description="Public practitioner_role identifier."
     ),
     actor: AuthUser = Depends(require_permission("practitioner_role", "update")),
-    practitioner_role_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+    practitioner_role_service: PractitionerRoleService = Depends(
+        get_practitioner_role_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_practitioner_role()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a PractitionerRole resource",
-        extra={"event": "route.patch_practitioner_role", "practitioner_role_id": practitioner_role_id},
+        extra={
+            "event": "route.patch_practitioner_role",
+            "practitioner_role_id": practitioner_role_id,
+        },
     )
     log_payload(logger, "practitioner_role.patch.payload", payload)
     updated = await practitioner_role_service.patch_practitioner_role(
@@ -301,7 +319,9 @@ async def delete_practitioner_role(
         ..., ge=1, description="Public practitioner_role identifier."
     ),
     actor: AuthUser = Depends(require_permission("practitioner_role", "delete")),
-    practitioner_role_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+    practitioner_role_service: PractitionerRoleService = Depends(
+        get_practitioner_role_service
+    ),
 ):
     """delete_practitioner_role() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -312,4 +332,6 @@ async def delete_practitioner_role(
             "practitioner_role_id": practitioner_role_id,
         },
     )
-    await practitioner_role_service.delete_practitioner_role(practitioner_role_id, org_id=actor.org_id)
+    await practitioner_role_service.delete_practitioner_role(
+        practitioner_role_id, org_id=actor.org_id
+    )

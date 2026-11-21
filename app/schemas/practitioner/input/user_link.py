@@ -10,5 +10,7 @@ class PractitionerUserLinkInput(BaseModel):
     )
 
     user_id: str = Field(
-        ..., min_length=1, description="IAM user id (the JWT `sub`) to link to this practitioner."
+        ...,
+        min_length=1,
+        description="IAM user id (the JWT `sub`) to link to this practitioner.",
     )

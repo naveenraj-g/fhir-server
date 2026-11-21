@@ -19,7 +19,9 @@ class PatientCommunication(Base):
     __tablename__ = "patient_communication"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    patient_pk = Column(BigInteger, ForeignKey("patient.id"), nullable=False, index=True)
+    patient_pk = Column(
+        BigInteger, ForeignKey("patient.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     code = Column(String, nullable=True, index=True)
     display_norm = Column(String, nullable=True)

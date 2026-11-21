@@ -32,7 +32,9 @@ class HealthcareServiceReference(Base):
     R4 doesn't forbid listing the same reference twice."""
 
     __tablename__ = "healthcare_service_reference"
-    __table_args__ = (Index("ix_healthcare_service_reference_param_id", "param", "reference_id"),)
+    __table_args__ = (
+        Index("ix_healthcare_service_reference_param_id", "param", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     healthcare_service_pk = Column(
@@ -45,4 +47,6 @@ class HealthcareServiceReference(Base):
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
 
-    healthcare_service = relationship("HealthcareServiceModel", back_populates="references")
+    healthcare_service = relationship(
+        "HealthcareServiceModel", back_populates="references"
+    )

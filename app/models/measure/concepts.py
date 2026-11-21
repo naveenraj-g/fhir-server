@@ -12,7 +12,10 @@ class MeasureSubjectCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     measure = relationship("MeasureModel", back_populates="subject_codings")
@@ -25,7 +28,10 @@ class MeasureScoringCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     measure = relationship("MeasureModel", back_populates="scoring_codings")
@@ -38,7 +44,10 @@ class MeasureCompositeScoringCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     measure = relationship("MeasureModel", back_populates="composite_scoring_codings")
@@ -51,10 +60,15 @@ class MeasureImprovementNotationCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
-    measure = relationship("MeasureModel", back_populates="improvement_notation_codings")
+    measure = relationship(
+        "MeasureModel", back_populates="improvement_notation_codings"
+    )
 
 
 class MeasureType(TenantAuditMixin, Base):
@@ -64,7 +78,10 @@ class MeasureType(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 
@@ -99,7 +116,10 @@ class MeasureTopic(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 
@@ -134,7 +154,10 @@ class MeasureJurisdiction(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 

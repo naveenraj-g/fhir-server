@@ -21,7 +21,10 @@ class MedicationAdministrationIdentifier(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_administration_pk = Column(
-        BigInteger, ForeignKey("medication_administration.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_administration.id"),
+        nullable=False,
+        index=True,
     )
 
     use = Column(
@@ -70,7 +73,9 @@ class MedicationAdministrationIdentifier(TenantAuditMixin, Base):
     )
 
 
-class MedicationAdministrationIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MedicationAdministrationIdentifierTypeCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """MedicationAdministration.identifier.type.coding (0..*) grandchild table."""
 
     __tablename__ = "medication_administration_identifier_type_coding"

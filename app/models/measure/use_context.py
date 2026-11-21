@@ -26,7 +26,10 @@ class MeasureUseContext(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     # UsageContext.code (1..1 Coding)
@@ -83,8 +86,12 @@ class MeasureUseContext(TenantAuditMixin, Base):
     value_reference_identifier_type_text = Column(String, nullable=True)
     value_reference_identifier_system = Column(String, nullable=True)
     value_reference_identifier_value = Column(String, nullable=True)
-    value_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    value_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    value_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     measure = relationship("MeasureModel", back_populates="use_contexts")
     value_codings = relationship(

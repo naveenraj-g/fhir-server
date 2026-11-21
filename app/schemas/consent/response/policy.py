@@ -16,9 +16,7 @@ class PlainConsentPolicy(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: int | None = Field(None, description="Internal DB ID.")
-    authority: str | None = Field(
-        None, description="Enforcement authority for policy."
-    )
+    authority: str | None = Field(None, description="Enforcement authority for policy.")
     uri: str | None = Field(
         None, description="Specific policy covered by this consent."
     )

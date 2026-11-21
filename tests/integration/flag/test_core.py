@@ -92,9 +92,7 @@ async def test_create_flag_full(client):
 
 async def test_create_flag_fhir_format(client):
     p_id = await create_test_patient(client)
-    resp = await client.post(
-        BASE + "/", json=minimal_flag(p_id), headers=FHIR_ACCEPT
-    )
+    resp = await client.post(BASE + "/", json=minimal_flag(p_id), headers=FHIR_ACCEPT)
     assert resp.status_code == 201, resp.text
     data = resp.json()
     assert_fhir_flag(data)
@@ -309,7 +307,10 @@ async def test_create_flag_with_reference_identifier_fallback(client):
     plain_data = resp.json()
     fl_id = plain_data["id"]
     assert plain_data["subject_reference"] is None
-    assert plain_data["subject_identifier_system"] == "http://hospital.example.org/patients"
+    assert (
+        plain_data["subject_identifier_system"]
+        == "http://hospital.example.org/patients"
+    )
     assert plain_data["subject_identifier_value"] == "MRN-FLAG-999"
     assert plain_data["subject_display"] == "Fallback Subject"
     assert plain_data["encounter_identifier_value"] == "ENC-FLAG-888"
@@ -321,7 +322,10 @@ async def test_create_flag_with_reference_identifier_fallback(client):
     fhir_data = fhir_resp.json()
     assert fhir_data["resourceType"] == "Flag"
     assert "reference" not in fhir_data["subject"]
-    assert fhir_data["subject"]["identifier"]["system"] == "http://hospital.example.org/patients"
+    assert (
+        fhir_data["subject"]["identifier"]["system"]
+        == "http://hospital.example.org/patients"
+    )
     assert fhir_data["subject"]["identifier"]["value"] == "MRN-FLAG-999"
     assert fhir_data["subject"]["display"] == "Fallback Subject"
     assert fhir_data["encounter"]["identifier"]["value"] == "ENC-FLAG-888"
@@ -334,4 +338,3 @@ async def test_create_flag_with_reference_identifier_fallback(client):
     )
     assert patch_resp.status_code == 200, patch_resp.text
     assert patch_resp.json()["author_identifier_value"] == "PRAC-FLAG-777-UPDATED"
-

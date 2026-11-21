@@ -5,7 +5,6 @@ from app.services.task import TaskService
 
 
 class TaskContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     task_repository = providers.Factory(

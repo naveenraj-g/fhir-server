@@ -38,7 +38,9 @@ class ObservationToken(Base):
     __table_args__ = (Index("ix_observation_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)
+    observation_pk = Column(
+        BigInteger, ForeignKey("observation.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     slot = Column(Integer, nullable=False, default=0)
     system = Column(String, nullable=True)

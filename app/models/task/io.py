@@ -26,9 +26,7 @@ class TaskInput(TenantAuditMixin, Base):
     __tablename__ = "task_input"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     type_text = Column(String, nullable=True)
 
@@ -56,8 +54,12 @@ class TaskInput(TenantAuditMixin, Base):
     value_reference_identifier_type_text = Column(String, nullable=True)
     value_reference_identifier_system = Column(String, nullable=True)
     value_reference_identifier_value = Column(String, nullable=True)
-    value_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    value_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    value_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
     value_json = Column(JSONB, nullable=True)
 
     task = relationship("TaskModel", back_populates="inputs")
@@ -90,9 +92,7 @@ class TaskOutput(TenantAuditMixin, Base):
     __tablename__ = "task_output"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     type_text = Column(String, nullable=True)
 
@@ -120,8 +120,12 @@ class TaskOutput(TenantAuditMixin, Base):
     value_reference_identifier_type_text = Column(String, nullable=True)
     value_reference_identifier_system = Column(String, nullable=True)
     value_reference_identifier_value = Column(String, nullable=True)
-    value_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    value_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    value_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    value_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
     value_json = Column(JSONB, nullable=True)
 
     task = relationship("TaskModel", back_populates="outputs")

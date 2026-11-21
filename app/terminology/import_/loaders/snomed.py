@@ -16,6 +16,7 @@ Run:
   # or
   uv run python -m app.terminology.import_.cli --source snomed --dir terminology_data/SnomedCT_USEdition/Snapshot/Terminology/
 """
+
 import glob
 import os
 import time
@@ -95,7 +96,9 @@ class SnomedLoader(BaseLoader):
                 elif type_id == SYNONYM_TYPE_ID:
                     synonyms.setdefault(concept_id, []).append(term)
 
-        self._log(f"  {len(fsn):,} FSN terms, {sum(len(v) for v in synonyms.values()):,} synonyms")
+        self._log(
+            f"  {len(fsn):,} FSN terms, {sum(len(v) for v in synonyms.values()):,} synonyms"
+        )
 
         records = [
             (cs_id, concept_id, fsn[concept_id], None)

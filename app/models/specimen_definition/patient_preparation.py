@@ -26,7 +26,9 @@ class SpecimenDefinitionPatientPreparation(TenantAuditMixin, Base):
     )
 
 
-class SpecimenDefinitionPatientPreparationCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class SpecimenDefinitionPatientPreparationCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """Coding within SpecimenDefinition.patientPreparation."""
 
     __tablename__ = "specimen_definition_patient_preparation_coding"

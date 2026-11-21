@@ -20,14 +20,10 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PlainMedicationResponse.model_json_schema()
-                )
+                "schema": inline_schema(PlainMedicationResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRMedicationSchema.model_json_schema()
-                )
+                "schema": inline_schema(FHIRMedicationSchema.model_json_schema())
             },
         }
     }
@@ -38,14 +34,10 @@ _LIST_200 = {
         "description": "Paginated list of medications",
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PaginatedMedicationResponse.model_json_schema()
-                )
+                "schema": inline_schema(PaginatedMedicationResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRMedicationBundle.model_json_schema()
-                )
+                "schema": inline_schema(FHIRMedicationBundle.model_json_schema())
             },
         },
     }

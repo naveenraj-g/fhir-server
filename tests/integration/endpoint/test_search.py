@@ -46,11 +46,28 @@ async def world(client):
                 {
                     "system": EP_IDS,
                     "value": "EP-1",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "EPT"}], "text": "Endpoint number"},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "EPT",
+                            }
+                        ],
+                        "text": "Endpoint number",
+                    },
                 }
             ],
-            connectionType={"system": CONN, "code": "hl7-fhir-rest", "display": "HL7 FHIR"},
-            payloadType=[{"coding": [{"system": PAYLOAD, "code": "any", "display": "Any"}], "text": "Any payload"}],
+            connectionType={
+                "system": CONN,
+                "code": "hl7-fhir-rest",
+                "display": "HL7 FHIR",
+            },
+            payloadType=[
+                {
+                    "coding": [{"system": PAYLOAD, "code": "any", "display": "Any"}],
+                    "text": "Any payload",
+                }
+            ],
         ),
     )
     w["dicom"] = await create_endpoint(
@@ -60,7 +77,11 @@ async def world(client):
             status="suspended",
             managingOrganization={"reference": f"Organization/{w['org_b']}"},
             identifier=[{"system": EP_IDS, "value": "EP-2"}],
-            connectionType={"system": CONN, "code": "dicom-wado-rs", "display": "DICOM WADO-RS"},
+            connectionType={
+                "system": CONN,
+                "code": "dicom-wado-rs",
+                "display": "DICOM WADO-RS",
+            },
             payloadType=[
                 {"coding": [{"system": PAYLOAD, "code": "ccda"}]},
                 {"coding": [{"system": PAYLOAD, "code": "any"}]},
@@ -77,7 +98,12 @@ async def world(client):
         ),
     )
     w["bare"] = await create_endpoint(
-        client, _endpoint(status="test", connectionType={"code": "x"}, payloadType=[{"coding": [{"code": "zzz"}]}])
+        client,
+        _endpoint(
+            status="test",
+            connectionType={"code": "x"},
+            payloadType=[{"coding": [{"code": "zzz"}]}],
+        ),
     )
     return w
 
@@ -93,7 +119,11 @@ async def _search(client, params=None, headers=None, base=BASE) -> dict:
 
 
 def _matches(bundle: dict) -> list[dict]:
-    return [e["resource"] for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"]
+    return [
+        e["resource"]
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    ]
 
 
 def _ids(bundle: dict) -> set[int]:
@@ -119,8 +149,13 @@ async def _found(client, w, **params) -> set[str]:
 async def test_id(client, world):
     assert await _found(client, world, _id=str(world["dicom"])) == {"dicom"}
     assert await _found(client, world, _id="999999") == set()
-    assert await _found(client, world, _id=f"{world['dicom']},{world['bare']}") == {"dicom", "bare"}
-    assert await _found(client, world, **{"_id:not": str(world["dicom"])}) == ALL - {"dicom"}
+    assert await _found(client, world, _id=f"{world['dicom']},{world['bare']}") == {
+        "dicom",
+        "bare",
+    }
+    assert await _found(client, world, **{"_id:not": str(world["dicom"])}) == ALL - {
+        "dicom"
+    }
 
 
 async def test_last_updated(client, world):
@@ -134,7 +169,9 @@ async def test_last_updated(client, world):
 async def test_status(client, world):
     assert await _found(client, world, status="active") == {"rest"}
     assert await _found(client, world, status="suspended") == {"dicom"}
-    assert await _found(client, world, status="http://hl7.org/fhir/endpoint-status|off") == {"off"}
+    assert await _found(
+        client, world, status="http://hl7.org/fhir/endpoint-status|off"
+    ) == {"off"}
     assert await _found(client, world, status="active,suspended") == {"rest", "dicom"}
     assert await _found(client, world, **{"status:not": "active"}) == ALL - {"rest"}
     assert await _found(client, world, status="nonsense") == set()
@@ -153,7 +190,9 @@ async def test_status_entered_in_error_is_stored_and_found(client, world):
 async def test_name_is_case_and_accent_insensitive_starts_with(client, world):
     assert await _found(client, world, name="alpha") == {"rest"}
     assert await _found(client, world, name="BETA IMAGING") == {"dicom"}
-    assert await _found(client, world, name="beta imaging muller") == {"dicom"}  # ü -> u
+    assert await _found(client, world, name="beta imaging muller") == {
+        "dicom"
+    }  # ü -> u
     assert await _found(client, world, name="fhir") == set()  # not a prefix
 
 
@@ -173,32 +212,58 @@ async def test_identifier(client, world):
     assert await _found(client, world, identifier=f"{EP_IDS}|EP-2") == {"dicom"}
     assert await _found(client, world, identifier=f"{EP_IDS}|") == {"rest", "dicom"}
     assert await _found(client, world, identifier="|EP-1") == set()
-    assert await _found(client, world, **{"identifier:not": f"{EP_IDS}|EP-1"}) == ALL - {"rest"}
-    assert await _found(client, world, **{"identifier:missing": "true"}) == {"off", "bare"}
+    assert await _found(
+        client, world, **{"identifier:not": f"{EP_IDS}|EP-1"}
+    ) == ALL - {"rest"}
+    assert await _found(client, world, **{"identifier:missing": "true"}) == {
+        "off",
+        "bare",
+    }
 
 
 async def test_identifier_of_type_and_text(client, world):
     v2 = "http://terminology.hl7.org/CodeSystem/v2-0203"
-    assert await _found(client, world, **{"identifier:of-type": f"{v2}|EPT|EP-1"}) == {"rest"}
-    assert await _found(client, world, **{"identifier:of-type": f"{v2}|EPT|EP-2"}) == set()
-    assert await _found(client, world, **{"identifier:text": "Endpoint num"}) == {"rest"}
+    assert await _found(client, world, **{"identifier:of-type": f"{v2}|EPT|EP-1"}) == {
+        "rest"
+    }
+    assert (
+        await _found(client, world, **{"identifier:of-type": f"{v2}|EPT|EP-2"}) == set()
+    )
+    assert await _found(client, world, **{"identifier:text": "Endpoint num"}) == {
+        "rest"
+    }
 
 
 # ── connection-type (one Coding on the row) ──────────────────────────────────
 
 
 async def test_connection_type(client, world):
-    assert await _found(client, world, **{"connection-type": "hl7-fhir-rest"}) == {"rest", "off"}
-    assert await _found(client, world, **{"connection-type": f"{CONN}|hl7-fhir-rest"}) == {"rest"}
-    assert await _found(client, world, **{"connection-type": f"{CONN}|"}) == {"rest", "dicom"}
+    assert await _found(client, world, **{"connection-type": "hl7-fhir-rest"}) == {
+        "rest",
+        "off",
+    }
+    assert await _found(
+        client, world, **{"connection-type": f"{CONN}|hl7-fhir-rest"}
+    ) == {"rest"}
+    assert await _found(client, world, **{"connection-type": f"{CONN}|"}) == {
+        "rest",
+        "dicom",
+    }
     assert await _found(client, world, **{"connection-type": "|hl7-fhir-rest"}) == set()
-    assert await _found(client, world, **{"connection-type": "hl7-fhir-rest,dicom-wado-rs"}) == {"rest", "dicom", "off"}
+    assert await _found(
+        client, world, **{"connection-type": "hl7-fhir-rest,dicom-wado-rs"}
+    ) == {"rest", "dicom", "off"}
     assert await _found(client, world, **{"connection-type": "nope"}) == set()
-    assert await _found(client, world, **{"connection-type:not": "hl7-fhir-rest"}) == {"dicom", "bare"}
+    assert await _found(client, world, **{"connection-type:not": "hl7-fhir-rest"}) == {
+        "dicom",
+        "bare",
+    }
 
 
 async def test_connection_type_text_and_missing(client, world):
-    assert await _found(client, world, **{"connection-type:text": "DICOM"}) == {"dicom"}  # coding.display
+    assert await _found(client, world, **{"connection-type:text": "DICOM"}) == {
+        "dicom"
+    }  # coding.display
     assert await _found(client, world, **{"connection-type:text": "HL7"}) == {"rest"}
     assert await _found(client, world, **{"connection-type:missing": "false"}) == ALL
 
@@ -208,16 +273,30 @@ async def test_connection_type_text_and_missing(client, world):
 
 async def test_payload_type(client, world):
     assert await _found(client, world, **{"payload-type": "any"}) == {"rest", "dicom"}
-    assert await _found(client, world, **{"payload-type": f"{PAYLOAD}|ccda"}) == {"dicom"}
-    assert await _found(client, world, **{"payload-type": "ccda,any"}) == {"rest", "dicom"}
+    assert await _found(client, world, **{"payload-type": f"{PAYLOAD}|ccda"}) == {
+        "dicom"
+    }
+    assert await _found(client, world, **{"payload-type": "ccda,any"}) == {
+        "rest",
+        "dicom",
+    }
     assert await _found(client, world, **{"payload-type": "|any"}) == set()
-    assert await _found(client, world, **{"payload-type:not": "any"}) == ALL - {"rest", "dicom"}
+    assert await _found(client, world, **{"payload-type:not": "any"}) == ALL - {
+        "rest",
+        "dicom",
+    }
 
 
 async def test_payload_type_text(client, world):
-    assert await _found(client, world, **{"payload-type:text": "Any pay"}) == {"rest"}  # concept text
-    assert await _found(client, world, **{"payload-type:text": "Legacy"}) == {"off"}  # text-only concept
-    assert await _found(client, world, **{"payload-type:text": "Any"}) == {"rest"}  # coding display "Any" / text "Any payload"
+    assert await _found(client, world, **{"payload-type:text": "Any pay"}) == {
+        "rest"
+    }  # concept text
+    assert await _found(client, world, **{"payload-type:text": "Legacy"}) == {
+        "off"
+    }  # text-only concept
+    assert await _found(client, world, **{"payload-type:text": "Any"}) == {
+        "rest"
+    }  # coding display "Any" / text "Any payload"
 
 
 # ── organization (managingOrganization) ──────────────────────────────────────
@@ -227,26 +306,46 @@ async def test_organization_reference_forms(client, world):
     a, b = world["org_a"], world["org_b"]
     assert await _found(client, world, organization=f"Organization/{a}") == {"rest"}
     assert await _found(client, world, organization=str(b)) == {"dicom"}
-    assert await _found(client, world, **{"organization:Organization": str(a)}) == {"rest"}
+    assert await _found(client, world, **{"organization:Organization": str(a)}) == {
+        "rest"
+    }
     assert await _found(client, world, organization=f"{a},{b}") == {"rest", "dicom"}
     assert await _found(client, world, organization="Location/1") == set()  # wrong type
-    assert (await client.get(BASE + "/", params={"organization:Location": str(a)})).status_code == 400
-    assert await _found(client, world, **{"organization:missing": "true"}) == {"off", "bare"}
+    assert (
+        await client.get(BASE + "/", params={"organization:Location": str(a)})
+    ).status_code == 400
+    assert await _found(client, world, **{"organization:missing": "true"}) == {
+        "off",
+        "bare",
+    }
 
 
 async def test_organization_absolute_url_resolves_only_for_this_server(client, world):
-    self_link = next(link["url"] for link in (await _search(client))["link"] if link["relation"] == "self")
+    self_link = next(
+        link["url"]
+        for link in (await _search(client))["link"]
+        if link["relation"] == "self"
+    )
     fhir_base = self_link.split("/endpoints")[0]
-    assert await _found(client, world, organization=f"{fhir_base}/Organization/{world['org_a']}") == {"rest"}
+    assert await _found(
+        client, world, organization=f"{fhir_base}/Organization/{world['org_a']}"
+    ) == {"rest"}
     other = f"https://other.example.org/fhir/Organization/{world['org_a']}"
     assert await _found(client, world, organization=other) == set()
 
 
 async def test_organization_identifier_modifier(client, world):
     ep = await create_endpoint(
-        client, _endpoint(managingOrganization={"identifier": {"system": "urn:registry", "value": "ORG-9"}})
+        client,
+        _endpoint(
+            managingOrganization={
+                "identifier": {"system": "urn:registry", "value": "ORG-9"}
+            }
+        ),
     )
-    assert _ids(await _search(client, {"organization:identifier": "urn:registry|ORG-9"})) == {ep}
+    assert _ids(
+        await _search(client, {"organization:identifier": "urn:registry|ORG-9"})
+    ) == {ep}
 
 
 async def test_organization_chaining(client, world):
@@ -260,9 +359,13 @@ async def test_organization_chaining(client, world):
 
 async def test_comma_is_or_repeat_is_and_and_parameters_and_together(client, world):
     assert await _found(client, world, name="Alpha,Retired") == {"rest", "off"}
-    resp = await client.get(BASE + "/", params=[("payload-type", "ccda"), ("payload-type", "any")])
+    resp = await client.get(
+        BASE + "/", params=[("payload-type", "ccda"), ("payload-type", "any")]
+    )
     assert _ids(resp.json()) == {world["dicom"]}  # only one endpoint has both codings
-    assert await _found(client, world, status="active", **{"payload-type": "any"}) == {"rest"}
+    assert await _found(client, world, status="active", **{"payload-type": "any"}) == {
+        "rest"
+    }
     assert await _found(client, world, status="off", **{"payload-type": "any"}) == set()
 
 
@@ -274,34 +377,69 @@ async def test_escaped_comma_is_literal(client, world):
 
 
 async def test_include_organization(client, world):
-    bundle = await _search(client, {"_id": str(world["rest"]), "_include": "Endpoint:organization"})
+    bundle = await _search(
+        client, {"_id": str(world["rest"]), "_include": "Endpoint:organization"}
+    )
     assert _ids(bundle) == {world["rest"]}
     assert _included(bundle) == {("Organization", str(world["org_a"]))}
 
 
 async def test_include_dedups_and_skips_unresolved(client, world):
     bundle = await _search(client, {"_include": "Endpoint:organization"})
-    assert _included(bundle) == {("Organization", str(world["org_a"])), ("Organization", str(world["org_b"]))}
+    assert _included(bundle) == {
+        ("Organization", str(world["org_a"])),
+        ("Organization", str(world["org_b"])),
+    }
 
 
 async def test_unsupported_include_is_400(client, world):
     for value in ("Endpoint:bogus", "Patient:organization", "Endpoint"):
-        assert (await client.get(BASE + "/", params={"_include": value})).status_code == 400, value
+        assert (
+            await client.get(BASE + "/", params={"_include": value})
+        ).status_code == 400, value
 
 
 async def test_revinclude_organizations_that_point_at_the_endpoint(client, world):
-    org = (await client.post(ORG_BASE + "/", json={"name": "Via Endpoint", "endpoint": [{"reference": f"Endpoint/{world['rest']}"}]})).json()["id"]
-    bundle = await _search(client, {"_id": str(world["rest"]), "_revinclude": "Organization:endpoint"})
+    org = (
+        await client.post(
+            ORG_BASE + "/",
+            json={
+                "name": "Via Endpoint",
+                "endpoint": [{"reference": f"Endpoint/{world['rest']}"}],
+            },
+        )
+    ).json()["id"]
+    bundle = await _search(
+        client, {"_id": str(world["rest"]), "_revinclude": "Organization:endpoint"}
+    )
     assert _included(bundle) == {("Organization", org)}
-    none = await _search(client, {"_id": str(world["dicom"]), "_revinclude": "Organization:endpoint"})
+    none = await _search(
+        client, {"_id": str(world["dicom"]), "_revinclude": "Organization:endpoint"}
+    )
     assert _included(none) == set()
 
 
-async def test_organization_search_can_include_its_endpoints_and_revinclude_the_ones_it_manages(client, world):
-    org = (await client.post(ORG_BASE + "/", json={"name": "Pointer Org", "endpoint": [{"reference": f"Endpoint/{world['off']}"}]})).json()["id"]
-    inc = await _search(client, {"_id": org, "_include": "Organization:endpoint"}, base=ORG_BASE)
+async def test_organization_search_can_include_its_endpoints_and_revinclude_the_ones_it_manages(
+    client, world
+):
+    org = (
+        await client.post(
+            ORG_BASE + "/",
+            json={
+                "name": "Pointer Org",
+                "endpoint": [{"reference": f"Endpoint/{world['off']}"}],
+            },
+        )
+    ).json()["id"]
+    inc = await _search(
+        client, {"_id": org, "_include": "Organization:endpoint"}, base=ORG_BASE
+    )
     assert _included(inc) == {("Endpoint", str(world["off"]))}
-    rev = await _search(client, {"_id": str(world["org_a"]), "_revinclude": "Endpoint:organization"}, base=ORG_BASE)
+    rev = await _search(
+        client,
+        {"_id": str(world["org_a"]), "_revinclude": "Endpoint:organization"},
+        base=ORG_BASE,
+    )
     assert _included(rev) == {("Endpoint", str(world["rest"]))}
     entry = next(e for e in rev["entry"] if e["search"]["mode"] == "include")
     assert entry["fullUrl"].endswith(f"/endpoints/{world['rest']}")
@@ -310,25 +448,47 @@ async def test_organization_search_can_include_its_endpoints_and_revinclude_the_
 async def test_healthcare_service_and_location_endpoint_includes(client, world):
     hs = (
         await client.post(
-            HS_BASE + "/", json={"name": "Clinic", "endpoint": [{"reference": f"Endpoint/{world['dicom']}"}]}
+            HS_BASE + "/",
+            json={
+                "name": "Clinic",
+                "endpoint": [{"reference": f"Endpoint/{world['dicom']}"}],
+            },
         )
     ).json()["id"]
     loc = (
         await client.post(
             LOC_BASE + "/",
-            json={"status": "active", "name": "Wing", "endpoint": [{"reference": f"Endpoint/{world['dicom']}"}]},
+            json={
+                "status": "active",
+                "name": "Wing",
+                "endpoint": [{"reference": f"Endpoint/{world['dicom']}"}],
+            },
         )
     ).json()["id"]
-    hs_inc = await _search(client, {"_id": hs, "_include": "HealthcareService:endpoint"}, base=HS_BASE)
+    hs_inc = await _search(
+        client, {"_id": hs, "_include": "HealthcareService:endpoint"}, base=HS_BASE
+    )
     assert _included(hs_inc) == {("Endpoint", str(world["dicom"]))}
-    loc_inc = await _search(client, {"_id": loc, "_include": "Location:endpoint"}, base=LOC_BASE)
+    loc_inc = await _search(
+        client, {"_id": loc, "_include": "Location:endpoint"}, base=LOC_BASE
+    )
     assert _included(loc_inc) == {("Endpoint", str(world["dicom"]))}
     rev = await _search(
         client,
-        {"_id": str(world["dicom"]), "_revinclude": ["HealthcareService:endpoint", "Location:endpoint"]},
+        {
+            "_id": str(world["dicom"]),
+            "_revinclude": ["HealthcareService:endpoint", "Location:endpoint"],
+        },
     )
     assert _included(rev) == {("HealthcareService", hs), ("Location", loc)}
-    assert _included(await _search(client, {"_id": str(world["rest"]), "_revinclude": "Location:endpoint"})) == set()
+    assert (
+        _included(
+            await _search(
+                client, {"_id": str(world["rest"]), "_revinclude": "Location:endpoint"}
+            )
+        )
+        == set()
+    )
 
 
 # ── _sort / paging / totals ──────────────────────────────────────────────────
@@ -336,24 +496,36 @@ async def test_healthcare_service_and_location_endpoint_includes(client, world):
 
 async def test_sort_by_name_and_id(client, world):
     asc = [r["id"] for r in _matches(await _search(client, {"_sort": "name"}))]
-    assert asc[:3] == [str(world[k]) for k in ("rest", "dicom", "off")]  # Alpha, Beta, Retired
+    assert asc[:3] == [
+        str(world[k]) for k in ("rest", "dicom", "off")
+    ]  # Alpha, Beta, Retired
     assert asc[-1] == str(world["bare"])  # no name sorts last
-    assert [r["id"] for r in _matches(await _search(client, {"_sort": "-name"}))][0] == str(world["off"])
+    assert [r["id"] for r in _matches(await _search(client, {"_sort": "-name"}))][
+        0
+    ] == str(world["off"])
     default = [int(r["id"]) for r in _matches(await _search(client))]
     assert default == sorted(default, reverse=True)
-    assert [int(r["id"]) for r in _matches(await _search(client, {"_sort": "_id"}))] == sorted(default)
+    assert [
+        int(r["id"]) for r in _matches(await _search(client, {"_sort": "_id"}))
+    ] == sorted(default)
 
 
 async def test_sort_by_status_and_connection_type(client, world):
     assert (await client.get(BASE + "/", params={"_sort": "status"})).status_code == 200
-    assert (await client.get(BASE + "/", params={"_sort": "connection-type"})).status_code == 200
-    assert (await client.get(BASE + "/", params={"_sort": "payload-type"})).status_code == 200
+    assert (
+        await client.get(BASE + "/", params={"_sort": "connection-type"})
+    ).status_code == 200
+    assert (
+        await client.get(BASE + "/", params={"_sort": "payload-type"})
+    ).status_code == 200
 
 
 async def test_count_offset_total_and_links(client, world):
     page1 = await _search(client, {"_count": "2", "_sort": "_id"})
     assert page1["total"] == 4 and len(page1["entry"]) == 2
-    assert {"self", "first", "next", "last"} <= {link["relation"] for link in page1["link"]}
+    assert {"self", "first", "next", "last"} <= {
+        link["relation"] for link in page1["link"]
+    }
     page2 = await _search(client, {"_count": "2", "_offset": "2", "_sort": "_id"})
     assert _ids(page1).isdisjoint(_ids(page2))
     assert "next" not in {link["relation"] for link in page2["link"]}
@@ -365,9 +537,16 @@ async def test_count_offset_total_and_links(client, world):
 async def test_summary_and_elements(client, world):
     from tests.integration.endpoint.support import FULL
 
-    full = str(await create_endpoint(client, {**FULL, "name": "Subsettable"}))  # has contact + header
+    full = str(
+        await create_endpoint(client, {**FULL, "name": "Subsettable"})
+    )  # has contact + header
     resource = _matches(await _search(client, {"_id": full, "_summary": "true"}))[0]
-    assert "name" in resource and "address" in resource and "contact" not in resource and "header" not in resource
+    assert (
+        "name" in resource
+        and "address" in resource
+        and "contact" not in resource
+        and "header" not in resource
+    )
     assert any(t.get("code") == "SUBSETTED" for t in resource["meta"]["tag"])
     el = _matches(await _search(client, {"_id": full, "_elements": "name"}))[0]
     assert el["name"] == "Subsettable" and "header" not in el and "contact" not in el
@@ -377,7 +556,9 @@ async def test_summary_and_elements(client, world):
     assert {"status", "connectionType", "payloadType", "address"} <= set(text)
     assert "name" not in text
     # Nothing to strip -> not tagged as subsetted.
-    plain = _matches(await _search(client, {"_id": str(world["rest"]), "_summary": "true"}))[0]
+    plain = _matches(
+        await _search(client, {"_id": str(world["rest"]), "_summary": "true"})
+    )[0]
     assert not any(t.get("code") == "SUBSETTED" for t in plain["meta"].get("tag", []))
 
 
@@ -388,13 +569,17 @@ async def test_unknown_parameter_ignored_with_outcome_or_400_when_strict(client,
     bundle = await _search(client, {"bogus": "x", "name": "Alpha"})
     assert _ids(bundle) == {world["rest"]}
     assert [e for e in bundle["entry"] if e["search"]["mode"] == "outcome"]
-    resp = await client.get(BASE + "/", params={"bogus": "x"}, headers={"Prefer": "handling=strict"})
+    resp = await client.get(
+        BASE + "/", params={"bogus": "x"}, headers={"Prefer": "handling=strict"}
+    )
     assert resp.status_code == 400 and resp.json()["resourceType"] == "OperationOutcome"
 
 
 async def test_unsupported_common_parameters_ignored(client, world):
     for name in ("_tag", "_profile", "_has", "_text", "_filter"):
-        assert (await client.get(BASE + "/", params={name: "x"})).status_code == 200, name
+        assert (await client.get(BASE + "/", params={name: "x"})).status_code == 200, (
+            name
+        )
 
 
 async def test_bad_modifier_and_malformed_value_are_400(client, world):
@@ -425,15 +610,23 @@ async def test_bundle_shape(client, world):
 
 
 async def test_xml_only_accept_is_406_on_search(client):
-    assert (await client.get(BASE + "/", headers={"Accept": "application/fhir+xml"})).status_code == 406
+    assert (
+        await client.get(BASE + "/", headers={"Accept": "application/fhir+xml"})
+    ).status_code == 406
 
 
 async def test_post_search_form_encoded_and_combined_with_query_string(client, world):
     form = {"Content-Type": "application/x-www-form-urlencoded"}
-    resp = await client.post(BASE + "/_search", content="name=Alpha&status=active", headers=form)
+    resp = await client.post(
+        BASE + "/_search", content="name=Alpha&status=active", headers=form
+    )
     assert resp.status_code == 200, resp.text
     assert _ids(resp.json()) == {world["rest"]}
-    resp = await client.post(BASE + "/_search?status=active", content="name=Alpha", headers=form)
+    resp = await client.post(
+        BASE + "/_search?status=active", content="name=Alpha", headers=form
+    )
     assert _ids(resp.json()) == {world["rest"]}
-    resp = await client.post(BASE + "/_search?status=off", content="name=Alpha", headers=form)
+    resp = await client.post(
+        BASE + "/_search?status=off", content="name=Alpha", headers=form
+    )
     assert _ids(resp.json()) == set()

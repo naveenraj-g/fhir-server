@@ -53,7 +53,9 @@ class MedicationDispenseSubstitutionReason(TenantAuditMixin, Base):
     )
 
 
-class MedicationDispenseSubstitutionReasonCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MedicationDispenseSubstitutionReasonCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """MedicationDispense.substitution.reason.coding (0..*) grandchild table."""
 
     __tablename__ = "medication_dispense_substitution_reason_coding"

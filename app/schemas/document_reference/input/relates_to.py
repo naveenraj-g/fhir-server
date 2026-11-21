@@ -13,7 +13,8 @@ class DocumentReferenceRelatesToInput(BaseModel):
         ..., description="replaces | transforms | signs | appends"
     )
     target: str | None = Field(
-        None, description="Target of the relationship (e.g. 'DocumentReference/320000')."
+        None,
+        description="Target of the relationship (e.g. 'DocumentReference/320000').",
     )
     target_display: str | None = Field(
         None, description="Display text for the target document reference."

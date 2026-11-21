@@ -30,9 +30,7 @@ class CommunicationRequestCategory(TenantAuditMixin, Base):
     )
 
 
-class CommunicationRequestCategoryCoding(
-    FhirCodingMixin, TenantAuditMixin, Base
-):
+class CommunicationRequestCategoryCoding(FhirCodingMixin, TenantAuditMixin, Base):
     """CommunicationRequest.category.coding (0..*) grandchild table."""
 
     __tablename__ = "communication_request_category_coding"
@@ -45,6 +43,4 @@ class CommunicationRequestCategoryCoding(
         index=True,
     )
 
-    category = relationship(
-        "CommunicationRequestCategory", back_populates="codings"
-    )
+    category = relationship("CommunicationRequestCategory", back_populates="codings")

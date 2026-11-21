@@ -30,8 +30,21 @@ PATIENT = {"reference": "Patient/10001"}
 EVENT = {"reference": "Immunization/330001"}
 SCT = "http://snomed.info/sct"
 TARGET = {"coding": [{"system": SCT, "code": "6142004", "display": "Influenza"}]}
-DOSE = {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-evaluation-dose-status", "code": "valid"}]}
-BASE = {"status": "completed", "patient": PATIENT, "targetDisease": TARGET, "immunizationEvent": EVENT, "doseStatus": DOSE}
+DOSE = {
+    "coding": [
+        {
+            "system": "http://terminology.hl7.org/CodeSystem/immunization-evaluation-dose-status",
+            "code": "valid",
+        }
+    ]
+}
+BASE = {
+    "status": "completed",
+    "patient": PATIENT,
+    "targetDisease": TARGET,
+    "immunizationEvent": EVENT,
+    "doseStatus": DOSE,
+}
 
 
 def _evaluation(content: dict, **overrides) -> ImmunizationEvaluationModel:
@@ -52,12 +65,21 @@ def _with(**elements) -> ImmunizationEvaluationModel:
 
 CASES = {
     "minimal": _with(),
-    "updated_by_and_updated_at": _evaluation(dict(BASE), updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _evaluation(
+        dict(BASE), updated_by="u-other", updated_at=D
+    ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "FILL"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/immunization-evaluation-id",
                 "value": "IE-1",
                 "period": {"start": "2020-01-01"},
@@ -66,28 +88,54 @@ CASES = {
         ]
     ),
     **{f"status_{s}": _with(status=s) for s in ("completed", "entered-in-error")},
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
-    "patient_logical": _with(patient={"identifier": {"system": "urn:pts", "value": "P-9"}}),
-    "patient_absolute_url": _with(patient={"reference": "https://other.example.org/fhir/Patient/9"}),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
+    "patient_logical": _with(
+        patient={"identifier": {"system": "urn:pts", "value": "P-9"}}
+    ),
+    "patient_absolute_url": _with(
+        patient={"reference": "https://other.example.org/fhir/Patient/9"}
+    ),
     "date": _with(date="2023-01-15T09:30:00Z"),
     "date_partial": _with(date="2023-01"),
     "authority": _with(authority={"reference": "Organization/190001"}),
     "target_disease_text_only": _with(targetDisease={"text": "Tetanus"}),
-    "immunization_event_logical": _with(immunizationEvent={"identifier": {"system": "urn:imm", "value": "I-9"}}),
+    "immunization_event_logical": _with(
+        immunizationEvent={"identifier": {"system": "urn:imm", "value": "I-9"}}
+    ),
     "immunization_event_absolute_url": _with(
         immunizationEvent={"reference": "https://other.example.org/fhir/Immunization/3"}
     ),
     "dose_status_text_only": _with(doseStatus={"text": "Too early"}),
     "dose_status_reason": _with(
         doseStatusReason=[
-            {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-evaluation-dose-status-reason", "code": "agedoses"}]},
+            {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/immunization-evaluation-dose-status-reason",
+                        "code": "agedoses",
+                    }
+                ]
+            },
             {"text": "Other"},
         ]
     ),
-    "description_and_series": _with(description="Evaluated against the seasonal flu schedule", series="Seasonal"),
-    "dose_numbers_positive_int": _with(doseNumberPositiveInt=1, seriesDosesPositiveInt=2),
+    "description_and_series": _with(
+        description="Evaluated against the seasonal flu schedule", series="Seasonal"
+    ),
+    "dose_numbers_positive_int": _with(
+        doseNumberPositiveInt=1, seriesDosesPositiveInt=2
+    ),
     "dose_numbers_string": _with(doseNumberString="booster", seriesDosesString="many"),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:ie", "value": "IE-1"}],
         date="2023-01-15T09:30:00Z",
@@ -103,15 +151,23 @@ CASES = {
 
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_immunization_evaluation_mapper_emits_valid_fhir_r4(case):
-    assert_valid(pb2.ImmunizationEvaluation, to_fhir_immunization_evaluation(CASES[case]))
+    assert_valid(
+        pb2.ImmunizationEvaluation, to_fhir_immunization_evaluation(CASES[case])
+    )
 
 
 def test_mapper_serves_content_unchanged():
-    content = {**BASE, "authority": {"reference": "Organization/190001"}, "series": "Seasonal"}
+    content = {
+        **BASE,
+        "authority": {"reference": "Organization/190001"},
+        "series": "Seasonal",
+    }
     out = to_fhir_immunization_evaluation(_evaluation(content))
     assert out["resourceType"] == "ImmunizationEvaluation"
     assert out["id"] == "610001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -135,18 +191,31 @@ def test_mapper_serves_content_unchanged():
         ("authority as string not a Reference", {"authority": "Organization/1"}),
         ("identifier as object not a list", {"identifier": {"value": "x"}}),
         ("targetDisease as string not a CodeableConcept", {"targetDisease": "6142004"}),
-        ("immunizationEvent as string not a Reference", {"immunizationEvent": "Immunization/1"}),
+        (
+            "immunizationEvent as string not a Reference",
+            {"immunizationEvent": "Immunization/1"},
+        ),
         ("doseStatus as string not a CodeableConcept", {"doseStatus": "valid"}),
         ("doseStatusReason as object not a list", {"doseStatusReason": {"text": "x"}}),
         ("description as number", {"description": 5}),
         ("series as number", {"series": 5}),
         ("doseNumberPositiveInt not a positiveInt", {"doseNumberPositiveInt": "one"}),
-        ("seriesDosesPositiveInt not a positiveInt", {"seriesDosesPositiveInt": "many"}),
+        (
+            "seriesDosesPositiveInt not a positiveInt",
+            {"seriesDosesPositiveInt": "many"},
+        ),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "ImmunizationEvaluation", "id": "610001", **BASE, **broken}
+    payload = {
+        "resourceType": "ImmunizationEvaluation",
+        "id": "610001",
+        **BASE,
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), pb2.ImmunizationEvaluation, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.ImmunizationEvaluation, validate=True
+        )

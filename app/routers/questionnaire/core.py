@@ -7,7 +7,10 @@ from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
 from app.di.dependencies.questionnaire import get_questionnaire_service
 from app.schemas.enums import QuestionnaireStatus
-from app.schemas.questionnaire import QuestionnaireCreateSchema, QuestionnairePatchSchema
+from app.schemas.questionnaire import (
+    QuestionnaireCreateSchema,
+    QuestionnairePatchSchema,
+)
 from app.services.questionnaire import QuestionnaireService
 
 from ._responses import (
@@ -84,13 +87,18 @@ async def create_questionnaire(
 )
 async def get_questionnaire(
     request: Request,
-    questionnaire_id: int = Path(..., ge=1, description="Public questionnaire identifier."),
+    questionnaire_id: int = Path(
+        ..., ge=1, description="Public questionnaire identifier."
+    ),
     actor: AuthUser = Depends(require_permission("questionnaire", "read")),
     questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
 ):
     logger.info(
         "Retrieve a Questionnaire resource by public questionnaire_id",
-        extra={"event": "route.get_questionnaire_by_id", "questionnaire_id": questionnaire_id},
+        extra={
+            "event": "route.get_questionnaire_by_id",
+            "questionnaire_id": questionnaire_id,
+        },
     )
     questionnaire = await questionnaire_service.get_questionnaire_scoped(
         questionnaire_id, actor.org_id
@@ -122,7 +130,9 @@ async def get_questionnaire(
 async def patch_questionnaire(
     payload: QuestionnairePatchSchema,
     request: Request,
-    questionnaire_id: int = Path(..., ge=1, description="Public questionnaire identifier."),
+    questionnaire_id: int = Path(
+        ..., ge=1, description="Public questionnaire identifier."
+    ),
     actor: AuthUser = Depends(require_permission("questionnaire", "update")),
     questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
 ):
@@ -130,7 +140,10 @@ async def patch_questionnaire(
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a Questionnaire resource",
-        extra={"event": "route.patch_questionnaire", "questionnaire_id": questionnaire_id},
+        extra={
+            "event": "route.patch_questionnaire",
+            "questionnaire_id": questionnaire_id,
+        },
     )
     log_payload(logger, "questionnaire.patch.payload", payload)
     updated = await questionnaire_service.patch_questionnaire(
@@ -224,7 +237,9 @@ async def list_questionnaires(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_questionnaire(
-    questionnaire_id: int = Path(..., ge=1, description="Public questionnaire identifier."),
+    questionnaire_id: int = Path(
+        ..., ge=1, description="Public questionnaire identifier."
+    ),
     actor: AuthUser = Depends(require_permission("questionnaire", "delete")),
     questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
 ):
@@ -232,6 +247,11 @@ async def delete_questionnaire(
     exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a Questionnaire resource",
-        extra={"event": "route.delete_questionnaire", "questionnaire_id": questionnaire_id},
+        extra={
+            "event": "route.delete_questionnaire",
+            "questionnaire_id": questionnaire_id,
+        },
     )
-    await questionnaire_service.delete_questionnaire(questionnaire_id, org_id=actor.org_id)
+    await questionnaire_service.delete_questionnaire(
+        questionnaire_id, org_id=actor.org_id
+    )

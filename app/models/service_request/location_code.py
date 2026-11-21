@@ -21,9 +21,13 @@ class ServiceRequestLocationCode(TenantAuditMixin, Base):
     )
     text = Column(String, nullable=True)
 
-    service_request = relationship("ServiceRequestModel", back_populates="location_codes")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="location_codes"
+    )
     codings = relationship(
-        "ServiceRequestLocationCodeCoding", back_populates="location_code", cascade="all, delete-orphan"
+        "ServiceRequestLocationCodeCoding",
+        back_populates="location_code",
+        cascade="all, delete-orphan",
     )
 
 
@@ -34,7 +38,10 @@ class ServiceRequestLocationCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_location_code_id = Column(
-        BigInteger, ForeignKey("service_request_location_code.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("service_request_location_code.id"),
+        nullable=False,
+        index=True,
     )
 
     location_code = relationship("ServiceRequestLocationCode", back_populates="codings")

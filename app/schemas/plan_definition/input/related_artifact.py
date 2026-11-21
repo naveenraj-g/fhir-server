@@ -13,8 +13,16 @@ class PlanDefinitionRelatedArtifactInput(BaseModel):
         description="documentation | justification | citation | predecessor | successor | derived-from | depends-on | composed-of.",
     )
     label: str | None = Field(None, description="Short label.")
-    display: str | None = Field(None, description="Brief description of the related artifact.")
-    citation: str | None = Field(None, description="Bibliographic citation for the artifact.")
+    display: str | None = Field(
+        None, description="Brief description of the related artifact."
+    )
+    citation: str | None = Field(
+        None, description="Bibliographic citation for the artifact."
+    )
     url: str | None = Field(None, description="Where the artifact can be accessed.")
-    document: dict | None = Field(None, description="What document is being referenced (Attachment).")
-    resource: str | None = Field(None, description="What document is being referenced (canonical reference).")
+    document: dict | None = Field(
+        None, description="What document is being referenced (Attachment)."
+    )
+    resource: str | None = Field(
+        None, description="What document is being referenced (canonical reference)."
+    )

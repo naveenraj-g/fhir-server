@@ -17,7 +17,9 @@ from app.repository.family_member_history.search import family_member_history_se
 from app.repository.immunization.search import immunization_search
 from app.repository.risk_assessment.search import risk_assessment_search
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
-from app.repository.immunization_recommendation.search import immunization_recommendation_search
+from app.repository.immunization_recommendation.search import (
+    immunization_recommendation_search,
+)
 from app.repository.observation.search import observation_search
 from app.repository.procedure.search import procedure_search
 from app.repository.related_person.search import related_person_search
@@ -70,11 +72,20 @@ async def test_search_params_match_registries(client):
         "condition": ("Condition", condition_search()),
         "detected_issue": ("DetectedIssue", detected_issue_search()),
         "diagnostic_report": ("DiagnosticReport", diagnostic_report_search()),
-        "family_member_history": ("FamilyMemberHistory", family_member_history_search()),
+        "family_member_history": (
+            "FamilyMemberHistory",
+            family_member_history_search(),
+        ),
         "immunization": ("Immunization", immunization_search()),
         "risk_assessment": ("RiskAssessment", risk_assessment_search()),
-        "immunization_evaluation": ("ImmunizationEvaluation", immunization_evaluation_search()),
-        "immunization_recommendation": ("ImmunizationRecommendation", immunization_recommendation_search()),
+        "immunization_evaluation": (
+            "ImmunizationEvaluation",
+            immunization_evaluation_search(),
+        ),
+        "immunization_recommendation": (
+            "ImmunizationRecommendation",
+            immunization_recommendation_search(),
+        ),
         "observation": ("Observation", observation_search()),
         "procedure": ("Procedure", procedure_search()),
     }
@@ -83,7 +94,9 @@ async def test_search_params_match_registries(client):
     for rtype, registry in enabled.values():
         entry = by_type[rtype]
         assert {p["name"] for p in entry["searchParam"]} == set(registry.params)
-        assert {"read", "create", "patch", "delete", "search-type"} == {i["code"] for i in entry["interaction"]}
+        assert {"read", "create", "patch", "delete", "search-type"} == {
+            i["code"] for i in entry["interaction"]
+        }
 
 
 async def test_includes_and_param_types(client):

@@ -24,6 +24,7 @@ which concept_db_id a given LOINC_NUM landed at without a follow-up SELECT
 other loader also depends on). Not done here — flagged as a real gap, not
 silently implemented halfway.
 """
+
 import csv
 import time
 
@@ -62,9 +63,7 @@ class LoincLoader(BaseLoader):
                 if not code:
                     continue
                 display = (
-                    row.get("LONG_COMMON_NAME")
-                    or row.get("COMPONENT")
-                    or code
+                    row.get("LONG_COMMON_NAME") or row.get("COMPONENT") or code
                 ).strip()
                 definition = (row.get("DEFINITION_DESCRIPTION") or "").strip() or None
                 records.append((cs_id, code, display, definition))

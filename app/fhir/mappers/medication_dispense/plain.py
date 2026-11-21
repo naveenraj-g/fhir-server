@@ -39,7 +39,9 @@ def _plain_coding_list(codings) -> list[dict]:
     return result
 
 
-def plain_medication_dispense_codeable_concept(codings, text: str | None) -> dict | None:
+def plain_medication_dispense_codeable_concept(
+    codings, text: str | None
+) -> dict | None:
     coding_list = _plain_coding_list(codings)
     result: dict = {}
     if text:
@@ -160,10 +162,16 @@ def plain_medication_dispense_dosage(d: MedicationDispenseDosageInstruction) -> 
             d.as_needed_codings, d.as_needed_codeable_concept_text
         ),
         "site": plain_medication_dispense_codeable_concept(d.site_codings, d.site_text),
-        "route": plain_medication_dispense_codeable_concept(d.route_codings, d.route_text),
-        "method": plain_medication_dispense_codeable_concept(d.method_codings, d.method_text),
+        "route": plain_medication_dispense_codeable_concept(
+            d.route_codings, d.route_text
+        ),
+        "method": plain_medication_dispense_codeable_concept(
+            d.method_codings, d.method_text
+        ),
         "dose_and_rate": list(d.dose_and_rate) if d.dose_and_rate else None,
-        "max_dose_per_period": dict(d.max_dose_per_period) if d.max_dose_per_period else None,
+        "max_dose_per_period": dict(d.max_dose_per_period)
+        if d.max_dose_per_period
+        else None,
         "max_dose_per_administration_value": float(d.max_dose_per_administration_value)
         if d.max_dose_per_administration_value is not None
         else None,
@@ -229,8 +237,7 @@ def to_plain_medication_dispense(md: MedicationDispenseModel) -> dict:
         ]
         or None,
         "part_of": [
-            {**_plain_reference(p, "reference"), "id": p.id}
-            for p in (md.part_of or [])
+            {**_plain_reference(p, "reference"), "id": p.id} for p in (md.part_of or [])
         ]
         or None,
         "status": fhir_enum(md.status),

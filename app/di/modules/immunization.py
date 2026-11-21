@@ -5,7 +5,6 @@ from app.services.immunization import ImmunizationService
 
 
 class ImmunizationContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     immunization_repository = providers.Factory(

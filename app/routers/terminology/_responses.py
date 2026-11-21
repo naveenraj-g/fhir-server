@@ -28,6 +28,7 @@ def _require_org_id(request: Request) -> str:
         )
     return org_id
 
+
 _CS_LIST_200 = {
     200: {
         "content": {

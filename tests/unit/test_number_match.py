@@ -39,14 +39,22 @@ def engine():
     eng = create_engine("sqlite://")
     metadata.create_all(eng)
     with eng.begin() as conn:
-        conn.execute(probabilities.insert(), [{"id": i, "low": lo, "high": hi} for i, (lo, hi) in ROWS.items()])
+        conn.execute(
+            probabilities.insert(),
+            [{"id": i, "low": lo, "high": hi} for i, (lo, hi) in ROWS.items()],
+        )
     return eng
 
 
 def _match(engine, value: str) -> set[int]:
     c = probabilities.c
     with engine.connect() as conn:
-        return {r[0] for r in conn.execute(select(c.id).where(number_range_match(c.low, c.high, value)))}
+        return {
+            r[0]
+            for r in conn.execute(
+                select(c.id).where(number_range_match(c.low, c.high, value))
+            )
+        }
 
 
 @pytest.mark.parametrize(
@@ -56,9 +64,15 @@ def _match(engine, value: str) -> set[int]:
         ("0.3", set()),  # [0.25, 0.35) wholly contains no target
         ("1", {1}),  # [0.5, 1.5) wholly contains the point 0.5
         ("1e1", {6}),  # [5, 15) wholly contains the point 10
-        ("ne0.5", {2, 3, 4, 6}),  # not wholly contained; an open end is never contained; row 5 has no number
+        (
+            "ne0.5",
+            {2, 3, 4, 6},
+        ),  # not wholly contained; an open end is never contained; row 5 has no number
         ("gt0.6", {3, 6}),  # the range above 0.6 overlaps the open-above one and 10
-        ("lt0.3", {2, 4}),  # the range below 0.3 overlaps 0.2-0.4 and the open-below one
+        (
+            "lt0.3",
+            {2, 4},
+        ),  # the range below 0.3 overlaps 0.2-0.4 and the open-below one
         ("ge0.5", {1, 3, 6}),
         ("le0.2", {2, 4}),
         ("sa0.5", {3, 6}),  # starts after [0.45, 0.55): low >= 0.55
@@ -75,7 +89,9 @@ def test_a_row_with_no_number_never_matches(engine):
         assert 5 not in _match(engine, value), value
 
 
-@pytest.mark.parametrize("bad", ["abc", "", "0.5|http://unitsofmeasure.org|%", "gt", "1|2"])
+@pytest.mark.parametrize(
+    "bad", ["abc", "", "0.5|http://unitsofmeasure.org|%", "gt", "1|2"]
+)
 def test_bad_values_are_search_errors(bad):
     with pytest.raises(SearchError):
         number_range_match(probabilities.c.low, probabilities.c.high, bad)

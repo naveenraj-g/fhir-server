@@ -1,5 +1,8 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.risk_assessment import FHIRRiskAssessmentBundle, FHIRRiskAssessmentSchema
+from app.schemas.risk_assessment import (
+    FHIRRiskAssessmentBundle,
+    FHIRRiskAssessmentSchema,
+)
 
 # RiskAssessment is stored Medplum-style (whole resource in `content`) and
 # always responds with FHIR R4 JSON — there is no plain representation.

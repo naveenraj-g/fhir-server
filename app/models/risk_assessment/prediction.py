@@ -18,7 +18,9 @@ class RiskAssessmentPrediction(Base):
     __tablename__ = "risk_assessment_prediction"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    risk_assessment_pk = Column(BigInteger, ForeignKey("risk_assessment.id"), nullable=False, index=True)
+    risk_assessment_pk = Column(
+        BigInteger, ForeignKey("risk_assessment.id"), nullable=False, index=True
+    )
     probability_low = Column(Numeric, nullable=True)
     probability_high = Column(Numeric, nullable=True)
 

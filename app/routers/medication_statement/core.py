@@ -43,8 +43,7 @@ logger = get_logger(__name__)
         "Record of a medication that is being consumed by a patient. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -181,17 +180,15 @@ async def list_medication_statements(
         description="active | completed | entered-in-error | intended | stopped | on-hold | unknown | not-taken.",
     ),
     subject: str | None = Query(
-        None, description="Who is/was taking the medication (Patient or Group reference)."
+        None,
+        description="Who is/was taking the medication (Patient or Group reference).",
     ),
     patient: str | None = Query(
-        None, description="Patient who is/was taking the medication (alias for subject)."
+        None,
+        description="Patient who is/was taking the medication (alias for subject).",
     ),
-    code: str | None = Query(
-        None, description="Code or name of medication."
-    ),
-    category: str | None = Query(
-        None, description="Type of medication statement."
-    ),
+    code: str | None = Query(None, description="Code or name of medication."),
+    category: str | None = Query(None, description="Type of medication statement."),
     effective_val: date | None = Query(
         None, description="Date evaluation was asserted."
     ),
@@ -201,9 +198,7 @@ async def list_medication_statements(
     effective_to: datetime | None = Query(
         None, description="Effective date range end."
     ),
-    identifier: str | None = Query(
-        None, description="Business identifier value."
-    ),
+    identifier: str | None = Query(None, description="Business identifier value."),
     list_params: ListParams = Depends(),
     medication_statement_service: MedicationStatementService = Depends(
         get_medication_statement_service

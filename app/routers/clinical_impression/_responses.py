@@ -1,5 +1,8 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.clinical_impression import FHIRClinicalImpressionBundle, FHIRClinicalImpressionSchema
+from app.schemas.clinical_impression import (
+    FHIRClinicalImpressionBundle,
+    FHIRClinicalImpressionSchema,
+)
 
 # ClinicalImpression is stored Medplum-style (whole resource in `content`) and
 # always responds with FHIR R4 JSON — there is no plain representation.
@@ -33,7 +36,9 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/fhir+json": {
-                "schema": inline_schema(FHIRClinicalImpressionSchema.model_json_schema())
+                "schema": inline_schema(
+                    FHIRClinicalImpressionSchema.model_json_schema()
+                )
             },
         }
     }
@@ -44,7 +49,9 @@ _LIST_200 = {
         "description": "FHIR searchset Bundle: matches (search.mode=match) and any ignored-parameter warning (outcome)",
         "content": {
             "application/fhir+json": {
-                "schema": inline_schema(FHIRClinicalImpressionBundle.model_json_schema())
+                "schema": inline_schema(
+                    FHIRClinicalImpressionBundle.model_json_schema()
+                )
             },
         },
     }

@@ -47,7 +47,9 @@ def partof_reference(document: dict) -> str | None:
 def assigner_references(document: dict) -> list[str]:
     refs = []
     for identifier in document.get("identifier") or []:
-        ref = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        ref = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if ref:
             refs.append(ref)
     return refs
@@ -75,7 +77,9 @@ def index_columns(document: dict) -> dict:
         "alias": aliases,
         "alias_norm": norms(aliases),
         "name_phonetic": phonetic_key(document.get("name")),
-        **reference_columns("partof", document.get("partOf"), "Organization", _parse_org_ref),
+        **reference_columns(
+            "partof", document.get("partOf"), "Organization", _parse_org_ref
+        ),
     }
 
 
@@ -104,9 +108,15 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by OrganizationModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(OrganizationIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(OrganizationIdentifier, i)
         ],
-        "types": [r for cc in document.get("type") or [] for r in type_rows(OrganizationType, cc)],
+        "types": [
+            r
+            for cc in document.get("type") or []
+            for r in type_rows(OrganizationType, cc)
+        ],
         "addresses": [_address_row(a) for a in document.get("address") or []],
         "endpoints": [
             r

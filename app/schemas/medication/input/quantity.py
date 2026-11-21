@@ -8,8 +8,12 @@ class MedicationQuantityInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    value: float | None = Field(None, description="Numerical value (with implicit precision).")
-    comparator: MedicationQuantityComparator | None = Field(None, description="< | <= | >= | > - how to understand the value.")
+    value: float | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
+    comparator: MedicationQuantityComparator | None = Field(
+        None, description="< | <= | >= | > - how to understand the value."
+    )
     unit: str | None = Field(None, description="Unit representation.")
     system: str | None = Field(None, description="System that defines coded unit form.")
     code: str | None = Field(None, description="Coded form of the unit.")
@@ -20,5 +24,9 @@ class MedicationRatioInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    numerator: MedicationQuantityInput | None = Field(None, description="Numerator value.")
-    denominator: MedicationQuantityInput | None = Field(None, description="Denominator value.")
+    numerator: MedicationQuantityInput | None = Field(
+        None, description="Numerator value."
+    )
+    denominator: MedicationQuantityInput | None = Field(
+        None, description="Denominator value."
+    )

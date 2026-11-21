@@ -20,7 +20,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
     """Existence-check every relative local reference in the document
     (identifier.assigner, patient, encounter, recorder, asserter, note authors), scoped to the caller's org — 422 if one does not resolve."""
     for label, resource_type, ref in local_references(document):
-        await _validate_reference(session, tenant_id, resource_type, int(ref.split("/")[1]), label)
+        await _validate_reference(
+            session, tenant_id, resource_type, int(ref.split("/")[1]), label
+        )
 
 
 class _FullMixin:
@@ -65,14 +67,17 @@ class _FullMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(AllergyIntoleranceModel).where(
-                    AllergyIntoleranceModel.allergy_intolerance_id == allergy_intolerance_id
+                    AllergyIntoleranceModel.allergy_intolerance_id
+                    == allergy_intolerance_id
                 )
             )
             allergy_intolerance = (await session.execute(stmt)).scalars().first()
             if not allergy_intolerance:
                 return None
 
-            await _validate_local_references(session, allergy_intolerance.tenant_id, document)
+            await _validate_local_references(
+                session, allergy_intolerance.tenant_id, document
+            )
 
             allergy_intolerance.content = _storable(document)
             for column, value in index_columns(document).items():

@@ -55,12 +55,8 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
     )
     group_identifier_system = Column(String, nullable=True)
     group_identifier_value = Column(String, nullable=True)
-    group_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    group_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    group_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
     group_identifier_assigner_reference = Column(String, nullable=True)
     group_identifier_assigner_type = Column(
         Enum(
@@ -70,9 +66,7 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
         ),
         nullable=True,
     )
-    group_identifier_assigner_id = Column(
-        BigInteger, nullable=True, index=True
-    )
+    group_identifier_assigner_id = Column(BigInteger, nullable=True, index=True)
     group_identifier_assigner_display = Column(String, nullable=True)
     group_identifier_assigner_identifier_use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False),
@@ -83,11 +77,17 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
     group_identifier_assigner_identifier_type_code = Column(String, nullable=True)
     group_identifier_assigner_identifier_type_display = Column(String, nullable=True)
     group_identifier_assigner_identifier_type_text = Column(String, nullable=True)
-    group_identifier_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    group_identifier_assigner_identifier_type_user_selected = Column(
+        Boolean, nullable=True
+    )
     group_identifier_assigner_identifier_system = Column(String, nullable=True)
     group_identifier_assigner_identifier_value = Column(String, nullable=True)
-    group_identifier_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    group_identifier_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_assigner_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    group_identifier_assigner_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # status (1..1 code, binding: request-status)
     status = Column(

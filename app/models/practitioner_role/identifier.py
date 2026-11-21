@@ -36,4 +36,6 @@ class PractitionerRoleIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    practitioner_role = relationship("PractitionerRoleModel", back_populates="identifiers")
+    practitioner_role = relationship(
+        "PractitionerRoleModel", back_populates="identifiers"
+    )

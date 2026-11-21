@@ -5,7 +5,6 @@ from app.services.slot import SlotService
 
 
 class SlotContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     slot_repository = providers.Factory(

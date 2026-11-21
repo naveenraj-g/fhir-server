@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -43,8 +52,12 @@ class CommunicationPayload(FhirAttachmentMixin, TenantAuditMixin, Base):
     content_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     content_reference_identifier_system = Column(String, nullable=True)
     content_reference_identifier_value = Column(String, nullable=True)
-    content_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    content_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    content_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    content_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # contentAttachment fields are provided via FhirAttachmentMixin:
     # content_type
@@ -56,6 +69,4 @@ class CommunicationPayload(FhirAttachmentMixin, TenantAuditMixin, Base):
     # title
     # creation
 
-    communication = relationship(
-        "CommunicationModel", back_populates="payloads"
-    )
+    communication = relationship("CommunicationModel", back_populates="payloads")

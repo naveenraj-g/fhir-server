@@ -58,9 +58,7 @@ class _CoreMixin:
         *,
         strict: bool = False,
         fhir_base: str | None = None,
-    ) -> tuple[
-        SearchRequest, list[ProcedureModel], int | None, list[ProcedureModel]
-    ]:
+    ) -> tuple[SearchRequest, list[ProcedureModel], int | None, list[ProcedureModel]]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the Procedure search
         registry (SearchError -> 400 OperationOutcome). `strict` is

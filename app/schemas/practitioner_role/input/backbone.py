@@ -16,9 +16,12 @@ class PractitionerRoleAvailableTimeInput(FhirInputModel):
     at this role."""
 
     daysOfWeek: list[DayOfWeek] | None = Field(
-        None, description="mon | tue | wed | thu | fri | sat | sun (required binding DaysOfWeek)."
+        None,
+        description="mon | tue | wed | thu | fri | sat | sun (required binding DaysOfWeek).",
     )
-    allDay: bool | None = Field(None, description="Always available (e.g. 24 hour service).")
+    allDay: bool | None = Field(
+        None, description="Always available (e.g. 24 hour service)."
+    )
     availableStartTime: str | None = Field(
         None, description="Opening time of day (hh:mm:ss); ignored if allDay = true."
     )
@@ -32,7 +35,8 @@ class PractitionerRoleNotAvailableInput(FhirInputModel):
     the provided reason."""
 
     description: str = Field(
-        ..., description="Reason presented to the user explaining why the practitioner is not available (required by R4)."
+        ...,
+        description="Reason presented to the user explaining why the practitioner is not available (required by R4).",
     )
     during: FhirPeriodInput | None = Field(
         None, description="Service not available from this date."

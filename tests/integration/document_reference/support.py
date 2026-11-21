@@ -39,7 +39,9 @@ def minimal_document_reference(patient_id: int) -> dict:
     }
 
 
-def full_document_reference(patient_id: int, practitioner_id: int | None = None) -> dict:
+def full_document_reference(
+    patient_id: int, practitioner_id: int | None = None
+) -> dict:
     payload = {
         "status": "current",
         "doc_status": "final",

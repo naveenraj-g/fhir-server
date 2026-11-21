@@ -5,7 +5,6 @@ from app.services.location import LocationService
 
 
 class LocationContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     location_repository = providers.Factory(

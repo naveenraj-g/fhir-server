@@ -78,7 +78,9 @@ def _fhir_identifiers(identifiers) -> list[dict] | None:
         per = _fhir_period(i.period_start, i.period_end)
         if per:
             d["period"] = per
-        ass = _fhir_ref(i.assigner_reference, i.assigner_type, i.assigner_id, i.assigner_display)
+        ass = _fhir_ref(
+            i.assigner_reference, i.assigner_type, i.assigner_id, i.assigner_display
+        )
         if ass:
             d["assigner"] = ass
         if d:
@@ -135,7 +137,12 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
             d["valueCodeableConcept"] = _fhir_codeable_concept(
                 uc.value_codings, uc.value_codeable_concept_text
             )
-        elif uc.value_quantity_value is not None or uc.value_quantity_unit or uc.value_quantity_system or uc.value_quantity_code:
+        elif (
+            uc.value_quantity_value is not None
+            or uc.value_quantity_unit
+            or uc.value_quantity_system
+            or uc.value_quantity_code
+        ):
             vq: dict[str, Any] = {}
             if uc.value_quantity_value is not None:
                 vq["value"] = float(uc.value_quantity_value)
@@ -153,7 +160,12 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
             or uc.value_range_high_value is not None
         ):
             vr: dict[str, Any] = {}
-            if uc.value_range_low_value is not None or uc.value_range_low_unit or uc.value_range_low_system or uc.value_range_low_code:
+            if (
+                uc.value_range_low_value is not None
+                or uc.value_range_low_unit
+                or uc.value_range_low_system
+                or uc.value_range_low_code
+            ):
                 low_q: dict[str, Any] = {}
                 if uc.value_range_low_value is not None:
                     low_q["value"] = float(uc.value_range_low_value)
@@ -164,7 +176,12 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
                 if uc.value_range_low_code:
                     low_q["code"] = uc.value_range_low_code
                 vr["low"] = low_q
-            if uc.value_range_high_value is not None or uc.value_range_high_unit or uc.value_range_high_system or uc.value_range_high_code:
+            if (
+                uc.value_range_high_value is not None
+                or uc.value_range_high_unit
+                or uc.value_range_high_system
+                or uc.value_range_high_code
+            ):
                 high_q: dict[str, Any] = {}
                 if uc.value_range_high_value is not None:
                     high_q["value"] = float(uc.value_range_high_value)
@@ -176,7 +193,9 @@ def _fhir_use_contexts(use_contexts) -> list[dict] | None:
                     high_q["code"] = uc.value_range_high_code
                 vr["high"] = high_q
             d["valueRange"] = vr
-        elif uc.value_reference_reference or (uc.value_reference_type and uc.value_reference_id):
+        elif uc.value_reference_reference or (
+            uc.value_reference_type and uc.value_reference_id
+        ):
             ref = _fhir_ref(
                 uc.value_reference_reference,
                 uc.value_reference_type,
@@ -254,8 +273,11 @@ def _fhir_groups(groups) -> list[dict] | None:
             if p.description:
                 pd["description"] = p.description
             crit = _fhir_expression(
-                p.criteria_description, p.criteria_name, p.criteria_language,
-                p.criteria_expression, p.criteria_reference
+                p.criteria_description,
+                p.criteria_name,
+                p.criteria_language,
+                p.criteria_expression,
+                p.criteria_reference,
             )
             if crit:
                 pd["criteria"] = crit
@@ -272,8 +294,11 @@ def _fhir_groups(groups) -> list[dict] | None:
             if s.description:
                 sd["description"] = s.description
             crit = _fhir_expression(
-                s.criteria_description, s.criteria_name, s.criteria_language,
-                s.criteria_expression, s.criteria_reference
+                s.criteria_description,
+                s.criteria_name,
+                s.criteria_language,
+                s.criteria_expression,
+                s.criteria_reference,
             )
             if crit:
                 sd["criteria"] = crit
@@ -286,8 +311,11 @@ def _fhir_groups(groups) -> list[dict] | None:
                 if c.description:
                     cd["description"] = c.description
                 c_crit = _fhir_expression(
-                    c.criteria_description, c.criteria_name, c.criteria_language,
-                    c.criteria_expression, c.criteria_reference
+                    c.criteria_description,
+                    c.criteria_name,
+                    c.criteria_language,
+                    c.criteria_expression,
+                    c.criteria_reference,
                 )
                 if c_crit:
                     cd["criteria"] = c_crit
@@ -318,8 +346,11 @@ def _fhir_supplemental_data(supplemental_data) -> list[dict] | None:
         if sd.description:
             d["description"] = sd.description
         crit = _fhir_expression(
-            sd.criteria_description, sd.criteria_name, sd.criteria_language,
-            sd.criteria_expression, sd.criteria_reference
+            sd.criteria_description,
+            sd.criteria_name,
+            sd.criteria_language,
+            sd.criteria_expression,
+            sd.criteria_reference,
         )
         if crit:
             d["criteria"] = crit

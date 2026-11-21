@@ -1,6 +1,11 @@
 from .core import AUTHOR_TYPES, DetectedIssueModel, detected_issue_id_seq
 from .identifier import DetectedIssueIdentifier
-from .reference import IMPLICATED_TYPES, REFERENCE_PARAMS, REFERENCE_TYPES, DetectedIssueReference
+from .reference import (
+    IMPLICATED_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    DetectedIssueReference,
+)
 from .token import TOKEN_PARAMS, DetectedIssueToken
 
 __all__ = [

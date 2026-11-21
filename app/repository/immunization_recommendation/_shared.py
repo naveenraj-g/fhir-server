@@ -5,7 +5,13 @@ from sqlalchemy.orm import selectinload
 from app.models.immunization_recommendation import ImmunizationRecommendationModel
 from app.repository._reference_shared import _validate_reference
 
-__all__ = ["INDEX_RELATIONSHIPS", "_validate_reference", "_with_relationships", "any_typed", "typed"]
+__all__ = [
+    "INDEX_RELATIONSHIPS",
+    "_validate_reference",
+    "_with_relationships",
+    "any_typed",
+    "typed",
+]
 
 # Relationship attributes the search index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references")
@@ -18,7 +24,10 @@ def _with_relationships(stmt):
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from ImmunizationRecommendationModel.content."""
     return stmt.options(
-        *(selectinload(getattr(ImmunizationRecommendationModel, rel)) for rel in INDEX_RELATIONSHIPS)
+        *(
+            selectinload(getattr(ImmunizationRecommendationModel, rel))
+            for rel in INDEX_RELATIONSHIPS
+        )
     )
 
 

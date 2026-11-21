@@ -37,7 +37,10 @@ class QuestionnaireJurisdictionCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     questionnaire_jurisdiction_id = Column(
-        BigInteger, ForeignKey("questionnaire_jurisdiction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("questionnaire_jurisdiction.id"),
+        nullable=False,
+        index=True,
     )
 
     jurisdiction = relationship("QuestionnaireJurisdiction", back_populates="codings")

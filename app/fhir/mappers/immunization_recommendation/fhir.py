@@ -16,5 +16,11 @@ if TYPE_CHECKING:
     from app.models.immunization_recommendation import ImmunizationRecommendationModel
 
 
-def to_fhir_immunization_recommendation(immunization_recommendation: ImmunizationRecommendationModel) -> dict:
-    return content_resource("ImmunizationRecommendation", immunization_recommendation.immunization_recommendation_id, immunization_recommendation)
+def to_fhir_immunization_recommendation(
+    immunization_recommendation: ImmunizationRecommendationModel,
+) -> dict:
+    return content_resource(
+        "ImmunizationRecommendation",
+        immunization_recommendation.immunization_recommendation_id,
+        immunization_recommendation,
+    )

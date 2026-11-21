@@ -81,14 +81,11 @@ class GroupCreateSchema(BaseModel):
     code: GroupCodeableConceptInput | None = Field(
         None, description="Kind of Group members."
     )
-    name: str | None = Field(
-        None, description="Label for Group."
-    )
-    quantity: int | None = Field(
-        None, ge=0, description="Number of members in group."
-    )
+    name: str | None = Field(None, description="Label for Group.")
+    quantity: int | None = Field(None, ge=0, description="Number of members in group.")
     managing_entity: str | None = Field(
-        None, description="Entity that is the custodian of the Group's info (Organization | RelatedPerson | Practitioner | PractitionerRole)."
+        None,
+        description="Entity that is the custodian of the Group's info (Organization | RelatedPerson | Practitioner | PractitionerRole).",
     )
     managing_entity_display: str | None = Field(
         None, description="Plain text display for managingEntity."
@@ -103,7 +100,8 @@ class GroupCreateSchema(BaseModel):
         None, description="Who or what is in group."
     )
     extension: list[dict[str, Any]] | None = Field(
-        None, description="May be used to represent additional information not part of the basic definition."
+        None,
+        description="May be used to represent additional information not part of the basic definition.",
     )
 
 
@@ -134,12 +132,8 @@ class GroupPatchSchema(BaseModel):
     code: GroupCodeableConceptInput | None = Field(
         None, description="Kind of Group members."
     )
-    name: str | None = Field(
-        None, description="Label for Group."
-    )
-    quantity: int | None = Field(
-        None, ge=0, description="Number of members in group."
-    )
+    name: str | None = Field(None, description="Label for Group.")
+    quantity: int | None = Field(None, ge=0, description="Number of members in group.")
     managing_entity: str | None = Field(
         None, description="Entity that is the custodian of the Group's info."
     )
@@ -156,5 +150,6 @@ class GroupPatchSchema(BaseModel):
         None, description="Who or what is in group."
     )
     extension: list[dict[str, Any]] | None = Field(
-        None, description="May be used to represent additional information not part of the basic definition."
+        None,
+        description="May be used to represent additional information not part of the basic definition.",
     )

@@ -26,13 +26,20 @@ FULL = {
         {
             "system": EP_IDS,
             "value": "EP-1",
-            "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
+            "assigner": {
+                "identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}
+            },
         }
     ],
     "connectionType": {"system": CONN, "code": "hl7-fhir-rest", "display": "HL7 FHIR"},
     "contact": [{"system": "email", "value": "it@example.org", "use": "work"}],
     "period": {"start": "2026-01-01T00:00:00Z", "end": "2027-01-01T00:00:00Z"},
-    "payloadType": [{"coding": [{"system": PAYLOAD, "code": "any", "display": "Any"}], "text": "Any payload"}],
+    "payloadType": [
+        {
+            "coding": [{"system": PAYLOAD, "code": "any", "display": "Any"}],
+            "text": "Any payload",
+        }
+    ],
     "payloadMimeType": ["application/fhir+json", "application/fhir+xml"],
     "address": "https://fhir.example.org/r4",
     "header": ["Authorization: Bearer abc"],

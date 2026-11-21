@@ -44,6 +44,7 @@ Run:
   uv run python -m app.terminology.import_.cli --source snomed-icd10cm-map \\
     --file terminology_data/SNOMED_CT_to_ICD-10-CM_Resources_20260301/tls_Icd10cmHumanReadableMap_US1000124_20260301.tsv
 """
+
 import csv
 import time
 
@@ -110,7 +111,9 @@ class SnomedIcd10cmMapLoader(BaseLoader):
                     skipped_no_target += 1
                     continue
 
-                source_db_id = snomed_ids.get((row.get("referencedComponentId") or "").strip())
+                source_db_id = snomed_ids.get(
+                    (row.get("referencedComponentId") or "").strip()
+                )
                 if source_db_id is None:
                     skipped_unresolved_source += 1
                     continue
@@ -143,7 +146,9 @@ class SnomedIcd10cmMapLoader(BaseLoader):
         )
 
         inserted = await self.bulk_insert_concept_maps(records)
-        self._log(f"Done — {inserted:,} mapping rows processed in {time.monotonic() - t0:.1f}s")
+        self._log(
+            f"Done — {inserted:,} mapping rows processed in {time.monotonic() - t0:.1f}s"
+        )
 
     async def _require_code_system(self, canonical_url: str, hint: str) -> int:
         row = await self.conn.fetchrow(
@@ -151,5 +156,7 @@ class SnomedIcd10cmMapLoader(BaseLoader):
             canonical_url,
         )
         if row is None:
-            raise RuntimeError(f"CodeSystem '{canonical_url}' is not loaded yet — {hint}.")
+            raise RuntimeError(
+                f"CodeSystem '{canonical_url}' is not loaded yet — {hint}."
+            )
         return row["id"]

@@ -19,10 +19,10 @@ class FhirAttachmentInput(FhirInputModel):
     size: int | None = Field(
         None, description="Number of bytes of content (if the value is inline)."
     )
-    hash: str | None = Field(
-        None, description="Base64-encoded SHA-1 hash of the data."
+    hash: str | None = Field(None, description="Base64-encoded SHA-1 hash of the data.")
+    title: str | None = Field(
+        None, description="Label to display in place of the content."
     )
-    title: str | None = Field(None, description="Label to display in place of the content.")
     creation: str | None = Field(
         None, description="Date attachment was first created (ISO 8601)."
     )

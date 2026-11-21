@@ -33,7 +33,9 @@ ACTOR = [{"reference": "Practitioner/30001"}]
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 def _schedule(content: dict, **overrides) -> ScheduleModel:
@@ -51,15 +53,33 @@ def _schedule(content: dict, **overrides) -> ScheduleModel:
 CASES = {
     "minimal": _schedule({"active": True}),
     "active_false": _schedule({"active": False}),
-    "updated_by_and_updated_at": _schedule({"active": True}, updated_by="u-other", updated_at=D),
-    "planning_horizon": _schedule({"planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"}}),
-    "open_ended_planning_horizon": _schedule({"planningHorizon": {"start": "2026-01-01"}}),
+    "updated_by_and_updated_at": _schedule(
+        {"active": True}, updated_by="u-other", updated_at=D
+    ),
+    "planning_horizon": _schedule(
+        {
+            "planningHorizon": {
+                "start": "2026-01-01T00:00:00Z",
+                "end": "2026-12-31T23:59:59Z",
+            }
+        }
+    ),
+    "open_ended_planning_horizon": _schedule(
+        {"planningHorizon": {"start": "2026-01-01"}}
+    ),
     "identifier_with_type_and_assigner": _schedule(
         {
             "identifier": [
                 {
                     "use": "official",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "SCH"}]},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "SCH",
+                            }
+                        ]
+                    },
                     "system": "https://fhir-server.dev/fhir/identifier-system/schedule-id",
                     "value": "S-1",
                     "assigner": {"reference": "Organization/190001"},
@@ -69,7 +89,12 @@ CASES = {
     ),
     "categories_types_and_specialties": _schedule(
         {
-            "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}], "text": "General"}],
+            "serviceCategory": [
+                {
+                    "coding": [{"code": "17", "display": "General Practice"}],
+                    "text": "General",
+                }
+            ],
             "serviceType": [{"coding": [{"code": "124"}]}, {"text": "Free text only"}],
             "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
         }
@@ -91,19 +116,37 @@ CASES = {
         {
             "actor": [
                 {"reference": "https://other.example.org/fhir/Device/5"},
-                {"identifier": {"system": "urn:device", "value": "D-9"}, "display": "Scanner"},
+                {
+                    "identifier": {"system": "urn:device", "value": "D-9"},
+                    "display": "Scanner",
+                },
             ]
         }
     ),
     "comment": _schedule({"comment": "Weekday clinic"}),
     "extension": _schedule(
-        {"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}
+        {
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ]
+        }
     ),
     "full_payload": ScheduleModel(
-        schedule_id=200001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(FULL)
+        schedule_id=200001,
+        tenant_id="org-test",
+        created_by="u-test",
+        created_at=D,
+        content=_stored(FULL),
     ),
     "minimal_payload": ScheduleModel(
-        schedule_id=200001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(MINIMAL)
+        schedule_id=200001,
+        tenant_id="org-test",
+        created_by="u-test",
+        created_at=D,
+        content=_stored(MINIMAL),
     ),
 }
 
@@ -116,11 +159,19 @@ def test_schedule_mapper_emits_valid_fhir_r4(case):
 def test_mapper_serves_content_unchanged():
     content = _stored(FULL)
     out = to_fhir_schedule(
-        ScheduleModel(schedule_id=200001, tenant_id="org-test", created_by="u-test", created_at=D, content=content)
+        ScheduleModel(
+            schedule_id=200001,
+            tenant_id="org-test",
+            created_by="u-test",
+            created_at=D,
+            content=content,
+        )
     )
     assert out["resourceType"] == "Schedule"
     assert out["id"] == "200001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -137,8 +188,14 @@ def test_mapper_serves_content_unchanged():
         ("active as string not boolean", {"active": "yes"}),
         ("misspelled element", {"planningHorizn": {"start": "2026-01-01"}}),
         ("planningHorizon as string not Period", {"planningHorizon": "2026"}),
-        ("serviceCategory as strings not CodeableConcepts", {"serviceCategory": ["17"]}),
-        ("specialty as an object not a list", {"specialty": {"coding": [{"code": "x"}]}}),
+        (
+            "serviceCategory as strings not CodeableConcepts",
+            {"serviceCategory": ["17"]},
+        ),
+        (
+            "specialty as an object not a list",
+            {"specialty": {"coding": [{"code": "x"}]}},
+        ),
         ("actor as strings not References", {"actor": ["Practitioner/30001"]}),
         ("identifier as strings not Identifiers", {"identifier": ["S-1"]}),
         ("comment as list", {"comment": ["x"]}),
@@ -149,4 +206,6 @@ def test_validator_rejects_invalid_fhir(label, broken):
 
     payload = {"resourceType": "Schedule", "id": "200001", **MINIMAL, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), schedule_pb2.Schedule, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), schedule_pb2.Schedule, validate=True
+        )

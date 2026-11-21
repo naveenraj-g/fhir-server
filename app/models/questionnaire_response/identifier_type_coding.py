@@ -11,7 +11,9 @@ from app.models.shared import FhirCodingMixin, TenantAuditMixin
 # ---------------------------------------------------------------------------
 
 
-class QuestionnaireResponseIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class QuestionnaireResponseIdentifierTypeCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """One entry of QuestionnaireResponse.identifier.type.coding (0..*).
     FKs directly to the main table (not to a separate identifier child
     table, since there's only ever one identifier per response)."""

@@ -54,9 +54,7 @@ async def create_care_team(
         extra={"event": "route.create_care_team"},
     )
     log_payload(logger, "care_team.create.payload", payload)
-    ct = await care_team_service.create_care_team(
-        payload, actor.org_id, actor.sub
-    )
+    ct = await care_team_service.create_care_team(payload, actor.org_id, actor.sub)
     return format_response(
         care_team_service._to_fhir(ct),
         care_team_service._to_plain(ct),
@@ -81,9 +79,7 @@ async def create_care_team(
 )
 async def get_care_team(
     request: Request,
-    care_team_id: int = Path(
-        ..., ge=1, description="Public care_team identifier."
-    ),
+    care_team_id: int = Path(..., ge=1, description="Public care_team identifier."),
     actor: AuthUser = Depends(require_permission("care_team", "read")),
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
@@ -91,9 +87,7 @@ async def get_care_team(
         "Get a CareTeam resource by ID",
         extra={"event": "route.get_care_team", "care_team_id": care_team_id},
     )
-    ct = await care_team_service.get_care_team_scoped(
-        care_team_id, actor.org_id
-    )
+    ct = await care_team_service.get_care_team_scoped(care_team_id, actor.org_id)
     return format_response(
         care_team_service._to_fhir(ct),
         care_team_service._to_plain(ct),
@@ -119,9 +113,7 @@ async def get_care_team(
 async def patch_care_team(
     payload: CareTeamPatchSchema,
     request: Request,
-    care_team_id: int = Path(
-        ..., ge=1, description="Public care_team identifier."
-    ),
+    care_team_id: int = Path(..., ge=1, description="Public care_team identifier."),
     actor: AuthUser = Depends(require_permission("care_team", "update")),
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
@@ -153,7 +145,8 @@ async def patch_care_team(
     description=(
         "Returns a paginated list of CareTeam resources. Filter by status, "
         "name, category, subject, encounter, participant, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
@@ -161,13 +154,20 @@ async def list_care_teams(
     request: Request,
     actor: AuthUser = Depends(require_permission("care_team", "read")),
     status: str | None = Query(
-        None, description="Status code (e.g. proposed, active, suspended, inactive, entered-in-error)."
+        None,
+        description="Status code (e.g. proposed, active, suspended, inactive, entered-in-error).",
     ),
     name: str | None = Query(None, description="Care team name."),
     category: str | None = Query(None, description="Category code."),
-    subject: str | None = Query(None, description="Subject reference (e.g. Patient/10001 or Group/...)."),
-    encounter: str | None = Query(None, description="Encounter reference (e.g. Encounter/20001)."),
-    participant: str | None = Query(None, description="Participant member reference (e.g. Practitioner/30001)."),
+    subject: str | None = Query(
+        None, description="Subject reference (e.g. Patient/10001 or Group/...)."
+    ),
+    encounter: str | None = Query(
+        None, description="Encounter reference (e.g. Encounter/20001)."
+    ),
+    participant: str | None = Query(
+        None, description="Participant member reference (e.g. Practitioner/30001)."
+    ),
     identifier: str | None = Query(None, description="Business identifier value."),
     list_params: ListParams = Depends(),
     care_team_service: CareTeamService = Depends(get_care_team_service),
@@ -216,9 +216,7 @@ async def list_care_teams(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_care_team(
-    care_team_id: int = Path(
-        ..., ge=1, description="Public care_team identifier."
-    ),
+    care_team_id: int = Path(..., ge=1, description="Public care_team identifier."),
     actor: AuthUser = Depends(require_permission("care_team", "delete")),
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
@@ -229,6 +227,4 @@ async def delete_care_team(
             "care_team_id": care_team_id,
         },
     )
-    await care_team_service.delete_care_team(
-        care_team_id, org_id=actor.org_id
-    )
+    await care_team_service.delete_care_team(care_team_id, org_id=actor.org_id)

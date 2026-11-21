@@ -95,7 +95,9 @@ async def _add_identifiers(
             )
 
 
-def _add_codings(session, model_cls, task_pk: int, org_id: str, codings, created_by: str) -> None:
+def _add_codings(
+    session, model_cls, task_pk: int, org_id: str, codings, created_by: str
+) -> None:
     for c in codings or []:
         session.add(
             model_cls(
@@ -415,9 +417,7 @@ class TaskRepository:
             await _validate_ref(session, org_id, enc_type, enc_id, "encounter")
 
             for_val = payload.for_
-            for_type, for_id = (
-                _parse_generic_ref(for_val) if for_val else (None, None)
-            )
+            for_type, for_id = _parse_generic_ref(for_val) if for_val else (None, None)
             if for_type and for_id:
                 await _validate_ref(session, org_id, for_type, for_id, "for")
 
@@ -433,9 +433,7 @@ class TaskRepository:
                 else (None, None)
             )
             if rr_type and rr_id:
-                await _validate_ref(
-                    session, org_id, rr_type, rr_id, "reason_reference"
-                )
+                await _validate_ref(session, org_id, rr_type, rr_id, "reason_reference")
 
             grp_a_type, grp_a_id = (
                 _parse_assigner_ref(payload.group_identifier_assigner)
@@ -448,20 +446,12 @@ class TaskRepository:
                 )
 
             # Extract restriction period & repetitions
-            restr_rep = (
-                payload.restriction.repetitions
-                if payload.restriction
-                else None
-            )
+            restr_rep = payload.restriction.repetitions if payload.restriction else None
             restr_p_start = (
-                payload.restriction.period_start
-                if payload.restriction
-                else None
+                payload.restriction.period_start if payload.restriction else None
             )
             restr_p_end = (
-                payload.restriction.period_end
-                if payload.restriction
-                else None
+                payload.restriction.period_end if payload.restriction else None
             )
 
             model = TaskModel(
@@ -538,7 +528,12 @@ class TaskRepository:
                 session, model.id, org_id, payload.identifier, created_by
             )
             _add_codings(
-                session, TaskCodeCoding, model.id, org_id, payload.code_coding, created_by
+                session,
+                TaskCodeCoding,
+                model.id,
+                org_id,
+                payload.code_coding,
+                created_by,
             )
             _add_codings(
                 session,
@@ -564,12 +559,8 @@ class TaskRepository:
                 payload.reason_code_coding,
                 created_by,
             )
-            await _add_based_on(
-                session, model.id, org_id, payload.based_on, created_by
-            )
-            await _add_part_of(
-                session, model.id, org_id, payload.part_of, created_by
-            )
+            await _add_based_on(session, model.id, org_id, payload.based_on, created_by)
+            await _add_part_of(session, model.id, org_id, payload.part_of, created_by)
             await _add_insurance(
                 session, model.id, org_id, payload.insurance, created_by
             )
@@ -588,12 +579,8 @@ class TaskRepository:
                 session, model.id, org_id, payload.performer_type, created_by
             )
             _add_notes(session, model.id, org_id, payload.note, created_by)
-            await _add_inputs(
-                session, model.id, org_id, payload.input, created_by
-            )
-            await _add_outputs(
-                session, model.id, org_id, payload.output, created_by
-            )
+            await _add_inputs(session, model.id, org_id, payload.input, created_by)
+            await _add_outputs(session, model.id, org_id, payload.output, created_by)
 
             await session.commit()
 
@@ -724,9 +711,7 @@ class TaskRepository:
 
             if "reason_reference" in provided or "reason_reference_display" in provided:
                 rr_ref = payload.reason_reference
-                rr_type, rr_id = (
-                    _parse_generic_ref(rr_ref) if rr_ref else (None, None)
-                )
+                rr_type, rr_id = _parse_generic_ref(rr_ref) if rr_ref else (None, None)
                 if rr_type and rr_id:
                     await _validate_ref(
                         session, org_id, rr_type, rr_id, "reason_reference"
@@ -755,7 +740,11 @@ class TaskRepository:
                 )
                 if grp_a_type and grp_a_id:
                     await _validate_ref(
-                        session, org_id, grp_a_type, grp_a_id, "group_identifier.assigner"
+                        session,
+                        org_id,
+                        grp_a_type,
+                        grp_a_id,
+                        "group_identifier.assigner",
                     )
                 model.group_identifier_assigner_reference = grp_a_ref
                 model.group_identifier_assigner_type = grp_a_type
@@ -819,9 +808,7 @@ class TaskRepository:
                     )
                 )
                 await session.execute(
-                    delete(TaskIdentifier).where(
-                        TaskIdentifier.task_pk == model.id
-                    )
+                    delete(TaskIdentifier).where(TaskIdentifier.task_pk == model.id)
                 )
                 await _add_identifiers(
                     session, model.id, org_id, payload.identifier, updated_by
@@ -829,12 +816,15 @@ class TaskRepository:
 
             if "code_coding" in provided:
                 await session.execute(
-                    delete(TaskCodeCoding).where(
-                        TaskCodeCoding.task_pk == model.id
-                    )
+                    delete(TaskCodeCoding).where(TaskCodeCoding.task_pk == model.id)
                 )
                 _add_codings(
-                    session, TaskCodeCoding, model.id, org_id, payload.code_coding, updated_by
+                    session,
+                    TaskCodeCoding,
+                    model.id,
+                    org_id,
+                    payload.code_coding,
+                    updated_by,
                 )
 
             if "status_reason_coding" in provided:
@@ -945,26 +935,20 @@ class TaskRepository:
                 await session.execute(
                     delete(TaskInputTypeCoding).where(
                         TaskInputTypeCoding.task_input_id.in_(
-                            select(TaskInput.id).where(
-                                TaskInput.task_pk == model.id
-                            )
+                            select(TaskInput.id).where(TaskInput.task_pk == model.id)
                         )
                     )
                 )
                 await session.execute(
                     delete(TaskInput).where(TaskInput.task_pk == model.id)
                 )
-                await _add_inputs(
-                    session, model.id, org_id, payload.input, updated_by
-                )
+                await _add_inputs(session, model.id, org_id, payload.input, updated_by)
 
             if "output" in provided:
                 await session.execute(
                     delete(TaskOutputTypeCoding).where(
                         TaskOutputTypeCoding.task_output_id.in_(
-                            select(TaskOutput.id).where(
-                                TaskOutput.task_pk == model.id
-                            )
+                            select(TaskOutput.id).where(TaskOutput.task_pk == model.id)
                         )
                     )
                 )

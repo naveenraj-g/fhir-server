@@ -15,7 +15,8 @@ class PlainContactPointRow(AuditFields):
         description="Telecommunications form for the contact point (phone|fax|email|pager|url|sms|other).",
     )
     value: str | None = Field(
-        None, description="The actual contact point details (e.g. a phone number or email address)."
+        None,
+        description="The actual contact point details (e.g. a phone number or email address).",
     )
     use: str | None = Field(
         None, description="Identifies the purpose for the contact point."

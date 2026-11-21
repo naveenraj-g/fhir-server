@@ -35,7 +35,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     disp_key = "display" if prefix == "reference" else f"{prefix}_display"
     if not ref_str:
         return {
@@ -77,7 +79,11 @@ def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
         **_ref_kwargs(prefix, ref, disp, enum_cls),
     }
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        val = getattr(obj, f"reference_{suffix}", None) if not isinstance(obj, str) and obj else None
+        val = (
+            getattr(obj, f"reference_{suffix}", None)
+            if not isinstance(obj, str) and obj
+            else None
+        )
         if suffix == "identifier_use" and val is not None:
             res[f"{prefix}_{suffix}"] = (
                 IdentifierUseModel[val.name] if hasattr(val, "name") else val
@@ -87,7 +93,9 @@ def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
     return res
 
 
-async def _validate_ref(session, ref_type, ref_id, org_id: str | None, field_name: str) -> None:
+async def _validate_ref(
+    session, ref_type, ref_id, org_id: str | None, field_name: str
+) -> None:
     if not ref_type or not ref_id:
         return
     type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
@@ -119,19 +127,15 @@ def _with_relationships(stmt):
         selectinload(SpecimenDefinitionModel.types_tested).selectinload(
             SpecimenDefinitionTypeTested.container_cap_codings
         ),
-        selectinload(SpecimenDefinitionModel.types_tested).selectinload(
-            SpecimenDefinitionTypeTested.container_additives
-        ).selectinload(
-            SpecimenDefinitionContainerAdditive.additive_codings
-        ),
-        selectinload(SpecimenDefinitionModel.types_tested).selectinload(
-            SpecimenDefinitionTypeTested.rejection_criteria
-        ).selectinload(
-            SpecimenDefinitionTypeTestedRejectionCriterion.codings
-        ),
-        selectinload(SpecimenDefinitionModel.types_tested).selectinload(
-            SpecimenDefinitionTypeTested.handlings
-        ).selectinload(
+        selectinload(SpecimenDefinitionModel.types_tested)
+        .selectinload(SpecimenDefinitionTypeTested.container_additives)
+        .selectinload(SpecimenDefinitionContainerAdditive.additive_codings),
+        selectinload(SpecimenDefinitionModel.types_tested)
+        .selectinload(SpecimenDefinitionTypeTested.rejection_criteria)
+        .selectinload(SpecimenDefinitionTypeTestedRejectionCriterion.codings),
+        selectinload(SpecimenDefinitionModel.types_tested)
+        .selectinload(SpecimenDefinitionTypeTested.handlings)
+        .selectinload(
             SpecimenDefinitionTypeTestedHandling.temperature_qualifier_codings
         ),
     )

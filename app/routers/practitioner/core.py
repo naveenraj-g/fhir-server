@@ -346,7 +346,9 @@ _USER_LINK_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(PractitionerUserLinkResponse.model_json_schema())
+                "schema": inline_schema(
+                    PractitionerUserLinkResponse.model_json_schema()
+                )
             }
         }
     }
@@ -373,13 +375,18 @@ def _link_response(practitioner) -> JSONResponse:
     response_class=JSONResponse,
 )
 async def get_practitioner_user_link(
-    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
+    practitioner_id: int = Path(
+        ..., ge=1, description="Public practitioner identifier."
+    ),
     actor: AuthUser = Depends(require_permission("practitioner", "read")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     logger.info(
         "Get a Practitioner end-user link",
-        extra={"event": "route.get_practitioner_user_link", "practitioner_id": practitioner_id},
+        extra={
+            "event": "route.get_practitioner_user_link",
+            "practitioner_id": practitioner_id,
+        },
     )
     return _link_response(
         await practitioner_service.get_user_link(practitioner_id, actor.org_id)
@@ -403,13 +410,18 @@ async def get_practitioner_user_link(
 )
 async def link_practitioner_user(
     payload: PractitionerUserLinkInput,
-    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
+    practitioner_id: int = Path(
+        ..., ge=1, description="Public practitioner identifier."
+    ),
     actor: AuthUser = Depends(require_permission("practitioner", "link")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     logger.info(
         "Link an end-user to a Practitioner",
-        extra={"event": "route.link_practitioner_user", "practitioner_id": practitioner_id},
+        extra={
+            "event": "route.link_practitioner_user",
+            "practitioner_id": practitioner_id,
+        },
     )
     return _link_response(
         await practitioner_service.link_user(
@@ -431,13 +443,18 @@ async def link_practitioner_user(
     responses={**_ERR_NOT_FOUND},
 )
 async def unlink_practitioner_user(
-    practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
+    practitioner_id: int = Path(
+        ..., ge=1, description="Public practitioner identifier."
+    ),
     actor: AuthUser = Depends(require_permission("practitioner", "link")),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     logger.info(
         "Remove a Practitioner end-user link",
-        extra={"event": "route.unlink_practitioner_user", "practitioner_id": practitioner_id},
+        extra={
+            "event": "route.unlink_practitioner_user",
+            "practitioner_id": practitioner_id,
+        },
     )
     await practitioner_service.unlink_user(practitioner_id, actor.org_id, actor.sub)
 

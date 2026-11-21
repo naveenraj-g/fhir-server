@@ -30,7 +30,9 @@ def _plain_coding_list(codings) -> list[dict]:
     return result
 
 
-def plain_medication_statement_codeable_concept(codings, text: str | None) -> dict | None:
+def plain_medication_statement_codeable_concept(
+    codings, text: str | None
+) -> dict | None:
     coding_list = _plain_coding_list(codings)
     if not coding_list and not text:
         return None
@@ -51,7 +53,9 @@ def _plain_reference(obj, prefix: str, include_id: bool = False) -> dict | None:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -79,7 +83,8 @@ def _plain_reference(obj, prefix: str, include_id: bool = False) -> dict | None:
         return None
 
     res: dict = {
-        "reference": raw_reference or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
+        "reference": raw_reference
+        or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
         "reference_type": fhir_enum(ref_type) if ref_type else None,
         "reference_id": ref_id,
         "reference_display": display,
@@ -134,7 +139,9 @@ def plain_medication_statement_reason_reference(rr) -> dict:
     return _plain_reference(rr, "reference", include_id=True) or {"id": rr.id}
 
 
-def plain_medication_statement_status_reason(sr: MedicationStatementStatusReason) -> dict:
+def plain_medication_statement_status_reason(
+    sr: MedicationStatementStatusReason,
+) -> dict:
     return {
         "id": sr.id,
         "text": sr.text,
@@ -170,7 +177,13 @@ def plain_medication_statement_dosage(d: MedicationStatementDosage) -> dict:
         "sequence": d.sequence,
         "text": d.text,
         "additional_instruction": [
-            {**(plain_medication_statement_codeable_concept(ai.codings, ai.text) or {}), "id": ai.id}
+            {
+                **(
+                    plain_medication_statement_codeable_concept(ai.codings, ai.text)
+                    or {}
+                ),
+                "id": ai.id,
+            }
             for ai in (d.additional_instructions or [])
         ]
         or None,
@@ -180,11 +193,19 @@ def plain_medication_statement_dosage(d: MedicationStatementDosage) -> dict:
         "as_needed_codeable_concept": plain_medication_statement_codeable_concept(
             d.as_needed_codings, d.as_needed_codeable_concept_text
         ),
-        "site": plain_medication_statement_codeable_concept(d.site_codings, d.site_text),
-        "route": plain_medication_statement_codeable_concept(d.route_codings, d.route_text),
-        "method": plain_medication_statement_codeable_concept(d.method_codings, d.method_text),
+        "site": plain_medication_statement_codeable_concept(
+            d.site_codings, d.site_text
+        ),
+        "route": plain_medication_statement_codeable_concept(
+            d.route_codings, d.route_text
+        ),
+        "method": plain_medication_statement_codeable_concept(
+            d.method_codings, d.method_text
+        ),
         "dose_and_rate": list(d.dose_and_rate) if d.dose_and_rate else None,
-        "max_dose_per_period": dict(d.max_dose_per_period) if d.max_dose_per_period else None,
+        "max_dose_per_period": dict(d.max_dose_per_period)
+        if d.max_dose_per_period
+        else None,
         "max_dose_per_administration_value": float(d.max_dose_per_administration_value)
         if d.max_dose_per_administration_value is not None
         else None,
@@ -204,12 +225,27 @@ def to_plain_medication_statement(model: MedicationStatementModel) -> dict:
     return {
         "id": model.medication_statement_id,
         "extension": list(model.extension) if model.extension else None,
-        "identifier": [plain_medication_statement_identifier(i) for i in (model.identifiers or [])] or None,
-        "based_on": [plain_medication_statement_based_on(b) for b in (model.based_on or [])] or None,
-        "part_of": [plain_medication_statement_part_of(p) for p in (model.part_of or [])] or None,
+        "identifier": [
+            plain_medication_statement_identifier(i) for i in (model.identifiers or [])
+        ]
+        or None,
+        "based_on": [
+            plain_medication_statement_based_on(b) for b in (model.based_on or [])
+        ]
+        or None,
+        "part_of": [
+            plain_medication_statement_part_of(p) for p in (model.part_of or [])
+        ]
+        or None,
         "status": fhir_enum(model.status),
-        "status_reason": [plain_medication_statement_status_reason(sr) for sr in (model.status_reasons or [])] or None,
-        "category": plain_medication_statement_codeable_concept(model.category_codings, model.category_text),
+        "status_reason": [
+            plain_medication_statement_status_reason(sr)
+            for sr in (model.status_reasons or [])
+        ]
+        or None,
+        "category": plain_medication_statement_codeable_concept(
+            model.category_codings, model.category_text
+        ),
         "medication_codeable_concept": plain_medication_statement_codeable_concept(
             model.medication_codings, model.medication_codeable_concept_text
         ),
@@ -221,12 +257,25 @@ def to_plain_medication_statement(model: MedicationStatementModel) -> dict:
         "effective_period_end": model.effective_period_end,
         "date_asserted": model.date_asserted,
         "information_source": _plain_reference(model, "information_source"),
-        "derived_from": [plain_medication_statement_derived_from(df) for df in (model.derived_from or [])] or None,
-        "reason_code": [plain_medication_statement_reason_code(rc) for rc in (model.reason_codes or [])] or None,
-        "reason_reference": [plain_medication_statement_reason_reference(rr) for rr in (model.reason_references or [])]
+        "derived_from": [
+            plain_medication_statement_derived_from(df)
+            for df in (model.derived_from or [])
+        ]
         or None,
-        "note": [plain_medication_statement_note(n) for n in (model.notes or [])] or None,
-        "dosage": [plain_medication_statement_dosage(d) for d in (model.dosages or [])] or None,
+        "reason_code": [
+            plain_medication_statement_reason_code(rc)
+            for rc in (model.reason_codes or [])
+        ]
+        or None,
+        "reason_reference": [
+            plain_medication_statement_reason_reference(rr)
+            for rr in (model.reason_references or [])
+        ]
+        or None,
+        "note": [plain_medication_statement_note(n) for n in (model.notes or [])]
+        or None,
+        "dosage": [plain_medication_statement_dosage(d) for d in (model.dosages or [])]
+        or None,
         "created_at": model.created_at,
         "updated_at": model.updated_at,
     }

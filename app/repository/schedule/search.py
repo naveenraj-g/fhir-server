@@ -17,7 +17,13 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     coded_token_match,
     date_match,
@@ -28,7 +34,12 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.models.schedule import ScheduleActor, ScheduleIdentifier, ScheduleModel, ScheduleToken
+from app.models.schedule import (
+    ScheduleActor,
+    ScheduleIdentifier,
+    ScheduleModel,
+    ScheduleToken,
+)
 
 from ._shared import ACTOR_TYPES
 
@@ -41,14 +52,34 @@ _A = ScheduleActor
 # for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Practitioner": ("app.models.practitioner", "PractitionerModel", "practitioner_id",
-                     "app.repository.practitioner.search", "practitioner_search"),
-    "PractitionerRole": ("app.models.practitioner_role", "PractitionerRoleModel", "practitioner_role_id",
-                         "app.repository.practitioner_role.search", "practitioner_role_search"),
-    "HealthcareService": ("app.models.healthcare_service", "HealthcareServiceModel", "healthcare_service_id",
-                          "app.repository.healthcare_service.search", "healthcare_service_search"),
-    "Location": ("app.models.location", "LocationModel", "location_id",
-                 "app.repository.location.search", "location_search"),
+    "Practitioner": (
+        "app.models.practitioner",
+        "PractitionerModel",
+        "practitioner_id",
+        "app.repository.practitioner.search",
+        "practitioner_search",
+    ),
+    "PractitionerRole": (
+        "app.models.practitioner_role",
+        "PractitionerRoleModel",
+        "practitioner_role_id",
+        "app.repository.practitioner_role.search",
+        "practitioner_role_search",
+    ),
+    "HealthcareService": (
+        "app.models.healthcare_service",
+        "HealthcareServiceModel",
+        "healthcare_service_id",
+        "app.repository.healthcare_service.search",
+        "healthcare_service_search",
+    ),
+    "Location": (
+        "app.models.location",
+        "LocationModel",
+        "location_id",
+        "app.repository.location.search",
+        "location_search",
+    ),
 }
 
 
@@ -76,7 +107,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.schedule_pk == S.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.schedule_pk == S.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -90,7 +125,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return S.schedule_id == int(token.code)
 
@@ -112,10 +149,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -130,7 +174,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -148,19 +194,39 @@ def _token_param(param: str):
 def _actor_match(value, modifier, ctx):
     if modifier == "identifier":
         return _exists(
-            _A, token_condition(_A.reference_identifier_system, _A.reference_identifier_value, parse_token(value))
+            _A,
+            token_condition(
+                _A.reference_identifier_system,
+                _A.reference_identifier_value,
+                parse_token(value),
+            ),
         )
     # `modifier` is a target type (actor:Practitioner=30001) or None; a bare id
     # with no type is ambiguous across seven types and is rejected by
     # reference_target(). reference_type is a plain string here.
     return _exists(
         _A,
-        reference_match(_A.reference_type, _A.reference_id, _A.reference_reference, value, modifier, ctx, ACTOR_TYPES, str),
+        reference_match(
+            _A.reference_type,
+            _A.reference_id,
+            _A.reference_reference,
+            value,
+            modifier,
+            ctx,
+            ACTOR_TYPES,
+            str,
+        ),
     )
 
 
 def _actor_present(ctx):
-    return _exists(_A, or_(_A.reference_reference.is_not(None), _A.reference_identifier_value.is_not(None)))
+    return _exists(
+        _A,
+        or_(
+            _A.reference_reference.is_not(None),
+            _A.reference_identifier_value.is_not(None),
+        ),
+    )
 
 
 def _actor_chain(target, inner, ctx):
@@ -168,7 +234,9 @@ def _actor_chain(target, inner, ctx):
     `<param>=v`. The subquery doesn't correlate to the outer row — it ranges
     over the referenced resource."""
     model, id_col = _model(target)
-    referenced = select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
+    referenced = (
+        select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
+    )
     return _exists(_A, _A.reference_type == target, _A.reference_id.in_(referenced))
 
 
@@ -190,7 +258,12 @@ def _include_actors(resource_type: str):
             _A.reference_type == resource_type,
             _A.reference_id.is_not(None),
         )
-        return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)))
+        return await _fetch(
+            session,
+            select(model).where(
+                model.tenant_id == ctx.tenant_id, id_col.in_(referenced)
+            ),
+        )
 
     return fetch
 
@@ -200,7 +273,9 @@ async def _revinclude_slots(session, ctx, schedules):
     from app.models.slot import SlotModel
 
     ids = {s.schedule_id for s in schedules}
-    stmt = select(SlotModel).where(SlotModel.tenant_id == ctx.tenant_id, SlotModel.schedule_id.in_(ids))
+    stmt = select(SlotModel).where(
+        SlotModel.tenant_id == ctx.tenant_id, SlotModel.schedule_id.in_(ids)
+    )
     return list((await session.execute(stmt)).scalars().all())
 
 
@@ -210,7 +285,9 @@ def _register_kind() -> None:
     from app.fhir.mappers.schedule import to_fhir_schedule
     from app.fhir.search.execute import ResourceKind, register_kind
 
-    register_kind(ResourceKind("Schedule", lambda s: s.schedule_id, to_fhir_schedule, "schedules"))
+    register_kind(
+        ResourceKind("Schedule", lambda s: s.schedule_id, to_fhir_schedule, "schedules")
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────────────────
@@ -224,59 +301,116 @@ def schedule_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public schedule id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: S.schedule_id, example="200001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public schedule id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: S.schedule_id,
+            example="200001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "active", "token", "Is the schedule in active use", "Schedule.active",
-            _active_match, lambda ctx: S.active.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: S.active, example="true",
-            modifier_docs={"not": "`:not` — active is not this value, or is not recorded at all."},
+            "active",
+            "token",
+            "Is the schedule in active use",
+            "Schedule.active",
+            _active_match,
+            lambda ctx: S.active.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: S.active,
+            example="true",
+            modifier_docs={
+                "not": "`:not` — active is not this value, or is not recorded at all."
+            },
         ),
         SearchParam(
-            "actor", "reference",
+            "actor",
+            "reference",
             "The individual(HealthcareService, Practitioner, Location, ...) to find a Schedule for",
-            "Schedule.actor", _actor_match, _actor_present, frozenset({"identifier", "missing"}),
-            targets=ACTOR_TYPES, chain=_actor_chain,
+            "Schedule.actor",
+            _actor_match,
+            _actor_present,
+            frozenset({"identifier", "missing"}),
+            targets=ACTOR_TYPES,
+            chain=_actor_chain,
             chain_targets={t: _registry_of(t) for t in _MODELED},
-            sort=lambda: _child_sort(_A.reference_id, _A), example="Practitioner/30001",
+            sort=lambda: _child_sort(_A.reference_id, _A),
+            example="Practitioner/30001",
             modifier_docs={
                 "identifier": "`:identifier` — match the logical identifier of an actor that has no resource here.",
             },
         ),
         SearchParam(
-            "date", "date", "Search for Schedule resources that have a period that contains this date specified",
-            "Schedule.planningHorizon", _date_match,
-            lambda ctx: or_(S.planning_horizon_start.is_not(None), S.planning_horizon_end.is_not(None)),
-            sort=lambda: S.planning_horizon_start, example="ge2026-01-01",
+            "date",
+            "date",
+            "Search for Schedule resources that have a period that contains this date specified",
+            "Schedule.planningHorizon",
+            _date_match,
+            lambda ctx: or_(
+                S.planning_horizon_start.is_not(None),
+                S.planning_horizon_end.is_not(None),
+            ),
+            sort=lambda: S.planning_horizon_start,
+            example="ge2026-01-01",
         ),
         SearchParam(
-            "identifier", "token", "A Schedule Identifier", "Schedule.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:schedules|S-1",
+            "identifier",
+            "token",
+            "A Schedule Identifier",
+            "Schedule.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:schedules|S-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         token(
-            "service-category", "High-level category", "Schedule.serviceCategory",
+            "service-category",
+            "High-level category",
+            "Schedule.serviceCategory",
             "http://terminology.hl7.org/CodeSystem/service-category|17",
         ),
         token(
-            "service-type", "The type of appointments that can be booked into associated slot(s)",
-            "Schedule.serviceType", "http://terminology.hl7.org/CodeSystem/service-type|124",
+            "service-type",
+            "The type of appointments that can be booked into associated slot(s)",
+            "Schedule.serviceType",
+            "http://terminology.hl7.org/CodeSystem/service-type|124",
         ),
-        token("specialty", "Type of specialty needed", "Schedule.specialty", "http://snomed.info/sct|394579002"),
+        token(
+            "specialty",
+            "Type of specialty needed",
+            "Schedule.specialty",
+            "http://snomed.info/sct|394579002",
+        ),
     ]
 
     return SearchRegistry(
@@ -284,7 +418,15 @@ def schedule_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 Schedule definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "active", "serviceCategory", "serviceType", "specialty", "actor", "planningHorizon"}
+            {
+                "identifier",
+                "active",
+                "serviceCategory",
+                "serviceType",
+                "specialty",
+                "actor",
+                "planningHorizon",
+            }
         ),
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"actor"}),
@@ -295,6 +437,10 @@ def schedule_search() -> SearchRegistry:
             IncludeTarget("Schedule", "actor", t, _include_actors(t)) for t in _MODELED
         ),
         # Slot is on the engine; Appointment (via its slots) will add its own later.
-        revincludes=(IncludeTarget("Slot", "schedule", "Schedule", _revinclude_slots, reverse=True),),
+        revincludes=(
+            IncludeTarget(
+                "Slot", "schedule", "Schedule", _revinclude_slots, reverse=True
+            ),
+        ),
         default_sort=lambda: [S.schedule_id.desc()],
     )

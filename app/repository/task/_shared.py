@@ -22,6 +22,8 @@ def _child_reference_identifier_kwargs(ref_item) -> dict:
         f"reference_{suffix}": getattr(ref_item, suffix, None)
         for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
     }
+
+
 from app.models.task import (
     TaskBasedOn,
     TaskBusinessStatusCoding,
@@ -126,26 +128,18 @@ async def _validate_ref(
 def _with_relationships(stmt):
     """Eager-load all Task sub-resources to avoid N+1 and async lazy-load failures."""
     return stmt.options(
-        selectinload(TaskModel.identifiers).selectinload(
-            TaskIdentifier.type_codings
-        ),
+        selectinload(TaskModel.identifiers).selectinload(TaskIdentifier.type_codings),
         selectinload(TaskModel.based_on_list),
         selectinload(TaskModel.part_of_list),
         selectinload(TaskModel.insurance_list),
         selectinload(TaskModel.relevant_history_list),
         selectinload(TaskModel.restriction_recipients),
-        selectinload(TaskModel.performer_types).selectinload(
-            TaskPerformerType.codings
-        ),
+        selectinload(TaskModel.performer_types).selectinload(TaskPerformerType.codings),
         selectinload(TaskModel.code_codings),
         selectinload(TaskModel.status_reason_codings),
         selectinload(TaskModel.business_status_codings),
         selectinload(TaskModel.reason_code_codings),
         selectinload(TaskModel.notes),
-        selectinload(TaskModel.inputs).selectinload(
-            TaskInput.type_codings
-        ),
-        selectinload(TaskModel.outputs).selectinload(
-            TaskOutput.type_codings
-        ),
+        selectinload(TaskModel.inputs).selectinload(TaskInput.type_codings),
+        selectinload(TaskModel.outputs).selectinload(TaskOutput.type_codings),
     )

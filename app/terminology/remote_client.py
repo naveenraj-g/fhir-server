@@ -95,7 +95,8 @@ class RemoteTerminologyClient:
     ) -> SearchResponse:
         async with self._client() as client:
             resp = await client.get(
-                "/search", params={"q": q, "system": system, "limit": limit, "offset": offset}
+                "/search",
+                params={"q": q, "system": system, "limit": limit, "offset": offset},
             )
             resp.raise_for_status()
             return SearchResponse.model_validate(resp.json())
@@ -291,7 +292,10 @@ class RemoteTerminologyClient:
                     param_string("display", display),
                     param_coding("coding", coding),
                     (
-                        {"name": "codeableConcept", "valueCodeableConcept": codeable_concept}
+                        {
+                            "name": "codeableConcept",
+                            "valueCodeableConcept": codeable_concept,
+                        }
                         if codeable_concept
                         else None
                     ),

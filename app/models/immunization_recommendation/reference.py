@@ -16,10 +16,27 @@ SUPPORT_TYPES = ("Immunization", "ImmunizationEvaluation")
 # relative reference to a type not listed is still indexed (and found by its
 # absolute URL).
 INFORMATION_TYPES = (
-    "Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Organization", "Location",
-    "Encounter", "Appointment", "Condition", "Observation", "Procedure", "DiagnosticReport",
-    "DocumentReference", "ServiceRequest", "MedicationRequest", "MedicationStatement", "CarePlan",
-    "AllergyIntolerance", "Immunization", "FamilyMemberHistory", "QuestionnaireResponse",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "RelatedPerson",
+    "Organization",
+    "Location",
+    "Encounter",
+    "Appointment",
+    "Condition",
+    "Observation",
+    "Procedure",
+    "DiagnosticReport",
+    "DocumentReference",
+    "ServiceRequest",
+    "MedicationRequest",
+    "MedicationStatement",
+    "CarePlan",
+    "AllergyIntolerance",
+    "Immunization",
+    "FamilyMemberHistory",
+    "QuestionnaireResponse",
 )
 REFERENCE_TYPES = {"support": SUPPORT_TYPES, "information": INFORMATION_TYPES}
 
@@ -44,12 +61,20 @@ class ImmunizationRecommendationReference(Base):
 
     __tablename__ = "immunization_recommendation_reference"
     __table_args__ = (
-        Index("ix_immunization_recommendation_reference_param_type_id", "param", "reference_type", "reference_id"),
+        Index(
+            "ix_immunization_recommendation_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     immunization_recommendation_pk = Column(
-        BigInteger, ForeignKey("immunization_recommendation.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("immunization_recommendation.id"),
+        nullable=False,
+        index=True,
     )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
@@ -58,4 +83,6 @@ class ImmunizationRecommendationReference(Base):
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
 
-    immunization_recommendation = relationship("ImmunizationRecommendationModel", back_populates="references")
+    immunization_recommendation = relationship(
+        "ImmunizationRecommendationModel", back_populates="references"
+    )

@@ -33,9 +33,10 @@ class SpecimenDefinitionCollectionCoding(FhirCodingMixin, TenantAuditMixin, Base
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     collection_pk = Column(
-        BigInteger, ForeignKey("specimen_definition_collection.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("specimen_definition_collection.id"),
+        nullable=False,
+        index=True,
     )
 
-    collection = relationship(
-        "SpecimenDefinitionCollection", back_populates="codings"
-    )
+    collection = relationship("SpecimenDefinitionCollection", back_populates="codings")

@@ -18,9 +18,7 @@ class MeasureReportGroupStratifierStratumComponentInput(BaseModel):
     code_coding: list[CodingInput] | None = Field(
         None, description="Coding for component code."
     )
-    value_text: str | None = Field(
-        None, description="The stratum component value."
-    )
+    value_text: str | None = Field(None, description="The stratum component value.")
     value_coding: list[CodingInput] | None = Field(
         None, description="Coding for component value."
     )
@@ -37,9 +35,7 @@ class MeasureReportGroupStratifierStratumPopulationInput(BaseModel):
     code_coding: list[CodingInput] | None = Field(
         None, description="Coding for population code."
     )
-    count: int | None = Field(
-        None, description="Size of the stratum population."
-    )
+    count: int | None = Field(None, description="Size of the stratum population.")
     subject_results: str | None = Field(
         None, description="Reference to List of subject results."
     )
@@ -66,17 +62,15 @@ class MeasureReportGroupStratifierStratumInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    value_text: str | None = Field(
-        None, description="The stratum value, e.g. male."
-    )
+    value_text: str | None = Field(None, description="The stratum value, e.g. male.")
     value_coding: list[CodingInput] | None = Field(
         None, description="Coding for stratum value."
     )
     component: list[MeasureReportGroupStratifierStratumComponentInput] | None = Field(
         None, description="Stratifier component values."
     )
-    population: list[MeasureReportGroupStratifierStratumPopulationInput] | None = (
-        Field(None, description="Stratum populations.")
+    population: list[MeasureReportGroupStratifierStratumPopulationInput] | None = Field(
+        None, description="Stratum populations."
     )
     measure_score_value: float | None = Field(
         None, description="What score this stratum achieved."
@@ -84,15 +78,11 @@ class MeasureReportGroupStratifierStratumInput(BaseModel):
     measure_score_comparator: MeasureReportQuantityComparator | None = Field(
         None, description="< | <= | >= | >"
     )
-    measure_score_unit: str | None = Field(
-        None, description="Unit representation."
-    )
+    measure_score_unit: str | None = Field(None, description="Unit representation.")
     measure_score_system: str | None = Field(
         None, description="System that defines coded unit."
     )
-    measure_score_code: str | None = Field(
-        None, description="Coded form of the unit."
-    )
+    measure_score_code: str | None = Field(None, description="Coded form of the unit.")
 
 
 class MeasureReportGroupStratifierCodeInput(BaseModel):
@@ -100,9 +90,7 @@ class MeasureReportGroupStratifierCodeInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    text: str | None = Field(
-        None, description="What stratifier factor of the group."
-    )
+    text: str | None = Field(None, description="What stratifier factor of the group.")
     coding: list[CodingInput] | None = Field(
         None, description="Coding for stratifier code."
     )
@@ -132,9 +120,7 @@ class MeasureReportGroupPopulationInput(BaseModel):
     code_coding: list[CodingInput] | None = Field(
         None, description="Coding for population code."
     )
-    count: int | None = Field(
-        None, description="Size of the population."
-    )
+    count: int | None = Field(None, description="Size of the population.")
     subject_results: str | None = Field(
         None, description="Reference to List of subject results."
     )
@@ -161,9 +147,7 @@ class MeasureReportGroupInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    code_text: str | None = Field(
-        None, description="Meaning of the group."
-    )
+    code_text: str | None = Field(None, description="Meaning of the group.")
     code_coding: list[CodingInput] | None = Field(
         None, description="Coding for group code."
     )
@@ -176,15 +160,11 @@ class MeasureReportGroupInput(BaseModel):
     measure_score_comparator: MeasureReportQuantityComparator | None = Field(
         None, description="< | <= | >= | >"
     )
-    measure_score_unit: str | None = Field(
-        None, description="Unit representation."
-    )
+    measure_score_unit: str | None = Field(None, description="Unit representation.")
     measure_score_system: str | None = Field(
         None, description="System that defines coded unit."
     )
-    measure_score_code: str | None = Field(
-        None, description="Coded form of the unit."
-    )
+    measure_score_code: str | None = Field(None, description="Coded form of the unit.")
     stratifier: list[MeasureReportGroupStratifierInput] | None = Field(
         None, description="Stratification results."
     )

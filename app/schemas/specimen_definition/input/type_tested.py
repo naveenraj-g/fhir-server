@@ -20,9 +20,7 @@ class SpecimenDefinitionAdditiveReferenceInput(BaseModel):
     reference: str | None = Field(
         None, description="Literal reference, Relative, internal or absolute URL."
     )
-    display: str | None = Field(
-        None, description="Text alternative for the resource."
-    )
+    display: str | None = Field(None, description="Text alternative for the resource.")
     identifier_use: IdentifierUse | None = Field(None)
     identifier_type_system: str | None = Field(None)
     identifier_type_version: str | None = Field(None)
@@ -63,14 +61,14 @@ class SpecimenDefinitionContainerInput(BaseModel):
     cap: SpecimenDefinitionCodeableConceptInput | None = Field(
         None, description="Color of the cap of the container."
     )
-    description: str | None = Field(
-        None, description="Description of the container."
-    )
+    description: str | None = Field(None, description="Description of the container.")
     capacity_value: float | None = Field(
         None, description="Container volume or size (SimpleQuantity.value)."
     )
     capacity_unit: str | None = Field(None, description="Container capacity unit.")
-    capacity_system: str | None = Field(None, description="Container capacity unit system.")
+    capacity_system: str | None = Field(
+        None, description="Container capacity unit system."
+    )
     capacity_code: str | None = Field(None, description="Container capacity unit code.")
 
     minimum_volume_string: str | None = Field(
@@ -79,12 +77,18 @@ class SpecimenDefinitionContainerInput(BaseModel):
     minimum_volume_quantity_value: float | None = Field(
         None, description="Minimum volume required as numeric Quantity."
     )
-    minimum_volume_quantity_comparator: SpecimenDefinitionQuantityComparator | None = Field(
-        None, description="Minimum volume comparator (< | <= | >= | >)."
+    minimum_volume_quantity_comparator: SpecimenDefinitionQuantityComparator | None = (
+        Field(None, description="Minimum volume comparator (< | <= | >= | >).")
     )
-    minimum_volume_quantity_unit: str | None = Field(None, description="Minimum volume unit.")
-    minimum_volume_quantity_system: str | None = Field(None, description="Minimum volume system.")
-    minimum_volume_quantity_code: str | None = Field(None, description="Minimum volume code.")
+    minimum_volume_quantity_unit: str | None = Field(
+        None, description="Minimum volume unit."
+    )
+    minimum_volume_quantity_system: str | None = Field(
+        None, description="Minimum volume system."
+    )
+    minimum_volume_quantity_code: str | None = Field(
+        None, description="Minimum volume code."
+    )
 
     additive: list[SpecimenDefinitionAdditiveInput] | None = Field(
         None, description="Additive associated with container."
@@ -106,14 +110,22 @@ class SpecimenDefinitionHandlingInput(BaseModel):
         None, description="Low limit of temperature range."
     )
     temperature_range_low_unit: str | None = Field(None, description="Low limit unit.")
-    temperature_range_low_system: str | None = Field(None, description="Low limit system.")
+    temperature_range_low_system: str | None = Field(
+        None, description="Low limit system."
+    )
     temperature_range_low_code: str | None = Field(None, description="Low limit code.")
     temperature_range_high_value: float | None = Field(
         None, description="High limit of temperature range."
     )
-    temperature_range_high_unit: str | None = Field(None, description="High limit unit.")
-    temperature_range_high_system: str | None = Field(None, description="High limit system.")
-    temperature_range_high_code: str | None = Field(None, description="High limit code.")
+    temperature_range_high_unit: str | None = Field(
+        None, description="High limit unit."
+    )
+    temperature_range_high_system: str | None = Field(
+        None, description="High limit system."
+    )
+    temperature_range_high_code: str | None = Field(
+        None, description="High limit code."
+    )
 
     max_duration_value: float | None = Field(
         None, description="Maximum preservation time (Duration.value)."
@@ -122,12 +134,12 @@ class SpecimenDefinitionHandlingInput(BaseModel):
         None, description="Maximum duration comparator (< | <= | >= | >)."
     )
     max_duration_unit: str | None = Field(None, description="Maximum duration unit.")
-    max_duration_system: str | None = Field(None, description="Maximum duration system.")
+    max_duration_system: str | None = Field(
+        None, description="Maximum duration system."
+    )
     max_duration_code: str | None = Field(None, description="Maximum duration code.")
 
-    instruction: str | None = Field(
-        None, description="Preservation instruction."
-    )
+    instruction: str | None = Field(None, description="Preservation instruction.")
 
 
 class SpecimenDefinitionTypeTestedInput(BaseModel):
@@ -135,9 +147,7 @@ class SpecimenDefinitionTypeTestedInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    is_derived: bool | None = Field(
-        None, description="Primary or secondary specimen."
-    )
+    is_derived: bool | None = Field(None, description="Primary or secondary specimen.")
     type: SpecimenDefinitionCodeableConceptInput | None = Field(
         None, description="Type of intended specimen."
     )
@@ -147,9 +157,7 @@ class SpecimenDefinitionTypeTestedInput(BaseModel):
     container: SpecimenDefinitionContainerInput | None = Field(
         None, description="The specimen's container."
     )
-    requirement: str | None = Field(
-        None, description="Specimen requirements."
-    )
+    requirement: str | None = Field(None, description="Specimen requirements.")
     retention_time_value: float | None = Field(
         None, description="Retention time duration value."
     )
@@ -157,7 +165,9 @@ class SpecimenDefinitionTypeTestedInput(BaseModel):
         None, description="Retention time duration comparator."
     )
     retention_time_unit: str | None = Field(None, description="Retention time unit.")
-    retention_time_system: str | None = Field(None, description="Retention time system.")
+    retention_time_system: str | None = Field(
+        None, description="Retention time system."
+    )
     retention_time_code: str | None = Field(None, description="Retention time code.")
 
     rejection_criterion: list[SpecimenDefinitionCodeableConceptInput] | None = Field(

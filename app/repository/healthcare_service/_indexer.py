@@ -43,11 +43,15 @@ def organization_references(document: dict) -> list[tuple[str, str]]:
     """(element label, relative Organization reference) for every local
     Reference(Organization): providedBy and identifier.assigner."""
     refs = []
-    provided_by = relative((document.get("providedBy") or {}).get("reference"), "Organization")
+    provided_by = relative(
+        (document.get("providedBy") or {}).get("reference"), "Organization"
+    )
     if provided_by:
         refs.append(("providedBy", provided_by))
     for identifier in document.get("identifier") or []:
-        ref = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        ref = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if ref:
             refs.append(("identifier.assigner", ref))
     return refs
@@ -83,11 +87,15 @@ def index_columns(document: dict) -> dict:
         "active": document.get("active"),
         "name": document.get("name"),
         "name_norm": normalize(document.get("name")),
-        **reference_columns("provided_by", document.get("providedBy"), "Organization", _parse_org_ref),
+        **reference_columns(
+            "provided_by", document.get("providedBy"), "Organization", _parse_org_ref
+        ),
     }
 
 
-def _reference_row(param: str, resource_type: str, ref: dict) -> HealthcareServiceReference | None:
+def _reference_row(
+    param: str, resource_type: str, ref: dict
+) -> HealthcareServiceReference | None:
     """One index row for a Reference with a `reference` or an `identifier`
     (display-only can't be matched by a reference search)."""
     reference = ref.get("reference")
@@ -121,7 +129,9 @@ def index_rows(document: dict) -> dict[str, list]:
                 references.append(row)
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(HealthcareServiceIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(HealthcareServiceIdentifier, i)
         ],
         "tokens": tokens,
         "references": references,

@@ -123,13 +123,16 @@ def inline_schema_for_docs(resource_type: str) -> dict:
     def _resolve(node, seen: frozenset):
         if isinstance(node, dict):
             if "$ref" in node and node["$ref"].startswith("#/definitions/"):
-                name = node["$ref"][len("#/definitions/"):]
+                name = node["$ref"][len("#/definitions/") :]
                 if name in seen:
                     return {"type": "object", "description": f"(recursive ref: {name})"}
                 if name in resolved:
                     return resolved[name]
                 if name not in _DEFINITIONS:
-                    return {"type": "object", "description": f"(unresolved ref: {name})"}
+                    return {
+                        "type": "object",
+                        "description": f"(unresolved ref: {name})",
+                    }
                 result = _resolve(_DEFINITIONS[name], seen | {name})
                 resolved[name] = result
                 return result

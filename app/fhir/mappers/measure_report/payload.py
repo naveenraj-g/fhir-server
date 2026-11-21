@@ -99,7 +99,11 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     ref_val = _val(obj, prefix) if prefix != "reference" else _val(obj, "reference")
     if not ref_val and prefix != "reference":
         ref_val = _val(obj, f"{prefix}_reference")
-    disp_val = _val(obj, f"{prefix}_display") if prefix != "reference" else _val(obj, "display")
+    disp_val = (
+        _val(obj, f"{prefix}_display")
+        if prefix != "reference"
+        else _val(obj, "display")
+    )
 
     res: dict[str, Any] = {}
     if ref_val:
@@ -309,7 +313,9 @@ def _group_from_payload(grp: Any) -> dict:
     return d
 
 
-def payload_to_fhir_measure_report(payload: MeasureReportCreateSchema) -> dict[str, Any]:
+def payload_to_fhir_measure_report(
+    payload: MeasureReportCreateSchema,
+) -> dict[str, Any]:
     """Convert a validated MeasureReportCreateSchema into a FHIR R4 dict for base validation."""
     fhir: dict[str, Any] = {
         "resourceType": "MeasureReport",

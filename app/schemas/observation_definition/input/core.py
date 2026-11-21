@@ -93,8 +93,8 @@ class ObservationDefinitionCreateSchema(BaseModel):
     quantitative_details: ObservationDefinitionQuantitativeDetailsInput | None = Field(
         None, description="Characteristics for quantitative results."
     )
-    qualified_interval: list[ObservationDefinitionQualifiedIntervalInput] | None = Field(
-        None, description="Ranges of results qualified by context."
+    qualified_interval: list[ObservationDefinitionQualifiedIntervalInput] | None = (
+        Field(None, description="Ranges of results qualified by context.")
     )
     valid_coded_value_set: str | None = Field(
         None, description="Valid coded results ValueSet reference (e.g. ValueSet/1)."
@@ -120,9 +120,7 @@ class ObservationDefinitionCreateSchema(BaseModel):
     critical_coded_value_set_display: str | None = Field(
         None, description="Display name for critical coded results ValueSet."
     )
-    extension: list[dict] | None = Field(
-        None, description="FHIR extension list."
-    )
+    extension: list[dict] | None = Field(None, description="FHIR extension list.")
 
 
 class ObservationDefinitionPatchSchema(BaseModel):
@@ -161,8 +159,8 @@ class ObservationDefinitionPatchSchema(BaseModel):
     quantitative_details: ObservationDefinitionQuantitativeDetailsInput | None = Field(
         None, description="Characteristics for quantitative results."
     )
-    qualified_interval: list[ObservationDefinitionQualifiedIntervalInput] | None = Field(
-        None, description="Ranges of results qualified by context."
+    qualified_interval: list[ObservationDefinitionQualifiedIntervalInput] | None = (
+        Field(None, description="Ranges of results qualified by context.")
     )
     valid_coded_value_set: str | None = Field(
         None, description="Valid coded results ValueSet reference."
@@ -188,6 +186,4 @@ class ObservationDefinitionPatchSchema(BaseModel):
     critical_coded_value_set_display: str | None = Field(
         None, description="Display name for critical coded results ValueSet."
     )
-    extension: list[dict] | None = Field(
-        None, description="FHIR extension list."
-    )
+    extension: list[dict] | None = Field(None, description="FHIR extension list.")

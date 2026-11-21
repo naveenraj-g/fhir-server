@@ -26,10 +26,14 @@ class ScheduleActor(Base):
     UniqueConstraint: R4 doesn't forbid listing the same actor twice."""
 
     __tablename__ = "schedule_actor"
-    __table_args__ = (Index("ix_schedule_actor_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_schedule_actor_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    schedule_pk = Column(BigInteger, ForeignKey("schedule.id"), nullable=False, index=True)
+    schedule_pk = Column(
+        BigInteger, ForeignKey("schedule.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)

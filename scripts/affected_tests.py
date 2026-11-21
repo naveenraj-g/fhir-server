@@ -47,18 +47,25 @@ SHARED = (
 RESOURCE_PATH = re.compile(
     r"^app/(?:models|repository|services|routers|schemas|fhir/mappers|di/modules|di/dependencies)/([a-z_]+?)(?:/|\.py$)"
 )
-TEST_PATH = re.compile(r"^tests/(?:integration|conformance)/(?:test_)?([a-z_]+?)(?:_fhir\.py$|/)")
+TEST_PATH = re.compile(
+    r"^tests/(?:integration|conformance)/(?:test_)?([a-z_]+?)(?:_fhir\.py$|/)"
+)
 MIGRATION = re.compile(r"^migrations/versions/[0-9a-z]+_([a-z_]+?)_content_jsonb")
 
 
 def changed_files(rev: str | None) -> list[str]:
     def git(*args: str) -> list[str]:
-        out = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+        out = subprocess.run(
+            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+        ).stdout
         return [line for line in out.splitlines() if line]
 
     if rev:
         return git("diff", "--name-only", rev)
-    return sorted(set(git("diff", "--name-only", "HEAD")) | set(git("ls-files", "--others", "--exclude-standard")))
+    return sorted(
+        set(git("diff", "--name-only", "HEAD"))
+        | set(git("ls-files", "--others", "--exclude-standard"))
+    )
 
 
 def main() -> int:
@@ -69,13 +76,20 @@ def main() -> int:
 
     if any(f.startswith(SHARED) for f in files):
         shared = [f for f in files if f.startswith(SHARED)]
-        print("Shared engine code changed:", ", ".join(shared[:5]) + (" ..." if len(shared) > 5 else ""))
+        print(
+            "Shared engine code changed:",
+            ", ".join(shared[:5]) + (" ..." if len(shared) > 5 else ""),
+        )
         print(
             "If the engine change only ADDS something (a new matcher no existing resource calls), the "
             "resource-level run below is enough; if it changes existing behavior, run everything."
         )
-        print("Run everything (slow):\n  uv run pytest tests/unit tests/conformance tests/integration -q -p no:cacheprovider")
-        print("(`pytest tests` as a whole fails at collection — always pass the directories.)")
+        print(
+            "Run everything (slow):\n  uv run pytest tests/unit tests/conformance tests/integration -q -p no:cacheprovider"
+        )
+        print(
+            "(`pytest tests` as a whole fails at collection — always pass the directories.)"
+        )
         print()
 
     resources: set[str] = set()
@@ -88,14 +102,22 @@ def main() -> int:
     for f in files:
         match = re.match(r"^app/repository/_([a-z_]+?)_revinclude\.py$", f)
         if match:
-            resources.add(match.group(1))  # dropped below: only a resource's own folder is run
+            resources.add(
+                match.group(1)
+            )  # dropped below: only a resource's own folder is run
 
     # A shared revinclude helper (`_x_revinclude`) names a resource but is not one itself; the registries
     # that import it show up as changed files of their own. `capability` is always run.
     resources = {r for r in resources if not r.startswith("_")}
-    folders = sorted(r for r in resources if (ROOT / "tests" / "integration" / r).is_dir() and r != "capability")
+    folders = sorted(
+        r
+        for r in resources
+        if (ROOT / "tests" / "integration" / r).is_dir() and r != "capability"
+    )
     unmatched = sorted(r for r in resources if r not in folders and r != "capability")
-    command = ["uv run pytest tests/unit tests/conformance tests/integration/capability"]
+    command = [
+        "uv run pytest tests/unit tests/conformance tests/integration/capability"
+    ]
     command += [f"tests/integration/{r}" for r in folders]
     print("Changed resources:", ", ".join(sorted(resources)) or "(none)")
     if unmatched:

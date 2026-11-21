@@ -23,9 +23,7 @@ class TaskIdentifierInput(BaseModel):
     system: str | None = Field(
         None, description="The namespace for the identifier value."
     )
-    value: str | None = Field(
-        None, description="The value that is unique."
-    )
+    value: str | None = Field(None, description="The value that is unique.")
     period_start: datetime | None = Field(
         None, description="Time period during which identifier is valid — start."
     )

@@ -23,7 +23,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id == specimen_definition_id
+                    SpecimenDefinitionModel.specimen_definition_id
+                    == specimen_definition_id
                 )
             )
             return (await session.execute(stmt)).scalars().first()
@@ -36,7 +37,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id == specimen_definition_id,
+                    SpecimenDefinitionModel.specimen_definition_id
+                    == specimen_definition_id,
                     SpecimenDefinitionModel.tenant_id == org_id,
                 )
             )
@@ -48,7 +50,8 @@ class _CoreMixin:
         """Cheap existence/ownership check (no joins, no sub-resources)."""
         async with self.session_factory() as session:
             stmt = select(func.count(SpecimenDefinitionModel.id)).where(
-                SpecimenDefinitionModel.specimen_definition_id == specimen_definition_id,
+                SpecimenDefinitionModel.specimen_definition_id
+                == specimen_definition_id,
                 SpecimenDefinitionModel.tenant_id == org_id,
             )
             count = (await session.execute(stmt)).scalar() or 0
@@ -71,20 +74,27 @@ class _CoreMixin:
                 if val:
                     stmt = stmt.where(SpecimenDefinitionModel.identifier_value == val)
             else:
-                stmt = stmt.where(SpecimenDefinitionModel.identifier_value == identifier)
+                stmt = stmt.where(
+                    SpecimenDefinitionModel.identifier_value == identifier
+                )
 
         if type_collected:
             conditions = [
-                SpecimenDefinitionTypeCollectedCoding.specimen_definition_pk == SpecimenDefinitionModel.id
+                SpecimenDefinitionTypeCollectedCoding.specimen_definition_pk
+                == SpecimenDefinitionModel.id
             ]
             if "|" in type_collected:
                 sys, val = type_collected.split("|", 1)
                 if sys:
-                    conditions.append(SpecimenDefinitionTypeCollectedCoding.system == sys)
+                    conditions.append(
+                        SpecimenDefinitionTypeCollectedCoding.system == sys
+                    )
                 if val:
                     conditions.append(SpecimenDefinitionTypeCollectedCoding.code == val)
             else:
-                conditions.append(SpecimenDefinitionTypeCollectedCoding.code == type_collected)
+                conditions.append(
+                    SpecimenDefinitionTypeCollectedCoding.code == type_collected
+                )
             stmt = apply_child_exists_filter(
                 stmt,
                 select(SpecimenDefinitionTypeCollectedCoding.id).where(*conditions),
@@ -145,7 +155,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id == specimen_definition_id,
+                    SpecimenDefinitionModel.specimen_definition_id
+                    == specimen_definition_id,
                     SpecimenDefinitionModel.tenant_id == org_id,
                 )
             )

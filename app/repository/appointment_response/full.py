@@ -21,7 +21,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
     (identifier.assigner, appointment, an actor of a modeled type), scoped to
     the caller's org — 422 if one does not resolve."""
     for label, resource_type, ref in local_references(document):
-        await _validate_reference(session, tenant_id, resource_type, int(ref.split("/")[1]), label)
+        await _validate_reference(
+            session, tenant_id, resource_type, int(ref.split("/")[1]), label
+        )
 
 
 class _FullMixin:
@@ -66,14 +68,17 @@ class _FullMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(AppointmentResponseModel).where(
-                    AppointmentResponseModel.appointment_response_id == appointment_response_id
+                    AppointmentResponseModel.appointment_response_id
+                    == appointment_response_id
                 )
             )
             appointment_response = (await session.execute(stmt)).scalars().first()
             if not appointment_response:
                 return None
 
-            await _validate_local_references(session, appointment_response.tenant_id, document)
+            await _validate_local_references(
+                session, appointment_response.tenant_id, document
+            )
 
             appointment_response.content = _storable(document)
             for column, value in index_columns(document).items():

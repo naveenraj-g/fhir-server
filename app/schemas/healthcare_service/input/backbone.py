@@ -6,7 +6,11 @@ from typing import Literal
 
 from pydantic import Field
 
-from app.schemas.fhir_input import FhirCodeableConceptInput, FhirInputModel, FhirPeriodInput
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirInputModel,
+    FhirPeriodInput,
+)
 
 DayOfWeek = Literal["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -19,7 +23,8 @@ class HealthcareServiceEligibilityInput(FhirInputModel):
         None, description="Coded value for the eligibility."
     )
     comment: str | None = Field(
-        None, description="Describes the eligibility conditions for the service (markdown)."
+        None,
+        description="Describes the eligibility conditions for the service (markdown).",
     )
 
 
@@ -27,9 +32,12 @@ class HealthcareServiceAvailableTimeInput(FhirInputModel):
     """HealthcareService.availableTime — times the service is conducted."""
 
     daysOfWeek: list[DayOfWeek] | None = Field(
-        None, description="mon | tue | wed | thu | fri | sat | sun (required binding DaysOfWeek)."
+        None,
+        description="mon | tue | wed | thu | fri | sat | sun (required binding DaysOfWeek).",
     )
-    allDay: bool | None = Field(None, description="Always available (e.g. 24 hour service).")
+    allDay: bool | None = Field(
+        None, description="Always available (e.g. 24 hour service)."
+    )
     availableStartTime: str | None = Field(
         None, description="Opening time of day (hh:mm:ss); ignored if allDay = true."
     )
@@ -43,7 +51,8 @@ class HealthcareServiceNotAvailableInput(FhirInputModel):
     to provided reason."""
 
     description: str = Field(
-        ..., description="Reason presented to the user explaining why the service is not available (required by R4)."
+        ...,
+        description="Reason presented to the user explaining why the service is not available (required by R4).",
     )
     during: FhirPeriodInput | None = Field(
         None, description="Service not available from this date."

@@ -54,15 +54,9 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
         f"{prefix}_identifier_system": getattr(
             obj, f"{prefix}_identifier_system", None
         ),
-        f"{prefix}_identifier_value": getattr(
-            obj, f"{prefix}_identifier_value", None
-        ),
-        f"{prefix}_identifier_period_start": fhir_instant(p_start)
-        if p_start
-        else None,
-        f"{prefix}_identifier_period_end": fhir_instant(p_end)
-        if p_end
-        else None,
+        f"{prefix}_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start) if p_start else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end) if p_end else None,
     }
 
 
@@ -207,6 +201,7 @@ def _plain_provision(p: ConsentProvision) -> dict:
 
 def to_plain_consent(model: ConsentModel) -> dict:
     """Map ConsentModel to plain snake_case dict."""
+
     def _plain_child_ref(row):
         item = {
             "id": row.id,
@@ -239,14 +234,10 @@ def to_plain_consent(model: ConsentModel) -> dict:
         ),
         "patient_display": model.patient_display,
         "date_time": model.date_time,
-        "performer": [
-            _plain_child_ref(p) for p in (model.performers or [])
-        ]
+        "performer": [_plain_child_ref(p) for p in (model.performers or [])]
         if getattr(model, "performers", None)
         else None,
-        "organization": [
-            _plain_child_ref(o) for o in (model.organizations or [])
-        ]
+        "organization": [_plain_child_ref(o) for o in (model.organizations or [])]
         if getattr(model, "organizations", None)
         else None,
         "source_attachment": model.source_attachment,
@@ -256,23 +247,17 @@ def to_plain_consent(model: ConsentModel) -> dict:
             model.source_reference_id,
         ),
         "source_reference_display": model.source_reference_display,
-        "policy": [
-            _plain_policy(p) for p in (model.policies or [])
-        ]
+        "policy": [_plain_policy(p) for p in (model.policies or [])]
         if getattr(model, "policies", None)
         else None,
         "policy_rule": _plain_codeable_concept(
             getattr(model, "policy_rule_codings", None),
             model.policy_rule_text,
         ),
-        "verification": [
-            _plain_verification(v) for v in (model.verifications or [])
-        ]
+        "verification": [_plain_verification(v) for v in (model.verifications or [])]
         if getattr(model, "verifications", None)
         else None,
-        "identifier": [
-            _plain_identifier(i) for i in (model.identifiers or [])
-        ]
+        "identifier": [_plain_identifier(i) for i in (model.identifiers or [])]
         if getattr(model, "identifiers", None)
         else None,
         "extension": model.extension if model.extension else None,

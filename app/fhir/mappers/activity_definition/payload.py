@@ -343,7 +343,9 @@ def payload_to_fhir_activity_definition(
         fhir["description"] = payload.description
 
     if payload.use_context:
-        fhir["useContext"] = [_use_context_from_payload(uc) for uc in payload.use_context]
+        fhir["useContext"] = [
+            _use_context_from_payload(uc) for uc in payload.use_context
+        ]
 
     if payload.jurisdiction:
         juris = [_codeable_concept_from_payload(j) for j in payload.jurisdiction]
@@ -470,7 +472,9 @@ def payload_to_fhir_activity_definition(
         fhir["location"] = loc_obj
 
     if payload.participant:
-        fhir["participant"] = [_participant_from_payload(p) for p in payload.participant]
+        fhir["participant"] = [
+            _participant_from_payload(p) for p in payload.participant
+        ]
 
     # product[x]
     if payload.product_codeable_concept:

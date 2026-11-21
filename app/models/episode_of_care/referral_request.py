@@ -49,4 +49,6 @@ class EpisodeOfCareReferralRequest(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    episode_of_care = relationship("EpisodeOfCareModel", back_populates="referral_requests")
+    episode_of_care = relationship(
+        "EpisodeOfCareModel", back_populates="referral_requests"
+    )

@@ -12,7 +12,10 @@ from app.schemas.fhir_input import (
 _EXAMPLE = {
     "resourceType": "ImmunizationRecommendation",
     "identifier": [
-        {"system": "https://fhir-server.dev/fhir/identifier-system/immunization-recommendation-id", "value": "IR-1001"}
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/immunization-recommendation-id",
+            "value": "IR-1001",
+        }
     ],
     "patient": {"reference": "Patient/10001"},
     "date": "2023-01-15T09:30:00Z",
@@ -20,9 +23,25 @@ _EXAMPLE = {
     "recommendation": [
         {
             "vaccineCode": [
-                {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "140", "display": "Influenza, seasonal, injectable, preservative free"}]}
+                {
+                    "coding": [
+                        {
+                            "system": "http://hl7.org/fhir/sid/cvx",
+                            "code": "140",
+                            "display": "Influenza, seasonal, injectable, preservative free",
+                        }
+                    ]
+                }
             ],
-            "targetDisease": {"coding": [{"system": "http://snomed.info/sct", "code": "6142004", "display": "Influenza"}]},
+            "targetDisease": {
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "6142004",
+                        "display": "Influenza",
+                    }
+                ]
+            },
             "forecastStatus": {
                 "coding": [
                     {
@@ -34,7 +53,15 @@ _EXAMPLE = {
             },
             "dateCriterion": [
                 {
-                    "code": {"coding": [{"system": "http://loinc.org", "code": "30980-7", "display": "Date vaccine due"}]},
+                    "code": {
+                        "coding": [
+                            {
+                                "system": "http://loinc.org",
+                                "code": "30980-7",
+                                "display": "Date vaccine due",
+                            }
+                        ]
+                    },
                     "value": "2023-06-01T00:00:00Z",
                 }
             ],
@@ -50,29 +77,55 @@ _EXAMPLE = {
 class ImmunizationRecommendationDateCriterionInput(FhirInputModel):
     """ImmunizationRecommendation.recommendation.dateCriterion — a date that governs the proposed immunization."""
 
-    code: FhirCodeableConceptInput | None = Field(None, description="Type of date (required by R4).")
-    value: str | None = Field(None, description="Recommended date (a FHIR dateTime; required by R4).")
+    code: FhirCodeableConceptInput | None = Field(
+        None, description="Type of date (required by R4)."
+    )
+    value: str | None = Field(
+        None, description="Recommended date (a FHIR dateTime; required by R4)."
+    )
 
 
 class ImmunizationRecommendationRecommendationInput(FhirInputModel):
     """ImmunizationRecommendation.recommendation — one vaccine administration recommendation."""
 
     vaccineCode: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Vaccine or vaccine group the recommendation applies to (rule imr-1: one of vaccineCode or targetDisease is required)."
+        None,
+        description="Vaccine or vaccine group the recommendation applies to (rule imr-1: one of vaccineCode or targetDisease is required).",
     )
-    targetDisease: FhirCodeableConceptInput | None = Field(None, description="Disease to be immunized against.")
+    targetDisease: FhirCodeableConceptInput | None = Field(
+        None, description="Disease to be immunized against."
+    )
     contraindicatedVaccineCode: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Vaccine which is contraindicated to fulfill the recommendation."
+        None,
+        description="Vaccine which is contraindicated to fulfill the recommendation.",
     )
-    forecastStatus: FhirCodeableConceptInput | None = Field(None, description="Vaccine recommendation status (required by R4).")
-    forecastReason: list[FhirCodeableConceptInput] | None = Field(None, description="Vaccine administration status reason.")
-    dateCriterion: list[ImmunizationRecommendationDateCriterionInput] | None = Field(None, description="Dates governing the proposed immunization.")
+    forecastStatus: FhirCodeableConceptInput | None = Field(
+        None, description="Vaccine recommendation status (required by R4)."
+    )
+    forecastReason: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Vaccine administration status reason."
+    )
+    dateCriterion: list[ImmunizationRecommendationDateCriterionInput] | None = Field(
+        None, description="Dates governing the proposed immunization."
+    )
     description: str | None = Field(None, description="Protocol details.")
     series: str | None = Field(None, description="Name of the vaccination series.")
-    doseNumberPositiveInt: int | None = Field(None, description="Recommended dose number within the series (a positiveInt). One of the doseNumber[x] choices.")
-    doseNumberString: str | None = Field(None, description="Recommended dose number within the series (a string). One of the doseNumber[x] choices.")
-    seriesDosesPositiveInt: int | None = Field(None, description="Recommended number of doses for immunity (a positiveInt). One of the seriesDoses[x] choices.")
-    seriesDosesString: str | None = Field(None, description="Recommended number of doses for immunity (a string). One of the seriesDoses[x] choices.")
+    doseNumberPositiveInt: int | None = Field(
+        None,
+        description="Recommended dose number within the series (a positiveInt). One of the doseNumber[x] choices.",
+    )
+    doseNumberString: str | None = Field(
+        None,
+        description="Recommended dose number within the series (a string). One of the doseNumber[x] choices.",
+    )
+    seriesDosesPositiveInt: int | None = Field(
+        None,
+        description="Recommended number of doses for immunity (a positiveInt). One of the seriesDoses[x] choices.",
+    )
+    seriesDosesString: str | None = Field(
+        None,
+        description="Recommended number of doses for immunity (a string). One of the seriesDoses[x] choices.",
+    )
     supportingImmunization: list[FhirReferenceInput] | None = Field(
         None,
         description="Past immunizations supporting the recommendation — Reference(Immunization | ImmunizationEvaluation). A relative Immunization reference must exist in the caller's org (422 otherwise).",
@@ -99,24 +152,31 @@ class _ImmunizationRecommendationFields(FhirInputModel):
     never the body. There is no user_id."""
 
     resourceType: Literal["ImmunizationRecommendation"] | None = Field(
-        None, description="Optional; if supplied it must be 'ImmunizationRecommendation'."
+        None,
+        description="Optional; if supplied it must be 'ImmunizationRecommendation'.",
     )
     extension: list[dict] | None = Field(
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="Business identifier.")
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Business identifier."
+    )
     patient: FhirReferenceInput | None = Field(
         None,
         description="Who this profile is for — Reference(Patient) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    date: str | None = Field(None, description="Date the recommendation(s) were created (a FHIR dateTime; required by R4).")
+    date: str | None = Field(
+        None,
+        description="Date the recommendation(s) were created (a FHIR dateTime; required by R4).",
+    )
     authority: FhirReferenceInput | None = Field(
         None,
         description="Who is responsible for the protocol — Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
     recommendation: list[ImmunizationRecommendationRecommendationInput] | None = Field(
-        None, description="Vaccine administration recommendations (at least one, required by R4)."
+        None,
+        description="Vaccine administration recommendations (at least one, required by R4).",
     )
 
 

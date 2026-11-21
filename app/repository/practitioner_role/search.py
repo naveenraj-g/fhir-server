@@ -28,7 +28,13 @@ from app.repository._procedure_revinclude import performer_procedure_revincludes
 from app.repository._diagnostic_report_revinclude import performer_report_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import participant_encounter_revincludes
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     coded_token_match,
     date_match,
@@ -57,7 +63,9 @@ _R = PractitionerRoleReference
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.practitioner_role_pk == PR.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.practitioner_role_pk == PR.id, *conditions)
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -83,7 +91,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return PR.practitioner_role_id == int(token.code)
 
@@ -105,10 +115,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -119,7 +136,11 @@ def _telecom_match(system: str | None):
 
     def match(value, modifier, ctx):
         condition = token_condition(_T.use, _T.value, parse_token(value))
-        return _exists(_T, condition, _T.system == system) if system else _exists(_T, condition)
+        return (
+            _exists(_T, condition, _T.system == system)
+            if system
+            else _exists(_T, condition)
+        )
 
     return match
 
@@ -142,7 +163,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -160,18 +183,31 @@ def _token_param(param: str):
 def _single_reference(prefix: str, resource_type: str, type_enum, chain_registry):
     """(match, present, chain, sort) for a 0..1 reference stored as
     `{prefix}_reference/_type/_id/_identifier_*` columns on the row."""
-    cols = {name: getattr(PR, f"{prefix}_{name}") for name in
-            ("reference", "type", "id", "identifier_system", "identifier_value")}
+    cols = {
+        name: getattr(PR, f"{prefix}_{name}")
+        for name in ("reference", "type", "id", "identifier_system", "identifier_value")
+    }
 
     def match(value, modifier, ctx):
         if modifier == "identifier":
-            return token_condition(cols["identifier_system"], cols["identifier_value"], parse_token(value))
+            return token_condition(
+                cols["identifier_system"], cols["identifier_value"], parse_token(value)
+            )
         return reference_match(
-            cols["type"], cols["id"], cols["reference"], value, modifier, ctx, (resource_type,), type_enum
+            cols["type"],
+            cols["id"],
+            cols["reference"],
+            value,
+            modifier,
+            ctx,
+            (resource_type,),
+            type_enum,
         )
 
     def present(ctx):
-        return or_(cols["reference"].is_not(None), cols["identifier_value"].is_not(None))
+        return or_(
+            cols["reference"].is_not(None), cols["identifier_value"].is_not(None)
+        )
 
     def chain(target, inner, ctx):
         """`<param>.<p>=v`: the referenced resource (same tenant) matches any
@@ -201,8 +237,12 @@ class _ChainTarget:
         )
 
 
-_PRACTITIONER = _ChainTarget("app.models.practitioner", "PractitionerModel", "practitioner_id")
-_ORGANIZATION = _ChainTarget("app.models.organization", "OrganizationModel", "organization_id")
+_PRACTITIONER = _ChainTarget(
+    "app.models.practitioner", "PractitionerModel", "practitioner_id"
+)
+_ORGANIZATION = _ChainTarget(
+    "app.models.organization", "OrganizationModel", "organization_id"
+)
 
 
 # ── 0..* references held in the shared reference table ───────────────────────
@@ -217,15 +257,25 @@ def _reference_param(param: str, resource_type: str, chain_target: _ChainTarget 
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _R,
             _R.param == param,
             # reference_type is a plain string here (the value is fixed by `param`).
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference,
-                value, modifier, ctx, (resource_type,), str,
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                (resource_type,),
+                str,
             ),
         )
 
@@ -233,13 +283,18 @@ def _reference_param(param: str, resource_type: str, chain_target: _ChainTarget 
         return _exists(
             _R,
             _R.param == param,
-            or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None)),
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
         """`<param>.<p>=v`: some referenced resource (same tenant) matches
         `<p>=v`."""
-        return _exists(_R, _R.param == param, _R.reference_id.in_(chain_target.ids(ctx, inner)))
+        return _exists(
+            _R, _R.param == param, _R.reference_id.in_(chain_target.ids(ctx, inner))
+        )
 
     def sort():
         return _child_sort(_R.reference_id, _R, _R.param == param)
@@ -261,7 +316,12 @@ async def _include_practitioner(session, ctx, roles):
     ids = {r.practitioner_id for r in roles if r.practitioner_id is not None}
     if not ids:
         return []
-    return await _fetch(session, select(Prac).where(Prac.tenant_id == ctx.tenant_id, Prac.practitioner_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Prac).where(
+            Prac.tenant_id == ctx.tenant_id, Prac.practitioner_id.in_(ids)
+        ),
+    )
 
 
 async def _include_organization(session, ctx, roles):
@@ -271,10 +331,15 @@ async def _include_organization(session, ctx, roles):
     ids = {r.organization_id for r in roles if r.organization_id is not None}
     if not ids:
         return []
-    return await _fetch(session, select(Org).where(Org.tenant_id == ctx.tenant_id, Org.organization_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Org).where(Org.tenant_id == ctx.tenant_id, Org.organization_id.in_(ids)),
+    )
 
 
-def _include_via_reference_table(param: str, model_path: str, model: str, id_column: str):
+def _include_via_reference_table(
+    param: str, model_path: str, model: str, id_column: str
+):
     """_include=PractitionerRole:<param> — the Locations / HealthcareServices
     / Endpoints these roles point at."""
 
@@ -283,10 +348,16 @@ def _include_via_reference_table(param: str, model_path: str, model: str, id_col
 
         target = getattr(importlib.import_module(model_path), model)
         referenced = select(_R.reference_id).where(
-            _R.practitioner_role_pk.in_({r.id for r in roles}), _R.param == param, _R.reference_id.is_not(None)
+            _R.practitioner_role_pk.in_({r.id for r in roles}),
+            _R.param == param,
+            _R.reference_id.is_not(None),
         )
         return await _fetch(
-            session, select(target).where(target.tenant_id == ctx.tenant_id, getattr(target, id_column).in_(referenced))
+            session,
+            select(target).where(
+                target.tenant_id == ctx.tenant_id,
+                getattr(target, id_column).in_(referenced),
+            ),
         )
 
     return fetch
@@ -301,7 +372,9 @@ def _revinclude_schedules(resource_type: str, key):
         from app.models.schedule import ScheduleModel as S
 
         ids = {key(r) for r in rows}
-        pks = select(A.schedule_pk).where(A.reference_type == resource_type, A.reference_id.in_(ids))
+        pks = select(A.schedule_pk).where(
+            A.reference_type == resource_type, A.reference_id.in_(ids)
+        )
         stmt = select(S).where(S.tenant_id == ctx.tenant_id, S.id.in_(pks))
         return list((await session.execute(stmt)).scalars().all())
 
@@ -315,7 +388,9 @@ def _revinclude_patients(param: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         from app.repository.patient.search import revinclude_patients_via_reference
 
-        return await revinclude_patients_via_reference(param, resource_type, key)(session, ctx, rows)
+        return await revinclude_patients_via_reference(param, resource_type, key)(
+            session, ctx, rows
+        )
 
     return fetch
 
@@ -357,104 +432,225 @@ def practitioner_role_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
-
-    def single(name, description, expression, example, prefix, resource_type, type_enum, chain_target, registry):
-        match, present, chain, sort = _single_reference(prefix, resource_type, type_enum, chain_target)
         return SearchParam(
-            name, "reference", description, expression, match, present, frozenset({"identifier", "missing"}),
-            targets=(resource_type,), chain=chain, chain_targets={resource_type: registry}, sort=sort, example=example,
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
         )
 
-    def multi(name, description, expression, example, resource_type, chain_target, registry):
-        match, present, chain, sort = _reference_param(name, resource_type, chain_target)
+    def single(
+        name,
+        description,
+        expression,
+        example,
+        prefix,
+        resource_type,
+        type_enum,
+        chain_target,
+        registry,
+    ):
+        match, present, chain, sort = _single_reference(
+            prefix, resource_type, type_enum, chain_target
+        )
         return SearchParam(
-            name, "reference", description, expression, match, present, frozenset({"identifier", "missing"}),
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            frozenset({"identifier", "missing"}),
+            targets=(resource_type,),
+            chain=chain,
+            chain_targets={resource_type: registry},
+            sort=sort,
+            example=example,
+        )
+
+    def multi(
+        name, description, expression, example, resource_type, chain_target, registry
+    ):
+        match, present, chain, sort = _reference_param(
+            name, resource_type, chain_target
+        )
+        return SearchParam(
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            frozenset({"identifier", "missing"}),
             targets=(resource_type,),
             chain=chain if chain_target else None,
             chain_targets={resource_type: registry} if chain_target else {},
-            sort=sort, example=example,
+            sort=sort,
+            example=example,
         )
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public practitioner role id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: PR.practitioner_role_id, example="140001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public practitioner role id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: PR.practitioner_role_id,
+            example="140001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "active", "token", "Whether this practitioner role record is in active use", "PractitionerRole.active",
-            _active_match, lambda ctx: PR.active.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: PR.active, example="true",
-            modifier_docs={"not": "`:not` — active is not this value, or is not recorded at all."},
+            "active",
+            "token",
+            "Whether this practitioner role record is in active use",
+            "PractitionerRole.active",
+            _active_match,
+            lambda ctx: PR.active.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: PR.active,
+            example="true",
+            modifier_docs={
+                "not": "`:not` — active is not this value, or is not recorded at all."
+            },
         ),
         SearchParam(
-            "date", "date", "The period during which the practitioner is authorized to perform in these role(s)",
-            "PractitionerRole.period", _date_match,
+            "date",
+            "date",
+            "The period during which the practitioner is authorized to perform in these role(s)",
+            "PractitionerRole.period",
+            _date_match,
             lambda ctx: or_(PR.period_start.is_not(None), PR.period_end.is_not(None)),
-            sort=lambda: PR.period_start, example="ge2026-01-01",
+            sort=lambda: PR.period_start,
+            example="ge2026-01-01",
             modifier_docs={},
         ),
         SearchParam(
-            "email", "token", "A value in an email contact (ContactPoint.value where system = email)",
-            "PractitionerRole.telecom.where(system='email')", _telecom_match("email"), _telecom_present("email"),
-            _TELECOM, example="role@example.org",
+            "email",
+            "token",
+            "A value in an email contact (ContactPoint.value where system = email)",
+            "PractitionerRole.telecom.where(system='email')",
+            _telecom_match("email"),
+            _telecom_present("email"),
+            _TELECOM,
+            example="role@example.org",
         ),
         multi(
-            "endpoint", "Technical endpoints providing access to services operated for the practitioner with this role",
-            "PractitionerRole.endpoint", "Endpoint/620001", "Endpoint", None, None,
+            "endpoint",
+            "Technical endpoints providing access to services operated for the practitioner with this role",
+            "PractitionerRole.endpoint",
+            "Endpoint/620001",
+            "Endpoint",
+            None,
+            None,
         ),
         SearchParam(
-            "identifier", "token", "A practitioner's Identifier", "PractitionerRole.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:roles|R-1",
+            "identifier",
+            "token",
+            "A practitioner's Identifier",
+            "PractitionerRole.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:roles|R-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         multi(
-            "location", "One of the locations at which this practitioner provides care",
-            "PractitionerRole.location", "Location/230001", "Location",
+            "location",
+            "One of the locations at which this practitioner provides care",
+            "PractitionerRole.location",
+            "Location/230001",
+            "Location",
             _ChainTarget("app.models.location", "LocationModel", "location_id"),
             _search_of("app.repository.location.search", "location_search"),
         ),
         single(
-            "organization", "The identity of the organization the practitioner represents / acts on behalf of",
-            "PractitionerRole.organization", "Organization/190001", "organization", "Organization",
-            OrganizationReferenceType, _ORGANIZATION, _search_of("app.repository.organization.search", "organization_search"),
+            "organization",
+            "The identity of the organization the practitioner represents / acts on behalf of",
+            "PractitionerRole.organization",
+            "Organization/190001",
+            "organization",
+            "Organization",
+            OrganizationReferenceType,
+            _ORGANIZATION,
+            _search_of("app.repository.organization.search", "organization_search"),
         ),
         SearchParam(
-            "phone", "token", "A value in a phone contact (ContactPoint.value where system = phone)",
-            "PractitionerRole.telecom.where(system='phone')", _telecom_match("phone"), _telecom_present("phone"),
-            _TELECOM, example="555-0100",
+            "phone",
+            "token",
+            "A value in a phone contact (ContactPoint.value where system = phone)",
+            "PractitionerRole.telecom.where(system='phone')",
+            _telecom_match("phone"),
+            _telecom_present("phone"),
+            _TELECOM,
+            example="555-0100",
         ),
         single(
-            "practitioner", "Practitioner that is able to provide the defined services for the organization",
-            "PractitionerRole.practitioner", "Practitioner/30001", "practitioner", "Practitioner",
-            PractitionerReferenceType, _PRACTITIONER, _search_of("app.repository.practitioner.search", "practitioner_search"),
+            "practitioner",
+            "Practitioner that is able to provide the defined services for the organization",
+            "PractitionerRole.practitioner",
+            "Practitioner/30001",
+            "practitioner",
+            "Practitioner",
+            PractitionerReferenceType,
+            _PRACTITIONER,
+            _search_of("app.repository.practitioner.search", "practitioner_search"),
         ),
         token(
-            "role", "The practitioner can perform this role at for the organization", "PractitionerRole.code",
+            "role",
+            "The practitioner can perform this role at for the organization",
+            "PractitionerRole.code",
             "http://terminology.hl7.org/CodeSystem/practitioner-role|doctor",
         ),
         multi(
-            "service", "The list of healthcare services that this worker provides for this role's Organization/Location(s)",
-            "PractitionerRole.healthcareService", "HealthcareService/150001", "HealthcareService",
-            _ChainTarget("app.models.healthcare_service", "HealthcareServiceModel", "healthcare_service_id"),
-            _search_of("app.repository.healthcare_service.search", "healthcare_service_search"),
+            "service",
+            "The list of healthcare services that this worker provides for this role's Organization/Location(s)",
+            "PractitionerRole.healthcareService",
+            "HealthcareService/150001",
+            "HealthcareService",
+            _ChainTarget(
+                "app.models.healthcare_service",
+                "HealthcareServiceModel",
+                "healthcare_service_id",
+            ),
+            _search_of(
+                "app.repository.healthcare_service.search", "healthcare_service_search"
+            ),
         ),
         token(
-            "specialty", "The practitioner has this specialty at an organization", "PractitionerRole.specialty",
+            "specialty",
+            "The practitioner has this specialty at an organization",
+            "PractitionerRole.specialty",
             "http://snomed.info/sct|394579002",
         ),
         SearchParam(
-            "telecom", "token", "The value in any kind of contact (ContactPoint.value; `use|value` also matches the use)",
-            "PractitionerRole.telecom", _telecom_match(None), _telecom_present(None), _TELECOM, example="555-0100",
+            "telecom",
+            "token",
+            "The value in any kind of contact (ContactPoint.value; `use|value` also matches the use)",
+            "PractitionerRole.telecom",
+            _telecom_match(None),
+            _telecom_present(None),
+            _TELECOM,
+            example="555-0100",
         ),
     ]
 
@@ -463,54 +659,125 @@ def practitioner_role_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 PractitionerRole definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "active", "period", "practitioner", "organization", "code", "specialty", "location", "telecom"}
+            {
+                "identifier",
+                "active",
+                "period",
+                "practitioner",
+                "organization",
+                "code",
+                "specialty",
+                "location",
+                "telecom",
+            }
         ),
         includes=(
-            IncludeTarget("PractitionerRole", "practitioner", "Practitioner", _include_practitioner),
-            IncludeTarget("PractitionerRole", "organization", "Organization", _include_organization),
             IncludeTarget(
-                "PractitionerRole", "location", "Location",
-                _include_via_reference_table("location", "app.models.location", "LocationModel", "location_id"),
+                "PractitionerRole",
+                "practitioner",
+                "Practitioner",
+                _include_practitioner,
             ),
             IncludeTarget(
-                "PractitionerRole", "service", "HealthcareService",
+                "PractitionerRole",
+                "organization",
+                "Organization",
+                _include_organization,
+            ),
+            IncludeTarget(
+                "PractitionerRole",
+                "location",
+                "Location",
                 _include_via_reference_table(
-                    "service", "app.models.healthcare_service", "HealthcareServiceModel", "healthcare_service_id"
+                    "location", "app.models.location", "LocationModel", "location_id"
                 ),
             ),
             IncludeTarget(
-                "PractitionerRole", "endpoint", "Endpoint",
-                _include_via_reference_table("endpoint", "app.models.endpoint", "EndpointModel", "endpoint_id"),
+                "PractitionerRole",
+                "service",
+                "HealthcareService",
+                _include_via_reference_table(
+                    "service",
+                    "app.models.healthcare_service",
+                    "HealthcareServiceModel",
+                    "healthcare_service_id",
+                ),
+            ),
+            IncludeTarget(
+                "PractitionerRole",
+                "endpoint",
+                "Endpoint",
+                _include_via_reference_table(
+                    "endpoint", "app.models.endpoint", "EndpointModel", "endpoint_id"
+                ),
             ),
         ),
         # Schedule.actor points here (Appointment, ... will add theirs when rebuilt).
         revincludes=(
-            *participant_revincludes('PractitionerRole', lambda r: r.practitioner_role_id, ('actor',)),
-            *actor_response_revincludes('PractitionerRole', lambda r: r.practitioner_role_id, ('actor',)),
-            *participant_encounter_revincludes('PractitionerRole', lambda r: r.practitioner_role_id, ('participant',)),
-            *actor_allergy_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
-            *asserter_condition_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
-            *performer_procedure_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
-            *performer_immunization_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
-            *performer_report_revincludes('PractitionerRole', lambda r: r.practitioner_role_id),
+            *participant_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id, ("actor",)
+            ),
+            *actor_response_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id, ("actor",)
+            ),
+            *participant_encounter_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id, ("participant",)
+            ),
+            *actor_allergy_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id
+            ),
+            *asserter_condition_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id
+            ),
+            *performer_procedure_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id
+            ),
+            *performer_immunization_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id
+            ),
+            *performer_report_revincludes(
+                "PractitionerRole", lambda r: r.practitioner_role_id
+            ),
             *column_risk_revincludes(
-                ('performer',), 'performer', 'PractitionerRole', lambda r: r.practitioner_role_id
+                ("performer",),
+                "performer",
+                "PractitionerRole",
+                lambda r: r.practitioner_role_id,
             ),
             *column_impression_revincludes(
-                ('assessor',), 'assessor', 'PractitionerRole', lambda r: r.practitioner_role_id
+                ("assessor",),
+                "assessor",
+                "PractitionerRole",
+                lambda r: r.practitioner_role_id,
             ),
             *column_issue_revincludes(
-                ('author',), 'author', 'PractitionerRole', lambda r: r.practitioner_role_id
+                ("author",),
+                "author",
+                "PractitionerRole",
+                lambda r: r.practitioner_role_id,
             ),
-            *reference_observation_revincludes('performer', 'PractitionerRole', lambda r: r.practitioner_role_id),
+            *reference_observation_revincludes(
+                "performer", "PractitionerRole", lambda r: r.practitioner_role_id
+            ),
             IncludeTarget(
-                "Schedule", "actor", "PractitionerRole",
-                _revinclude_schedules("PractitionerRole", lambda r: r.practitioner_role_id), reverse=True,
+                "Schedule",
+                "actor",
+                "PractitionerRole",
+                _revinclude_schedules(
+                    "PractitionerRole", lambda r: r.practitioner_role_id
+                ),
+                reverse=True,
             ),
             # Patient.generalPractitioner points here.
             IncludeTarget(
-                "Patient", "general-practitioner", "PractitionerRole",
-                _revinclude_patients("general-practitioner", "PractitionerRole", lambda r: r.practitioner_role_id),
+                "Patient",
+                "general-practitioner",
+                "PractitionerRole",
+                _revinclude_patients(
+                    "general-practitioner",
+                    "PractitionerRole",
+                    lambda r: r.practitioner_role_id,
+                ),
                 reverse=True,
             ),
         ),

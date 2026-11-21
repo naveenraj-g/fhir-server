@@ -68,11 +68,17 @@ async def patient(client) -> int:
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _as_user(sub="u-test", org_id="org-test", permissions=IMPRESSION_PERMS):
-    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        sub=sub, org_id=org_id, permissions=permissions
+    )
 
 
 async def _full(client, patient) -> tuple[int, dict]:
@@ -82,7 +88,9 @@ async def _full(client, patient) -> tuple[int, dict]:
     organization = await create_organization(client)
     report = await create_report(client, report_body(patient))
     risk = await create_risk(client, risk_body(patient))
-    body = full_body(patient, encounter, condition, practitioner, organization, report, risk)
+    body = full_body(
+        patient, encounter, condition, practitioner, organization, report, risk
+    )
     return await create_impression(client, body), body
 
 
@@ -94,7 +102,9 @@ async def test_create_minimal(client, patient):
     assert resp.status_code == 201, resp.text
     assert "application/fhir+json" in resp.headers["content-type"]
     data = resp.json()
-    assert data["resourceType"] == "ClinicalImpression" and data["status"] == "completed"
+    assert (
+        data["resourceType"] == "ClinicalImpression" and data["status"] == "completed"
+    )
     assert data["subject"] == {"reference": f"Patient/{patient}"}
 
 
@@ -102,7 +112,9 @@ async def test_create_full_round_trip(client, patient):
     impression, body = await _full(client, patient)
     data = (await client.get(f"{BASE}/{impression}")).json()
     expected = {k: v for k, v in body.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
 
 
 async def test_create_keeps_elements_nothing_searches_on(client, patient):
@@ -145,7 +157,9 @@ async def test_create_every_status_round_trips(client, patient, status):
 
 
 async def test_create_ignores_server_managed_id_and_meta(client, patient):
-    body = impression_body(patient, id="999", meta={"lastUpdated": "2000-01-01T00:00:00Z"})
+    body = impression_body(
+        patient, id="999", meta={"lastUpdated": "2000-01-01T00:00:00Z"}
+    )
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     assert resp.json()["id"] != "999"
@@ -153,27 +167,53 @@ async def test_create_ignores_server_managed_id_and_meta(client, patient):
 
 
 async def test_create_bad_datatypes_rejected(client, patient):
-    for bad in ({"status": "robot"}, {"date": "yesterday"}, {"code": "x"}, {"assessor": [{"reference": "Practitioner/1"}]},
-                {"problem": {"reference": "Condition/1"}}, {"investigation": {"code": {"text": "x"}}},
-                {"finding": [{"basis": 5}]}, {"finding": [{"itemCodeableConcept": "x"}]},
-                {"identifier": {"value": "x"}}, {"summary": 5}, {"note": {"text": "x"}}, {"protocol": "x"}):
+    for bad in (
+        {"status": "robot"},
+        {"date": "yesterday"},
+        {"code": "x"},
+        {"assessor": [{"reference": "Practitioner/1"}]},
+        {"problem": {"reference": "Condition/1"}},
+        {"investigation": {"code": {"text": "x"}}},
+        {"finding": [{"basis": 5}]},
+        {"finding": [{"itemCodeableConcept": "x"}]},
+        {"identifier": {"value": "x"}},
+        {"summary": 5},
+        {"note": {"text": "x"}},
+        {"protocol": "x"},
+    ):
         resp = await client.post(BASE + "/", json=impression_body(patient, **bad))
         assert resp.status_code == 422, (bad, resp.text)
-    assert (await client.post(BASE + "/", json={"status": "completed", "subject": "Patient/1"})).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json={"status": "completed", "subject": "Patient/1"}
+        )
+    ).status_code == 422
 
 
 async def test_create_non_fhir_key_rejected(client, patient, native_validation):
-    assert (await client.post(BASE + "/", json=impression_body(patient, not_a_fhir_element=1))).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json=impression_body(patient, not_a_fhir_element=1)
+        )
+    ).status_code == 422
 
 
 async def test_create_old_flat_fields_rejected(client, patient, native_validation):
-    for stale in ({"code_text": "x"}, {"effective_date_time": "2020-01-01"}, {"org_id": "x"}):
+    for stale in (
+        {"code_text": "x"},
+        {"effective_date_time": "2020-01-01"},
+        {"org_id": "x"},
+    ):
         resp = await client.post(BASE + "/", json={**impression_body(patient), **stale})
         assert resp.status_code == 422, (stale, resp.text)
 
 
 async def test_create_wrong_resource_type_rejected(client, patient):
-    assert (await client.post(BASE + "/", json=impression_body(patient, resourceType="Patient"))).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json=impression_body(patient, resourceType="Patient")
+        )
+    ).status_code == 422
 
 
 async def test_create_audit_meta_from_actor(client, patient):
@@ -187,7 +227,9 @@ async def test_create_audit_meta_from_actor(client, patient):
 
 
 async def test_create_subject_patient_must_exist(client):
-    assert (await client.post(BASE + "/", json=impression_body(999999))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=impression_body(999999))
+    ).status_code == 422
 
 
 async def test_create_subject_in_another_org_is_rejected(client, other_client):
@@ -196,7 +238,9 @@ async def test_create_subject_in_another_org_is_rejected(client, other_client):
         theirs = await create_patient(other_client)
     finally:
         _as_user()
-    assert (await client.post(BASE + "/", json=impression_body(theirs))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=impression_body(theirs))
+    ).status_code == 422
 
 
 async def test_create_group_subject_is_not_checked(client):
@@ -210,7 +254,10 @@ async def test_create_encounter_must_exist(client, patient):
     encounter = await create_encounter(client, encounter_body())
     ok = impression_body(patient, encounter={"reference": f"Encounter/{encounter}"})
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    resp = await client.post(BASE + "/", json=impression_body(patient, encounter={"reference": "Encounter/999999"}))
+    resp = await client.post(
+        BASE + "/",
+        json=impression_body(patient, encounter={"reference": "Encounter/999999"}),
+    )
     assert resp.status_code == 422
 
 
@@ -218,10 +265,14 @@ async def test_create_assessor_must_exist(client, patient):
     practitioner = await create_practitioner(client)
     role = await create_practitioner_role(client)
     for ref in (f"Practitioner/{practitioner}", f"PractitionerRole/{role}"):
-        resp = await client.post(BASE + "/", json=impression_body(patient, assessor={"reference": ref}))
+        resp = await client.post(
+            BASE + "/", json=impression_body(patient, assessor={"reference": ref})
+        )
         assert resp.status_code == 201, (ref, resp.text)
     for missing in ("Practitioner/999999", "PractitionerRole/999999"):
-        resp = await client.post(BASE + "/", json=impression_body(patient, assessor={"reference": missing}))
+        resp = await client.post(
+            BASE + "/", json=impression_body(patient, assessor={"reference": missing})
+        )
         assert resp.status_code == 422, (missing, resp.text)
 
 
@@ -229,7 +280,12 @@ async def test_create_previous_must_exist(client, patient):
     first = await create_impression(client, impression_body(patient))
     ok = impression_body(patient, previous={"reference": f"ClinicalImpression/{first}"})
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    resp = await client.post(BASE + "/", json=impression_body(patient, previous={"reference": "ClinicalImpression/999999"}))
+    resp = await client.post(
+        BASE + "/",
+        json=impression_body(
+            patient, previous={"reference": "ClinicalImpression/999999"}
+        ),
+    )
     assert resp.status_code == 422
 
 
@@ -237,15 +293,23 @@ async def test_create_problem_must_exist(client, patient):
     condition = await create_condition(client, condition_body(patient))
     allergy = await create_allergy_intolerance(client, allergy_body(patient))
     ok = impression_body(
-        patient, problem=[{"reference": f"Condition/{condition}"}, {"reference": f"AllergyIntolerance/{allergy}"}]
+        patient,
+        problem=[
+            {"reference": f"Condition/{condition}"},
+            {"reference": f"AllergyIntolerance/{allergy}"},
+        ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     for missing in ("Condition/999999", "AllergyIntolerance/999999"):
-        resp = await client.post(BASE + "/", json=impression_body(patient, problem=[{"reference": missing}]))
+        resp = await client.post(
+            BASE + "/", json=impression_body(patient, problem=[{"reference": missing}])
+        )
         assert resp.status_code == 422, (missing, resp.text)
 
 
-async def test_create_investigation_items_are_checked_for_resources_here(client, patient):
+async def test_create_investigation_items_are_checked_for_resources_here(
+    client, patient
+):
     report = await create_report(client, report_body(patient))
     risk = await create_risk(client, risk_body(patient))
     history = await create_history(client, history_body(patient))
@@ -265,29 +329,51 @@ async def test_create_investigation_items_are_checked_for_resources_here(client,
         ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    for missing in ("DiagnosticReport/999999", "RiskAssessment/999999", "FamilyMemberHistory/999999"):
-        body = impression_body(patient, investigation=[{"code": {"text": "Set"}, "item": [{"reference": missing}]}])
+    for missing in (
+        "DiagnosticReport/999999",
+        "RiskAssessment/999999",
+        "FamilyMemberHistory/999999",
+    ):
+        body = impression_body(
+            patient,
+            investigation=[{"code": {"text": "Set"}, "item": [{"reference": missing}]}],
+        )
         assert (await client.post(BASE + "/", json=body)).status_code == 422, missing
 
 
-async def test_create_finding_item_reference_is_checked_for_a_condition(client, patient):
+async def test_create_finding_item_reference_is_checked_for_a_condition(
+    client, patient
+):
     condition = await create_condition(client, condition_body(patient))
     ok = impression_body(
         patient,
-        finding=[{"itemReference": {"reference": f"Condition/{condition}"}},
-                 {"itemReference": {"reference": "Observation/999999"}}],
+        finding=[
+            {"itemReference": {"reference": f"Condition/{condition}"}},
+            {"itemReference": {"reference": "Observation/999999"}},
+        ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    bad = impression_body(patient, finding=[{"itemReference": {"reference": "Condition/999999"}}])
+    bad = impression_body(
+        patient, finding=[{"itemReference": {"reference": "Condition/999999"}}]
+    )
     assert (await client.post(BASE + "/", json=bad)).status_code == 422
 
 
 async def test_create_prognosis_reference_must_exist(client, patient):
     risk = await create_risk(client, risk_body(patient))
-    assert (await client.post(BASE + "/", json=impression_body(
-        patient, prognosisReference=[{"reference": f"RiskAssessment/{risk}"}]))).status_code == 201
+    assert (
+        await client.post(
+            BASE + "/",
+            json=impression_body(
+                patient, prognosisReference=[{"reference": f"RiskAssessment/{risk}"}]
+            ),
+        )
+    ).status_code == 201
     resp = await client.post(
-        BASE + "/", json=impression_body(patient, prognosisReference=[{"reference": "RiskAssessment/999999"}])
+        BASE + "/",
+        json=impression_body(
+            patient, prognosisReference=[{"reference": "RiskAssessment/999999"}]
+        ),
     )
     assert resp.status_code == 422
 
@@ -296,28 +382,54 @@ async def test_create_supporting_info_is_checked_for_resources_here(client, pati
     condition = await create_condition(client, condition_body(patient))
     ok = impression_body(
         patient,
-        supportingInfo=[{"reference": f"Condition/{condition}"}, {"reference": f"Patient/{patient}"},
-                        {"reference": "Observation/999999"}, {"reference": "Questionnaire/999999"}],
+        supportingInfo=[
+            {"reference": f"Condition/{condition}"},
+            {"reference": f"Patient/{patient}"},
+            {"reference": "Observation/999999"},
+            {"reference": "Questionnaire/999999"},
+        ],
     )
-    assert (await client.post(BASE + "/", json=ok)).status_code == 201  # not rebuilt: stored as sent
+    assert (
+        await client.post(BASE + "/", json=ok)
+    ).status_code == 201  # not rebuilt: stored as sent
     for missing in ("Condition/999999", "Patient/999999"):
-        resp = await client.post(BASE + "/", json=impression_body(patient, supportingInfo=[{"reference": missing}]))
+        resp = await client.post(
+            BASE + "/",
+            json=impression_body(patient, supportingInfo=[{"reference": missing}]),
+        )
         assert resp.status_code == 422, (missing, resp.text)
 
 
 async def test_create_note_author_is_checked(client, patient):
     practitioner = await create_practitioner(client)
-    ok = impression_body(patient, note=[{"text": "n", "authorReference": {"reference": f"Practitioner/{practitioner}"}}])
+    ok = impression_body(
+        patient,
+        note=[
+            {
+                "text": "n",
+                "authorReference": {"reference": f"Practitioner/{practitioner}"},
+            }
+        ],
+    )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    bad = impression_body(patient, note=[{"text": "n", "authorReference": {"reference": "Practitioner/999999"}}])
+    bad = impression_body(
+        patient,
+        note=[{"text": "n", "authorReference": {"reference": "Practitioner/999999"}}],
+    )
     assert (await client.post(BASE + "/", json=bad)).status_code == 422
 
 
 async def test_create_identifier_assigner_must_exist(client, patient):
-    body = impression_body(patient, identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}])
+    body = impression_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 422
     org = await create_organization(client)
-    body = impression_body(patient, identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}])
+    body = impression_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
@@ -326,12 +438,21 @@ async def test_create_absolute_and_logical_references_not_resolved(client):
     resp = await client.post(BASE + "/", json=impression_body())
     assert resp.status_code == 201, resp.text
     assert resp.json()["subject"] == {"reference": absolute}
-    logical = {"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "External"}
-    body = impression_body(None, subject=logical, assessor={"reference": "https://other.example.org/fhir/Practitioner/7"})
+    logical = {
+        "identifier": {"system": "urn:pts", "value": "P-9"},
+        "display": "External",
+    }
+    body = impression_body(
+        None,
+        subject=logical,
+        assessor={"reference": "https://other.example.org/fhir/Practitioner/7"},
+    )
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     assert resp.json()["subject"] == logical
-    assert resp.json()["assessor"] == {"reference": "https://other.example.org/fhir/Practitioner/7"}
+    assert resp.json()["assessor"] == {
+        "reference": "https://other.example.org/fhir/Practitioner/7"
+    }
 
 
 # ── Read ─────────────────────────────────────────────────────────────────────
@@ -354,13 +475,17 @@ async def test_get_is_fhir_regardless_of_accept(client, patient):
 
 async def test_xml_only_accept_is_406(client, patient):
     impression = await create_impression(client, impression_body(patient))
-    resp = await client.get(f"{BASE}/{impression}", headers={"Accept": "application/fhir+xml"})
+    resp = await client.get(
+        f"{BASE}/{impression}", headers={"Accept": "application/fhir+xml"}
+    )
     assert resp.status_code == 406 and resp.json()["resourceType"] == "OperationOutcome"
 
 
 async def test_get_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -368,9 +493,15 @@ async def test_get_not_found(client):
 
 async def test_patch_scalar_keeps_the_rest(client, patient):
     impression, _ = await _full(client, patient)
-    resp = await client.patch(f"{BASE}/{impression}", json={"status": "entered-in-error", "summary": "Withdrawn."})
+    resp = await client.patch(
+        f"{BASE}/{impression}",
+        json={"status": "entered-in-error", "summary": "Withdrawn."},
+    )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "entered-in-error" and resp.json()["summary"] == "Withdrawn."
+    assert (
+        resp.json()["status"] == "entered-in-error"
+        and resp.json()["summary"] == "Withdrawn."
+    )
     assert resp.json()["subject"] == {"reference": f"Patient/{patient}"}  # untouched
     assert len(resp.json()["finding"]) == 2
 
@@ -379,65 +510,111 @@ async def test_patch_reindexes_search(client, patient):
     impression, _ = await _full(client, patient)
     await client.patch(
         f"{BASE}/{impression}",
-        json={"date": "2024-05-01", "status": "in-progress", "finding": [finding("999")]},
+        json={
+            "date": "2024-05-01",
+            "status": "in-progress",
+            "finding": [finding("999")],
+        },
     )
     for param, old, new in (
         ("date", "2023-01-15", "2024-05-01"),
         ("status", "completed", "in-progress"),
         ("finding-code", "194828000", "999"),
     ):
-        assert impression not in _ids((await client.get(BASE + "/", params={param: old})).json()), param
-        assert impression in _ids((await client.get(BASE + "/", params={param: new})).json()), param
+        assert impression not in _ids(
+            (await client.get(BASE + "/", params={param: old})).json()
+        ), param
+        assert impression in _ids(
+            (await client.get(BASE + "/", params={param: new})).json()
+        ), param
 
 
 async def test_patch_subject_replaced_and_reindexed(client, patient):
     impression = await create_impression(client, impression_body(patient))
     other = await create_patient(client)
-    resp = await client.patch(f"{BASE}/{impression}", json={"subject": {"reference": f"Patient/{other}"}})
+    resp = await client.patch(
+        f"{BASE}/{impression}", json={"subject": {"reference": f"Patient/{other}"}}
+    )
     assert resp.status_code == 200, resp.text
-    assert impression not in _ids((await client.get(BASE + "/", params={"patient": str(patient)})).json())
-    assert impression in _ids((await client.get(BASE + "/", params={"patient": str(other)})).json())
+    assert impression not in _ids(
+        (await client.get(BASE + "/", params={"patient": str(patient)})).json()
+    )
+    assert impression in _ids(
+        (await client.get(BASE + "/", params={"patient": str(other)})).json()
+    )
 
 
 async def test_patch_replaces_lists_and_empty_clears(client, patient):
     impression, _ = await _full(client, patient)
-    assert impression in _ids((await client.get(BASE + "/", params={"identifier": "CI-1001"})).json())
+    assert impression in _ids(
+        (await client.get(BASE + "/", params={"identifier": "CI-1001"})).json()
+    )
     resp = await client.patch(
         f"{BASE}/{impression}",
-        json={"identifier": [], "problem": [], "investigation": [], "finding": [], "supportingInfo": [], "note": []},
+        json={
+            "identifier": [],
+            "problem": [],
+            "investigation": [],
+            "finding": [],
+            "supportingInfo": [],
+            "note": [],
+        },
     )
-    for gone in ("identifier", "problem", "investigation", "finding", "supportingInfo", "note"):
+    for gone in (
+        "identifier",
+        "problem",
+        "investigation",
+        "finding",
+        "supportingInfo",
+        "note",
+    ):
         assert gone not in resp.json()
     assert resp.json()["summary"].startswith("Stable angina")  # untouched
     for param, value in (("identifier", "CI-1001"), ("finding-code", "194828000")):
-        assert impression not in _ids((await client.get(BASE + "/", params={param: value})).json()), (param, value)
+        assert impression not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), (param, value)
     for param in ("problem", "investigation", "finding-ref", "supporting-info"):
-        assert impression in _ids((await client.get(BASE + "/", params={f"{param}:missing": "true"})).json()), param
+        assert impression in _ids(
+            (await client.get(BASE + "/", params={f"{param}:missing": "true"})).json()
+        ), param
 
 
 async def test_patch_clears_a_date_and_missing_follows(client, patient):
-    impression = await create_impression(client, impression_body(patient, date="2024-05-01"))
+    impression = await create_impression(
+        client, impression_body(patient, date="2024-05-01")
+    )
     resp = await client.patch(f"{BASE}/{impression}", json={"date": None})
     assert "date" not in resp.json()
-    assert impression in _ids((await client.get(BASE + "/", params={"date:missing": "true"})).json())
+    assert impression in _ids(
+        (await client.get(BASE + "/", params={"date:missing": "true"})).json()
+    )
 
 
-async def test_patch_nonexistent_reference_rejected_and_nothing_written(client, patient):
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(
+    client, patient
+):
     impression = await create_impression(client, impression_body(patient))
-    resp = await client.patch(f"{BASE}/{impression}", json={"problem": [{"reference": "Condition/999999"}]})
+    resp = await client.patch(
+        f"{BASE}/{impression}", json={"problem": [{"reference": "Condition/999999"}]}
+    )
     assert resp.status_code == 422
     assert "problem" not in (await client.get(f"{BASE}/{impression}")).json()
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client, patient):
     impression = await create_impression(client, impression_body(patient, "completed"))
-    assert (await client.patch(f"{BASE}/{impression}", json={"status": "broken"})).status_code == 422
+    assert (
+        await client.patch(f"{BASE}/{impression}", json={"status": "broken"})
+    ).status_code == 422
     assert (await client.get(f"{BASE}/{impression}")).json()["status"] == "completed"
 
 
 async def test_patch_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"status": "completed"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -448,13 +625,21 @@ async def test_delete(client, patient):
     assert (await client.delete(f"{BASE}/{impression}")).status_code == 204
     assert (await client.get(f"{BASE}/{impression}")).status_code == 404
     # Its index rows are gone with it.
-    for param, value in (("identifier", "CI-1001"), ("finding-code", "194828000"), ("status", "completed")):
-        assert impression not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+    for param, value in (
+        ("identifier", "CI-1001"),
+        ("finding-code", "194828000"),
+        ("status", "completed"),
+    ):
+        assert impression not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
 
 
 async def test_delete_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -462,7 +647,9 @@ async def test_delete_not_found(client):
 
 async def test_create_without_permission(client, patient):
     _as_user(permissions=["clinical_impression:read"])
-    assert (await client.post(BASE + "/", json=impression_body(patient))).status_code == 403
+    assert (
+        await client.post(BASE + "/", json=impression_body(patient))
+    ).status_code == 403
 
 
 async def test_org_less_token_rejected(client, patient):
@@ -484,20 +671,29 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
     try:
         for resp in (
             await other_client.get(f"{BASE}/{impression}"),
-            await other_client.patch(f"{BASE}/{impression}", json={"status": "completed"}),
+            await other_client.patch(
+                f"{BASE}/{impression}", json={"status": "completed"}
+            ),
             await other_client.delete(f"{BASE}/{impression}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
 
 async def test_search_cross_tenant_isolation(client, other_client):
     _as_user()
-    await create_impression(client, impression_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]))
+    await create_impression(
+        client,
+        impression_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]),
+    )
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0
     finally:
         _as_user()

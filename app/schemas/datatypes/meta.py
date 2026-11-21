@@ -20,10 +20,12 @@ class FHIRMeta(BaseModel):
         None, description="ISO 8601 instant the resource version last changed."
     )
     source: Optional[str] = Field(
-        None, description="URI identifying where this resource currently resides or was generated."
+        None,
+        description="URI identifying where this resource currently resides or was generated.",
     )
     profile: Optional[List[str]] = Field(
-        None, description="Canonical URLs of profiles this resource claims to conform to."
+        None,
+        description="Canonical URLs of profiles this resource claims to conform to.",
     )
     security: Optional[List[FHIRCoding]] = Field(
         None, description="Security labels applied to this resource."

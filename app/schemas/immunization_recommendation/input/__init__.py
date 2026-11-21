@@ -1,3 +1,9 @@
-from .core import ImmunizationRecommendationCreateSchema, ImmunizationRecommendationPatchSchema
+from .core import (
+    ImmunizationRecommendationCreateSchema,
+    ImmunizationRecommendationPatchSchema,
+)
 
-__all__ = ["ImmunizationRecommendationCreateSchema", "ImmunizationRecommendationPatchSchema"]
+__all__ = [
+    "ImmunizationRecommendationCreateSchema",
+    "ImmunizationRecommendationPatchSchema",
+]

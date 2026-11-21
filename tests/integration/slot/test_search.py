@@ -28,7 +28,11 @@ ALL = set(KEYS)
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 @pytest.fixture
@@ -37,7 +41,9 @@ async def world(client):
     searchable values. Returns {key: public id}."""
     w = {}
     w["prac"] = await create_practitioner(client, "Careful", "Adam")
-    w["sched1"] = await create_schedule(client, {"active": True, "actor": [{"reference": f"Practitioner/{w['prac']}"}]})
+    w["sched1"] = await create_schedule(
+        client, {"active": True, "actor": [{"reference": f"Practitioner/{w['prac']}"}]}
+    )
     w["sched2"] = await create_schedule(client)
 
     w["a"] = await create_slot(
@@ -47,10 +53,24 @@ async def world(client):
             status="free",
             start="2026-06-01T09:00:00Z",
             end="2026-06-01T09:30:00Z",
-            identifier=[{"system": SLOT_IDS, "value": "SL-A", "type": {"text": "Slot number"}}],
-            serviceCategory=[{"coding": [{"system": CAT, "code": "17", "display": "General Practice"}]}],
+            identifier=[
+                {"system": SLOT_IDS, "value": "SL-A", "type": {"text": "Slot number"}}
+            ],
+            serviceCategory=[
+                {
+                    "coding": [
+                        {"system": CAT, "code": "17", "display": "General Practice"}
+                    ]
+                }
+            ],
             serviceType=[{"coding": [{"system": TYPE, "code": "124"}]}],
-            specialty=[{"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}],
+            specialty=[
+                {
+                    "coding": [
+                        {"system": SCT, "code": "394579002", "display": "Cardiology"}
+                    ]
+                }
+            ],
             appointmentType={"coding": [{"system": APPT, "code": "ROUTINE"}]},
         ),
     )
@@ -68,7 +88,12 @@ async def world(client):
     )
     w["c"] = await create_slot(
         client,
-        slot_body(w["sched2"], status="busy-unavailable", start="2026-07-15T14:00:00Z", end="2026-07-15T14:30:00Z"),
+        slot_body(
+            w["sched2"],
+            status="busy-unavailable",
+            start="2026-07-15T14:00:00Z",
+            end="2026-07-15T14:30:00Z",
+        ),
     )
     w["bare"] = await create_slot(
         client,
@@ -119,7 +144,9 @@ async def test_status_uses_real_fhir_codes(client, world):
 
 
 async def test_status_system_and_not(client, world):
-    assert await _keys(client, world, status="http://hl7.org/fhir/slotstatus|free") == {"a"}
+    assert await _keys(client, world, status="http://hl7.org/fhir/slotstatus|free") == {
+        "a"
+    }
     assert await _keys(client, world, status="http://wrong.example.org|free") == set()
     assert await _keys(client, world, **{"status:not": "free"}) == ALL - {"a"}
 
@@ -153,7 +180,9 @@ async def test_start_range_and_repeat_is_and(client, world):
 
 
 async def test_start_bad_value_is_400(client, world):
-    assert (await client.get(BASE + "/", params={"start": "not-a-date"})).status_code == 400
+    assert (
+        await client.get(BASE + "/", params={"start": "not-a-date"})
+    ).status_code == 400
 
 
 # ── identifier ───────────────────────────────────────────────────────────────
@@ -194,7 +223,10 @@ async def test_specialty(client, world):
 async def test_appointment_type_is_a_single_concept(client, world):
     assert await _keys(client, world, **{"appointment-type": "ROUTINE"}) == {"a"}
     assert await _keys(client, world, **{"appointment-type": f"{APPT}|WALKIN"}) == {"b"}
-    assert await _keys(client, world, **{"appointment-type:missing": "true"}) == {"c", "bare"}
+    assert await _keys(client, world, **{"appointment-type:missing": "true"}) == {
+        "c",
+        "bare",
+    }
 
 
 async def test_token_params_do_not_cross_over(client, world):
@@ -215,7 +247,9 @@ async def test_schedule_by_id_and_typed_reference(client, world):
 
 
 async def test_schedule_unsupported_modifier_is_400(client, world):
-    assert (await client.get(BASE + "/", params={"schedule:Practitioner": "1"})).status_code == 400
+    assert (
+        await client.get(BASE + "/", params={"schedule:Practitioner": "1"})
+    ).status_code == 400
 
 
 async def test_schedule_missing(client, world):
@@ -224,25 +258,41 @@ async def test_schedule_missing(client, world):
 
 
 async def test_schedule_chain_through_typed_actor(client, world):
-    assert await _keys(client, world, **{"schedule.actor:Practitioner.family": "Careful"}) == {"a", "b"}
-    assert await _keys(client, world, **{"schedule.actor:Practitioner.family": "Nobody"}) == set()
+    assert await _keys(
+        client, world, **{"schedule.actor:Practitioner.family": "Careful"}
+    ) == {"a", "b"}
+    assert (
+        await _keys(client, world, **{"schedule.actor:Practitioner.family": "Nobody"})
+        == set()
+    )
 
 
 async def test_schedule_chain_on_schedule_params(client, world):
     assert await _keys(client, world, **{"schedule.active": "true"}) == ALL
-    assert await _keys(client, world, **{"schedule.actor": f"Practitioner/{world['prac']}"}) == {"a", "b"}
+    assert await _keys(
+        client, world, **{"schedule.actor": f"Practitioner/{world['prac']}"}
+    ) == {"a", "b"}
 
 
 async def test_schedule_chain_unknown_param_is_400(client, world):
-    assert (await client.get(BASE + "/", params={"schedule.nonsense": "x"})).status_code == 400
+    assert (
+        await client.get(BASE + "/", params={"schedule.nonsense": "x"})
+    ).status_code == 400
 
 
 async def test_schedule_absolute_url_and_logical_reference(client, world):
     external = "https://other.example.org/fhir/Schedule/9"
     ext = await create_slot(client, slot_body(1, schedule={"reference": external}))
-    logical = await create_slot(client, slot_body(1, schedule={"identifier": {"system": "urn:schedules", "value": "EXT-1"}}))
+    logical = await create_slot(
+        client,
+        slot_body(
+            1, schedule={"identifier": {"system": "urn:schedules", "value": "EXT-1"}}
+        ),
+    )
     assert ext in _ids(await _search(client, schedule=external))
-    assert logical in _ids(await _search(client, **{"schedule:identifier": "urn:schedules|EXT-1"}))
+    assert logical in _ids(
+        await _search(client, **{"schedule:identifier": "urn:schedules|EXT-1"})
+    )
     assert logical not in _ids(await _search(client, schedule=str(world["sched1"])))
 
 
@@ -251,15 +301,21 @@ async def test_schedule_absolute_url_and_logical_reference(client, world):
 
 async def test_sort_by_start(client, world):
     asc = (await _search(client, _sort="start"))["entry"]
-    assert [int(e["resource"]["id"]) for e in asc] == [world[k] for k in ("a", "b", "c", "bare")]
+    assert [int(e["resource"]["id"]) for e in asc] == [
+        world[k] for k in ("a", "b", "c", "bare")
+    ]
     desc = (await _search(client, _sort="-start"))["entry"]
-    assert [int(e["resource"]["id"]) for e in desc] == [world[k] for k in ("bare", "c", "b", "a")]
+    assert [int(e["resource"]["id"]) for e in desc] == [
+        world[k] for k in ("bare", "c", "b", "a")
+    ]
 
 
 async def test_sort_by_status_and_schedule(client, world):
     assert (await _search(client, _sort="status"))["total"] == 4
     assert (await _search(client, _sort="-schedule"))["total"] == 4
-    assert (await client.get(BASE + "/", params={"_sort": "comment"})).status_code == 400
+    assert (
+        await client.get(BASE + "/", params={"_sort": "comment"})
+    ).status_code == 400
 
 
 async def test_default_sort_is_newest_first(client, world):
@@ -272,7 +328,10 @@ async def test_paging_and_total(client, world):
     assert page["total"] == 4 and len(page["entry"]) == 2
     assert {link["relation"] for link in page["link"]} >= {"self", "next"}
     nxt = await _search(client, _count=2, _offset=2, _sort="start")
-    assert [int(e["resource"]["id"]) for e in nxt["entry"]] == [world["c"], world["bare"]]
+    assert [int(e["resource"]["id"]) for e in nxt["entry"]] == [
+        world["c"],
+        world["bare"],
+    ]
     assert "entry" not in await _search(client, _count=0)
     assert "total" not in await _search(client, _total="none")
 
@@ -285,7 +344,11 @@ async def test_summary_count_and_elements(client, world):
     assert summary["total"] == 4 and "entry" not in summary
     elems = await _search(client, _elements="status", _id=str(world["a"]))
     res = elems["entry"][0]["resource"]
-    assert res["status"] == "free" and "comment" not in res and "serviceCategory" not in res
+    assert (
+        res["status"] == "free"
+        and "comment" not in res
+        and "serviceCategory" not in res
+    )
     assert res["meta"]["tag"][0]["code"] == "SUBSETTED"
 
 
@@ -294,30 +357,55 @@ async def test_summary_count_and_elements(client, world):
 
 async def test_include_schedule(client, world):
     bundle = await _search(client, _id=str(world["a"]), _include="Slot:schedule")
-    modes = {(e["resource"]["resourceType"], e["search"]["mode"]) for e in bundle["entry"]}
+    modes = {
+        (e["resource"]["resourceType"], e["search"]["mode"]) for e in bundle["entry"]
+    }
     assert modes == {("Slot", "match"), ("Schedule", "include")}
-    included = [e["resource"] for e in bundle["entry"] if e["search"]["mode"] == "include"]
+    included = [
+        e["resource"] for e in bundle["entry"] if e["search"]["mode"] == "include"
+    ]
     assert [r["id"] for r in included] == [str(world["sched1"])]
 
 
 async def test_include_schedule_is_deduplicated(client, world):
-    bundle = await _search(client, schedule=str(world["sched1"]), _include="Slot:schedule")
-    assert sum(1 for e in bundle["entry"] if e["resource"]["resourceType"] == "Schedule") == 1
+    bundle = await _search(
+        client, schedule=str(world["sched1"]), _include="Slot:schedule"
+    )
+    assert (
+        sum(1 for e in bundle["entry"] if e["resource"]["resourceType"] == "Schedule")
+        == 1
+    )
 
 
 async def test_include_nothing_for_external_schedule(client, world):
-    ext = await create_slot(client, slot_body(1, schedule={"reference": "https://other.example.org/fhir/Schedule/9"}))
+    ext = await create_slot(
+        client,
+        slot_body(
+            1, schedule={"reference": "https://other.example.org/fhir/Schedule/9"}
+        ),
+    )
     bundle = await _search(client, _id=str(ext), _include="Slot:schedule")
     assert {e["resource"]["resourceType"] for e in bundle["entry"]} == {"Slot"}
 
 
 async def test_revinclude_slots_on_schedule(client, world):
-    resp = await client.get(f"{API}/schedules/", params={"_id": str(world["sched1"]), "_revinclude": "Slot:schedule"})
+    resp = await client.get(
+        f"{API}/schedules/",
+        params={"_id": str(world["sched1"]), "_revinclude": "Slot:schedule"},
+    )
     assert resp.status_code == 200, resp.text
     entries = resp.json()["entry"]
-    slots = {int(e["resource"]["id"]) for e in entries if e["resource"]["resourceType"] == "Slot"}
+    slots = {
+        int(e["resource"]["id"])
+        for e in entries
+        if e["resource"]["resourceType"] == "Slot"
+    }
     assert slots == {world["a"], world["b"]}
-    assert all(e["search"]["mode"] == "include" for e in entries if e["resource"]["resourceType"] == "Slot")
+    assert all(
+        e["search"]["mode"] == "include"
+        for e in entries
+        if e["resource"]["resourceType"] == "Slot"
+    )
 
 
 async def test_include_on_unsupported_target_is_ignored_or_400(client, world):
@@ -331,20 +419,26 @@ async def test_include_on_unsupported_target_is_ignored_or_400(client, world):
 async def test_params_are_anded(client, world):
     assert await _keys(client, world, status="free", specialty="394579002") == {"a"}
     assert await _keys(client, world, status="free", specialty="408443003") == set()
-    assert await _keys(client, world, schedule=str(world["sched1"]), start="ge2026-06-02") == {"b"}
+    assert await _keys(
+        client, world, schedule=str(world["sched1"]), start="ge2026-06-02"
+    ) == {"b"}
 
 
 async def test_bad_value_is_400_operation_outcome(client, world):
     resp = await client.get(BASE + "/", params={"_lastUpdated": "banana"})
     assert resp.status_code == 400 and resp.json()["resourceType"] == "OperationOutcome"
-    assert (await client.get(BASE + "/", params={"status:above": "free"})).status_code == 400
+    assert (
+        await client.get(BASE + "/", params={"status:above": "free"})
+    ).status_code == 400
 
 
 async def test_unknown_param_lenient_vs_strict(client, world):
     lenient = await client.get(BASE + "/", params={"nonsense": "1"})
     assert lenient.status_code == 200
     assert any(e["search"]["mode"] == "outcome" for e in lenient.json()["entry"])
-    strict = await client.get(BASE + "/", params={"nonsense": "1"}, headers={"Prefer": "handling=strict"})
+    strict = await client.get(
+        BASE + "/", params={"nonsense": "1"}, headers={"Prefer": "handling=strict"}
+    )
     assert strict.status_code == 400
 
 
@@ -356,7 +450,9 @@ async def test_query_param_refused(client, world):
 
 
 async def test_post_search_form_encoded(client, world):
-    resp = await client.post(BASE + "/_search", data={"status": "busy", "start": "ge2026-06-01"})
+    resp = await client.post(
+        BASE + "/_search", data={"status": "busy", "start": "ge2026-06-01"}
+    )
     assert resp.status_code == 200, resp.text
     assert _ids(resp.json()) == {world["b"]}
 

@@ -15,10 +15,18 @@ from app.schemas.medication_dispense.response.reference import (
 class FHIRMedicationDispenseSubstitution(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    wasSubstituted: bool = Field(..., description="Whether a substitution was or was not performed.")
-    type: FHIRCodeableConcept | None = Field(None, description="Code signifying whether a different drug was dispensed.")
-    reason: list[FHIRCodeableConcept] | None = Field(None, description="Why was substitution made.")
-    responsibleParty: list[FHIRReference] | None = Field(None, description="Who is responsible for the substitution.")
+    wasSubstituted: bool = Field(
+        ..., description="Whether a substitution was or was not performed."
+    )
+    type: FHIRCodeableConcept | None = Field(
+        None, description="Code signifying whether a different drug was dispensed."
+    )
+    reason: list[FHIRCodeableConcept] | None = Field(
+        None, description="Why was substitution made."
+    )
+    responsibleParty: list[FHIRReference] | None = Field(
+        None, description="Who is responsible for the substitution."
+    )
 
 
 class PlainMedicationDispenseSubstitution(BaseModel):

@@ -92,7 +92,9 @@ async def test_create_care_team_full(client):
     assert len(data["telecoms"]) == 1
     assert data["telecoms"][0]["value"] == "+1-555-555-5555"
     assert len(data["notes"]) == 1
-    assert data["notes"][0]["text"] == "Initial care team established following diagnosis."
+    assert (
+        data["notes"][0]["text"] == "Initial care team established following diagnosis."
+    )
 
 
 async def test_create_care_team_fhir_content_negotiation(client):
@@ -374,7 +376,10 @@ async def test_create_care_team_with_reference_identifier_fallback(client):
     ct_id = plain_data["id"]
 
     assert plain_data["subject"] is None
-    assert plain_data["subject_identifier_system"] == "http://hospital.example.org/patients"
+    assert (
+        plain_data["subject_identifier_system"]
+        == "http://hospital.example.org/patients"
+    )
     assert plain_data["subject_identifier_value"] == "MRN-CT-999"
     assert plain_data["subject_display"] == "Fallback Subject"
 
@@ -383,9 +388,14 @@ async def test_create_care_team_with_reference_identifier_fallback(client):
 
     assert plain_data["identifiers"][0]["assigner_identifier_value"] == "ORG-ASSIGNER-1"
     assert plain_data["participants"][0]["member_identifier_value"] == "PRAC-MEMBER-1"
-    assert plain_data["participants"][0]["on_behalf_of_identifier_value"] == "ORG-ONBEHALF-1"
+    assert (
+        plain_data["participants"][0]["on_behalf_of_identifier_value"]
+        == "ORG-ONBEHALF-1"
+    )
     assert plain_data["reason_references"][0]["identifier_value"] == "COND-FALLBACK-1"
-    assert plain_data["managing_organizations"][0]["identifier_value"] == "ORG-MANAGING-1"
+    assert (
+        plain_data["managing_organizations"][0]["identifier_value"] == "ORG-MANAGING-1"
+    )
 
     # Verify FHIR serialization
     fhir_resp = await client.get(f"{BASE}/{ct_id}", headers=FHIR_ACCEPT)
@@ -395,11 +405,21 @@ async def test_create_care_team_with_reference_identifier_fallback(client):
     assert "reference" not in fhir_data["subject"]
     assert fhir_data["subject"]["identifier"]["value"] == "MRN-CT-999"
     assert fhir_data["encounter"]["identifier"]["value"] == "ENC-CT-999"
-    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-ASSIGNER-1"
-    assert fhir_data["participant"][0]["member"]["identifier"]["value"] == "PRAC-MEMBER-1"
-    assert fhir_data["participant"][0]["onBehalfOf"]["identifier"]["value"] == "ORG-ONBEHALF-1"
+    assert (
+        fhir_data["identifier"][0]["assigner"]["identifier"]["value"]
+        == "ORG-ASSIGNER-1"
+    )
+    assert (
+        fhir_data["participant"][0]["member"]["identifier"]["value"] == "PRAC-MEMBER-1"
+    )
+    assert (
+        fhir_data["participant"][0]["onBehalfOf"]["identifier"]["value"]
+        == "ORG-ONBEHALF-1"
+    )
     assert fhir_data["reasonReference"][0]["identifier"]["value"] == "COND-FALLBACK-1"
-    assert fhir_data["managingOrganization"][0]["identifier"]["value"] == "ORG-MANAGING-1"
+    assert (
+        fhir_data["managingOrganization"][0]["identifier"]["value"] == "ORG-MANAGING-1"
+    )
 
     # Patch subject fallback identifier
     patch_resp = await client.patch(

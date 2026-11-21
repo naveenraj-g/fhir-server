@@ -5,7 +5,6 @@ from app.services.family_member_history import FamilyMemberHistoryService
 
 
 class FamilyMemberHistoryContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     family_member_history_repository = providers.Factory(

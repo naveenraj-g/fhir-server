@@ -37,7 +37,9 @@ def _fhir_coding_list(codings) -> list[dict]:
     return result
 
 
-def fhir_medication_statement_codeable_concept(codings, text: str | None) -> dict | None:
+def fhir_medication_statement_codeable_concept(
+    codings, text: str | None
+) -> dict | None:
     coding_list = _fhir_coding_list(codings)
     result: dict = {}
     if coding_list:
@@ -66,7 +68,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -98,7 +102,13 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
             or id_type_user_selected
         ):
             type_cc: dict = {}
-            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+            if (
+                id_type_system
+                or id_type_code
+                or id_type_display
+                or id_type_version
+                or id_type_user_selected
+            ):
                 type_cc["coding"] = [
                     {
                         k: v
@@ -139,7 +149,9 @@ def fhir_medication_statement_identifier(ident: MedicationStatementIdentifier) -
     if ident.use:
         res["use"] = fhir_enum(ident.use)
     if ident.type_codings or ident.type_text:
-        res["type"] = fhir_medication_statement_codeable_concept(ident.type_codings, ident.type_text)
+        res["type"] = fhir_medication_statement_codeable_concept(
+            ident.type_codings, ident.type_text
+        )
     if ident.system:
         res["system"] = ident.system
     if ident.value:
@@ -148,7 +160,9 @@ def fhir_medication_statement_identifier(ident: MedicationStatementIdentifier) -
         res["period"] = {
             k: v
             for k, v in {
-                "start": fhir_instant(ident.period_start) if ident.period_start else None,
+                "start": fhir_instant(ident.period_start)
+                if ident.period_start
+                else None,
                 "end": fhir_instant(ident.period_end) if ident.period_end else None,
             }.items()
             if v is not None
@@ -175,11 +189,15 @@ def fhir_medication_statement_reason_reference(rr) -> dict:
     return _fhir_reference_with_identifier_fallback(rr, "reference")
 
 
-def fhir_medication_statement_status_reason(sr: MedicationStatementStatusReason) -> dict | None:
+def fhir_medication_statement_status_reason(
+    sr: MedicationStatementStatusReason,
+) -> dict | None:
     return fhir_medication_statement_codeable_concept(sr.codings, sr.text)
 
 
-def fhir_medication_statement_reason_code(rc: MedicationStatementReasonCode) -> dict | None:
+def fhir_medication_statement_reason_code(
+    rc: MedicationStatementReasonCode,
+) -> dict | None:
     return fhir_medication_statement_codeable_concept(rc.codings, rc.text)
 
 
@@ -220,7 +238,8 @@ def fhir_medication_statement_dosage(d: MedicationStatementDosage) -> dict:
     if d.text:
         entry["text"] = d.text
     additional_instructions = [
-        fhir_medication_statement_codeable_concept(ai.codings, ai.text) for ai in (d.additional_instructions or [])
+        fhir_medication_statement_codeable_concept(ai.codings, ai.text)
+        for ai in (d.additional_instructions or [])
     ]
     additional_instructions = [ai for ai in additional_instructions if ai]
     if additional_instructions:
@@ -233,7 +252,9 @@ def fhir_medication_statement_dosage(d: MedicationStatementDosage) -> dict:
     if d.as_needed_boolean is not None:
         entry["asNeededBoolean"] = d.as_needed_boolean
     else:
-        as_needed_cc = fhir_medication_statement_codeable_concept(d.as_needed_codings, d.as_needed_codeable_concept_text)
+        as_needed_cc = fhir_medication_statement_codeable_concept(
+            d.as_needed_codings, d.as_needed_codeable_concept_text
+        )
         if as_needed_cc:
             entry["asNeededCodeableConcept"] = as_needed_cc
 
@@ -281,7 +302,9 @@ def to_fhir_medication_statement(model: MedicationStatementModel) -> dict:
         res["meta"] = meta
 
     if model.category_codings or model.category_text:
-        cat = fhir_medication_statement_codeable_concept(model.category_codings, model.category_text)
+        cat = fhir_medication_statement_codeable_concept(
+            model.category_codings, model.category_text
+        )
         if cat:
             res["category"] = cat
 
@@ -314,8 +337,12 @@ def to_fhir_medication_statement(model: MedicationStatementModel) -> dict:
         res["effectivePeriod"] = {
             k: v
             for k, v in {
-                "start": fhir_instant(model.effective_period_start) if model.effective_period_start else None,
-                "end": fhir_instant(model.effective_period_end) if model.effective_period_end else None,
+                "start": fhir_instant(model.effective_period_start)
+                if model.effective_period_start
+                else None,
+                "end": fhir_instant(model.effective_period_end)
+                if model.effective_period_end
+                else None,
             }.items()
             if v is not None
         }
@@ -341,25 +368,35 @@ def to_fhir_medication_statement(model: MedicationStatementModel) -> dict:
         res["partOf"] = po_list
 
     # statusReason
-    sr_list = [fhir_medication_statement_status_reason(sr) for sr in (model.status_reasons or [])]
+    sr_list = [
+        fhir_medication_statement_status_reason(sr)
+        for sr in (model.status_reasons or [])
+    ]
     sr_list = [sr for sr in sr_list if sr]
     if sr_list:
         res["statusReason"] = sr_list
 
     # derivedFrom
-    df_list = [fhir_medication_statement_derived_from(df) for df in (model.derived_from or [])]
+    df_list = [
+        fhir_medication_statement_derived_from(df) for df in (model.derived_from or [])
+    ]
     df_list = [df for df in df_list if df]
     if df_list:
         res["derivedFrom"] = df_list
 
     # reasonCode
-    rc_list = [fhir_medication_statement_reason_code(rc) for rc in (model.reason_codes or [])]
+    rc_list = [
+        fhir_medication_statement_reason_code(rc) for rc in (model.reason_codes or [])
+    ]
     rc_list = [rc for rc in rc_list if rc]
     if rc_list:
         res["reasonCode"] = rc_list
 
     # reasonReference
-    rr_list = [fhir_medication_statement_reason_reference(rr) for rr in (model.reason_references or [])]
+    rr_list = [
+        fhir_medication_statement_reason_reference(rr)
+        for rr in (model.reason_references or [])
+    ]
     rr_list = [rr for rr in rr_list if rr]
     if rr_list:
         res["reasonReference"] = rr_list
@@ -377,7 +414,9 @@ def to_fhir_medication_statement(model: MedicationStatementModel) -> dict:
         res["dosage"] = dosages
 
     # identifier
-    identifiers = [fhir_medication_statement_identifier(i) for i in (model.identifiers or [])]
+    identifiers = [
+        fhir_medication_statement_identifier(i) for i in (model.identifiers or [])
+    ]
     identifiers = [i for i in identifiers if i]
     if identifiers:
         res["identifier"] = identifiers

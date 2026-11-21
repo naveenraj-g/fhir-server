@@ -5,7 +5,6 @@ from app.services.group import GroupService
 
 
 class GroupContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     group_repository = providers.Factory(

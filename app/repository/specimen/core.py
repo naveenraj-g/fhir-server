@@ -72,7 +72,9 @@ class _CoreMixin:
         if subject:
             stmt = stmt.where(SpecimenModel.subject_reference == subject)
         if accession_identifier:
-            stmt = stmt.where(SpecimenModel.accession_identifier_value == accession_identifier)
+            stmt = stmt.where(
+                SpecimenModel.accession_identifier_value == accession_identifier
+            )
         if identifier:
             stmt = apply_child_exists_filter(
                 stmt,

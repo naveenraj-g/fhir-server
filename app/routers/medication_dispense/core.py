@@ -48,8 +48,7 @@ logger = get_logger(__name__)
         "Describes the event of dispensing a medication to a patient or consumer. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )

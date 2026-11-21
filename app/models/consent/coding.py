@@ -12,7 +12,10 @@ class ConsentScopeCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     consent = relationship("ConsentModel", back_populates="scope_codings")
@@ -25,7 +28,10 @@ class ConsentPolicyRuleCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     consent = relationship("ConsentModel", back_populates="policy_rule_codings")

@@ -30,7 +30,9 @@ class ServiceRequestIdentifier(TenantAuditMixin, Base):
         BigInteger, ForeignKey("service_request.id"), nullable=False, index=True
     )
 
-    use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=True)
@@ -40,12 +42,18 @@ class ServiceRequestIdentifier(TenantAuditMixin, Base):
     assigner_reference = Column(String, nullable=True)
     assigner_id = Column(BigInteger, nullable=True, index=True)
     assigner_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     assigner_display = Column(String, nullable=True)
 
-    assigner_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    assigner_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     assigner_identifier_type_system = Column(String, nullable=True)
     assigner_identifier_type_version = Column(String, nullable=True)
     assigner_identifier_type_code = Column(String, nullable=True)
@@ -77,7 +85,10 @@ class ServiceRequestIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_identifier_id = Column(
-        BigInteger, ForeignKey("service_request_identifier.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("service_request_identifier.id"),
+        nullable=False,
+        index=True,
     )
 
     identifier = relationship("ServiceRequestIdentifier", back_populates="type_codings")

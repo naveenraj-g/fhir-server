@@ -105,8 +105,12 @@ class ConsentModel(TenantAuditMixin, Base):
     source_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     source_reference_identifier_system = Column(String, nullable=True)
     source_reference_identifier_value = Column(String, nullable=True)
-    source_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    source_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    source_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    source_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     source_attachment = Column(JSONB, nullable=True)
 

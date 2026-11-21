@@ -58,15 +58,9 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
         f"{prefix}_identifier_system": getattr(
             obj, f"{prefix}_identifier_system", None
         ),
-        f"{prefix}_identifier_value": getattr(
-            obj, f"{prefix}_identifier_value", None
-        ),
-        f"{prefix}_identifier_period_start": fhir_instant(p_start)
-        if p_start
-        else None,
-        f"{prefix}_identifier_period_end": fhir_instant(p_end)
-        if p_end
-        else None,
+        f"{prefix}_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start) if p_start else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end) if p_end else None,
     }
 
 

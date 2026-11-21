@@ -15,7 +15,11 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import EncounterReferenceType, IdentifierUse, OrganizationReferenceType
+from app.models.enums import (
+    EncounterReferenceType,
+    IdentifierUse,
+    OrganizationReferenceType,
+)
 from app.models.service_request.enums import (
     ServiceRequestIntent,
     ServiceRequestPriority,
@@ -108,7 +112,9 @@ class ServiceRequestModel(TenantAuditMixin, Base):
 
     # ── requisition (0..1 Identifier) — flattened ─────────────────────────
 
-    requisition_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    requisition_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     requisition_type_text = Column(String, nullable=True)
     requisition_system = Column(String, nullable=True)
     requisition_value = Column(String, nullable=True)
@@ -118,7 +124,11 @@ class ServiceRequestModel(TenantAuditMixin, Base):
     requisition_assigner_reference = Column(String, nullable=True)
     requisition_assigner_id = Column(BigInteger, nullable=True, index=True)
     requisition_assigner_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     requisition_assigner_display = Column(String, nullable=True)
@@ -134,17 +144,27 @@ class ServiceRequestModel(TenantAuditMixin, Base):
     requisition_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
     requisition_assigner_identifier_system = Column(String, nullable=True)
     requisition_assigner_identifier_value = Column(String, nullable=True)
-    requisition_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    requisition_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    requisition_assigner_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    requisition_assigner_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # ── status / intent (1..1 code, required, modifier) ───────────────────
 
-    status = Column(Enum(ServiceRequestStatus, name="service_request_status"), nullable=False)
-    intent = Column(Enum(ServiceRequestIntent, name="service_request_intent"), nullable=False)
+    status = Column(
+        Enum(ServiceRequestStatus, name="service_request_status"), nullable=False
+    )
+    intent = Column(
+        Enum(ServiceRequestIntent, name="service_request_intent"), nullable=False
+    )
 
     # ── priority (0..1 code) ───────────────────────────────────────────────
 
-    priority = Column(Enum(ServiceRequestPriority, name="service_request_priority"), nullable=True)
+    priority = Column(
+        Enum(ServiceRequestPriority, name="service_request_priority"), nullable=True
+    )
 
     # ── doNotPerform (0..1 boolean, modifier) ──────────────────────────────
 
@@ -158,7 +178,9 @@ class ServiceRequestModel(TenantAuditMixin, Base):
 
     quantity_quantity_value = Column(Numeric, nullable=True)
     quantity_quantity_comparator = Column(
-        Enum(ServiceRequestQuantityComparator, name="service_request_quantity_comparator"),
+        Enum(
+            ServiceRequestQuantityComparator, name="service_request_quantity_comparator"
+        ),
         nullable=True,
     )
     quantity_quantity_unit = Column(String, nullable=True)
@@ -203,13 +225,18 @@ class ServiceRequestModel(TenantAuditMixin, Base):
 
     subject_reference = Column(String, nullable=True)
     subject_type = Column(
-        Enum(ServiceRequestSubjectReferenceType, name="service_request_subject_reference_type"),
+        Enum(
+            ServiceRequestSubjectReferenceType,
+            name="service_request_subject_reference_type",
+        ),
         nullable=True,
     )
     subject_id = Column(BigInteger, nullable=True, index=True)
     subject_display = Column(String, nullable=True)
 
-    subject_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    subject_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     subject_identifier_type_system = Column(String, nullable=True)
     subject_identifier_type_version = Column(String, nullable=True)
     subject_identifier_type_code = Column(String, nullable=True)
@@ -225,13 +252,17 @@ class ServiceRequestModel(TenantAuditMixin, Base):
 
     encounter_reference = Column(String, nullable=True)
     encounter_type = Column(
-        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        Enum(
+            EncounterReferenceType, name="encounter_reference_type", create_type=False
+        ),
         nullable=True,
     )
     encounter_id = Column(BigInteger, nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
 
-    encounter_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    encounter_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     encounter_identifier_type_system = Column(String, nullable=True)
     encounter_identifier_type_version = Column(String, nullable=True)
     encounter_identifier_type_code = Column(String, nullable=True)
@@ -264,13 +295,18 @@ class ServiceRequestModel(TenantAuditMixin, Base):
 
     requester_reference = Column(String, nullable=True)
     requester_type = Column(
-        Enum(ServiceRequestRequesterReferenceType, name="service_request_requester_reference_type"),
+        Enum(
+            ServiceRequestRequesterReferenceType,
+            name="service_request_requester_reference_type",
+        ),
         nullable=True,
     )
     requester_id = Column(BigInteger, nullable=True, index=True)
     requester_display = Column(String, nullable=True)
 
-    requester_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    requester_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     requester_identifier_type_system = Column(String, nullable=True)
     requester_identifier_type_version = Column(String, nullable=True)
     requester_identifier_type_code = Column(String, nullable=True)
@@ -301,64 +337,104 @@ class ServiceRequestModel(TenantAuditMixin, Base):
     # ── Relationships ─────────────────────────────────────────────────────
 
     requisition_type_codings = relationship(
-        "ServiceRequestRequisitionTypeCoding", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestRequisitionTypeCoding",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     code_codings = relationship(
-        "ServiceRequestCodeCoding", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestCodeCoding",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     as_needed_codings = relationship(
-        "ServiceRequestAsNeededCoding", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestAsNeededCoding",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     performer_type_codings = relationship(
-        "ServiceRequestPerformerTypeCoding", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestPerformerTypeCoding",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     identifiers = relationship(
-        "ServiceRequestIdentifier", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestIdentifier",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     based_ons = relationship(
-        "ServiceRequestBasedOn", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestBasedOn",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     replaces = relationship(
-        "ServiceRequestReplaces", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestReplaces",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     categories = relationship(
-        "ServiceRequestCategory", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestCategory",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     order_details = relationship(
-        "ServiceRequestOrderDetail", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestOrderDetail",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     location_codes = relationship(
-        "ServiceRequestLocationCode", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestLocationCode",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     location_references = relationship(
-        "ServiceRequestLocationReference", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestLocationReference",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     reason_codes = relationship(
-        "ServiceRequestReasonCode", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestReasonCode",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     reason_references = relationship(
-        "ServiceRequestReasonReference", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestReasonReference",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     insurances = relationship(
-        "ServiceRequestInsurance", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestInsurance",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     supporting_infos = relationship(
-        "ServiceRequestSupportingInfo", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestSupportingInfo",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     specimens = relationship(
-        "ServiceRequestSpecimen", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestSpecimen",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     relevant_histories = relationship(
-        "ServiceRequestRelevantHistory", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestRelevantHistory",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     notes = relationship(
-        "ServiceRequestNote", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestNote",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     performers = relationship(
-        "ServiceRequestPerformer", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestPerformer",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
     body_sites = relationship(
-        "ServiceRequestBodySite", back_populates="service_request", cascade="all, delete-orphan"
+        "ServiceRequestBodySite",
+        back_populates="service_request",
+        cascade="all, delete-orphan",
     )
 
 
@@ -378,7 +454,9 @@ class ServiceRequestRequisitionTypeCoding(FhirCodingMixin, TenantAuditMixin, Bas
         BigInteger, ForeignKey("service_request.id"), nullable=False, index=True
     )
 
-    service_request = relationship("ServiceRequestModel", back_populates="requisition_type_codings")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="requisition_type_codings"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -414,7 +492,9 @@ class ServiceRequestAsNeededCoding(FhirCodingMixin, TenantAuditMixin, Base):
         BigInteger, ForeignKey("service_request.id"), nullable=False, index=True
     )
 
-    service_request = relationship("ServiceRequestModel", back_populates="as_needed_codings")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="as_needed_codings"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -432,4 +512,6 @@ class ServiceRequestPerformerTypeCoding(FhirCodingMixin, TenantAuditMixin, Base)
         BigInteger, ForeignKey("service_request.id"), nullable=False, index=True
     )
 
-    service_request = relationship("ServiceRequestModel", back_populates="performer_type_codings")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="performer_type_codings"
+    )

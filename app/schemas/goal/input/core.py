@@ -90,7 +90,8 @@ class GoalCreateSchema(BaseModel):
         description="proposed | planned | accepted | active | on-hold | completed | cancelled | entered-in-error | rejected.",
     )
     achievement_status_coding: list[CodingInput] | None = Field(
-        None, description="in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable."
+        None,
+        description="in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable.",
     )
     achievement_status_text: str | None = Field(
         None, description="Plain text representation of achievement status."
@@ -162,9 +163,7 @@ class GoalCreateSchema(BaseModel):
     target: list[GoalTargetInput] | None = Field(
         None, description="Target outcome for the goal."
     )
-    status_date: date | None = Field(
-        None, description="When goal status took effect."
-    )
+    status_date: date | None = Field(None, description="When goal status took effect.")
     status_reason: str | None = Field(
         None, description="Reason for current status (string per FHIR R4)."
     )
@@ -219,10 +218,12 @@ class GoalCreateSchema(BaseModel):
         None, description="What result was achieved regarding the goal."
     )
     outcome_reference: list[GoalReferenceInput | str] | None = Field(
-        None, description="Observation that resulted from goal (Reference(Observation))."
+        None,
+        description="Observation that resulted from goal (Reference(Observation)).",
     )
     extension: list[dict] | None = Field(
-        None, description="May be used to represent additional information that is not part of the basic definition."
+        None,
+        description="May be used to represent additional information that is not part of the basic definition.",
     )
 
     @model_validator(mode="after")
@@ -231,7 +232,11 @@ class GoalCreateSchema(BaseModel):
             raise ValueError(
                 "Goal.description is required (at least description_text or description_coding must be provided)"
             )
-        if not self.subject and not self.subject_identifier_value and not self.subject_display:
+        if (
+            not self.subject
+            and not self.subject_identifier_value
+            and not self.subject_display
+        ):
             raise ValueError(
                 "Goal.subject is required (at least subject reference, identifier, or display must be provided)"
             )
@@ -269,7 +274,8 @@ class GoalPatchSchema(BaseModel):
         description="proposed | planned | accepted | active | on-hold | completed | cancelled | entered-in-error | rejected.",
     )
     achievement_status_coding: list[CodingInput] | None = Field(
-        None, description="in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable."
+        None,
+        description="in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable.",
     )
     achievement_status_text: str | None = Field(
         None, description="Plain text representation of achievement status."
@@ -341,9 +347,7 @@ class GoalPatchSchema(BaseModel):
     target: list[GoalTargetInput] | None = Field(
         None, description="Target outcome for the goal."
     )
-    status_date: date | None = Field(
-        None, description="When goal status took effect."
-    )
+    status_date: date | None = Field(None, description="When goal status took effect.")
     status_reason: str | None = Field(
         None, description="Reason for current status (string per FHIR R4)."
     )
@@ -398,8 +402,10 @@ class GoalPatchSchema(BaseModel):
         None, description="What result was achieved regarding the goal."
     )
     outcome_reference: list[GoalReferenceInput | str] | None = Field(
-        None, description="Observation that resulted from goal (Reference(Observation))."
+        None,
+        description="Observation that resulted from goal (Reference(Observation)).",
     )
     extension: list[dict] | None = Field(
-        None, description="May be used to represent additional information that is not part of the basic definition."
+        None,
+        description="May be used to represent additional information that is not part of the basic definition.",
     )

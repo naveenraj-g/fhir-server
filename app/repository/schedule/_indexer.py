@@ -23,7 +23,12 @@ from app.models.schedule import (
     ScheduleIdentifier,
     ScheduleToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import MODELED_ACTOR_TYPES, actor_type_and_id
 
@@ -39,7 +44,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     elsewhere and aren't checked."""
     refs = []
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
     for actor in document.get("actor") or []:
@@ -84,7 +91,11 @@ def index_rows(document: dict) -> dict[str, list]:
         for concept in document.get(element) or []:
             tokens.extend(type_rows(model, concept))
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(ScheduleIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ScheduleIdentifier, i)
+        ],
         "tokens": tokens,
         "actors": [r for a in document.get("actor") or [] if (r := _actor_row(a))],
     }

@@ -37,13 +37,18 @@ class ServiceRequestRelevantHistory(TenantAuditMixin, Base):
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
-        Enum(ServiceRequestRelevantHistoryReferenceType, name="service_request_relevant_history_reference_type"),
+        Enum(
+            ServiceRequestRelevantHistoryReferenceType,
+            name="service_request_relevant_history_reference_type",
+        ),
         nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
-    reference_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     reference_identifier_type_system = Column(String, nullable=True)
     reference_identifier_type_version = Column(String, nullable=True)
     reference_identifier_type_code = Column(String, nullable=True)
@@ -55,4 +60,6 @@ class ServiceRequestRelevantHistory(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    service_request = relationship("ServiceRequestModel", back_populates="relevant_histories")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="relevant_histories"
+    )

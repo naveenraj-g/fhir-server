@@ -7,7 +7,9 @@ class CarePlanQuantityInput(BaseModel):
     """Quantity input for CarePlan (e.g. dailyAmount, quantity)."""
 
     model_config = ConfigDict(extra="forbid")
-    value: float | None = Field(None, description="Numerical value (with implicit precision).")
+    value: float | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
     comparator: CarePlanQuantityComparator | None = Field(
         None, description="< | <= | >= | > - how to understand the value."
     )

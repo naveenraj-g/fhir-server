@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base

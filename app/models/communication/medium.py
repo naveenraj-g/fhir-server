@@ -20,9 +20,7 @@ class CommunicationMedium(TenantAuditMixin, Base):
 
     text = Column(String, nullable=True)
 
-    communication = relationship(
-        "CommunicationModel", back_populates="medium_list"
-    )
+    communication = relationship("CommunicationModel", back_populates="medium_list")
     codings = relationship(
         "CommunicationMediumCoding",
         back_populates="medium",
@@ -43,6 +41,4 @@ class CommunicationMediumCoding(FhirCodingMixin, TenantAuditMixin, Base):
         index=True,
     )
 
-    medium = relationship(
-        "CommunicationMedium", back_populates="codings"
-    )
+    medium = relationship("CommunicationMedium", back_populates="codings")

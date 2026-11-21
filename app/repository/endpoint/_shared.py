@@ -24,5 +24,8 @@ def _with_relationships(stmt):
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from EndpointModel.content."""
     return stmt.options(
-        *(selectinload(getattr(EndpointModel, rel)) for rel in ("identifiers", "payload_types"))
+        *(
+            selectinload(getattr(EndpointModel, rel))
+            for rel in ("identifiers", "payload_types")
+        )
     )

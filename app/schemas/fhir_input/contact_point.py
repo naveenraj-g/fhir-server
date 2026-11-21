@@ -11,11 +11,10 @@ class FhirContactPointInput(FhirInputModel):
     system: ContactPointSystem | None = Field(
         None, description="phone | fax | email | pager | url | sms | other."
     )
-    value: str | None = Field(
-        None, description="The actual contact point details."
-    )
+    value: str | None = Field(None, description="The actual contact point details.")
     use: ContactPointUse | None = Field(
-        None, description="home | work | temp | old | mobile — purpose of this contact point."
+        None,
+        description="home | work | temp | old | mobile — purpose of this contact point.",
     )
     rank: int | None = Field(
         None, ge=1, description="Specify preferred order of use (1 = highest)."

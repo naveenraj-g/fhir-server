@@ -7,8 +7,6 @@ from app.services.care_plan import CarePlanService
 
 @inject
 def get_care_plan_service(
-    service: CarePlanService = Depends(
-        Provide[Container.care_plan.care_plan_service]
-    ),
+    service: CarePlanService = Depends(Provide[Container.care_plan.care_plan_service]),
 ) -> CarePlanService:
     return service

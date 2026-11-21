@@ -45,11 +45,21 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
         entry["display"] = display
 
     id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
-    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
-    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
-    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
-    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
-    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get(
+        "identifier_type_system"
+    )
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get(
+        "identifier_type_version"
+    )
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get(
+        "identifier_type_code"
+    )
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get(
+        "identifier_type_display"
+    )
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get(
+        "identifier_type_text"
+    )
     id_type_user_selected = (
         _get(f"{prefix}_identifier_type_user_selected")
         if _get(f"{prefix}_identifier_type_user_selected") is not None
@@ -57,8 +67,12 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     )
     id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
     id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
-    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
-    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get(
+        "identifier_period_start"
+    )
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get(
+        "identifier_period_end"
+    )
 
     if (
         id_use
@@ -163,7 +177,9 @@ def _coding_from_payload(c) -> dict:
     }
 
 
-def _codeable_concept_from_payload(concept: DocumentReferenceCodeableConceptInput | None) -> dict | None:
+def _codeable_concept_from_payload(
+    concept: DocumentReferenceCodeableConceptInput | None,
+) -> dict | None:
     if not concept:
         return None
     codings = [_coding_from_payload(c) for c in (concept.coding or [])]
@@ -176,7 +192,9 @@ def _codeable_concept_from_payload(concept: DocumentReferenceCodeableConceptInpu
     return result or None
 
 
-def _identifier_from_payload(ident: DocumentReferenceIdentifierInput | None) -> dict | None:
+def _identifier_from_payload(
+    ident: DocumentReferenceIdentifierInput | None,
+) -> dict | None:
     if not ident:
         return None
     entry: dict = {}
@@ -227,7 +245,11 @@ def _content_from_payload(content: DocumentReferenceContentInput) -> dict:
     if getattr(att, "title", None):
         attachment["title"] = att.title
     if getattr(att, "creation", None):
-        attachment["creation"] = att.creation.isoformat() if hasattr(att.creation, "isoformat") else str(att.creation)
+        attachment["creation"] = (
+            att.creation.isoformat()
+            if hasattr(att.creation, "isoformat")
+            else str(att.creation)
+        )
 
     entry: dict = {"attachment": attachment}
     if content.format:
@@ -242,7 +264,9 @@ def _context_from_payload(context: DocumentReferenceContextInput | None) -> dict
         return None
     ctx: dict = {}
     if context.encounter:
-        ctx["encounter"] = [_child_reference_from_payload(e) for e in context.encounter if e]
+        ctx["encounter"] = [
+            _child_reference_from_payload(e) for e in context.encounter if e
+        ]
     if context.event:
         events = [_codeable_concept_from_payload(e) for e in context.event]
         events = [e for e in events if e]
@@ -267,7 +291,9 @@ def _context_from_payload(context: DocumentReferenceContextInput | None) -> dict
     if source_pat:
         ctx["sourcePatientInfo"] = source_pat
     if context.related:
-        ctx["related"] = [_child_reference_from_payload(r) for r in context.related if r]
+        ctx["related"] = [
+            _child_reference_from_payload(r) for r in context.related if r
+        ]
     return ctx or None
 
 
@@ -411,13 +437,17 @@ def patch_fragment_to_fhir_document_reference(
     if "master_identifier" in fields_set:
         touched.add("masterIdentifier")
         if payload.master_identifier is not None:
-            fragment["masterIdentifier"] = _identifier_from_payload(payload.master_identifier)
+            fragment["masterIdentifier"] = _identifier_from_payload(
+                payload.master_identifier
+            )
 
     if "identifier" in fields_set:
         touched.add("identifier")
         if payload.identifier is not None:
             fragment["identifier"] = [
-                i for i in [_identifier_from_payload(x) for x in payload.identifier] if i
+                i
+                for i in [_identifier_from_payload(x) for x in payload.identifier]
+                if i
             ]
 
     if "status" in fields_set:
@@ -439,7 +469,9 @@ def patch_fragment_to_fhir_document_reference(
         touched.add("category")
         if payload.category is not None:
             fragment["category"] = [
-                c for c in [_codeable_concept_from_payload(x) for x in payload.category] if c
+                c
+                for c in [_codeable_concept_from_payload(x) for x in payload.category]
+                if c
             ]
 
     if fields_set & _SUBJECT_FIELDS:
@@ -456,7 +488,9 @@ def patch_fragment_to_fhir_document_reference(
     if "author" in fields_set:
         touched.add("author")
         if payload.author is not None:
-            fragment["author"] = [_child_reference_from_payload(a) for a in payload.author if a]
+            fragment["author"] = [
+                _child_reference_from_payload(a) for a in payload.author if a
+            ]
 
     if fields_set & _AUTHENTICATOR_FIELDS:
         touched.add("authenticator")
@@ -489,7 +523,11 @@ def patch_fragment_to_fhir_document_reference(
         touched.add("securityLabel")
         if payload.security_label is not None:
             fragment["securityLabel"] = [
-                s for s in [_codeable_concept_from_payload(x) for x in payload.security_label] if s
+                s
+                for s in [
+                    _codeable_concept_from_payload(x) for x in payload.security_label
+                ]
+                if s
             ]
 
     if "content" in fields_set:

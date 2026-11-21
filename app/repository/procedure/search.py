@@ -62,26 +62,76 @@ _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Patient": ("app.models.patient", "PatientModel", "patient_id",
-                "app.repository.patient.search", "patient_search"),
-    "Practitioner": ("app.models.practitioner", "PractitionerModel", "practitioner_id",
-                     "app.repository.practitioner.search", "practitioner_search"),
-    "PractitionerRole": ("app.models.practitioner_role", "PractitionerRoleModel", "practitioner_role_id",
-                         "app.repository.practitioner_role.search", "practitioner_role_search"),
-    "RelatedPerson": ("app.models.related_person", "RelatedPersonModel", "related_person_id",
-                      "app.repository.related_person.search", "related_person_search"),
-    "Organization": ("app.models.organization", "OrganizationModel", "organization_id",
-                     "app.repository.organization.search", "organization_search"),
-    "Encounter": ("app.models.encounter", "EncounterModel", "encounter_id",
-                  "app.repository.encounter.search", "encounter_search"),
-    "Location": ("app.models.location", "LocationModel", "location_id",
-                 "app.repository.location.search", "location_search"),
-    "Condition": ("app.models.condition", "ConditionModel", "condition_id",
-                  "app.repository.condition.search", "condition_search"),
-    "Procedure": ("app.models.procedure", "ProcedureModel", "procedure_id",
-                  "app.repository.procedure.search", "procedure_search"),
-    "DiagnosticReport": ("app.models.diagnostic_report", "DiagnosticReportModel", "diagnostic_report_id",
-                         "app.repository.diagnostic_report.search", "diagnostic_report_search"),
+    "Patient": (
+        "app.models.patient",
+        "PatientModel",
+        "patient_id",
+        "app.repository.patient.search",
+        "patient_search",
+    ),
+    "Practitioner": (
+        "app.models.practitioner",
+        "PractitionerModel",
+        "practitioner_id",
+        "app.repository.practitioner.search",
+        "practitioner_search",
+    ),
+    "PractitionerRole": (
+        "app.models.practitioner_role",
+        "PractitionerRoleModel",
+        "practitioner_role_id",
+        "app.repository.practitioner_role.search",
+        "practitioner_role_search",
+    ),
+    "RelatedPerson": (
+        "app.models.related_person",
+        "RelatedPersonModel",
+        "related_person_id",
+        "app.repository.related_person.search",
+        "related_person_search",
+    ),
+    "Organization": (
+        "app.models.organization",
+        "OrganizationModel",
+        "organization_id",
+        "app.repository.organization.search",
+        "organization_search",
+    ),
+    "Encounter": (
+        "app.models.encounter",
+        "EncounterModel",
+        "encounter_id",
+        "app.repository.encounter.search",
+        "encounter_search",
+    ),
+    "Location": (
+        "app.models.location",
+        "LocationModel",
+        "location_id",
+        "app.repository.location.search",
+        "location_search",
+    ),
+    "Condition": (
+        "app.models.condition",
+        "ConditionModel",
+        "condition_id",
+        "app.repository.condition.search",
+        "condition_search",
+    ),
+    "Procedure": (
+        "app.models.procedure",
+        "ProcedureModel",
+        "procedure_id",
+        "app.repository.procedure.search",
+        "procedure_search",
+    ),
+    "DiagnosticReport": (
+        "app.models.diagnostic_report",
+        "DiagnosticReportModel",
+        "diagnostic_report_id",
+        "app.repository.diagnostic_report.search",
+        "diagnostic_report_search",
+    ),
 }
 
 
@@ -109,7 +159,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.procedure_pk == P.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.procedure_pk == P.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -127,7 +181,9 @@ def _referenced(target: str, inner, ctx):
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return P.procedure_id == int(token.code)
 
@@ -157,10 +213,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -172,7 +235,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -191,15 +256,23 @@ def _column_ref(prefix: str, targets: tuple[str, ...], narrowed: str | None = No
     """(match, present, chain, sort) for a 0..1 Reference held as `{prefix}_*`
     columns on the procedure row. `narrowed` restricts a multi-target element to
     one type (`patient` is `subject` resolved to a Patient)."""
-    ref, type_, id_ = (getattr(P, f"{prefix}_{part}") for part in ("reference", "type", "id"))
-    ident_system, ident_value = getattr(P, f"{prefix}_identifier_system"), getattr(P, f"{prefix}_identifier_value")
+    ref, type_, id_ = (
+        getattr(P, f"{prefix}_{part}") for part in ("reference", "type", "id")
+    )
+    ident_system, ident_value = (
+        getattr(P, f"{prefix}_identifier_system"),
+        getattr(P, f"{prefix}_identifier_value"),
+    )
     # `is_not(None)` keeps `NOT present` (`:missing=true`) from going NULL for a row whose
     # reference has no resolved type (a logical, identifier-only reference).
     type_filter = (type_.is_not(None), type_ == narrowed) if narrowed else ()
 
     def match(value, modifier, ctx):
         if modifier == "identifier":
-            return and_(token_condition(ident_system, ident_value, parse_token(value)), *type_filter)
+            return and_(
+                token_condition(ident_system, ident_value, parse_token(value)),
+                *type_filter,
+            )
         # `modifier` is a target type (subject:Patient=10001) or None; a bare id
         # with several targets is ambiguous and is rejected by reference_target().
         return reference_match(type_, id_, ref, value, modifier, ctx, targets, str)
@@ -225,23 +298,44 @@ def _reference_param(param: str, targets: tuple[str, ...]):
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _R,
             _R.param == param,
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
             ),
         )
 
     def present(ctx):
         return _exists(
-            _R, _R.param == param, or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None))
+            _R,
+            _R.param == param,
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
-        return _exists(_R, _R.param == param, _R.reference_type == target, _R.reference_id.in_(_referenced(target, inner, ctx)))
+        return _exists(
+            _R,
+            _R.param == param,
+            _R.reference_type == target,
+            _R.reference_id.in_(_referenced(target, inner, ctx)),
+        )
 
     def sort():
         return _child_sort(_R.reference_id, _R, _R.param == param)
@@ -259,16 +353,31 @@ def _canonical_param():
 
     def match(value, modifier, ctx):
         conditions = [
-            reference_match(_R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str)
+            reference_match(
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
+            )
         ]
         if modifier is None and "|" not in value and _ABSOLUTE.match(value):
-            conditions.append(_R.reference_reference.like(like_escape(value) + "|%", escape="\\"))
+            conditions.append(
+                _R.reference_reference.like(like_escape(value) + "|%", escape="\\")
+            )
         return _exists(_R, _R.param == param, or_(*conditions))
 
     def present(ctx):
         return _exists(_R, _R.param == param)
 
-    return match, present, lambda: _child_sort(_R.reference_reference, _R, _R.param == param)
+    return (
+        match,
+        present,
+        lambda: _child_sort(_R.reference_reference, _R, _R.param == param),
+    )
 
 
 # ── performer ────────────────────────────────────────────────────────────────
@@ -277,22 +386,44 @@ def _canonical_param():
 def _performer_match(value, modifier, ctx):
     if modifier == "identifier":
         return _exists(
-            _Pf, token_condition(_Pf.reference_identifier_system, _Pf.reference_identifier_value, parse_token(value))
+            _Pf,
+            token_condition(
+                _Pf.reference_identifier_system,
+                _Pf.reference_identifier_value,
+                parse_token(value),
+            ),
         )
     return _exists(
         _Pf,
         reference_match(
-            _Pf.reference_type, _Pf.reference_id, _Pf.reference_reference, value, modifier, ctx, PERFORMER_TYPES, str
+            _Pf.reference_type,
+            _Pf.reference_id,
+            _Pf.reference_reference,
+            value,
+            modifier,
+            ctx,
+            PERFORMER_TYPES,
+            str,
         ),
     )
 
 
 def _performer_present(ctx):
-    return _exists(_Pf, or_(_Pf.reference_reference.is_not(None), _Pf.reference_identifier_value.is_not(None)))
+    return _exists(
+        _Pf,
+        or_(
+            _Pf.reference_reference.is_not(None),
+            _Pf.reference_identifier_value.is_not(None),
+        ),
+    )
 
 
 def _performer_chain(target, inner, ctx):
-    return _exists(_Pf, _Pf.reference_type == target, _Pf.reference_id.in_(_referenced(target, inner, ctx)))
+    return _exists(
+        _Pf,
+        _Pf.reference_type == target,
+        _Pf.reference_id.in_(_referenced(target, inner, ctx)),
+    )
 
 
 # ── instantiates-uri ─────────────────────────────────────────────────────────
@@ -313,7 +444,9 @@ async def _load(session, ctx, resource_type: str, ids) -> list:
     if not ids:
         return []
     model, id_col = _model(resource_type)
-    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+    )
 
 
 def _include_column(prefix: str, resource_type: str):
@@ -322,7 +455,11 @@ def _include_column(prefix: str, resource_type: str):
 
     async def fetch(session, ctx, procedures):
         type_, id_ = f"{prefix}_type", f"{prefix}_id"
-        ids = {getattr(p, id_) for p in procedures if getattr(p, type_) == resource_type and getattr(p, id_)}
+        ids = {
+            getattr(p, id_)
+            for p in procedures
+            if getattr(p, type_) == resource_type and getattr(p, id_)
+        }
         return await _load(session, ctx, resource_type, ids)
 
     return fetch
@@ -339,7 +476,12 @@ def _include_child(model, resource_type: str, *conditions):
             model.reference_id.is_not(None),
             *conditions,
         )
-        return await _load(session, ctx, resource_type, set((await session.execute(ids)).scalars().all()))
+        return await _load(
+            session,
+            ctx,
+            resource_type,
+            set((await session.execute(ids)).scalars().all()),
+        )
 
     return fetch
 
@@ -352,7 +494,12 @@ def revinclude_procedures_via_column(prefix: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         type_, id_ = getattr(P, f"{prefix}_type"), getattr(P, f"{prefix}_id")
-        return await _fetch(session, select(P).where(P.tenant_id == ctx.tenant_id, type_ == resource_type, id_.in_(ids)))
+        return await _fetch(
+            session,
+            select(P).where(
+                P.tenant_id == ctx.tenant_id, type_ == resource_type, id_.in_(ids)
+            ),
+        )
 
     return fetch
 
@@ -363,8 +510,14 @@ def revinclude_procedures_via_child(model, resource_type: str, key, *conditions)
 
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
-        pks = select(model.procedure_pk).where(model.reference_type == resource_type, model.reference_id.in_(ids), *conditions)
-        return await _fetch(session, select(P).where(P.tenant_id == ctx.tenant_id, P.id.in_(pks)))
+        pks = select(model.procedure_pk).where(
+            model.reference_type == resource_type,
+            model.reference_id.in_(ids),
+            *conditions,
+        )
+        return await _fetch(
+            session, select(P).where(P.tenant_id == ctx.tenant_id, P.id.in_(pks))
+        )
 
     return fetch
 
@@ -374,14 +527,20 @@ def _register_kind() -> None:
     from app.fhir.mappers.procedure import to_fhir_procedure
     from app.fhir.search.execute import ResourceKind, register_kind
 
-    register_kind(ResourceKind("Procedure", lambda p: p.procedure_id, to_fhir_procedure, "procedures"))
+    register_kind(
+        ResourceKind(
+            "Procedure", lambda p: p.procedure_id, to_fhir_procedure, "procedures"
+        )
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────────────────
 
 _TOKEN = frozenset({"text", "not", "in", "not-in", "above", "below", "missing"})
 _REFERENCE = frozenset({"identifier", "missing"})
-_IDENTIFIER_DOC = {"identifier": "`:identifier` — match the logical identifier of a target that has no resource here."}
+_IDENTIFIER_DOC = {
+    "identifier": "`:identifier` — match the logical identifier of a target that has no resource here."
+}
 
 
 @cache
@@ -390,14 +549,36 @@ def procedure_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
-    def column_ref(name, description, expression, prefix, targets, example, narrowed=None):
+    def column_ref(
+        name, description, expression, prefix, targets, example, narrowed=None
+    ):
         match, present, chain, sort = _column_ref(prefix, targets, narrowed)
         modeled = [t for t in targets if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, chain=chain,
-            chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
@@ -407,8 +588,18 @@ def procedure_search() -> SearchRegistry:
         match, present, chain, sort = _reference_param(name, targets)
         modeled = [t for t in targets if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, chain=chain,
-            chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
@@ -417,92 +608,191 @@ def procedure_search() -> SearchRegistry:
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public procedure id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: P.procedure_id, example="100001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public procedure id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: P.procedure_id,
+            example="100001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
-        reference("based-on", "A request for this procedure", "Procedure.basedOn", "ServiceRequest/80001"),
-        token("category", "Classification of the procedure", "Procedure.category", "http://snomed.info/sct|387713003"),
-        token("code", "A code to identify a procedure", "Procedure.code", "http://snomed.info/sct|80146002"),
+        reference(
+            "based-on",
+            "A request for this procedure",
+            "Procedure.basedOn",
+            "ServiceRequest/80001",
+        ),
+        token(
+            "category",
+            "Classification of the procedure",
+            "Procedure.category",
+            "http://snomed.info/sct|387713003",
+        ),
+        token(
+            "code",
+            "A code to identify a procedure",
+            "Procedure.code",
+            "http://snomed.info/sct|80146002",
+        ),
         SearchParam(
-            "date", "date", "When the procedure was performed (a dateTime or a Period)", "Procedure.performed",
-            _date_match, lambda ctx: or_(P.performed_date_start.is_not(None), P.performed_date_end.is_not(None)),
-            sort=lambda: P.performed_date_start, example="ge2026-01-01",
+            "date",
+            "date",
+            "When the procedure was performed (a dateTime or a Period)",
+            "Procedure.performed",
+            _date_match,
+            lambda ctx: or_(
+                P.performed_date_start.is_not(None), P.performed_date_end.is_not(None)
+            ),
+            sort=lambda: P.performed_date_start,
+            example="ge2026-01-01",
         ),
         column_ref(
-            "encounter", "Encounter created as part of", "Procedure.encounter", "encounter", ("Encounter",),
+            "encounter",
+            "Encounter created as part of",
+            "Procedure.encounter",
+            "encounter",
+            ("Encounter",),
             "Encounter/20001",
         ),
         SearchParam(
-            "identifier", "token", "A unique identifier for a procedure", "Procedure.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:procedures|PR-1",
+            "identifier",
+            "token",
+            "A unique identifier for a procedure",
+            "Procedure.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:procedures|PR-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         SearchParam(
-            "instantiates-canonical", "reference", "Instantiates FHIR protocol or definition (a canonical URL)",
-            "Procedure.instantiatesCanonical", canonical_match, canonical_present, frozenset({"missing"}),
-            targets=REFERENCE_TYPES["instantiates-canonical"], sort=canonical_sort,
+            "instantiates-canonical",
+            "reference",
+            "Instantiates FHIR protocol or definition (a canonical URL)",
+            "Procedure.instantiatesCanonical",
+            canonical_match,
+            canonical_present,
+            frozenset({"missing"}),
+            targets=REFERENCE_TYPES["instantiates-canonical"],
+            sort=canonical_sort,
             example="http://example.org/fhir/PlanDefinition/knee-replacement",
             modifier_docs={
                 "missing": "`:missing=true` — resources with no canonical for this parameter; `:missing=false` — resources that have one."
             },
         ),
         SearchParam(
-            "instantiates-uri", "uri", "Instantiates external protocol or definition", "Procedure.instantiatesUri",
-            _uri_match, lambda ctx: _exists(_U), frozenset({"above", "below", "missing"}),
-            sort=lambda: _child_sort(_U.uri, _U), example="http://example.org/protocols/knee",
+            "instantiates-uri",
+            "uri",
+            "Instantiates external protocol or definition",
+            "Procedure.instantiatesUri",
+            _uri_match,
+            lambda ctx: _exists(_U),
+            frozenset({"above", "below", "missing"}),
+            sort=lambda: _child_sort(_U.uri, _U),
+            example="http://example.org/protocols/knee",
             modifier_docs={
                 "below": "`:below` — stored URIs that start with the value (`http://acme.org/p` finds `http://acme.org/p/1`).",
                 "above": "`:above` — stored URIs that are a prefix of the value.",
             },
         ),
         column_ref(
-            "location", "Where the procedure happened", "Procedure.location", "location", ("Location",),
+            "location",
+            "Where the procedure happened",
+            "Procedure.location",
+            "location",
+            ("Location",),
             "Location/230001",
         ),
-        reference("part-of", "A larger event of which this particular procedure is a component", "Procedure.partOf",
-                  "Procedure/100001"),
+        reference(
+            "part-of",
+            "A larger event of which this particular procedure is a component",
+            "Procedure.partOf",
+            "Procedure/100001",
+        ),
         column_ref(
-            "patient", "Search by subject - a patient", "Procedure.subject.where(resolve() is Patient)", "subject",
-            ("Patient",), "Patient/10001", narrowed="Patient",
+            "patient",
+            "Search by subject - a patient",
+            "Procedure.subject.where(resolve() is Patient)",
+            "subject",
+            ("Patient",),
+            "Patient/10001",
+            narrowed="Patient",
         ),
         SearchParam(
-            "performer", "reference", "Who performed the procedure (the performer's actor)", "Procedure.performer.actor",
-            _performer_match, _performer_present, _REFERENCE, targets=PERFORMER_TYPES, chain=_performer_chain,
+            "performer",
+            "reference",
+            "Who performed the procedure (the performer's actor)",
+            "Procedure.performer.actor",
+            _performer_match,
+            _performer_present,
+            _REFERENCE,
+            targets=PERFORMER_TYPES,
+            chain=_performer_chain,
             chain_targets={t: _registry_of(t) for t in modeled_performers},
-            sort=lambda: _child_sort(_Pf.reference_id, _Pf), example="Practitioner/30001",
+            sort=lambda: _child_sort(_Pf.reference_id, _Pf),
+            example="Practitioner/30001",
             modifier_docs=_IDENTIFIER_DOC,
         ),
-        token("reason-code", "Reason the procedure was performed (coded)", "Procedure.reasonCode", "http://snomed.info/sct|396275006"),
+        token(
+            "reason-code",
+            "Reason the procedure was performed (coded)",
+            "Procedure.reasonCode",
+            "http://snomed.info/sct|396275006",
+        ),
         reference(
-            "reason-reference", "The justification that the procedure was performed", "Procedure.reasonReference",
+            "reason-reference",
+            "The justification that the procedure was performed",
+            "Procedure.reasonReference",
             "Condition/120001",
         ),
         SearchParam(
-            "status", "token",
+            "status",
+            "token",
             "preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown "
             f"(system {_STATUS_SYSTEM})",
-            "Procedure.status", _status_match, lambda ctx: P.status.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: P.status, example="completed",
+            "Procedure.status",
+            _status_match,
+            lambda ctx: P.status.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: P.status,
+            example="completed",
         ),
         column_ref(
-            "subject", "Search by subject", "Procedure.subject", "subject", SUBJECT_TYPES, "Patient/10001",
+            "subject",
+            "Search by subject",
+            "Procedure.subject",
+            "subject",
+            SUBJECT_TYPES,
+            "Patient/10001",
         ),
     ]
 
     performer_includes = tuple(
-        IncludeTarget("Procedure", "performer", t, _include_child(_Pf, t)) for t in modeled_performers
+        IncludeTarget("Procedure", "performer", t, _include_child(_Pf, t))
+        for t in modeled_performers
     )
     reason_includes = tuple(
-        IncludeTarget("Procedure", "reason-reference", t, _include_child(_R, t, _R.param == "reason-reference"))
+        IncludeTarget(
+            "Procedure",
+            "reason-reference",
+            t,
+            _include_child(_R, t, _R.param == "reason-reference"),
+        )
         for t in ("Condition", "Procedure", "DiagnosticReport")
     )
 
@@ -511,36 +801,90 @@ def procedure_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 Procedure definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "instantiatesCanonical", "instantiatesUri", "basedOn", "partOf", "status", "statusReason",
-             "category", "code", "subject", "encounter", "performedDateTime", "performedPeriod", "performedString",
-             "performedAge", "performedRange", "recorder", "asserter", "performer", "location", "reasonCode",
-             "reasonReference", "bodySite", "outcome"}
+            {
+                "identifier",
+                "instantiatesCanonical",
+                "instantiatesUri",
+                "basedOn",
+                "partOf",
+                "status",
+                "statusReason",
+                "category",
+                "code",
+                "subject",
+                "encounter",
+                "performedDateTime",
+                "performedPeriod",
+                "performedString",
+                "performedAge",
+                "performedRange",
+                "recorder",
+                "asserter",
+                "performer",
+                "location",
+                "reasonCode",
+                "reasonReference",
+                "bodySite",
+                "outcome",
+            }
         ),
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"status", "subject"}),
         includes=(
-            IncludeTarget("Procedure", "patient", "Patient", _include_column("subject", "Patient")),
-            IncludeTarget("Procedure", "subject", "Patient", _include_column("subject", "Patient")),
-            IncludeTarget("Procedure", "encounter", "Encounter", _include_column("encounter", "Encounter")),
-            IncludeTarget("Procedure", "location", "Location", _include_column("location", "Location")),
+            IncludeTarget(
+                "Procedure", "patient", "Patient", _include_column("subject", "Patient")
+            ),
+            IncludeTarget(
+                "Procedure", "subject", "Patient", _include_column("subject", "Patient")
+            ),
+            IncludeTarget(
+                "Procedure",
+                "encounter",
+                "Encounter",
+                _include_column("encounter", "Encounter"),
+            ),
+            IncludeTarget(
+                "Procedure",
+                "location",
+                "Location",
+                _include_column("location", "Location"),
+            ),
             *performer_includes,
-            IncludeTarget("Procedure", "part-of", "Procedure", _include_child(_R, "Procedure", _R.param == "part-of")),
+            IncludeTarget(
+                "Procedure",
+                "part-of",
+                "Procedure",
+                _include_child(_R, "Procedure", _R.param == "part-of"),
+            ),
             *reason_includes,
         ),
         # Encounter.diagnosis / .reasonReference and Appointment.reasonReference point here,
         # and a Procedure that is part of, or justified by, another one points back at it.
         revincludes=(
             *reference_encounter_revincludes("Procedure", lambda p: p.procedure_id),
-            *reference_observation_revincludes("part-of", "Procedure", lambda p: p.procedure_id),
+            *reference_observation_revincludes(
+                "part-of", "Procedure", lambda p: p.procedure_id
+            ),
             *reason_appointment_revincludes("Procedure", lambda p: p.procedure_id),
             IncludeTarget(
-                "Procedure", "part-of", "Procedure",
-                revinclude_procedures_via_child(_R, "Procedure", lambda p: p.procedure_id, _R.param == "part-of"),
+                "Procedure",
+                "part-of",
+                "Procedure",
+                revinclude_procedures_via_child(
+                    _R, "Procedure", lambda p: p.procedure_id, _R.param == "part-of"
+                ),
                 reverse=True,
             ),
             IncludeTarget(
-                "Procedure", "reason-reference", "Procedure",
-                revinclude_procedures_via_child(_R, "Procedure", lambda p: p.procedure_id, _R.param == "reason-reference"),
+                "Procedure",
+                "reason-reference",
+                "Procedure",
+                revinclude_procedures_via_child(
+                    _R,
+                    "Procedure",
+                    lambda p: p.procedure_id,
+                    _R.param == "reason-reference",
+                ),
                 reverse=True,
             ),
         ),

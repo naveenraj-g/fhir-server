@@ -8,7 +8,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import SlotStatus
 
-slot_id_seq = Sequence("slot_pub_seq", start=220000, increment=1, metadata=Base.metadata)
+slot_id_seq = Sequence(
+    "slot_pub_seq", start=220000, increment=1, metadata=Base.metadata
+)
 
 
 class SlotModel(TenantAuditMixin, Base):
@@ -91,4 +93,6 @@ class SlotModel(TenantAuditMixin, Base):
     identifiers = relationship(
         "SlotIdentifier", back_populates="slot", cascade="all, delete-orphan"
     )
-    tokens = relationship("SlotToken", back_populates="slot", cascade="all, delete-orphan")
+    tokens = relationship(
+        "SlotToken", back_populates="slot", cascade="all, delete-orphan"
+    )

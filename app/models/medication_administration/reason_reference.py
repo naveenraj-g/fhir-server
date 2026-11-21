@@ -24,7 +24,10 @@ class MedicationAdministrationReasonReference(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_administration_pk = Column(
-        BigInteger, ForeignKey("medication_administration.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_administration.id"),
+        nullable=False,
+        index=True,
     )
 
     reference_reference = Column(String, nullable=True)

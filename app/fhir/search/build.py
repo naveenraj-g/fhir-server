@@ -49,7 +49,9 @@ def clause_condition(registry: SearchRegistry, clause: Clause, ctx: SearchContex
     return not_(func.coalesce(matched, false()))
 
 
-def where_conditions(registry: SearchRegistry, request: SearchRequest, ctx: SearchContext) -> list:
+def where_conditions(
+    registry: SearchRegistry, request: SearchRequest, ctx: SearchContext
+) -> list:
     return [clause_condition(registry, c, ctx) for c in request.clauses]
 
 

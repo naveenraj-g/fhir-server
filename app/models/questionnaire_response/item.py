@@ -63,7 +63,10 @@ class QuestionnaireResponseItem(TenantAuditMixin, Base):
         BigInteger, ForeignKey("questionnaire_response.id"), nullable=False, index=True
     )
     parent_item_id = Column(
-        BigInteger, ForeignKey("questionnaire_response_item.id"), nullable=True, index=True
+        BigInteger,
+        ForeignKey("questionnaire_response_item.id"),
+        nullable=True,
+        index=True,
     )
     # Deliberately NOT a ForeignKey — see class docstring.
     parent_answer_id = Column(BigInteger, nullable=True, index=True)
@@ -72,7 +75,9 @@ class QuestionnaireResponseItem(TenantAuditMixin, Base):
     definition = Column(String, nullable=True)
     text = Column(String, nullable=True)
 
-    questionnaire_response = relationship("QuestionnaireResponseModel", back_populates="items")
+    questionnaire_response = relationship(
+        "QuestionnaireResponseModel", back_populates="items"
+    )
     answers = relationship(
         "QuestionnaireResponseAnswer",
         back_populates="item",

@@ -21,12 +21,8 @@ class PlainConsentVerification(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: int | None = Field(None, description="Internal DB ID.")
-    verified: bool = Field(
-        ..., description="Has been verified by patient or guardian."
-    )
-    verified_with: str | None = Field(
-        None, description="Person who verified consent."
-    )
+    verified: bool = Field(..., description="Has been verified by patient or guardian.")
+    verified_with: str | None = Field(None, description="Person who verified consent.")
     verified_with_display: str | None = Field(
         None, description="Display name for verified_with."
     )

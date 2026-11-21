@@ -45,11 +45,21 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
         entry["display"] = display
 
     id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
-    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
-    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
-    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
-    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
-    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get(
+        "identifier_type_system"
+    )
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get(
+        "identifier_type_version"
+    )
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get(
+        "identifier_type_code"
+    )
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get(
+        "identifier_type_display"
+    )
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get(
+        "identifier_type_text"
+    )
     id_type_user_selected = (
         _get(f"{prefix}_identifier_type_user_selected")
         if _get(f"{prefix}_identifier_type_user_selected") is not None
@@ -57,8 +67,12 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     )
     id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
     id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
-    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
-    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get(
+        "identifier_period_start"
+    )
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get(
+        "identifier_period_end"
+    )
 
     if (
         id_use
@@ -238,7 +252,9 @@ def _identifier_from_payload(i: EpisodeOfCareIdentifierInput) -> dict:
     return ident
 
 
-def payload_to_fhir_episode_of_care(payload: EpisodeOfCareCreateSchema) -> dict[str, Any]:
+def payload_to_fhir_episode_of_care(
+    payload: EpisodeOfCareCreateSchema,
+) -> dict[str, Any]:
     """Convert an EpisodeOfCareCreateSchema to a FHIR R4 dict for pre-write validation."""
     fhir: dict[str, Any] = {
         "resourceType": "EpisodeOfCare",
@@ -309,9 +325,15 @@ def payload_to_fhir_episode_of_care(payload: EpisodeOfCareCreateSchema) -> dict[
     return fhir
 
 
-_PATIENT_FIELDS = {"patient", "patient_display"} | {f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
-_MANAGING_ORG_FIELDS = {"managing_organization", "managing_organization_display"} | {f"managing_organization_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
-_CARE_MANAGER_FIELDS = {"care_manager", "care_manager_display"} | {f"care_manager_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_PATIENT_FIELDS = {"patient", "patient_display"} | {
+    f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_MANAGING_ORG_FIELDS = {"managing_organization", "managing_organization_display"} | {
+    f"managing_organization_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_CARE_MANAGER_FIELDS = {"care_manager", "care_manager_display"} | {
+    f"care_manager_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 
 
 def patch_fragment_to_fhir_episode_of_care(
@@ -366,7 +388,9 @@ def patch_fragment_to_fhir_episode_of_care(
         touched.add("type")
         if payload.type is not None:
             fragment["type"] = [
-                t for t in [_codeable_concept_from_payload(x) for x in payload.type] if t
+                t
+                for t in [_codeable_concept_from_payload(x) for x in payload.type]
+                if t
             ]
 
     if "diagnosis" in fields_set:
@@ -406,6 +430,8 @@ def patch_fragment_to_fhir_episode_of_care(
     if "identifier" in fields_set:
         touched.add("identifier")
         if payload.identifier is not None:
-            fragment["identifier"] = [_identifier_from_payload(i) for i in payload.identifier]
+            fragment["identifier"] = [
+                _identifier_from_payload(i) for i in payload.identifier
+            ]
 
     return fragment, touched

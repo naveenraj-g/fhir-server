@@ -32,7 +32,9 @@ def _tag_subsetted(resource: dict) -> dict:
     return resource
 
 
-def subset(resource: dict, request: SearchRequest, registry: SearchRegistry, *, match: bool) -> dict:
+def subset(
+    resource: dict, request: SearchRequest, registry: SearchRegistry, *, match: bool
+) -> dict:
     """Apply `_summary` (every entry) and `_elements` (match entries)."""
     mode = request.summary
     keep: frozenset[str] | None = None
@@ -56,20 +58,34 @@ def _link(url: str, items: list[tuple[str, str]], count: int, offset: int) -> st
     return f"{url}?{urlencode(params)}"
 
 
-def paging_links(url: str, request: SearchRequest, total: int | None, returned: int) -> list[dict]:
+def paging_links(
+    url: str, request: SearchRequest, total: int | None, returned: int
+) -> list[dict]:
     count, offset = request.count, request.offset
     links = [{"relation": "self", "url": _link(url, request.applied, count, offset)}]
     if request.summary == "count" or count == 0:
         return links
     links.append({"relation": "first", "url": _link(url, request.applied, count, 0)})
     if offset > 0:
-        links.append({"relation": "previous", "url": _link(url, request.applied, count, max(offset - count, 0))})
+        links.append(
+            {
+                "relation": "previous",
+                "url": _link(url, request.applied, count, max(offset - count, 0)),
+            }
+        )
     has_next = (offset + count < total) if total is not None else returned >= count
     if has_next:
-        links.append({"relation": "next", "url": _link(url, request.applied, count, offset + count)})
+        links.append(
+            {
+                "relation": "next",
+                "url": _link(url, request.applied, count, offset + count),
+            }
+        )
     if total is not None:
         last = max(((total - 1) // count) * count, 0) if total else 0
-        links.append({"relation": "last", "url": _link(url, request.applied, count, last)})
+        links.append(
+            {"relation": "last", "url": _link(url, request.applied, count, last)}
+        )
     return links
 
 
@@ -112,10 +128,18 @@ def searchset_bundle(
             if extensions:
                 search["extension"] = extensions
             entries.append(
-                {"fullUrl": full_url(r), "resource": subset(r, request, registry, match=True), "search": search}
+                {
+                    "fullUrl": full_url(r),
+                    "resource": subset(r, request, registry, match=True),
+                    "search": search,
+                }
             )
         entries += [
-            {"fullUrl": full_url(r), "resource": subset(r, request, registry, match=False), "search": {"mode": "include"}}
+            {
+                "fullUrl": full_url(r),
+                "resource": subset(r, request, registry, match=False),
+                "search": {"mode": "include"},
+            }
             for r in includes
         ]
     outcome = ignored_outcome(request, registry.resource_type)

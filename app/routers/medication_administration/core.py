@@ -47,22 +47,26 @@ logger = get_logger(__name__)
         "Describes the event of a patient consuming or being administered a medication. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_medication_administration(
     payload: MedicationAdministrationCreateSchema,
     request: Request,
-    actor: AuthUser = Depends(require_permission("medication_administration", "create")),
+    actor: AuthUser = Depends(
+        require_permission("medication_administration", "create")
+    ),
     medication_administration_service: MedicationAdministrationService = Depends(
         get_medication_administration_service
     ),
 ):
     logger.info(
         "Create a new MedicationAdministration resource",
-        extra={"event": "route.create_medication_administration", "org_id": actor.org_id},
+        extra={
+            "event": "route.create_medication_administration",
+            "org_id": actor.org_id,
+        },
     )
     log_payload(logger, "medication_administration.create.payload", payload)
     model = await medication_administration_service.create_medication_administration(
@@ -108,8 +112,10 @@ async def get_medication_administration(
             "org_id": actor.org_id,
         },
     )
-    model = await medication_administration_service.get_medication_administration_scoped(
-        medication_administration_id, actor.org_id
+    model = (
+        await medication_administration_service.get_medication_administration_scoped(
+            medication_administration_id, actor.org_id
+        )
     )
     return format_response(
         medication_administration_service._to_fhir(model),
@@ -138,7 +144,9 @@ async def patch_medication_administration(
     medication_administration_id: int = Path(
         ..., ge=1, description="Public MedicationAdministration identifier."
     ),
-    actor: AuthUser = Depends(require_permission("medication_administration", "update")),
+    actor: AuthUser = Depends(
+        require_permission("medication_administration", "update")
+    ),
     medication_administration_service: MedicationAdministrationService = Depends(
         get_medication_administration_service
     ),
@@ -171,8 +179,7 @@ async def patch_medication_administration(
     summary="List MedicationAdministration resources with filtering and pagination",
     description=(
         "Search MedicationAdministration resources. Scoped to actor.org_id — an org-less token "
-        "is rejected outright (403). "
-        + _CONTENT_NEG
+        "is rejected outright (403). " + _CONTENT_NEG
     ),
     responses=_LIST_200,
 )
@@ -231,9 +238,15 @@ async def list_medication_administrations(
 ):
     logger.info(
         "List MedicationAdministration resources with filtering and pagination",
-        extra={"event": "route.list_medication_administrations", "org_id": actor.org_id},
+        extra={
+            "event": "route.list_medication_administrations",
+            "org_id": actor.org_id,
+        },
     )
-    models, total = await medication_administration_service.list_medication_administrations(
+    (
+        models,
+        total,
+    ) = await medication_administration_service.list_medication_administrations(
         org_id=actor.org_id,
         status=med_status,
         subject=subject,
@@ -280,7 +293,9 @@ async def delete_medication_administration(
     medication_administration_id: int = Path(
         ..., ge=1, description="Public MedicationAdministration identifier."
     ),
-    actor: AuthUser = Depends(require_permission("medication_administration", "delete")),
+    actor: AuthUser = Depends(
+        require_permission("medication_administration", "delete")
+    ),
     medication_administration_service: MedicationAdministrationService = Depends(
         get_medication_administration_service
     ),

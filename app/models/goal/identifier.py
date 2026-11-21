@@ -21,9 +21,7 @@ class GoalIdentifier(TenantAuditMixin, Base):
     __tablename__ = "goal_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True

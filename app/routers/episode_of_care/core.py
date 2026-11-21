@@ -47,7 +47,9 @@ async def create_episode_of_care(
     payload: EpisodeOfCareCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("episode_of_care", "create")),
-    episode_of_care_service: EpisodeOfCareService = Depends(get_episode_of_care_service),
+    episode_of_care_service: EpisodeOfCareService = Depends(
+        get_episode_of_care_service
+    ),
 ):
     logger.info(
         "Create a new EpisodeOfCare resource",
@@ -85,11 +87,16 @@ async def get_episode_of_care(
         ..., ge=1, description="Public episode_of_care identifier."
     ),
     actor: AuthUser = Depends(require_permission("episode_of_care", "read")),
-    episode_of_care_service: EpisodeOfCareService = Depends(get_episode_of_care_service),
+    episode_of_care_service: EpisodeOfCareService = Depends(
+        get_episode_of_care_service
+    ),
 ):
     logger.info(
         "Get an EpisodeOfCare resource by ID",
-        extra={"event": "route.get_episode_of_care", "episode_of_care_id": episode_of_care_id},
+        extra={
+            "event": "route.get_episode_of_care",
+            "episode_of_care_id": episode_of_care_id,
+        },
     )
     eoc = await episode_of_care_service.get_episode_of_care_scoped(
         episode_of_care_id, actor.org_id
@@ -123,7 +130,9 @@ async def patch_episode_of_care(
         ..., ge=1, description="Public episode_of_care identifier."
     ),
     actor: AuthUser = Depends(require_permission("episode_of_care", "update")),
-    episode_of_care_service: EpisodeOfCareService = Depends(get_episode_of_care_service),
+    episode_of_care_service: EpisodeOfCareService = Depends(
+        get_episode_of_care_service
+    ),
 ):
     logger.info(
         "Update an EpisodeOfCare resource",
@@ -153,7 +162,8 @@ async def patch_episode_of_care(
     description=(
         "Returns a paginated list of EpisodeOfCare resources. Filter by status, "
         "patient, type, care_manager, organization, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
@@ -161,15 +171,25 @@ async def list_episodes_of_care(
     request: Request,
     actor: AuthUser = Depends(require_permission("episode_of_care", "read")),
     status: str | None = Query(
-        None, description="Status code (e.g. planned, waitlist, active, onhold, finished, cancelled, entered-in-error)."
+        None,
+        description="Status code (e.g. planned, waitlist, active, onhold, finished, cancelled, entered-in-error).",
     ),
-    patient: str | None = Query(None, description="Patient reference (e.g. Patient/10001)."),
+    patient: str | None = Query(
+        None, description="Patient reference (e.g. Patient/10001)."
+    ),
     type: str | None = Query(None, description="Type code."),
-    care_manager: str | None = Query(None, description="Care manager reference (e.g. Practitioner/30001 or PractitionerRole/140001)."),
-    organization: str | None = Query(None, description="Managing organization reference (e.g. Organization/190001)."),
+    care_manager: str | None = Query(
+        None,
+        description="Care manager reference (e.g. Practitioner/30001 or PractitionerRole/140001).",
+    ),
+    organization: str | None = Query(
+        None, description="Managing organization reference (e.g. Organization/190001)."
+    ),
     identifier: str | None = Query(None, description="Business identifier value."),
     list_params: ListParams = Depends(),
-    episode_of_care_service: EpisodeOfCareService = Depends(get_episode_of_care_service),
+    episode_of_care_service: EpisodeOfCareService = Depends(
+        get_episode_of_care_service
+    ),
 ):
     logger.info(
         "List EpisodeOfCare resources",
@@ -218,7 +238,9 @@ async def delete_episode_of_care(
         ..., ge=1, description="Public episode_of_care identifier."
     ),
     actor: AuthUser = Depends(require_permission("episode_of_care", "delete")),
-    episode_of_care_service: EpisodeOfCareService = Depends(get_episode_of_care_service),
+    episode_of_care_service: EpisodeOfCareService = Depends(
+        get_episode_of_care_service
+    ),
 ):
     logger.info(
         "Delete an EpisodeOfCare resource",

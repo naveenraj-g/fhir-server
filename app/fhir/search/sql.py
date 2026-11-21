@@ -14,7 +14,18 @@ from __future__ import annotations
 import itertools
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, bindparam, case, exists, false, func, literal, not_, or_, select
+from sqlalchemy import (
+    and_,
+    bindparam,
+    case,
+    exists,
+    false,
+    func,
+    literal,
+    not_,
+    or_,
+    select,
+)
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.elements import ColumnElement
@@ -128,7 +139,9 @@ def token_match(system_col, code_col, value: str):
 def token_condition(system_col, code_col, token: Token):
     conditions = []
     if token.system is not None:
-        conditions.append(system_col == token.system if token.system else system_col.is_(None))
+        conditions.append(
+            system_col == token.system if token.system else system_col.is_(None)
+        )
     if token.code is not None:
         conditions.append(code_col == token.code)
     return and_(*conditions) if conditions else literal(True)
@@ -174,7 +187,10 @@ def valueset_member(system_col, code_col, value: str):
         vs_condition = ValueSet.id == int(ref[9:])
     else:
         url, _, version = ref.partition("|")
-        vs_condition = and_(ValueSet.canonical_url == url, *([ValueSet.version == version] if version else []))
+        vs_condition = and_(
+            ValueSet.canonical_url == url,
+            *([ValueSet.version == version] if version else []),
+        )
     return exists(
         select(literal(1))
         .select_from(ValueSetConcept)
@@ -190,7 +206,9 @@ def valueset_member(system_col, code_col, value: str):
     )
 
 
-def subsumption_member(system_col, code_col, value: str, direction: str, max_depth: int = 50):
+def subsumption_member(
+    system_col, code_col, value: str, direction: str, max_depth: int = 50
+):
     """`:below` — the coding is the given code or subsumed by it (a
     descendant over IS-A); `:above` — the given code or one of its
     ancestors. Walks the terminology service's IS-A hierarchy."""
@@ -210,10 +228,16 @@ def subsumption_member(system_col, code_col, value: str, direction: str, max_dep
     tree = anchor.cte(name=f"subsumption_{next(_cte_names)}", recursive=True)
     rel = aliased(Relationship)
     if direction == "below":
-        step = select(rel.child_concept_id, tree.c.depth + 1).where(rel.parent_concept_id == tree.c.cid)
+        step = select(rel.child_concept_id, tree.c.depth + 1).where(
+            rel.parent_concept_id == tree.c.cid
+        )
     else:
-        step = select(rel.parent_concept_id, tree.c.depth + 1).where(rel.child_concept_id == tree.c.cid)
-    tree = tree.union_all(step.where(rel.relationship_type == "is-a", tree.c.depth < max_depth))
+        step = select(rel.parent_concept_id, tree.c.depth + 1).where(
+            rel.child_concept_id == tree.c.cid
+        )
+    tree = tree.union_all(
+        step.where(rel.relationship_type == "is-a", tree.c.depth < max_depth)
+    )
     member, member_system = aliased(Concept), aliased(CodeSystem)
     return exists(
         select(literal(1))
@@ -224,7 +248,9 @@ def subsumption_member(system_col, code_col, value: str, direction: str, max_dep
     )
 
 
-def coded_token_match(system_col, code_col, value: str, modifier: str | None, text_cols=()):
+def coded_token_match(
+    system_col, code_col, value: str, modifier: str | None, text_cols=()
+):
     """Token match for a Coding/CodeableConcept-backed parameter, with every
     token modifier it supports (`:not`/`:not-in` arrive here positive)."""
     if modifier == "text":
@@ -318,14 +344,18 @@ def period_match(start_col, end_col, value: str, now: datetime | None = None):
     else:  # ap
         now = now or datetime.now(UTC)
         slack = abs(now - lo) * 0.1
-        condition = and_(or_(open_start, start_col < hi + slack), or_(open_end, end_col > lo - slack))
+        condition = and_(
+            or_(open_start, start_col < hi + slack), or_(open_end, end_col > lo - slack)
+        )
     return and_(has_period, condition)
 
 
 # ── reference ────────────────────────────────────────────────────────────────
 
 
-def reference_target(value: str, modifier: str | None, targets: tuple[str, ...], fhir_base: str | None):
+def reference_target(
+    value: str, modifier: str | None, targets: tuple[str, ...], fhir_base: str | None
+):
     """Resolve a reference search value to (resource_type, public_id) for
     a local match, or ReferenceValue(url=...) for an absolute URL this
     server doesn't own, or None when it can't match anything (wrong type,
@@ -335,14 +365,28 @@ def reference_target(value: str, modifier: str | None, targets: tuple[str, ...],
         return ref
     rtype = ref.resource_type or modifier or (targets[0] if len(targets) == 1 else None)
     if rtype is None:
-        raise SearchError(value, f"Reference '{value}' is ambiguous: give a type ({', '.join(targets)}).")
-    if (modifier and rtype != modifier) or rtype not in targets or not (ref.resource_id or "").isdigit():
+        raise SearchError(
+            value,
+            f"Reference '{value}' is ambiguous: give a type ({', '.join(targets)}).",
+        )
+    if (
+        (modifier and rtype != modifier)
+        or rtype not in targets
+        or not (ref.resource_id or "").isdigit()
+    ):
         return None
     return ReferenceValue(rtype, ref.resource_id)
 
 
 def reference_match(
-    type_col, id_col, raw_col, value: str, modifier: str | None, ctx, targets: tuple[str, ...], type_enum
+    type_col,
+    id_col,
+    raw_col,
+    value: str,
+    modifier: str | None,
+    ctx,
+    targets: tuple[str, ...],
+    type_enum,
 ):
     """`[id]` / `[type]/[id]` / `[url]`, optionally restricted by a
     `:[type]` modifier. Local references match on the resolved
@@ -353,7 +397,9 @@ def reference_match(
         return false()
     if ref.url is not None:
         return raw_col == ref.url
-    return and_(type_col == type_enum(ref.resource_type), id_col == int(ref.resource_id))
+    return and_(
+        type_col == type_enum(ref.resource_type), id_col == int(ref.resource_id)
+    )
 
 
 # ── uri ──────────────────────────────────────────────────────────────────────

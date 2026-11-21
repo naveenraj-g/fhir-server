@@ -105,8 +105,12 @@ def _plain_reference_row(row) -> dict:
     return {
         "id": row.id,
         **_plain_reference_fields(row, "reference"),
-        "created_at": fhir_instant(row.created_at) if hasattr(row, "created_at") else None,
-        "updated_at": fhir_instant(row.updated_at) if hasattr(row, "updated_at") else None,
+        "created_at": fhir_instant(row.created_at)
+        if hasattr(row, "created_at")
+        else None,
+        "updated_at": fhir_instant(row.updated_at)
+        if hasattr(row, "updated_at")
+        else None,
         "created_by": getattr(row, "created_by", None),
         "updated_by": getattr(row, "updated_by", None),
         "tenant_id": getattr(row, "tenant_id", None),
@@ -149,12 +153,7 @@ def _plain_note(n: CommunicationNote) -> dict:
 
 def _plain_payload(p: CommunicationPayload) -> dict:
     att = None
-    if (
-        p.data
-        or p.url
-        or p.title
-        or p.content_type
-    ):
+    if p.data or p.url or p.title or p.content_type:
         att = {
             "content_type": p.content_type,
             "language": p.language,
@@ -182,21 +181,33 @@ def to_plain_communication(model: CommunicationModel) -> dict:
     """Map SQLAlchemy CommunicationModel to a plain snake_case dict."""
     result: dict[str, Any] = {
         "id": model.communication_id,
-        "instantiates_canonical": list(model.instantiates_canonical) if model.instantiates_canonical else None,
-        "instantiates_uri": list(model.instantiates_uri) if model.instantiates_uri else None,
+        "instantiates_canonical": list(model.instantiates_canonical)
+        if model.instantiates_canonical
+        else None,
+        "instantiates_uri": list(model.instantiates_uri)
+        if model.instantiates_uri
+        else None,
         "status": fhir_enum(model.status),
         "status_reason_text": model.status_reason_text,
-        "status_reason_codings": _plain_coding_list(model.status_reason_codings) if model.status_reason_codings else None,
+        "status_reason_codings": _plain_coding_list(model.status_reason_codings)
+        if model.status_reason_codings
+        else None,
         "priority": fhir_enum(model.priority),
         **_plain_reference_fields(model, "subject"),
         "topic_text": model.topic_text,
-        "topic_codings": _plain_coding_list(model.topic_codings) if model.topic_codings else None,
+        "topic_codings": _plain_coding_list(model.topic_codings)
+        if model.topic_codings
+        else None,
         **_plain_reference_fields(model, "encounter"),
         "sent": fhir_instant(model.sent) if model.sent else None,
         "received": fhir_instant(model.received) if model.received else None,
         **_plain_reference_fields(model, "sender"),
-        "created_at": fhir_instant(model.created_at) if hasattr(model, "created_at") else None,
-        "updated_at": fhir_instant(model.updated_at) if hasattr(model, "updated_at") else None,
+        "created_at": fhir_instant(model.created_at)
+        if hasattr(model, "created_at")
+        else None,
+        "updated_at": fhir_instant(model.updated_at)
+        if hasattr(model, "updated_at")
+        else None,
         "created_by": getattr(model, "created_by", None),
         "updated_by": getattr(model, "updated_by", None),
         "tenant_id": getattr(model, "tenant_id", None),
@@ -212,7 +223,9 @@ def to_plain_communication(model: CommunicationModel) -> dict:
         result["part_of"] = [_plain_reference_row(p) for p in model.part_of_list]
 
     if model.in_response_to_list:
-        result["in_response_to"] = [_plain_reference_row(r) for r in model.in_response_to_list]
+        result["in_response_to"] = [
+            _plain_reference_row(r) for r in model.in_response_to_list
+        ]
 
     if model.categories:
         result["category"] = [
@@ -239,7 +252,9 @@ def to_plain_communication(model: CommunicationModel) -> dict:
         ]
 
     if model.reason_references:
-        result["reason_reference"] = [_plain_reference_row(rr) for rr in model.reason_references]
+        result["reason_reference"] = [
+            _plain_reference_row(rr) for rr in model.reason_references
+        ]
 
     if model.payloads:
         result["payload"] = [_plain_payload(p) for p in model.payloads]

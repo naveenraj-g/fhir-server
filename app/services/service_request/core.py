@@ -17,7 +17,10 @@ from app.models.service_request import (
 )
 from app.repository.service_request import ServiceRequestRepository
 from app.schemas.enums import ServiceRequestIntent, ServiceRequestStatus
-from app.schemas.service_request import ServiceRequestCreateSchema, ServiceRequestPatchSchema
+from app.schemas.service_request import (
+    ServiceRequestCreateSchema,
+    ServiceRequestPatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -47,7 +50,9 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("ServiceRequest operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "ServiceRequest operation requires an org-scoped token"
+            )
         service_request = await self.repository.get_by_service_request_id_in_org(
             service_request_id, org_id
         )
@@ -70,7 +75,9 @@ class _CoreMixin:
         """Raises PermissionDeniedError (403) for an org-less token — same
         invariant as get_service_request_scoped()."""
         if not org_id:
-            raise PermissionDeniedError("ServiceRequest operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "ServiceRequest operation requires an org-scoped token"
+            )
         return await self.repository.list(
             org_id=org_id,
             status=ServiceRequestStatusModel[status.name] if status else None,
@@ -93,12 +100,17 @@ class _CoreMixin:
         supplied field — there is no bypass, so an org-less/platform token
         cannot create a ServiceRequest at all."""
         if not org_id:
-            raise PermissionDeniedError("ServiceRequest creation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "ServiceRequest creation requires an org-scoped token"
+            )
         await self._validate_base_r4(payload_to_fhir_service_request(payload), org_id)
         service_request = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "ServiceRequest created",
-            extra={"event": "service_request.created", "service_request_id": service_request.service_request_id},
+            extra={
+                "event": "service_request.created",
+                "service_request_id": service_request.service_request_id,
+            },
         )
         return service_request
 
@@ -115,16 +127,22 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", service_request_id, org_id)
             raise NotFoundError("ServiceRequest not found")
-        existing = await self.repository.get_by_service_request_id_in_org(service_request_id, org_id)
+        existing = await self.repository.get_by_service_request_id_in_org(
+            service_request_id, org_id
+        )
         if not existing:
             self._log_org_scope_miss("patch", service_request_id, org_id)
             raise NotFoundError("ServiceRequest not found")
 
         fragment, touched = patch_fragment_to_fhir_service_request(payload)
-        merged = merge_patch_fragment(to_fhir_service_request(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_service_request(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(service_request_id, payload, updated_by)
+        updated = await self.repository.patch_full(
+            service_request_id, payload, updated_by
+        )
         if not updated:
             raise NotFoundError("ServiceRequest not found")
         logger.info(
@@ -137,7 +155,9 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_service_request(self, service_request_id: int, org_id: str | None = None) -> None:
+    async def delete_service_request(
+        self, service_request_id: int, org_id: str | None = None
+    ) -> None:
         """Same org_id ownership gate as patch_service_request."""
         if not org_id or not await self.repository.service_request_belongs_to_org(
             service_request_id, org_id
@@ -149,7 +169,10 @@ class _CoreMixin:
             raise NotFoundError("ServiceRequest not found")
         logger.info(
             "ServiceRequest deleted",
-            extra={"event": "service_request.deleted", "service_request_id": service_request_id},
+            extra={
+                "event": "service_request.deleted",
+                "service_request_id": service_request_id,
+            },
         )
 
     @staticmethod
@@ -163,7 +186,9 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(operation: str, service_request_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, service_request_id: int, org_id: str | None
+    ) -> None:
         """The tenant gate rejected a write. The caller gets a plain 404 —
         deliberately indistinguishable from "no such resource" — so this
         log line is the only place the distinction is recorded."""

@@ -45,7 +45,6 @@ class PlanDefinitionModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-
     extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
 
     url = Column(String, nullable=True)

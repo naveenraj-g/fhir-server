@@ -29,16 +29,33 @@ FULL = {
     "birthDate": "1974-12-25",
     "deceasedBoolean": False,
     "multipleBirthBoolean": False,
-    "maritalStatus": {"coding": [{"code": "M", "display": "Married"}], "text": "Married"},
+    "maritalStatus": {
+        "coding": [{"code": "M", "display": "Married"}],
+        "text": "Married",
+    },
     "identifier": [
         {
             "use": "official",
             "system": MRN,
             "value": "MRN-12345",
-            "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "MR"}]},
+            "type": {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                        "code": "MR",
+                    }
+                ]
+            },
         }
     ],
-    "name": [{"use": "official", "family": "Chalmers", "given": ["Peter", "James"], "prefix": ["Mr"]}],
+    "name": [
+        {
+            "use": "official",
+            "family": "Chalmers",
+            "given": ["Peter", "James"],
+            "prefix": ["Mr"],
+        }
+    ],
     "telecom": [
         {"system": "phone", "value": "555-1234", "use": "home"},
         {"system": "email", "value": "peter@example.org"},
@@ -64,7 +81,12 @@ FULL = {
             "telecom": [{"system": "phone", "value": "555-9876", "use": "mobile"}],
         }
     ],
-    "communication": [{"language": {"coding": [{"code": "en", "display": "English"}]}, "preferred": True}],
+    "communication": [
+        {
+            "language": {"coding": [{"code": "en", "display": "English"}]},
+            "preferred": True,
+        }
+    ],
 }
 
 

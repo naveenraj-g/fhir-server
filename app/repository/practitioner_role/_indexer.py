@@ -55,7 +55,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         if local:
             refs.append((label, resource_type, local))
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
     for _param, (element, resource_type) in REFERENCE_PARAMS.items():
@@ -73,18 +75,29 @@ def index_columns(document: dict) -> dict:
         "active": document.get("active"),
         "period_start": period_start,
         "period_end": period_end,
-        **reference_columns("practitioner", document.get("practitioner"), "Practitioner", _parse_practitioner_ref),
-        **reference_columns("organization", document.get("organization"), "Organization", _parse_org_ref),
+        **reference_columns(
+            "practitioner",
+            document.get("practitioner"),
+            "Practitioner",
+            _parse_practitioner_ref,
+        ),
+        **reference_columns(
+            "organization", document.get("organization"), "Organization", _parse_org_ref
+        ),
     }
 
 
 def _telecom_row(t: dict) -> PractitionerRoleTelecom | None:
     if not t.get("value"):
         return None
-    return PractitionerRoleTelecom(system=t.get("system"), value=t["value"], use=t.get("use"))
+    return PractitionerRoleTelecom(
+        system=t.get("system"), value=t["value"], use=t.get("use")
+    )
 
 
-def _reference_row(param: str, resource_type: str, ref: dict) -> PractitionerRoleReference | None:
+def _reference_row(
+    param: str, resource_type: str, ref: dict
+) -> PractitionerRoleReference | None:
     """One index row for a Reference with a `reference` or an `identifier`
     (display-only can't be matched by a reference search)."""
     reference = ref.get("reference")
@@ -118,9 +131,13 @@ def index_rows(document: dict) -> dict[str, list]:
                 references.append(row)
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(PractitionerRoleIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(PractitionerRoleIdentifier, i)
         ],
-        "telecoms": [r for t in document.get("telecom") or [] if (r := _telecom_row(t))],
+        "telecoms": [
+            r for t in document.get("telecom") or [] if (r := _telecom_row(t))
+        ],
         "tokens": tokens,
         "references": references,
     }

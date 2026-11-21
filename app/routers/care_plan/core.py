@@ -54,9 +54,7 @@ async def create_care_plan(
         extra={"event": "route.create_care_plan"},
     )
     log_payload(logger, "care_plan.create.payload", payload)
-    cp = await care_plan_service.create_care_plan(
-        payload, actor.org_id, actor.sub
-    )
+    cp = await care_plan_service.create_care_plan(payload, actor.org_id, actor.sub)
     return format_response(
         care_plan_service._to_fhir(cp),
         care_plan_service._to_plain(cp),
@@ -81,9 +79,7 @@ async def create_care_plan(
 )
 async def get_care_plan(
     request: Request,
-    care_plan_id: int = Path(
-        ..., ge=1, description="Public care_plan identifier."
-    ),
+    care_plan_id: int = Path(..., ge=1, description="Public care_plan identifier."),
     actor: AuthUser = Depends(require_permission("care_plan", "read")),
     care_plan_service: CarePlanService = Depends(get_care_plan_service),
 ):
@@ -91,9 +87,7 @@ async def get_care_plan(
         "Get a CarePlan resource by ID",
         extra={"event": "route.get_care_plan", "care_plan_id": care_plan_id},
     )
-    cp = await care_plan_service.get_care_plan_scoped(
-        care_plan_id, actor.org_id
-    )
+    cp = await care_plan_service.get_care_plan_scoped(care_plan_id, actor.org_id)
     return format_response(
         care_plan_service._to_fhir(cp),
         care_plan_service._to_plain(cp),
@@ -119,9 +113,7 @@ async def get_care_plan(
 async def patch_care_plan(
     payload: CarePlanPatchSchema,
     request: Request,
-    care_plan_id: int = Path(
-        ..., ge=1, description="Public care_plan identifier."
-    ),
+    care_plan_id: int = Path(..., ge=1, description="Public care_plan identifier."),
     actor: AuthUser = Depends(require_permission("care_plan", "update")),
     care_plan_service: CarePlanService = Depends(get_care_plan_service),
 ):
@@ -154,7 +146,8 @@ async def patch_care_plan(
         "Returns a paginated list of CarePlan resources. Filter by status, "
         "intent, title, category, subject, encounter, author, based_on, replaces, "
         "part_of, addresses, goal, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
@@ -169,13 +162,21 @@ async def list_care_plans(
     ),
     title: str | None = Query(None, description="Care plan title."),
     category: str | None = Query(None, description="Category code."),
-    subject: str | None = Query(None, description="Subject reference (e.g. Patient/10001)."),
-    encounter: str | None = Query(None, description="Encounter reference (e.g. Encounter/20001)."),
-    author: str | None = Query(None, description="Author reference (e.g. Practitioner/30001)."),
+    subject: str | None = Query(
+        None, description="Subject reference (e.g. Patient/10001)."
+    ),
+    encounter: str | None = Query(
+        None, description="Encounter reference (e.g. Encounter/20001)."
+    ),
+    author: str | None = Query(
+        None, description="Author reference (e.g. Practitioner/30001)."
+    ),
     based_on: str | None = Query(None, description="basedOn reference."),
     replaces: str | None = Query(None, description="replaces reference."),
     part_of: str | None = Query(None, description="partOf reference."),
-    addresses: str | None = Query(None, description="addresses reference (e.g. Condition/120001)."),
+    addresses: str | None = Query(
+        None, description="addresses reference (e.g. Condition/120001)."
+    ),
     goal: str | None = Query(None, description="goal reference."),
     identifier: str | None = Query(None, description="Business identifier value."),
     list_params: ListParams = Depends(),
@@ -231,9 +232,7 @@ async def list_care_plans(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_care_plan(
-    care_plan_id: int = Path(
-        ..., ge=1, description="Public care_plan identifier."
-    ),
+    care_plan_id: int = Path(..., ge=1, description="Public care_plan identifier."),
     actor: AuthUser = Depends(require_permission("care_plan", "delete")),
     care_plan_service: CarePlanService = Depends(get_care_plan_service),
 ):
@@ -244,6 +243,4 @@ async def delete_care_plan(
             "care_plan_id": care_plan_id,
         },
     )
-    await care_plan_service.delete_care_plan(
-        care_plan_id, org_id=actor.org_id
-    )
+    await care_plan_service.delete_care_plan(care_plan_id, org_id=actor.org_id)

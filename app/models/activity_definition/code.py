@@ -12,10 +12,15 @@ class ActivityDefinitionCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="code_codings")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="code_codings"
+    )
 
 
 class ActivityDefinitionSubjectCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -25,10 +30,15 @@ class ActivityDefinitionSubjectCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="subject_codings")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="subject_codings"
+    )
 
 
 class ActivityDefinitionProductCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -38,7 +48,12 @@ class ActivityDefinitionProductCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="product_codings")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="product_codings"
+    )

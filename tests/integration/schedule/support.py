@@ -30,13 +30,27 @@ FULL = {
         {
             "system": SCHED_IDS,
             "value": "S-1001",
-            "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
+            "assigner": {
+                "identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}
+            },
         }
     ],
-    "serviceCategory": [{"coding": [{"system": CAT, "code": "17", "display": "General Practice"}], "text": "General"}],
-    "serviceType": [{"coding": [{"system": TYPE, "code": "124", "display": "General Practice"}]}],
-    "specialty": [{"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}],
-    "actor": [{"reference": "Patient/77", "display": "A patient"}, {"reference": "Device/5"}],
+    "serviceCategory": [
+        {
+            "coding": [{"system": CAT, "code": "17", "display": "General Practice"}],
+            "text": "General",
+        }
+    ],
+    "serviceType": [
+        {"coding": [{"system": TYPE, "code": "124", "display": "General Practice"}]}
+    ],
+    "specialty": [
+        {"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}
+    ],
+    "actor": [
+        {"reference": "Patient/77", "display": "A patient"},
+        {"reference": "Device/5"},
+    ],
     "planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"},
     "comment": "Weekday clinic",
 }

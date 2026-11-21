@@ -108,7 +108,9 @@ def _quantity_from_payload(val, unit, system, code) -> dict | None:
     return q or None
 
 
-def _range_from_payload(low_val, low_unit, low_sys, low_code, high_val, high_unit, high_sys, high_code) -> dict | None:
+def _range_from_payload(
+    low_val, low_unit, low_sys, low_code, high_val, high_unit, high_sys, high_code
+) -> dict | None:
     low = _quantity_from_payload(low_val, low_unit, low_sys, low_code)
     high = _quantity_from_payload(high_val, high_unit, high_sys, high_code)
     r: dict[str, Any] = {}
@@ -147,8 +149,14 @@ def _qualified_interval_from_payload(
     if qi.category:
         res["category"] = fhir_enum(qi.category)
     r = _range_from_payload(
-        qi.range_low_value, qi.range_low_unit, qi.range_low_system, qi.range_low_code,
-        qi.range_high_value, qi.range_high_unit, qi.range_high_system, qi.range_high_code,
+        qi.range_low_value,
+        qi.range_low_unit,
+        qi.range_low_system,
+        qi.range_low_code,
+        qi.range_high_value,
+        qi.range_high_unit,
+        qi.range_high_system,
+        qi.range_high_code,
     )
     if r:
         res["range"] = r
@@ -164,14 +172,26 @@ def _qualified_interval_from_payload(
     if qi.gender:
         res["gender"] = fhir_enum(qi.gender)
     age = _range_from_payload(
-        qi.age_low_value, qi.age_low_unit, qi.age_low_system, qi.age_low_code,
-        qi.age_high_value, qi.age_high_unit, qi.age_high_system, qi.age_high_code,
+        qi.age_low_value,
+        qi.age_low_unit,
+        qi.age_low_system,
+        qi.age_low_code,
+        qi.age_high_value,
+        qi.age_high_unit,
+        qi.age_high_system,
+        qi.age_high_code,
     )
     if age:
         res["age"] = age
     ga = _range_from_payload(
-        qi.gestational_age_low_value, qi.gestational_age_low_unit, qi.gestational_age_low_system, qi.gestational_age_low_code,
-        qi.gestational_age_high_value, qi.gestational_age_high_unit, qi.gestational_age_high_system, qi.gestational_age_high_code,
+        qi.gestational_age_low_value,
+        qi.gestational_age_low_unit,
+        qi.gestational_age_low_system,
+        qi.gestational_age_low_code,
+        qi.gestational_age_high_value,
+        qi.gestational_age_high_unit,
+        qi.gestational_age_high_system,
+        qi.gestational_age_high_code,
     )
     if ga:
         res["gestationalAge"] = ga
@@ -225,7 +245,9 @@ def payload_to_fhir_observation_definition(
             fhir["quantitativeDetails"] = qd
 
     if payload.qualified_interval:
-        qis = [_qualified_interval_from_payload(qi) for qi in payload.qualified_interval]
+        qis = [
+            _qualified_interval_from_payload(qi) for qi in payload.qualified_interval
+        ]
         qis = [qi for qi in qis if qi]
         if qis:
             fhir["qualifiedInterval"] = qis
@@ -279,14 +301,18 @@ def patch_fragment_to_fhir_observation_definition(
         touched.add("category")
         if payload.category is not None:
             fragment["category"] = [
-                c for c in [_codeable_concept_from_payload(x) for x in payload.category] if c
+                c
+                for c in [_codeable_concept_from_payload(x) for x in payload.category]
+                if c
             ]
 
     if "identifier" in fields_set:
         touched.add("identifier")
         if payload.identifier is not None:
             fragment["identifier"] = [
-                i for i in [_identifier_from_payload(x) for x in payload.identifier] if i
+                i
+                for i in [_identifier_from_payload(x) for x in payload.identifier]
+                if i
             ]
 
     if "permitted_data_type" in fields_set:
@@ -324,10 +350,18 @@ def patch_fragment_to_fhir_observation_definition(
         touched.add("qualifiedInterval")
         if payload.qualified_interval is not None:
             fragment["qualifiedInterval"] = [
-                qi for qi in [_qualified_interval_from_payload(x) for x in payload.qualified_interval] if qi
+                qi
+                for qi in [
+                    _qualified_interval_from_payload(x)
+                    for x in payload.qualified_interval
+                ]
+                if qi
             ]
 
-    if "valid_coded_value_set" in fields_set or "valid_coded_value_set_display" in fields_set:
+    if (
+        "valid_coded_value_set" in fields_set
+        or "valid_coded_value_set_display" in fields_set
+    ):
         touched.add("validCodedValueSet")
         if payload.valid_coded_value_set is not None:
             ref: dict[str, Any] = {"reference": payload.valid_coded_value_set}
@@ -335,7 +369,10 @@ def patch_fragment_to_fhir_observation_definition(
                 ref["display"] = payload.valid_coded_value_set_display
             fragment["validCodedValueSet"] = ref
 
-    if "normal_coded_value_set" in fields_set or "normal_coded_value_set_display" in fields_set:
+    if (
+        "normal_coded_value_set" in fields_set
+        or "normal_coded_value_set_display" in fields_set
+    ):
         touched.add("normalCodedValueSet")
         if payload.normal_coded_value_set is not None:
             ref = {"reference": payload.normal_coded_value_set}
@@ -343,7 +380,10 @@ def patch_fragment_to_fhir_observation_definition(
                 ref["display"] = payload.normal_coded_value_set_display
             fragment["normalCodedValueSet"] = ref
 
-    if "abnormal_coded_value_set" in fields_set or "abnormal_coded_value_set_display" in fields_set:
+    if (
+        "abnormal_coded_value_set" in fields_set
+        or "abnormal_coded_value_set_display" in fields_set
+    ):
         touched.add("abnormalCodedValueSet")
         if payload.abnormal_coded_value_set is not None:
             ref = {"reference": payload.abnormal_coded_value_set}
@@ -351,7 +391,10 @@ def patch_fragment_to_fhir_observation_definition(
                 ref["display"] = payload.abnormal_coded_value_set_display
             fragment["abnormalCodedValueSet"] = ref
 
-    if "critical_coded_value_set" in fields_set or "critical_coded_value_set_display" in fields_set:
+    if (
+        "critical_coded_value_set" in fields_set
+        or "critical_coded_value_set_display" in fields_set
+    ):
         touched.add("criticalCodedValueSet")
         if payload.critical_coded_value_set is not None:
             ref = {"reference": payload.critical_coded_value_set}

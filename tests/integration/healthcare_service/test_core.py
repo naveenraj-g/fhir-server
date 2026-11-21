@@ -50,11 +50,17 @@ def native_validation(monkeypatch):
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _as_user(sub="u-test", org_id="org-test", permissions=PERMS):
-    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        sub=sub, org_id=org_id, permissions=permissions
+    )
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -82,7 +88,9 @@ async def test_create_full_round_trip(client, _engine):
     assert resp.status_code == 201, resp.text
     data = resp.json()
     expected = {k: v for k, v in body.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
     assert (await client.get(f"{BASE}/{data['id']}")).json() == data
 
 
@@ -99,7 +107,8 @@ async def test_create_keeps_elements_nothing_searches_on(client):
 
 async def test_create_ignores_server_managed_id_and_meta(client):
     resp = await client.post(
-        BASE + "/", json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}}
+        BASE + "/",
+        json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}},
     )
     assert resp.status_code == 201, resp.text
     assert resp.json()["id"] != "999"
@@ -112,7 +121,12 @@ async def test_create_non_fhir_key_rejected(client, native_validation):
 
 
 async def test_create_old_flat_fields_rejected(client, native_validation):
-    for stale in ({"extra_details": "x"}, {"appointment_required": True}, {"org_id": "x"}, {"user_id": "u"}):
+    for stale in (
+        {"extra_details": "x"},
+        {"appointment_required": True},
+        {"org_id": "x"},
+        {"user_id": "u"},
+    ):
         resp = await client.post(BASE + "/", json={**MINIMAL, **stale})
         assert resp.status_code == 422, (stale, resp.text)
 
@@ -140,30 +154,44 @@ async def test_create_audit_meta_from_actor(client):
 
 
 async def test_create_provided_by_must_exist(client):
-    resp = await client.post(BASE + "/", json={**MINIMAL, "providedBy": {"reference": "Organization/999999"}})
+    resp = await client.post(
+        BASE + "/", json={**MINIMAL, "providedBy": {"reference": "Organization/999999"}}
+    )
     assert resp.status_code == 422, resp.text
 
 
 async def test_create_location_and_coverage_area_must_exist(client):
     for element in ("location", "coverageArea"):
-        resp = await client.post(BASE + "/", json={**MINIMAL, element: [{"reference": "Location/999999"}]})
+        resp = await client.post(
+            BASE + "/", json={**MINIMAL, element: [{"reference": "Location/999999"}]}
+        )
         assert resp.status_code == 422, (element, resp.text)
 
 
 async def test_create_identifier_assigner_must_exist(client):
-    body = {**MINIMAL, "identifier": [{"value": "1", "assigner": {"reference": "Organization/999999"}}]}
+    body = {
+        **MINIMAL,
+        "identifier": [
+            {"value": "1", "assigner": {"reference": "Organization/999999"}}
+        ],
+    }
     assert (await client.post(BASE + "/", json=body)).status_code == 422
 
 
 async def test_create_absolute_references_stored_not_resolved(client):
     ref = "https://other.example.org/fhir/Location/42"
-    resp = await client.post(BASE + "/", json={**MINIMAL, "location": [{"reference": ref}]})
+    resp = await client.post(
+        BASE + "/", json={**MINIMAL, "location": [{"reference": ref}]}
+    )
     assert resp.status_code == 201, resp.text
     assert resp.json()["location"][0]["reference"] == ref
 
 
 async def test_create_logical_reference_without_resource(client):
-    body = {**MINIMAL, "providedBy": {"identifier": {"system": "urn:registry", "value": "ORG-9"}}}
+    body = {
+        **MINIMAL,
+        "providedBy": {"identifier": {"system": "urn:registry", "value": "ORG-9"}},
+    }
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
@@ -173,7 +201,10 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
         other_org = await create_organization(other_client, "Other Tenant Org")
     finally:
         _as_user()
-    resp = await client.post(BASE + "/", json={**MINIMAL, "providedBy": {"reference": f"Organization/{other_org}"}})
+    resp = await client.post(
+        BASE + "/",
+        json={**MINIMAL, "providedBy": {"reference": f"Organization/{other_org}"}},
+    )
     assert resp.status_code == 422, resp.text
 
 
@@ -205,7 +236,9 @@ async def test_xml_only_accept_is_406(client):
 
 async def test_get_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -230,42 +263,68 @@ async def test_patch_reindexes_search(client):
 
 async def test_patch_replaces_list_wholesale_and_empty_clears(client):
     hs = await create_healthcare_service(client, FULL)
-    resp = await client.patch(f"{BASE}/{hs}", json={"specialty": [{"coding": [{"code": "NEW"}]}]})
+    resp = await client.patch(
+        f"{BASE}/{hs}", json={"specialty": [{"coding": [{"code": "NEW"}]}]}
+    )
     assert resp.json()["specialty"] == [{"coding": [{"code": "NEW"}]}]
-    assert hs not in _ids((await client.get(BASE + "/", params={"specialty": "394579002"})).json())
-    assert hs in _ids((await client.get(BASE + "/", params={"specialty": "NEW"})).json())
+    assert hs not in _ids(
+        (await client.get(BASE + "/", params={"specialty": "394579002"})).json()
+    )
+    assert hs in _ids(
+        (await client.get(BASE + "/", params={"specialty": "NEW"})).json()
+    )
     resp = await client.patch(f"{BASE}/{hs}", json={"specialty": []})
     assert "specialty" not in resp.json()
-    assert hs not in _ids((await client.get(BASE + "/", params={"specialty": "NEW"})).json())
+    assert hs not in _ids(
+        (await client.get(BASE + "/", params={"specialty": "NEW"})).json()
+    )
 
 
 async def test_patch_provided_by_resolved_then_cleared(client):
     org = await create_organization(client)
     hs = await create_healthcare_service(client)
-    await client.patch(f"{BASE}/{hs}", json={"providedBy": {"reference": f"Organization/{org}"}})
-    assert hs in _ids((await client.get(BASE + "/", params={"organization": f"Organization/{org}"})).json())
+    await client.patch(
+        f"{BASE}/{hs}", json={"providedBy": {"reference": f"Organization/{org}"}}
+    )
+    assert hs in _ids(
+        (
+            await client.get(BASE + "/", params={"organization": f"Organization/{org}"})
+        ).json()
+    )
     resp = await client.patch(f"{BASE}/{hs}", json={"providedBy": None})
     assert "providedBy" not in resp.json()
-    assert hs not in _ids((await client.get(BASE + "/", params={"organization": f"Organization/{org}"})).json())
+    assert hs not in _ids(
+        (
+            await client.get(BASE + "/", params={"organization": f"Organization/{org}"})
+        ).json()
+    )
 
 
 async def test_patch_nonexistent_reference_rejected_and_nothing_written(client):
     hs = await create_healthcare_service(client, FULL)
-    resp = await client.patch(f"{BASE}/{hs}", json={"location": [{"reference": "Location/999999"}]})
+    resp = await client.patch(
+        f"{BASE}/{hs}", json={"location": [{"reference": "Location/999999"}]}
+    )
     assert resp.status_code == 422
     assert "location" not in (await client.get(f"{BASE}/{hs}")).json()
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client):
     hs = await create_healthcare_service(client, FULL)
-    resp = await client.patch(f"{BASE}/{hs}", json={"availableTime": [{"daysOfWeek": ["funday"]}]})
+    resp = await client.patch(
+        f"{BASE}/{hs}", json={"availableTime": [{"daysOfWeek": ["funday"]}]}
+    )
     assert resp.status_code == 422
-    assert (await client.get(f"{BASE}/{hs}")).json()["availableTime"][0]["daysOfWeek"] == ["mon", "tue"]
+    assert (await client.get(f"{BASE}/{hs}")).json()["availableTime"][0][
+        "daysOfWeek"
+    ] == ["mon", "tue"]
 
 
 async def test_patch_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"active": False})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -276,13 +335,19 @@ async def test_delete(client):
     assert (await client.delete(f"{BASE}/{hs}")).status_code == 204
     assert (await client.get(f"{BASE}/{hs}")).status_code == 404
     # Its index rows are gone with it.
-    assert hs not in _ids((await client.get(BASE + "/", params={"name": "Cardiology"})).json())
-    assert hs not in _ids((await client.get(BASE + "/", params={"specialty": "394579002"})).json())
+    assert hs not in _ids(
+        (await client.get(BASE + "/", params={"name": "Cardiology"})).json()
+    )
+    assert hs not in _ids(
+        (await client.get(BASE + "/", params={"specialty": "394579002"})).json()
+    )
 
 
 async def test_delete_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -315,7 +380,9 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
             await other_client.patch(f"{BASE}/{hs}", json={"active": False}),
             await other_client.delete(f"{BASE}/{hs}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
@@ -325,7 +392,9 @@ async def test_search_cross_tenant_isolation(client, other_client):
     await create_healthcare_service(client, {"name": "TenantAOnly Clinic"})
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"name": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"name": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0
         assert "entry" not in bundle
     finally:

@@ -46,11 +46,21 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
         entry["display"] = display
 
     id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
-    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
-    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
-    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
-    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
-    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get(
+        "identifier_type_system"
+    )
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get(
+        "identifier_type_version"
+    )
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get(
+        "identifier_type_code"
+    )
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get(
+        "identifier_type_display"
+    )
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get(
+        "identifier_type_text"
+    )
     id_type_user_selected = (
         _get(f"{prefix}_identifier_type_user_selected")
         if _get(f"{prefix}_identifier_type_user_selected") is not None
@@ -58,8 +68,12 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     )
     id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
     id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
-    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
-    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get(
+        "identifier_period_start"
+    )
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get(
+        "identifier_period_end"
+    )
 
     if (
         id_use
@@ -164,7 +178,9 @@ def _coding_from_payload(c) -> dict:
     }
 
 
-def _codeable_concept_from_payload(concept: CarePlanCodeableConceptInput | None) -> dict | None:
+def _codeable_concept_from_payload(
+    concept: CarePlanCodeableConceptInput | None,
+) -> dict | None:
     if not concept:
         return None
     codings = [_coding_from_payload(c) for c in (concept.coding or [])]
@@ -237,7 +253,9 @@ def _quantity_from_payload(qty: CarePlanQuantityInput | None) -> dict | None:
     return res or None
 
 
-def _activity_detail_from_payload(detail: CarePlanActivityDetailInput | None) -> dict | None:
+def _activity_detail_from_payload(
+    detail: CarePlanActivityDetailInput | None,
+) -> dict | None:
     if not detail:
         return None
     res: dict = {}
@@ -257,7 +275,9 @@ def _activity_detail_from_payload(detail: CarePlanActivityDetailInput | None) ->
         if rc_list:
             res["reasonCode"] = rc_list
     if detail.reason_reference:
-        rr_list = [_child_reference_from_payload(r) for r in detail.reason_reference if r]
+        rr_list = [
+            _child_reference_from_payload(r) for r in detail.reason_reference if r
+        ]
         if rr_list:
             res["reasonReference"] = rr_list
     if detail.goal:
@@ -315,12 +335,16 @@ def _activity_from_payload(act: CarePlanActivityInput | None) -> dict | None:
         return None
     res: dict = {}
     if act.outcome_codeable_concept:
-        occ_list = [_codeable_concept_from_payload(o) for o in act.outcome_codeable_concept]
+        occ_list = [
+            _codeable_concept_from_payload(o) for o in act.outcome_codeable_concept
+        ]
         occ_list = [o for o in occ_list if o]
         if occ_list:
             res["outcomeCodeableConcept"] = occ_list
     if act.outcome_reference:
-        oref_list = [_child_reference_from_payload(r) for r in act.outcome_reference if r]
+        oref_list = [
+            _child_reference_from_payload(r) for r in act.outcome_reference if r
+        ]
         if oref_list:
             res["outcomeReference"] = oref_list
     if act.progress:
@@ -402,10 +426,14 @@ def payload_to_fhir_care_plan(payload: CarePlanCreateSchema) -> dict[str, Any]:
         res["instantiatesUri"] = list(payload.instantiates_uri)
 
     if payload.based_on:
-        res["basedOn"] = [_child_reference_from_payload(r) for r in payload.based_on if r]
+        res["basedOn"] = [
+            _child_reference_from_payload(r) for r in payload.based_on if r
+        ]
 
     if payload.replaces:
-        res["replaces"] = [_child_reference_from_payload(r) for r in payload.replaces if r]
+        res["replaces"] = [
+            _child_reference_from_payload(r) for r in payload.replaces if r
+        ]
 
     if payload.part_of:
         res["partOf"] = [_child_reference_from_payload(r) for r in payload.part_of if r]
@@ -446,13 +474,19 @@ def payload_to_fhir_care_plan(payload: CarePlanCreateSchema) -> dict[str, Any]:
         res["author"] = auth
 
     if payload.contributor:
-        res["contributor"] = [_child_reference_from_payload(c) for c in payload.contributor if c]
+        res["contributor"] = [
+            _child_reference_from_payload(c) for c in payload.contributor if c
+        ]
 
     if payload.care_team:
-        res["careTeam"] = [_child_reference_from_payload(ct) for ct in payload.care_team if ct]
+        res["careTeam"] = [
+            _child_reference_from_payload(ct) for ct in payload.care_team if ct
+        ]
 
     if payload.addresses:
-        res["addresses"] = [_child_reference_from_payload(a) for a in payload.addresses if a]
+        res["addresses"] = [
+            _child_reference_from_payload(a) for a in payload.addresses if a
+        ]
 
     if payload.goal:
         res["goal"] = [_child_reference_from_payload(g) for g in payload.goal if g]
@@ -499,17 +533,23 @@ def patch_fragment_to_fhir_care_plan(
     if "based_on" in fields_set:
         touched.add("basedOn")
         if payload.based_on is not None:
-            fragment["basedOn"] = [_child_reference_from_payload(r) for r in payload.based_on if r]
+            fragment["basedOn"] = [
+                _child_reference_from_payload(r) for r in payload.based_on if r
+            ]
 
     if "replaces" in fields_set:
         touched.add("replaces")
         if payload.replaces is not None:
-            fragment["replaces"] = [_child_reference_from_payload(r) for r in payload.replaces if r]
+            fragment["replaces"] = [
+                _child_reference_from_payload(r) for r in payload.replaces if r
+            ]
 
     if "part_of" in fields_set:
         touched.add("partOf")
         if payload.part_of is not None:
-            fragment["partOf"] = [_child_reference_from_payload(r) for r in payload.part_of if r]
+            fragment["partOf"] = [
+                _child_reference_from_payload(r) for r in payload.part_of if r
+            ]
 
     if "status" in fields_set:
         touched.add("status")
@@ -525,7 +565,9 @@ def patch_fragment_to_fhir_care_plan(
         touched.add("category")
         if payload.category is not None:
             fragment["category"] = [
-                c for c in [_codeable_concept_from_payload(x) for x in payload.category] if c
+                c
+                for c in [_codeable_concept_from_payload(x) for x in payload.category]
+                if c
             ]
 
     if "title" in fields_set:
@@ -574,22 +616,30 @@ def patch_fragment_to_fhir_care_plan(
     if "contributor" in fields_set:
         touched.add("contributor")
         if payload.contributor is not None:
-            fragment["contributor"] = [_child_reference_from_payload(c) for c in payload.contributor if c]
+            fragment["contributor"] = [
+                _child_reference_from_payload(c) for c in payload.contributor if c
+            ]
 
     if "care_team" in fields_set:
         touched.add("careTeam")
         if payload.care_team is not None:
-            fragment["careTeam"] = [_child_reference_from_payload(ct) for ct in payload.care_team if ct]
+            fragment["careTeam"] = [
+                _child_reference_from_payload(ct) for ct in payload.care_team if ct
+            ]
 
     if "addresses" in fields_set:
         touched.add("addresses")
         if payload.addresses is not None:
-            fragment["addresses"] = [_child_reference_from_payload(a) for a in payload.addresses if a]
+            fragment["addresses"] = [
+                _child_reference_from_payload(a) for a in payload.addresses if a
+            ]
 
     if "goal" in fields_set:
         touched.add("goal")
         if payload.goal is not None:
-            fragment["goal"] = [_child_reference_from_payload(g) for g in payload.goal if g]
+            fragment["goal"] = [
+                _child_reference_from_payload(g) for g in payload.goal if g
+            ]
 
     if "activity" in fields_set:
         touched.add("activity")
@@ -609,7 +659,9 @@ def patch_fragment_to_fhir_care_plan(
         touched.add("identifier")
         if payload.identifier is not None:
             fragment["identifier"] = [
-                i for i in [_identifier_from_payload(x) for x in payload.identifier] if i
+                i
+                for i in [_identifier_from_payload(x) for x in payload.identifier]
+                if i
             ]
 
     return fragment, touched

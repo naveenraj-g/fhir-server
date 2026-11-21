@@ -150,7 +150,9 @@ class PaginatedPlanDefinitionResponse(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    data: list[PlainPlanDefinitionResponse] = Field(..., description="List of plan definitions.")
+    data: list[PlainPlanDefinitionResponse] = Field(
+        ..., description="List of plan definitions."
+    )
     total: int | None = Field(None, description="Total matching records.")
     limit: int = Field(..., description="Page size.")
     offset: int = Field(..., description="Page offset.")
@@ -162,7 +164,9 @@ class FHIRPlanDefinitionBundleEntry(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     fullUrl: str | None = Field(None, description="Full URL for resource.")
-    resource: FHIRPlanDefinitionSchema = Field(..., description="PlanDefinition resource.")
+    resource: FHIRPlanDefinitionSchema = Field(
+        ..., description="PlanDefinition resource."
+    )
 
 
 class FHIRPlanDefinitionBundle(BaseModel):

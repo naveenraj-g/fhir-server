@@ -85,7 +85,9 @@ def full_group(patient_id: int, org_id: int | None = None) -> dict:
     return payload
 
 
-async def create_group(client, payload: dict | None = None, patient_id: int | None = None) -> int:
+async def create_group(
+    client, payload: dict | None = None, patient_id: int | None = None
+) -> int:
     if payload is None:
         if patient_id is None:
             patient_id = await create_test_patient(client)

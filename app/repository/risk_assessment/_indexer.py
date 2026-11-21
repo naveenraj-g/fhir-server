@@ -25,7 +25,12 @@ from app.models.risk_assessment import (
     RiskAssessmentPrediction,
     RiskAssessmentToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import typed
 
@@ -34,7 +39,13 @@ _MODELED_PERFORMERS = ("Practitioner", "PractitionerRole")
 # Of the four reasonReference targets, these are resources here (Observation and
 # DocumentReference are not rebuilt yet).
 _MODELED_REASONS = ("Condition", "DiagnosticReport")
-_AUTHOR_TYPES = ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson", "Organization")
+_AUTHOR_TYPES = (
+    "Practitioner",
+    "PractitionerRole",
+    "Patient",
+    "RelatedPerson",
+    "Organization",
+)
 
 
 def local_references(document: dict) -> list[tuple[str, str, str]]:
@@ -53,11 +64,17 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("subject", (document.get("subject") or {}).get("reference"), "Patient")
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
     add("condition", (document.get("condition") or {}).get("reference"), "Condition")
-    parsed = typed((document.get("performer") or {}).get("reference"), _MODELED_PERFORMERS)
+    parsed = typed(
+        (document.get("performer") or {}).get("reference"), _MODELED_PERFORMERS
+    )
     if parsed:
         refs.append(("performer", parsed[0], document["performer"]["reference"]))
     for ref in document.get("reasonReference") or []:
@@ -65,9 +82,17 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         if parsed:
             refs.append(("reasonReference", parsed[0], ref["reference"]))
     for note in document.get("note") or []:
-        parsed = typed(((note or {}).get("authorReference") or {}).get("reference"), _AUTHOR_TYPES)
+        parsed = typed(
+            ((note or {}).get("authorReference") or {}).get("reference"), _AUTHOR_TYPES
+        )
         if parsed:
-            refs.append(("note.authorReference", parsed[0], note["authorReference"]["reference"]))
+            refs.append(
+                (
+                    "note.authorReference",
+                    parsed[0],
+                    note["authorReference"]["reference"],
+                )
+            )
     return refs
 
 
@@ -91,7 +116,9 @@ def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dic
 def index_columns(document: dict) -> dict:
     """Search columns on the risk_assessment row itself."""
     value = document.get("occurrenceDateTime")
-    start, end = period_bounds({"start": value, "end": value}) if value else (None, None)
+    start, end = (
+        period_bounds({"start": value, "end": value}) if value else (None, None)
+    )
     return {
         "date_start": start,
         "date_end": end,
@@ -103,7 +130,9 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(RiskAssessmentToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(RiskAssessmentToken, param=param), concept) if concept else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -137,7 +166,9 @@ def _prediction_rows(document: dict) -> list:
             low = _number((probability.get("low") or {}).get("value"))
             high = _number((probability.get("high") or {}).get("value"))
         if low is not None or high is not None:
-            rows.append(RiskAssessmentPrediction(probability_low=low, probability_high=high))
+            rows.append(
+                RiskAssessmentPrediction(probability_low=low, probability_high=high)
+            )
     return rows
 
 
@@ -145,7 +176,9 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by RiskAssessmentModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(RiskAssessmentIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(RiskAssessmentIdentifier, i)
         ],
         "tokens": _token_rows(document),
         "predictions": _prediction_rows(document),

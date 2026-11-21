@@ -384,7 +384,10 @@ async def test_create_episode_of_care_with_reference_identifier_fallback(client)
     eoc_id = plain_data["id"]
 
     assert plain_data["patient"] is None
-    assert plain_data["patient_identifier_system"] == "http://hospital.example.org/patients"
+    assert (
+        plain_data["patient_identifier_system"]
+        == "http://hospital.example.org/patients"
+    )
     assert plain_data["patient_identifier_value"] == "MRN-EOC-1"
     assert plain_data["patient_display"] == "Fallback Patient"
 
@@ -394,14 +397,19 @@ async def test_create_episode_of_care_with_reference_identifier_fallback(client)
     assert plain_data["care_manager"] is None
     assert plain_data["care_manager_identifier_value"] == "PRAC-EOC-1"
 
-    assert plain_data["identifiers"][0]["assigner_identifier_value"] == "ORG-ASSIGNER-EOC-1"
+    assert (
+        plain_data["identifiers"][0]["assigner_identifier_value"]
+        == "ORG-ASSIGNER-EOC-1"
+    )
     assert plain_data["diagnoses"][0]["condition_identifier_value"] == "COND-EOC-1"
     assert plain_data["referral_requests"][0]["identifier_value"] == "REF-EOC-1"
     assert plain_data["teams"][0]["identifier_value"] == "TEAM-EOC-1"
     assert plain_data["accounts"][0]["identifier_value"] == "ACCT-EOC-1"
 
     # Verify FHIR serialization
-    fhir_resp = await client.get(f"{BASE}/{eoc_id}", headers={"Accept": "application/fhir+json"})
+    fhir_resp = await client.get(
+        f"{BASE}/{eoc_id}", headers={"Accept": "application/fhir+json"}
+    )
     assert fhir_resp.status_code == 200, fhir_resp.text
     fhir_data = fhir_resp.json()
     assert fhir_data["resourceType"] == "EpisodeOfCare"
@@ -409,7 +417,10 @@ async def test_create_episode_of_care_with_reference_identifier_fallback(client)
     assert fhir_data["patient"]["identifier"]["value"] == "MRN-EOC-1"
     assert fhir_data["managingOrganization"]["identifier"]["value"] == "ORG-EOC-1"
     assert fhir_data["careManager"]["identifier"]["value"] == "PRAC-EOC-1"
-    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-ASSIGNER-EOC-1"
+    assert (
+        fhir_data["identifier"][0]["assigner"]["identifier"]["value"]
+        == "ORG-ASSIGNER-EOC-1"
+    )
     assert fhir_data["diagnosis"][0]["condition"]["identifier"]["value"] == "COND-EOC-1"
     assert fhir_data["referralRequest"][0]["identifier"]["value"] == "REF-EOC-1"
     assert fhir_data["team"][0]["identifier"]["value"] == "TEAM-EOC-1"
@@ -422,5 +433,3 @@ async def test_create_episode_of_care_with_reference_identifier_fallback(client)
     )
     assert patch_resp.status_code == 200, patch_resp.text
     assert patch_resp.json()["patient_identifier_value"] == "MRN-EOC-1-UPDATED"
-
-

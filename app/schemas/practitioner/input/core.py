@@ -88,7 +88,8 @@ class _PractitionerFields(FhirInputModel):
         None, description="The name(s) associated with the practitioner."
     )
     telecom: list[FhirContactPointInput] | None = Field(
-        None, description="A contact detail for the practitioner (that apply to all roles)."
+        None,
+        description="A contact detail for the practitioner (that apply to all roles).",
     )
     address: list[FhirAddressInput] | None = Field(
         None, description="Address(es) of the practitioner that are not role specific."
@@ -97,16 +98,19 @@ class _PractitionerFields(FhirInputModel):
         None, description="male | female | other | unknown."
     )
     birthDate: str | None = Field(
-        None, description="The date on which the practitioner was born (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD)."
+        None,
+        description="The date on which the practitioner was born (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD).",
     )
     photo: list[FhirAttachmentInput] | None = Field(
         None, description="Image of the person."
     )
     qualification: list[PractitionerQualificationInput] | None = Field(
-        None, description="Certification, licenses, or training pertaining to the provision of care."
+        None,
+        description="Certification, licenses, or training pertaining to the provision of care.",
     )
     communication: list[FhirCodeableConceptInput] | None = Field(
-        None, description="A language the practitioner can use in patient communication."
+        None,
+        description="A language the practitioner can use in patient communication.",
     )
 
 

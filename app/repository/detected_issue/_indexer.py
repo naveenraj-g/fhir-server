@@ -23,7 +23,12 @@ from app.models.detected_issue import (
     DetectedIssueReference,
     DetectedIssueToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import any_typed, typed
 
@@ -32,9 +37,22 @@ _MODELED_AUTHORS = ("Practitioner", "PractitionerRole")
 # Reference(Any) targets (`implicated`, `evidence.detail`) that are existence-checked on write:
 # the resources already rebuilt that an issue can involve.
 _MODELED_ANY = (
-    "Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Organization", "Location", "Encounter",
-    "Appointment", "Condition", "Procedure", "DiagnosticReport", "AllergyIntolerance", "Immunization",
-    "FamilyMemberHistory", "RiskAssessment", "ClinicalImpression",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "RelatedPerson",
+    "Organization",
+    "Location",
+    "Encounter",
+    "Appointment",
+    "Condition",
+    "Procedure",
+    "DiagnosticReport",
+    "AllergyIntolerance",
+    "Immunization",
+    "FamilyMemberHistory",
+    "RiskAssessment",
+    "ClinicalImpression",
 )
 
 
@@ -58,7 +76,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, parsed[0], ref["reference"]))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("patient", (document.get("patient") or {}).get("reference"), "Patient")
     add_typed("author", document.get("author"), _MODELED_AUTHORS)
     for ref in document.get("implicated") or []:
@@ -67,7 +89,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         for ref in (evidence or {}).get("detail") or []:
             add_typed("evidence.detail", ref, _MODELED_ANY)
     for mitigation in document.get("mitigation") or []:
-        add_typed("mitigation.author", (mitigation or {}).get("author"), _MODELED_AUTHORS)
+        add_typed(
+            "mitigation.author", (mitigation or {}).get("author"), _MODELED_AUTHORS
+        )
     return refs
 
 
@@ -113,7 +137,9 @@ def index_columns(document: dict) -> dict:
 
 def _token_rows(document: dict) -> list:
     concept = document.get("code")
-    return type_rows(partial(DetectedIssueToken, param="code"), concept) if concept else []
+    return (
+        type_rows(partial(DetectedIssueToken, param="code"), concept) if concept else []
+    )
 
 
 def _reference_row(param: str, ref: dict | None) -> DetectedIssueReference | None:
@@ -145,7 +171,9 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by DetectedIssueModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(DetectedIssueIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(DetectedIssueIdentifier, i)
         ],
         "tokens": _token_rows(document),
         "references": _reference_rows(document),

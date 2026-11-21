@@ -12,5 +12,6 @@ class FHIRCodeableConcept(BaseModel):
         None, description="Code(s) defined by a terminology system for this concept."
     )
     text: Optional[str] = Field(
-        None, description="Plain-text representation of the concept, for display when coding is not understood."
+        None,
+        description="Plain-text representation of the concept, for display when coding is not understood.",
     )

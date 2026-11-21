@@ -5,7 +5,6 @@ from app.services.clinical_impression import ClinicalImpressionService
 
 
 class ClinicalImpressionContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     clinical_impression_repository = providers.Factory(

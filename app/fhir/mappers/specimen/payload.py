@@ -53,7 +53,9 @@ def _coding_from_payload(c) -> dict:
     }
 
 
-def _codeable_concept_from_payload(concept: SpecimenCodeableConceptInput | None) -> dict | None:
+def _codeable_concept_from_payload(
+    concept: SpecimenCodeableConceptInput | None,
+) -> dict | None:
     if not concept:
         return None
     codings = [_coding_from_payload(c) for c in (concept.coding or [])]
@@ -72,21 +74,41 @@ def _reference_from_payload(ref) -> dict | None:
     raw_reference = getattr(ref, "reference", None)
     display = getattr(ref, "reference_display", None) or getattr(ref, "display", None)
 
-    id_use = getattr(ref, "reference_identifier_use", None) or getattr(ref, "identifier_use", None)
-    id_type_system = getattr(ref, "reference_identifier_type_system", None) or getattr(ref, "identifier_type_system", None)
-    id_type_version = getattr(ref, "reference_identifier_type_version", None) or getattr(ref, "identifier_type_version", None)
-    id_type_code = getattr(ref, "reference_identifier_type_code", None) or getattr(ref, "identifier_type_code", None)
-    id_type_display = getattr(ref, "reference_identifier_type_display", None) or getattr(ref, "identifier_type_display", None)
+    id_use = getattr(ref, "reference_identifier_use", None) or getattr(
+        ref, "identifier_use", None
+    )
+    id_type_system = getattr(ref, "reference_identifier_type_system", None) or getattr(
+        ref, "identifier_type_system", None
+    )
+    id_type_version = getattr(
+        ref, "reference_identifier_type_version", None
+    ) or getattr(ref, "identifier_type_version", None)
+    id_type_code = getattr(ref, "reference_identifier_type_code", None) or getattr(
+        ref, "identifier_type_code", None
+    )
+    id_type_display = getattr(
+        ref, "reference_identifier_type_display", None
+    ) or getattr(ref, "identifier_type_display", None)
     id_type_user_selected = (
         getattr(ref, "reference_identifier_type_user_selected", None)
         if getattr(ref, "reference_identifier_type_user_selected", None) is not None
         else getattr(ref, "identifier_type_user_selected", None)
     )
-    id_type_text = getattr(ref, "reference_identifier_type_text", None) or getattr(ref, "identifier_type_text", None)
-    id_system = getattr(ref, "reference_identifier_system", None) or getattr(ref, "identifier_system", None)
-    id_value = getattr(ref, "reference_identifier_value", None) or getattr(ref, "identifier_value", None)
-    id_period_start = getattr(ref, "reference_identifier_period_start", None) or getattr(ref, "identifier_period_start", None)
-    id_period_end = getattr(ref, "reference_identifier_period_end", None) or getattr(ref, "identifier_period_end", None)
+    id_type_text = getattr(ref, "reference_identifier_type_text", None) or getattr(
+        ref, "identifier_type_text", None
+    )
+    id_system = getattr(ref, "reference_identifier_system", None) or getattr(
+        ref, "identifier_system", None
+    )
+    id_value = getattr(ref, "reference_identifier_value", None) or getattr(
+        ref, "identifier_value", None
+    )
+    id_period_start = getattr(
+        ref, "reference_identifier_period_start", None
+    ) or getattr(ref, "identifier_period_start", None)
+    id_period_end = getattr(ref, "reference_identifier_period_end", None) or getattr(
+        ref, "identifier_period_end", None
+    )
 
     has_ident = any(
         [
@@ -300,7 +322,11 @@ def _collection_from_payload(col: SpecimenCollectionInput) -> dict | None:
             k: v
             for k, v in {
                 "value": col.duration_value,
-                "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator), fhir_enum(comparator)) if comparator else None,
+                "comparator": _COMPARATOR_SYMBOLS.get(
+                    fhir_enum(comparator), fhir_enum(comparator)
+                )
+                if comparator
+                else None,
                 "unit": col.duration_unit,
                 "system": col.duration_system,
                 "code": col.duration_code,
@@ -328,7 +354,9 @@ def _collection_from_payload(col: SpecimenCollectionInput) -> dict | None:
     if body_site:
         entry["bodySite"] = body_site
 
-    fasting_concept = _codeable_concept_from_payload(col.fasting_status_codeable_concept)
+    fasting_concept = _codeable_concept_from_payload(
+        col.fasting_status_codeable_concept
+    )
     if fasting_concept:
         entry["fastingStatusCodeableConcept"] = fasting_concept
     elif col.fasting_status_duration_value is not None:
@@ -337,7 +365,11 @@ def _collection_from_payload(col: SpecimenCollectionInput) -> dict | None:
             k: v
             for k, v in {
                 "value": col.fasting_status_duration_value,
-                "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(f_comp), fhir_enum(f_comp)) if f_comp else None,
+                "comparator": _COMPARATOR_SYMBOLS.get(
+                    fhir_enum(f_comp), fhir_enum(f_comp)
+                )
+                if f_comp
+                else None,
                 "unit": col.fasting_status_duration_unit,
                 "system": col.fasting_status_duration_system,
                 "code": col.fasting_status_duration_code,
@@ -598,7 +630,9 @@ def payload_to_fhir_specimen(payload: SpecimenCreateSchema) -> dict:
     return result
 
 
-def patch_fragment_to_fhir_specimen(payload: SpecimenPatchSchema) -> tuple[dict, set[str]]:
+def patch_fragment_to_fhir_specimen(
+    payload: SpecimenPatchSchema,
+) -> tuple[dict, set[str]]:
     """Build a partial FHIR R4 Specimen dict and a set of touched FHIR keys from a patch payload."""
     provided = payload.model_dump(exclude_unset=True)
     fragment: dict = {}

@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.clinical_impression import ClinicalImpressionCreateSchema, ClinicalImpressionPatchSchema
+from app.schemas.clinical_impression import (
+    ClinicalImpressionCreateSchema,
+    ClinicalImpressionPatchSchema,
+)
 from app.services.clinical_impression import ClinicalImpressionService
 
 from ._responses import (
@@ -77,7 +80,9 @@ async def create_clinical_impression(
     payload: ClinicalImpressionCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("clinical_impression", "create")),
-    clinical_impression_service: ClinicalImpressionService = Depends(get_clinical_impression_service),
+    clinical_impression_service: ClinicalImpressionService = Depends(
+        get_clinical_impression_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -170,7 +175,9 @@ async def _search(
 async def search_clinical_impressions(
     request: Request,
     actor: AuthUser = Depends(require_permission("clinical_impression", "read")),
-    clinical_impression_service: ClinicalImpressionService = Depends(get_clinical_impression_service),
+    clinical_impression_service: ClinicalImpressionService = Depends(
+        get_clinical_impression_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -178,7 +185,9 @@ async def search_clinical_impressions(
         "Search ClinicalImpression resources",
         extra={"event": "route.search_clinical_impressions"},
     )
-    return await _search(request, get_query(request), actor, clinical_impression_service)
+    return await _search(
+        request, get_query(request), actor, clinical_impression_service
+    )
 
 
 @router.post(
@@ -197,13 +206,17 @@ async def search_clinical_impressions(
 async def search_clinical_impressions_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("clinical_impression", "read")),
-    clinical_impression_service: ClinicalImpressionService = Depends(get_clinical_impression_service),
+    clinical_impression_service: ClinicalImpressionService = Depends(
+        get_clinical_impression_service
+    ),
 ):
     logger.info(
         "Search ClinicalImpression resources (POST _search)",
         extra={"event": "route.search_clinical_impressions_post"},
     )
-    return await _search(request, await post_query(request), actor, clinical_impression_service)
+    return await _search(
+        request, await post_query(request), actor, clinical_impression_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -226,7 +239,9 @@ async def get_clinical_impression(
         ..., ge=1, description="Public clinical_impression identifier."
     ),
     actor: AuthUser = Depends(require_permission("clinical_impression", "read")),
-    clinical_impression_service: ClinicalImpressionService = Depends(get_clinical_impression_service),
+    clinical_impression_service: ClinicalImpressionService = Depends(
+        get_clinical_impression_service
+    ),
 ):
     logger.info(
         "Retrieve an ClinicalImpression resource by public clinical_impression_id",
@@ -235,8 +250,10 @@ async def get_clinical_impression(
             "clinical_impression_id": clinical_impression_id,
         },
     )
-    clinical_impression = await clinical_impression_service.get_clinical_impression_scoped(
-        clinical_impression_id, actor.org_id
+    clinical_impression = (
+        await clinical_impression_service.get_clinical_impression_scoped(
+            clinical_impression_id, actor.org_id
+        )
     )
     return fhir_response(clinical_impression_service._to_fhir(clinical_impression))
 
@@ -266,13 +283,18 @@ async def patch_clinical_impression(
         ..., ge=1, description="Public clinical_impression identifier."
     ),
     actor: AuthUser = Depends(require_permission("clinical_impression", "update")),
-    clinical_impression_service: ClinicalImpressionService = Depends(get_clinical_impression_service),
+    clinical_impression_service: ClinicalImpressionService = Depends(
+        get_clinical_impression_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_clinical_impression()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a ClinicalImpression resource",
-        extra={"event": "route.patch_clinical_impression", "clinical_impression_id": clinical_impression_id},
+        extra={
+            "event": "route.patch_clinical_impression",
+            "clinical_impression_id": clinical_impression_id,
+        },
     )
     log_payload(logger, "clinical_impression.patch.payload", payload)
     updated = await clinical_impression_service.patch_clinical_impression(
@@ -305,7 +327,9 @@ async def delete_clinical_impression(
         ..., ge=1, description="Public clinical_impression identifier."
     ),
     actor: AuthUser = Depends(require_permission("clinical_impression", "delete")),
-    clinical_impression_service: ClinicalImpressionService = Depends(get_clinical_impression_service),
+    clinical_impression_service: ClinicalImpressionService = Depends(
+        get_clinical_impression_service
+    ),
 ):
     """delete_clinical_impression() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -316,4 +340,6 @@ async def delete_clinical_impression(
             "clinical_impression_id": clinical_impression_id,
         },
     )
-    await clinical_impression_service.delete_clinical_impression(clinical_impression_id, org_id=actor.org_id)
+    await clinical_impression_service.delete_clinical_impression(
+        clinical_impression_id, org_id=actor.org_id
+    )

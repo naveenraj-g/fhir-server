@@ -21,9 +21,7 @@ class GoalTarget(TenantAuditMixin, Base):
     __tablename__ = "goal_target"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     # measure (0..1 CodeableConcept)
     measure_text = Column(String, nullable=True)

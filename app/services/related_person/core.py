@@ -11,7 +11,10 @@ from app.fhir.validation import validate_resource
 from app.models.related_person import RelatedPersonModel
 from app.repository.related_person import RelatedPersonRepository
 from app.repository.related_person.search import related_person_search
-from app.schemas.related_person import RelatedPersonCreateSchema, RelatedPersonPatchSchema
+from app.schemas.related_person import (
+    RelatedPersonCreateSchema,
+    RelatedPersonPatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -145,12 +148,16 @@ class _CoreMixin:
             raise NotFoundError("RelatedPerson not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_related_person(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_related_person(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(related_person_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            related_person_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("RelatedPerson not found")
         logger.info(

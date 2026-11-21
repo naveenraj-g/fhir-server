@@ -78,7 +78,9 @@ class FHIRQuestionnaireItem(BaseModel):
     answerValueSet: str | None = None
     answerOption: list[FHIRQuestionnaireItemAnswerOption] | None = None
     initial: list[FHIRQuestionnaireItemInitial] | None = None
-    item: list[FHIRQuestionnaireItem] | None = Field(None, description="Nested questions/groups.")
+    item: list[FHIRQuestionnaireItem] | None = Field(
+        None, description="Nested questions/groups."
+    )
 
 
 FHIRQuestionnaireItem.model_rebuild()

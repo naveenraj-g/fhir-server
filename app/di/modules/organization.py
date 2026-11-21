@@ -5,7 +5,6 @@ from app.services.organization import OrganizationService
 
 
 class OrganizationContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     organization_repository = providers.Factory(

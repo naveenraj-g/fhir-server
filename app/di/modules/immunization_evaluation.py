@@ -5,7 +5,6 @@ from app.services.immunization_evaluation import ImmunizationEvaluationService
 
 
 class ImmunizationEvaluationContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     immunization_evaluation_repository = providers.Factory(

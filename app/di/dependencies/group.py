@@ -7,8 +7,6 @@ from app.services.group import GroupService
 
 @inject
 def get_group_service(
-    service: GroupService = Depends(
-        Provide[Container.group.group_service]
-    ),
+    service: GroupService = Depends(Provide[Container.group.group_service]),
 ) -> GroupService:
     return service

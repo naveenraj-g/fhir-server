@@ -21,9 +21,7 @@ class MeasureReportEvaluatedResourceInput(BaseModel):
     reference: str | None = Field(
         None, description="Literal reference, Relative, internal or absolute URL."
     )
-    display: str | None = Field(
-        None, description="Text alternative for the resource."
-    )
+    display: str | None = Field(None, description="Text alternative for the resource.")
 
     # Fallback identifier for evaluated resource
     reference_identifier_use: IdentifierUse | None = Field(None)
@@ -81,9 +79,7 @@ class MeasureReportCreateSchema(BaseModel):
     identifier: list[MeasureReportIdentifierInput] | None = Field(
         None, description="Additional identifier for the MeasureReport."
     )
-    status: MeasureReportStatus = Field(
-        ..., description="complete | pending | error."
-    )
+    status: MeasureReportStatus = Field(..., description="complete | pending | error.")
     type: MeasureReportType = Field(
         ..., description="individual | subject-list | summary | data-collection."
     )
@@ -93,9 +89,7 @@ class MeasureReportCreateSchema(BaseModel):
     subject: str | None = Field(
         None, description="What individual(s) the report is for (e.g. Patient/10001)."
     )
-    subject_display: str | None = Field(
-        None, description="Display text for subject."
-    )
+    subject_display: str | None = Field(None, description="Display text for subject.")
 
     # Fallback identifier for subject
     subject_identifier_use: IdentifierUse | None = Field(None)
@@ -110,15 +104,11 @@ class MeasureReportCreateSchema(BaseModel):
     subject_identifier_period_start: datetime | None = Field(None)
     subject_identifier_period_end: datetime | None = Field(None)
 
-    date: datetime | None = Field(
-        None, description="When the report was generated."
-    )
+    date: datetime | None = Field(None, description="When the report was generated.")
     reporter: str | None = Field(
         None, description="Who is reporting the data (e.g. Practitioner/30001)."
     )
-    reporter_display: str | None = Field(
-        None, description="Display text for reporter."
-    )
+    reporter_display: str | None = Field(None, description="Display text for reporter.")
 
     # Fallback identifier for reporter
     reporter_identifier_use: IdentifierUse | None = Field(None)

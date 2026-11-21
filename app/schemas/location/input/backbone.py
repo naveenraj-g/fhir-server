@@ -25,8 +25,13 @@ class LocationHoursOfOperationInput(FhirInputModel):
     """Location.hoursOfOperation — what days/times the location is usually open."""
 
     daysOfWeek: list[DayOfWeek] | None = Field(
-        None, description="mon | tue | wed | thu | fri | sat | sun (required binding DaysOfWeek)."
+        None,
+        description="mon | tue | wed | thu | fri | sat | sun (required binding DaysOfWeek).",
     )
     allDay: bool | None = Field(None, description="The location is open all day.")
-    openingTime: str | None = Field(None, description="Time the location opens (hh:mm:ss).")
-    closingTime: str | None = Field(None, description="Time the location closes (hh:mm:ss).")
+    openingTime: str | None = Field(
+        None, description="Time the location opens (hh:mm:ss)."
+    )
+    closingTime: str | None = Field(
+        None, description="Time the location closes (hh:mm:ss)."
+    )

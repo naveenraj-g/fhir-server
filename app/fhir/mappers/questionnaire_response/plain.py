@@ -65,12 +65,18 @@ def _plain_reference(obj, prefix: str) -> dict | None:
         "reference_identifier_type_text": type_text,
         "reference_identifier_system": system,
         "reference_identifier_value": value,
-        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
-        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
+        "reference_identifier_period_start": period_start.isoformat()
+        if period_start
+        else None,
+        "reference_identifier_period_end": period_end.isoformat()
+        if period_end
+        else None,
     }
 
 
-def plain_questionnaire_response_identifier(qr: QuestionnaireResponseModel) -> dict | None:
+def plain_questionnaire_response_identifier(
+    qr: QuestionnaireResponseModel,
+) -> dict | None:
     if not (
         qr.identifier_use
         or qr.identifier_type_text
@@ -97,8 +103,12 @@ def plain_questionnaire_response_identifier(qr: QuestionnaireResponseModel) -> d
         "type_text": qr.identifier_type_text,
         "system": qr.identifier_system,
         "value": qr.identifier_value,
-        "period_start": qr.identifier_period_start.isoformat() if qr.identifier_period_start else None,
-        "period_end": qr.identifier_period_end.isoformat() if qr.identifier_period_end else None,
+        "period_start": qr.identifier_period_start.isoformat()
+        if qr.identifier_period_start
+        else None,
+        "period_end": qr.identifier_period_end.isoformat()
+        if qr.identifier_period_end
+        else None,
         "assigner": qr.identifier_assigner_reference
         or (
             f"{fhir_enum(qr.identifier_assigner_type)}/{qr.identifier_assigner_id}"
@@ -138,16 +148,32 @@ def plain_questionnaire_response_based_on(b) -> dict:
         "reference_id": b.reference_id,
         "reference_display": b.reference_display,
         "reference_identifier_use": fhir_enum(use) if use else None,
-        "reference_identifier_type_system": getattr(b, "reference_identifier_type_system", None),
-        "reference_identifier_type_version": getattr(b, "reference_identifier_type_version", None),
-        "reference_identifier_type_code": getattr(b, "reference_identifier_type_code", None),
-        "reference_identifier_type_display": getattr(b, "reference_identifier_type_display", None),
-        "reference_identifier_type_user_selected": getattr(b, "reference_identifier_type_user_selected", None),
-        "reference_identifier_type_text": getattr(b, "reference_identifier_type_text", None),
+        "reference_identifier_type_system": getattr(
+            b, "reference_identifier_type_system", None
+        ),
+        "reference_identifier_type_version": getattr(
+            b, "reference_identifier_type_version", None
+        ),
+        "reference_identifier_type_code": getattr(
+            b, "reference_identifier_type_code", None
+        ),
+        "reference_identifier_type_display": getattr(
+            b, "reference_identifier_type_display", None
+        ),
+        "reference_identifier_type_user_selected": getattr(
+            b, "reference_identifier_type_user_selected", None
+        ),
+        "reference_identifier_type_text": getattr(
+            b, "reference_identifier_type_text", None
+        ),
         "reference_identifier_system": getattr(b, "reference_identifier_system", None),
         "reference_identifier_value": getattr(b, "reference_identifier_value", None),
-        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
-        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
+        "reference_identifier_period_start": period_start.isoformat()
+        if period_start
+        else None,
+        "reference_identifier_period_end": period_end.isoformat()
+        if period_end
+        else None,
     }
 
 
@@ -162,16 +188,32 @@ def plain_questionnaire_response_part_of(p) -> dict:
         "reference_id": p.reference_id,
         "reference_display": p.reference_display,
         "reference_identifier_use": fhir_enum(use) if use else None,
-        "reference_identifier_type_system": getattr(p, "reference_identifier_type_system", None),
-        "reference_identifier_type_version": getattr(p, "reference_identifier_type_version", None),
-        "reference_identifier_type_code": getattr(p, "reference_identifier_type_code", None),
-        "reference_identifier_type_display": getattr(p, "reference_identifier_type_display", None),
-        "reference_identifier_type_user_selected": getattr(p, "reference_identifier_type_user_selected", None),
-        "reference_identifier_type_text": getattr(p, "reference_identifier_type_text", None),
+        "reference_identifier_type_system": getattr(
+            p, "reference_identifier_type_system", None
+        ),
+        "reference_identifier_type_version": getattr(
+            p, "reference_identifier_type_version", None
+        ),
+        "reference_identifier_type_code": getattr(
+            p, "reference_identifier_type_code", None
+        ),
+        "reference_identifier_type_display": getattr(
+            p, "reference_identifier_type_display", None
+        ),
+        "reference_identifier_type_user_selected": getattr(
+            p, "reference_identifier_type_user_selected", None
+        ),
+        "reference_identifier_type_text": getattr(
+            p, "reference_identifier_type_text", None
+        ),
         "reference_identifier_system": getattr(p, "reference_identifier_system", None),
         "reference_identifier_value": getattr(p, "reference_identifier_value", None),
-        "reference_identifier_period_start": period_start.isoformat() if period_start else None,
-        "reference_identifier_period_end": period_end.isoformat() if period_end else None,
+        "reference_identifier_period_start": period_start.isoformat()
+        if period_start
+        else None,
+        "reference_identifier_period_end": period_end.isoformat()
+        if period_end
+        else None,
     }
 
 
@@ -179,7 +221,9 @@ def _plain_answer_value(a: QuestionnaireResponseAnswer) -> dict:
     return {
         "id": a.id,
         "value_boolean": a.value_boolean,
-        "value_decimal": float(a.value_decimal) if a.value_decimal is not None else None,
+        "value_decimal": float(a.value_decimal)
+        if a.value_decimal is not None
+        else None,
         "value_integer": a.value_integer,
         "value_date": a.value_date.isoformat() if a.value_date else None,
         "value_date_time": a.value_date_time.isoformat() if a.value_date_time else None,
@@ -203,8 +247,12 @@ def _plain_answer_value(a: QuestionnaireResponseAnswer) -> dict:
         "value_coding_code": a.code,
         "value_coding_display": a.display,
         "value_coding_user_selected": a.user_selected,
-        "value_quantity_value": float(a.value_quantity_value) if a.value_quantity_value is not None else None,
-        "value_quantity_comparator": fhir_enum(a.value_quantity_comparator) if a.value_quantity_comparator else None,
+        "value_quantity_value": float(a.value_quantity_value)
+        if a.value_quantity_value is not None
+        else None,
+        "value_quantity_comparator": fhir_enum(a.value_quantity_comparator)
+        if a.value_quantity_comparator
+        else None,
         "value_quantity_unit": a.value_quantity_unit,
         "value_quantity_system": a.value_quantity_system,
         "value_quantity_code": a.value_quantity_code,
@@ -259,7 +307,9 @@ def _build_plain_item_tree(
     def render_items(item_list: list) -> list[dict]:
         result = []
         for item in item_list:
-            answer_entries = [render_answer(a) for a in answers_by_item.get(item.id, [])]
+            answer_entries = [
+                render_answer(a) for a in answers_by_item.get(item.id, [])
+            ]
             entry = {
                 "id": item.id,
                 "link_id": item.link_id,
@@ -284,8 +334,14 @@ def to_plain_questionnaire_response(qr: QuestionnaireResponseModel) -> dict:
         "id": qr.questionnaire_response_id,
         "extension": list(qr.extension) if qr.extension else None,
         "identifier": plain_questionnaire_response_identifier(qr),
-        "based_on": [plain_questionnaire_response_based_on(b) for b in (qr.based_ons or [])] or None,
-        "part_of": [plain_questionnaire_response_part_of(p) for p in (qr.part_ofs or [])] or None,
+        "based_on": [
+            plain_questionnaire_response_based_on(b) for b in (qr.based_ons or [])
+        ]
+        or None,
+        "part_of": [
+            plain_questionnaire_response_part_of(p) for p in (qr.part_ofs or [])
+        ]
+        or None,
         "questionnaire": qr.questionnaire,
         "status": fhir_enum(qr.status).replace("_", "-") if qr.status else None,
         "subject": subject,

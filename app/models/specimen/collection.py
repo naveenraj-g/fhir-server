@@ -28,7 +28,9 @@ class SpecimenCollectionBodySiteCoding(FhirCodingMixin, TenantAuditMixin, Base):
         BigInteger, ForeignKey("specimen.id"), nullable=False, index=True
     )
 
-    specimen = relationship("SpecimenModel", back_populates="collection_body_site_codings")
+    specimen = relationship(
+        "SpecimenModel", back_populates="collection_body_site_codings"
+    )
 
 
 class SpecimenCollectionFastingStatusCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -41,4 +43,6 @@ class SpecimenCollectionFastingStatusCoding(FhirCodingMixin, TenantAuditMixin, B
         BigInteger, ForeignKey("specimen.id"), nullable=False, index=True
     )
 
-    specimen = relationship("SpecimenModel", back_populates="collection_fasting_status_codings")
+    specimen = relationship(
+        "SpecimenModel", back_populates="collection_fasting_status_codings"
+    )

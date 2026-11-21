@@ -74,12 +74,18 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     master_identifier_assigner_identifier_type_version = Column(String, nullable=True)
     master_identifier_assigner_identifier_type_code = Column(String, nullable=True)
     master_identifier_assigner_identifier_type_display = Column(String, nullable=True)
-    master_identifier_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
+    master_identifier_assigner_identifier_type_user_selected = Column(
+        Boolean, nullable=True
+    )
     master_identifier_assigner_identifier_type_text = Column(String, nullable=True)
     master_identifier_assigner_identifier_system = Column(String, nullable=True)
     master_identifier_assigner_identifier_value = Column(String, nullable=True)
-    master_identifier_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    master_identifier_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    master_identifier_assigner_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    master_identifier_assigner_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # status (1..1 code)
     status = Column(
@@ -154,7 +160,9 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     authenticator_identifier_type_text = Column(String, nullable=True)
     authenticator_identifier_system = Column(String, nullable=True)
     authenticator_identifier_value = Column(String, nullable=True)
-    authenticator_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    authenticator_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
     authenticator_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # custodian (0..1 Reference(Organization))
@@ -208,12 +216,18 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     context_source_patient_info_identifier_type_version = Column(String, nullable=True)
     context_source_patient_info_identifier_type_code = Column(String, nullable=True)
     context_source_patient_info_identifier_type_display = Column(String, nullable=True)
-    context_source_patient_info_identifier_type_user_selected = Column(Boolean, nullable=True)
+    context_source_patient_info_identifier_type_user_selected = Column(
+        Boolean, nullable=True
+    )
     context_source_patient_info_identifier_type_text = Column(String, nullable=True)
     context_source_patient_info_identifier_system = Column(String, nullable=True)
     context_source_patient_info_identifier_value = Column(String, nullable=True)
-    context_source_patient_info_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    context_source_patient_info_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    context_source_patient_info_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    context_source_patient_info_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # extension (0..* Extension)
     extension = Column(JSONB, nullable=False, server_default="[]")
@@ -286,7 +300,9 @@ class DocumentReferenceModel(TenantAuditMixin, Base):
     )
 
 
-class DocumentReferenceMasterIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class DocumentReferenceMasterIdentifierTypeCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """One entry of DocumentReference.masterIdentifier.type.coding (0..*)."""
 
     __tablename__ = "document_reference_master_identifier_type_coding"
@@ -314,10 +330,14 @@ class DocumentReferenceTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
         BigInteger, ForeignKey("document_reference.id"), nullable=False, index=True
     )
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="type_codings")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="type_codings"
+    )
 
 
-class DocumentReferenceContextFacilityTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class DocumentReferenceContextFacilityTypeCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """One entry of DocumentReference.context.facilityType.coding (0..*)."""
 
     __tablename__ = "document_reference_context_facility_type_coding"
@@ -332,7 +352,9 @@ class DocumentReferenceContextFacilityTypeCoding(FhirCodingMixin, TenantAuditMix
     )
 
 
-class DocumentReferenceContextPracticeSettingCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class DocumentReferenceContextPracticeSettingCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """One entry of DocumentReference.context.practiceSetting.coding (0..*)."""
 
     __tablename__ = "document_reference_context_practice_setting_coding"

@@ -62,11 +62,15 @@ class FhirContactPointMixin:
     @declared_attr
     def period_start(cls):
         return Column(
-            f"{cls._contact_point_prefix}period_start", DateTime(timezone=True), nullable=True
+            f"{cls._contact_point_prefix}period_start",
+            DateTime(timezone=True),
+            nullable=True,
         )
 
     @declared_attr
     def period_end(cls):
         return Column(
-            f"{cls._contact_point_prefix}period_end", DateTime(timezone=True), nullable=True
+            f"{cls._contact_point_prefix}period_end",
+            DateTime(timezone=True),
+            nullable=True,
         )

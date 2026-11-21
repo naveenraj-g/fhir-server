@@ -5,7 +5,6 @@ from app.services.appointment import AppointmentService
 
 
 class AppointmentContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     appointment_repository = providers.Factory(

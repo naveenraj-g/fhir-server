@@ -4,7 +4,12 @@ from app.core.logging import get_logger
 from app.models.slot import SlotModel
 
 from ._indexer import INDEX_RELATIONSHIPS, index_columns, index_rows, local_references
-from ._shared import _parse_org_ref, _parse_schedule_ref, _validate_reference, _with_relationships
+from ._shared import (
+    _parse_org_ref,
+    _parse_schedule_ref,
+    _validate_reference,
+    _with_relationships,
+)
 
 logger = get_logger(__name__)
 
@@ -67,9 +72,7 @@ class _FullMixin:
         rebuilt."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(SlotModel).where(
-                    SlotModel.slot_id == slot_id
-                )
+                select(SlotModel).where(SlotModel.slot_id == slot_id)
             )
             slot = (await session.execute(stmt)).scalars().first()
             if not slot:

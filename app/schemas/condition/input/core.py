@@ -12,33 +12,105 @@ from app.schemas.fhir_input import (
 
 _EXAMPLE = {
     "resourceType": "Condition",
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/condition-id", "value": "C-1001"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/condition-id",
+            "value": "C-1001",
+        }
+    ],
     "clinicalStatus": {
-        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "active",
+            }
+        ]
     },
     "verificationStatus": {
-        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+                "code": "confirmed",
+            }
+        ]
     },
     "category": [
-        {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-category", "code": "problem-list-item"}]}
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                    "code": "problem-list-item",
+                }
+            ]
+        }
     ],
-    "severity": {"coding": [{"system": "http://snomed.info/sct", "code": "24484000", "display": "Severe"}]},
-    "code": {"coding": [{"system": "http://snomed.info/sct", "code": "38341003", "display": "Hypertension"}]},
-    "bodySite": [{"coding": [{"system": "http://snomed.info/sct", "code": "368208006", "display": "Left upper arm"}]}],
+    "severity": {
+        "coding": [
+            {
+                "system": "http://snomed.info/sct",
+                "code": "24484000",
+                "display": "Severe",
+            }
+        ]
+    },
+    "code": {
+        "coding": [
+            {
+                "system": "http://snomed.info/sct",
+                "code": "38341003",
+                "display": "Hypertension",
+            }
+        ]
+    },
+    "bodySite": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "368208006",
+                    "display": "Left upper arm",
+                }
+            ]
+        }
+    ],
     "subject": {"reference": "Patient/10001"},
     "encounter": {"reference": "Encounter/20001"},
     "onsetDateTime": "2023-01-15T09:30:00Z",
     "recordedDate": "2023-01-15T10:00:00Z",
     "recorder": {"reference": "Practitioner/30001"},
     "asserter": {"reference": "Patient/10001"},
-    "stage": [{"summary": {"coding": [{"system": "http://snomed.info/sct", "code": "14803004", "display": "Temporary"}]}}],
+    "stage": [
+        {
+            "summary": {
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "14803004",
+                        "display": "Temporary",
+                    }
+                ]
+            }
+        }
+    ],
     "evidence": [
         {
-            "code": [{"coding": [{"system": "http://snomed.info/sct", "code": "29857009", "display": "Chest pain"}]}],
+            "code": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "29857009",
+                            "display": "Chest pain",
+                        }
+                    ]
+                }
+            ],
             "detail": [{"reference": "Observation/160001"}],
         }
     ],
-    "note": [{"text": "Blood pressure poorly controlled.", "time": "2023-01-15T10:05:00Z"}],
+    "note": [
+        {"text": "Blood pressure poorly controlled.", "time": "2023-01-15T10:05:00Z"}
+    ],
 }
 
 
@@ -49,18 +121,31 @@ class ConditionAnnotationInput(FhirInputModel):
         None,
         description="Individual responsible for the annotation — Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    authorString: str | None = Field(None, description="Individual responsible for the annotation, as plain text.")
-    time: str | None = Field(None, description="When the annotation was made (a FHIR dateTime).")
-    text: str | None = Field(None, description="The annotation text, as markdown (required by R4).")
+    authorString: str | None = Field(
+        None, description="Individual responsible for the annotation, as plain text."
+    )
+    time: str | None = Field(
+        None, description="When the annotation was made (a FHIR dateTime)."
+    )
+    text: str | None = Field(
+        None, description="The annotation text, as markdown (required by R4)."
+    )
 
 
 class ConditionQuantityInput(FhirInputModel):
     """Age (onsetAge / abatementAge) — a Quantity with a time unit."""
 
-    value: float | int | None = Field(None, description="Numerical value (with implicit precision).")
-    comparator: Literal["<", "<=", ">=", ">"] | None = Field(None, description="< | <= | >= | > - how to understand the value.")
+    value: float | int | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(
+        None, description="< | <= | >= | > - how to understand the value."
+    )
     unit: str | None = Field(None, description="Unit representation.")
-    system: str | None = Field(None, description="System that defines coded unit form (usually http://unitsofmeasure.org).")
+    system: str | None = Field(
+        None,
+        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
+    )
     code: str | None = Field(None, description="Coded form of the unit.")
 
 
@@ -74,16 +159,27 @@ class ConditionRangeInput(FhirInputModel):
 class ConditionStageInput(FhirInputModel):
     """Condition.stage — stage/grade, usually assessed formally."""
 
-    summary: FhirCodeableConceptInput | None = Field(None, description="Simple summary (disease specific).")
-    assessment: list[FhirReferenceInput] | None = Field(None, description="Formal record of assessment — Reference(ClinicalImpression | DiagnosticReport | Observation).")
-    type: FhirCodeableConceptInput | None = Field(None, description="Kind of staging, such as pathological or clinical staging.")
+    summary: FhirCodeableConceptInput | None = Field(
+        None, description="Simple summary (disease specific)."
+    )
+    assessment: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Formal record of assessment — Reference(ClinicalImpression | DiagnosticReport | Observation).",
+    )
+    type: FhirCodeableConceptInput | None = Field(
+        None, description="Kind of staging, such as pathological or clinical staging."
+    )
 
 
 class ConditionEvidenceInput(FhirInputModel):
     """Condition.evidence — supporting evidence / manifestations that are the basis of the condition."""
 
-    code: list[FhirCodeableConceptInput] | None = Field(None, description="Manifestation/symptom.")
-    detail: list[FhirReferenceInput] | None = Field(None, description="Supporting information found elsewhere — Reference(Any).")
+    code: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Manifestation/symptom."
+    )
+    detail: list[FhirReferenceInput] | None = Field(
+        None, description="Supporting information found elsewhere — Reference(Any)."
+    )
 
 
 class _ConditionFields(FhirInputModel):
@@ -103,39 +199,105 @@ class _ConditionFields(FhirInputModel):
     time). org_id and created_by/updated_by come from the verified JWT
     (actor.org_id / actor.sub), never the body. There is no user_id."""
 
-    resourceType: Literal["Condition"] | None = Field(None, description="Optional; if supplied it must be 'Condition'.")
+    resourceType: Literal["Condition"] | None = Field(
+        None, description="Optional; if supplied it must be 'Condition'."
+    )
     extension: list[dict] | None = Field(
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="External Ids for this condition.")
-    clinicalStatus: FhirCodeableConceptInput | None = Field(None, description="active | recurrence | relapse | inactive | remission | resolved (system http://terminology.hl7.org/CodeSystem/condition-clinical).")
-    verificationStatus: FhirCodeableConceptInput | None = Field(None, description="unconfirmed | provisional | differential | confirmed | refuted | entered-in-error (system http://terminology.hl7.org/CodeSystem/condition-ver-status).")
-    category: list[FhirCodeableConceptInput] | None = Field(None, description="problem-list-item | encounter-diagnosis (extensible binding).")
-    severity: FhirCodeableConceptInput | None = Field(None, description="Subjective severity of condition.")
-    code: FhirCodeableConceptInput | None = Field(None, description="Identification of the condition, problem or diagnosis.")
-    bodySite: list[FhirCodeableConceptInput] | None = Field(None, description="Anatomical location, if relevant.")
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External Ids for this condition."
+    )
+    clinicalStatus: FhirCodeableConceptInput | None = Field(
+        None,
+        description="active | recurrence | relapse | inactive | remission | resolved (system http://terminology.hl7.org/CodeSystem/condition-clinical).",
+    )
+    verificationStatus: FhirCodeableConceptInput | None = Field(
+        None,
+        description="unconfirmed | provisional | differential | confirmed | refuted | entered-in-error (system http://terminology.hl7.org/CodeSystem/condition-ver-status).",
+    )
+    category: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="problem-list-item | encounter-diagnosis (extensible binding).",
+    )
+    severity: FhirCodeableConceptInput | None = Field(
+        None, description="Subjective severity of condition."
+    )
+    code: FhirCodeableConceptInput | None = Field(
+        None, description="Identification of the condition, problem or diagnosis."
+    )
+    bodySite: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Anatomical location, if relevant."
+    )
     subject: FhirReferenceInput | None = Field(
         None,
         description="Who has the condition — Reference(Patient | Group) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    encounter: FhirReferenceInput | None = Field(None, description="Encounter created as part of — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).")
-    onsetDateTime: str | None = Field(None, description="Estimated or actual date, date-time, or age (a FHIR dateTime). One of the onset[x] choices.")
-    onsetAge: ConditionQuantityInput | None = Field(None, description="Estimated or actual age (an Age). One of the onset[x] choices.")
-    onsetPeriod: FhirPeriodInput | None = Field(None, description="Estimated or actual period (a Period). One of the onset[x] choices.")
-    onsetRange: ConditionRangeInput | None = Field(None, description="Estimated or actual age range (a Range). One of the onset[x] choices.")
-    onsetString: str | None = Field(None, description="Estimated or actual onset as text. One of the onset[x] choices.")
-    abatementDateTime: str | None = Field(None, description="When in resolution/remission (a FHIR dateTime). One of the abatement[x] choices.")
-    abatementAge: ConditionQuantityInput | None = Field(None, description="When in resolution/remission (an Age). One of the abatement[x] choices.")
-    abatementPeriod: FhirPeriodInput | None = Field(None, description="When in resolution/remission (a Period). One of the abatement[x] choices.")
-    abatementRange: ConditionRangeInput | None = Field(None, description="When in resolution/remission (a Range). One of the abatement[x] choices.")
-    abatementString: str | None = Field(None, description="When in resolution/remission, as text. One of the abatement[x] choices.")
-    recordedDate: str | None = Field(None, description="Date record was first recorded (a FHIR dateTime).")
-    recorder: FhirReferenceInput | None = Field(None, description="Who recorded the condition — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise).")
-    asserter: FhirReferenceInput | None = Field(None, description="Person who asserts this condition — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise).")
-    stage: list[ConditionStageInput] | None = Field(None, description="Stage/grade, usually assessed formally.")
-    evidence: list[ConditionEvidenceInput] | None = Field(None, description="Supporting evidence.")
-    note: list[ConditionAnnotationInput] | None = Field(None, description="Additional information about the Condition.")
+    encounter: FhirReferenceInput | None = Field(
+        None,
+        description="Encounter created as part of — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    onsetDateTime: str | None = Field(
+        None,
+        description="Estimated or actual date, date-time, or age (a FHIR dateTime). One of the onset[x] choices.",
+    )
+    onsetAge: ConditionQuantityInput | None = Field(
+        None,
+        description="Estimated or actual age (an Age). One of the onset[x] choices.",
+    )
+    onsetPeriod: FhirPeriodInput | None = Field(
+        None,
+        description="Estimated or actual period (a Period). One of the onset[x] choices.",
+    )
+    onsetRange: ConditionRangeInput | None = Field(
+        None,
+        description="Estimated or actual age range (a Range). One of the onset[x] choices.",
+    )
+    onsetString: str | None = Field(
+        None,
+        description="Estimated or actual onset as text. One of the onset[x] choices.",
+    )
+    abatementDateTime: str | None = Field(
+        None,
+        description="When in resolution/remission (a FHIR dateTime). One of the abatement[x] choices.",
+    )
+    abatementAge: ConditionQuantityInput | None = Field(
+        None,
+        description="When in resolution/remission (an Age). One of the abatement[x] choices.",
+    )
+    abatementPeriod: FhirPeriodInput | None = Field(
+        None,
+        description="When in resolution/remission (a Period). One of the abatement[x] choices.",
+    )
+    abatementRange: ConditionRangeInput | None = Field(
+        None,
+        description="When in resolution/remission (a Range). One of the abatement[x] choices.",
+    )
+    abatementString: str | None = Field(
+        None,
+        description="When in resolution/remission, as text. One of the abatement[x] choices.",
+    )
+    recordedDate: str | None = Field(
+        None, description="Date record was first recorded (a FHIR dateTime)."
+    )
+    recorder: FhirReferenceInput | None = Field(
+        None,
+        description="Who recorded the condition — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    asserter: FhirReferenceInput | None = Field(
+        None,
+        description="Person who asserts this condition — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    stage: list[ConditionStageInput] | None = Field(
+        None, description="Stage/grade, usually assessed formally."
+    )
+    evidence: list[ConditionEvidenceInput] | None = Field(
+        None, description="Supporting evidence."
+    )
+    note: list[ConditionAnnotationInput] | None = Field(
+        None, description="Additional information about the Condition."
+    )
 
 
 class ConditionCreateSchema(_ConditionFields):
@@ -155,7 +317,12 @@ class ConditionPatchSchema(_ConditionFields):
         "json_schema_extra": {
             "example": {
                 "clinicalStatus": {
-                    "coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "resolved"}]
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "resolved",
+                        }
+                    ]
                 },
                 "abatementDateTime": "2024-05-01",
             }

@@ -9,8 +9,12 @@ class SearchError(InputValidationError):
     unparseable value is likewise an error). `field` is the query parameter
     (or value) at fault."""
 
-    def __init__(self, field: str, message: str, issue_type: IssueType = IssueType.INVALID):
-        super().__init__([{"field": field, "message": message, "issue_type": issue_type}])
+    def __init__(
+        self, field: str, message: str, issue_type: IssueType = IssueType.INVALID
+    ):
+        super().__init__(
+            [{"field": field, "message": message, "issue_type": issue_type}]
+        )
 
 
 class UnsupportedSearchError(SearchError):

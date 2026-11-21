@@ -52,9 +52,7 @@ class FHIRTaskSchema(BaseModel):
     groupIdentifier: FHIRIdentifier | None = Field(
         None, description="Requisition or Form identifier."
     )
-    partOf: list[FHIRReference] | None = Field(
-        None, description="Composite task."
-    )
+    partOf: list[FHIRReference] | None = Field(None, description="Composite task.")
     status: str = Field(
         ...,
         description="draft | requested | received | accepted | rejected | ready | cancelled | in-progress | on-hold | failed | completed | entered-in-error.",
@@ -69,18 +67,12 @@ class FHIRTaskSchema(BaseModel):
         ...,
         description="unknown | proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option.",
     )
-    priority: str | None = Field(
-        None, description="routine | urgent | asap | stat."
-    )
-    code: FHIRCodeableConcept | None = Field(
-        None, description="Task Type."
-    )
+    priority: str | None = Field(None, description="routine | urgent | asap | stat.")
+    code: FHIRCodeableConcept | None = Field(None, description="Task Type.")
     description: str | None = Field(
         None, description="Human-readable explanation of task."
     )
-    focus: FHIRReference | None = Field(
-        None, description="What task is acting on."
-    )
+    focus: FHIRReference | None = Field(None, description="What task is acting on.")
     for_: FHIRReference | None = Field(
         None,
         alias="for",
@@ -92,24 +84,16 @@ class FHIRTaskSchema(BaseModel):
     executionPeriod: FHIRPeriod | None = Field(
         None, description="Start and end time of execution."
     )
-    authoredOn: str | None = Field(
-        None, description="Task Creation Date."
-    )
-    lastModified: str | None = Field(
-        None, description="Task Last Modified Date."
-    )
+    authoredOn: str | None = Field(None, description="Task Creation Date.")
+    lastModified: str | None = Field(None, description="Task Last Modified Date.")
     requester: FHIRReference | None = Field(
         None, description="Who is asking for task to be done."
     )
     performerType: list[FHIRCodeableConcept] | None = Field(
         None, description="Requested performer normal role."
     )
-    owner: FHIRReference | None = Field(
-        None, description="Responsible individual."
-    )
-    location: FHIRReference | None = Field(
-        None, description="Where task occurs."
-    )
+    owner: FHIRReference | None = Field(None, description="Responsible individual.")
+    location: FHIRReference | None = Field(None, description="Where task occurs.")
     reasonCode: FHIRCodeableConcept | None = Field(
         None, description="Why task is needed."
     )
@@ -325,6 +309,4 @@ class PaginatedTaskResponse(BaseModel):
     total: int = Field(..., description="Total matching records.")
     limit: int = Field(..., description="Maximum results returned.")
     offset: int = Field(..., description="Offset applied.")
-    data: list[PlainTaskResponse] = Field(
-        ..., description="Page of task records."
-    )
+    data: list[PlainTaskResponse] = Field(..., description="Page of task records.")

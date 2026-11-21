@@ -17,8 +17,12 @@ if TYPE_CHECKING:
         MedicationRequestNoteInput,
         MedicationRequestPatchSchema,
     )
-    from app.schemas.medication_request.input.codeable_concept import MedicationRequestCodeableConceptInput
-    from app.schemas.medication_request.input.dosage_instruction import MedicationRequestDosageInstructionInput
+    from app.schemas.medication_request.input.codeable_concept import (
+        MedicationRequestCodeableConceptInput,
+    )
+    from app.schemas.medication_request.input.dosage_instruction import (
+        MedicationRequestDosageInstructionInput,
+    )
 
 
 def _coding_list(codings) -> list[dict]:
@@ -43,7 +47,10 @@ def _coding_list(codings) -> list[dict]:
 def _period(start, end) -> dict | None:
     period = {
         k: v
-        for k, v in {"start": start.isoformat() if start else None, "end": end.isoformat() if end else None}.items()
+        for k, v in {
+            "start": start.isoformat() if start else None,
+            "end": end.isoformat() if end else None,
+        }.items()
         if v
     }
     return period or None
@@ -65,7 +72,9 @@ def _reference_with_identifier_fallback_from_payload(obj) -> dict:
     id_type_version = getattr(obj, "reference_identifier_type_version", None)
     id_type_code = getattr(obj, "reference_identifier_type_code", None)
     id_type_display = getattr(obj, "reference_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, "reference_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, "reference_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, "reference_identifier_type_text", None)
     id_system = getattr(obj, "reference_identifier_system", None)
     id_value = getattr(obj, "reference_identifier_value", None)
@@ -148,7 +157,9 @@ def payload_medication_request_identifier(i: MedicationRequestIdentifierInput) -
     return entry
 
 
-def payload_medication_request_codeable_concept(cc: MedicationRequestCodeableConceptInput) -> dict:
+def payload_medication_request_codeable_concept(
+    cc: MedicationRequestCodeableConceptInput,
+) -> dict:
     entry: dict = {}
     coding = _coding_list(cc.coding)
     if coding:
@@ -162,23 +173,20 @@ def payload_medication_request_note(n: MedicationRequestNoteInput) -> dict:
     entry: dict = {}
     if n.author_string:
         entry["authorString"] = n.author_string
-    elif (
-        n.author_reference
-        or any(
-            getattr(n, f"author_identifier_{attr}", None) is not None
-            for attr in (
-                "use",
-                "type_system",
-                "type_version",
-                "type_code",
-                "type_display",
-                "type_user_selected",
-                "type_text",
-                "system",
-                "value",
-                "period_start",
-                "period_end",
-            )
+    elif n.author_reference or any(
+        getattr(n, f"author_identifier_{attr}", None) is not None
+        for attr in (
+            "use",
+            "type_system",
+            "type_version",
+            "type_code",
+            "type_display",
+            "type_user_selected",
+            "type_text",
+            "system",
+            "value",
+            "period_start",
+            "period_end",
         )
     ):
         ref: dict = {}
@@ -255,7 +263,9 @@ def payload_medication_request_note(n: MedicationRequestNoteInput) -> dict:
     return entry
 
 
-def payload_medication_request_dosage_instruction(d: MedicationRequestDosageInstructionInput) -> dict:
+def payload_medication_request_dosage_instruction(
+    d: MedicationRequestDosageInstructionInput,
+) -> dict:
     entry: dict = {}
     if d.sequence is not None:
         entry["sequence"] = d.sequence
@@ -263,7 +273,8 @@ def payload_medication_request_dosage_instruction(d: MedicationRequestDosageInst
         entry["text"] = d.text
     if d.additional_instruction:
         entry["additionalInstruction"] = [
-            payload_medication_request_codeable_concept(ai) for ai in d.additional_instruction
+            payload_medication_request_codeable_concept(ai)
+            for ai in d.additional_instruction
         ]
     if d.patient_instruction:
         entry["patientInstruction"] = d.patient_instruction
@@ -370,11 +381,16 @@ def _dispense_request_choice(payload) -> dict | None:
     if dispense_interval:
         entry["dispenseInterval"] = dispense_interval
 
-    period = _period(payload.dispense_request_validity_period_start, payload.dispense_request_validity_period_end)
+    period = _period(
+        payload.dispense_request_validity_period_start,
+        payload.dispense_request_validity_period_end,
+    )
     if period:
         entry["validityPeriod"] = period
     if payload.dispense_request_number_of_repeats_allowed is not None:
-        entry["numberOfRepeatsAllowed"] = payload.dispense_request_number_of_repeats_allowed
+        entry["numberOfRepeatsAllowed"] = (
+            payload.dispense_request_number_of_repeats_allowed
+        )
 
     quantity = {
         k: v
@@ -403,7 +419,9 @@ def _dispense_request_choice(payload) -> dict | None:
         entry["expectedSupplyDuration"] = expected_supply_duration
 
     if payload.dispense_request_performer:
-        performer = _reference_with_identifier_fallback_from_payload(payload.dispense_request_performer)
+        performer = _reference_with_identifier_fallback_from_payload(
+            payload.dispense_request_performer
+        )
         if performer:
             entry["performer"] = performer
 
@@ -415,11 +433,15 @@ def _substitution_choice(payload) -> dict | None:
     if payload.substitution_allowed_boolean is not None:
         entry["allowedBoolean"] = payload.substitution_allowed_boolean
     elif payload.substitution_allowed_codeable_concept:
-        cc = payload_medication_request_codeable_concept(payload.substitution_allowed_codeable_concept)
+        cc = payload_medication_request_codeable_concept(
+            payload.substitution_allowed_codeable_concept
+        )
         if cc:
             entry["allowedCodeableConcept"] = cc
     if payload.substitution_reason:
-        reason = payload_medication_request_codeable_concept(payload.substitution_reason)
+        reason = payload_medication_request_codeable_concept(
+            payload.substitution_reason
+        )
         if reason:
             entry["reason"] = reason
     return entry or None
@@ -430,13 +452,25 @@ _LIST_FIELDS = {
     "identifier": ("identifier", payload_medication_request_identifier),
     "category": ("category", payload_medication_request_codeable_concept),
     "reason_code": ("reasonCode", payload_medication_request_codeable_concept),
-    "reason_reference": ("reasonReference", _reference_with_identifier_fallback_from_payload),
+    "reason_reference": (
+        "reasonReference",
+        _reference_with_identifier_fallback_from_payload,
+    ),
     "based_on": ("basedOn", _reference_with_identifier_fallback_from_payload),
     "insurance": ("insurance", _reference_with_identifier_fallback_from_payload),
-    "supporting_information": ("supportingInformation", _reference_with_identifier_fallback_from_payload),
+    "supporting_information": (
+        "supportingInformation",
+        _reference_with_identifier_fallback_from_payload,
+    ),
     "note": ("note", payload_medication_request_note),
-    "dosage_instruction": ("dosageInstruction", payload_medication_request_dosage_instruction),
-    "detected_issue": ("detectedIssue", _reference_with_identifier_fallback_from_payload),
+    "dosage_instruction": (
+        "dosageInstruction",
+        payload_medication_request_dosage_instruction,
+    ),
+    "detected_issue": (
+        "detectedIssue",
+        _reference_with_identifier_fallback_from_payload,
+    ),
     "event_history": ("eventHistory", _reference_with_identifier_fallback_from_payload),
 }
 
@@ -455,20 +489,37 @@ _SINGLE_CC_FIELDS = {
 }
 
 _DISPENSE_REQUEST_FIELDS = {
-    "dispense_request_initial_fill_quantity_value", "dispense_request_initial_fill_quantity_comparator",
-    "dispense_request_initial_fill_quantity_unit", "dispense_request_initial_fill_quantity_system",
-    "dispense_request_initial_fill_quantity_code", "dispense_request_initial_fill_duration_value",
-    "dispense_request_initial_fill_duration_unit", "dispense_request_initial_fill_duration_system",
-    "dispense_request_initial_fill_duration_code", "dispense_request_dispense_interval_value",
-    "dispense_request_dispense_interval_unit", "dispense_request_dispense_interval_system",
-    "dispense_request_dispense_interval_code", "dispense_request_validity_period_start",
-    "dispense_request_validity_period_end", "dispense_request_number_of_repeats_allowed",
-    "dispense_request_quantity_value", "dispense_request_quantity_unit", "dispense_request_quantity_system",
-    "dispense_request_quantity_code", "dispense_request_expected_supply_duration_value",
-    "dispense_request_expected_supply_duration_unit", "dispense_request_expected_supply_duration_system",
-    "dispense_request_expected_supply_duration_code", "dispense_request_performer",
+    "dispense_request_initial_fill_quantity_value",
+    "dispense_request_initial_fill_quantity_comparator",
+    "dispense_request_initial_fill_quantity_unit",
+    "dispense_request_initial_fill_quantity_system",
+    "dispense_request_initial_fill_quantity_code",
+    "dispense_request_initial_fill_duration_value",
+    "dispense_request_initial_fill_duration_unit",
+    "dispense_request_initial_fill_duration_system",
+    "dispense_request_initial_fill_duration_code",
+    "dispense_request_dispense_interval_value",
+    "dispense_request_dispense_interval_unit",
+    "dispense_request_dispense_interval_system",
+    "dispense_request_dispense_interval_code",
+    "dispense_request_validity_period_start",
+    "dispense_request_validity_period_end",
+    "dispense_request_number_of_repeats_allowed",
+    "dispense_request_quantity_value",
+    "dispense_request_quantity_unit",
+    "dispense_request_quantity_system",
+    "dispense_request_quantity_code",
+    "dispense_request_expected_supply_duration_value",
+    "dispense_request_expected_supply_duration_unit",
+    "dispense_request_expected_supply_duration_system",
+    "dispense_request_expected_supply_duration_code",
+    "dispense_request_performer",
 }
-_SUBSTITUTION_FIELDS = {"substitution_allowed_boolean", "substitution_allowed_codeable_concept", "substitution_reason"}
+_SUBSTITUTION_FIELDS = {
+    "substitution_allowed_boolean",
+    "substitution_allowed_codeable_concept",
+    "substitution_reason",
+}
 
 
 def payload_to_fhir_medication_request(payload: MedicationRequestCreateSchema) -> dict:
@@ -496,16 +547,22 @@ def payload_to_fhir_medication_request(payload: MedicationRequestCreateSchema) -
     if payload.reported_boolean is not None:
         result["reportedBoolean"] = payload.reported_boolean
     elif payload.reported_reference:
-        ref = _reference_with_identifier_fallback_from_payload(payload.reported_reference)
+        ref = _reference_with_identifier_fallback_from_payload(
+            payload.reported_reference
+        )
         if ref:
             result["reportedReference"] = ref
 
     if payload.medication_codeable_concept:
-        cc = payload_medication_request_codeable_concept(payload.medication_codeable_concept)
+        cc = payload_medication_request_codeable_concept(
+            payload.medication_codeable_concept
+        )
         if cc:
             result["medicationCodeableConcept"] = cc
     elif payload.medication_reference:
-        ref = _reference_with_identifier_fallback_from_payload(payload.medication_reference)
+        ref = _reference_with_identifier_fallback_from_payload(
+            payload.medication_reference
+        )
         if ref:
             result["medicationReference"] = ref
 
@@ -546,7 +603,9 @@ def payload_to_fhir_medication_request(payload: MedicationRequestCreateSchema) -
     return result
 
 
-def patch_fragment_to_fhir_medication_request(payload: MedicationRequestPatchSchema) -> tuple[dict, set[str]]:
+def patch_fragment_to_fhir_medication_request(
+    payload: MedicationRequestPatchSchema,
+) -> tuple[dict, set[str]]:
     """Tri-state conversion for PATCH."""
     provided = payload.model_fields_set
     fragment: dict = {}
@@ -588,7 +647,9 @@ def patch_fragment_to_fhir_medication_request(payload: MedicationRequestPatchSch
         if payload.reported_boolean is not None:
             fragment["reportedBoolean"] = payload.reported_boolean
         elif payload.reported_reference:
-            ref = _reference_with_identifier_fallback_from_payload(payload.reported_reference)
+            ref = _reference_with_identifier_fallback_from_payload(
+                payload.reported_reference
+            )
             if ref:
                 fragment["reportedReference"] = ref
 
@@ -596,11 +657,15 @@ def patch_fragment_to_fhir_medication_request(payload: MedicationRequestPatchSch
         touched.add("medicationCodeableConcept")
         touched.add("medicationReference")
         if payload.medication_codeable_concept:
-            cc = payload_medication_request_codeable_concept(payload.medication_codeable_concept)
+            cc = payload_medication_request_codeable_concept(
+                payload.medication_codeable_concept
+            )
             if cc:
                 fragment["medicationCodeableConcept"] = cc
         elif payload.medication_reference:
-            ref = _reference_with_identifier_fallback_from_payload(payload.medication_reference)
+            ref = _reference_with_identifier_fallback_from_payload(
+                payload.medication_reference
+            )
             if ref:
                 fragment["medicationReference"] = ref
 

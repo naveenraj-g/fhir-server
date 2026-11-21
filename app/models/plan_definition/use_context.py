@@ -24,7 +24,10 @@ class PlanDefinitionUseContext(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     plan_definition_pk = Column(
-        BigInteger, ForeignKey("plan_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("plan_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     # UsageContext.code (1..1 Coding)
@@ -90,4 +93,6 @@ class PlanDefinitionUseContextValueCoding(FhirCodingMixin, TenantAuditMixin, Bas
         index=True,
     )
 
-    use_context = relationship("PlanDefinitionUseContext", back_populates="value_codings")
+    use_context = relationship(
+        "PlanDefinitionUseContext", back_populates="value_codings"
+    )

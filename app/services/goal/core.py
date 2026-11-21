@@ -29,16 +29,12 @@ class _CoreMixin:
     def _to_plain(self, model: GoalModel) -> dict:
         return to_plain_goal(model)
 
-    async def get_goal_scoped(
-        self, goal_id: int, org_id: str | None
-    ) -> GoalModel:
+    async def get_goal_scoped(self, goal_id: int, org_id: str | None) -> GoalModel:
         """Requires an org-scoped actor — raises PermissionDeniedError (403)
         for an org-less token, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Goal operation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Goal operation requires an org-scoped token")
         model = await self.repository.get_by_goal_id_in_org(goal_id, org_id)
         if not model:
             raise NotFoundError("Goal not found")
@@ -55,9 +51,7 @@ class _CoreMixin:
     ) -> tuple[int, list[GoalModel]]:
         """Raises PermissionDeniedError (403) for an org-less token."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Goal operation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Goal operation requires an org-scoped token")
         items, total = await self.repository.list(
             org_id=org_id,
             subject=subject,
@@ -75,21 +69,13 @@ class _CoreMixin:
         created_by: str | None,
     ) -> GoalModel:
         if not org_id:
-            raise PermissionDeniedError(
-                "Goal creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Goal creation requires an org-scoped token")
         if not created_by:
-            raise PermissionDeniedError(
-                "Goal creation requires an authenticated actor"
-            )
+            raise PermissionDeniedError("Goal creation requires an authenticated actor")
 
-        await self._validate_base_r4(
-            payload_to_fhir_goal(payload), org_id
-        )
+        await self._validate_base_r4(payload_to_fhir_goal(payload), org_id)
 
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Goal created",
             extra={
@@ -136,15 +122,11 @@ class _CoreMixin:
         )
         return model
 
-    async def delete_goal(
-        self, goal_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_goal(self, goal_id: int, org_id: str | None = None) -> None:
         if not org_id:
             self._log_org_scope_miss("delete", goal_id, org_id)
             raise NotFoundError("Goal not found")
-        if not await self.repository.goal_belongs_to_org(
-            goal_id, org_id
-        ):
+        if not await self.repository.goal_belongs_to_org(goal_id, org_id):
             self._log_org_scope_miss("delete", goal_id, org_id)
             raise NotFoundError("Goal not found")
         deleted = await self.repository.delete(goal_id, org_id=org_id)
@@ -159,12 +141,8 @@ class _CoreMixin:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
-        errors = await validate_resource(
-            "Goal", fhir_resource, org_id=org_id
-        )
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+        errors = await validate_resource("Goal", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "Goal failed base R4 validation",
@@ -176,9 +154,7 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(
-        operation: str, goal_id: int, org_id: str | None
-    ) -> None:
+    def _log_org_scope_miss(operation: str, goal_id: int, org_id: str | None) -> None:
         logger.warning(
             "Goal write rejected by org scope",
             extra={
@@ -192,4 +168,5 @@ class _CoreMixin:
 
 class GoalService(_CoreMixin):
     """Service orchestrating Goal operations."""
+
     pass

@@ -11,7 +11,12 @@ from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine, 
 from app.fhir.search.sql import uri_match
 
 metadata = MetaData()
-uris = Table("uris", metadata, Column("id", Integer, primary_key=True), Column("uri", String, nullable=False))
+uris = Table(
+    "uris",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("uri", String, nullable=False),
+)
 
 ROWS = {
     1: "http://example.org/protocols/knee",
@@ -35,13 +40,22 @@ def engine():
 
 def _match(engine, value: str, modifier: str | None = None) -> set[int]:
     with engine.connect() as conn:
-        return {r[0] for r in conn.execute(select(uris.c.id).where(uri_match(uris.c.uri, value, modifier)))}
+        return {
+            r[0]
+            for r in conn.execute(
+                select(uris.c.id).where(uri_match(uris.c.uri, value, modifier))
+            )
+        }
 
 
 @pytest.mark.parametrize(
     "value,modifier,expected",
     [
-        ("http://example.org/protocols/knee", None, {1}),  # exact: not a prefix of row 2
+        (
+            "http://example.org/protocols/knee",
+            None,
+            {1},
+        ),  # exact: not a prefix of row 2
         ("http://example.org/protocols/Knee", None, set()),  # case-sensitive
         ("http://example.org/Protocols/knee", None, {4}),
         ("urn:oid:1.2.3", None, {6}),
@@ -49,10 +63,18 @@ def _match(engine, value: str, modifier: str | None = None) -> set[int]:
         ("http://example.org/protocols/knee", "below", {1, 2}),
         ("http://other.org", "below", {5}),
         ("http://nothing", "below", set()),
-        ("http://example.org/protocols/knee/step1/detail", "above", {1, 2, 3}),  # stored is a prefix of the value
+        (
+            "http://example.org/protocols/knee/step1/detail",
+            "above",
+            {1, 2, 3},
+        ),  # stored is a prefix of the value
         ("http://example.org/protocols/knee", "above", {1, 3}),
         ("http://example.org/protocols", "above", {3}),
-        ("http://example.org/100%_done", None, {7}),  # LIKE wildcards in the data are not wildcards
+        (
+            "http://example.org/100%_done",
+            None,
+            {7},
+        ),  # LIKE wildcards in the data are not wildcards
         ("http://example.org/100%", "below", {7}),
         ("http://example.org/1%", "below", set()),  # ...nor in the search value
         ("http://example.org/100%_done/more", "above", {7}),

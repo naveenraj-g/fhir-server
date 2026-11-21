@@ -9,7 +9,15 @@ from app.core.database import FHIRBase as Base
 # -> reaction.manifestation, `route` -> reaction.exposureRoute. The two `code`
 # ones read: `category` -> category (0..*) and `severity` ->
 # reaction.severity; their rows carry the code's FHIR system and no text.
-TOKEN_PARAMS = ("category", "clinical-status", "code", "manifestation", "route", "severity", "verification-status")
+TOKEN_PARAMS = (
+    "category",
+    "clinical-status",
+    "code",
+    "manifestation",
+    "route",
+    "severity",
+    "verification-status",
+)
 
 # The code system of each `code`-typed element (R4 value sets).
 CODE_SYSTEMS = {
@@ -37,14 +45,20 @@ class AllergyIntoleranceToken(Base):
     code and its fixed FHIR system and nothing else."""
 
     __tablename__ = "allergy_intolerance_token"
-    __table_args__ = (Index("ix_allergy_intolerance_token_param_code", "param", "code"),)
+    __table_args__ = (
+        Index("ix_allergy_intolerance_token_param_code", "param", "code"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    allergy_intolerance_pk = Column(BigInteger, ForeignKey("allergy_intolerance.id"), nullable=False, index=True)
+    allergy_intolerance_pk = Column(
+        BigInteger, ForeignKey("allergy_intolerance.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)
     display_norm = Column(String, nullable=True)
     text_norm = Column(String, nullable=True)
 
-    allergy_intolerance = relationship("AllergyIntoleranceModel", back_populates="tokens")
+    allergy_intolerance = relationship(
+        "AllergyIntoleranceModel", back_populates="tokens"
+    )

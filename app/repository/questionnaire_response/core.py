@@ -35,7 +35,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(QuestionnaireResponseModel).where(
-                    QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id
+                    QuestionnaireResponseModel.questionnaire_response_id
+                    == questionnaire_response_id
                 )
             )
             return (await session.execute(stmt)).scalars().first()
@@ -48,7 +49,8 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(QuestionnaireResponseModel).where(
-                    QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id,
+                    QuestionnaireResponseModel.questionnaire_response_id
+                    == questionnaire_response_id,
                     QuestionnaireResponseModel.tenant_id == org_id,
                 )
             )
@@ -59,7 +61,8 @@ class _CoreMixin:
     ) -> bool:
         async with self.session_factory() as session:
             stmt = select(QuestionnaireResponseModel.id).where(
-                QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id,
+                QuestionnaireResponseModel.questionnaire_response_id
+                == questionnaire_response_id,
                 QuestionnaireResponseModel.tenant_id == org_id,
             )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
@@ -108,7 +111,8 @@ class _CoreMixin:
                 _with_relationships(select(QuestionnaireResponseModel)), **filter_kwargs
             )
             count_base = self._apply_list_filters(
-                select(func.count()).select_from(QuestionnaireResponseModel), **filter_kwargs
+                select(func.count()).select_from(QuestionnaireResponseModel),
+                **filter_kwargs,
             )
             sort_column, sort_desc = resolve_sort(
                 sort,
@@ -154,7 +158,8 @@ class _CoreMixin:
         cascade handle every other (non-recursive) sub-resource normally."""
         async with self.session_factory() as session:
             stmt = select(QuestionnaireResponseModel).where(
-                QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id
+                QuestionnaireResponseModel.questionnaire_response_id
+                == questionnaire_response_id
             )
             qr = (await session.execute(stmt)).scalars().first()
             if not qr:
@@ -182,7 +187,8 @@ class _CoreMixin:
                 )
                 await session.execute(
                     sa_delete(QuestionnaireResponseIdentifierTypeCoding).where(
-                        QuestionnaireResponseIdentifierTypeCoding.questionnaire_response_pk == qr.id
+                        QuestionnaireResponseIdentifierTypeCoding.questionnaire_response_pk
+                        == qr.id
                     )
                 )
 

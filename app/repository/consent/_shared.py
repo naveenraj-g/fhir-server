@@ -105,9 +105,7 @@ def _with_relationships(stmt):
             ConsentIdentifier.type_codings
         ),
         selectinload(ConsentModel.scope_codings),
-        selectinload(ConsentModel.categories).selectinload(
-            ConsentCategory.codings
-        ),
+        selectinload(ConsentModel.categories).selectinload(ConsentCategory.codings),
         selectinload(ConsentModel.performers),
         selectinload(ConsentModel.organizations),
         selectinload(ConsentModel.policies),
@@ -125,12 +123,8 @@ def _with_relationships(stmt):
         selectinload(ConsentModel.provisions).selectinload(
             ConsentProvision.security_labels
         ),
-        selectinload(ConsentModel.provisions).selectinload(
-            ConsentProvision.purposes
-        ),
-        selectinload(ConsentModel.provisions).selectinload(
-            ConsentProvision.classes
-        ),
+        selectinload(ConsentModel.provisions).selectinload(ConsentProvision.purposes),
+        selectinload(ConsentModel.provisions).selectinload(ConsentProvision.classes),
         selectinload(ConsentModel.provisions)
         .selectinload(ConsentProvision.codes)
         .selectinload(ConsentProvisionCode.codings),

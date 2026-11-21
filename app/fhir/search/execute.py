@@ -88,7 +88,9 @@ async def execute_search(
         count_stmt = select(func.count()).select_from(model).where(*conditions)
         total = (await session.execute(count_stmt)).scalar_one()
 
-    included = await resolve_includes(session, ctx, request, registry.resource_type, rows)
+    included = await resolve_includes(
+        session, ctx, request, registry.resource_type, rows
+    )
     return rows, total, included
 
 

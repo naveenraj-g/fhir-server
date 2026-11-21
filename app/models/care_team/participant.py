@@ -75,7 +75,9 @@ class CareTeamParticipant(TenantAuditMixin, Base):
     on_behalf_of_identifier_type_text = Column(String, nullable=True)
     on_behalf_of_identifier_system = Column(String, nullable=True)
     on_behalf_of_identifier_value = Column(String, nullable=True)
-    on_behalf_of_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    on_behalf_of_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
     on_behalf_of_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # period (0..1 Period)

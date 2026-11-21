@@ -11,5 +11,9 @@ class ServiceRequestCodeableConceptInput(BaseModel):
     shape, reused rather than redeclared per field."""
 
     model_config = ConfigDict(extra="forbid")
-    coding: list[CodingInput] | None = Field(None, description="Coding(s) for this concept.")
-    text: str | None = Field(None, description="A human language representation of the concept.")
+    coding: list[CodingInput] | None = Field(
+        None, description="Coding(s) for this concept."
+    )
+    text: str | None = Field(
+        None, description="A human language representation of the concept."
+    )

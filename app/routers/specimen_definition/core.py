@@ -41,8 +41,7 @@ logger = get_logger(__name__)
         "A kind of specimen with associated set of requirements. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -174,7 +173,9 @@ async def list_specimen_definitions(
         None, description="Filter by business identifier system|value."
     ),
     type_collected: str | None = Query(
-        None, alias="type", description="Filter by type collected code system|code or code."
+        None,
+        alias="type",
+        description="Filter by type collected code system|code or code.",
     ),
     list_params: ListParams = Depends(),
     actor: AuthUser = Depends(require_permission("specimen_definition", "read")),

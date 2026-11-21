@@ -27,7 +27,9 @@ class AppointmentResponseIdentifier(Base):
     # Named appointment_response_pk (not appointment_response_id) so it cannot
     # be confused with AppointmentResponseModel.appointment_response_id, the
     # public sequence id.
-    appointment_response_pk = Column(BigInteger, ForeignKey("appointment_response.id"), nullable=False, index=True)
+    appointment_response_pk = Column(
+        BigInteger, ForeignKey("appointment_response.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)
@@ -35,4 +37,6 @@ class AppointmentResponseIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    appointment_response = relationship("AppointmentResponseModel", back_populates="identifiers")
+    appointment_response = relationship(
+        "AppointmentResponseModel", back_populates="identifiers"
+    )

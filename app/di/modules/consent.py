@@ -5,7 +5,6 @@ from app.services.consent import ConsentService
 
 
 class ConsentContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     consent_repository = providers.Factory(

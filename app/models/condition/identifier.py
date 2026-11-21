@@ -26,7 +26,9 @@ class ConditionIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named condition_pk (not condition_id) so it can't be
     # confused with ConditionModel.condition_id, the public id.
-    condition_pk = Column(BigInteger, ForeignKey("condition.id"), nullable=False, index=True)
+    condition_pk = Column(
+        BigInteger, ForeignKey("condition.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

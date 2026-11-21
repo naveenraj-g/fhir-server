@@ -26,7 +26,9 @@ class DiagnosticReportIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named diagnostic_report_pk (not diagnostic_report_id) so it can't be
     # confused with DiagnosticReportModel.diagnostic_report_id, the public id.
-    diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
+    diagnostic_report_pk = Column(
+        BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)
@@ -34,4 +36,6 @@ class DiagnosticReportIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    diagnostic_report = relationship("DiagnosticReportModel", back_populates="identifiers")
+    diagnostic_report = relationship(
+        "DiagnosticReportModel", back_populates="identifiers"
+    )

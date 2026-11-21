@@ -59,11 +59,19 @@ from ._shared import (
 logger = get_logger(__name__)
 
 
-def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureIdentifier]:
+def _build_identifiers(
+    identifiers, org_id: str, actor_id: str
+) -> list[MeasureIdentifier]:
     res = []
     for ident in identifiers or []:
-        ass_ref = getattr(ident, "assigner", None) or getattr(ident, "assigner_reference", None)
-        if not ass_ref and getattr(ident, "assigner_type", None) and getattr(ident, "assigner_id", None):
+        ass_ref = getattr(ident, "assigner", None) or getattr(
+            ident, "assigner_reference", None
+        )
+        if (
+            not ass_ref
+            and getattr(ident, "assigner_type", None)
+            and getattr(ident, "assigner_id", None)
+        ):
             ass_ref = f"{fhir_enum(ident.assigner_type)}/{ident.assigner_id}"
         ass_kwargs = _single_reference_kwargs(
             "assigner", ass_ref, OrganizationReferenceType
@@ -72,7 +80,11 @@ def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureI
             ass_kwargs["assigner_display"] = ident.assigner_display
 
         type_codings = []
-        tc_list = getattr(ident, "type_coding", None) or getattr(ident, "type_codings", None) or []
+        tc_list = (
+            getattr(ident, "type_coding", None)
+            or getattr(ident, "type_codings", None)
+            or []
+        )
         for tc in tc_list:
             type_codings.append(
                 MeasureIdentifierTypeCoding(
@@ -89,7 +101,9 @@ def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureI
 
         mi = MeasureIdentifier(
             use=(
-                IdentifierUseModel(ident.use.value if hasattr(ident.use, "value") else str(ident.use))
+                IdentifierUseModel(
+                    ident.use.value if hasattr(ident.use, "value") else str(ident.use)
+                )
                 if ident.use
                 else None
             ),
@@ -108,7 +122,9 @@ def _build_identifiers(identifiers, org_id: str, actor_id: str) -> list[MeasureI
     return res
 
 
-def _build_subject_codings(subject_cc, org_id: str, actor_id: str) -> list[MeasureSubjectCoding]:
+def _build_subject_codings(
+    subject_cc, org_id: str, actor_id: str
+) -> list[MeasureSubjectCoding]:
     res = []
     if subject_cc and subject_cc.coding:
         for c in subject_cc.coding:
@@ -127,7 +143,9 @@ def _build_subject_codings(subject_cc, org_id: str, actor_id: str) -> list[Measu
     return res
 
 
-def _build_contacts(contacts, role: str, org_id: str, actor_id: str) -> list[MeasureContact]:
+def _build_contacts(
+    contacts, role: str, org_id: str, actor_id: str
+) -> list[MeasureContact]:
     res = []
     for c in contacts or []:
         telecoms = []
@@ -136,13 +154,19 @@ def _build_contacts(contacts, role: str, org_id: str, actor_id: str) -> list[Mea
             telecoms.append(
                 MeasureContactTelecom(
                     system=(
-                        ContactPointSystem(t.system.value if hasattr(t.system, "value") else str(t.system))
+                        ContactPointSystem(
+                            t.system.value
+                            if hasattr(t.system, "value")
+                            else str(t.system)
+                        )
                         if t.system
                         else None
                     ),
                     value=t.value,
                     use=(
-                        ContactPointUse(t.use.value if hasattr(t.use, "value") else str(t.use))
+                        ContactPointUse(
+                            t.use.value if hasattr(t.use, "value") else str(t.use)
+                        )
                         if t.use
                         else None
                     ),
@@ -166,11 +190,17 @@ def _build_contacts(contacts, role: str, org_id: str, actor_id: str) -> list[Mea
     return res
 
 
-def _build_use_contexts(use_contexts, org_id: str, actor_id: str) -> list[MeasureUseContext]:
+def _build_use_contexts(
+    use_contexts, org_id: str, actor_id: str
+) -> list[MeasureUseContext]:
     res = []
     for uc in use_contexts or []:
         v_codings = []
-        c_list = getattr(uc, "value_codeable_concept_coding", None) or getattr(uc, "value_codings", None) or []
+        c_list = (
+            getattr(uc, "value_codeable_concept_coding", None)
+            or getattr(uc, "value_codings", None)
+            or []
+        )
         for c in c_list:
             v_codings.append(
                 MeasureUseContextValueCoding(
@@ -185,7 +215,11 @@ def _build_use_contexts(use_contexts, org_id: str, actor_id: str) -> list[Measur
                 )
             )
         v_ref = uc.value_reference
-        if not v_ref and getattr(uc, "value_reference_type", None) and getattr(uc, "value_reference_id", None):
+        if (
+            not v_ref
+            and getattr(uc, "value_reference_type", None)
+            and getattr(uc, "value_reference_id", None)
+        ):
             v_ref = f"{fhir_enum(uc.value_reference_type)}/{uc.value_reference_id}"
         val_ref_kwargs = _single_reference_kwargs(
             "value_reference", v_ref, MeasureUseContextValueReferenceType
@@ -231,7 +265,9 @@ def _build_use_contexts(use_contexts, org_id: str, actor_id: str) -> list[Measur
     return res
 
 
-def _build_jurisdictions(items, org_id: str, actor_id: str) -> list[MeasureJurisdiction]:
+def _build_jurisdictions(
+    items, org_id: str, actor_id: str
+) -> list[MeasureJurisdiction]:
     res = []
     for item in items or []:
         codings = [
@@ -315,7 +351,9 @@ def _build_types(items, org_id: str, actor_id: str) -> list[MeasureType]:
     return res
 
 
-def _build_related_artifacts(items, org_id: str, actor_id: str) -> list[MeasureRelatedArtifact]:
+def _build_related_artifacts(
+    items, org_id: str, actor_id: str
+) -> list[MeasureRelatedArtifact]:
     res = []
     for ra in items or []:
         res.append(
@@ -447,11 +485,19 @@ def _build_groups(groups, org_id: str, actor_id: str) -> list[MeasureGroup]:
                         code_text=comp.code.text if comp.code else None,
                         code_codings=comp_codings,
                         description=comp.description,
-                        criteria_description=comp.criteria.description if comp.criteria else None,
+                        criteria_description=comp.criteria.description
+                        if comp.criteria
+                        else None,
                         criteria_name=comp.criteria.name if comp.criteria else None,
-                        criteria_language=comp.criteria.language if comp.criteria else None,
-                        criteria_expression=comp.criteria.expression if comp.criteria else None,
-                        criteria_reference=comp.criteria.reference if comp.criteria else None,
+                        criteria_language=comp.criteria.language
+                        if comp.criteria
+                        else None,
+                        criteria_expression=comp.criteria.expression
+                        if comp.criteria
+                        else None,
+                        criteria_reference=comp.criteria.reference
+                        if comp.criteria
+                        else None,
                         tenant_id=org_id,
                         created_by=actor_id,
                         updated_by=actor_id,
@@ -488,7 +534,9 @@ def _build_groups(groups, org_id: str, actor_id: str) -> list[MeasureGroup]:
     return res
 
 
-def _build_supplemental_data(supp_data, org_id: str, actor_id: str) -> list[MeasureSupplementalData]:
+def _build_supplemental_data(
+    supp_data, org_id: str, actor_id: str
+) -> list[MeasureSupplementalData]:
     res = []
     for sd in supp_data or []:
         sd_codings = []
@@ -577,9 +625,17 @@ class _FullMixin:
 
             if payload.identifier:
                 for ident in payload.identifier:
-                    assigner_ref = getattr(ident, "assigner", None) or getattr(ident, "assigner_reference", None)
-                    if not assigner_ref and getattr(ident, "assigner_type", None) and getattr(ident, "assigner_id", None):
-                        assigner_ref = f"{fhir_enum(ident.assigner_type)}/{ident.assigner_id}"
+                    assigner_ref = getattr(ident, "assigner", None) or getattr(
+                        ident, "assigner_reference", None
+                    )
+                    if (
+                        not assigner_ref
+                        and getattr(ident, "assigner_type", None)
+                        and getattr(ident, "assigner_id", None)
+                    ):
+                        assigner_ref = (
+                            f"{fhir_enum(ident.assigner_type)}/{ident.assigner_id}"
+                        )
                     if assigner_ref:
                         ass_kwargs = _single_reference_kwargs(
                             "assigner", assigner_ref, OrganizationReferenceType
@@ -595,11 +651,17 @@ class _FullMixin:
             if payload.use_context:
                 for uc in payload.use_context:
                     v_ref = uc.value_reference
-                    if not v_ref and getattr(uc, "value_reference_type", None) and getattr(uc, "value_reference_id", None):
+                    if (
+                        not v_ref
+                        and getattr(uc, "value_reference_type", None)
+                        and getattr(uc, "value_reference_id", None)
+                    ):
                         v_ref = f"{fhir_enum(uc.value_reference_type)}/{uc.value_reference_id}"
                     if v_ref:
                         v_kwargs = _single_reference_kwargs(
-                            "value_reference", v_ref, MeasureUseContextValueReferenceType
+                            "value_reference",
+                            v_ref,
+                            MeasureUseContextValueReferenceType,
                         )
                         await _validate_ref(
                             session,
@@ -621,11 +683,15 @@ class _FullMixin:
                 title=payload.title,
                 subtitle=payload.subtitle,
                 status=MeasureStatus(
-                    payload.status.value if hasattr(payload.status, "value") else str(payload.status)
+                    payload.status.value
+                    if hasattr(payload.status, "value")
+                    else str(payload.status)
                 ),
                 experimental=payload.experimental,
                 subject_codeable_concept_text=(
-                    payload.subject_codeable_concept.text if payload.subject_codeable_concept else None
+                    payload.subject_codeable_concept.text
+                    if payload.subject_codeable_concept
+                    else None
                 ),
                 date=payload.date,
                 publisher=payload.publisher,
@@ -641,14 +707,18 @@ class _FullMixin:
                 disclaimer=payload.disclaimer,
                 scoring_text=payload.scoring.text if payload.scoring else None,
                 composite_scoring_text=(
-                    payload.composite_scoring.text if payload.composite_scoring else None
+                    payload.composite_scoring.text
+                    if payload.composite_scoring
+                    else None
                 ),
                 risk_adjustment=payload.risk_adjustment,
                 rate_aggregation=payload.rate_aggregation,
                 rationale=payload.rationale,
                 clinical_recommendation_statement=payload.clinical_recommendation_statement,
                 improvement_notation_text=(
-                    payload.improvement_notation.text if payload.improvement_notation else None
+                    payload.improvement_notation.text
+                    if payload.improvement_notation
+                    else None
                 ),
                 definition=list(payload.definition) if payload.definition else None,
                 guidance=payload.guidance,
@@ -664,12 +734,18 @@ class _FullMixin:
             contacts = []
             for role_name in ("contact", "author", "editor", "reviewer", "endorser"):
                 contacts.extend(
-                    _build_contacts(getattr(payload, role_name), role_name, org_id, actor_id)
+                    _build_contacts(
+                        getattr(payload, role_name), role_name, org_id, actor_id
+                    )
                 )
             model.contacts = contacts
 
-            model.use_contexts = _build_use_contexts(payload.use_context, org_id, actor_id)
-            model.jurisdictions = _build_jurisdictions(payload.jurisdiction, org_id, actor_id)
+            model.use_contexts = _build_use_contexts(
+                payload.use_context, org_id, actor_id
+            )
+            model.jurisdictions = _build_jurisdictions(
+                payload.jurisdiction, org_id, actor_id
+            )
             model.topics = _build_topics(payload.topic, org_id, actor_id)
             model.types = _build_types(payload.type, org_id, actor_id)
             model.related_artifacts = _build_related_artifacts(
@@ -679,10 +755,16 @@ class _FullMixin:
                 payload.scoring, MeasureScoringCoding, org_id, actor_id
             )
             model.composite_scoring_codings = _build_single_concept_codings(
-                payload.composite_scoring, MeasureCompositeScoringCoding, org_id, actor_id
+                payload.composite_scoring,
+                MeasureCompositeScoringCoding,
+                org_id,
+                actor_id,
             )
             model.improvement_notation_codings = _build_single_concept_codings(
-                payload.improvement_notation, MeasureImprovementNotationCoding, org_id, actor_id
+                payload.improvement_notation,
+                MeasureImprovementNotationCoding,
+                org_id,
+                actor_id,
             )
             model.groups = _build_groups(payload.group, org_id, actor_id)
             model.supplemental_data = _build_supplemental_data(
@@ -732,7 +814,9 @@ class _FullMixin:
             if "status" in provided:
                 model.status = (
                     MeasureStatus(
-                        payload.status.value if hasattr(payload.status, "value") else str(payload.status)
+                        payload.status.value
+                        if hasattr(payload.status, "value")
+                        else str(payload.status)
                     )
                     if payload.status
                     else None
@@ -770,9 +854,13 @@ class _FullMixin:
             if "rationale" in provided:
                 model.rationale = payload.rationale
             if "clinical_recommendation_statement" in provided:
-                model.clinical_recommendation_statement = payload.clinical_recommendation_statement
+                model.clinical_recommendation_statement = (
+                    payload.clinical_recommendation_statement
+                )
             if "definition" in provided:
-                model.definition = list(payload.definition) if payload.definition else None
+                model.definition = (
+                    list(payload.definition) if payload.definition else None
+                )
             if "guidance" in provided:
                 model.guidance = payload.guidance
 
@@ -816,28 +904,46 @@ class _FullMixin:
             # composite_scoring
             if "composite_scoring" in provided:
                 model.composite_scoring_text = (
-                    payload.composite_scoring.text if payload.composite_scoring else None
+                    payload.composite_scoring.text
+                    if payload.composite_scoring
+                    else None
                 )
                 model.composite_scoring_codings = _build_single_concept_codings(
-                    payload.composite_scoring, MeasureCompositeScoringCoding, org_id, actor_id
+                    payload.composite_scoring,
+                    MeasureCompositeScoringCoding,
+                    org_id,
+                    actor_id,
                 )
 
             # improvement_notation
             if "improvement_notation" in provided:
                 model.improvement_notation_text = (
-                    payload.improvement_notation.text if payload.improvement_notation else None
+                    payload.improvement_notation.text
+                    if payload.improvement_notation
+                    else None
                 )
                 model.improvement_notation_codings = _build_single_concept_codings(
-                    payload.improvement_notation, MeasureImprovementNotationCoding, org_id, actor_id
+                    payload.improvement_notation,
+                    MeasureImprovementNotationCoding,
+                    org_id,
+                    actor_id,
                 )
 
             # Collections
             if "identifier" in provided:
                 if payload.identifier:
                     for ident in payload.identifier:
-                        assigner_ref = getattr(ident, "assigner", None) or getattr(ident, "assigner_reference", None)
-                        if not assigner_ref and getattr(ident, "assigner_type", None) and getattr(ident, "assigner_id", None):
-                            assigner_ref = f"{fhir_enum(ident.assigner_type)}/{ident.assigner_id}"
+                        assigner_ref = getattr(ident, "assigner", None) or getattr(
+                            ident, "assigner_reference", None
+                        )
+                        if (
+                            not assigner_ref
+                            and getattr(ident, "assigner_type", None)
+                            and getattr(ident, "assigner_id", None)
+                        ):
+                            assigner_ref = (
+                                f"{fhir_enum(ident.assigner_type)}/{ident.assigner_id}"
+                            )
                         if assigner_ref:
                             ass_kwargs = _single_reference_kwargs(
                                 "assigner", assigner_ref, OrganizationReferenceType
@@ -849,7 +955,9 @@ class _FullMixin:
                                 org_id,
                                 "identifier.assigner",
                             )
-                model.identifiers = _build_identifiers(payload.identifier, org_id, actor_id)
+                model.identifiers = _build_identifiers(
+                    payload.identifier, org_id, actor_id
+                )
 
             for role_name in ("contact", "author", "editor", "reviewer", "endorser"):
                 if role_name in provided:
@@ -868,11 +976,17 @@ class _FullMixin:
                 if payload.use_context:
                     for uc in payload.use_context:
                         v_ref = uc.value_reference
-                        if not v_ref and getattr(uc, "value_reference_type", None) and getattr(uc, "value_reference_id", None):
+                        if (
+                            not v_ref
+                            and getattr(uc, "value_reference_type", None)
+                            and getattr(uc, "value_reference_id", None)
+                        ):
                             v_ref = f"{fhir_enum(uc.value_reference_type)}/{uc.value_reference_id}"
                         if v_ref:
                             v_kwargs = _single_reference_kwargs(
-                                "value_reference", v_ref, MeasureUseContextValueReferenceType
+                                "value_reference",
+                                v_ref,
+                                MeasureUseContextValueReferenceType,
                             )
                             await _validate_ref(
                                 session,
@@ -881,7 +995,9 @@ class _FullMixin:
                                 org_id,
                                 "use_context.value_reference",
                             )
-                model.use_contexts = _build_use_contexts(payload.use_context, org_id, actor_id)
+                model.use_contexts = _build_use_contexts(
+                    payload.use_context, org_id, actor_id
+                )
 
             if "jurisdiction" in provided:
                 model.jurisdictions = _build_jurisdictions(

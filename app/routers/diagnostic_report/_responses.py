@@ -1,5 +1,8 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.diagnostic_report import FHIRDiagnosticReportBundle, FHIRDiagnosticReportSchema
+from app.schemas.diagnostic_report import (
+    FHIRDiagnosticReportBundle,
+    FHIRDiagnosticReportSchema,
+)
 
 # DiagnosticReport is stored Medplum-style (whole resource in `content`) and
 # always responds with FHIR R4 JSON — there is no plain representation.

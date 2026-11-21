@@ -50,9 +50,7 @@ async def create_group(
         extra={"event": "route.create_group"},
     )
     log_payload(logger, "group.create.payload", payload)
-    group = await group_service.create_group(
-        payload, actor.org_id, actor.sub
-    )
+    group = await group_service.create_group(payload, actor.org_id, actor.sub)
     return format_response(
         group_service._to_fhir(group),
         group_service._to_plain(group),
@@ -77,9 +75,7 @@ async def create_group(
 )
 async def get_group(
     request: Request,
-    group_id: int = Path(
-        ..., ge=1, description="Public group identifier."
-    ),
+    group_id: int = Path(..., ge=1, description="Public group identifier."),
     actor: AuthUser = Depends(require_permission("group", "read")),
     group_service: GroupService = Depends(get_group_service),
 ):
@@ -87,9 +83,7 @@ async def get_group(
         "Get a Group resource by ID",
         extra={"event": "route.get_group", "group_id": group_id},
     )
-    group = await group_service.get_group_scoped(
-        group_id, actor.org_id
-    )
+    group = await group_service.get_group_scoped(group_id, actor.org_id)
     return format_response(
         group_service._to_fhir(group),
         group_service._to_plain(group),
@@ -115,9 +109,7 @@ async def get_group(
 async def patch_group(
     payload: GroupPatchSchema,
     request: Request,
-    group_id: int = Path(
-        ..., ge=1, description="Public group identifier."
-    ),
+    group_id: int = Path(..., ge=1, description="Public group identifier."),
     actor: AuthUser = Depends(require_permission("group", "update")),
     group_service: GroupService = Depends(get_group_service),
 ):
@@ -149,7 +141,8 @@ async def patch_group(
     description=(
         "Returns a paginated list of Group resources. Filter by type, actual, "
         "active, name, code, managing_entity, member, characteristic, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
@@ -157,7 +150,8 @@ async def list_groups(
     request: Request,
     actor: AuthUser = Depends(require_permission("group", "read")),
     type: str | None = Query(
-        None, description="person | animal | practitioner | device | medication | substance."
+        None,
+        description="person | animal | practitioner | device | medication | substance.",
     ),
     actual: bool | None = Query(
         None, description="true for actual specific group, false for definitional."
@@ -166,11 +160,15 @@ async def list_groups(
         None, description="Whether this group's record is in active use."
     ),
     name: str | None = Query(None, description="Label for Group."),
-    code: str | None = Query(None, description="Kind of Group members (matches text or coding.code)."),
+    code: str | None = Query(
+        None, description="Kind of Group members (matches text or coding.code)."
+    ),
     managing_entity: str | None = Query(
         None, description="Managing entity reference (e.g. Organization/190001)."
     ),
-    member: str | None = Query(None, description="Member reference (e.g. Patient/10001)."),
+    member: str | None = Query(
+        None, description="Member reference (e.g. Patient/10001)."
+    ),
     characteristic: str | None = Query(None, description="Characteristic code."),
     characteristic_value: str | None = Query(None, description="Characteristic value."),
     exclude: bool | None = Query(
@@ -228,9 +226,7 @@ async def list_groups(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_group(
-    group_id: int = Path(
-        ..., ge=1, description="Public group identifier."
-    ),
+    group_id: int = Path(..., ge=1, description="Public group identifier."),
     actor: AuthUser = Depends(require_permission("group", "delete")),
     group_service: GroupService = Depends(get_group_service),
 ):
@@ -241,6 +237,4 @@ async def delete_group(
             "group_id": group_id,
         },
     )
-    await group_service.delete_group(
-        group_id, org_id=actor.org_id
-    )
+    await group_service.delete_group(group_id, org_id=actor.org_id)

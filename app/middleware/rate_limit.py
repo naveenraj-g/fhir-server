@@ -102,13 +102,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             user_id = user.get("sub", "unknown")
         else:
             forwarded = request.headers.get("x-forwarded-for")
-            user_id = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
+            user_id = (
+                forwarded.split(",")[0].strip()
+                if forwarded
+                else (request.client.host if request.client else "unknown")
+            )
 
         is_read = request.method in ("GET", "HEAD", "OPTIONS")
         limit = self.read_limit if is_read else self.write_limit
         key = f"rate:{user_id}:{request.method}"
 
-        redis = getattr(request.app.state, "redis", None) if self.backend == "redis" else None
+        redis = (
+            getattr(request.app.state, "redis", None)
+            if self.backend == "redis"
+            else None
+        )
 
         if redis is not None:
             try:
@@ -118,7 +126,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # Redis call failed mid-request — fall back to local
                 logger.error(
                     "Rate limit Redis error, falling back to in-process limiter",
-                    extra={"event": "ratelimit.backend_degraded", "reason": "redis_error"},
+                    extra={
+                        "event": "ratelimit.backend_degraded",
+                        "reason": "redis_error",
+                    },
                     exc_info=exc,
                 )
                 allowed, remaining = await self._check_local(key, limit)

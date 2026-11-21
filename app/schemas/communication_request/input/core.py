@@ -45,17 +45,11 @@ _EXAMPLE = {
     ],
     "subject": "Patient/10001",
     "subject_display": "Jane Doe",
-    "payload": [
-        {
-            "content_string": "Please provide update on recent lab results."
-        }
-    ],
+    "payload": [{"content_string": "Please provide update on recent lab results."}],
     "authored_on": "2026-10-31T12:00:00Z",
     "requester": "Practitioner/30001",
     "requester_display": "Dr. Smith",
-    "recipient": [
-        {"reference": "Patient/10001", "display": "Jane Doe"}
-    ],
+    "recipient": [{"reference": "Patient/10001", "display": "Jane Doe"}],
 }
 
 
@@ -78,7 +72,8 @@ class CommunicationRequestCreateSchema(BaseModel):
         None, description="Fulfills plan or proposal (Reference(Any))."
     )
     replaces: list[CommunicationRequestReferenceInput | str] | None = Field(
-        None, description="Request(s) replaced by this request (Reference(CommunicationRequest))."
+        None,
+        description="Request(s) replaced by this request (Reference(CommunicationRequest)).",
     )
     group_identifier_use: IdentifierUse | None = Field(
         None, description="Group identifier use."
@@ -151,7 +146,8 @@ class CommunicationRequestCreateSchema(BaseModel):
         None, description="routine | urgent | asap | stat."
     )
     do_not_perform: bool | None = Field(
-        None, description="True if request is prohibiting action rather than directing action."
+        None,
+        description="True if request is prohibiting action rather than directing action.",
     )
     medium: list[CommunicationRequestCategoryInput] | None = Field(
         None, description="A channel of communication."
@@ -162,17 +158,39 @@ class CommunicationRequestCreateSchema(BaseModel):
     subject_display: str | None = Field(
         None, description="Plain text narrative for subject reference."
     )
-    subject_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
-    subject_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
-    subject_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
-    subject_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
-    subject_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
-    subject_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
-    subject_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
-    subject_identifier_system: str | None = Field(None, description="Fallback identifier system.")
-    subject_identifier_value: str | None = Field(None, description="Fallback identifier value.")
-    subject_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
-    subject_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
+    subject_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier purpose."
+    )
+    subject_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier type system."
+    )
+    subject_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier type version."
+    )
+    subject_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier type code."
+    )
+    subject_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier type display."
+    )
+    subject_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier type text."
+    )
+    subject_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier type user selected."
+    )
+    subject_identifier_system: str | None = Field(
+        None, description="Fallback identifier system."
+    )
+    subject_identifier_value: str | None = Field(
+        None, description="Fallback identifier value."
+    )
+    subject_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier period start."
+    )
+    subject_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier period end."
+    )
     about: list[CommunicationRequestReferenceInput | str] | None = Field(
         None, description="Resources that pertain to this communication request."
     )
@@ -182,17 +200,39 @@ class CommunicationRequestCreateSchema(BaseModel):
     encounter_display: str | None = Field(
         None, description="Plain text narrative for encounter reference."
     )
-    encounter_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
-    encounter_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
-    encounter_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
-    encounter_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
-    encounter_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
-    encounter_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
-    encounter_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
-    encounter_identifier_system: str | None = Field(None, description="Fallback identifier system.")
-    encounter_identifier_value: str | None = Field(None, description="Fallback identifier value.")
-    encounter_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
-    encounter_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
+    encounter_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier purpose."
+    )
+    encounter_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier type system."
+    )
+    encounter_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier type version."
+    )
+    encounter_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier type code."
+    )
+    encounter_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier type display."
+    )
+    encounter_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier type text."
+    )
+    encounter_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier type user selected."
+    )
+    encounter_identifier_system: str | None = Field(
+        None, description="Fallback identifier system."
+    )
+    encounter_identifier_value: str | None = Field(
+        None, description="Fallback identifier value."
+    )
+    encounter_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier period start."
+    )
+    encounter_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier period end."
+    )
     payload: list[CommunicationRequestPayloadInput] | None = Field(
         None, description="Message payload (string, Attachment, or Reference)."
     )
@@ -209,54 +249,100 @@ class CommunicationRequestCreateSchema(BaseModel):
         None, description="When request transitioned to being actionable."
     )
     requester: str | None = Field(
-        None, description="Who asked for notification (Reference(Practitioner | PractitionerRole | Organization | Patient | RelatedPerson | Device))."
+        None,
+        description="Who asked for notification (Reference(Practitioner | PractitionerRole | Organization | Patient | RelatedPerson | Device)).",
     )
     requester_display: str | None = Field(
         None, description="Plain text narrative for requester reference."
     )
-    requester_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
-    requester_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
-    requester_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
-    requester_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
-    requester_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
-    requester_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
-    requester_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
-    requester_identifier_system: str | None = Field(None, description="Fallback identifier system.")
-    requester_identifier_value: str | None = Field(None, description="Fallback identifier value.")
-    requester_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
-    requester_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
+    requester_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier purpose."
+    )
+    requester_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier type system."
+    )
+    requester_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier type version."
+    )
+    requester_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier type code."
+    )
+    requester_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier type display."
+    )
+    requester_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier type text."
+    )
+    requester_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier type user selected."
+    )
+    requester_identifier_system: str | None = Field(
+        None, description="Fallback identifier system."
+    )
+    requester_identifier_value: str | None = Field(
+        None, description="Fallback identifier value."
+    )
+    requester_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier period start."
+    )
+    requester_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier period end."
+    )
     recipient: list[CommunicationRequestReferenceInput | str] | None = Field(
-        None, description="Message recipient (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | Group | CareTeam | HealthcareService))."
+        None,
+        description="Message recipient (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | Group | CareTeam | HealthcareService)).",
     )
     sender: str | None = Field(
-        None, description="Message sender (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | HealthcareService))."
+        None,
+        description="Message sender (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | HealthcareService)).",
     )
     sender_display: str | None = Field(
         None, description="Plain text narrative for sender reference."
     )
-    sender_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier purpose.")
-    sender_identifier_type_system: str | None = Field(None, description="Fallback identifier type system.")
-    sender_identifier_type_version: str | None = Field(None, description="Fallback identifier type version.")
-    sender_identifier_type_code: str | None = Field(None, description="Fallback identifier type code.")
-    sender_identifier_type_display: str | None = Field(None, description="Fallback identifier type display.")
-    sender_identifier_type_text: str | None = Field(None, description="Fallback identifier type text.")
-    sender_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier type user selected.")
-    sender_identifier_system: str | None = Field(None, description="Fallback identifier system.")
-    sender_identifier_value: str | None = Field(None, description="Fallback identifier value.")
-    sender_identifier_period_start: datetime | None = Field(None, description="Fallback identifier period start.")
-    sender_identifier_period_end: datetime | None = Field(None, description="Fallback identifier period end.")
+    sender_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier purpose."
+    )
+    sender_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier type system."
+    )
+    sender_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier type version."
+    )
+    sender_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier type code."
+    )
+    sender_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier type display."
+    )
+    sender_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier type text."
+    )
+    sender_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier type user selected."
+    )
+    sender_identifier_system: str | None = Field(
+        None, description="Fallback identifier system."
+    )
+    sender_identifier_value: str | None = Field(
+        None, description="Fallback identifier value."
+    )
+    sender_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier period start."
+    )
+    sender_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier period end."
+    )
     reason_code: list[CommunicationRequestCategoryInput] | None = Field(
         None, description="Why is communication needed?"
     )
     reason_reference: list[CommunicationRequestReferenceInput | str] | None = Field(
-        None, description="Why is communication needed (Reference(Condition | Observation | DiagnosticReport | DocumentReference))."
+        None,
+        description="Why is communication needed (Reference(Condition | Observation | DiagnosticReport | DocumentReference)).",
     )
     note: list[CommunicationRequestNoteInput] | None = Field(
         None, description="Comments made about communication request."
     )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="FHIR extensions."
-    )
+    extension: list[dict[str, Any]] | None = Field(None, description="FHIR extensions.")
 
 
 class CommunicationRequestPatchSchema(BaseModel):

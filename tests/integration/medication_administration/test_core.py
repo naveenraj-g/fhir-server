@@ -212,7 +212,9 @@ async def test_patch_medication_administration_not_found(client):
 
 async def test_list_medication_administrations_plain(client):
     p_id = await create_test_patient(client)
-    await create_medication_administration(client, minimal_medication_administration(p_id))
+    await create_medication_administration(
+        client, minimal_medication_administration(p_id)
+    )
 
     resp = await client.get(BASE + "/")
     assert resp.status_code == 200, resp.text
@@ -224,7 +226,9 @@ async def test_list_medication_administrations_plain(client):
 
 async def test_list_medication_administrations_fhir_bundle(client):
     p_id = await create_test_patient(client)
-    await create_medication_administration(client, minimal_medication_administration(p_id))
+    await create_medication_administration(
+        client, minimal_medication_administration(p_id)
+    )
 
     resp = await client.get(BASE + "/", headers=FHIR_ACCEPT)
     assert resp.status_code == 200, resp.text
@@ -313,9 +317,7 @@ async def test_medication_administration_cross_org_isolation(client):
         assert resp.status_code == 404, resp.text
         assert_operation_outcome(resp.json(), 404, resp.status_code)
 
-        patch_resp = await client.patch(
-            f"{BASE}/{ma_id}", json={"status": "stopped"}
-        )
+        patch_resp = await client.patch(f"{BASE}/{ma_id}", json={"status": "stopped"})
         assert patch_resp.status_code == 404
 
         del_resp = await client.delete(f"{BASE}/{ma_id}")

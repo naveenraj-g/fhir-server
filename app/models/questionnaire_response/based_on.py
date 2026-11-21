@@ -11,7 +11,9 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 from app.models.enums import IdentifierUse
-from app.models.questionnaire_response.enums import QuestionnaireResponseBasedOnReferenceType
+from app.models.questionnaire_response.enums import (
+    QuestionnaireResponseBasedOnReferenceType,
+)
 from app.models.shared import TenantAuditMixin
 
 # ---------------------------------------------------------------------------
@@ -66,4 +68,6 @@ class QuestionnaireResponseBasedOn(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    questionnaire_response = relationship("QuestionnaireResponseModel", back_populates="based_ons")
+    questionnaire_response = relationship(
+        "QuestionnaireResponseModel", back_populates="based_ons"
+    )

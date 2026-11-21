@@ -21,11 +21,16 @@ class PatientContactInput(FhirInputModel):
     relationship: list[FhirCodeableConceptInput] | None = Field(
         None, description="The kind of relationship."
     )
-    name: FhirHumanNameInput | None = Field(None, description="A name associated with the contact person.")
-    telecom: list[FhirContactPointInput] | None = Field(
-        None, description="A contact detail for the person, e.g. a telephone number or an email address."
+    name: FhirHumanNameInput | None = Field(
+        None, description="A name associated with the contact person."
     )
-    address: FhirAddressInput | None = Field(None, description="Address for the contact person.")
+    telecom: list[FhirContactPointInput] | None = Field(
+        None,
+        description="A contact detail for the person, e.g. a telephone number or an email address.",
+    )
+    address: FhirAddressInput | None = Field(
+        None, description="Address for the contact person."
+    )
     gender: Literal["male", "female", "other", "unknown"] | None = Field(
         None, description="male | female | other | unknown."
     )
@@ -34,5 +39,6 @@ class PatientContactInput(FhirInputModel):
         description="Organization that is associated with the contact — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     period: FhirPeriodInput | None = Field(
-        None, description="The period during which this contact person or organization is valid to be contacted."
+        None,
+        description="The period during which this contact person or organization is valid to be contacted.",
     )

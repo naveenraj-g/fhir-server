@@ -109,7 +109,9 @@ class QuestionnaireModel(TenantAuditMixin, Base):
     derived_from = Column(ARRAY(String), nullable=True)
 
     # ── status (1..1 code) — required ─────────────────────────────────────
-    status = Column(Enum(QuestionnaireStatus, name="questionnaire_status"), nullable=False)
+    status = Column(
+        Enum(QuestionnaireStatus, name="questionnaire_status"), nullable=False
+    )
 
     # ── experimental (0..1 boolean) ───────────────────────────────────────
     experimental = Column(Boolean, nullable=True)

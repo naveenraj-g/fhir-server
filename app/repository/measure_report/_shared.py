@@ -50,7 +50,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     disp_key = "display" if prefix == "reference" else f"{prefix}_display"
     if not ref_str:
         return {
@@ -106,9 +108,8 @@ def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
         val = None
         if obj and not isinstance(obj, str):
-            val = (
-                getattr(obj, f"{prefix}_{suffix}", None)
-                or getattr(obj, f"reference_{suffix}", None)
+            val = getattr(obj, f"{prefix}_{suffix}", None) or getattr(
+                obj, f"reference_{suffix}", None
             )
         if suffix == "identifier_use" and val is not None:
             res[f"{prefix}_{suffix}"] = (
@@ -119,7 +120,9 @@ def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
     return res
 
 
-async def _validate_ref(session, ref_type, ref_id, org_id: str | None, field_name: str) -> None:
+async def _validate_ref(
+    session, ref_type, ref_id, org_id: str | None, field_name: str
+) -> None:
     if not ref_type or not ref_id:
         return
     type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)

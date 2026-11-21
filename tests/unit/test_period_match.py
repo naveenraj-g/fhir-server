@@ -44,12 +44,20 @@ def engine():
     eng = create_engine("sqlite://")
     metadata.create_all(eng)
     with eng.begin() as conn:
-        conn.execute(roles.insert(), [{"id": i, "period_start": s, "period_end": e} for i, (s, e) in ROWS.items()])
+        conn.execute(
+            roles.insert(),
+            [
+                {"id": i, "period_start": s, "period_end": e}
+                for i, (s, e) in ROWS.items()
+            ],
+        )
     return eng
 
 
 def _found(engine, value, now=None) -> set[int]:
-    stmt = select(roles.c.id).where(period_match(roles.c.period_start, roles.c.period_end, value, now))
+    stmt = select(roles.c.id).where(
+        period_match(roles.c.period_start, roles.c.period_end, value, now)
+    )
     with engine.connect() as conn:
         return set(conn.execute(stmt).scalars())
 
@@ -65,7 +73,10 @@ def _found(engine, value, now=None) -> set[int]:
         ("lt2026-03", {A, C, D}),  # the range below March meets them; B starts in July
         ("ge2026-03", {A, B, C}),
         ("le2026-03", {A, C, D}),
-        ("sa2026-03", {B}),  # B starts after March; the open-start D can't be "entirely above"
+        (
+            "sa2026-03",
+            {B},
+        ),  # B starts after March; the open-start D can't be "entirely above"
         ("eb2026-03", {D}),  # D ended exactly at the start of March
         # S = the whole of 2026
         ("eq2026", {A, B}),  # open-ended periods are never wholly inside a range
@@ -79,9 +90,15 @@ def _found(engine, value, now=None) -> set[int]:
         ("ge2026-02-10", {A, B, C, D}),  # D runs until 1 Mar, so it reaches past 10 Feb
         ("le2026-02-10", {A, C, D}),
         # precision of the written value matters: a datetime is a one-second range
-        ("ge2026-07-01T00:00:00Z", {B, C}),  # A's end is the first instant after it: 07-01 not covered
+        (
+            "ge2026-07-01T00:00:00Z",
+            {B, C},
+        ),  # A's end is the first instant after it: 07-01 not covered
         ("lt2026-07-01T00:00:00Z", {A, C, D}),
-        ("gt2026-12-31T23:59:59Z", {C}),  # B ends at 2027-01-01T00:00:00Z, so it is not "above" this second
+        (
+            "gt2026-12-31T23:59:59Z",
+            {C},
+        ),  # B ends at 2027-01-01T00:00:00Z, so it is not "above" this second
     ],
 )
 def test_prefixes(engine, value, expected):
@@ -89,16 +106,34 @@ def test_prefixes(engine, value, expected):
 
 
 def test_row_without_a_period_never_matches(engine):
-    for value in ("eq2026", "ne2026", "gt2000", "lt2100", "ge2000", "le2100", "sa2000", "eb2100"):
+    for value in (
+        "eq2026",
+        "ne2026",
+        "gt2000",
+        "lt2100",
+        "ge2000",
+        "le2100",
+        "sa2000",
+        "eb2100",
+    ):
         assert E not in _found(engine, value), value
 
 
 def test_approximately_widens_the_range_by_ten_percent_of_its_distance_from_now(engine):
     # S = March 2026; "now" is 14 days after its start, so the range widens by 1.4 days each side.
     now = datetime(2026, 3, 15, tzinfo=UTC)
-    assert _found(engine, "ap2026-03", now) == {A, C, D}  # B (starts in July) is far outside
+    assert _found(engine, "ap2026-03", now) == {
+        A,
+        C,
+        D,
+    }  # B (starts in July) is far outside
     # Far in the future, "approximately" widens a lot and reaches B too.
-    assert _found(engine, "ap2026-03", datetime(2036, 3, 15, tzinfo=UTC)) == {A, B, C, D}
+    assert _found(engine, "ap2026-03", datetime(2036, 3, 15, tzinfo=UTC)) == {
+        A,
+        B,
+        C,
+        D,
+    }
 
 
 def test_bad_date_is_rejected(engine):

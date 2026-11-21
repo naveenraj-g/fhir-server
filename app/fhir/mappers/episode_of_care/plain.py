@@ -28,7 +28,9 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
 def _plain_ref_row(r) -> dict:
     d = {
         "id": r.id,
-        "reference": _plain_ref(r.reference_reference, r.reference_type, r.reference_id),
+        "reference": _plain_ref(
+            r.reference_reference, r.reference_type, r.reference_id
+        ),
         "reference_type": fhir_enum(r.reference_type) if r.reference_type else None,
         "reference_id": r.reference_id,
         "display": r.reference_display,
@@ -55,19 +57,21 @@ def _plain_ref_row(r) -> dict:
 def _plain_codings(codings) -> list[dict]:
     result = []
     for c in codings or []:
-        result.append({
-            "id": c.id,
-            "system": c.system,
-            "version": c.version,
-            "code": c.code,
-            "display": c.display,
-            "user_selected": c.user_selected,
-            "tenant_id": c.tenant_id,
-            "created_by": c.created_by,
-            "updated_by": c.updated_by,
-            "created_at": c.created_at,
-            "updated_at": c.updated_at,
-        })
+        result.append(
+            {
+                "id": c.id,
+                "system": c.system,
+                "version": c.version,
+                "code": c.code,
+                "display": c.display,
+                "user_selected": c.user_selected,
+                "tenant_id": c.tenant_id,
+                "created_by": c.created_by,
+                "updated_by": c.updated_by,
+                "created_at": c.created_at,
+                "updated_at": c.updated_at,
+            }
+        )
     return result
 
 
@@ -84,7 +88,9 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
     d = {
         "id": model.episode_of_care_id,
         "status": fhir_enum(model.status) if model.status else None,
-        "patient": _plain_ref(model.patient_reference, model.patient_type, model.patient_id),
+        "patient": _plain_ref(
+            model.patient_reference, model.patient_type, model.patient_id
+        ),
         "patient_id": model.patient_id,
         "patient_type": fhir_enum(model.patient_type) if model.patient_type else None,
         "patient_display": model.patient_display,
@@ -94,7 +100,9 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
             model.managing_organization_id,
         ),
         "managing_organization_id": model.managing_organization_id,
-        "managing_organization_type": fhir_enum(model.managing_organization_type) if model.managing_organization_type else None,
+        "managing_organization_type": fhir_enum(model.managing_organization_type)
+        if model.managing_organization_type
+        else None,
         "managing_organization_display": model.managing_organization_display,
         "period_start": model.period_start,
         "period_end": model.period_end,
@@ -104,7 +112,9 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
             model.care_manager_id,
         ),
         "care_manager_id": model.care_manager_id,
-        "care_manager_type": fhir_enum(model.care_manager_type) if model.care_manager_type else None,
+        "care_manager_type": fhir_enum(model.care_manager_type)
+        if model.care_manager_type
+        else None,
         "care_manager_display": model.care_manager_display,
         "tenant_id": model.tenant_id,
         "created_by": model.created_by,
@@ -121,7 +131,9 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
                 "period_start": ident.period_start,
                 "period_end": ident.period_end,
                 "assigner_reference": ident.assigner_reference,
-                "assigner_type": fhir_enum(ident.assigner_type) if ident.assigner_type else None,
+                "assigner_type": fhir_enum(ident.assigner_type)
+                if ident.assigner_type
+                else None,
                 "assigner_id": ident.assigner_id,
                 "assigner_display": ident.assigner_display,
                 "type_codings": _plain_codings(ident.type_codings),
@@ -164,9 +176,13 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
         "diagnoses": [
             {
                 "id": d.id,
-                "condition": _plain_ref(d.condition_reference, d.condition_type, d.condition_id),
+                "condition": _plain_ref(
+                    d.condition_reference, d.condition_type, d.condition_id
+                ),
                 "condition_id": d.condition_id,
-                "condition_type": fhir_enum(d.condition_type) if d.condition_type else None,
+                "condition_type": fhir_enum(d.condition_type)
+                if d.condition_type
+                else None,
                 "condition_display": d.condition_display,
                 "role_text": d.role_text,
                 "role_codings": _plain_codings(d.role_codings),
@@ -180,7 +196,9 @@ def to_plain_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
             }
             for d in (model.diagnoses or [])
         ],
-        "referral_requests": [_plain_ref_row(r) for r in (model.referral_requests or [])],
+        "referral_requests": [
+            _plain_ref_row(r) for r in (model.referral_requests or [])
+        ],
         "teams": [_plain_ref_row(t) for t in (model.teams or [])],
         "accounts": [_plain_ref_row(a) for a in (model.accounts or [])],
     }

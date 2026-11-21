@@ -26,7 +26,9 @@ class ClinicalImpressionIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named clinical_impression_pk (not clinical_impression_id) so it can't be
     # confused with ClinicalImpressionModel.clinical_impression_id, the public id.
-    clinical_impression_pk = Column(BigInteger, ForeignKey("clinical_impression.id"), nullable=False, index=True)
+    clinical_impression_pk = Column(
+        BigInteger, ForeignKey("clinical_impression.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)
@@ -34,4 +36,6 @@ class ClinicalImpressionIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    clinical_impression = relationship("ClinicalImpressionModel", back_populates="identifiers")
+    clinical_impression = relationship(
+        "ClinicalImpressionModel", back_populates="identifiers"
+    )

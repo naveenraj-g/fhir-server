@@ -83,7 +83,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     id_type_version = getattr(obj, f"{id_prefix}identifier_type_version", None)
     id_type_code = getattr(obj, f"{id_prefix}identifier_type_code", None)
     id_type_display = getattr(obj, f"{id_prefix}identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{id_prefix}identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{id_prefix}identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{id_prefix}identifier_type_text", None)
     id_system = getattr(obj, f"{id_prefix}identifier_system", None)
     id_value = getattr(obj, f"{id_prefix}identifier_value", None)
@@ -178,7 +180,9 @@ def _fhir_identifier(ident) -> dict:
 
 def _fhir_population(pop) -> dict:
     d: dict[str, Any] = {}
-    cc = _fhir_codeable_concept(getattr(pop, "code_coding", None), getattr(pop, "code_text", None))
+    cc = _fhir_codeable_concept(
+        getattr(pop, "code_coding", None), getattr(pop, "code_text", None)
+    )
     if cc:
         d["code"] = cc
     if getattr(pop, "count", None) is not None:
@@ -234,7 +238,9 @@ def _fhir_stratifier(strat) -> dict:
     codes = getattr(strat, "codes", None)
     if codes:
         ccs = [
-            _fhir_codeable_concept(getattr(c, "coding", None), getattr(c, "code_text", None))
+            _fhir_codeable_concept(
+                getattr(c, "coding", None), getattr(c, "code_text", None)
+            )
             for c in codes
         ]
         ccs = [c for c in ccs if c]
@@ -248,7 +254,9 @@ def _fhir_stratifier(strat) -> dict:
 
 def _fhir_group(grp) -> dict:
     d: dict[str, Any] = {}
-    cc = _fhir_codeable_concept(getattr(grp, "code_coding", None), getattr(grp, "code_text", None))
+    cc = _fhir_codeable_concept(
+        getattr(grp, "code_coding", None), getattr(grp, "code_text", None)
+    )
     if cc:
         d["code"] = cc
     pops = getattr(grp, "populations", None)

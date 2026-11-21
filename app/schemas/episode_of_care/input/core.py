@@ -59,7 +59,8 @@ class EpisodeOfCareCreateSchema(BaseModel):
         description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error",
     )
     status_history: list[EpisodeOfCareStatusHistoryInput] | None = Field(
-        None, description="Past list of status codes (and reasons) for the status of the episode."
+        None,
+        description="Past list of status codes (and reasons) for the status of the episode.",
     )
     type: list[EpisodeOfCareCodeableConceptInput] | None = Field(
         None, description="Type/flavor - e.g. specialist referral, disease management."
@@ -68,20 +69,37 @@ class EpisodeOfCareCreateSchema(BaseModel):
         None, description="The list of diagnosis relevant to this episode of care."
     )
     patient: str | None = Field(
-        None, description="The patient who is the focus of this episode of care (Reference(Patient))."
+        None,
+        description="The patient who is the focus of this episode of care (Reference(Patient)).",
     )
     patient_display: str | None = Field(None, description="Display name for patient.")
-    patient_identifier_use: IdentifierUse | None = Field(None, description="Patient identifier use.")
-    patient_identifier_type_system: str | None = Field(None, description="Patient identifier type system.")
-    patient_identifier_type_version: str | None = Field(None, description="Patient identifier type version.")
-    patient_identifier_type_code: str | None = Field(None, description="Patient identifier type code.")
-    patient_identifier_type_display: str | None = Field(None, description="Patient identifier type display.")
+    patient_identifier_use: IdentifierUse | None = Field(
+        None, description="Patient identifier use."
+    )
+    patient_identifier_type_system: str | None = Field(
+        None, description="Patient identifier type system."
+    )
+    patient_identifier_type_version: str | None = Field(
+        None, description="Patient identifier type version."
+    )
+    patient_identifier_type_code: str | None = Field(
+        None, description="Patient identifier type code."
+    )
+    patient_identifier_type_display: str | None = Field(
+        None, description="Patient identifier type display."
+    )
     patient_identifier_type_user_selected: bool | None = Field(
         None, description="Patient identifier type user selected."
     )
-    patient_identifier_type_text: str | None = Field(None, description="Patient identifier type text.")
-    patient_identifier_system: str | None = Field(None, description="Patient identifier system.")
-    patient_identifier_value: str | None = Field(None, description="Patient identifier value.")
+    patient_identifier_type_text: str | None = Field(
+        None, description="Patient identifier type text."
+    )
+    patient_identifier_system: str | None = Field(
+        None, description="Patient identifier system."
+    )
+    patient_identifier_value: str | None = Field(
+        None, description="Patient identifier value."
+    )
     patient_identifier_period_start: datetime | None = Field(
         None, description="Patient identifier period start."
     )
@@ -90,7 +108,8 @@ class EpisodeOfCareCreateSchema(BaseModel):
     )
 
     managing_organization: str | None = Field(
-        None, description="Organization that assumes responsibility for care (Reference(Organization))."
+        None,
+        description="Organization that assumes responsibility for care (Reference(Organization)).",
     )
     managing_organization_display: str | None = Field(
         None, description="Display name for managing organization."
@@ -129,23 +148,34 @@ class EpisodeOfCareCreateSchema(BaseModel):
         None, description="Managing organization identifier period end."
     )
 
-    period_start: datetime | None = Field(None, description="Interval during responsibility is assumed.")
-    period_end: datetime | None = Field(None, description="Interval during responsibility is assumed.")
+    period_start: datetime | None = Field(
+        None, description="Interval during responsibility is assumed."
+    )
+    period_end: datetime | None = Field(
+        None, description="Interval during responsibility is assumed."
+    )
     referral_request: list[EpisodeOfCareReferenceInput | str] | None = Field(
         None, description="Originating Referral Request(s) (Reference(ServiceRequest))."
     )
     care_manager: str | None = Field(
-        None, description="Care manager/care coordinator for the patient (Reference(Practitioner | PractitionerRole))."
+        None,
+        description="Care manager/care coordinator for the patient (Reference(Practitioner | PractitionerRole)).",
     )
-    care_manager_display: str | None = Field(None, description="Display name for care manager.")
-    care_manager_identifier_use: IdentifierUse | None = Field(None, description="Care manager identifier use.")
+    care_manager_display: str | None = Field(
+        None, description="Display name for care manager."
+    )
+    care_manager_identifier_use: IdentifierUse | None = Field(
+        None, description="Care manager identifier use."
+    )
     care_manager_identifier_type_system: str | None = Field(
         None, description="Care manager identifier type system."
     )
     care_manager_identifier_type_version: str | None = Field(
         None, description="Care manager identifier type version."
     )
-    care_manager_identifier_type_code: str | None = Field(None, description="Care manager identifier type code.")
+    care_manager_identifier_type_code: str | None = Field(
+        None, description="Care manager identifier type code."
+    )
     care_manager_identifier_type_display: str | None = Field(
         None, description="Care manager identifier type display."
     )
@@ -155,8 +185,12 @@ class EpisodeOfCareCreateSchema(BaseModel):
     care_manager_identifier_type_text: str | None = Field(
         None, description="Care manager identifier type text."
     )
-    care_manager_identifier_system: str | None = Field(None, description="Care manager identifier system.")
-    care_manager_identifier_value: str | None = Field(None, description="Care manager identifier value.")
+    care_manager_identifier_system: str | None = Field(
+        None, description="Care manager identifier system."
+    )
+    care_manager_identifier_value: str | None = Field(
+        None, description="Care manager identifier value."
+    )
     care_manager_identifier_period_start: datetime | None = Field(
         None, description="Care manager identifier period start."
     )
@@ -165,10 +199,12 @@ class EpisodeOfCareCreateSchema(BaseModel):
     )
 
     team: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None, description="Other practitioners facilitating this episode of care (Reference(CareTeam))."
+        None,
+        description="Other practitioners facilitating this episode of care (Reference(CareTeam)).",
     )
     account: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None, description="The set of accounts that may be used for billing for this EpisodeOfCare (Reference(Account))."
+        None,
+        description="The set of accounts that may be used for billing for this EpisodeOfCare (Reference(Account)).",
     )
     identifier: list[EpisodeOfCareIdentifierInput] | None = Field(
         None, description="Business Identifier(s) relevant for this EpisodeOfCare."
@@ -193,7 +229,8 @@ class EpisodeOfCarePatchSchema(BaseModel):
         description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error",
     )
     status_history: list[EpisodeOfCareStatusHistoryInput] | None = Field(
-        None, description="Past list of status codes (and reasons) for the status of the episode."
+        None,
+        description="Past list of status codes (and reasons) for the status of the episode.",
     )
     type: list[EpisodeOfCareCodeableConceptInput] | None = Field(
         None, description="Type/flavor - e.g. specialist referral, disease management."
@@ -202,20 +239,37 @@ class EpisodeOfCarePatchSchema(BaseModel):
         None, description="The list of diagnosis relevant to this episode of care."
     )
     patient: str | None = Field(
-        None, description="The patient who is the focus of this episode of care (Reference(Patient))."
+        None,
+        description="The patient who is the focus of this episode of care (Reference(Patient)).",
     )
     patient_display: str | None = Field(None, description="Display name for patient.")
-    patient_identifier_use: IdentifierUse | None = Field(None, description="Patient identifier use.")
-    patient_identifier_type_system: str | None = Field(None, description="Patient identifier type system.")
-    patient_identifier_type_version: str | None = Field(None, description="Patient identifier type version.")
-    patient_identifier_type_code: str | None = Field(None, description="Patient identifier type code.")
-    patient_identifier_type_display: str | None = Field(None, description="Patient identifier type display.")
+    patient_identifier_use: IdentifierUse | None = Field(
+        None, description="Patient identifier use."
+    )
+    patient_identifier_type_system: str | None = Field(
+        None, description="Patient identifier type system."
+    )
+    patient_identifier_type_version: str | None = Field(
+        None, description="Patient identifier type version."
+    )
+    patient_identifier_type_code: str | None = Field(
+        None, description="Patient identifier type code."
+    )
+    patient_identifier_type_display: str | None = Field(
+        None, description="Patient identifier type display."
+    )
     patient_identifier_type_user_selected: bool | None = Field(
         None, description="Patient identifier type user selected."
     )
-    patient_identifier_type_text: str | None = Field(None, description="Patient identifier type text.")
-    patient_identifier_system: str | None = Field(None, description="Patient identifier system.")
-    patient_identifier_value: str | None = Field(None, description="Patient identifier value.")
+    patient_identifier_type_text: str | None = Field(
+        None, description="Patient identifier type text."
+    )
+    patient_identifier_system: str | None = Field(
+        None, description="Patient identifier system."
+    )
+    patient_identifier_value: str | None = Field(
+        None, description="Patient identifier value."
+    )
     patient_identifier_period_start: datetime | None = Field(
         None, description="Patient identifier period start."
     )
@@ -224,7 +278,8 @@ class EpisodeOfCarePatchSchema(BaseModel):
     )
 
     managing_organization: str | None = Field(
-        None, description="Organization that assumes responsibility for care (Reference(Organization))."
+        None,
+        description="Organization that assumes responsibility for care (Reference(Organization)).",
     )
     managing_organization_display: str | None = Field(
         None, description="Display name for managing organization."
@@ -263,23 +318,34 @@ class EpisodeOfCarePatchSchema(BaseModel):
         None, description="Managing organization identifier period end."
     )
 
-    period_start: datetime | None = Field(None, description="Interval during responsibility is assumed.")
-    period_end: datetime | None = Field(None, description="Interval during responsibility is assumed.")
+    period_start: datetime | None = Field(
+        None, description="Interval during responsibility is assumed."
+    )
+    period_end: datetime | None = Field(
+        None, description="Interval during responsibility is assumed."
+    )
     referral_request: list[EpisodeOfCareReferenceInput | str] | None = Field(
         None, description="Originating Referral Request(s) (Reference(ServiceRequest))."
     )
     care_manager: str | None = Field(
-        None, description="Care manager/care coordinator for the patient (Reference(Practitioner | PractitionerRole))."
+        None,
+        description="Care manager/care coordinator for the patient (Reference(Practitioner | PractitionerRole)).",
     )
-    care_manager_display: str | None = Field(None, description="Display name for care manager.")
-    care_manager_identifier_use: IdentifierUse | None = Field(None, description="Care manager identifier use.")
+    care_manager_display: str | None = Field(
+        None, description="Display name for care manager."
+    )
+    care_manager_identifier_use: IdentifierUse | None = Field(
+        None, description="Care manager identifier use."
+    )
     care_manager_identifier_type_system: str | None = Field(
         None, description="Care manager identifier type system."
     )
     care_manager_identifier_type_version: str | None = Field(
         None, description="Care manager identifier type version."
     )
-    care_manager_identifier_type_code: str | None = Field(None, description="Care manager identifier type code.")
+    care_manager_identifier_type_code: str | None = Field(
+        None, description="Care manager identifier type code."
+    )
     care_manager_identifier_type_display: str | None = Field(
         None, description="Care manager identifier type display."
     )
@@ -289,8 +355,12 @@ class EpisodeOfCarePatchSchema(BaseModel):
     care_manager_identifier_type_text: str | None = Field(
         None, description="Care manager identifier type text."
     )
-    care_manager_identifier_system: str | None = Field(None, description="Care manager identifier system.")
-    care_manager_identifier_value: str | None = Field(None, description="Care manager identifier value.")
+    care_manager_identifier_system: str | None = Field(
+        None, description="Care manager identifier system."
+    )
+    care_manager_identifier_value: str | None = Field(
+        None, description="Care manager identifier value."
+    )
     care_manager_identifier_period_start: datetime | None = Field(
         None, description="Care manager identifier period start."
     )
@@ -299,10 +369,12 @@ class EpisodeOfCarePatchSchema(BaseModel):
     )
 
     team: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None, description="Other practitioners facilitating this episode of care (Reference(CareTeam))."
+        None,
+        description="Other practitioners facilitating this episode of care (Reference(CareTeam)).",
     )
     account: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None, description="The set of accounts that may be used for billing for this EpisodeOfCare (Reference(Account))."
+        None,
+        description="The set of accounts that may be used for billing for this EpisodeOfCare (Reference(Account)).",
     )
     identifier: list[EpisodeOfCareIdentifierInput] | None = Field(
         None, description="Business Identifier(s) relevant for this EpisodeOfCare."

@@ -5,7 +5,6 @@ from app.services.related_person import RelatedPersonService
 
 
 class RelatedPersonContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     related_person_repository = providers.Factory(

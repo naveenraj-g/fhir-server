@@ -11,7 +11,10 @@ from app.fhir.validation import validate_resource
 from app.models.appointment_response import AppointmentResponseModel
 from app.repository.appointment_response import AppointmentResponseRepository
 from app.repository.appointment_response.search import appointment_response_search
-from app.schemas.appointment_response import AppointmentResponseCreateSchema, AppointmentResponsePatchSchema
+from app.schemas.appointment_response import (
+    AppointmentResponseCreateSchema,
+    AppointmentResponsePatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -44,8 +47,10 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "AppointmentResponse operation requires an org-scoped token"
             )
-        appointment_response = await self.repository.get_by_appointment_response_id_in_org(
-            appointment_response_id, org_id
+        appointment_response = (
+            await self.repository.get_by_appointment_response_id_in_org(
+                appointment_response_id, org_id
+            )
         )
         if not appointment_response:
             raise NotFoundError("AppointmentResponse not found")
@@ -59,7 +64,10 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
     ) -> tuple[
-        SearchRequest, list[AppointmentResponseModel], int | None, list[AppointmentResponseModel]
+        SearchRequest,
+        list[AppointmentResponseModel],
+        int | None,
+        list[AppointmentResponseModel],
     ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the AppointmentResponse search
@@ -107,7 +115,9 @@ class _CoreMixin:
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "AppointmentResponse")
         await self._validate_base_r4(document, org_id)
-        appointment_response = await self.repository.create_full(document, org_id, created_by)
+        appointment_response = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "AppointmentResponse created",
             extra={
@@ -145,12 +155,16 @@ class _CoreMixin:
             raise NotFoundError("AppointmentResponse not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_appointment_response(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_appointment_response(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(appointment_response_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            appointment_response_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("AppointmentResponse not found")
         logger.info(
@@ -203,11 +217,16 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("AppointmentResponse", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "AppointmentResponse", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "AppointmentResponse failed base R4 validation",
-                extra={"event": "appointment_response.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "appointment_response.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

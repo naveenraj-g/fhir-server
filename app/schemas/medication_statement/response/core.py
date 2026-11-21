@@ -50,26 +50,69 @@ class FHIRMedicationStatementSchema(BaseModel):
     resourceType: Literal["MedicationStatement"] = "MedicationStatement"
     id: str = Field(..., description="Logical id of this artifact.")
     meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    extension: list[dict] | None = Field(None, description="Additional content defined by implementations.")
-    identifier: list[FHIRIdentifier] | None = Field(None, description="External identifier.")
-    basedOn: list[FHIRReference] | None = Field(None, description="Fulfils plan, proposal or order.")
-    partOf: list[FHIRReference] | None = Field(None, description="Part of referenced event.")
-    status: str = Field(..., description="active | completed | entered-in-error | intended | stopped | on-hold | unknown | not-taken.")
-    statusReason: list[FHIRCodeableConcept] | None = Field(None, description="Reason for current status.")
-    category: FHIRCodeableConcept | None = Field(None, description="Type of medication statement.")
-    medicationCodeableConcept: FHIRCodeableConcept | None = Field(None, description="What medication was taken.")
-    medicationReference: FHIRReference | None = Field(None, description="What medication was taken.")
+    extension: list[dict] | None = Field(
+        None, description="Additional content defined by implementations."
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="External identifier."
+    )
+    basedOn: list[FHIRReference] | None = Field(
+        None, description="Fulfils plan, proposal or order."
+    )
+    partOf: list[FHIRReference] | None = Field(
+        None, description="Part of referenced event."
+    )
+    status: str = Field(
+        ...,
+        description="active | completed | entered-in-error | intended | stopped | on-hold | unknown | not-taken.",
+    )
+    statusReason: list[FHIRCodeableConcept] | None = Field(
+        None, description="Reason for current status."
+    )
+    category: FHIRCodeableConcept | None = Field(
+        None, description="Type of medication statement."
+    )
+    medicationCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="What medication was taken."
+    )
+    medicationReference: FHIRReference | None = Field(
+        None, description="What medication was taken."
+    )
     subject: FHIRReference = Field(..., description="Who is/was taking the medication.")
-    context: FHIRReference | None = Field(None, description="Encounter / Episode associated with MedicationStatement.")
-    effectiveDateTime: str | None = Field(None, description="The date/time or interval when the medication is/was/will be taken.")
-    effectivePeriod: FHIRPeriod | None = Field(None, description="The date/time or interval when the medication is/was/will be taken.")
-    dateAsserted: str | None = Field(None, description="When the statement was asserted/recorded.")
-    informationSource: FHIRReference | None = Field(None, description="Person or organization that provided information about the medication.")
-    derivedFrom: list[FHIRReference] | None = Field(None, description="Additional supporting information.")
-    reasonCode: list[FHIRCodeableConcept] | None = Field(None, description="Reason for medication administration.")
-    reasonReference: list[FHIRReference] | None = Field(None, description="Condition or observation that supports why the medication is being/was taken.")
-    note: list[FHIRAnnotation] | None = Field(None, description="Further information about the statement.")
-    dosage: list[FHIRDosage] | None = Field(None, description="Details of how medication is/was taken or should be taken.")
+    context: FHIRReference | None = Field(
+        None, description="Encounter / Episode associated with MedicationStatement."
+    )
+    effectiveDateTime: str | None = Field(
+        None,
+        description="The date/time or interval when the medication is/was/will be taken.",
+    )
+    effectivePeriod: FHIRPeriod | None = Field(
+        None,
+        description="The date/time or interval when the medication is/was/will be taken.",
+    )
+    dateAsserted: str | None = Field(
+        None, description="When the statement was asserted/recorded."
+    )
+    informationSource: FHIRReference | None = Field(
+        None,
+        description="Person or organization that provided information about the medication.",
+    )
+    derivedFrom: list[FHIRReference] | None = Field(
+        None, description="Additional supporting information."
+    )
+    reasonCode: list[FHIRCodeableConcept] | None = Field(
+        None, description="Reason for medication administration."
+    )
+    reasonReference: list[FHIRReference] | None = Field(
+        None,
+        description="Condition or observation that supports why the medication is being/was taken.",
+    )
+    note: list[FHIRAnnotation] | None = Field(
+        None, description="Further information about the statement."
+    )
+    dosage: list[FHIRDosage] | None = Field(
+        None, description="Details of how medication is/was taken or should be taken."
+    )
 
 
 class PlainMedicationStatementResponse(BaseModel):
@@ -77,7 +120,9 @@ class PlainMedicationStatementResponse(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: int = Field(..., description="Internal row ID (public medication_statement_id).")
+    id: int = Field(
+        ..., description="Internal row ID (public medication_statement_id)."
+    )
     extension: list[dict] | None = None
     identifier: list[PlainMedicationStatementIdentifier] | None = None
     based_on: list[PlainMedicationStatementBasedOn] | None = None

@@ -35,7 +35,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     if not ref_str:
         return {
             f"{prefix}_type": None,

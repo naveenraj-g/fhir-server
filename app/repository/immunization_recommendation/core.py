@@ -17,24 +17,38 @@ class _CoreMixin:
     row itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_immunization_recommendation_id(self, immunization_recommendation_id: int) -> _M | None:
+    async def get_by_immunization_recommendation_id(
+        self, immunization_recommendation_id: int
+    ) -> _M | None:
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.immunization_recommendation_id == immunization_recommendation_id)
+            stmt = select(_M).where(
+                _M.immunization_recommendation_id == immunization_recommendation_id
+            )
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_immunization_recommendation_id_in_org(self, immunization_recommendation_id: int, org_id: str) -> _M | None:
+    async def get_by_immunization_recommendation_id_in_org(
+        self, immunization_recommendation_id: int, org_id: str
+    ) -> _M | None:
         """Lookup scoped to org_id — returns None unless the immunization_recommendation
         exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.immunization_recommendation_id == immunization_recommendation_id, _M.tenant_id == org_id)
+            stmt = select(_M).where(
+                _M.immunization_recommendation_id == immunization_recommendation_id,
+                _M.tenant_id == org_id,
+            )
             return (await session.execute(stmt)).scalars().first()
 
-    async def immunization_recommendation_belongs_to_org(self, immunization_recommendation_id: int, org_id: str) -> bool:
+    async def immunization_recommendation_belongs_to_org(
+        self, immunization_recommendation_id: int, org_id: str
+    ) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the immunization_recommendation exists AND
         belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M.id).where(_M.immunization_recommendation_id == immunization_recommendation_id, _M.tenant_id == org_id)
+            stmt = select(_M.id).where(
+                _M.immunization_recommendation_id == immunization_recommendation_id,
+                _M.tenant_id == org_id,
+            )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
     # ── Search ────────────────────────────────────────────────────────────
@@ -72,8 +86,12 @@ class _CoreMixin:
 
     async def delete(self, immunization_recommendation_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.immunization_recommendation_id == immunization_recommendation_id)
-            immunization_recommendation = (await session.execute(stmt)).scalars().first()
+            stmt = select(_M).where(
+                _M.immunization_recommendation_id == immunization_recommendation_id
+            )
+            immunization_recommendation = (
+                (await session.execute(stmt)).scalars().first()
+            )
             if not immunization_recommendation:
                 return False
             try:

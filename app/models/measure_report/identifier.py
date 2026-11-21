@@ -21,7 +21,10 @@ class MeasureReportIdentifier(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_report_pk = Column(
-        BigInteger, ForeignKey("measure_report.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure_report.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     use = Column(

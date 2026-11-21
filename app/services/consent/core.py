@@ -42,9 +42,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Consent operation requires an org-scoped token"
             )
-        consent = await self.repository.get_by_consent_id_in_org(
-            consent_id, org_id
-        )
+        consent = await self.repository.get_by_consent_id_in_org(consent_id, org_id)
         if not consent:
             raise NotFoundError("Consent not found")
         return consent
@@ -109,20 +107,14 @@ class _CoreMixin:
         created_by: str | None,
     ) -> ConsentModel:
         if not org_id:
-            raise PermissionDeniedError(
-                "Consent creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Consent creation requires an org-scoped token")
         if not created_by:
             raise PermissionDeniedError(
                 "Consent creation requires an authenticated actor"
             )
 
-        await self._validate_base_r4(
-            payload_to_fhir_consent(payload), org_id
-        )
-        consent = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        await self._validate_base_r4(payload_to_fhir_consent(payload), org_id)
+        consent = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Consent created",
             extra={"event": "consent.created", "consent_id": consent.consent_id},
@@ -139,17 +131,13 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", consent_id, org_id)
             raise NotFoundError("Consent not found")
-        existing = await self.repository.get_by_consent_id_in_org(
-            consent_id, org_id
-        )
+        existing = await self.repository.get_by_consent_id_in_org(consent_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", consent_id, org_id)
             raise NotFoundError("Consent not found")
 
         fragment, touched = patch_fragment_to_fhir_consent(payload)
-        merged = merge_patch_fragment(
-            to_fhir_consent(existing), fragment, touched
-        )
+        merged = merge_patch_fragment(to_fhir_consent(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
         updated = await self.repository.patch_full(
@@ -167,9 +155,7 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_consent(
-        self, consent_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_consent(self, consent_id: int, org_id: str | None = None) -> None:
         if not org_id or not await self.repository.consent_belongs_to_org(
             consent_id, org_id
         ):
@@ -184,9 +170,7 @@ class _CoreMixin:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource("Consent", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(

@@ -47,12 +47,8 @@ class CommunicationRequestNote(TenantAuditMixin, Base):
     author_identifier_type_user_selected = Column(Boolean, nullable=True)
     author_identifier_system = Column(String, nullable=True)
     author_identifier_value = Column(String, nullable=True)
-    author_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    author_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    author_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    author_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     time = Column(DateTime(timezone=True), nullable=True)
     text = Column(Text, nullable=False)

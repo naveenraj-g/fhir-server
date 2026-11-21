@@ -32,7 +32,9 @@ from app.repository.family_member_history.search import family_member_history_se
 from app.repository.immunization.search import immunization_search
 from app.repository.risk_assessment.search import risk_assessment_search
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
-from app.repository.immunization_recommendation.search import immunization_recommendation_search
+from app.repository.immunization_recommendation.search import (
+    immunization_recommendation_search,
+)
 from app.repository.observation.search import observation_search
 from app.repository.procedure.search import procedure_search
 from app.repository.related_person.search import related_person_search

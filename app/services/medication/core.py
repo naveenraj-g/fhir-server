@@ -48,9 +48,7 @@ class MedicationService:
             raise PermissionDeniedError(
                 "Medication operation requires an org-scoped token"
             )
-        model = await self.repository.get_by_medication_id_in_org(
-            medication_id, org_id
-        )
+        model = await self.repository.get_by_medication_id_in_org(medication_id, org_id)
         if not model:
             raise NotFoundError("Medication not found")
         return model
@@ -107,12 +105,8 @@ class MedicationService:
                 "Medication creation requires an authenticated actor"
             )
 
-        await self._validate_base_r4(
-            payload_to_fhir_medication(payload), org_id
-        )
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        await self._validate_base_r4(payload_to_fhir_medication(payload), org_id)
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Medication created",
             extra={
@@ -140,9 +134,7 @@ class MedicationService:
             raise NotFoundError("Medication not found")
 
         fragment, touched = patch_fragment_to_fhir_medication(payload)
-        merged = merge_patch_fragment(
-            to_fhir_medication(existing), fragment, touched
-        )
+        merged = merge_patch_fragment(to_fhir_medication(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
         updated = await self.repository.patch_full(
@@ -180,12 +172,8 @@ class MedicationService:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
-        errors = await validate_resource(
-            "Medication", fhir_resource, org_id=org_id
-        )
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+        errors = await validate_resource("Medication", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "Medication failed base R4 validation",

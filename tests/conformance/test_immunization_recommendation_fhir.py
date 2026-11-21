@@ -15,7 +15,9 @@ import datetime as dt
 
 import pytest
 
-from app.fhir.mappers.immunization_recommendation import to_fhir_immunization_recommendation
+from app.fhir.mappers.immunization_recommendation import (
+    to_fhir_immunization_recommendation,
+)
 from app.models.immunization_recommendation import ImmunizationRecommendationModel
 
 from .support import assert_valid, fhir_json_text
@@ -31,7 +33,11 @@ DATE = "2023-01-15T09:30:00Z"
 SCT = "http://snomed.info/sct"
 STATUS = "http://terminology.hl7.org/CodeSystem/immunization-recommendation-status"
 DUE = {"coding": [{"system": STATUS, "code": "due", "display": "Due"}]}
-FLU = {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "140", "display": "Influenza"}]}
+FLU = {
+    "coding": [
+        {"system": "http://hl7.org/fhir/sid/cvx", "code": "140", "display": "Influenza"}
+    ]
+}
 
 
 def _recommendation(content: dict, **overrides) -> ImmunizationRecommendationModel:
@@ -48,26 +54,45 @@ def _recommendation(content: dict, **overrides) -> ImmunizationRecommendationMod
 
 def _with(**elements) -> ImmunizationRecommendationModel:
     return _recommendation(
-        {"patient": PATIENT, "date": DATE, "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}], **elements}
+        {
+            "patient": PATIENT,
+            "date": DATE,
+            "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}],
+            **elements,
+        }
     )
 
 
 def _entry(**elements) -> ImmunizationRecommendationModel:
     """A recommendation whose single entry carries `elements` besides forecastStatus/vaccineCode."""
-    return _with(recommendation=[{"vaccineCode": [FLU], "forecastStatus": DUE, **elements}])
+    return _with(
+        recommendation=[{"vaccineCode": [FLU], "forecastStatus": DUE, **elements}]
+    )
 
 
 CASES = {
     "minimal": _with(),
     "updated_by_and_updated_at": _recommendation(
-        {"patient": PATIENT, "date": DATE, "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}]},
-        updated_by="u-other", updated_at=D,
+        {
+            "patient": PATIENT,
+            "date": DATE,
+            "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}],
+        },
+        updated_by="u-other",
+        updated_at=D,
     ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "FILL"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/immunization-recommendation-id",
                 "value": "IR-1",
                 "period": {"start": "2020-01-01"},
@@ -75,33 +100,76 @@ CASES = {
             }
         ]
     ),
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
-    "patient_logical": _with(patient={"identifier": {"system": "urn:pts", "value": "P-9"}}),
-    "patient_absolute_url": _with(patient={"reference": "https://other.example.org/fhir/Patient/9"}),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
+    "patient_logical": _with(
+        patient={"identifier": {"system": "urn:pts", "value": "P-9"}}
+    ),
+    "patient_absolute_url": _with(
+        patient={"reference": "https://other.example.org/fhir/Patient/9"}
+    ),
     "date_partial": _with(date="2023-01"),
     "authority": _with(authority={"reference": "Organization/190001"}),
     "target_disease_only": _with(
-        recommendation=[{"targetDisease": {"coding": [{"system": SCT, "code": "6142004"}]}, "forecastStatus": DUE}]
+        recommendation=[
+            {
+                "targetDisease": {"coding": [{"system": SCT, "code": "6142004"}]},
+                "forecastStatus": DUE,
+            }
+        ]
     ),
-    "vaccine_code_text_only": _with(recommendation=[{"vaccineCode": [{"text": "Tetanus"}], "forecastStatus": DUE}]),
-    "forecast_status_text_only": _with(recommendation=[{"vaccineCode": [FLU], "forecastStatus": {"text": "Complete"}}]),
-    "several_vaccine_codes": _entry(vaccineCode=[FLU, {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "03"}]}]),
+    "vaccine_code_text_only": _with(
+        recommendation=[{"vaccineCode": [{"text": "Tetanus"}], "forecastStatus": DUE}]
+    ),
+    "forecast_status_text_only": _with(
+        recommendation=[{"vaccineCode": [FLU], "forecastStatus": {"text": "Complete"}}]
+    ),
+    "several_vaccine_codes": _entry(
+        vaccineCode=[
+            FLU,
+            {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "03"}]},
+        ]
+    ),
     "contraindicated_vaccine_code": _entry(
-        contraindicatedVaccineCode=[{"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "99"}]}]
+        contraindicatedVaccineCode=[
+            {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "99"}]}
+        ]
     ),
-    "forecast_reason": _entry(forecastReason=[{"coding": [{"system": "http://reason", "code": "seasonal"}]}, {"text": "Other"}]),
+    "forecast_reason": _entry(
+        forecastReason=[
+            {"coding": [{"system": "http://reason", "code": "seasonal"}]},
+            {"text": "Other"},
+        ]
+    ),
     "date_criterion": _entry(
         dateCriterion=[
-            {"code": {"coding": [{"system": "http://loinc.org", "code": "30980-7", "display": "Date vaccine due"}]},
-             "value": "2023-06-01T00:00:00Z"},
+            {
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "30980-7",
+                            "display": "Date vaccine due",
+                        }
+                    ]
+                },
+                "value": "2023-06-01T00:00:00Z",
+            },
             {"code": {"text": "Overdue"}, "value": "2023-09-01"},
         ]
     ),
-    "description_and_series": _entry(description="Seasonal flu shot", series="Seasonal"),
-    "dose_numbers_positive_int": _entry(doseNumberPositiveInt=1, seriesDosesPositiveInt=2),
+    "description_and_series": _entry(
+        description="Seasonal flu shot", series="Seasonal"
+    ),
+    "dose_numbers_positive_int": _entry(
+        doseNumberPositiveInt=1, seriesDosesPositiveInt=2
+    ),
     "dose_numbers_string": _entry(doseNumberString="booster", seriesDosesString="many"),
     **{
-        f"supporting_immunization_{t}": _entry(supportingImmunization=[{"reference": f"{t}/1"}])
+        f"supporting_immunization_{t}": _entry(
+            supportingImmunization=[{"reference": f"{t}/1"}]
+        )
         for t in ("Immunization", "ImmunizationEvaluation")
     },
     "supporting_immunization_logical": _entry(
@@ -109,17 +177,30 @@ CASES = {
     ),
     "supporting_patient_information": _entry(
         supportingPatientInformation=[
-            {"reference": "Observation/160001"}, {"reference": "Condition/120001"}, {"reference": "Procedure/100001"},
+            {"reference": "Observation/160001"},
+            {"reference": "Condition/120001"},
+            {"reference": "Procedure/100001"},
         ]
     ),
     "several_recommendations": _with(
         recommendation=[
             {"vaccineCode": [FLU], "forecastStatus": DUE},
-            {"targetDisease": {"coding": [{"system": SCT, "code": "14189004"}]},
-             "forecastStatus": {"coding": [{"system": STATUS, "code": "contraindicated"}]}},
+            {
+                "targetDisease": {"coding": [{"system": SCT, "code": "14189004"}]},
+                "forecastStatus": {
+                    "coding": [{"system": STATUS, "code": "contraindicated"}]
+                },
+            },
         ]
     ),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:ir", "value": "IR-1"}],
         authority={"reference": "Organization/190001"},
@@ -145,16 +226,24 @@ CASES = {
 
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_immunization_recommendation_mapper_emits_valid_fhir_r4(case):
-    assert_valid(pb2.ImmunizationRecommendation, to_fhir_immunization_recommendation(CASES[case]))
+    assert_valid(
+        pb2.ImmunizationRecommendation, to_fhir_immunization_recommendation(CASES[case])
+    )
 
 
 def test_mapper_serves_content_unchanged():
-    content = {"patient": PATIENT, "date": DATE, "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}],
-               "authority": {"reference": "Organization/190001"}}
+    content = {
+        "patient": PATIENT,
+        "date": DATE,
+        "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}],
+        "authority": {"reference": "Organization/190001"},
+    }
     out = to_fhir_immunization_recommendation(_recommendation(content))
     assert out["resourceType"] == "ImmunizationRecommendation"
     assert out["id"] == "510001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -175,23 +264,100 @@ def test_mapper_serves_content_unchanged():
         ("date as number", {"date": 20230115}),
         ("authority as string not a Reference", {"authority": "Organization/1"}),
         ("identifier as object not a list", {"identifier": {"value": "x"}}),
-        ("recommendation as object not a list", {"recommendation": {"forecastStatus": DUE}}),
-        ("recommendation forecastStatus as string", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": "due"}]}),
-        ("recommendation vaccineCode as object not a list", {"recommendation": [{"vaccineCode": FLU, "forecastStatus": DUE}]}),
-        ("recommendation description as number", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE, "description": 5}]}),
-        ("recommendation dose number not a positiveInt", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE, "doseNumberPositiveInt": "one"}]}),
-        ("dateCriterion value not a dateTime", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE, "dateCriterion": [{"code": {"text": "x"}, "value": "soon"}]}]}),
-        ("dateCriterion as object not a list", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE, "dateCriterion": {"code": {"text": "x"}, "value": "2023-01-01"}}]}),
-        ("supportingImmunization as object not a list", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE, "supportingImmunization": {"reference": "Immunization/1"}}]}),
-        ("supportingPatientInformation as string", {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE, "supportingPatientInformation": ["Observation/1"]}]}),
+        (
+            "recommendation as object not a list",
+            {"recommendation": {"forecastStatus": DUE}},
+        ),
+        (
+            "recommendation forecastStatus as string",
+            {"recommendation": [{"vaccineCode": [FLU], "forecastStatus": "due"}]},
+        ),
+        (
+            "recommendation vaccineCode as object not a list",
+            {"recommendation": [{"vaccineCode": FLU, "forecastStatus": DUE}]},
+        ),
+        (
+            "recommendation description as number",
+            {
+                "recommendation": [
+                    {"vaccineCode": [FLU], "forecastStatus": DUE, "description": 5}
+                ]
+            },
+        ),
+        (
+            "recommendation dose number not a positiveInt",
+            {
+                "recommendation": [
+                    {
+                        "vaccineCode": [FLU],
+                        "forecastStatus": DUE,
+                        "doseNumberPositiveInt": "one",
+                    }
+                ]
+            },
+        ),
+        (
+            "dateCriterion value not a dateTime",
+            {
+                "recommendation": [
+                    {
+                        "vaccineCode": [FLU],
+                        "forecastStatus": DUE,
+                        "dateCriterion": [{"code": {"text": "x"}, "value": "soon"}],
+                    }
+                ]
+            },
+        ),
+        (
+            "dateCriterion as object not a list",
+            {
+                "recommendation": [
+                    {
+                        "vaccineCode": [FLU],
+                        "forecastStatus": DUE,
+                        "dateCriterion": {"code": {"text": "x"}, "value": "2023-01-01"},
+                    }
+                ]
+            },
+        ),
+        (
+            "supportingImmunization as object not a list",
+            {
+                "recommendation": [
+                    {
+                        "vaccineCode": [FLU],
+                        "forecastStatus": DUE,
+                        "supportingImmunization": {"reference": "Immunization/1"},
+                    }
+                ]
+            },
+        ),
+        (
+            "supportingPatientInformation as string",
+            {
+                "recommendation": [
+                    {
+                        "vaccineCode": [FLU],
+                        "forecastStatus": DUE,
+                        "supportingPatientInformation": ["Observation/1"],
+                    }
+                ]
+            },
+        ),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
     payload = {
-        "resourceType": "ImmunizationRecommendation", "id": "510001", "patient": PATIENT, "date": DATE,
-        "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}], **broken,
+        "resourceType": "ImmunizationRecommendation",
+        "id": "510001",
+        "patient": PATIENT,
+        "date": DATE,
+        "recommendation": [{"vaccineCode": [FLU], "forecastStatus": DUE}],
+        **broken,
     }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), pb2.ImmunizationRecommendation, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.ImmunizationRecommendation, validate=True
+        )

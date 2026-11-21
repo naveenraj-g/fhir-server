@@ -17,4 +17,8 @@ if TYPE_CHECKING:
 
 
 def to_fhir_allergy_intolerance(allergy_intolerance: AllergyIntoleranceModel) -> dict:
-    return content_resource("AllergyIntolerance", allergy_intolerance.allergy_intolerance_id, allergy_intolerance)
+    return content_resource(
+        "AllergyIntolerance",
+        allergy_intolerance.allergy_intolerance_id,
+        allergy_intolerance,
+    )

@@ -330,13 +330,20 @@ async def test_create_specimen_with_reference_identifier_fallback(client):
     data = resp.json()
 
     assert data["subject"]["display"] == "External Patient"
-    assert data["subject"]["identifier_system"] == "http://hospital.example.org/patients"
+    assert (
+        data["subject"]["identifier_system"] == "http://hospital.example.org/patients"
+    )
     assert data["subject"]["identifier_value"] == "EXT-PAT-999"
     assert data["accession_identifier"]["assigner_display"] == "Acme Labs"
-    assert data["accession_identifier"]["assigner_identifier_system"] == "http://lab.example.org/orgs"
+    assert (
+        data["accession_identifier"]["assigner_identifier_system"]
+        == "http://lab.example.org/orgs"
+    )
     assert data["accession_identifier"]["assigner_identifier_value"] == "LAB-ORG-1"
     assert data["collection"]["collector"]["display"] == "Dr. External"
-    assert data["collection"]["collector"]["identifier_system"] == "http://npi.example.org"
+    assert (
+        data["collection"]["collector"]["identifier_system"] == "http://npi.example.org"
+    )
     assert data["collection"]["collector"]["identifier_value"] == "NPI-12345"
     assert len(data["note"]) == 1
     assert data["note"][0]["author_display"] == "External Reviewer"
@@ -348,11 +355,20 @@ async def test_create_specimen_with_reference_identifier_fallback(client):
     assert fhir_resp.status_code == 200, fhir_resp.text
     fhir_data = fhir_resp.json()
     assert fhir_data["subject"]["display"] == "External Patient"
-    assert fhir_data["subject"]["identifier"]["system"] == "http://hospital.example.org/patients"
+    assert (
+        fhir_data["subject"]["identifier"]["system"]
+        == "http://hospital.example.org/patients"
+    )
     assert fhir_data["subject"]["identifier"]["value"] == "EXT-PAT-999"
     assert fhir_data["accessionIdentifier"]["assigner"]["display"] == "Acme Labs"
-    assert fhir_data["accessionIdentifier"]["assigner"]["identifier"]["system"] == "http://lab.example.org/orgs"
-    assert fhir_data["accessionIdentifier"]["assigner"]["identifier"]["value"] == "LAB-ORG-1"
+    assert (
+        fhir_data["accessionIdentifier"]["assigner"]["identifier"]["system"]
+        == "http://lab.example.org/orgs"
+    )
+    assert (
+        fhir_data["accessionIdentifier"]["assigner"]["identifier"]["value"]
+        == "LAB-ORG-1"
+    )
     assert fhir_data["collection"]["collector"]["display"] == "Dr. External"
     assert fhir_data["collection"]["collector"]["identifier"]["value"] == "NPI-12345"
     assert fhir_data["note"][0]["authorReference"]["display"] == "External Reviewer"

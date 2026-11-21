@@ -63,7 +63,9 @@ class MedicationKnowledgeDrugCharacteristic(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeDrugCharacteristicTypeCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeDrugCharacteristicTypeCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.drugCharacteristic.type.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_drug_char_type_coding"
@@ -81,7 +83,9 @@ class MedicationKnowledgeDrugCharacteristicTypeCoding(Base, TenantAuditMixin, Fh
     )
 
 
-class MedicationKnowledgeDrugCharacteristicValueCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeDrugCharacteristicValueCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.drugCharacteristic.valueCodeableConcept.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_drug_char_val_coding"

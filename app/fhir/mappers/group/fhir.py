@@ -96,7 +96,10 @@ def _fhir_characteristic(c: GroupCharacteristic) -> dict | None:
     # Choice value[x]
     if c.value_boolean is not None:
         entry["valueBoolean"] = c.value_boolean
-    elif getattr(c, "value_codeable_concept_codings", None) or c.value_codeable_concept_text:
+    elif (
+        getattr(c, "value_codeable_concept_codings", None)
+        or c.value_codeable_concept_text
+    ):
         val_cc = _fhir_codeable_concept(
             getattr(c, "value_codeable_concept_codings", None),
             c.value_codeable_concept_text,
@@ -107,7 +110,9 @@ def _fhir_characteristic(c: GroupCharacteristic) -> dict | None:
         entry["valueQuantity"] = c.value_quantity
     elif c.value_range:
         entry["valueRange"] = c.value_range
-    elif c.value_reference_reference or (c.value_reference_type and c.value_reference_id):
+    elif c.value_reference_reference or (
+        c.value_reference_type and c.value_reference_id
+    ):
         val_ref = _fhir_ref(
             c.value_reference_reference,
             c.value_reference_type,

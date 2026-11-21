@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import ObservationStatus
 
-observation_id_seq = Sequence("observation_pub_seq", start=160000, increment=1, metadata=Base.metadata)
+observation_id_seq = Sequence(
+    "observation_pub_seq", start=160000, increment=1, metadata=Base.metadata
+)
 
 # The R4 targets of Observation.subject and Observation.device.
 SUBJECT_TYPES = ("Patient", "Group", "Device", "Location")
@@ -134,7 +136,19 @@ class ObservationModel(TenantAuditMixin, Base):
     device_identifier_system = Column(String, nullable=True)
     device_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("ObservationIdentifier", back_populates="observation", cascade="all, delete-orphan")
-    tokens = relationship("ObservationToken", back_populates="observation", cascade="all, delete-orphan")
-    values = relationship("ObservationValue", back_populates="observation", cascade="all, delete-orphan")
-    references = relationship("ObservationReference", back_populates="observation", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "ObservationIdentifier",
+        back_populates="observation",
+        cascade="all, delete-orphan",
+    )
+    tokens = relationship(
+        "ObservationToken", back_populates="observation", cascade="all, delete-orphan"
+    )
+    values = relationship(
+        "ObservationValue", back_populates="observation", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "ObservationReference",
+        back_populates="observation",
+        cascade="all, delete-orphan",
+    )

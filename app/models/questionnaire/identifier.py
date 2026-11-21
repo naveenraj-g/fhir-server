@@ -85,7 +85,10 @@ class QuestionnaireIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     questionnaire_identifier_id = Column(
-        BigInteger, ForeignKey("questionnaire_identifier.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("questionnaire_identifier.id"),
+        nullable=False,
+        index=True,
     )
 
     identifier = relationship("QuestionnaireIdentifier", back_populates="type_codings")

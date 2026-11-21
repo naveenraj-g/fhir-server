@@ -10,9 +10,7 @@ class ConsentVerificationInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    verified: bool = Field(
-        ..., description="Has been verified by patient or guardian."
-    )
+    verified: bool = Field(..., description="Has been verified by patient or guardian.")
     verified_with: str | None = Field(
         None,
         description="Person who verified consent (Patient | RelatedPerson, e.g. 'Patient/10001').",

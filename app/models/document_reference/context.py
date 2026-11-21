@@ -2,7 +2,9 @@ from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, 
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.document_reference.enums import DocumentReferenceContextEncounterReferenceType
+from app.models.document_reference.enums import (
+    DocumentReferenceContextEncounterReferenceType,
+)
 from app.models.enums import IdentifierUse
 from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
@@ -41,7 +43,9 @@ class DocumentReferenceContextEncounter(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="context_encounters")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="context_encounters"
+    )
 
 
 class DocumentReferenceContextEvent(TenantAuditMixin, Base):
@@ -56,7 +60,9 @@ class DocumentReferenceContextEvent(TenantAuditMixin, Base):
 
     text = Column(String, nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="context_events")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="context_events"
+    )
     codings = relationship(
         "DocumentReferenceContextEventCoding",
         back_populates="event",
@@ -108,4 +114,6 @@ class DocumentReferenceContextRelated(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="context_related")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="context_related"
+    )

@@ -26,14 +26,20 @@ class FamilyMemberHistoryToken(Base):
     One shared table instead of three identical ones."""
 
     __tablename__ = "family_member_history_token"
-    __table_args__ = (Index("ix_family_member_history_token_param_code", "param", "code"),)
+    __table_args__ = (
+        Index("ix_family_member_history_token_param_code", "param", "code"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    family_member_history_pk = Column(BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True)
+    family_member_history_pk = Column(
+        BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)
     display_norm = Column(String, nullable=True)
     text_norm = Column(String, nullable=True)
 
-    family_member_history = relationship("FamilyMemberHistoryModel", back_populates="tokens")
+    family_member_history = relationship(
+        "FamilyMemberHistoryModel", back_populates="tokens"
+    )

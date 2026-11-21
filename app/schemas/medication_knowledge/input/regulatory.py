@@ -40,7 +40,8 @@ class MedicationKnowledgeRegulatoryMaxDispenseInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     quantity: MedicationKnowledgeQuantityInput = Field(
-        ..., description="The maximum number of units of the medication that can be dispensed in a period."
+        ...,
+        description="The maximum number of units of the medication that can be dispensed in a period.",
     )
     period: MedicationKnowledgeQuantityInput | None = Field(
         None, description="The period that applies to the maximum number of units."
@@ -56,18 +57,42 @@ class MedicationKnowledgeRegulatoryInput(BaseModel):
         ...,
         description="The authority that is signing the regulatory statement. Reference(Organization).",
     )
-    regulatory_authority_display: str | None = Field(None, description="Display text for authority reference.")
-    regulatory_authority_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier — purpose.")
-    regulatory_authority_identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
-    regulatory_authority_identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
-    regulatory_authority_identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
-    regulatory_authority_identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
-    regulatory_authority_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user selected.")
-    regulatory_authority_identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
-    regulatory_authority_identifier_system: str | None = Field(None, description="Fallback identifier — system.")
-    regulatory_authority_identifier_value: str | None = Field(None, description="Fallback identifier — value.")
-    regulatory_authority_identifier_period_start: datetime | None = Field(None, description="Fallback identifier — period start.")
-    regulatory_authority_identifier_period_end: datetime | None = Field(None, description="Fallback identifier — period end.")
+    regulatory_authority_display: str | None = Field(
+        None, description="Display text for authority reference."
+    )
+    regulatory_authority_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — purpose."
+    )
+    regulatory_authority_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — type system."
+    )
+    regulatory_authority_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — type version."
+    )
+    regulatory_authority_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — type code."
+    )
+    regulatory_authority_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — type display."
+    )
+    regulatory_authority_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — type user selected."
+    )
+    regulatory_authority_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — type text."
+    )
+    regulatory_authority_identifier_system: str | None = Field(
+        None, description="Fallback identifier — system."
+    )
+    regulatory_authority_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value."
+    )
+    regulatory_authority_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — period start."
+    )
+    regulatory_authority_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — period end."
+    )
 
     substitution: list[MedicationKnowledgeRegulatorySubstitutionInput] | None = Field(
         None, description="Specifies if changes are allowed when dispensing."
@@ -76,5 +101,6 @@ class MedicationKnowledgeRegulatoryInput(BaseModel):
         None, description="Specifies the schedule associated with the medication."
     )
     max_dispense: MedicationKnowledgeRegulatoryMaxDispenseInput | None = Field(
-        None, description="The maximum number of units of the medication that can be dispensed."
+        None,
+        description="The maximum number of units of the medication that can be dispensed.",
     )

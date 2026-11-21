@@ -54,18 +54,40 @@ CASES = {
     **{
         f"status_{s}": _with(status=s)
         for s in (
-            "planned", "arrived", "triaged", "in-progress", "onleave", "finished", "cancelled", "entered-in-error",
+            "planned",
+            "arrived",
+            "triaged",
+            "in-progress",
+            "onleave",
+            "finished",
+            "cancelled",
+            "entered-in-error",
             "unknown",
         )
     },
     "class_with_version_and_user_selected": _with(
-        **{"class": {"system": ACT, "version": "2.0", "code": "IMP", "display": "inpatient", "userSelected": True}}
+        **{
+            "class": {
+                "system": ACT,
+                "version": "2.0",
+                "code": "IMP",
+                "display": "inpatient",
+                "userSelected": True,
+            }
+        }
     ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "VN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "VN",
+                        }
+                    ]
+                },
                 "system": "http://hospital.example.org/encounters",
                 "value": "E-1",
                 "period": {"start": "2020-01-01"},
@@ -75,52 +97,124 @@ CASES = {
     ),
     "status_history": _with(
         statusHistory=[
-            {"status": "planned", "period": {"start": "2026-05-30T08:00:00Z", "end": "2026-06-01T09:00:00Z"}},
+            {
+                "status": "planned",
+                "period": {
+                    "start": "2026-05-30T08:00:00Z",
+                    "end": "2026-06-01T09:00:00Z",
+                },
+            },
             {"status": "in-progress", "period": {"start": "2026-06-01T09:00:00Z"}},
         ]
     ),
     "class_history": _with(
-        classHistory=[{"class": {"system": ACT, "code": "EMER"}, "period": {"start": "2026-05-30T08:00:00Z"}}]
+        classHistory=[
+            {
+                "class": {"system": ACT, "code": "EMER"},
+                "period": {"start": "2026-05-30T08:00:00Z"},
+            }
+        ]
     ),
     "type_and_service_type_and_priority": _with(
-        type=[{"coding": [{"system": "http://snomed.info/sct", "code": "270427003"}], "text": "Initial"}],
-        serviceType={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/service-type", "code": "124"}]},
-        priority={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ActPriority", "code": "R"}]},
+        type=[
+            {
+                "coding": [{"system": "http://snomed.info/sct", "code": "270427003"}],
+                "text": "Initial",
+            }
+        ],
+        serviceType={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/service-type",
+                    "code": "124",
+                }
+            ]
+        },
+        priority={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActPriority",
+                    "code": "R",
+                }
+            ]
+        },
     ),
     "several_types": _with(type=[{"text": "a"}, {"coding": [{"code": "x"}]}]),
-    "subject_patient": _with(subject={"reference": "Patient/10001", "display": "A. Patient"}),
+    "subject_patient": _with(
+        subject={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
     "subject_group": _with(subject={"reference": "Group/1"}),
-    "subject_logical": _with(subject={"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "Ext"}),
-    "subject_absolute_url": _with(subject={"reference": "https://other.example.org/fhir/Patient/9"}),
+    "subject_logical": _with(
+        subject={"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "Ext"}
+    ),
+    "subject_absolute_url": _with(
+        subject={"reference": "https://other.example.org/fhir/Patient/9"}
+    ),
     "episode_of_care_and_based_on": _with(
-        episodeOfCare=[{"reference": "EpisodeOfCare/350001"}], basedOn=[{"reference": "ServiceRequest/80001"}]
+        episodeOfCare=[{"reference": "EpisodeOfCare/350001"}],
+        basedOn=[{"reference": "ServiceRequest/80001"}],
     ),
     "participant": _with(
         participant=[
             {
-                "type": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType", "code": "ATND"}]}],
+                "type": [
+                    {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                                "code": "ATND",
+                            }
+                        ]
+                    }
+                ],
                 "period": {"start": "2026-06-01T09:00:00Z"},
-                "individual": {"reference": "Practitioner/30001", "display": "Dr Careful"},
+                "individual": {
+                    "reference": "Practitioner/30001",
+                    "display": "Dr Careful",
+                },
             },
             {"individual": {"reference": "RelatedPerson/5"}},
             {"individual": {"identifier": {"system": "urn:staff", "value": "S-1"}}},
         ]
     ),
     "appointment": _with(appointment=[{"reference": "Appointment/40001"}]),
-    "period": _with(period={"start": "2026-06-01T09:00:00Z", "end": "2026-06-01T09:40:00Z"}),
+    "period": _with(
+        period={"start": "2026-06-01T09:00:00Z", "end": "2026-06-01T09:40:00Z"}
+    ),
     "period_open_ended": _with(period={"start": "2026-06-01T09:00:00Z"}),
     "length_with_comparator": _with(
-        length={"value": 2.5, "comparator": ">", "unit": "d", "system": "http://unitsofmeasure.org", "code": "d"}
+        length={
+            "value": 2.5,
+            "comparator": ">",
+            "unit": "d",
+            "system": "http://unitsofmeasure.org",
+            "code": "d",
+        }
     ),
     "reason_code_and_reference": _with(
-        reasonCode=[{"coding": [{"system": "http://snomed.info/sct", "code": "185347001"}], "text": "Check-up"}],
-        reasonReference=[{"reference": "Condition/120001"}, {"reference": "Observation/5"}],
+        reasonCode=[
+            {
+                "coding": [{"system": "http://snomed.info/sct", "code": "185347001"}],
+                "text": "Check-up",
+            }
+        ],
+        reasonReference=[
+            {"reference": "Condition/120001"},
+            {"reference": "Observation/5"},
+        ],
     ),
     "diagnosis": _with(
         diagnosis=[
             {
                 "condition": {"reference": "Condition/120001"},
-                "use": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/diagnosis-role", "code": "AD"}]},
+                "use": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/diagnosis-role",
+                            "code": "AD",
+                        }
+                    ]
+                },
                 "rank": 1,
             }
         ]
@@ -128,14 +222,25 @@ CASES = {
     "account": _with(account=[{"reference": "Account/7"}]),
     "hospitalization": _with(
         hospitalization={
-            "preAdmissionIdentifier": {"system": "urn:pre", "value": "PRE-1", "assigner": {"reference": "Organization/190001"}},
+            "preAdmissionIdentifier": {
+                "system": "urn:pre",
+                "value": "PRE-1",
+                "assigner": {"reference": "Organization/190001"},
+            },
             "origin": {"reference": "Location/230001"},
             "admitSource": {"text": "Referral"},
             "reAdmission": {"text": "Re-admission"},
             "dietPreference": [{"text": "Vegetarian"}],
             "specialCourtesy": [{"text": "VIP"}],
             "specialArrangement": [
-                {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-EncounterSpecialCourtesy", "code": "wheel"}]}
+                {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v3-EncounterSpecialCourtesy",
+                            "code": "wheel",
+                        }
+                    ]
+                }
             ],
             "destination": {"reference": "Organization/190001"},
             "dischargeDisposition": {"text": "Home"},
@@ -147,17 +252,32 @@ CASES = {
                 "location": {"reference": "Location/230001"},
                 "status": "completed",
                 "physicalType": {"text": "Room"},
-                "period": {"start": "2026-06-01T09:00:00Z", "end": "2026-06-01T09:30:00Z"},
+                "period": {
+                    "start": "2026-06-01T09:00:00Z",
+                    "end": "2026-06-01T09:30:00Z",
+                },
             },
             {"location": {"reference": "Location/230002"}},
         ]
     ),
-    **{f"location_status_{s}": _with(location=[{"location": {"reference": "Location/1"}, "status": s}])
-       for s in ("planned", "active", "reserved", "completed")},
+    **{
+        f"location_status_{s}": _with(
+            location=[{"location": {"reference": "Location/1"}, "status": s}]
+        )
+        for s in ("planned", "active", "reserved", "completed")
+    },
     "service_provider_and_part_of": _with(
-        serviceProvider={"reference": "Organization/190001"}, partOf={"reference": "Encounter/20000"}
+        serviceProvider={"reference": "Organization/190001"},
+        partOf={"reference": "Encounter/20000"},
     ),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
 }
 
 
@@ -167,11 +287,17 @@ def test_encounter_mapper_emits_valid_fhir_r4(case):
 
 
 def test_mapper_serves_content_unchanged():
-    content = {"status": "finished", "class": CLASS, "period": {"start": "2026-06-01T09:00:00Z"}}
+    content = {
+        "status": "finished",
+        "class": CLASS,
+        "period": {"start": "2026-06-01T09:00:00Z"},
+    }
     out = to_fhir_encounter(_encounter(content))
     assert out["resourceType"] == "Encounter"
     assert out["id"] == "20001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -193,15 +319,40 @@ def test_mapper_serves_content_unchanged():
         ("length as string", {"length": "2 days"}),
         ("length comparator not a code", {"length": {"value": 1, "comparator": "!="}}),
         ("subject as string not a Reference", {"subject": "Patient/1"}),
-        ("participant as object not a list", {"participant": {"individual": {"reference": "Practitioner/1"}}}),
-        ("diagnosis rank as string", {"diagnosis": [{"condition": {"reference": "Condition/1"}, "rank": "first"}]}),
-        ("location status not a code", {"location": [{"location": {"reference": "Location/1"}, "status": "broken"}]}),
+        (
+            "participant as object not a list",
+            {"participant": {"individual": {"reference": "Practitioner/1"}}},
+        ),
+        (
+            "diagnosis rank as string",
+            {
+                "diagnosis": [
+                    {"condition": {"reference": "Condition/1"}, "rank": "first"}
+                ]
+            },
+        ),
+        (
+            "location status not a code",
+            {
+                "location": [
+                    {"location": {"reference": "Location/1"}, "status": "broken"}
+                ]
+            },
+        ),
         ("identifier as object not a list", {"identifier": {"value": "x"}}),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "Encounter", "id": "20001", "status": "in-progress", "class": CLASS, **broken}
+    payload = {
+        "resourceType": "Encounter",
+        "id": "20001",
+        "status": "in-progress",
+        "class": CLASS,
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), encounter_pb2.Encounter, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), encounter_pb2.Encounter, validate=True
+        )

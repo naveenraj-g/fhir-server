@@ -5,7 +5,6 @@ from app.services.measure_report import MeasureReportService
 
 
 class MeasureReportContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     measure_report_repository = providers.Factory(

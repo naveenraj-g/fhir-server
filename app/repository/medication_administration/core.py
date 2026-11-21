@@ -88,15 +88,21 @@ class _CoreMixin:
             stmt = stmt.where(MedicationAdministrationModel.tenant_id == org_id)
 
         if status:
-            stmt = apply_token_filter(stmt, MedicationAdministrationModel.status, status)
+            stmt = apply_token_filter(
+                stmt, MedicationAdministrationModel.status, status
+            )
 
         subj_filter = subject or patient
         if subj_filter:
-            ref_type, ref_id = parse_reference(subj_filter, MedicationAdministrationSubjectReferenceType)
+            ref_type, ref_id = parse_reference(
+                subj_filter, MedicationAdministrationSubjectReferenceType
+            )
             if ref_id:
                 stmt = stmt.where(MedicationAdministrationModel.subject_id == ref_id)
             else:
-                stmt = stmt.where(MedicationAdministrationModel.subject_reference == subj_filter)
+                stmt = stmt.where(
+                    MedicationAdministrationModel.subject_reference == subj_filter
+                )
 
         if effective_val or effective_from or effective_to:
             stmt = apply_date_range_filter(
@@ -112,13 +118,21 @@ class _CoreMixin:
         if code:
             stmt = stmt.where(
                 or_(
-                    MedicationAdministrationModel.medication_codeable_concept_text.ilike(f"%{code}%"),
-                    MedicationAdministrationModel.medication_reference.ilike(f"%{code}%"),
+                    MedicationAdministrationModel.medication_codeable_concept_text.ilike(
+                        f"%{code}%"
+                    ),
+                    MedicationAdministrationModel.medication_reference.ilike(
+                        f"%{code}%"
+                    ),
                     MedicationAdministrationModel.id.in_(
-                        select(MedicationAdministrationMedicationCoding.medication_administration_pk).where(
+                        select(
+                            MedicationAdministrationMedicationCoding.medication_administration_pk
+                        ).where(
                             or_(
                                 MedicationAdministrationMedicationCoding.code == code,
-                                MedicationAdministrationMedicationCoding.display.ilike(f"%{code}%"),
+                                MedicationAdministrationMedicationCoding.display.ilike(
+                                    f"%{code}%"
+                                ),
                             )
                         )
                     ),
@@ -130,10 +144,14 @@ class _CoreMixin:
                 or_(
                     MedicationAdministrationModel.category_text.ilike(f"%{category}%"),
                     MedicationAdministrationModel.id.in_(
-                        select(MedicationAdministrationCategoryCoding.medication_administration_pk).where(
+                        select(
+                            MedicationAdministrationCategoryCoding.medication_administration_pk
+                        ).where(
                             or_(
                                 MedicationAdministrationCategoryCoding.code == category,
-                                MedicationAdministrationCategoryCoding.display.ilike(f"%{category}%"),
+                                MedicationAdministrationCategoryCoding.display.ilike(
+                                    f"%{category}%"
+                                ),
                             )
                         )
                     ),
@@ -143,7 +161,9 @@ class _CoreMixin:
         if identifier:
             stmt = stmt.where(
                 MedicationAdministrationModel.id.in_(
-                    select(MedicationAdministrationIdentifier.medication_administration_pk).where(
+                    select(
+                        MedicationAdministrationIdentifier.medication_administration_pk
+                    ).where(
                         or_(
                             MedicationAdministrationIdentifier.value == identifier,
                             MedicationAdministrationIdentifier.system == identifier,
@@ -155,9 +175,13 @@ class _CoreMixin:
         if request:
             parts = request.split("/")
             if len(parts) == 2 and parts[1].isdigit():
-                stmt = stmt.where(MedicationAdministrationModel.request_id == int(parts[1]))
+                stmt = stmt.where(
+                    MedicationAdministrationModel.request_id == int(parts[1])
+                )
             else:
-                stmt = stmt.where(MedicationAdministrationModel.request_reference == request)
+                stmt = stmt.where(
+                    MedicationAdministrationModel.request_reference == request
+                )
 
         return stmt
 
@@ -206,9 +230,7 @@ class _CoreMixin:
             order_expr = sort_col.desc() if is_desc else sort_col.asc()
             filtered_stmt = filtered_stmt.order_by(order_expr)
 
-            data_stmt = (
-                _with_relationships(filtered_stmt).limit(limit).offset(offset)
-            )
+            data_stmt = _with_relationships(filtered_stmt).limit(limit).offset(offset)
             results = (await session.execute(data_stmt)).scalars().all()
             return list(results), total
 

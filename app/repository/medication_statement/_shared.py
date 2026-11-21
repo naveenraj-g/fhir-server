@@ -2,7 +2,10 @@ from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
 from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType
+from app.models.enums import (
+    IdentifierUse as IdentifierUseModel,
+    OrganizationReferenceType,
+)
 from app.models.medication_statement import (
     MedicationStatementBasedOn,
     MedicationStatementBasedOnReferenceType,
@@ -67,7 +70,9 @@ def _parse_org_ref(ref: str | None) -> tuple:
     return res_type, res_id
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     if not ref_str:
         return {
             f"{prefix}_type": None,

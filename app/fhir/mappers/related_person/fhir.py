@@ -17,4 +17,6 @@ if TYPE_CHECKING:
 
 
 def to_fhir_related_person(related_person: RelatedPersonModel) -> dict:
-    return content_resource("RelatedPerson", related_person.related_person_id, related_person)
+    return content_resource(
+        "RelatedPerson", related_person.related_person_id, related_person
+    )

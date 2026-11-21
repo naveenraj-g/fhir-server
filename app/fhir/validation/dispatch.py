@@ -314,9 +314,9 @@ async def validate_resource(
                 resource_type, country
             )
             if structure_definition is not None:
-                profile_url = structure_definition.get(
-                    "url"
-                ) or country_profile_url(country, resource_type)
+                profile_url = structure_definition.get("url") or country_profile_url(
+                    country, resource_type
+                )
                 layer = _country_layer(country)
 
         if structure_definition is None:

@@ -37,8 +37,12 @@ def _child_reference_kwargs(r) -> dict:
             "reference_display": None,
             **{f"reference_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES},
         }
-    display = getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
-    ref = getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    display = (
+        getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
+    )
+    ref = (
+        getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    )
     kwargs = {
         "reference_reference": ref,
         "reference_display": display,
@@ -47,6 +51,7 @@ def _child_reference_kwargs(r) -> dict:
         val = getattr(r, s, None) if not isinstance(r, dict) else r.get(s)
         kwargs[f"reference_{s}"] = val
     return kwargs
+
 
 _SORTABLE_FIELDS = {
     "episode_of_care_id": EpisodeOfCareModel.episode_of_care_id,
@@ -98,9 +103,7 @@ async def _validate_ref(
     if not res_type_enum or not res_id:
         return
     res_type_str = (
-        res_type_enum.value
-        if hasattr(res_type_enum, "value")
-        else str(res_type_enum)
+        res_type_enum.value if hasattr(res_type_enum, "value") else str(res_type_enum)
     )
     if res_type_str not in RESOURCE_REGISTRY:
         return

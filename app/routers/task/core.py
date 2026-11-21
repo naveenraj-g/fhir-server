@@ -41,8 +41,7 @@ logger = get_logger(__name__)
         "A task to be performed. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) "
-        "— an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "— an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -57,9 +56,7 @@ async def create_task(
         extra={"event": "route.create_task"},
     )
     log_payload(logger, "task.create.payload", payload)
-    model = await task_service.create_task(
-        payload, actor.org_id, actor.sub
-    )
+    model = await task_service.create_task(payload, actor.org_id, actor.sub)
     return format_response(
         task_service._to_fhir(model),
         task_service._to_plain(model),
@@ -95,9 +92,7 @@ async def get_task(
             "task_id": task_id,
         },
     )
-    model = await task_service.get_task_scoped(
-        task_id, actor.org_id
-    )
+    model = await task_service.get_task_scoped(task_id, actor.org_id)
     return format_response(
         task_service._to_fhir(model),
         task_service._to_plain(model),
@@ -163,24 +158,12 @@ async def patch_task(
 async def list_tasks(
     request: Request,
     actor: AuthUser = Depends(require_permission("task", "read")),
-    status_filter: str | None = Query(
-        None, alias="status", description="Task status."
-    ),
-    intent: str | None = Query(
-        None, description="Task intent."
-    ),
-    priority: str | None = Query(
-        None, description="Task priority."
-    ),
-    focus: str | None = Query(
-        None, description="What task is acting on."
-    ),
-    for_: str | None = Query(
-        None, alias="for", description="Beneficiary of the task."
-    ),
-    owner: str | None = Query(
-        None, description="Responsible individual."
-    ),
+    status_filter: str | None = Query(None, alias="status", description="Task status."),
+    intent: str | None = Query(None, description="Task intent."),
+    priority: str | None = Query(None, description="Task priority."),
+    focus: str | None = Query(None, description="What task is acting on."),
+    for_: str | None = Query(None, alias="for", description="Beneficiary of the task."),
+    owner: str | None = Query(None, description="Responsible individual."),
     requester: str | None = Query(
         None, description="Who is asking for task to be done."
     ),

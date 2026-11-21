@@ -42,9 +42,7 @@ class FHIRCommunicationSchema(BaseModel):
     basedOn: list[FHIRReference] | None = Field(
         None, description="Request fulfilled by this communication."
     )
-    partOf: list[FHIRReference] | None = Field(
-        None, description="Part of this action."
-    )
+    partOf: list[FHIRReference] | None = Field(None, description="Part of this action.")
     inResponseTo: list[FHIRReference] | None = Field(
         None, description="Reply to previous communication."
     )
@@ -58,15 +56,11 @@ class FHIRCommunicationSchema(BaseModel):
     category: list[FHIRCodeableConcept] | None = Field(
         None, description="Message category."
     )
-    priority: str | None = Field(
-        None, description="routine | urgent | asap | stat."
-    )
+    priority: str | None = Field(None, description="routine | urgent | asap | stat.")
     medium: list[FHIRCodeableConcept] | None = Field(
         None, description="A channel of communication."
     )
-    subject: FHIRReference | None = Field(
-        None, description="Focus of message."
-    )
+    subject: FHIRReference | None = Field(None, description="Focus of message.")
     topic: FHIRCodeableConcept | None = Field(
         None, description="Description of the purpose/content."
     )
@@ -76,18 +70,12 @@ class FHIRCommunicationSchema(BaseModel):
     encounter: FHIRReference | None = Field(
         None, description="Encounter created as part of."
     )
-    sent: str | None = Field(
-        None, description="When sent."
-    )
-    received: str | None = Field(
-        None, description="When received."
-    )
+    sent: str | None = Field(None, description="When sent.")
+    received: str | None = Field(None, description="When received.")
     recipient: list[FHIRReference] | None = Field(
         None, description="Message recipient."
     )
-    sender: FHIRReference | None = Field(
-        None, description="Message sender."
-    )
+    sender: FHIRReference | None = Field(None, description="Message sender.")
     reasonCode: list[FHIRCodeableConcept] | None = Field(
         None, description="Indication for communication."
     )
@@ -100,9 +88,7 @@ class FHIRCommunicationSchema(BaseModel):
     note: list[FHIRCommunicationAnnotation] | None = Field(
         None, description="Comments made about the communication."
     )
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="FHIR extensions."
-    )
+    extension: list[dict[str, Any]] | None = Field(None, description="FHIR extensions.")
 
 
 class FHIRCommunicationBundleEntry(BaseModel):

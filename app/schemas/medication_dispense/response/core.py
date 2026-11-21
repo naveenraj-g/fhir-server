@@ -48,33 +48,82 @@ class FHIRMedicationDispenseSchema(BaseModel):
     resourceType: Literal["MedicationDispense"] = "MedicationDispense"
     id: str = Field(..., description="Logical id of this artifact.")
     meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    extension: list[dict] | None = Field(None, description="Additional content defined by implementations.")
-    identifier: list[FHIRIdentifier] | None = Field(None, description="External identifier.")
-    partOf: list[FHIRReference] | None = Field(None, description="Event that dispense is part of.")
-    status: str = Field(..., description="preparation | in-progress | cancelled | on-hold | completed | entered-in-error | stopped | declined | unknown.")
-    statusReasonCodeableConcept: FHIRCodeableConcept | None = Field(None, description="Why a dispense was not performed.")
-    statusReasonReference: FHIRReference | None = Field(None, description="Why a dispense was not performed.")
-    category: FHIRCodeableConcept | None = Field(None, description="Type of medication dispense.")
-    medicationCodeableConcept: FHIRCodeableConcept | None = Field(None, description="What medication was supplied.")
-    medicationReference: FHIRReference | None = Field(None, description="What medication was supplied.")
+    extension: list[dict] | None = Field(
+        None, description="Additional content defined by implementations."
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="External identifier."
+    )
+    partOf: list[FHIRReference] | None = Field(
+        None, description="Event that dispense is part of."
+    )
+    status: str = Field(
+        ...,
+        description="preparation | in-progress | cancelled | on-hold | completed | entered-in-error | stopped | declined | unknown.",
+    )
+    statusReasonCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="Why a dispense was not performed."
+    )
+    statusReasonReference: FHIRReference | None = Field(
+        None, description="Why a dispense was not performed."
+    )
+    category: FHIRCodeableConcept | None = Field(
+        None, description="Type of medication dispense."
+    )
+    medicationCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="What medication was supplied."
+    )
+    medicationReference: FHIRReference | None = Field(
+        None, description="What medication was supplied."
+    )
     subject: FHIRReference | None = Field(None, description="Who the dispense is for.")
-    context: FHIRReference | None = Field(None, description="Encounter / Episode associated with event.")
-    supportingInformation: list[FHIRReference] | None = Field(None, description="Information that supports the dispense.")
-    performer: list[FHIRMedicationDispensePerformer] | None = Field(None, description="Who performed event.")
-    location: FHIRReference | None = Field(None, description="Where the dispense occurred.")
-    authorizingPrescription: list[FHIRReference] | None = Field(None, description="Medication order that authorizes the dispense.")
-    type: FHIRCodeableConcept | None = Field(None, description="Trial fill, partial fill, emergency fill, etc.")
+    context: FHIRReference | None = Field(
+        None, description="Encounter / Episode associated with event."
+    )
+    supportingInformation: list[FHIRReference] | None = Field(
+        None, description="Information that supports the dispense."
+    )
+    performer: list[FHIRMedicationDispensePerformer] | None = Field(
+        None, description="Who performed event."
+    )
+    location: FHIRReference | None = Field(
+        None, description="Where the dispense occurred."
+    )
+    authorizingPrescription: list[FHIRReference] | None = Field(
+        None, description="Medication order that authorizes the dispense."
+    )
+    type: FHIRCodeableConcept | None = Field(
+        None, description="Trial fill, partial fill, emergency fill, etc."
+    )
     quantity: FHIRQuantity | None = Field(None, description="Amount dispensed.")
-    daysSupply: FHIRQuantity | None = Field(None, description="Amount of medication expressed as a timing amount.")
-    whenPrepared: str | None = Field(None, description="When product was packaged and reviewed.")
+    daysSupply: FHIRQuantity | None = Field(
+        None, description="Amount of medication expressed as a timing amount."
+    )
+    whenPrepared: str | None = Field(
+        None, description="When product was packaged and reviewed."
+    )
     whenHandedOver: str | None = Field(None, description="When product was given out.")
-    destination: FHIRReference | None = Field(None, description="Where the medication was sent.")
-    receiver: list[FHIRReference] | None = Field(None, description="Who collected the medication.")
-    note: list[FHIRAnnotation] | None = Field(None, description="Information about the dispense.")
-    dosageInstruction: list[FHIRMedicationDispenseDosage] | None = Field(None, description="How the medication is to be used by the patient.")
-    substitution: FHIRMedicationDispenseSubstitution | None = Field(None, description="Deals with substitution of one medicine for another.")
-    detectedIssue: list[FHIRReference] | None = Field(None, description="Clinical issue with action.")
-    eventHistory: list[FHIRReference] | None = Field(None, description="A list of relevant histories for the dispense.")
+    destination: FHIRReference | None = Field(
+        None, description="Where the medication was sent."
+    )
+    receiver: list[FHIRReference] | None = Field(
+        None, description="Who collected the medication."
+    )
+    note: list[FHIRAnnotation] | None = Field(
+        None, description="Information about the dispense."
+    )
+    dosageInstruction: list[FHIRMedicationDispenseDosage] | None = Field(
+        None, description="How the medication is to be used by the patient."
+    )
+    substitution: FHIRMedicationDispenseSubstitution | None = Field(
+        None, description="Deals with substitution of one medicine for another."
+    )
+    detectedIssue: list[FHIRReference] | None = Field(
+        None, description="Clinical issue with action."
+    )
+    eventHistory: list[FHIRReference] | None = Field(
+        None, description="A list of relevant histories for the dispense."
+    )
 
 
 class PlainMedicationDispenseResponse(BaseModel):

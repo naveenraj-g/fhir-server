@@ -61,7 +61,9 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -204,20 +206,26 @@ def _fhir_meta(model: DocumentReferenceModel) -> dict:
         meta["lastUpdated"] = fhir_instant(last_updated)
     extensions = []
     if model.created_at:
-        extensions.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-created",
-            "valueDateTime": fhir_instant(model.created_at),
-        })
+        extensions.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-created",
+                "valueDateTime": fhir_instant(model.created_at),
+            }
+        )
     if model.created_by:
-        extensions.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-createdBy",
-            "valueString": model.created_by,
-        })
+        extensions.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-createdBy",
+                "valueString": model.created_by,
+            }
+        )
     if model.updated_by:
-        extensions.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-updatedBy",
-            "valueString": model.updated_by,
-        })
+        extensions.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-updatedBy",
+                "valueString": model.updated_by,
+            }
+        )
     if extensions:
         meta["extension"] = extensions
     return meta
@@ -272,11 +280,21 @@ def _fhir_context(model: DocumentReferenceModel) -> dict | None:
     has_encounters = bool(getattr(model, "context_encounters", None))
     has_events = bool(getattr(model, "context_events", None))
     has_period = model.context_period_start or model.context_period_end
-    has_facility = model.context_facility_type_text or bool(getattr(model, "context_facility_type_codings", None))
-    has_practice = model.context_practice_setting_text or bool(getattr(model, "context_practice_setting_codings", None))
-    has_patient_info = model.context_source_patient_info_reference or (
-        model.context_source_patient_info_type and model.context_source_patient_info_id
-    ) or model.context_source_patient_info_display or model.context_source_patient_info_identifier_value
+    has_facility = model.context_facility_type_text or bool(
+        getattr(model, "context_facility_type_codings", None)
+    )
+    has_practice = model.context_practice_setting_text or bool(
+        getattr(model, "context_practice_setting_codings", None)
+    )
+    has_patient_info = (
+        model.context_source_patient_info_reference
+        or (
+            model.context_source_patient_info_type
+            and model.context_source_patient_info_id
+        )
+        or model.context_source_patient_info_display
+        or model.context_source_patient_info_identifier_value
+    )
     has_related = bool(getattr(model, "context_related", None))
 
     if not (
@@ -402,10 +420,7 @@ def to_fhir_document_reference(model: DocumentReferenceModel) -> dict:
         res["date"] = fhir_instant(model.date)
 
     if getattr(model, "authors", None):
-        auth_list = [
-            _fhir_reference(a, "author")
-            for a in model.authors
-        ]
+        auth_list = [_fhir_reference(a, "author") for a in model.authors]
         auth_list = [a for a in auth_list if a]
         if auth_list:
             res["author"] = auth_list
@@ -423,10 +438,12 @@ def to_fhir_document_reference(model: DocumentReferenceModel) -> dict:
         for r in model.relates_to:
             tgt = _fhir_reference(r, "target")
             if tgt:
-                rel_list.append({
-                    "code": fhir_enum(r.code),
-                    "target": tgt,
-                })
+                rel_list.append(
+                    {
+                        "code": fhir_enum(r.code),
+                        "target": tgt,
+                    }
+                )
         if rel_list:
             res["relatesTo"] = rel_list
 

@@ -110,7 +110,12 @@ async def _add_identifiers(
 
 
 async def _add_contacts(
-    session, plan_definition_pk: int, org_id: str, contacts, role: PlanDefinitionContactRole, created_by: str
+    session,
+    plan_definition_pk: int,
+    org_id: str,
+    contacts,
+    role: PlanDefinitionContactRole,
+    created_by: str,
 ) -> None:
     for c in contacts or []:
         contact_row = PlanDefinitionContact(
@@ -170,7 +175,10 @@ async def _add_use_contexts(
 
         q_comp = (
             PlanDefinitionQuantityComparator(uc.value_quantity_comparator.value)
-            if (uc.value_quantity_comparator and hasattr(uc.value_quantity_comparator, "value"))
+            if (
+                uc.value_quantity_comparator
+                and hasattr(uc.value_quantity_comparator, "value")
+            )
             else PlanDefinitionQuantityComparator(uc.value_quantity_comparator)
             if uc.value_quantity_comparator
             else None
@@ -436,9 +444,7 @@ async def _add_actions(
         )
 
         sub_text = (
-            act.subject_codeable_concept.text
-            if act.subject_codeable_concept
-            else None
+            act.subject_codeable_concept.text if act.subject_codeable_concept else None
         )
         type_text = act.type.text if act.type else None
 
@@ -509,7 +515,9 @@ async def _add_actions(
             )
 
 
-async def create_full(session, payload, org_id: str, created_by: str) -> PlanDefinitionModel:
+async def create_full(
+    session, payload, org_id: str, created_by: str
+) -> PlanDefinitionModel:
     sub_type, sub_id = (
         _parse_subject_ref(payload.subject_reference)
         if payload.subject_reference
@@ -564,30 +572,81 @@ async def create_full(session, payload, org_id: str, created_by: str) -> PlanDef
     await session.flush()
 
     if payload.type and payload.type.coding:
-        await _add_type_codings(session, model.id, org_id, payload.type.coding, created_by)
+        await _add_type_codings(
+            session, model.id, org_id, payload.type.coding, created_by
+        )
     if payload.subject_codeable_concept and payload.subject_codeable_concept.coding:
-        await _add_subject_codings(session, model.id, org_id, payload.subject_codeable_concept.coding, created_by)
+        await _add_subject_codings(
+            session,
+            model.id,
+            org_id,
+            payload.subject_codeable_concept.coding,
+            created_by,
+        )
 
     if payload.identifier:
-        await _add_identifiers(session, model.id, org_id, payload.identifier, created_by)
+        await _add_identifiers(
+            session, model.id, org_id, payload.identifier, created_by
+        )
     if payload.contact:
-        await _add_contacts(session, model.id, org_id, payload.contact, PlanDefinitionContactRole.contact, created_by)
+        await _add_contacts(
+            session,
+            model.id,
+            org_id,
+            payload.contact,
+            PlanDefinitionContactRole.contact,
+            created_by,
+        )
     if payload.author:
-        await _add_contacts(session, model.id, org_id, payload.author, PlanDefinitionContactRole.author, created_by)
+        await _add_contacts(
+            session,
+            model.id,
+            org_id,
+            payload.author,
+            PlanDefinitionContactRole.author,
+            created_by,
+        )
     if payload.editor:
-        await _add_contacts(session, model.id, org_id, payload.editor, PlanDefinitionContactRole.editor, created_by)
+        await _add_contacts(
+            session,
+            model.id,
+            org_id,
+            payload.editor,
+            PlanDefinitionContactRole.editor,
+            created_by,
+        )
     if payload.reviewer:
-        await _add_contacts(session, model.id, org_id, payload.reviewer, PlanDefinitionContactRole.reviewer, created_by)
+        await _add_contacts(
+            session,
+            model.id,
+            org_id,
+            payload.reviewer,
+            PlanDefinitionContactRole.reviewer,
+            created_by,
+        )
     if payload.endorser:
-        await _add_contacts(session, model.id, org_id, payload.endorser, PlanDefinitionContactRole.endorser, created_by)
+        await _add_contacts(
+            session,
+            model.id,
+            org_id,
+            payload.endorser,
+            PlanDefinitionContactRole.endorser,
+            created_by,
+        )
     if payload.use_context:
-        await _add_use_contexts(session, model.id, org_id, payload.use_context, created_by)
+        await _add_use_contexts(
+            session, model.id, org_id, payload.use_context, created_by
+        )
     if payload.jurisdiction:
-        await _add_jurisdictions(session, model.id, org_id, payload.jurisdiction, created_by)
+        await _add_jurisdictions(
+            session, model.id, org_id, payload.jurisdiction, created_by
+        )
     if payload.topic:
         await _add_topics(session, model.id, org_id, payload.topic, created_by)
     if payload.related_artifact:
-        await _add_related_artifacts(session, model.id, org_id, payload.related_artifact, created_by)
+        await _add_related_artifacts(
+            session, model.id, org_id, payload.related_artifact, created_by
+        )
     if payload.goal:
         await _add_goals(session, model.id, org_id, payload.goal, created_by)
     if payload.action:
@@ -608,10 +667,24 @@ async def _apply_patch(
 
     # Scalar updates
     scalar_fields = [
-        "url", "version", "name", "title", "subtitle", "experimental",
-        "date", "publisher", "description", "purpose", "usage", "copyright",
-        "approval_date", "last_review_date", "effective_period_start",
-        "effective_period_end", "library", "extension",
+        "url",
+        "version",
+        "name",
+        "title",
+        "subtitle",
+        "experimental",
+        "date",
+        "publisher",
+        "description",
+        "purpose",
+        "usage",
+        "copyright",
+        "approval_date",
+        "last_review_date",
+        "effective_period_start",
+        "effective_period_end",
+        "library",
+        "extension",
     ]
     for field in scalar_fields:
         if field in fields_set:
@@ -633,7 +706,9 @@ async def _apply_patch(
         if payload.type is not None:
             model.type_text = payload.type.text
             if payload.type.coding:
-                await _add_type_codings(session, model.id, org_id, payload.type.coding, updated_by)
+                await _add_type_codings(
+                    session, model.id, org_id, payload.type.coding, updated_by
+                )
         else:
             model.type_text = None
 
@@ -645,10 +720,16 @@ async def _apply_patch(
                 )
             )
             if payload.subject_codeable_concept is not None:
-                model.subject_codeable_concept_text = payload.subject_codeable_concept.text
+                model.subject_codeable_concept_text = (
+                    payload.subject_codeable_concept.text
+                )
                 if payload.subject_codeable_concept.coding:
                     await _add_subject_codings(
-                        session, model.id, org_id, payload.subject_codeable_concept.coding, updated_by
+                        session,
+                        model.id,
+                        org_id,
+                        payload.subject_codeable_concept.coding,
+                        updated_by,
                     )
             else:
                 model.subject_codeable_concept_text = None
@@ -657,7 +738,9 @@ async def _apply_patch(
             if payload.subject_reference is not None:
                 sub_type, sub_id = _parse_subject_ref(payload.subject_reference)
                 if sub_type and sub_id:
-                    await _validate_ref(session, org_id, sub_type, sub_id, "subject_reference")
+                    await _validate_ref(
+                        session, org_id, sub_type, sub_id, "subject_reference"
+                    )
                 model.subject_reference = payload.subject_reference
                 model.subject_type = sub_type
                 model.subject_id = sub_id
@@ -684,7 +767,9 @@ async def _apply_patch(
             )
         )
         if payload.identifier:
-            await _add_identifiers(session, model.id, org_id, payload.identifier, updated_by)
+            await _add_identifiers(
+                session, model.id, org_id, payload.identifier, updated_by
+            )
 
     for role_attr, role_enum in [
         ("contact", PlanDefinitionContactRole.contact),
@@ -711,7 +796,9 @@ async def _apply_patch(
             )
             items = getattr(payload, role_attr)
             if items:
-                await _add_contacts(session, model.id, org_id, items, role_enum, updated_by)
+                await _add_contacts(
+                    session, model.id, org_id, items, role_enum, updated_by
+                )
 
     if "use_context" in fields_set:
         uc_sub = select(PlanDefinitionUseContext.id).where(
@@ -719,7 +806,9 @@ async def _apply_patch(
         )
         await session.execute(
             delete(PlanDefinitionUseContextValueCoding).where(
-                PlanDefinitionUseContextValueCoding.plan_definition_use_context_id.in_(uc_sub)
+                PlanDefinitionUseContextValueCoding.plan_definition_use_context_id.in_(
+                    uc_sub
+                )
             )
         )
         await session.execute(
@@ -728,7 +817,9 @@ async def _apply_patch(
             )
         )
         if payload.use_context:
-            await _add_use_contexts(session, model.id, org_id, payload.use_context, updated_by)
+            await _add_use_contexts(
+                session, model.id, org_id, payload.use_context, updated_by
+            )
 
     if "jurisdiction" in fields_set:
         j_sub = select(PlanDefinitionJurisdiction.id).where(
@@ -736,7 +827,9 @@ async def _apply_patch(
         )
         await session.execute(
             delete(PlanDefinitionJurisdictionCoding).where(
-                PlanDefinitionJurisdictionCoding.plan_definition_jurisdiction_id.in_(j_sub)
+                PlanDefinitionJurisdictionCoding.plan_definition_jurisdiction_id.in_(
+                    j_sub
+                )
             )
         )
         await session.execute(
@@ -745,7 +838,9 @@ async def _apply_patch(
             )
         )
         if payload.jurisdiction:
-            await _add_jurisdictions(session, model.id, org_id, payload.jurisdiction, updated_by)
+            await _add_jurisdictions(
+                session, model.id, org_id, payload.jurisdiction, updated_by
+            )
 
     if "topic" in fields_set:
         t_sub = select(PlanDefinitionTopic.id).where(
@@ -771,7 +866,9 @@ async def _apply_patch(
             )
         )
         if payload.related_artifact:
-            await _add_related_artifacts(session, model.id, org_id, payload.related_artifact, updated_by)
+            await _add_related_artifacts(
+                session, model.id, org_id, payload.related_artifact, updated_by
+            )
 
     if "goal" in fields_set:
         g_sub = select(PlanDefinitionGoal.id).where(
@@ -868,4 +965,3 @@ class _FullMixin:
             return await _apply_patch(
                 session, model, payload, org_id, updated_by or model.created_by
             )
-

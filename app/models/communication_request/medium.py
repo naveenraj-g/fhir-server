@@ -43,6 +43,4 @@ class CommunicationRequestMediumCoding(FhirCodingMixin, TenantAuditMixin, Base):
         index=True,
     )
 
-    medium = relationship(
-        "CommunicationRequestMedium", back_populates="codings"
-    )
+    medium = relationship("CommunicationRequestMedium", back_populates="codings")

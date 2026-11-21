@@ -14,6 +14,7 @@ Run:
   uv run python -m app.terminology.import_.cli --source fhir-r4 --file terminology_data/v2-tables.json
   uv run python -m app.terminology.import_.cli --source fhir-r4 --file terminology_data/valuesets.json
 """
+
 import glob
 import json
 import os
@@ -32,7 +33,9 @@ class FhirR4Loader(BaseLoader):
 
         code_systems = [r for r in resources if r.get("resourceType") == "CodeSystem"]
         value_sets = [r for r in resources if r.get("resourceType") == "ValueSet"]
-        self._log(f"Found {len(code_systems)} CodeSystems + {len(value_sets)} ValueSets")
+        self._log(
+            f"Found {len(code_systems)} CodeSystems + {len(value_sets)} ValueSets"
+        )
 
         total_concepts = 0
         for cs in code_systems:
@@ -125,7 +128,9 @@ class FhirR4Loader(BaseLoader):
                 if parent_code:
                     parent_links.append((code, parent_code))
             for child in c.get("concept", []):
-                self._flatten_concepts([child], cs_id, out, parent_links, parent_code=code or parent_code)
+                self._flatten_concepts(
+                    [child], cs_id, out, parent_links, parent_code=code or parent_code
+                )
 
     async def _set_parent_concept_ids(
         self, cs_id: int, parent_links: list[tuple[str, str]]
@@ -148,7 +153,9 @@ class FhirR4Loader(BaseLoader):
               AND child.code = lnk.child_code
               AND child.org_id IS NULL
             """,
-            child_codes, parent_codes, cs_id,
+            child_codes,
+            parent_codes,
+            cs_id,
         )
 
     async def _load_value_set(self, vs: dict[str, Any]) -> bool:
@@ -170,8 +177,13 @@ class FhirR4Loader(BaseLoader):
                 updated_at     = NOW()
             RETURNING id
             """,
-            url, name, vs.get("title"), vs.get("description"),
-            vs.get("version"), "4.0.1", binding_strength,
+            url,
+            name,
+            vs.get("title"),
+            vs.get("description"),
+            vs.get("version"),
+            "4.0.1",
+            binding_strength,
         )
 
         compose = vs.get("compose") or {}
@@ -207,7 +219,8 @@ class FhirR4Loader(BaseLoader):
                             )
                             SELECT id FROM subtree
                             """,
-                            system_url, value,
+                            system_url,
+                            value,
                         )
                         concept_db_ids.extend(r["id"] for r in rows)
                     elif op == "is-not-a":
@@ -234,7 +247,8 @@ class FhirR4Loader(BaseLoader):
                     )
                     records = [
                         (cs_id, c["code"], c.get("display") or c["code"], None)
-                        for c in codes if c.get("code")
+                        for c in codes
+                        if c.get("code")
                     ]
                     await self.bulk_insert_concepts(records)
 
@@ -244,7 +258,8 @@ class FhirR4Loader(BaseLoader):
                     WHERE tc.code_system_id = $1 AND tc.code = ANY($2::text[])
                       AND tc.org_id IS NULL
                     """,
-                    cs_id, [c["code"] for c in codes],
+                    cs_id,
+                    [c["code"] for c in codes],
                 )
             else:
                 rows = await self.conn.fetch(
@@ -266,6 +281,7 @@ class FhirR4Loader(BaseLoader):
             SELECT $1, unnest($2::bigint[])
             ON CONFLICT DO NOTHING
             """,
-            vs_id, concept_db_ids,
+            vs_id,
+            concept_db_ids,
         )
         return True

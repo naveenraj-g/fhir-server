@@ -17,4 +17,6 @@ if TYPE_CHECKING:
 
 
 def to_fhir_risk_assessment(risk_assessment: RiskAssessmentModel) -> dict:
-    return content_resource("RiskAssessment", risk_assessment.risk_assessment_id, risk_assessment)
+    return content_resource(
+        "RiskAssessment", risk_assessment.risk_assessment_id, risk_assessment
+    )

@@ -11,7 +11,8 @@ class MedicationKnowledgeMedicineClassificationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: MedicationKnowledgeCodeableConceptInput = Field(
-        ..., description="The type of category for the medication (for example, therapeutic classification, therapeutic sub-classification)."
+        ...,
+        description="The type of category for the medication (for example, therapeutic classification, therapeutic sub-classification).",
     )
     classification: list[MedicationKnowledgeCodeableConceptInput] | None = Field(
         None, description="Specific category assigned to the medication."

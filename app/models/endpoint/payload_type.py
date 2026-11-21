@@ -18,7 +18,9 @@ class EndpointPayloadType(Base):
     __tablename__ = "endpoint_payload_type"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    endpoint_pk = Column(BigInteger, ForeignKey("endpoint.id"), nullable=False, index=True)
+    endpoint_pk = Column(
+        BigInteger, ForeignKey("endpoint.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     code = Column(String, nullable=True, index=True)
     display_norm = Column(String, nullable=True)

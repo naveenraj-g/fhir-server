@@ -100,9 +100,7 @@ class _CoreMixin:
             payload_to_fhir_communication_request(payload), org_id
         )
 
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "CommunicationRequest created",
             extra={
@@ -120,17 +118,13 @@ class _CoreMixin:
         org_id: str | None = None,
     ) -> CommunicationRequestModel:
         if not org_id:
-            self._log_org_scope_miss(
-                "patch", communication_request_id, org_id
-            )
+            self._log_org_scope_miss("patch", communication_request_id, org_id)
             raise NotFoundError("CommunicationRequest not found")
         existing = await self.repository.get_by_communication_request_id_in_org(
             communication_request_id, org_id
         )
         if not existing:
-            self._log_org_scope_miss(
-                "patch", communication_request_id, org_id
-            )
+            self._log_org_scope_miss("patch", communication_request_id, org_id)
             raise NotFoundError("CommunicationRequest not found")
 
         if not updated_by:
@@ -162,20 +156,14 @@ class _CoreMixin:
         self, communication_request_id: int, org_id: str | None = None
     ) -> None:
         if not org_id:
-            self._log_org_scope_miss(
-                "delete", communication_request_id, org_id
-            )
+            self._log_org_scope_miss("delete", communication_request_id, org_id)
             raise NotFoundError("CommunicationRequest not found")
         if not await self.repository.communication_request_belongs_to_org(
             communication_request_id, org_id
         ):
-            self._log_org_scope_miss(
-                "delete", communication_request_id, org_id
-            )
+            self._log_org_scope_miss("delete", communication_request_id, org_id)
             raise NotFoundError("CommunicationRequest not found")
-        deleted = await self.repository.delete(
-            communication_request_id, org_id=org_id
-        )
+        deleted = await self.repository.delete(communication_request_id, org_id=org_id)
         if not deleted:
             raise NotFoundError("CommunicationRequest not found")
         logger.info(
@@ -187,9 +175,7 @@ class _CoreMixin:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource(
             "CommunicationRequest", fhir_resource, org_id=org_id
         )
@@ -220,4 +206,5 @@ class _CoreMixin:
 
 class CommunicationRequestService(_CoreMixin):
     """Service orchestrating CommunicationRequest operations."""
+
     pass

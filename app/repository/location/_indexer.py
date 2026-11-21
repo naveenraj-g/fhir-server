@@ -14,7 +14,12 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.fhir.search import normalize
-from app.models.location import LocationEndpoint, LocationIdentifier, LocationStatus, LocationType
+from app.models.location import (
+    LocationEndpoint,
+    LocationIdentifier,
+    LocationStatus,
+    LocationType,
+)
 from app.repository._content_index import (
     endpoint_row,
     identifier_rows,
@@ -33,7 +38,9 @@ INDEX_RELATIONSHIPS = ("identifiers", "types", "endpoints")
 
 
 def managing_organization_reference(document: dict) -> str | None:
-    return relative((document.get("managingOrganization") or {}).get("reference"), "Organization")
+    return relative(
+        (document.get("managingOrganization") or {}).get("reference"), "Organization"
+    )
 
 
 def part_of_reference(document: dict) -> str | None:
@@ -43,7 +50,9 @@ def part_of_reference(document: dict) -> str | None:
 def assigner_references(document: dict) -> list[str]:
     refs = []
     for identifier in document.get("identifier") or []:
-        ref = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        ref = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if ref:
             refs.append(ref)
     return refs
@@ -100,9 +109,14 @@ def index_columns(document: dict) -> dict:
         "address_country": address.get("country"),
         "address_country_norm": normalize(address.get("country")),
         **reference_columns(
-            "managing_organization", document.get("managingOrganization"), "Organization", _parse_org_ref
+            "managing_organization",
+            document.get("managingOrganization"),
+            "Organization",
+            _parse_org_ref,
         ),
-        **reference_columns("part_of", document.get("partOf"), "Location", _parse_location_ref),
+        **reference_columns(
+            "part_of", document.get("partOf"), "Location", _parse_location_ref
+        ),
         "position_latitude": _decimal(position.get("latitude")),
         "position_longitude": _decimal(position.get("longitude")),
     }
@@ -112,9 +126,13 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by LocationModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(LocationIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(LocationIdentifier, i)
         ],
-        "types": [r for cc in document.get("type") or [] for r in type_rows(LocationType, cc)],
+        "types": [
+            r for cc in document.get("type") or [] for r in type_rows(LocationType, cc)
+        ],
         "endpoints": [
             r
             for e in document.get("endpoint") or []

@@ -29,9 +29,7 @@ class _CoreMixin:
     def _to_plain(self, group: GroupModel) -> dict:
         return to_plain_group(group)
 
-    async def get_group_scoped(
-        self, group_id: int, org_id: str | None
-    ) -> GroupModel:
+    async def get_group_scoped(self, group_id: int, org_id: str | None) -> GroupModel:
         """Requires an org-scoped actor — raises PermissionDeniedError (403)
         for an org-less token instead of silently falling back to an
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
@@ -93,7 +91,9 @@ class _CoreMixin:
         if not org_id:
             raise PermissionDeniedError("Group creation requires an org-scoped token")
         if not created_by:
-            raise PermissionDeniedError("Group creation requires an authenticated actor")
+            raise PermissionDeniedError(
+                "Group creation requires an authenticated actor"
+            )
 
         await self._validate_base_r4(payload_to_fhir_group(payload), org_id)
         group = await self.repository.create_full(payload, org_id, created_by)
@@ -138,7 +138,9 @@ class _CoreMixin:
         return updated
 
     async def delete_group(self, group_id: int, org_id: str | None = None) -> None:
-        if not org_id or not await self.repository.group_belongs_to_org(group_id, org_id):
+        if not org_id or not await self.repository.group_belongs_to_org(
+            group_id, org_id
+        ):
             self._log_org_scope_miss("delete", group_id, org_id)
             raise NotFoundError("Group not found")
         deleted = await self.repository.delete(group_id, org_id=org_id)

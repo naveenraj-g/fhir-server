@@ -218,9 +218,7 @@ async def search_observations_post(
 )
 async def get_observation(
     request: Request,
-    observation_id: int = Path(
-        ..., ge=1, description="Public observation identifier."
-    ),
+    observation_id: int = Path(..., ge=1, description="Public observation identifier."),
     actor: AuthUser = Depends(require_permission("observation", "read")),
     observation_service: ObservationService = Depends(get_observation_service),
 ):
@@ -258,9 +256,7 @@ async def get_observation(
 async def patch_observation(
     payload: ObservationPatchSchema,
     request: Request,
-    observation_id: int = Path(
-        ..., ge=1, description="Public observation identifier."
-    ),
+    observation_id: int = Path(..., ge=1, description="Public observation identifier."),
     actor: AuthUser = Depends(require_permission("observation", "update")),
     observation_service: ObservationService = Depends(get_observation_service),
 ):
@@ -297,9 +293,7 @@ async def patch_observation(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_observation(
-    observation_id: int = Path(
-        ..., ge=1, description="Public observation identifier."
-    ),
+    observation_id: int = Path(..., ge=1, description="Public observation identifier."),
     actor: AuthUser = Depends(require_permission("observation", "delete")),
     observation_service: ObservationService = Depends(get_observation_service),
 ):

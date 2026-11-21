@@ -7,10 +7,20 @@ from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
 from app.di.dependencies.medication_request import get_medication_request_service
 from app.schemas.enums import MedicationRequestIntent, MedicationRequestStatus
-from app.schemas.medication_request import MedicationRequestCreateSchema, MedicationRequestPatchSchema
+from app.schemas.medication_request import (
+    MedicationRequestCreateSchema,
+    MedicationRequestPatchSchema,
+)
 from app.services.medication_request import MedicationRequestService
 
-from ._responses import _CONTENT_NEG, _ERR_NOT_FOUND, _ERR_VALIDATION, _LIST_200, _SINGLE_200, _SINGLE_201
+from ._responses import (
+    _CONTENT_NEG,
+    _ERR_NOT_FOUND,
+    _ERR_VALIDATION,
+    _LIST_200,
+    _SINGLE_200,
+    _SINGLE_201,
+)
 
 router = APIRouter()
 
@@ -38,9 +48,14 @@ async def create_medication_request(
     payload: MedicationRequestCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("medication_request", "create")),
-    medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
+    medication_request_service: MedicationRequestService = Depends(
+        get_medication_request_service
+    ),
 ):
-    logger.info("Create a new MedicationRequest resource", extra={"event": "route.create_medication_request"})
+    logger.info(
+        "Create a new MedicationRequest resource",
+        extra={"event": "route.create_medication_request"},
+    )
     log_payload(logger, "medication_request.create.payload", payload)
     medication_request = await medication_request_service.create_medication_request(
         payload, actor.org_id, actor.sub
@@ -70,13 +85,20 @@ async def create_medication_request(
 )
 async def get_medication_request(
     request: Request,
-    medication_request_id: int = Path(..., ge=1, description="Public medication_request identifier."),
+    medication_request_id: int = Path(
+        ..., ge=1, description="Public medication_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("medication_request", "read")),
-    medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
+    medication_request_service: MedicationRequestService = Depends(
+        get_medication_request_service
+    ),
 ):
     logger.info(
         "Retrieve a MedicationRequest resource by public medication_request_id",
-        extra={"event": "route.get_medication_request_by_id", "medication_request_id": medication_request_id},
+        extra={
+            "event": "route.get_medication_request_by_id",
+            "medication_request_id": medication_request_id,
+        },
     )
     medication_request = await medication_request_service.get_medication_request_scoped(
         medication_request_id, actor.org_id
@@ -107,11 +129,21 @@ async def get_medication_request(
 async def patch_medication_request(
     payload: MedicationRequestPatchSchema,
     request: Request,
-    medication_request_id: int = Path(..., ge=1, description="Public medication_request identifier."),
+    medication_request_id: int = Path(
+        ..., ge=1, description="Public medication_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("medication_request", "update")),
-    medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
+    medication_request_service: MedicationRequestService = Depends(
+        get_medication_request_service
+    ),
 ):
-    logger.info("Update a MedicationRequest resource", extra={"event": "route.patch_medication_request", "medication_request_id": medication_request_id})
+    logger.info(
+        "Update a MedicationRequest resource",
+        extra={
+            "event": "route.patch_medication_request",
+            "medication_request_id": medication_request_id,
+        },
+    )
     log_payload(logger, "medication_request.patch.payload", payload)
     updated = await medication_request_service.patch_medication_request(
         medication_request_id, payload, actor.sub, org_id=actor.org_id
@@ -145,24 +177,47 @@ async def list_medication_requests(
     request: Request,
     actor: AuthUser = Depends(require_permission("medication_request", "read")),
     medication_request_status: MedicationRequestStatus | None = Query(
-        None, alias="status", description="active | on-hold | cancelled | completed | entered-in-error | stopped | draft | unknown."
+        None,
+        alias="status",
+        description="active | on-hold | cancelled | completed | entered-in-error | stopped | draft | unknown.",
     ),
-    intent: MedicationRequestIntent | None = Query(None, description="proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option."),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
+    intent: MedicationRequestIntent | None = Query(
+        None,
+        description="proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option.",
+    ),
+    subject: str | None = Query(
+        None, description="Exact match on the subject reference string."
+    ),
+    identifier: str | None = Query(
+        None, description="Exact match on the business identifier value."
+    ),
     params: ListParams = Depends(),
-    medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
+    medication_request_service: MedicationRequestService = Depends(
+        get_medication_request_service
+    ),
 ):
-    logger.info("List all MedicationRequest resources", extra={"event": "route.list_medication_requests"})
+    logger.info(
+        "List all MedicationRequest resources",
+        extra={"event": "route.list_medication_requests"},
+    )
     items, total = await medication_request_service.list_medication_requests(
-        org_id=actor.org_id, status=medication_request_status, intent=intent,
-        subject=subject, identifier=identifier, limit=params.limit, offset=params.offset,
-        sort=params.sort, total_mode=params.total_mode,
+        org_id=actor.org_id,
+        status=medication_request_status,
+        intent=intent,
+        subject=subject,
+        identifier=identifier,
+        limit=params.limit,
+        offset=params.offset,
+        sort=params.sort,
+        total_mode=params.total_mode,
     )
     return format_paginated_response(
         [medication_request_service._to_fhir(mr) for mr in items],
         [medication_request_service._to_plain(mr) for mr in items],
-        total, params.limit, params.offset, request,
+        total,
+        params.limit,
+        params.offset,
+        request,
     )
 
 
@@ -182,9 +237,21 @@ async def list_medication_requests(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_medication_request(
-    medication_request_id: int = Path(..., ge=1, description="Public medication_request identifier."),
+    medication_request_id: int = Path(
+        ..., ge=1, description="Public medication_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("medication_request", "delete")),
-    medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
+    medication_request_service: MedicationRequestService = Depends(
+        get_medication_request_service
+    ),
 ):
-    logger.info("Delete a MedicationRequest resource", extra={"event": "route.delete_medication_request", "medication_request_id": medication_request_id})
-    await medication_request_service.delete_medication_request(medication_request_id, org_id=actor.org_id)
+    logger.info(
+        "Delete a MedicationRequest resource",
+        extra={
+            "event": "route.delete_medication_request",
+            "medication_request_id": medication_request_id,
+        },
+    )
+    await medication_request_service.delete_medication_request(
+        medication_request_id, org_id=actor.org_id
+    )

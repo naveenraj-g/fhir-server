@@ -106,8 +106,12 @@ class CarePlanActivity(TenantAuditMixin, Base):
     detail_location_identifier_type_text = Column(String, nullable=True)
     detail_location_identifier_system = Column(String, nullable=True)
     detail_location_identifier_value = Column(String, nullable=True)
-    detail_location_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    detail_location_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    detail_location_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    detail_location_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # detail.product[x] (CodeableConcept | Reference)
     detail_product_codeable_concept_text = Column(String, nullable=True)
@@ -132,8 +136,12 @@ class CarePlanActivity(TenantAuditMixin, Base):
     detail_product_identifier_type_text = Column(String, nullable=True)
     detail_product_identifier_system = Column(String, nullable=True)
     detail_product_identifier_value = Column(String, nullable=True)
-    detail_product_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    detail_product_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    detail_product_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    detail_product_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # detail.dailyAmount (0..1 Quantity)
     detail_daily_amount_value = Column(Numeric, nullable=True)
@@ -238,7 +246,9 @@ class CarePlanActivityOutcomeCC(TenantAuditMixin, Base):
     )
     text = Column(String, nullable=True)
 
-    activity = relationship("CarePlanActivity", back_populates="outcome_codeable_concepts")
+    activity = relationship(
+        "CarePlanActivity", back_populates="outcome_codeable_concepts"
+    )
     codings = relationship(
         "CarePlanActivityOutcomeCCCoding",
         back_populates="outcome_cc",
@@ -329,8 +339,12 @@ class CarePlanActivityProgress(TenantAuditMixin, Base):
     author_reference_identifier_type_text = Column(String, nullable=True)
     author_reference_identifier_system = Column(String, nullable=True)
     author_reference_identifier_value = Column(String, nullable=True)
-    author_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    author_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    author_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    author_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     activity = relationship("CarePlanActivity", back_populates="progress")
 
@@ -381,7 +395,9 @@ class CarePlanActivityDetailReasonCodeCoding(FhirCodingMixin, TenantAuditMixin, 
         index=True,
     )
 
-    reason_code = relationship("CarePlanActivityDetailReasonCode", back_populates="codings")
+    reason_code = relationship(
+        "CarePlanActivityDetailReasonCode", back_populates="codings"
+    )
 
 
 class CarePlanActivityDetailReasonReference(TenantAuditMixin, Base):
@@ -418,7 +434,9 @@ class CarePlanActivityDetailReasonReference(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    activity = relationship("CarePlanActivity", back_populates="detail_reason_references")
+    activity = relationship(
+        "CarePlanActivity", back_populates="detail_reason_references"
+    )
 
 
 class CarePlanActivityDetailGoal(TenantAuditMixin, Base):
@@ -469,7 +487,9 @@ class CarePlanActivityDetailStatusReasonCoding(FhirCodingMixin, TenantAuditMixin
         BigInteger, ForeignKey("care_plan_activity.id"), nullable=False, index=True
     )
 
-    activity = relationship("CarePlanActivity", back_populates="detail_status_reason_codings")
+    activity = relationship(
+        "CarePlanActivity", back_populates="detail_status_reason_codings"
+    )
 
 
 class CarePlanActivityDetailPerformer(TenantAuditMixin, Base):

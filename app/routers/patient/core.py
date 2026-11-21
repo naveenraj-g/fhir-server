@@ -70,7 +70,7 @@ logger = get_logger(__name__)
         "is rejected with 422. `managingOrganization`, `generalPractitioner` "
         "(Practitioner | PractitionerRole | Organization), `link.other` (Patient), "
         "`contact.organization` and `identifier.assigner` may reference resources on this server "
-        "(e.g. `{\"reference\": \"Organization/190001\"}`) — rejected with 422 if a relative "
+        '(e.g. `{"reference": "Organization/190001"}`) — rejected with 422 if a relative '
         "reference doesn't exist in the caller's org. The record starts unlinked: the end-user it "
         "belongs to (what `GET /me` scopes to) is linked afterwards with `PUT /{patient_id}/user`, "
         "or straight away with `?link_me=true` when the caller is creating their own record "
@@ -100,7 +100,10 @@ async def create_patient(
     )
     log_payload(logger, "patient.create.payload", payload)
     patient = await patient_service.create_patient(
-        payload, actor.org_id, actor.sub, body=await request.json(),
+        payload,
+        actor.org_id,
+        actor.sub,
+        body=await request.json(),
         link_user_id=actor.sub if link_me else None,
     )
     return fhir_response(
@@ -284,9 +287,7 @@ async def search_my_patients(
 )
 async def get_patient(
     request: Request,
-    patient_id: int = Path(
-        ..., ge=1, description="Public patient identifier."
-    ),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "read")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -297,9 +298,7 @@ async def get_patient(
             "patient_id": patient_id,
         },
     )
-    patient = await patient_service.get_patient_scoped(
-        patient_id, actor.org_id
-    )
+    patient = await patient_service.get_patient_scoped(patient_id, actor.org_id)
     return fhir_response(patient_service._to_fhir(patient))
 
 
@@ -324,9 +323,7 @@ async def get_patient(
 async def patch_patient(
     payload: PatientPatchSchema,
     request: Request,
-    patient_id: int = Path(
-        ..., ge=1, description="Public patient identifier."
-    ),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "update")),
     patient_service: PatientService = Depends(get_patient_service),
 ):
@@ -392,9 +389,7 @@ async def get_patient_user_link(
         "Get a Patient end-user link",
         extra={"event": "route.get_patient_user_link", "patient_id": patient_id},
     )
-    return _link_response(
-        await patient_service.get_user_link(patient_id, actor.org_id)
-    )
+    return _link_response(await patient_service.get_user_link(patient_id, actor.org_id))
 
 
 @router.put(
@@ -469,9 +464,7 @@ async def unlink_patient_user(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_patient(
-    patient_id: int = Path(
-        ..., ge=1, description="Public patient identifier."
-    ),
+    patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     actor: AuthUser = Depends(require_permission("patient", "delete")),
     patient_service: PatientService = Depends(get_patient_service),
 ):

@@ -25,14 +25,25 @@ from app.models.family_member_history import (
     FamilyMemberHistoryStatus,
     FamilyMemberHistoryToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import typed
 
 # Of the six `reasonReference` targets, these are resources here (Observation,
 # QuestionnaireResponse and DocumentReference are not rebuilt yet).
 _MODELED_REASONS = ("Condition", "AllergyIntolerance", "DiagnosticReport")
-_AUTHOR_TYPES = ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson", "Organization")
+_AUTHOR_TYPES = (
+    "Practitioner",
+    "PractitionerRole",
+    "Patient",
+    "RelatedPerson",
+    "Organization",
+)
 
 
 def _notes(document: dict) -> list[dict]:
@@ -58,16 +69,28 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("patient", (document.get("patient") or {}).get("reference"), "Patient")
     for ref in document.get("reasonReference") or []:
         parsed = typed((ref or {}).get("reference"), _MODELED_REASONS)
         if parsed:
             refs.append(("reasonReference", parsed[0], ref["reference"]))
     for note in _notes(document):
-        parsed = typed(((note or {}).get("authorReference") or {}).get("reference"), _AUTHOR_TYPES)
+        parsed = typed(
+            ((note or {}).get("authorReference") or {}).get("reference"), _AUTHOR_TYPES
+        )
         if parsed:
-            refs.append(("note.authorReference", parsed[0], note["authorReference"]["reference"]))
+            refs.append(
+                (
+                    "note.authorReference",
+                    parsed[0],
+                    note["authorReference"]["reference"],
+                )
+            )
     return refs
 
 
@@ -79,7 +102,9 @@ def index_columns(document: dict) -> dict:
     except ValueError:
         status = None  # the validator rejects a bad code before we get here
     value = document.get("date")
-    start, end = period_bounds({"start": value, "end": value}) if value else (None, None)
+    start, end = (
+        period_bounds({"start": value, "end": value}) if value else (None, None)
+    )
     patient = document.get("patient") or {}
     reference = patient.get("reference")
     identifier = patient.get("identifier") or {}
@@ -97,7 +122,11 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(FamilyMemberHistoryToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(FamilyMemberHistoryToken, param=param), concept)
+        if concept
+        else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -131,11 +160,15 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by FamilyMemberHistoryModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(FamilyMemberHistoryIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(FamilyMemberHistoryIdentifier, i)
         ],
         "tokens": _token_rows(document),
         "references": _canonical_rows(document),
         "instantiates_uris": [
-            FamilyMemberHistoryInstantiatesUri(uri=u) for u in document.get("instantiatesUri") or [] if u
+            FamilyMemberHistoryInstantiatesUri(uri=u)
+            for u in document.get("instantiatesUri") or []
+            if u
         ],
     }

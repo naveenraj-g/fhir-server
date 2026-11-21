@@ -36,10 +36,14 @@ class AppointmentParticipant(Base):
     No ForeignKey on `reference_id` and no UniqueConstraint."""
 
     __tablename__ = "appointment_participant"
-    __table_args__ = (Index("ix_appointment_participant_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_appointment_participant_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    appointment_pk = Column(BigInteger, ForeignKey("appointment.id"), nullable=False, index=True)
+    appointment_pk = Column(
+        BigInteger, ForeignKey("appointment.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)

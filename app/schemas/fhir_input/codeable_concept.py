@@ -14,4 +14,3 @@ class FhirCodeableConceptInput(FhirInputModel):
         None,
         description="A human language representation of the concept as seen/selected/entered by the user.",
     )
-

@@ -1,4 +1,9 @@
-from .core import ASSESSOR_TYPES, SUBJECT_TYPES, ClinicalImpressionModel, clinical_impression_id_seq
+from .core import (
+    ASSESSOR_TYPES,
+    SUBJECT_TYPES,
+    ClinicalImpressionModel,
+    clinical_impression_id_seq,
+)
 from .enums import ClinicalImpressionStatus
 from .identifier import ClinicalImpressionIdentifier
 from .reference import (

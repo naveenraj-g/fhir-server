@@ -59,7 +59,8 @@ class SpecimenCreateSchema(BaseModel):
         None, description="External identifiers for this specimen."
     )
     accession_identifier: SpecimenIdentifierInput | None = Field(
-        None, description="Identifier assigned by the lab when the specimen was received."
+        None,
+        description="Identifier assigned by the lab when the specimen was received.",
     )
     status: SpecimenStatus | None = Field(
         None, description="available | unavailable | unsatisfactory | entered-in-error."
@@ -68,7 +69,8 @@ class SpecimenCreateSchema(BaseModel):
         None, description="Kind for specimen."
     )
     subject: SpecimenSubjectInput | None = Field(
-        None, description="Where the specimen came from (Patient | Group | Device | Substance | Location)."
+        None,
+        description="Where the specimen came from (Patient | Group | Device | Substance | Location).",
     )
     received_time: datetime | None = Field(
         None, description="The time when specimen was received for processing."
@@ -91,9 +93,7 @@ class SpecimenCreateSchema(BaseModel):
     condition: list[SpecimenCodeableConceptInput] | None = Field(
         None, description="State of the specimen (e.g. frozen, cooled)."
     )
-    note: list[SpecimenNoteInput] | None = Field(
-        None, description="Comments."
-    )
+    note: list[SpecimenNoteInput] | None = Field(None, description="Comments.")
     extension: list[dict] | None = Field(
         None, description="Resource-level FHIR extensions."
     )
@@ -115,7 +115,8 @@ class SpecimenPatchSchema(BaseModel):
         None, description="External identifiers for this specimen."
     )
     accession_identifier: SpecimenIdentifierInput | None = Field(
-        None, description="Identifier assigned by the lab when the specimen was received."
+        None,
+        description="Identifier assigned by the lab when the specimen was received.",
     )
     status: SpecimenStatus | None = Field(
         None, description="available | unavailable | unsatisfactory | entered-in-error."
@@ -124,7 +125,8 @@ class SpecimenPatchSchema(BaseModel):
         None, description="Kind for specimen."
     )
     subject: SpecimenSubjectInput | None = Field(
-        None, description="Where the specimen came from (Patient | Group | Device | Substance | Location)."
+        None,
+        description="Where the specimen came from (Patient | Group | Device | Substance | Location).",
     )
     received_time: datetime | None = Field(
         None, description="The time when specimen was received for processing."
@@ -147,9 +149,7 @@ class SpecimenPatchSchema(BaseModel):
     condition: list[SpecimenCodeableConceptInput] | None = Field(
         None, description="State of the specimen (e.g. frozen, cooled)."
     )
-    note: list[SpecimenNoteInput] | None = Field(
-        None, description="Comments."
-    )
+    note: list[SpecimenNoteInput] | None = Field(None, description="Comments.")
     extension: list[dict] | None = Field(
         None, description="Resource-level FHIR extensions."
     )

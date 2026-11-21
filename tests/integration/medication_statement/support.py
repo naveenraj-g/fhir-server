@@ -62,9 +62,7 @@ def minimal_medication_statement(patient_id: int) -> dict:
     }
 
 
-def full_medication_statement(
-    patient_id: int, condition_id: int | None = None
-) -> dict:
+def full_medication_statement(patient_id: int, condition_id: int | None = None) -> dict:
     payload = {
         "status": "active",
         "subject": {

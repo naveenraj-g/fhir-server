@@ -215,9 +215,7 @@ async def search_slots_post(
 )
 async def get_slot(
     request: Request,
-    slot_id: int = Path(
-        ..., ge=1, description="Public slot identifier."
-    ),
+    slot_id: int = Path(..., ge=1, description="Public slot identifier."),
     actor: AuthUser = Depends(require_permission("slot", "read")),
     slot_service: SlotService = Depends(get_slot_service),
 ):
@@ -228,9 +226,7 @@ async def get_slot(
             "slot_id": slot_id,
         },
     )
-    slot = await slot_service.get_slot_scoped(
-        slot_id, actor.org_id
-    )
+    slot = await slot_service.get_slot_scoped(slot_id, actor.org_id)
     return fhir_response(slot_service._to_fhir(slot))
 
 
@@ -256,9 +252,7 @@ async def get_slot(
 async def patch_slot(
     payload: SlotPatchSchema,
     request: Request,
-    slot_id: int = Path(
-        ..., ge=1, description="Public slot identifier."
-    ),
+    slot_id: int = Path(..., ge=1, description="Public slot identifier."),
     actor: AuthUser = Depends(require_permission("slot", "update")),
     slot_service: SlotService = Depends(get_slot_service),
 ):
@@ -295,9 +289,7 @@ async def patch_slot(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_slot(
-    slot_id: int = Path(
-        ..., ge=1, description="Public slot identifier."
-    ),
+    slot_id: int = Path(..., ge=1, description="Public slot identifier."),
     actor: AuthUser = Depends(require_permission("slot", "delete")),
     slot_service: SlotService = Depends(get_slot_service),
 ):

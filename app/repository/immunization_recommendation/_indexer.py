@@ -24,7 +24,12 @@ from app.models.immunization_recommendation import (
     ImmunizationRecommendationReference,
     ImmunizationRecommendationToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import any_typed, typed
 
@@ -33,8 +38,19 @@ _MODELED_SUPPORT = ("Immunization", "ImmunizationEvaluation")
 # Reference(Any) `supportingPatientInformation` targets that are existence-checked on write:
 # the resources already rebuilt that a piece of patient information can be.
 _MODELED_INFORMATION = (
-    "Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Organization", "Location", "Encounter",
-    "Appointment", "Condition", "Procedure", "DiagnosticReport", "AllergyIntolerance", "Immunization",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "RelatedPerson",
+    "Organization",
+    "Location",
+    "Encounter",
+    "Appointment",
+    "Condition",
+    "Procedure",
+    "DiagnosticReport",
+    "AllergyIntolerance",
+    "Immunization",
 )
 
 
@@ -54,7 +70,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("patient", (document.get("patient") or {}).get("reference"), "Patient")
     add("authority", (document.get("authority") or {}).get("reference"), "Organization")
     for recommendation in document.get("recommendation") or []:
@@ -66,7 +86,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         for ref in recommendation.get("supportingPatientInformation") or []:
             parsed = typed((ref or {}).get("reference"), _MODELED_INFORMATION)
             if parsed:
-                refs.append(("supportingPatientInformation", parsed[0], ref["reference"]))
+                refs.append(
+                    ("supportingPatientInformation", parsed[0], ref["reference"])
+                )
     return refs
 
 
@@ -90,7 +112,9 @@ def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dic
 def index_columns(document: dict) -> dict:
     """Search columns on the immunization_recommendation row itself."""
     value = document.get("date")
-    start, end = period_bounds({"start": value, "end": value}) if value else (None, None)
+    start, end = (
+        period_bounds({"start": value, "end": value}) if value else (None, None)
+    )
     return {
         "date_start": start,
         "date_end": end,
@@ -99,7 +123,11 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(ImmunizationRecommendationToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(ImmunizationRecommendationToken, param=param), concept)
+        if concept
+        else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -113,7 +141,9 @@ def _token_rows(document: dict) -> list:
     return rows
 
 
-def _reference_row(param: str, ref: dict | None) -> ImmunizationRecommendationReference | None:
+def _reference_row(
+    param: str, ref: dict | None
+) -> ImmunizationRecommendationReference | None:
     """One index row for a Reference with a `reference` or an `identifier`
     (display-only cannot be matched by a reference search)."""
     ref = ref or {}
@@ -123,7 +153,11 @@ def _reference_row(param: str, ref: dict | None) -> ImmunizationRecommendationRe
         return None
     # Any relative `Type/<id>` names a type (`information` is Reference(Any)); `support`
     # only the two R4 targets.
-    parsed = any_typed(reference) if param == "information" else typed(reference, SUPPORT_TYPES)
+    parsed = (
+        any_typed(reference)
+        if param == "information"
+        else typed(reference, SUPPORT_TYPES)
+    )
     return ImmunizationRecommendationReference(
         param=param,
         reference_reference=reference,
@@ -138,8 +172,14 @@ def _reference_rows(document: dict) -> list:
     rows = []
     for recommendation in document.get("recommendation") or []:
         recommendation = recommendation or {}
-        rows += [_reference_row("support", r) for r in recommendation.get("supportingImmunization") or []]
-        rows += [_reference_row("information", r) for r in recommendation.get("supportingPatientInformation") or []]
+        rows += [
+            _reference_row("support", r)
+            for r in recommendation.get("supportingImmunization") or []
+        ]
+        rows += [
+            _reference_row("information", r)
+            for r in recommendation.get("supportingPatientInformation") or []
+        ]
     return [r for r in rows if r]
 
 
@@ -147,7 +187,9 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by ImmunizationRecommendationModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(ImmunizationRecommendationIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ImmunizationRecommendationIdentifier, i)
         ],
         "tokens": _token_rows(document),
         "references": _reference_rows(document),

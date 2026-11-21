@@ -11,9 +11,7 @@ class GoalAchievementStatusCoding(FhirCodingMixin, TenantAuditMixin, Base):
     __tablename__ = "goal_achievement_status_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     goal = relationship("GoalModel", back_populates="achievement_status_codings")
 
@@ -24,9 +22,7 @@ class GoalPriorityCoding(FhirCodingMixin, TenantAuditMixin, Base):
     __tablename__ = "goal_priority_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     goal = relationship("GoalModel", back_populates="priority_codings")
 
@@ -37,9 +33,7 @@ class GoalDescriptionCoding(FhirCodingMixin, TenantAuditMixin, Base):
     __tablename__ = "goal_description_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     goal = relationship("GoalModel", back_populates="description_codings")
 
@@ -50,9 +44,7 @@ class GoalStartCoding(FhirCodingMixin, TenantAuditMixin, Base):
     __tablename__ = "goal_start_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     goal = relationship("GoalModel", back_populates="start_codings")
 
@@ -63,9 +55,7 @@ class GoalOutcomeCode(TenantAuditMixin, Base):
     __tablename__ = "goal_outcome_code"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     text = Column(String, nullable=True)
 

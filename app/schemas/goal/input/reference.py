@@ -32,7 +32,8 @@ class GoalReferenceInput(BaseModel):
         None, description="Representation defined by the system for identifier type."
     )
     identifier_type_user_selected: bool | None = Field(
-        None, description="If this identifier type coding was chosen directly by the user."
+        None,
+        description="If this identifier type coding was chosen directly by the user.",
     )
     identifier_type_text: str | None = Field(
         None, description="Plain text representation of the identifier type."
@@ -41,7 +42,8 @@ class GoalReferenceInput(BaseModel):
         None, description="The namespace for the identifier value."
     )
     identifier_value: str | None = Field(
-        None, description="The portion of the identifier typically relevant to the user."
+        None,
+        description="The portion of the identifier typically relevant to the user.",
     )
     identifier_period_start: datetime | None = Field(
         None, description="Time period when id is/was valid for use - start."

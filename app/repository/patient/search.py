@@ -25,17 +25,36 @@ from app.repository._observation_revinclude import column_observation_revinclude
 from app.repository._observation_revinclude import reference_observation_revincludes
 from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._appointment_revinclude import participant_revincludes
-from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes, patient_allergy_revincludes
-from app.repository._condition_revinclude import asserter_condition_revincludes, subject_condition_revincludes
-from app.repository._procedure_revinclude import performer_procedure_revincludes, subject_procedure_revincludes
+from app.repository._allergy_intolerance_revinclude import (
+    actor_allergy_revincludes,
+    patient_allergy_revincludes,
+)
+from app.repository._condition_revinclude import (
+    asserter_condition_revincludes,
+    subject_condition_revincludes,
+)
+from app.repository._procedure_revinclude import (
+    performer_procedure_revincludes,
+    subject_procedure_revincludes,
+)
 from app.repository._diagnostic_report_revinclude import subject_report_revincludes
 from app.repository._family_member_history_revinclude import patient_history_revincludes
-from app.repository._immunization_evaluation_revinclude import column_evaluation_revincludes
-from app.repository._immunization_recommendation_revinclude import patient_recommendation_revincludes
+from app.repository._immunization_evaluation_revinclude import (
+    column_evaluation_revincludes,
+)
+from app.repository._immunization_recommendation_revinclude import (
+    patient_recommendation_revincludes,
+)
 from app.repository._immunization_revinclude import column_immunization_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import subject_encounter_revincludes
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     array_string_match,
     coded_token_match,
@@ -70,16 +89,41 @@ _GENDER_SYSTEM = "http://hl7.org/fhir/administrative-gender"
 # for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Practitioner": ("app.models.practitioner", "PractitionerModel", "practitioner_id",
-                     "app.repository.practitioner.search", "practitioner_search"),
-    "PractitionerRole": ("app.models.practitioner_role", "PractitionerRoleModel", "practitioner_role_id",
-                         "app.repository.practitioner_role.search", "practitioner_role_search"),
-    "Organization": ("app.models.organization", "OrganizationModel", "organization_id",
-                     "app.repository.organization.search", "organization_search"),
-    "Patient": ("app.models.patient", "PatientModel", "patient_id",
-                "app.repository.patient.search", "patient_search"),
-    "RelatedPerson": ("app.models.related_person", "RelatedPersonModel", "related_person_id",
-                      "app.repository.related_person.search", "related_person_search"),
+    "Practitioner": (
+        "app.models.practitioner",
+        "PractitionerModel",
+        "practitioner_id",
+        "app.repository.practitioner.search",
+        "practitioner_search",
+    ),
+    "PractitionerRole": (
+        "app.models.practitioner_role",
+        "PractitionerRoleModel",
+        "practitioner_role_id",
+        "app.repository.practitioner_role.search",
+        "practitioner_role_search",
+    ),
+    "Organization": (
+        "app.models.organization",
+        "OrganizationModel",
+        "organization_id",
+        "app.repository.organization.search",
+        "organization_search",
+    ),
+    "Patient": (
+        "app.models.patient",
+        "PatientModel",
+        "patient_id",
+        "app.repository.patient.search",
+        "patient_search",
+    ),
+    "RelatedPerson": (
+        "app.models.related_person",
+        "RelatedPersonModel",
+        "related_person_id",
+        "app.repository.related_person.search",
+        "related_person_search",
+    ),
 }
 
 
@@ -107,7 +151,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.patient_pk == P.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.patient_pk == P.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -121,7 +169,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return P.patient_id == int(token.code)
 
@@ -144,13 +194,17 @@ def _deceased_match(value, modifier, ctx):
     # R4: Patient.deceased.exists() and Patient.deceased != false — so
     # `deceased=false` is everyone who is not marked deceased, including a
     # patient with no deceased[x] at all.
-    return P.deceased.is_(True) if _boolean(value, "deceased") else P.deceased.is_not(True)
+    return (
+        P.deceased.is_(True) if _boolean(value, "deceased") else P.deceased.is_not(True)
+    )
 
 
 def _gender_match(value, modifier, ctx):
     token = parse_token(value)
     if token.system is not None and token.system != _GENDER_SYSTEM:
-        return false()  # another system, or `|code` (no system) — gender is always coded in its own
+        return (
+            false()
+        )  # another system, or `|code` (no system) — gender is always coded in its own
     if token.code is None:
         return P.gender.is_not(None)
     try:
@@ -241,7 +295,10 @@ def _address_match(value, modifier, ctx):
         _A,
         or_(
             array_string_match(_A.line, _A.line_norm, value, modifier),
-            *(string_match(raw, norm, value, modifier) for raw, norm in _ADDRESS_PARTS.values()),
+            *(
+                string_match(raw, norm, value, modifier)
+                for raw, norm in _ADDRESS_PARTS.values()
+            ),
         ),
     )
 
@@ -266,17 +323,26 @@ _C = PatientCommunication
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
 def _language_match(value, modifier, ctx):
     return _exists(
         _C,
-        coded_token_match(_C.system, _C.code, value, modifier, (_C.text_norm, _C.display_norm)),
+        coded_token_match(
+            _C.system, _C.code, value, modifier, (_C.text_norm, _C.display_norm)
+        ),
     )
 
 
@@ -292,7 +358,11 @@ def _telecom_match(system: str | None):
 
     def match(value, modifier, ctx):
         condition = token_condition(_T.use, _T.value, parse_token(value))
-        return _exists(_T, condition, _T.system == system) if system else _exists(_T, condition)
+        return (
+            _exists(_T, condition, _T.system == system)
+            if system
+            else _exists(_T, condition)
+        )
 
     return match
 
@@ -327,7 +397,10 @@ def _organization_match(value, modifier, ctx):
 
 
 def _organization_present(ctx):
-    return or_(P.managing_organization_reference.is_not(None), P.managing_organization_identifier_value.is_not(None))
+    return or_(
+        P.managing_organization_reference.is_not(None),
+        P.managing_organization_identifier_value.is_not(None),
+    )
 
 
 def _organization_chain(target, inner, ctx):
@@ -335,7 +408,9 @@ def _organization_chain(target, inner, ctx):
     any Organization search parameter. The subquery doesn't correlate to the
     outer row — it ranges over the referenced resource."""
     model, id_col = _model("Organization")
-    referenced = select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
+    referenced = (
+        select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
+    )
     return P.managing_organization_id.in_(referenced)
 
 
@@ -357,7 +432,11 @@ def _reference_param(param: str, targets: tuple[str, ...]):
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         # `modifier` is a target type (general-practitioner:Practitioner=30001)
         # or None; a bare id with several targets is ambiguous and is rejected
@@ -366,7 +445,14 @@ def _reference_param(param: str, targets: tuple[str, ...]):
             _R,
             _R.param == param,
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
             ),
         )
 
@@ -374,7 +460,10 @@ def _reference_param(param: str, targets: tuple[str, ...]):
         return _exists(
             _R,
             _R.param == param,
-            or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None)),
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
@@ -382,8 +471,17 @@ def _reference_param(param: str, targets: tuple[str, ...]):
         tenant) matches `<p>=v`. The subquery doesn't correlate to the outer
         row — it ranges over the referenced resource."""
         model, id_col = _model(target)
-        referenced = select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
-        return _exists(_R, _R.param == param, _R.reference_type == target, _R.reference_id.in_(referenced))
+        referenced = (
+            select(id_col)
+            .where(model.tenant_id == ctx.tenant_id, inner)
+            .correlate(None)
+        )
+        return _exists(
+            _R,
+            _R.param == param,
+            _R.reference_type == target,
+            _R.reference_id.in_(referenced),
+        )
 
     def sort():
         return _child_sort(_R.reference_id, _R, _R.param == param)
@@ -410,7 +508,12 @@ def _include_via_reference(param: str, resource_type: str):
             _R.reference_type == resource_type,
             _R.reference_id.is_not(None),
         )
-        return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)))
+        return await _fetch(
+            session,
+            select(model).where(
+                model.tenant_id == ctx.tenant_id, id_col.in_(referenced)
+            ),
+        )
 
     return fetch
 
@@ -418,10 +521,16 @@ def _include_via_reference(param: str, resource_type: str):
 async def _include_organization(session, ctx, patients):
     """_include=Patient:organization — the managing organizations."""
     model, id_col = _model("Organization")
-    ids = {p.managing_organization_id for p in patients if p.managing_organization_id is not None}
+    ids = {
+        p.managing_organization_id
+        for p in patients
+        if p.managing_organization_id is not None
+    }
     if not ids:
         return []
-    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+    )
 
 
 def revinclude_patients_via_reference(param: str, resource_type: str, key):
@@ -432,9 +541,13 @@ def revinclude_patients_via_reference(param: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         pks = select(_R.patient_pk).where(
-            _R.param == param, _R.reference_type == resource_type, _R.reference_id.in_(ids)
+            _R.param == param,
+            _R.reference_type == resource_type,
+            _R.reference_id.in_(ids),
         )
-        return await _fetch(session, select(P).where(P.tenant_id == ctx.tenant_id, P.id.in_(pks)))
+        return await _fetch(
+            session, select(P).where(P.tenant_id == ctx.tenant_id, P.id.in_(pks))
+        )
 
     return fetch
 
@@ -443,15 +556,22 @@ async def revinclude_patients_by_organization(session, ctx, organizations):
     """_revinclude=Patient:organization — patients managed by these organizations."""
     ids = {o.organization_id for o in organizations}
     return await _fetch(
-        session, select(P).where(P.tenant_id == ctx.tenant_id, P.managing_organization_id.in_(ids))
+        session,
+        select(P).where(
+            P.tenant_id == ctx.tenant_id, P.managing_organization_id.in_(ids)
+        ),
     )
 
 
 async def _revinclude_related_persons(session, ctx, patients):
     """_revinclude=RelatedPerson:patient — the people related to these patients."""
-    from app.repository.related_person.search import revinclude_related_persons_via_patient
+    from app.repository.related_person.search import (
+        revinclude_related_persons_via_patient,
+    )
 
-    return await revinclude_related_persons_via_patient(lambda p: p.patient_id)(session, ctx, patients)
+    return await revinclude_related_persons_via_patient(lambda p: p.patient_id)(
+        session, ctx, patients
+    )
 
 
 def _register_kind() -> None:
@@ -459,7 +579,9 @@ def _register_kind() -> None:
     from app.fhir.mappers.patient import to_fhir_patient
     from app.fhir.search.execute import ResourceKind, register_kind
 
-    register_kind(ResourceKind("Patient", lambda p: p.patient_id, to_fhir_patient, "patients"))
+    register_kind(
+        ResourceKind("Patient", lambda p: p.patient_id, to_fhir_patient, "patients")
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────────────────
@@ -477,155 +599,303 @@ _TELECOM = frozenset({"not", "missing"})
 def patient_search() -> SearchRegistry:
     _register_kind()
 
-    gp_match, gp_present, gp_chain, gp_sort = _reference_param("general-practitioner", GENERAL_PRACTITIONER_TYPES)
-    link_match, link_present, link_chain, link_sort = _reference_param("link", LINK_TYPES)
+    gp_match, gp_present, gp_chain, gp_sort = _reference_param(
+        "general-practitioner", GENERAL_PRACTITIONER_TYPES
+    )
+    link_match, link_present, link_chain, link_sort = _reference_param(
+        "link", LINK_TYPES
+    )
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public patient id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: P.patient_id, example="10001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public patient id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: P.patient_id,
+            example="10001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "active", "token", "Whether the patient record is active", "Patient.active",
-            _active_match, lambda ctx: P.active.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: P.active, example="true",
-            modifier_docs={"not": "`:not` — active is not this value, or is not recorded at all."},
+            "active",
+            "token",
+            "Whether the patient record is active",
+            "Patient.active",
+            _active_match,
+            lambda ctx: P.active.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: P.active,
+            example="true",
+            modifier_docs={
+                "not": "`:not` — active is not this value, or is not recorded at all."
+            },
         ),
         SearchParam(
-            "address", "string",
+            "address",
+            "string",
             "A server defined search that may match any of the string fields in the Address, including line, "
             "city, district, state, country, postalCode, and/or text",
-            "Patient.address", _address_match, lambda ctx: _exists(_A), _STRING, example="Main St",
+            "Patient.address",
+            _address_match,
+            lambda ctx: _exists(_A),
+            _STRING,
+            example="Main St",
         ),
         SearchParam(
-            "address-city", "string", "A city specified in an address", "Patient.address.city",
-            _city, _city_present, _STRING, sort=lambda: _child_sort(_A.city_norm, _A), example="Boston",
+            "address-city",
+            "string",
+            "A city specified in an address",
+            "Patient.address.city",
+            _city,
+            _city_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.city_norm, _A),
+            example="Boston",
         ),
         SearchParam(
-            "address-country", "string", "A country specified in an address", "Patient.address.country",
-            _country, _country_present, _STRING, sort=lambda: _child_sort(_A.country_norm, _A), example="US",
+            "address-country",
+            "string",
+            "A country specified in an address",
+            "Patient.address.country",
+            _country,
+            _country_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.country_norm, _A),
+            example="US",
         ),
         SearchParam(
-            "address-postalcode", "string", "A postalCode specified in an address", "Patient.address.postalCode",
-            _postal, _postal_present, _STRING, sort=lambda: _child_sort(_A.postal_code_norm, _A), example="02110",
+            "address-postalcode",
+            "string",
+            "A postalCode specified in an address",
+            "Patient.address.postalCode",
+            _postal,
+            _postal_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.postal_code_norm, _A),
+            example="02110",
         ),
         SearchParam(
-            "address-state", "string", "A state specified in an address", "Patient.address.state",
-            _state, _state_present, _STRING, sort=lambda: _child_sort(_A.state_norm, _A), example="MA",
+            "address-state",
+            "string",
+            "A state specified in an address",
+            "Patient.address.state",
+            _state,
+            _state_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.state_norm, _A),
+            example="MA",
         ),
         SearchParam(
-            "address-use", "token",
+            "address-use",
+            "token",
             f"A use code specified in an address (home | work | temp | old | billing; system {_ADDRESS_USE_SYSTEM})",
-            "Patient.address.use", _address_use_match, lambda ctx: _exists(_A, _A.use.is_not(None)),
-            frozenset({"not", "missing"}), example="home",
+            "Patient.address.use",
+            _address_use_match,
+            lambda ctx: _exists(_A, _A.use.is_not(None)),
+            frozenset({"not", "missing"}),
+            example="home",
         ),
         SearchParam(
-            "birthdate", "date",
+            "birthdate",
+            "date",
             "The patient's date of birth (a partial date such as 1990 or 1990-05 is matched as the range it covers)",
-            "Patient.birthDate", _birthdate_match, lambda ctx: P.birth_date_start.is_not(None),
-            sort=lambda: P.birth_date_start, example="ge1990-01-01",
+            "Patient.birthDate",
+            _birthdate_match,
+            lambda ctx: P.birth_date_start.is_not(None),
+            sort=lambda: P.birth_date_start,
+            example="ge1990-01-01",
         ),
         SearchParam(
-            "death-date", "date", "The date of death has been provided and satisfies this search value",
-            "(Patient.deceased as dateTime)", _death_date_match, lambda ctx: P.death_date_start.is_not(None),
-            sort=lambda: P.death_date_start, example="ge2020-01-01",
+            "death-date",
+            "date",
+            "The date of death has been provided and satisfies this search value",
+            "(Patient.deceased as dateTime)",
+            _death_date_match,
+            lambda ctx: P.death_date_start.is_not(None),
+            sort=lambda: P.death_date_start,
+            example="ge2020-01-01",
         ),
         SearchParam(
-            "deceased", "token",
+            "deceased",
+            "token",
             "This patient has been marked as deceased, or has a death date entered (true | false)",
-            "Patient.deceased.exists() and Patient.deceased != false", _deceased_match,
-            lambda ctx: P.deceased.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: P.deceased, example="true",
+            "Patient.deceased.exists() and Patient.deceased != false",
+            _deceased_match,
+            lambda ctx: P.deceased.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: P.deceased,
+            example="true",
         ),
         SearchParam(
-            "email", "token", "A value in an email contact (ContactPoint.value where system = email)",
-            "Patient.telecom.where(system='email')", _telecom_match("email"), _telecom_present("email"),
-            _TELECOM, example="peter@example.org",
+            "email",
+            "token",
+            "A value in an email contact (ContactPoint.value where system = email)",
+            "Patient.telecom.where(system='email')",
+            _telecom_match("email"),
+            _telecom_present("email"),
+            _TELECOM,
+            example="peter@example.org",
         ),
         SearchParam(
-            "family", "string", "A portion of the family name of the patient", "Patient.name.family",
-            _family_match, lambda ctx: _exists(_N, _N.family.is_not(None)), _STRING,
-            sort=lambda: _child_sort(_N.family_norm, _N), example="Chalmers",
+            "family",
+            "string",
+            "A portion of the family name of the patient",
+            "Patient.name.family",
+            _family_match,
+            lambda ctx: _exists(_N, _N.family.is_not(None)),
+            _STRING,
+            sort=lambda: _child_sort(_N.family_norm, _N),
+            example="Chalmers",
         ),
         SearchParam(
-            "gender", "token",
+            "gender",
+            "token",
             f"Gender of the patient (male | female | other | unknown; system {_GENDER_SYSTEM})",
-            "Patient.gender", _gender_match, lambda ctx: P.gender.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: P.gender, example="male",
+            "Patient.gender",
+            _gender_match,
+            lambda ctx: P.gender.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: P.gender,
+            example="male",
         ),
         SearchParam(
-            "general-practitioner", "reference",
+            "general-practitioner",
+            "reference",
             "Patient's nominated general practitioner, not the organization that manages the record",
-            "Patient.generalPractitioner", gp_match, gp_present, frozenset({"identifier", "missing"}),
-            targets=GENERAL_PRACTITIONER_TYPES, chain=gp_chain,
+            "Patient.generalPractitioner",
+            gp_match,
+            gp_present,
+            frozenset({"identifier", "missing"}),
+            targets=GENERAL_PRACTITIONER_TYPES,
+            chain=gp_chain,
             chain_targets={t: _registry_of(t) for t in GENERAL_PRACTITIONER_TYPES},
-            sort=gp_sort, example="Practitioner/30001",
+            sort=gp_sort,
+            example="Practitioner/30001",
             modifier_docs={
                 "identifier": "`:identifier` — match the logical identifier of a practitioner that has no resource here."
             },
         ),
         SearchParam(
-            "given", "string", "A portion of the given name of the patient", "Patient.name.given",
-            _given_match, lambda ctx: _exists(_N, _N.given.is_not(None)), _STRING, example="Peter",
+            "given",
+            "string",
+            "A portion of the given name of the patient",
+            "Patient.name.given",
+            _given_match,
+            lambda ctx: _exists(_N, _N.given.is_not(None)),
+            _STRING,
+            example="Peter",
         ),
         SearchParam(
-            "identifier", "token", "A patient identifier", "Patient.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="http://hospital.example.org/mrn|MRN-12345",
+            "identifier",
+            "token",
+            "A patient identifier",
+            "Patient.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="http://hospital.example.org/mrn|MRN-12345",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         SearchParam(
-            "language", "token", "Language code (irrespective of use value)", "Patient.communication.language",
-            _language_match, lambda ctx: _exists(_C),
+            "language",
+            "token",
+            "Language code (irrespective of use value)",
+            "Patient.communication.language",
+            _language_match,
+            lambda ctx: _exists(_C),
             frozenset({"text", "not", "in", "not-in", "above", "below", "missing"}),
-            sort=lambda: _child_sort(_C.code, _C), example="urn:ietf:bcp:47|en",
+            sort=lambda: _child_sort(_C.code, _C),
+            example="urn:ietf:bcp:47|en",
         ),
         SearchParam(
-            "link", "reference", "All patients linked to the given patient", "Patient.link.other",
-            link_match, link_present, frozenset({"identifier", "missing"}),
-            targets=LINK_TYPES, chain=link_chain,
-            chain_targets={"Patient": _registry_of("Patient"), "RelatedPerson": _registry_of("RelatedPerson")},
-            sort=link_sort, example="Patient/10002",
+            "link",
+            "reference",
+            "All patients linked to the given patient",
+            "Patient.link.other",
+            link_match,
+            link_present,
+            frozenset({"identifier", "missing"}),
+            targets=LINK_TYPES,
+            chain=link_chain,
+            chain_targets={
+                "Patient": _registry_of("Patient"),
+                "RelatedPerson": _registry_of("RelatedPerson"),
+            },
+            sort=link_sort,
+            example="Patient/10002",
             modifier_docs={
                 "identifier": "`:identifier` — match the logical identifier of a linked patient that has no resource here."
             },
         ),
         SearchParam(
-            "name", "string",
+            "name",
+            "string",
             "A server defined search that may match any of the string fields in the HumanName, including "
             "family, given, prefix, suffix, and/or text",
-            "Patient.name", _name_match, lambda ctx: _exists(_N), _STRING, example="Chalmers",
+            "Patient.name",
+            _name_match,
+            lambda ctx: _exists(_N),
+            _STRING,
+            example="Chalmers",
         ),
         SearchParam(
-            "organization", "reference", "The organization that is the custodian of the patient record",
-            "Patient.managingOrganization", _organization_match, _organization_present,
-            frozenset({"identifier", "missing"}), targets=("Organization",), chain=_organization_chain,
+            "organization",
+            "reference",
+            "The organization that is the custodian of the patient record",
+            "Patient.managingOrganization",
+            _organization_match,
+            _organization_present,
+            frozenset({"identifier", "missing"}),
+            targets=("Organization",),
+            chain=_organization_chain,
             chain_targets={"Organization": _organization_registry},
-            sort=lambda: P.managing_organization_id, example="Organization/190001",
+            sort=lambda: P.managing_organization_id,
+            example="Organization/190001",
         ),
         SearchParam(
-            "phone", "token", "A value in a phone contact (ContactPoint.value where system = phone)",
-            "Patient.telecom.where(system='phone')", _telecom_match("phone"), _telecom_present("phone"),
-            _TELECOM, example="555-9988",
+            "phone",
+            "token",
+            "A value in a phone contact (ContactPoint.value where system = phone)",
+            "Patient.telecom.where(system='phone')",
+            _telecom_match("phone"),
+            _telecom_present("phone"),
+            _TELECOM,
+            example="555-9988",
         ),
         SearchParam(
-            "phonetic", "string",
+            "phonetic",
+            "string",
             "A portion of either family or given name using some kind of phonetic matching algorithm "
             "(American Soundex, word by word; the first letter must match)",
-            "Patient.name", _phonetic_match, lambda ctx: _exists(_N, _N.phonetic.is_not(None)), example="Chalmurs",
+            "Patient.name",
+            _phonetic_match,
+            lambda ctx: _exists(_N, _N.phonetic.is_not(None)),
+            example="Chalmurs",
         ),
         SearchParam(
-            "telecom", "token",
+            "telecom",
+            "token",
             "The value in any kind of telecom details of the patient (ContactPoint.value; `use|value` also matches the use)",
-            "Patient.telecom", _telecom_match(None), _telecom_present(None), _TELECOM, example="555-9988",
+            "Patient.telecom",
+            _telecom_match(None),
+            _telecom_present(None),
+            _TELECOM,
+            example="555-9988",
         ),
     ]
 
@@ -636,8 +906,17 @@ def patient_search() -> SearchRegistry:
         # deceased[x] is a choice, so each concrete name is listed.
         summary_elements=frozenset(
             {
-                "identifier", "active", "name", "telecom", "gender", "birthDate", "deceasedBoolean",
-                "deceasedDateTime", "address", "managingOrganization", "link",
+                "identifier",
+                "active",
+                "name",
+                "telecom",
+                "gender",
+                "birthDate",
+                "deceasedBoolean",
+                "deceasedDateTime",
+                "address",
+                "managingOrganization",
+                "link",
             }
         ),
         # One include per target type, so `_include=Patient:general-practitioner`
@@ -645,39 +924,84 @@ def patient_search() -> SearchRegistry:
         # just the Organizations. A RelatedPerson isn't a resource on this server.
         includes=(
             *(
-                IncludeTarget("Patient", "general-practitioner", t, _include_via_reference("general-practitioner", t))
+                IncludeTarget(
+                    "Patient",
+                    "general-practitioner",
+                    t,
+                    _include_via_reference("general-practitioner", t),
+                )
                 for t in GENERAL_PRACTITIONER_TYPES
             ),
-            IncludeTarget("Patient", "organization", "Organization", _include_organization),
-            IncludeTarget("Patient", "link", "Patient", _include_via_reference("link", "Patient")),
-            IncludeTarget("Patient", "link", "RelatedPerson", _include_via_reference("link", "RelatedPerson")),
+            IncludeTarget(
+                "Patient", "organization", "Organization", _include_organization
+            ),
+            IncludeTarget(
+                "Patient", "link", "Patient", _include_via_reference("link", "Patient")
+            ),
+            IncludeTarget(
+                "Patient",
+                "link",
+                "RelatedPerson",
+                _include_via_reference("link", "RelatedPerson"),
+            ),
         ),
         # Patients that link to these patients; the reverses for
         # general-practitioner / organization are declared on Practitioner,
         # PractitionerRole and Organization.
         revincludes=(
-            *participant_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
-            *actor_response_revincludes('Patient', lambda p: p.patient_id, ('actor', 'patient')),
+            *participant_revincludes(
+                "Patient", lambda p: p.patient_id, ("actor", "patient")
+            ),
+            *actor_response_revincludes(
+                "Patient", lambda p: p.patient_id, ("actor", "patient")
+            ),
             *subject_encounter_revincludes(lambda p: p.patient_id),
             *patient_allergy_revincludes(lambda p: p.patient_id),
             *subject_condition_revincludes(lambda p: p.patient_id),
-            *asserter_condition_revincludes('Patient', lambda p: p.patient_id),
+            *asserter_condition_revincludes("Patient", lambda p: p.patient_id),
             *subject_procedure_revincludes(lambda p: p.patient_id),
-            *subject_report_revincludes('Patient', lambda p: p.patient_id, ('subject', 'patient')),
-            *column_immunization_revincludes('patient', 'patient', 'Patient', lambda p: p.patient_id),
+            *subject_report_revincludes(
+                "Patient", lambda p: p.patient_id, ("subject", "patient")
+            ),
+            *column_immunization_revincludes(
+                "patient", "patient", "Patient", lambda p: p.patient_id
+            ),
             *patient_recommendation_revincludes(lambda p: p.patient_id),
             *patient_history_revincludes(lambda p: p.patient_id),
-            *column_risk_revincludes(('subject', 'patient'), 'subject', 'Patient', lambda p: p.patient_id),
-            *column_impression_revincludes(('subject', 'patient'), 'subject', 'Patient', lambda p: p.patient_id),
-            *column_issue_revincludes(('patient',), 'patient', 'Patient', lambda p: p.patient_id),
-            *column_observation_revincludes(('subject', 'patient'), 'subject', 'Patient', lambda p: p.patient_id),
-            *reference_observation_revincludes('performer', 'Patient', lambda p: p.patient_id),
-            *column_evaluation_revincludes('patient', 'patient', 'Patient', lambda p: p.patient_id),
-            *performer_procedure_revincludes('Patient', lambda p: p.patient_id),
-            *actor_allergy_revincludes('Patient', lambda p: p.patient_id),
-            IncludeTarget("RelatedPerson", "patient", "Patient", _revinclude_related_persons, reverse=True),
+            *column_risk_revincludes(
+                ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
+            ),
+            *column_impression_revincludes(
+                ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
+            ),
+            *column_issue_revincludes(
+                ("patient",), "patient", "Patient", lambda p: p.patient_id
+            ),
+            *column_observation_revincludes(
+                ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
+            ),
+            *reference_observation_revincludes(
+                "performer", "Patient", lambda p: p.patient_id
+            ),
+            *column_evaluation_revincludes(
+                "patient", "patient", "Patient", lambda p: p.patient_id
+            ),
+            *performer_procedure_revincludes("Patient", lambda p: p.patient_id),
+            *actor_allergy_revincludes("Patient", lambda p: p.patient_id),
             IncludeTarget(
-                "Patient", "link", "Patient", revinclude_patients_via_reference("link", "Patient", lambda p: p.patient_id),
+                "RelatedPerson",
+                "patient",
+                "Patient",
+                _revinclude_related_persons,
+                reverse=True,
+            ),
+            IncludeTarget(
+                "Patient",
+                "link",
+                "Patient",
+                revinclude_patients_via_reference(
+                    "link", "Patient", lambda p: p.patient_id
+                ),
                 reverse=True,
             ),
         ),

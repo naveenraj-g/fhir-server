@@ -17,7 +17,12 @@ from __future__ import annotations
 
 from app.fhir.search import normalize
 from app.models.endpoint import EndpointIdentifier, EndpointPayloadType, EndpointStatus
-from app.repository._content_index import identifier_rows, reference_columns, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    reference_columns,
+    relative,
+    type_rows,
+)
 
 from ._shared import _parse_org_ref
 
@@ -29,11 +34,15 @@ def organization_references(document: dict) -> list[tuple[str, str]]:
     """(element label, relative Organization reference) for every local
     Reference(Organization): managingOrganization and identifier.assigner."""
     refs = []
-    managing = relative((document.get("managingOrganization") or {}).get("reference"), "Organization")
+    managing = relative(
+        (document.get("managingOrganization") or {}).get("reference"), "Organization"
+    )
     if managing:
         refs.append(("managingOrganization", managing))
     for identifier in document.get("identifier") or []:
-        ref = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        ref = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if ref:
             refs.append(("identifier.assigner", ref))
     return refs
@@ -55,7 +64,10 @@ def index_columns(document: dict) -> dict:
         "name": document.get("name"),
         "name_norm": normalize(document.get("name")),
         **reference_columns(
-            "managing_organization", document.get("managingOrganization"), "Organization", _parse_org_ref
+            "managing_organization",
+            document.get("managingOrganization"),
+            "Organization",
+            _parse_org_ref,
         ),
     }
 
@@ -64,9 +76,13 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by EndpointModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(EndpointIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(EndpointIdentifier, i)
         ],
         "payload_types": [
-            r for cc in document.get("payloadType") or [] for r in type_rows(EndpointPayloadType, cc)
+            r
+            for cc in document.get("payloadType") or []
+            for r in type_rows(EndpointPayloadType, cc)
         ],
     }

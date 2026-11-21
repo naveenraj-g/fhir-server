@@ -98,4 +98,6 @@ class SpecimenAccessionIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, B
         index=True,
     )
 
-    specimen = relationship("SpecimenModel", back_populates="accession_identifier_type_codings")
+    specimen = relationship(
+        "SpecimenModel", back_populates="accession_identifier_type_codings"
+    )

@@ -11,7 +11,10 @@ from app.fhir.validation import validate_resource
 from app.models.healthcare_service import HealthcareServiceModel
 from app.repository.healthcare_service import HealthcareServiceRepository
 from app.repository.healthcare_service.search import healthcare_service_search
-from app.schemas.healthcare_service import HealthcareServiceCreateSchema, HealthcareServicePatchSchema
+from app.schemas.healthcare_service import (
+    HealthcareServiceCreateSchema,
+    HealthcareServicePatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -59,7 +62,10 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
     ) -> tuple[
-        SearchRequest, list[HealthcareServiceModel], int | None, list[HealthcareServiceModel]
+        SearchRequest,
+        list[HealthcareServiceModel],
+        int | None,
+        list[HealthcareServiceModel],
     ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the HealthcareService search
@@ -107,7 +113,9 @@ class _CoreMixin:
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "HealthcareService")
         await self._validate_base_r4(document, org_id)
-        healthcare_service = await self.repository.create_full(document, org_id, created_by)
+        healthcare_service = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "HealthcareService created",
             extra={
@@ -145,12 +153,16 @@ class _CoreMixin:
             raise NotFoundError("HealthcareService not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_healthcare_service(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_healthcare_service(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(healthcare_service_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            healthcare_service_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("HealthcareService not found")
         logger.info(
@@ -203,7 +215,9 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("HealthcareService", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "HealthcareService", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "HealthcareService failed base R4 validation",

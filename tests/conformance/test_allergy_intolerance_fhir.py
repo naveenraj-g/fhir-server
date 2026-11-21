@@ -49,23 +49,44 @@ def _with(**elements) -> AllergyIntoleranceModel:
 
 
 REACTION = {
-    "substance": {"coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}], "text": "Cashew"},
-    "manifestation": [{"coding": [{"system": SCT, "code": "64305001", "display": "Urticaria"}]}, {"text": "Rash"}],
+    "substance": {
+        "coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}],
+        "text": "Cashew",
+    },
+    "manifestation": [
+        {"coding": [{"system": SCT, "code": "64305001", "display": "Urticaria"}]},
+        {"text": "Rash"},
+    ],
     "description": "Severe hives",
     "onset": "2023-01-15T09:40:00Z",
     "severity": "severe",
     "exposureRoute": {"coding": [{"system": SCT, "code": "26643006"}]},
-    "note": [{"authorString": "Nurse", "time": "2023-01-15T10:00:00Z", "text": "Resolved after epinephrine."}],
+    "note": [
+        {
+            "authorString": "Nurse",
+            "time": "2023-01-15T10:00:00Z",
+            "text": "Resolved after epinephrine.",
+        }
+    ],
 }
 
 CASES = {
     "minimal": _with(),
-    "updated_by_and_updated_at": _allergy({"patient": PATIENT}, updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _allergy(
+        {"patient": PATIENT}, updated_by="u-other", updated_at=D
+    ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "PRN",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/allergy-id",
                 "value": "AI-1",
                 "period": {"start": "2020-01-01"},
@@ -73,7 +94,9 @@ CASES = {
             }
         ]
     ),
-    "clinical_status": _with(clinicalStatus={"coding": [{"system": CLIN, "code": "active"}]}),
+    "clinical_status": _with(
+        clinicalStatus={"coding": [{"system": CLIN, "code": "active"}]}
+    ),
     **{
         f"clinical_status_{c}": _with(
             clinicalStatus={"coding": [{"system": CLIN, "code": c}]},
@@ -84,23 +107,55 @@ CASES = {
     **{
         f"verification_status_{v}": _with(
             verificationStatus={"coding": [{"system": VERIF, "code": v}]},
-            **({} if v == "entered-in-error" else {"clinicalStatus": {"coding": [{"system": CLIN, "code": "active"}]}}),
+            **(
+                {}
+                if v == "entered-in-error"
+                else {
+                    "clinicalStatus": {"coding": [{"system": CLIN, "code": "active"}]}
+                }
+            ),
         )
         for v in ("unconfirmed", "confirmed", "refuted", "entered-in-error")
     },
     **{f"type_{t}": _with(type=t) for t in ("allergy", "intolerance")},
     "category_all": _with(category=["food", "medication", "environment", "biologic"]),
-    **{f"criticality_{c}": _with(criticality=c) for c in ("low", "high", "unable-to-assess")},
-    "code": _with(code={"coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}], "text": "Cashew"}),
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
-    "patient_logical": _allergy({"patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}),
-    "patient_absolute_url": _allergy({"patient": {"reference": "https://other.example.org/fhir/Patient/9"}}),
+    **{
+        f"criticality_{c}": _with(criticality=c)
+        for c in ("low", "high", "unable-to-assess")
+    },
+    "code": _with(
+        code={
+            "coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}],
+            "text": "Cashew",
+        }
+    ),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
+    "patient_logical": _allergy(
+        {"patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}
+    ),
+    "patient_absolute_url": _allergy(
+        {"patient": {"reference": "https://other.example.org/fhir/Patient/9"}}
+    ),
     "encounter": _with(encounter={"reference": "Encounter/20001"}),
     "onset_date_time": _with(onsetDateTime="2023-01-15T09:30:00Z"),
     "onset_date_time_partial": _with(onsetDateTime="2023-01"),
-    "onset_age": _with(onsetAge={"value": 12, "unit": "years", "system": "http://unitsofmeasure.org", "code": "a"}),
+    "onset_age": _with(
+        onsetAge={
+            "value": 12,
+            "unit": "years",
+            "system": "http://unitsofmeasure.org",
+            "code": "a",
+        }
+    ),
     "onset_period": _with(onsetPeriod={"start": "2020-01-01", "end": "2020-02-01"}),
-    "onset_range": _with(onsetRange={"low": {"value": 5, "unit": "years"}, "high": {"value": 10, "unit": "years"}}),
+    "onset_range": _with(
+        onsetRange={
+            "low": {"value": 5, "unit": "years"},
+            "high": {"value": 10, "unit": "years"},
+        }
+    ),
     "onset_string": _with(onsetString="as a child"),
     "recorded_date": _with(recordedDate="2023-01-15T10:00:00Z"),
     **{
@@ -111,17 +166,39 @@ CASES = {
         f"asserter_{t}": _with(asserter={"reference": f"{t}/1"})
         for t in ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
     },
-    "asserter_logical": _with(asserter={"identifier": {"system": "urn:who", "value": "W-1"}}),
+    "asserter_logical": _with(
+        asserter={"identifier": {"system": "urn:who", "value": "W-1"}}
+    ),
     "last_occurrence": _with(lastOccurrence="2023-06-01T12:00:00Z"),
     "note_author_reference": _with(
-        note=[{"authorReference": {"reference": "Practitioner/30001"}, "time": "2023-01-15T10:05:00Z", "text": "Hives"}]
+        note=[
+            {
+                "authorReference": {"reference": "Practitioner/30001"},
+                "time": "2023-01-15T10:05:00Z",
+                "text": "Hives",
+            }
+        ]
     ),
     "note_author_string": _with(note=[{"authorString": "Dr Smith", "text": "Hives"}]),
     "reaction": _with(reaction=[REACTION]),
     "reaction_minimal": _with(reaction=[{"manifestation": [{"text": "Rash"}]}]),
-    "reactions_two": _with(reaction=[REACTION, {"manifestation": [{"text": "Nausea"}], "severity": "mild"}]),
-    **{f"reaction_severity_{s}": _with(reaction=[{"manifestation": [{"text": "x"}], "severity": s}]) for s in ("mild", "moderate", "severe")},
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "reactions_two": _with(
+        reaction=[REACTION, {"manifestation": [{"text": "Nausea"}], "severity": "mild"}]
+    ),
+    **{
+        f"reaction_severity_{s}": _with(
+            reaction=[{"manifestation": [{"text": "x"}], "severity": s}]
+        )
+        for s in ("mild", "moderate", "severe")
+    },
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:ai", "value": "AI-1"}],
         clinicalStatus={"coding": [{"system": CLIN, "code": "active"}]},
@@ -144,15 +221,24 @@ CASES = {
 
 @pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
 def test_allergy_intolerance_mapper_emits_valid_fhir_r4(case):
-    assert_valid(allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(CASES[case]))
+    assert_valid(
+        allergy_pb2.AllergyIntolerance, to_fhir_allergy_intolerance(CASES[case])
+    )
 
 
 def test_mapper_serves_content_unchanged():
-    content = {"patient": PATIENT, "type": "allergy", "category": ["food"], "criticality": "high"}
+    content = {
+        "patient": PATIENT,
+        "type": "allergy",
+        "category": ["food"],
+        "criticality": "high",
+    }
     out = to_fhir_allergy_intolerance(_allergy(content))
     assert out["resourceType"] == "AllergyIntolerance"
     assert out["id"] == "260001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -170,7 +256,10 @@ def test_mapper_serves_content_unchanged():
     [
         ("misspelled element", {"typo": "allergy"}),
         ("patient as string not a Reference", {"patient": "Patient/1"}),
-        ("clinicalStatus as string not a CodeableConcept", {"clinicalStatus": "active"}),
+        (
+            "clinicalStatus as string not a CodeableConcept",
+            {"clinicalStatus": "active"},
+        ),
         ("category as string not a list", {"category": "food"}),
         ("category with an unknown code", {"category": ["cosmic"]}),
         ("type as number", {"type": 1}),
@@ -180,8 +269,14 @@ def test_mapper_serves_content_unchanged():
         ("onsetDateTime not a dateTime", {"onsetDateTime": "yesterday"}),
         ("lastOccurrence not a dateTime", {"lastOccurrence": "soon"}),
         ("reaction as object not a list", {"reaction": {"severity": "mild"}}),
-        ("reaction severity with an unknown code", {"reaction": [{"manifestation": [{"text": "x"}], "severity": "dire"}]}),
-        ("manifestation as object not a list", {"reaction": [{"manifestation": {"text": "x"}}]}),
+        (
+            "reaction severity with an unknown code",
+            {"reaction": [{"manifestation": [{"text": "x"}], "severity": "dire"}]},
+        ),
+        (
+            "manifestation as object not a list",
+            {"reaction": [{"manifestation": {"text": "x"}}]},
+        ),
         ("note as object not a list", {"note": {"text": "x"}}),
         ("onsetAge value as string", {"onsetAge": {"value": "twelve"}}),
         ("identifier as object not a list", {"identifier": {"value": "x"}}),
@@ -190,7 +285,12 @@ def test_mapper_serves_content_unchanged():
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "AllergyIntolerance", "id": "260001", "patient": PATIENT, **broken}
+    payload = {
+        "resourceType": "AllergyIntolerance",
+        "id": "260001",
+        "patient": PATIENT,
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(
             fhir_json_text(payload), allergy_pb2.AllergyIntolerance, validate=True

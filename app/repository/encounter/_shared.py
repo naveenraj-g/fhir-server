@@ -15,7 +15,13 @@ __all__ = [
 ]
 
 # Relationship attributes the search index owns — every one is rebuilt on each write.
-INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references", "participants", "locations")
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "tokens",
+    "references",
+    "participants",
+    "locations",
+)
 
 # Of the three Encounter.participant.individual target types, these are
 # resources on this server, so a relative reference to one is existence-checked.
@@ -28,7 +34,9 @@ def _with_relationships(stmt):
     """Eager-load the search-index child rows. Only needed when a write is
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from EncounterModel.content."""
-    return stmt.options(*(selectinload(getattr(EncounterModel, rel)) for rel in INDEX_RELATIONSHIPS))
+    return stmt.options(
+        *(selectinload(getattr(EncounterModel, rel)) for rel in INDEX_RELATIONSHIPS)
+    )
 
 
 def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:

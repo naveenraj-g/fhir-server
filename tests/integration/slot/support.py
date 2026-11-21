@@ -41,13 +41,34 @@ def full_body(schedule_id: int) -> dict:
             {
                 "system": SLOT_IDS,
                 "value": "SL-1001",
-                "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
+                "assigner": {
+                    "identifier": {
+                        "system": "urn:external-registry",
+                        "value": "EXTERNAL-1",
+                    }
+                },
             }
         ],
-        serviceCategory=[{"coding": [{"system": CAT, "code": "17", "display": "General Practice"}], "text": "General"}],
-        serviceType=[{"coding": [{"system": TYPE, "code": "124", "display": "General Practice"}]}],
-        specialty=[{"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}],
-        appointmentType={"coding": [{"system": APPT, "code": "ROUTINE", "display": "Routine appointment"}], "text": "Routine"},
+        serviceCategory=[
+            {
+                "coding": [
+                    {"system": CAT, "code": "17", "display": "General Practice"}
+                ],
+                "text": "General",
+            }
+        ],
+        serviceType=[
+            {"coding": [{"system": TYPE, "code": "124", "display": "General Practice"}]}
+        ],
+        specialty=[
+            {"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}
+        ],
+        appointmentType={
+            "coding": [
+                {"system": APPT, "code": "ROUTINE", "display": "Routine appointment"}
+            ],
+            "text": "Routine",
+        },
         overbooked=False,
         comment="Bring previous reports",
     )

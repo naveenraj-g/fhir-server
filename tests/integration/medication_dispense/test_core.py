@@ -58,7 +58,9 @@ async def test_create_medication_dispense_minimal(client):
     assert_plain_medication_dispense(data)
     assert data["subject"]["reference"] == f"Patient/{p_id}"
     assert data["status"] == "completed"
-    assert data["medication_codeable_concept"]["text"] == "Amoxicillin 500 MG Oral Tablet"
+    assert (
+        data["medication_codeable_concept"]["text"] == "Amoxicillin 500 MG Oral Tablet"
+    )
     assert data["quantity"]["value"] == 30.0
     assert data["days_supply"]["value"] == 10.0
 
@@ -87,7 +89,10 @@ async def test_create_medication_dispense_full(client):
     assert len(data["note"]) == 1
     assert data["note"][0]["text"] == "Patient advised to take with food."
     assert len(data["dosage_instruction"]) == 1
-    assert data["dosage_instruction"][0]["text"] == "Take 1 tablet by mouth 3 times daily with meals"
+    assert (
+        data["dosage_instruction"][0]["text"]
+        == "Take 1 tablet by mouth 3 times daily with meals"
+    )
     assert data["substitution"] is not None
     assert data["substitution"]["was_substituted"] is True
     assert data["substitution"]["type"]["text"] == "Generic"
@@ -187,9 +192,7 @@ async def test_patch_medication_dispense_fields(client):
 
 async def test_patch_medication_dispense_sublists_replaced(client):
     p_id = await create_test_patient(client)
-    created = await create_medication_dispense(
-        client, full_medication_dispense(p_id)
-    )
+    created = await create_medication_dispense(client, full_medication_dispense(p_id))
     md_id = created["id"]
     assert len(created["note"]) == 1
 
@@ -337,9 +340,7 @@ async def test_medication_dispense_cross_org_isolation(client):
         assert resp.status_code == 404, resp.text
         assert_operation_outcome(resp.json(), 404, resp.status_code)
 
-        patch_resp = await client.patch(
-            f"{BASE}/{md_id}", json={"status": "stopped"}
-        )
+        patch_resp = await client.patch(f"{BASE}/{md_id}", json={"status": "stopped"})
         assert patch_resp.status_code == 404
 
         del_resp = await client.delete(f"{BASE}/{md_id}")

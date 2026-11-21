@@ -6,15 +6,23 @@ datatypes), and every response is FHIR R4 too."""
 # The resources an ImmunizationRecommendation points at (and that point back at it) are
 # created through their own routers.
 from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
-from tests.integration.immunization.support import create_immunization, immunization_body  # noqa: F401
-from tests.integration.immunization_evaluation.support import create_evaluation, evaluation_body  # noqa: F401
+from tests.integration.immunization.support import (
+    create_immunization,
+    immunization_body,
+)  # noqa: F401
+from tests.integration.immunization_evaluation.support import (
+    create_evaluation,
+    evaluation_body,
+)  # noqa: F401
 from tests.integration.patient.support import create_patient  # noqa: F401
 from tests.integration.practitioner_role.support import create_organization  # noqa: F401
 
 BASE = "/api/fhir/v1/immunization-recommendations"
 API = "/api/fhir/v1"
 
-RECOMMENDATION_IDS = "https://fhir-server.dev/fhir/identifier-system/immunization-recommendation-id"
+RECOMMENDATION_IDS = (
+    "https://fhir-server.dev/fhir/identifier-system/immunization-recommendation-id"
+)
 CVX = "http://hl7.org/fhir/sid/cvx"
 SCT = "http://snomed.info/sct"
 V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
@@ -28,7 +36,11 @@ def status(code: str = "due", **extra) -> dict:
 
 
 def vaccine(code: str = "140", display: str | None = None) -> dict:
-    return {"coding": [{"system": CVX, "code": code, **({"display": display} if display else {})}]}
+    return {
+        "coding": [
+            {"system": CVX, "code": code, **({"display": display} if display else {})}
+        ]
+    }
 
 
 def entry(**extra) -> dict:
@@ -40,12 +52,20 @@ def entry(**extra) -> dict:
 def recommendation_body(patient_id: int | None = None, **extra) -> dict:
     """A valid minimal ImmunizationRecommendation: R4 requires `patient`, `date` and a
     `recommendation`. With no patient the reference is an absolute URL (not existence-checked)."""
-    patient = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    patient = {
+        "reference": f"Patient/{patient_id}"
+        if patient_id
+        else "https://other.example.org/fhir/Patient/1"
+    }
     return {"patient": patient, "date": DATE, "recommendation": [entry()], **extra}
 
 
 def full_body(
-    patient_id: int, organization_id: int, immunization_id: int, condition_id: int, evaluation_id: int
+    patient_id: int,
+    organization_id: int,
+    immunization_id: int,
+    condition_id: int,
+    evaluation_id: int,
 ) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return recommendation_body(
@@ -63,13 +83,25 @@ def full_body(
         recommendation=[
             {
                 "vaccineCode": [vaccine("140", "Influenza vaccine")],
-                "targetDisease": {"coding": [{"system": SCT, "code": "6142004", "display": "Influenza"}]},
+                "targetDisease": {
+                    "coding": [
+                        {"system": SCT, "code": "6142004", "display": "Influenza"}
+                    ]
+                },
                 "contraindicatedVaccineCode": [vaccine("99")],
                 "forecastStatus": status("due", display="Due"),
                 "forecastReason": [{"text": "Seasonal"}],
                 "dateCriterion": [
                     {
-                        "code": {"coding": [{"system": "http://loinc.org", "code": "30980-7", "display": "Date vaccine due"}]},
+                        "code": {
+                            "coding": [
+                                {
+                                    "system": "http://loinc.org",
+                                    "code": "30980-7",
+                                    "display": "Date vaccine due",
+                                }
+                            ]
+                        },
                         "value": "2023-06-01T00:00:00Z",
                     }
                 ],

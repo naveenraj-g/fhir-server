@@ -8,7 +8,13 @@ from app.core.database import FHIRBase as Base
 # PlanDefinition | Questionnaire | ActivityDefinition | Measure | OperationDefinition).
 REFERENCE_PARAMS = {"instantiates-canonical": "instantiatesCanonical"}
 REFERENCE_TYPES = {
-    "instantiates-canonical": ("PlanDefinition", "Questionnaire", "ActivityDefinition", "Measure", "OperationDefinition"),
+    "instantiates-canonical": (
+        "PlanDefinition",
+        "Questionnaire",
+        "ActivityDefinition",
+        "Measure",
+        "OperationDefinition",
+    ),
 }
 
 
@@ -31,14 +37,23 @@ class FamilyMemberHistoryReference(Base):
 
     __tablename__ = "family_member_history_reference"
     __table_args__ = (
-        Index("ix_family_member_history_reference_param_type_id", "param", "reference_type", "reference_id"),
+        Index(
+            "ix_family_member_history_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    family_member_history_pk = Column(BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True)
+    family_member_history_pk = Column(
+        BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)
 
-    family_member_history = relationship("FamilyMemberHistoryModel", back_populates="references")
+    family_member_history = relationship(
+        "FamilyMemberHistoryModel", back_populates="references"
+    )

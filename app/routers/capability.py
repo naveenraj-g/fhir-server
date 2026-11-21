@@ -25,9 +25,13 @@ router = APIRouter(tags=["Capability"])
         "sortable), and the supported `_include` / `_revinclude` targets. Only resources "
         "that run on the FHIR R4 search engine are listed."
     ),
-    responses={200: {"content": {"application/fhir+json": {"schema": {"type": "object"}}}}},
+    responses={
+        200: {"content": {"application/fhir+json": {"schema": {"type": "object"}}}}
+    },
 )
 async def get_capability_statement(request: Request):
-    logger.info("Get CapabilityStatement", extra={"event": "route.get_capability_statement"})
+    logger.info(
+        "Get CapabilityStatement", extra={"event": "route.get_capability_statement"}
+    )
     base = str(request.url_for("get_capability_statement")).rsplit("/metadata", 1)[0]
     return fhir_response(build_capability_statement(base))

@@ -5,7 +5,6 @@ from app.services.procedure import ProcedureService
 
 
 class ProcedureContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     procedure_repository = providers.Factory(

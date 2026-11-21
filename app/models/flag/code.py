@@ -11,8 +11,6 @@ class FlagCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
     __tablename__ = "flag_code_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    flag_pk = Column(
-        BigInteger, ForeignKey("flag.id"), nullable=False, index=True
-    )
+    flag_pk = Column(BigInteger, ForeignKey("flag.id"), nullable=False, index=True)
 
     flag = relationship("FlagModel", back_populates="code_codings")

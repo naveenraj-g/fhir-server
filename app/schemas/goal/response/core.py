@@ -50,20 +50,17 @@ class FHIRGoalSchema(BaseModel):
         ..., description="Code or text describing the goal."
     )
     subject: FHIRReference = Field(
-        ..., description="Who this goal is intended for (Patient | Group | Organization)."
+        ...,
+        description="Who this goal is intended for (Patient | Group | Organization).",
     )
-    startDate: str | None = Field(
-        None, description="When goal pursuit begins (date)."
-    )
+    startDate: str | None = Field(None, description="When goal pursuit begins (date).")
     startCodeableConcept: FHIRCodeableConcept | None = Field(
         None, description="When goal pursuit begins (CodeableConcept)."
     )
     target: list[FHIRGoalTarget] | None = Field(
         None, description="Target outcome for the goal."
     )
-    statusDate: str | None = Field(
-        None, description="When goal status took effect."
-    )
+    statusDate: str | None = Field(None, description="When goal status took effect.")
     statusReason: str | None = Field(
         None, description="Reason for current status (string)."
     )
@@ -116,12 +113,8 @@ class PlainGoalResponse(AuditFields):
     achievement_status: PlainGoalCategory | None = Field(
         None, description="Achievement status concept."
     )
-    category: list[PlainGoalCategory] | None = Field(
-        None, description="Categories."
-    )
-    priority: PlainGoalCategory | None = Field(
-        None, description="Priority concept."
-    )
+    category: list[PlainGoalCategory] | None = Field(None, description="Categories.")
+    priority: PlainGoalCategory | None = Field(None, description="Priority concept.")
     description: PlainGoalCategory | None = Field(
         None, description="Description concept."
     )
@@ -144,9 +137,7 @@ class PlainGoalResponse(AuditFields):
     start_codeable_concept: PlainGoalCategory | None = Field(
         None, description="Start codeable concept."
     )
-    target: list[PlainGoalTarget] | None = Field(
-        None, description="Target outcomes."
-    )
+    target: list[PlainGoalTarget] | None = Field(None, description="Target outcomes.")
     status_date: str | None = Field(None, description="Status date.")
     status_reason: str | None = Field(None, description="Status reason string.")
     expressed_by: str | None = Field(
@@ -158,9 +149,7 @@ class PlainGoalResponse(AuditFields):
     expressed_by_type: str | None = Field(
         None, description="ExpressedBy resource type."
     )
-    expressed_by_id: int | None = Field(
-        None, description="ExpressedBy public ID."
-    )
+    expressed_by_id: int | None = Field(None, description="ExpressedBy public ID.")
     expressed_by_identifier_use: str | None = None
     expressed_by_identifier_type_system: str | None = None
     expressed_by_identifier_type_version: str | None = None
@@ -175,9 +164,7 @@ class PlainGoalResponse(AuditFields):
     addresses: list[PlainGoalReference] | None = Field(
         None, description="Addresses references."
     )
-    note: list[PlainGoalNote] | None = Field(
-        None, description="Notes/annotations."
-    )
+    note: list[PlainGoalNote] | None = Field(None, description="Notes/annotations.")
     outcome_code: list[PlainGoalCategory] | None = Field(
         None, description="Outcome codes."
     )
@@ -187,9 +174,7 @@ class PlainGoalResponse(AuditFields):
     identifier: list[PlainGoalIdentifier] | None = Field(
         None, description="Identifier child rows."
     )
-    extension: list[dict] | None = Field(
-        None, description="Extensions."
-    )
+    extension: list[dict] | None = Field(None, description="Extensions.")
 
 
 class PaginatedGoalResponse(BaseModel):

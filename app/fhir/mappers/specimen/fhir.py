@@ -52,7 +52,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -146,7 +148,9 @@ def _fhir_duration(obj, prefix: str) -> dict | None:
         k: v
         for k, v in {
             "value": float(value),
-            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator)) if comparator else None,
+            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator))
+            if comparator
+            else None,
             "unit": getattr(obj, f"{prefix}_unit", None),
             "system": getattr(obj, f"{prefix}_system", None),
             "code": getattr(obj, f"{prefix}_code", None),
@@ -215,7 +219,9 @@ def fhir_specimen_accession_identifier(model: SpecimenModel) -> dict | None:
     if model.accession_identifier_value:
         entry["value"] = model.accession_identifier_value
 
-    type_codings = _fhir_coding_list(getattr(model, "accession_identifier_type_codings", []))
+    type_codings = _fhir_coding_list(
+        getattr(model, "accession_identifier_type_codings", [])
+    )
     if type_codings or model.accession_identifier_type_text:
         t: dict = {}
         if type_codings:
@@ -232,7 +238,9 @@ def fhir_specimen_accession_identifier(model: SpecimenModel) -> dict | None:
             p["end"] = fhir_instant(model.accession_identifier_period_end)
         entry["period"] = p
 
-    assigner = _fhir_reference_with_identifier_fallback(model, "accession_identifier_assigner")
+    assigner = _fhir_reference_with_identifier_fallback(
+        model, "accession_identifier_assigner"
+    )
     if assigner:
         entry["assigner"] = assigner
 
@@ -248,7 +256,9 @@ def fhir_specimen_collection(model: SpecimenModel) -> dict | None:
 
     if model.collection_collected_date_time:
         entry["collectedDateTime"] = fhir_instant(model.collection_collected_date_time)
-    elif model.collection_collected_period_start or model.collection_collected_period_end:
+    elif (
+        model.collection_collected_period_start or model.collection_collected_period_end
+    ):
         p: dict = {}
         if model.collection_collected_period_start:
             p["start"] = fhir_instant(model.collection_collected_period_start)
@@ -326,10 +336,7 @@ def fhir_specimen_container_identifier(i) -> dict:
 def fhir_specimen_container(c) -> dict:
     entry: dict = {}
 
-    identifiers = [
-        fhir_specimen_container_identifier(i)
-        for i in (c.identifiers or [])
-    ]
+    identifiers = [fhir_specimen_container_identifier(i) for i in (c.identifiers or [])]
     identifiers = [i for i in identifiers if i]
     if identifiers:
         entry["identifier"] = identifiers
@@ -433,9 +440,7 @@ def to_fhir_specimen(specimen: SpecimenModel) -> dict:
     if collection:
         result["collection"] = collection
 
-    processings = [
-        fhir_specimen_processing(p) for p in (specimen.processings or [])
-    ]
+    processings = [fhir_specimen_processing(p) for p in (specimen.processings or [])]
     processings = [p for p in processings if p]
     if processings:
         result["processing"] = processings

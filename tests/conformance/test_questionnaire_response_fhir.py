@@ -115,34 +115,32 @@ CASES = {
         ),
     ),
     "answer_value_reference_fallback": (
-        lambda: (
-            _qr(
-                items=[
-                    QuestionnaireResponseItem(
-                        id=1,
-                        questionnaire_response_pk=1,
-                        tenant_id="org-test",
-                        link_id="q1",
-                        text="Prior observation",
-                        created_by="u-test",
-                        created_at=D,
-                    )
-                ],
-                answers=[
-                    QuestionnaireResponseAnswer(
-                        id=1,
-                        questionnaire_response_pk=1,
-                        item_id=1,
-                        tenant_id="org-test",
-                        value_reference_display="Lab Result 99",
-                        value_reference_identifier_system="http://labs.example.org",
-                        value_reference_identifier_value="LAB-99",
-                        value_reference_identifier_use="official",
-                        created_by="u-test",
-                        created_at=D,
-                    )
-                ],
-            )
+        lambda: _qr(
+            items=[
+                QuestionnaireResponseItem(
+                    id=1,
+                    questionnaire_response_pk=1,
+                    tenant_id="org-test",
+                    link_id="q1",
+                    text="Prior observation",
+                    created_by="u-test",
+                    created_at=D,
+                )
+            ],
+            answers=[
+                QuestionnaireResponseAnswer(
+                    id=1,
+                    questionnaire_response_pk=1,
+                    item_id=1,
+                    tenant_id="org-test",
+                    value_reference_display="Lab Result 99",
+                    value_reference_identifier_system="http://labs.example.org",
+                    value_reference_identifier_value="LAB-99",
+                    value_reference_identifier_use="official",
+                    created_by="u-test",
+                    created_at=D,
+                )
+            ],
         )
     )(),
 }

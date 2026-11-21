@@ -5,7 +5,6 @@ from app.services.measure import MeasureService
 
 
 class MeasureContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     measure_repository = providers.Factory(

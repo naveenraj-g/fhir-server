@@ -68,7 +68,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -264,7 +266,9 @@ def fhir_medication_knowledge_cost(c: MedicationKnowledgeCost) -> dict:
     return res
 
 
-def fhir_medication_knowledge_monitoring_program(mp: MedicationKnowledgeMonitoringProgram) -> dict:
+def fhir_medication_knowledge_monitoring_program(
+    mp: MedicationKnowledgeMonitoringProgram,
+) -> dict:
     res: dict = {}
     type_cc = _fhir_codeable_concept(mp.type_codings, mp.type_text)
     if type_cc:
@@ -274,7 +278,9 @@ def fhir_medication_knowledge_monitoring_program(mp: MedicationKnowledgeMonitori
     return res
 
 
-def fhir_medication_knowledge_admin_guideline(ag: MedicationKnowledgeAdminGuideline) -> dict:
+def fhir_medication_knowledge_admin_guideline(
+    ag: MedicationKnowledgeAdminGuideline,
+) -> dict:
     res: dict = {}
     dosages = []
     for d in ag.dosages or []:
@@ -289,7 +295,9 @@ def fhir_medication_knowledge_admin_guideline(ag: MedicationKnowledgeAdminGuidel
     if dosages:
         res["dosage"] = dosages
 
-    ind_cc = _fhir_codeable_concept(ag.indication_codings, ag.indication_codeable_concept_text)
+    ind_cc = _fhir_codeable_concept(
+        ag.indication_codings, ag.indication_codeable_concept_text
+    )
     if ind_cc:
         res["indicationCodeableConcept"] = ind_cc
     ind_ref = _fhir_reference_with_identifier_fallback(ag, "indication")
@@ -299,7 +307,9 @@ def fhir_medication_knowledge_admin_guideline(ag: MedicationKnowledgeAdminGuidel
     chars = []
     for pc in ag.patient_characteristics or []:
         pc_entry: dict = {}
-        c_cc = _fhir_codeable_concept(pc.characteristic_codings, pc.characteristic_codeable_concept_text)
+        c_cc = _fhir_codeable_concept(
+            pc.characteristic_codings, pc.characteristic_codeable_concept_text
+        )
         if c_cc:
             pc_entry["characteristicCodeableConcept"] = c_cc
         c_qty = _fhir_quantity(pc, "characteristic_quantity")
@@ -493,9 +503,7 @@ def to_fhir_medication_knowledge(m: MedicationKnowledgeModel) -> dict:
             fhir_medication_knowledge_regulatory(reg) for reg in (m.regulatory or [])
         ]
         or None,
-        "kinetics": [
-            fhir_medication_knowledge_kinetics(k) for k in (m.kinetics or [])
-        ]
+        "kinetics": [fhir_medication_knowledge_kinetics(k) for k in (m.kinetics or [])]
         or None,
     }
     return {k: v for k, v in res.items() if v is not None}

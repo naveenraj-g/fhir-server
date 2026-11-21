@@ -21,9 +21,7 @@ class TaskIdentifier(TenantAuditMixin, Base):
     __tablename__ = "task_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     use = Column(
         Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True

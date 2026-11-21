@@ -12,7 +12,8 @@ class FHIRReference(BaseModel):
     FHIRIdentifier."""
 
     reference: Optional[str] = Field(
-        None, description="A literal reference to another resource, e.g. 'Organization/100'."
+        None,
+        description="A literal reference to another resource, e.g. 'Organization/100'.",
     )
     display: Optional[str] = Field(
         None, description="Plain-text display alternative for the referenced resource."

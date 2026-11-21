@@ -20,15 +20,39 @@ class MedicationKnowledgeMonographInput(BaseModel):
         None,
         description="Associated documentation about the medication. Reference(DocumentReference | Media).",
     )
-    source_display: str | None = Field(None, description="Display text for source reference.")
-    source_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier — purpose.")
-    source_identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
-    source_identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
-    source_identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
-    source_identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
-    source_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user selected.")
-    source_identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
-    source_identifier_system: str | None = Field(None, description="Fallback identifier — system.")
-    source_identifier_value: str | None = Field(None, description="Fallback identifier — value.")
-    source_identifier_period_start: datetime | None = Field(None, description="Fallback identifier — period start.")
-    source_identifier_period_end: datetime | None = Field(None, description="Fallback identifier — period end.")
+    source_display: str | None = Field(
+        None, description="Display text for source reference."
+    )
+    source_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — purpose."
+    )
+    source_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — type system."
+    )
+    source_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — type version."
+    )
+    source_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — type code."
+    )
+    source_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — type display."
+    )
+    source_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — type user selected."
+    )
+    source_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — type text."
+    )
+    source_identifier_system: str | None = Field(
+        None, description="Fallback identifier — system."
+    )
+    source_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value."
+    )
+    source_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — period start."
+    )
+    source_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — period end."
+    )

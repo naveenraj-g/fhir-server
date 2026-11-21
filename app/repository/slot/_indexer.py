@@ -20,7 +20,12 @@ from functools import partial
 
 from app.fhir.search.values import parse_date
 from app.models.slot import TOKEN_PARAMS, SlotIdentifier, SlotStatus, SlotToken
-from app.repository._content_index import identifier_rows, reference_columns, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    reference_columns,
+    relative,
+    type_rows,
+)
 
 from ._shared import _parse_schedule_ref
 
@@ -38,7 +43,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     if local:
         refs.append(("schedule", "Schedule", local))
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
     return refs
@@ -65,7 +72,9 @@ def index_columns(document: dict) -> dict:
     return {
         "status": status,
         "start": _instant(document.get("start")),
-        **reference_columns("schedule", document.get("schedule"), "Schedule", _parse_schedule_ref),
+        **reference_columns(
+            "schedule", document.get("schedule"), "Schedule", _parse_schedule_ref
+        ),
     }
 
 
@@ -85,6 +94,10 @@ def index_rows(document: dict) -> dict[str, list]:
         for concept in _concepts(document.get(element)):
             tokens.extend(type_rows(model, concept))
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(SlotIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(SlotIdentifier, i)
+        ],
         "tokens": tokens,
     }

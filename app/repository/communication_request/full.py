@@ -105,7 +105,12 @@ async def _add_identifiers(
 
 
 def _add_codings(
-    session, model_cls, communication_request_pk: int, org_id: str, codings, created_by: str
+    session,
+    model_cls,
+    communication_request_pk: int,
+    org_id: str,
+    codings,
+    created_by: str,
 ) -> None:
     for c in codings or []:
         session.add(
@@ -633,9 +638,7 @@ class CommunicationRequestRepository:
                 or "group_identifier_assigner_display" in provided
             ):
                 g_ref = payload.group_identifier_assigner
-                g_type, g_id = (
-                    _parse_assigner_ref(g_ref) if g_ref else (None, None)
-                )
+                g_type, g_id = _parse_assigner_ref(g_ref) if g_ref else (None, None)
                 if g_type and g_id:
                     await _validate_ref(
                         session,
@@ -672,9 +675,7 @@ class CommunicationRequestRepository:
                     _parse_encounter_ref(enc_ref) if enc_ref else (None, None)
                 )
                 if enc_type and enc_id:
-                    await _validate_ref(
-                        session, org_id, enc_type, enc_id, "encounter"
-                    )
+                    await _validate_ref(session, org_id, enc_type, enc_id, "encounter")
                 model.encounter_reference = enc_ref
                 model.encounter_type = enc_type
                 model.encounter_id = enc_id
@@ -687,9 +688,7 @@ class CommunicationRequestRepository:
                     _parse_requester_ref(req_ref) if req_ref else (None, None)
                 )
                 if req_type and req_id:
-                    await _validate_ref(
-                        session, org_id, req_type, req_id, "requester"
-                    )
+                    await _validate_ref(session, org_id, req_type, req_id, "requester")
                 model.requester_reference = req_ref
                 model.requester_type = req_type
                 model.requester_id = req_id
@@ -739,8 +738,7 @@ class CommunicationRequestRepository:
             if "based_on" in provided:
                 await session.execute(
                     delete(CommunicationRequestBasedOn).where(
-                        CommunicationRequestBasedOn.communication_request_pk
-                        == model.id
+                        CommunicationRequestBasedOn.communication_request_pk == model.id
                     )
                 )
                 if payload.based_on:
@@ -792,8 +790,7 @@ class CommunicationRequestRepository:
             if "medium" in provided:
                 await session.execute(
                     delete(CommunicationRequestMedium).where(
-                        CommunicationRequestMedium.communication_request_pk
-                        == model.id
+                        CommunicationRequestMedium.communication_request_pk == model.id
                     )
                 )
                 if payload.medium:
@@ -804,8 +801,7 @@ class CommunicationRequestRepository:
             if "about" in provided:
                 await session.execute(
                     delete(CommunicationRequestAbout).where(
-                        CommunicationRequestAbout.communication_request_pk
-                        == model.id
+                        CommunicationRequestAbout.communication_request_pk == model.id
                     )
                 )
                 if payload.about:
@@ -816,8 +812,7 @@ class CommunicationRequestRepository:
             if "payload" in provided:
                 await session.execute(
                     delete(CommunicationRequestPayload).where(
-                        CommunicationRequestPayload.communication_request_pk
-                        == model.id
+                        CommunicationRequestPayload.communication_request_pk == model.id
                     )
                 )
                 if payload.payload:

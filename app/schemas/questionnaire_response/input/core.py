@@ -45,7 +45,6 @@ class QuestionnaireResponseCreateSchema(BaseModel):
         },
     )
 
-
     extension: list[dict] | None = Field(
         None,
         description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
@@ -55,27 +54,35 @@ class QuestionnaireResponseCreateSchema(BaseModel):
         None, description="A business identifier for this set of answers."
     )
     based_on: list[QuestionnaireResponseBasedOnInput] | None = Field(
-        None, description="A plan, proposal, or order fulfilled in whole or in part by this QuestionnaireResponse."
+        None,
+        description="A plan, proposal, or order fulfilled in whole or in part by this QuestionnaireResponse.",
     )
     part_of: list[QuestionnaireResponsePartOfInput] | None = Field(
-        None, description="A procedure or observation this QuestionnaireResponse was performed as part of."
+        None,
+        description="A procedure or observation this QuestionnaireResponse was performed as part of.",
     )
     questionnaire: str | None = Field(
-        None, description="The Questionnaire this set of answers is for, as a canonical reference (uri)."
+        None,
+        description="The Questionnaire this set of answers is for, as a canonical reference (uri).",
     )
 
     # status (1..1) — required
     status: QuestionnaireResponseStatus = Field(
-        ..., description="in-progress | completed | amended | entered-in-error | stopped."
+        ...,
+        description="in-progress | completed | amended | entered-in-error | stopped.",
     )
 
     subject: QuestionnaireResponseSubjectInput | None = Field(
-        None, description="The subject of the questions (who/what the answers apply to)."
+        None,
+        description="The subject of the questions (who/what the answers apply to).",
     )
     encounter: QuestionnaireResponseEncounterInput | None = Field(
-        None, description="The Encounter during which this QuestionnaireResponse was created."
+        None,
+        description="The Encounter during which this QuestionnaireResponse was created.",
     )
-    authored: datetime | None = Field(None, description="Date the answers were gathered or last changed.")
+    authored: datetime | None = Field(
+        None, description="Date the answers were gathered or last changed."
+    )
     author: QuestionnaireResponseAuthorInput | None = Field(
         None, description="Person who received and recorded the answers."
     )
@@ -105,7 +112,8 @@ class QuestionnaireResponsePatchSchema(BaseModel):
     )
 
     identifier: QuestionnaireResponseIdentifierInput | None = Field(
-        None, description="A business identifier for this set of answers. Set to null to clear."
+        None,
+        description="A business identifier for this set of answers. Set to null to clear.",
     )
     based_on: list[QuestionnaireResponseBasedOnInput] | None = Field(
         None, description="Replaces the full list if supplied."
@@ -113,18 +121,33 @@ class QuestionnaireResponsePatchSchema(BaseModel):
     part_of: list[QuestionnaireResponsePartOfInput] | None = Field(
         None, description="Replaces the full list if supplied."
     )
-    questionnaire: str | None = Field(None, description="Canonical reference to the Questionnaire. Set to null to clear.")
-
-    status: QuestionnaireResponseStatus | None = Field(
-        None, description="in-progress | completed | amended | entered-in-error | stopped."
+    questionnaire: str | None = Field(
+        None,
+        description="Canonical reference to the Questionnaire. Set to null to clear.",
     )
 
-    subject: QuestionnaireResponseSubjectInput | None = Field(None, description="Set to null to clear.")
-    encounter: QuestionnaireResponseEncounterInput | None = Field(None, description="Set to null to clear.")
-    authored: datetime | None = Field(None, description="Date the answers were gathered or last changed.")
-    author: QuestionnaireResponseAuthorInput | None = Field(None, description="Set to null to clear.")
-    source: QuestionnaireResponseSourceInput | None = Field(None, description="Set to null to clear.")
+    status: QuestionnaireResponseStatus | None = Field(
+        None,
+        description="in-progress | completed | amended | entered-in-error | stopped.",
+    )
+
+    subject: QuestionnaireResponseSubjectInput | None = Field(
+        None, description="Set to null to clear."
+    )
+    encounter: QuestionnaireResponseEncounterInput | None = Field(
+        None, description="Set to null to clear."
+    )
+    authored: datetime | None = Field(
+        None, description="Date the answers were gathered or last changed."
+    )
+    author: QuestionnaireResponseAuthorInput | None = Field(
+        None, description="Set to null to clear."
+    )
+    source: QuestionnaireResponseSourceInput | None = Field(
+        None, description="Set to null to clear."
+    )
 
     item: list[QuestionnaireResponseItemInput] | None = Field(
-        None, description="Groups/questions with their answers — replaces the full tree if supplied."
+        None,
+        description="Groups/questions with their answers — replaces the full tree if supplied.",
     )

@@ -41,12 +41,8 @@ class CommunicationRequestBasedOn(TenantAuditMixin, Base):
     reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    reference_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    reference_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     communication_request = relationship(
         "CommunicationRequestModel", back_populates="based_on_list"
@@ -84,12 +80,8 @@ class CommunicationRequestReplaces(TenantAuditMixin, Base):
     reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    reference_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    reference_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     communication_request = relationship(
         "CommunicationRequestModel", back_populates="replaces_list"
@@ -127,12 +119,8 @@ class CommunicationRequestAbout(TenantAuditMixin, Base):
     reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    reference_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    reference_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     communication_request = relationship(
         "CommunicationRequestModel", back_populates="about_list"
@@ -176,12 +164,8 @@ class CommunicationRequestRecipient(TenantAuditMixin, Base):
     reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    reference_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    reference_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     communication_request = relationship(
         "CommunicationRequestModel", back_populates="recipients"
@@ -225,12 +209,8 @@ class CommunicationRequestReasonReference(TenantAuditMixin, Base):
     reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    reference_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    reference_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     communication_request = relationship(
         "CommunicationRequestModel", back_populates="reason_references"

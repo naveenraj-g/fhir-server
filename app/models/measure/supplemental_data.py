@@ -12,7 +12,10 @@ class MeasureSupplementalData(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     code_text = Column(String, nullable=True)
     description = Column(String, nullable=True)
@@ -50,7 +53,9 @@ class MeasureSupplementalDataCodeCoding(FhirCodingMixin, TenantAuditMixin, Base)
         index=True,
     )
 
-    supplemental_data = relationship("MeasureSupplementalData", back_populates="code_codings")
+    supplemental_data = relationship(
+        "MeasureSupplementalData", back_populates="code_codings"
+    )
 
 
 class MeasureSupplementalDataUsage(TenantAuditMixin, Base):

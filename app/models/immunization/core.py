@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import ImmunizationStatus
 
-immunization_id_seq = Sequence("immunization_pub_seq", start=330000, increment=1, metadata=Base.metadata)
+immunization_id_seq = Sequence(
+    "immunization_pub_seq", start=330000, increment=1, metadata=Base.metadata
+)
 
 
 class ImmunizationModel(TenantAuditMixin, Base):
@@ -67,7 +69,13 @@ class ImmunizationModel(TenantAuditMixin, Base):
     is a shared tenant-level entity. No DB-level CHECK constraints."""
 
     __tablename__ = "immunization"
-    __table_args__ = (Index("ix_immunization_occurrence_date", "occurrence_date_start", "occurrence_date_end"),)
+    __table_args__ = (
+        Index(
+            "ix_immunization_occurrence_date",
+            "occurrence_date_start",
+            "occurrence_date_end",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     immunization_id = Column(
@@ -122,11 +130,31 @@ class ImmunizationModel(TenantAuditMixin, Base):
     manufacturer_identifier_system = Column(String, nullable=True)
     manufacturer_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("ImmunizationIdentifier", back_populates="immunization", cascade="all, delete-orphan")
-    tokens = relationship("ImmunizationToken", back_populates="immunization", cascade="all, delete-orphan")
-    protocols = relationship("ImmunizationProtocol", back_populates="immunization", cascade="all, delete-orphan")
-    reactions = relationship("ImmunizationReaction", back_populates="immunization", cascade="all, delete-orphan")
-    performers = relationship("ImmunizationPerformer", back_populates="immunization", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "ImmunizationIdentifier",
+        back_populates="immunization",
+        cascade="all, delete-orphan",
+    )
+    tokens = relationship(
+        "ImmunizationToken", back_populates="immunization", cascade="all, delete-orphan"
+    )
+    protocols = relationship(
+        "ImmunizationProtocol",
+        back_populates="immunization",
+        cascade="all, delete-orphan",
+    )
+    reactions = relationship(
+        "ImmunizationReaction",
+        back_populates="immunization",
+        cascade="all, delete-orphan",
+    )
+    performers = relationship(
+        "ImmunizationPerformer",
+        back_populates="immunization",
+        cascade="all, delete-orphan",
+    )
     reason_references = relationship(
-        "ImmunizationReasonReference", back_populates="immunization", cascade="all, delete-orphan"
+        "ImmunizationReasonReference",
+        back_populates="immunization",
+        cascade="all, delete-orphan",
     )

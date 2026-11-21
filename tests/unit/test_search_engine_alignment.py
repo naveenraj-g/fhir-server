@@ -28,17 +28,25 @@ def test_every_parameter_of_a_registry_uses_a_known_type_and_valid_modifiers(nam
         where = f"{registry.resource_type}.{param.name}"
         assert param.type in PARAM_TYPES, f"{where}: unknown type {param.type!r}"
         extra = set(param.modifiers) - params.MODIFIERS_BY_TYPE[param.type]
-        assert not extra, f"{where} ({param.type}): modifiers {sorted(extra)} are not valid for the type"
+        assert not extra, (
+            f"{where} ({param.type}): modifiers {sorted(extra)} are not valid for the type"
+        )
         if param.type == "reference":
-            assert param.targets, f"{where}: a reference parameter needs its target types"
+            assert param.targets, (
+                f"{where}: a reference parameter needs its target types"
+            )
         else:
-            assert not (param.targets or param.chain_targets), f"{where}: targets/chaining on a non-reference"
+            assert not (param.targets or param.chain_targets), (
+                f"{where}: targets/chaining on a non-reference"
+            )
 
 
 def test_composite_parameters_take_no_modifiers_and_are_not_sortable():
     from app.repository.observation.search import observation_search
 
-    composites = [p for p in observation_search().params.values() if p.type == "composite"]
+    composites = [
+        p for p in observation_search().params.values() if p.type == "composite"
+    ]
     assert len(composites) == 8
     for param in composites:
         assert param.modifiers == frozenset(), param.name

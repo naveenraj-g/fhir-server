@@ -26,7 +26,9 @@ class AppointmentIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named appointment_pk (not appointment_id) so it can't be confused with
     # AppointmentModel.appointment_id, the public sequence id.
-    appointment_pk = Column(BigInteger, ForeignKey("appointment.id"), nullable=False, index=True)
+    appointment_pk = Column(
+        BigInteger, ForeignKey("appointment.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

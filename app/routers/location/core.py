@@ -101,9 +101,7 @@ async def create_location(
 )
 async def get_location(
     request: Request,
-    location_id: int = Path(
-        ..., ge=1, description="Public location identifier."
-    ),
+    location_id: int = Path(..., ge=1, description="Public location identifier."),
     actor: AuthUser = Depends(require_permission("location", "read")),
     location_service: LocationService = Depends(get_location_service),
 ):
@@ -114,9 +112,7 @@ async def get_location(
             "location_id": location_id,
         },
     )
-    loc = await location_service.get_location_scoped(
-        location_id, actor.org_id
-    )
+    loc = await location_service.get_location_scoped(location_id, actor.org_id)
     return fhir_response(location_service._to_fhir(loc))
 
 
@@ -144,9 +140,7 @@ async def get_location(
 async def patch_location(
     payload: LocationPatchSchema,
     request: Request,
-    location_id: int = Path(
-        ..., ge=1, description="Public location identifier."
-    ),
+    location_id: int = Path(..., ge=1, description="Public location identifier."),
     actor: AuthUser = Depends(require_permission("location", "update")),
     location_service: LocationService = Depends(get_location_service),
 ):
@@ -285,9 +279,7 @@ async def search_locations_post(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_location(
-    location_id: int = Path(
-        ..., ge=1, description="Public location identifier."
-    ),
+    location_id: int = Path(..., ge=1, description="Public location identifier."),
     actor: AuthUser = Depends(require_permission("location", "delete")),
     location_service: LocationService = Depends(get_location_service),
 ):

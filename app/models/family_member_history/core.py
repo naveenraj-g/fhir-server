@@ -90,14 +90,22 @@ class FamilyMemberHistoryModel(TenantAuditMixin, Base):
     patient_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "FamilyMemberHistoryIdentifier", back_populates="family_member_history", cascade="all, delete-orphan"
+        "FamilyMemberHistoryIdentifier",
+        back_populates="family_member_history",
+        cascade="all, delete-orphan",
     )
     tokens = relationship(
-        "FamilyMemberHistoryToken", back_populates="family_member_history", cascade="all, delete-orphan"
+        "FamilyMemberHistoryToken",
+        back_populates="family_member_history",
+        cascade="all, delete-orphan",
     )
     references = relationship(
-        "FamilyMemberHistoryReference", back_populates="family_member_history", cascade="all, delete-orphan"
+        "FamilyMemberHistoryReference",
+        back_populates="family_member_history",
+        cascade="all, delete-orphan",
     )
     instantiates_uris = relationship(
-        "FamilyMemberHistoryInstantiatesUri", back_populates="family_member_history", cascade="all, delete-orphan"
+        "FamilyMemberHistoryInstantiatesUri",
+        back_populates="family_member_history",
+        cascade="all, delete-orphan",
     )

@@ -218,5 +218,3 @@ class OrgConceptListResponse(BaseModel):
     limit: int
     offset: int
     data: list[OrgConceptResponse]
-
-

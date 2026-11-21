@@ -65,7 +65,8 @@ logger = get_logger(__name__)
         "`Patient/<id>`, `Encounter/<id>`, `Location/<id>`, `manufacturer`, a performer actor (Practitioner, "
         "PractitionerRole, Organization), a Condition or DiagnosticReport reason, `protocolApplied.authority` and "
         "`identifier.assigner` are rejected with 422 if they do not exist in the caller's org; an absolute URL, an "
-        "Observation reason or reaction detail or a logical reference is stored as sent. " + _CONTENT_NEG
+        "Observation reason or reaction detail or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -199,7 +200,9 @@ async def search_immunizations_post(
         "Search Immunization resources (POST _search)",
         extra={"event": "route.search_immunizations_post"},
     )
-    return await _search(request, await post_query(request), actor, immunization_service)
+    return await _search(
+        request, await post_query(request), actor, immunization_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────

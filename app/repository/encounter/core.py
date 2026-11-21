@@ -22,11 +22,15 @@ class _CoreMixin:
             stmt = select(_M).where(_M.encounter_id == encounter_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_encounter_id_in_org(self, encounter_id: int, org_id: str) -> _M | None:
+    async def get_by_encounter_id_in_org(
+        self, encounter_id: int, org_id: str
+    ) -> _M | None:
         """Lookup scoped to org_id — returns None unless the encounter
         exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.encounter_id == encounter_id, _M.tenant_id == org_id)
+            stmt = select(_M).where(
+                _M.encounter_id == encounter_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalars().first()
 
     async def encounter_belongs_to_org(self, encounter_id: int, org_id: str) -> bool:
@@ -34,7 +38,9 @@ class _CoreMixin:
         gates on write routes — True iff the encounter exists AND
         belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M.id).where(_M.encounter_id == encounter_id, _M.tenant_id == org_id)
+            stmt = select(_M.id).where(
+                _M.encounter_id == encounter_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
     # ── Search ────────────────────────────────────────────────────────────

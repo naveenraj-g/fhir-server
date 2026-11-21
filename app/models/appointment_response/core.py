@@ -67,7 +67,9 @@ class AppointmentResponseModel(TenantAuditMixin, Base):
     constraints."""
 
     __tablename__ = "appointment_response"
-    __table_args__ = (Index("ix_appointment_response_actor_type_id", "actor_type", "actor_id"),)
+    __table_args__ = (
+        Index("ix_appointment_response_actor_type_id", "actor_type", "actor_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     appointment_response_id = Column(
@@ -108,5 +110,7 @@ class AppointmentResponseModel(TenantAuditMixin, Base):
     actor_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "AppointmentResponseIdentifier", back_populates="appointment_response", cascade="all, delete-orphan"
+        "AppointmentResponseIdentifier",
+        back_populates="appointment_response",
+        cascade="all, delete-orphan",
     )

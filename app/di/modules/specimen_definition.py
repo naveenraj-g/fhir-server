@@ -5,7 +5,6 @@ from app.services.specimen_definition import SpecimenDefinitionService
 
 
 class SpecimenDefinitionContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     specimen_definition_repository = providers.Factory(

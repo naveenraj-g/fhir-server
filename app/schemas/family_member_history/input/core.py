@@ -15,26 +15,74 @@ StatusCode = Literal["partial", "completed", "entered-in-error", "health-unknown
 _EXAMPLE = {
     "resourceType": "FamilyMemberHistory",
     "identifier": [
-        {"system": "https://fhir-server.dev/fhir/identifier-system/family-member-history-id", "value": "FMH-1001"}
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/family-member-history-id",
+            "value": "FMH-1001",
+        }
     ],
     "status": "completed",
     "patient": {"reference": "Patient/10001"},
     "date": "2023-01-15T09:30:00Z",
     "name": "Mary Windsor",
     "relationship": {
-        "coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode", "code": "MTH", "display": "mother"}]
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+                "code": "MTH",
+                "display": "mother",
+            }
+        ]
     },
-    "sex": {"coding": [{"system": "http://hl7.org/fhir/administrative-gender", "code": "female", "display": "Female"}]},
+    "sex": {
+        "coding": [
+            {
+                "system": "http://hl7.org/fhir/administrative-gender",
+                "code": "female",
+                "display": "Female",
+            }
+        ]
+    },
     "bornDate": "1950-03-12",
     "deceasedBoolean": False,
-    "reasonCode": [{"coding": [{"system": "http://snomed.info/sct", "code": "160303001", "display": "Family history of diabetes"}]}],
+    "reasonCode": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "160303001",
+                    "display": "Family history of diabetes",
+                }
+            ]
+        }
+    ],
     "note": [{"text": "Mother has had type 2 diabetes since her forties."}],
     "condition": [
         {
-            "code": {"coding": [{"system": "http://snomed.info/sct", "code": "44054006", "display": "Type 2 diabetes mellitus"}]},
-            "outcome": {"coding": [{"system": "http://snomed.info/sct", "code": "6736007", "display": "Moderate"}]},
+            "code": {
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "44054006",
+                        "display": "Type 2 diabetes mellitus",
+                    }
+                ]
+            },
+            "outcome": {
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "6736007",
+                        "display": "Moderate",
+                    }
+                ]
+            },
             "contributedToDeath": False,
-            "onsetAge": {"value": 42, "unit": "yr", "system": "http://unitsofmeasure.org", "code": "a"},
+            "onsetAge": {
+                "value": 42,
+                "unit": "yr",
+                "system": "http://unitsofmeasure.org",
+                "code": "a",
+            },
         }
     ],
 }
@@ -43,10 +91,17 @@ _EXAMPLE = {
 class FamilyMemberHistoryQuantityInput(FhirInputModel):
     """Age — a Quantity with a time unit."""
 
-    value: float | int | None = Field(None, description="Numerical value (with implicit precision).")
-    comparator: Literal["<", "<=", ">=", ">"] | None = Field(None, description="< | <= | >= | > - how to understand the value.")
+    value: float | int | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(
+        None, description="< | <= | >= | > - how to understand the value."
+    )
     unit: str | None = Field(None, description="Unit representation.")
-    system: str | None = Field(None, description="System that defines coded unit form (usually http://unitsofmeasure.org).")
+    system: str | None = Field(
+        None,
+        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
+    )
     code: str | None = Field(None, description="Coded form of the unit.")
 
 
@@ -54,7 +109,9 @@ class FamilyMemberHistoryRangeInput(FhirInputModel):
     """Range — a low and a high Quantity."""
 
     low: FamilyMemberHistoryQuantityInput | None = Field(None, description="Low limit.")
-    high: FamilyMemberHistoryQuantityInput | None = Field(None, description="High limit.")
+    high: FamilyMemberHistoryQuantityInput | None = Field(
+        None, description="High limit."
+    )
 
 
 class FamilyMemberHistoryAnnotationInput(FhirInputModel):
@@ -64,22 +121,48 @@ class FamilyMemberHistoryAnnotationInput(FhirInputModel):
         None,
         description="Individual responsible for the annotation — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    authorString: str | None = Field(None, description="Individual responsible for the annotation, as plain text.")
-    time: str | None = Field(None, description="When the annotation was made (a FHIR dateTime).")
-    text: str | None = Field(None, description="The annotation text, as markdown (required by R4).")
+    authorString: str | None = Field(
+        None, description="Individual responsible for the annotation, as plain text."
+    )
+    time: str | None = Field(
+        None, description="When the annotation was made (a FHIR dateTime)."
+    )
+    text: str | None = Field(
+        None, description="The annotation text, as markdown (required by R4)."
+    )
 
 
 class FamilyMemberHistoryConditionInput(FhirInputModel):
     """FamilyMemberHistory.condition — a condition that the related person had."""
 
-    code: FhirCodeableConceptInput | None = Field(None, description="Condition suffered by relation (required by R4).")
-    outcome: FhirCodeableConceptInput | None = Field(None, description="Result of the condition for the family member.")
-    contributedToDeath: bool | None = Field(None, description="Whether the condition contributed to the cause of death.")
-    onsetAge: FamilyMemberHistoryQuantityInput | None = Field(None, description="When the condition first manifested (an Age). One of the onset[x] choices.")
-    onsetRange: FamilyMemberHistoryRangeInput | None = Field(None, description="When the condition first manifested (a Range). One of the onset[x] choices.")
-    onsetPeriod: FhirPeriodInput | None = Field(None, description="When the condition first manifested (a Period). One of the onset[x] choices.")
-    onsetString: str | None = Field(None, description="When the condition first manifested (a string). One of the onset[x] choices.")
-    note: list[FamilyMemberHistoryAnnotationInput] | None = Field(None, description="Extra information about condition.")
+    code: FhirCodeableConceptInput | None = Field(
+        None, description="Condition suffered by relation (required by R4)."
+    )
+    outcome: FhirCodeableConceptInput | None = Field(
+        None, description="Result of the condition for the family member."
+    )
+    contributedToDeath: bool | None = Field(
+        None, description="Whether the condition contributed to the cause of death."
+    )
+    onsetAge: FamilyMemberHistoryQuantityInput | None = Field(
+        None,
+        description="When the condition first manifested (an Age). One of the onset[x] choices.",
+    )
+    onsetRange: FamilyMemberHistoryRangeInput | None = Field(
+        None,
+        description="When the condition first manifested (a Range). One of the onset[x] choices.",
+    )
+    onsetPeriod: FhirPeriodInput | None = Field(
+        None,
+        description="When the condition first manifested (a Period). One of the onset[x] choices.",
+    )
+    onsetString: str | None = Field(
+        None,
+        description="When the condition first manifested (a string). One of the onset[x] choices.",
+    )
+    note: list[FamilyMemberHistoryAnnotationInput] | None = Field(
+        None, description="Extra information about condition."
+    )
 
 
 class _FamilyMemberHistoryFields(FhirInputModel):
@@ -105,40 +188,92 @@ class _FamilyMemberHistoryFields(FhirInputModel):
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="External Id(s) for this record.")
-    instantiatesCanonical: list[str] | None = Field(
-        None, description="Instantiates FHIR protocol or definition — canonical URLs of PlanDefinition | Questionnaire | ActivityDefinition | Measure | OperationDefinition."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External Id(s) for this record."
     )
-    instantiatesUri: list[str] | None = Field(None, description="Instantiates external protocol or definition (URIs).")
-    status: StatusCode | None = Field(None, description="partial | completed | entered-in-error | health-unknown (required by R4).")
-    dataAbsentReason: FhirCodeableConceptInput | None = Field(None, description="subject-unknown | withheld | unable-to-obtain | deferred.")
+    instantiatesCanonical: list[str] | None = Field(
+        None,
+        description="Instantiates FHIR protocol or definition — canonical URLs of PlanDefinition | Questionnaire | ActivityDefinition | Measure | OperationDefinition.",
+    )
+    instantiatesUri: list[str] | None = Field(
+        None, description="Instantiates external protocol or definition (URIs)."
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="partial | completed | entered-in-error | health-unknown (required by R4).",
+    )
+    dataAbsentReason: FhirCodeableConceptInput | None = Field(
+        None, description="subject-unknown | withheld | unable-to-obtain | deferred."
+    )
     patient: FhirReferenceInput | None = Field(
         None,
         description="Patient history is about — Reference(Patient) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    date: str | None = Field(None, description="When history was recorded or last updated (a FHIR dateTime).")
+    date: str | None = Field(
+        None, description="When history was recorded or last updated (a FHIR dateTime)."
+    )
     name: str | None = Field(None, description="The family member described.")
-    relationship: FhirCodeableConceptInput | None = Field(None, description="Relationship to the subject (required by R4).")
-    sex: FhirCodeableConceptInput | None = Field(None, description="male | female | other | unknown.")
-    bornPeriod: FhirPeriodInput | None = Field(None, description="(Approximate) date of birth (a Period). One of the born[x] choices.")
-    bornDate: str | None = Field(None, description="(Approximate) date of birth (a FHIR date). One of the born[x] choices.")
-    bornString: str | None = Field(None, description="(Approximate) date of birth (a string). One of the born[x] choices.")
-    ageAge: FamilyMemberHistoryQuantityInput | None = Field(None, description="(Approximate) age (an Age). One of the age[x] choices.")
-    ageRange: FamilyMemberHistoryRangeInput | None = Field(None, description="(Approximate) age (a Range). One of the age[x] choices.")
-    ageString: str | None = Field(None, description="(Approximate) age (a string). One of the age[x] choices.")
+    relationship: FhirCodeableConceptInput | None = Field(
+        None, description="Relationship to the subject (required by R4)."
+    )
+    sex: FhirCodeableConceptInput | None = Field(
+        None, description="male | female | other | unknown."
+    )
+    bornPeriod: FhirPeriodInput | None = Field(
+        None,
+        description="(Approximate) date of birth (a Period). One of the born[x] choices.",
+    )
+    bornDate: str | None = Field(
+        None,
+        description="(Approximate) date of birth (a FHIR date). One of the born[x] choices.",
+    )
+    bornString: str | None = Field(
+        None,
+        description="(Approximate) date of birth (a string). One of the born[x] choices.",
+    )
+    ageAge: FamilyMemberHistoryQuantityInput | None = Field(
+        None, description="(Approximate) age (an Age). One of the age[x] choices."
+    )
+    ageRange: FamilyMemberHistoryRangeInput | None = Field(
+        None, description="(Approximate) age (a Range). One of the age[x] choices."
+    )
+    ageString: str | None = Field(
+        None, description="(Approximate) age (a string). One of the age[x] choices."
+    )
     estimatedAge: bool | None = Field(None, description="Age is estimated?")
-    deceasedBoolean: bool | None = Field(None, description="Dead? How old/when? (a boolean). One of the deceased[x] choices.")
-    deceasedAge: FamilyMemberHistoryQuantityInput | None = Field(None, description="Dead? How old/when? (an Age). One of the deceased[x] choices.")
-    deceasedRange: FamilyMemberHistoryRangeInput | None = Field(None, description="Dead? How old/when? (a Range). One of the deceased[x] choices.")
-    deceasedDate: str | None = Field(None, description="Dead? How old/when? (a FHIR date). One of the deceased[x] choices.")
-    deceasedString: str | None = Field(None, description="Dead? How old/when? (a string). One of the deceased[x] choices.")
-    reasonCode: list[FhirCodeableConceptInput] | None = Field(None, description="Why was family member history performed?")
+    deceasedBoolean: bool | None = Field(
+        None,
+        description="Dead? How old/when? (a boolean). One of the deceased[x] choices.",
+    )
+    deceasedAge: FamilyMemberHistoryQuantityInput | None = Field(
+        None,
+        description="Dead? How old/when? (an Age). One of the deceased[x] choices.",
+    )
+    deceasedRange: FamilyMemberHistoryRangeInput | None = Field(
+        None,
+        description="Dead? How old/when? (a Range). One of the deceased[x] choices.",
+    )
+    deceasedDate: str | None = Field(
+        None,
+        description="Dead? How old/when? (a FHIR date). One of the deceased[x] choices.",
+    )
+    deceasedString: str | None = Field(
+        None,
+        description="Dead? How old/when? (a string). One of the deceased[x] choices.",
+    )
+    reasonCode: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Why was family member history performed?"
+    )
     reasonReference: list[FhirReferenceInput] | None = Field(
         None,
         description="Why was family member history performed? — Reference(Condition | Observation | AllergyIntolerance | QuestionnaireResponse | DiagnosticReport | DocumentReference). A relative Condition, AllergyIntolerance or DiagnosticReport must exist in the caller's org (422 otherwise).",
     )
-    note: list[FamilyMemberHistoryAnnotationInput] | None = Field(None, description="General note about related person.")
-    condition: list[FamilyMemberHistoryConditionInput] | None = Field(None, description="Condition that the related person had.")
+    note: list[FamilyMemberHistoryAnnotationInput] | None = Field(
+        None, description="General note about related person."
+    )
+    condition: list[FamilyMemberHistoryConditionInput] | None = Field(
+        None, description="Condition that the related person had."
+    )
 
 
 class FamilyMemberHistoryCreateSchema(_FamilyMemberHistoryFields):

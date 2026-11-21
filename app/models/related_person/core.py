@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Index, Sequence, String
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Index,
+    Sequence,
+    String,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -6,7 +15,9 @@ from app.core.database import FHIRBase as Base
 from app.models.shared import TenantAuditMixin
 from app.schemas.enums import AdministrativeGender
 
-related_person_id_seq = Sequence("related_person_pub_seq", start=300000, increment=1, metadata=Base.metadata)
+related_person_id_seq = Sequence(
+    "related_person_pub_seq", start=300000, increment=1, metadata=Base.metadata
+)
 
 
 class RelatedPersonModel(TenantAuditMixin, Base):
@@ -53,7 +64,9 @@ class RelatedPersonModel(TenantAuditMixin, Base):
     DB-level CHECK constraints."""
 
     __tablename__ = "related_person"
-    __table_args__ = (Index("ix_related_person_birth_date", "birth_date_start", "birth_date_end"),)
+    __table_args__ = (
+        Index("ix_related_person_birth_date", "birth_date_start", "birth_date_end"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     related_person_id = Column(
@@ -70,7 +83,10 @@ class RelatedPersonModel(TenantAuditMixin, Base):
 
     # ── Search index (derived from `content`) ─────────────────────────────
     active = Column(Boolean, nullable=True)
-    gender = Column(Enum(AdministrativeGender, name="administrative_gender", create_type=False), nullable=True)
+    gender = Column(
+        Enum(AdministrativeGender, name="administrative_gender", create_type=False),
+        nullable=True,
+    )
 
     # birthDate is a FHIR date that may be partial (`1990`, `1990-05`): held as
     # the half-open [start, end) range of instants it covers (NULL = absent),
@@ -85,10 +101,28 @@ class RelatedPersonModel(TenantAuditMixin, Base):
     patient_identifier_system = Column(String, nullable=True)
     patient_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("RelatedPersonIdentifier", back_populates="related_person", cascade="all, delete-orphan")
-    names = relationship("RelatedPersonName", back_populates="related_person", cascade="all, delete-orphan")
-    telecoms = relationship("RelatedPersonTelecom", back_populates="related_person", cascade="all, delete-orphan")
-    addresses = relationship("RelatedPersonAddress", back_populates="related_person", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "RelatedPersonIdentifier",
+        back_populates="related_person",
+        cascade="all, delete-orphan",
+    )
+    names = relationship(
+        "RelatedPersonName",
+        back_populates="related_person",
+        cascade="all, delete-orphan",
+    )
+    telecoms = relationship(
+        "RelatedPersonTelecom",
+        back_populates="related_person",
+        cascade="all, delete-orphan",
+    )
+    addresses = relationship(
+        "RelatedPersonAddress",
+        back_populates="related_person",
+        cascade="all, delete-orphan",
+    )
     relationships = relationship(
-        "RelatedPersonRelationship", back_populates="related_person", cascade="all, delete-orphan"
+        "RelatedPersonRelationship",
+        back_populates="related_person",
+        cascade="all, delete-orphan",
     )

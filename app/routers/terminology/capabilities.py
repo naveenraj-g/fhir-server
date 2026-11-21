@@ -34,7 +34,8 @@ router = APIRouter()
 )
 async def get_terminology_capabilities(
     mode: str | None = Query(
-        None, description="Accepted for spec compatibility (?mode=terminology); not branched on."
+        None,
+        description="Accepted for spec compatibility (?mode=terminology); not branched on.",
     ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):

@@ -22,7 +22,9 @@ from app.models.shared import FhirAttachmentMixin, FhirCodingMixin, TenantAuditM
 # ---------------------------------------------------------------------------
 
 
-class QuestionnaireItemInitial(FhirCodingMixin, FhirAttachmentMixin, TenantAuditMixin, Base):
+class QuestionnaireItemInitial(
+    FhirCodingMixin, FhirAttachmentMixin, TenantAuditMixin, Base
+):
     """Questionnaire.item.initial (0..*) —
     https://www.hl7.org/fhir/R4/questionnaire-definitions.html#Questionnaire.item.initial
 

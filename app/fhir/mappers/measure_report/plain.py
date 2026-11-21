@@ -224,9 +224,5 @@ def to_plain_measure_report(model: MeasureReportModel) -> dict[str, Any]:
             if model.evaluated_resources
             else None
         ),
-        "group": (
-            [_to_plain_group(g) for g in model.groups]
-            if model.groups
-            else None
-        ),
+        "group": ([_to_plain_group(g) for g in model.groups] if model.groups else None),
     }

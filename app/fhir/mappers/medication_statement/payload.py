@@ -27,7 +27,11 @@ if TYPE_CHECKING:
 _MEDICATION_FIELDS = {"medication_codeable_concept", "medication_reference"}
 _MEDICATION_FHIR_KEYS = {"medicationCodeableConcept", "medicationReference"}
 
-_EFFECTIVE_FIELDS = {"effective_date_time", "effective_period_start", "effective_period_end"}
+_EFFECTIVE_FIELDS = {
+    "effective_date_time",
+    "effective_period_start",
+    "effective_period_end",
+}
 _EFFECTIVE_FHIR_KEYS = {"effectiveDateTime", "effectivePeriod"}
 
 
@@ -88,16 +92,34 @@ def _reference_with_identifier_from_payload(obj: Any) -> dict:
     display = _val(obj, "reference_display") or _val(obj, "display")
 
     id_use = _val(obj, "reference_identifier_use") or _val(obj, "identifier_use")
-    id_type_system = _val(obj, "reference_identifier_type_system") or _val(obj, "identifier_type_system")
-    id_type_version = _val(obj, "reference_identifier_type_version") or _val(obj, "identifier_type_version")
-    id_type_code = _val(obj, "reference_identifier_type_code") or _val(obj, "identifier_type_code")
-    id_type_display = _val(obj, "reference_identifier_type_display") or _val(obj, "identifier_type_display")
-    id_type_user_selected = _val(obj, "reference_identifier_type_user_selected") or _val(obj, "identifier_type_user_selected")
-    id_type_text = _val(obj, "reference_identifier_type_text") or _val(obj, "identifier_type_text")
-    id_system = _val(obj, "reference_identifier_system") or _val(obj, "identifier_system")
+    id_type_system = _val(obj, "reference_identifier_type_system") or _val(
+        obj, "identifier_type_system"
+    )
+    id_type_version = _val(obj, "reference_identifier_type_version") or _val(
+        obj, "identifier_type_version"
+    )
+    id_type_code = _val(obj, "reference_identifier_type_code") or _val(
+        obj, "identifier_type_code"
+    )
+    id_type_display = _val(obj, "reference_identifier_type_display") or _val(
+        obj, "identifier_type_display"
+    )
+    id_type_user_selected = _val(
+        obj, "reference_identifier_type_user_selected"
+    ) or _val(obj, "identifier_type_user_selected")
+    id_type_text = _val(obj, "reference_identifier_type_text") or _val(
+        obj, "identifier_type_text"
+    )
+    id_system = _val(obj, "reference_identifier_system") or _val(
+        obj, "identifier_system"
+    )
     id_value = _val(obj, "reference_identifier_value") or _val(obj, "identifier_value")
-    id_period_start = _val(obj, "reference_identifier_period_start") or _val(obj, "identifier_period_start")
-    id_period_end = _val(obj, "reference_identifier_period_end") or _val(obj, "identifier_period_end")
+    id_period_start = _val(obj, "reference_identifier_period_start") or _val(
+        obj, "identifier_period_start"
+    )
+    id_period_end = _val(obj, "reference_identifier_period_end") or _val(
+        obj, "identifier_period_end"
+    )
 
     entry: dict = {}
     if ref:
@@ -120,7 +142,9 @@ def _reference_with_identifier_from_payload(obj: Any) -> dict:
     ):
         identifier: dict = {}
         if id_use:
-            identifier["use"] = id_use.value if hasattr(id_use, "value") else str(id_use)
+            identifier["use"] = (
+                id_use.value if hasattr(id_use, "value") else str(id_use)
+            )
         if (
             id_type_system
             or id_type_code
@@ -130,7 +154,13 @@ def _reference_with_identifier_from_payload(obj: Any) -> dict:
             or id_type_user_selected
         ):
             type_cc: dict = {}
-            if id_type_system or id_type_code or id_type_display or id_type_version or id_type_user_selected:
+            if (
+                id_type_system
+                or id_type_code
+                or id_type_display
+                or id_type_version
+                or id_type_user_selected
+            ):
                 type_cc["coding"] = [
                     {
                         k: v
@@ -155,8 +185,12 @@ def _reference_with_identifier_from_payload(obj: Any) -> dict:
             identifier["period"] = {
                 k: v
                 for k, v in {
-                    "start": id_period_start.isoformat() if hasattr(id_period_start, "isoformat") else (str(id_period_start) if id_period_start else None),
-                    "end": id_period_end.isoformat() if hasattr(id_period_end, "isoformat") else (str(id_period_end) if id_period_end else None),
+                    "start": id_period_start.isoformat()
+                    if hasattr(id_period_start, "isoformat")
+                    else (str(id_period_start) if id_period_start else None),
+                    "end": id_period_end.isoformat()
+                    if hasattr(id_period_end, "isoformat")
+                    else (str(id_period_end) if id_period_end else None),
                 }.items()
                 if v is not None
             }
@@ -166,7 +200,9 @@ def _reference_with_identifier_from_payload(obj: Any) -> dict:
     return entry
 
 
-def payload_medication_statement_identifier(i: MedicationStatementIdentifierInput | dict) -> dict:
+def payload_medication_statement_identifier(
+    i: MedicationStatementIdentifierInput | dict,
+) -> dict:
     res: dict = {}
     use = _val(i, "use")
     if use:
@@ -188,8 +224,12 @@ def payload_medication_statement_identifier(i: MedicationStatementIdentifierInpu
         res["period"] = {
             k: v
             for k, v in {
-                "start": start.isoformat() if hasattr(start, "isoformat") else (str(start) if start else None),
-                "end": end.isoformat() if hasattr(end, "isoformat") else (str(end) if end else None),
+                "start": start.isoformat()
+                if hasattr(start, "isoformat")
+                else (str(start) if start else None),
+                "end": end.isoformat()
+                if hasattr(end, "isoformat")
+                else (str(end) if end else None),
             }.items()
             if v is not None
         }
@@ -208,11 +248,15 @@ def payload_medication_statement_identifier(i: MedicationStatementIdentifierInpu
     return {k: v for k, v in res.items() if v is not None}
 
 
-def payload_medication_statement_status_reason(sr: MedicationStatementStatusReasonInput | dict) -> dict | None:
+def payload_medication_statement_status_reason(
+    sr: MedicationStatementStatusReasonInput | dict,
+) -> dict | None:
     return payload_medication_statement_codeable_concept(sr)
 
 
-def payload_medication_statement_reason_code(rc: MedicationStatementReasonCodeInput | dict) -> dict | None:
+def payload_medication_statement_reason_code(
+    rc: MedicationStatementReasonCodeInput | dict,
+) -> dict | None:
     return payload_medication_statement_codeable_concept(rc)
 
 
@@ -256,7 +300,9 @@ def _quantity_from_payload(obj: Any, prefix: str) -> dict | None:
     return res
 
 
-def payload_medication_statement_dosage(d: MedicationStatementDosageInput | dict) -> dict:
+def payload_medication_statement_dosage(
+    d: MedicationStatementDosageInput | dict,
+) -> dict:
     entry: dict = {}
     seq = _val(d, "sequence")
     if seq is not None:
@@ -266,7 +312,9 @@ def payload_medication_statement_dosage(d: MedicationStatementDosageInput | dict
         entry["text"] = txt
     add_instr = _val(d, "additional_instruction")
     if add_instr:
-        ai_list = [payload_medication_statement_codeable_concept(ai) for ai in add_instr]
+        ai_list = [
+            payload_medication_statement_codeable_concept(ai) for ai in add_instr
+        ]
         ai_list = [ai for ai in ai_list if ai]
         if ai_list:
             entry["additionalInstruction"] = ai_list
@@ -281,7 +329,9 @@ def payload_medication_statement_dosage(d: MedicationStatementDosageInput | dict
     if as_needed_b is not None:
         entry["asNeededBoolean"] = as_needed_b
     else:
-        as_needed_cc = payload_medication_statement_codeable_concept(_val(d, "as_needed_codeable_concept"))
+        as_needed_cc = payload_medication_statement_codeable_concept(
+            _val(d, "as_needed_codeable_concept")
+        )
         if as_needed_cc:
             entry["asNeededCodeableConcept"] = as_needed_cc
 
@@ -358,20 +408,30 @@ def payload_to_fhir_medication_statement(
     eff_start = _val(payload, "effective_period_start")
     eff_end = _val(payload, "effective_period_end")
     if eff_dt:
-        res["effectiveDateTime"] = eff_dt.isoformat() if hasattr(eff_dt, "isoformat") else str(eff_dt)
+        res["effectiveDateTime"] = (
+            eff_dt.isoformat() if hasattr(eff_dt, "isoformat") else str(eff_dt)
+        )
     elif eff_start or eff_end:
         res["effectivePeriod"] = {
             k: v
             for k, v in {
-                "start": eff_start.isoformat() if hasattr(eff_start, "isoformat") else (str(eff_start) if eff_start else None),
-                "end": eff_end.isoformat() if hasattr(eff_end, "isoformat") else (str(eff_end) if eff_end else None),
+                "start": eff_start.isoformat()
+                if hasattr(eff_start, "isoformat")
+                else (str(eff_start) if eff_start else None),
+                "end": eff_end.isoformat()
+                if hasattr(eff_end, "isoformat")
+                else (str(eff_end) if eff_end else None),
             }.items()
             if v is not None
         }
 
     date_asserted = _val(payload, "date_asserted")
     if date_asserted:
-        res["dateAsserted"] = date_asserted.isoformat() if hasattr(date_asserted, "isoformat") else str(date_asserted)
+        res["dateAsserted"] = (
+            date_asserted.isoformat()
+            if hasattr(date_asserted, "isoformat")
+            else str(date_asserted)
+        )
 
     # informationSource
     info_src_in = _val(payload, "information_source")
@@ -470,7 +530,9 @@ def patch_fragment_to_fhir_medication_statement(
         touched.add("status")
         if payload.status is not None:
             fragment["status"] = (
-                payload.status.value if hasattr(payload.status, "value") else str(payload.status)
+                payload.status.value
+                if hasattr(payload.status, "value")
+                else str(payload.status)
             )
 
     if "category" in provided:
@@ -483,11 +545,15 @@ def patch_fragment_to_fhir_medication_statement(
     if provided.keys() & _MEDICATION_FIELDS:
         touched.update(_MEDICATION_FHIR_KEYS)
         if payload.medication_codeable_concept is not None:
-            med_cc = payload_medication_statement_codeable_concept(payload.medication_codeable_concept)
+            med_cc = payload_medication_statement_codeable_concept(
+                payload.medication_codeable_concept
+            )
             if med_cc:
                 fragment["medicationCodeableConcept"] = med_cc
         elif payload.medication_reference is not None:
-            med_ref = _reference_with_identifier_from_payload(payload.medication_reference)
+            med_ref = _reference_with_identifier_from_payload(
+                payload.medication_reference
+            )
             if med_ref:
                 fragment["medicationReference"] = med_ref
 
@@ -513,7 +579,10 @@ def patch_fragment_to_fhir_medication_statement(
                 if hasattr(payload.effective_date_time, "isoformat")
                 else str(payload.effective_date_time)
             )
-        elif payload.effective_period_start is not None or payload.effective_period_end is not None:
+        elif (
+            payload.effective_period_start is not None
+            or payload.effective_period_end is not None
+        ):
             fragment["effectivePeriod"] = {
                 k: v
                 for k, v in {
@@ -547,14 +616,18 @@ def patch_fragment_to_fhir_medication_statement(
     if "information_source" in provided:
         touched.add("informationSource")
         if payload.information_source is not None:
-            info_src = _reference_with_identifier_from_payload(payload.information_source)
+            info_src = _reference_with_identifier_from_payload(
+                payload.information_source
+            )
             if info_src:
                 fragment["informationSource"] = info_src
 
     if "based_on" in provided:
         touched.add("basedOn")
         if payload.based_on is not None:
-            bo_list = [_reference_with_identifier_from_payload(b) for b in payload.based_on]
+            bo_list = [
+                _reference_with_identifier_from_payload(b) for b in payload.based_on
+            ]
             bo_list = [b for b in bo_list if b]
             if bo_list:
                 fragment["basedOn"] = bo_list
@@ -562,7 +635,9 @@ def patch_fragment_to_fhir_medication_statement(
     if "part_of" in provided:
         touched.add("partOf")
         if payload.part_of is not None:
-            po_list = [_reference_with_identifier_from_payload(p) for p in payload.part_of]
+            po_list = [
+                _reference_with_identifier_from_payload(p) for p in payload.part_of
+            ]
             po_list = [p for p in po_list if p]
             if po_list:
                 fragment["partOf"] = po_list
@@ -570,7 +645,10 @@ def patch_fragment_to_fhir_medication_statement(
     if "status_reason" in provided:
         touched.add("statusReason")
         if payload.status_reason is not None:
-            sr_list = [payload_medication_statement_status_reason(sr) for sr in payload.status_reason]
+            sr_list = [
+                payload_medication_statement_status_reason(sr)
+                for sr in payload.status_reason
+            ]
             sr_list = [sr for sr in sr_list if sr]
             if sr_list:
                 fragment["statusReason"] = sr_list
@@ -578,7 +656,10 @@ def patch_fragment_to_fhir_medication_statement(
     if "derived_from" in provided:
         touched.add("derivedFrom")
         if payload.derived_from is not None:
-            df_list = [_reference_with_identifier_from_payload(df) for df in payload.derived_from]
+            df_list = [
+                _reference_with_identifier_from_payload(df)
+                for df in payload.derived_from
+            ]
             df_list = [df for df in df_list if df]
             if df_list:
                 fragment["derivedFrom"] = df_list
@@ -586,7 +667,10 @@ def patch_fragment_to_fhir_medication_statement(
     if "reason_code" in provided:
         touched.add("reasonCode")
         if payload.reason_code is not None:
-            rc_list = [payload_medication_statement_reason_code(rc) for rc in payload.reason_code]
+            rc_list = [
+                payload_medication_statement_reason_code(rc)
+                for rc in payload.reason_code
+            ]
             rc_list = [rc for rc in rc_list if rc]
             if rc_list:
                 fragment["reasonCode"] = rc_list
@@ -594,7 +678,10 @@ def patch_fragment_to_fhir_medication_statement(
     if "reason_reference" in provided:
         touched.add("reasonReference")
         if payload.reason_reference is not None:
-            rr_list = [_reference_with_identifier_from_payload(rr) for rr in payload.reason_reference]
+            rr_list = [
+                _reference_with_identifier_from_payload(rr)
+                for rr in payload.reason_reference
+            ]
             rr_list = [rr for rr in rr_list if rr]
             if rr_list:
                 fragment["reasonReference"] = rr_list
@@ -618,7 +705,9 @@ def patch_fragment_to_fhir_medication_statement(
     if "identifier" in provided:
         touched.add("identifier")
         if payload.identifier is not None:
-            id_list = [payload_medication_statement_identifier(i) for i in payload.identifier]
+            id_list = [
+                payload_medication_statement_identifier(i) for i in payload.identifier
+            ]
             id_list = [i for i in id_list if i]
             if id_list:
                 fragment["identifier"] = id_list

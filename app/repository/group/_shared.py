@@ -58,9 +58,7 @@ async def _validate_ref(
 def _with_relationships(stmt):
     """Eager-load all Group sub-resources to avoid N+1 and async lazy-load failures."""
     return stmt.options(
-        selectinload(GroupModel.identifiers).selectinload(
-            GroupIdentifier.type_codings
-        ),
+        selectinload(GroupModel.identifiers).selectinload(GroupIdentifier.type_codings),
         selectinload(GroupModel.code_codings),
         selectinload(GroupModel.characteristics).selectinload(
             GroupCharacteristic.code_codings

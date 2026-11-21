@@ -38,9 +38,7 @@ def assert_valid(resource_proto_cls, mapper_output: dict) -> None:
 
     text = fhir_json_text(mapper_output)
     try:
-        json_format.json_fhir_string_to_proto(
-            text, resource_proto_cls, validate=True
-        )
+        json_format.json_fhir_string_to_proto(text, resource_proto_cls, validate=True)
     except Exception as exc:  # noqa: BLE001 — re-raised with context below
         raise AssertionError(
             f"mapper output is not valid FHIR R4: {type(exc).__name__}: {exc}\n"

@@ -13,7 +13,8 @@ class CommunicationNoteInput(BaseModel):
         None, description="Individual responsible for the annotation as a plain string."
     )
     author_reference: str | None = Field(
-        None, description="Individual responsible for the annotation as a FHIR reference."
+        None,
+        description="Individual responsible for the annotation as a FHIR reference.",
     )
     author_display: str | None = Field(
         None, description="Display narrative for author reference."
@@ -51,9 +52,5 @@ class CommunicationNoteInput(BaseModel):
     author_identifier_period_end: datetime | None = Field(
         None, description="Fallback identifier period end."
     )
-    time: datetime | None = Field(
-        None, description="When the annotation was made."
-    )
-    text: str = Field(
-        ..., description="The annotation text content."
-    )
+    time: datetime | None = Field(None, description="When the annotation was made.")
+    text: str = Field(..., description="The annotation text content.")

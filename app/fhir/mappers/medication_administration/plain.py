@@ -39,7 +39,9 @@ def _plain_coding_list(codings) -> list[dict]:
     return result
 
 
-def plain_medication_administration_codeable_concept(codings, text: str | None) -> dict | None:
+def plain_medication_administration_codeable_concept(
+    codings, text: str | None
+) -> dict | None:
     coding_list = _plain_coding_list(codings)
     result: dict = {}
     if text:
@@ -84,11 +86,15 @@ def _plain_reference(obj, prefix: str) -> dict:
     return {k: v for k, v in res.items() if v is not None}
 
 
-def plain_medication_administration_identifier(i: MedicationAdministrationIdentifier) -> dict:
+def plain_medication_administration_identifier(
+    i: MedicationAdministrationIdentifier,
+) -> dict:
     entry: dict = {
         "id": i.id,
         "use": fhir_enum(i.use) if i.use else None,
-        "type": plain_medication_administration_codeable_concept(i.type_codings, i.type_text),
+        "type": plain_medication_administration_codeable_concept(
+            i.type_codings, i.type_text
+        ),
         "system": i.system,
         "value": i.value,
         "period_start": i.period_start,
@@ -106,36 +112,48 @@ def plain_medication_administration_part_of(p: MedicationAdministrationPartOf) -
     return entry
 
 
-def plain_medication_administration_status_reason(sr: MedicationAdministrationStatusReason) -> dict:
+def plain_medication_administration_status_reason(
+    sr: MedicationAdministrationStatusReason,
+) -> dict:
     entry = plain_medication_administration_codeable_concept(sr.codings, sr.text) or {}
     entry["id"] = sr.id
     return entry
 
 
-def plain_medication_administration_supporting_info(si: MedicationAdministrationSupportingInformation) -> dict:
+def plain_medication_administration_supporting_info(
+    si: MedicationAdministrationSupportingInformation,
+) -> dict:
     entry = _plain_reference(si, "reference")
     entry["id"] = si.id
     return entry
 
 
-def plain_medication_administration_performer(p: MedicationAdministrationPerformer) -> dict:
+def plain_medication_administration_performer(
+    p: MedicationAdministrationPerformer,
+) -> dict:
     entry: dict = {
         "id": p.id,
         "actor": _plain_reference(p, "actor"),
     }
-    func = plain_medication_administration_codeable_concept(p.function_codings, p.function_text)
+    func = plain_medication_administration_codeable_concept(
+        p.function_codings, p.function_text
+    )
     if func:
         entry["function"] = func
     return entry
 
 
-def plain_medication_administration_reason_code(rc: MedicationAdministrationReasonCode) -> dict:
+def plain_medication_administration_reason_code(
+    rc: MedicationAdministrationReasonCode,
+) -> dict:
     entry = plain_medication_administration_codeable_concept(rc.codings, rc.text) or {}
     entry["id"] = rc.id
     return entry
 
 
-def plain_medication_administration_reason_reference(rr: MedicationAdministrationReasonReference) -> dict:
+def plain_medication_administration_reason_reference(
+    rr: MedicationAdministrationReasonReference,
+) -> dict:
     entry = _plain_reference(rr, "reference")
     entry["id"] = rr.id
     return entry
@@ -160,26 +178,36 @@ def plain_medication_administration_note(n: MedicationAdministrationNote) -> dic
     return {k: v for k, v in entry.items() if v is not None}
 
 
-def plain_medication_administration_event_history(eh: MedicationAdministrationEventHistory) -> dict:
+def plain_medication_administration_event_history(
+    eh: MedicationAdministrationEventHistory,
+) -> dict:
     entry = _plain_reference(eh, "reference")
     entry["id"] = eh.id
     return entry
 
 
-def plain_medication_administration_dosage(model: MedicationAdministrationModel) -> dict | None:
+def plain_medication_administration_dosage(
+    model: MedicationAdministrationModel,
+) -> dict | None:
     d: dict = {}
     if model.dosage_text:
         d["text"] = model.dosage_text
     if model.dosage_site_codings or model.dosage_site_text:
-        site = plain_medication_administration_codeable_concept(model.dosage_site_codings, model.dosage_site_text)
+        site = plain_medication_administration_codeable_concept(
+            model.dosage_site_codings, model.dosage_site_text
+        )
         if site:
             d["site"] = site
     if model.dosage_route_codings or model.dosage_route_text:
-        route = plain_medication_administration_codeable_concept(model.dosage_route_codings, model.dosage_route_text)
+        route = plain_medication_administration_codeable_concept(
+            model.dosage_route_codings, model.dosage_route_text
+        )
         if route:
             d["route"] = route
     if model.dosage_method_codings or model.dosage_method_text:
-        method = plain_medication_administration_codeable_concept(model.dosage_method_codings, model.dosage_method_text)
+        method = plain_medication_administration_codeable_concept(
+            model.dosage_method_codings, model.dosage_method_text
+        )
         if method:
             d["method"] = method
     if model.dosage_dose_value is not None:
@@ -252,7 +280,9 @@ def to_plain_medication_administration(model: MedicationAdministrationModel) -> 
     }
 
     if model.category_codings or model.category_text:
-        cat = plain_medication_administration_codeable_concept(model.category_codings, model.category_text)
+        cat = plain_medication_administration_codeable_concept(
+            model.category_codings, model.category_text
+        )
         if cat:
             res["category"] = cat
 
@@ -288,37 +318,55 @@ def to_plain_medication_administration(model: MedicationAdministrationModel) -> 
         res["instantiates"] = list(model.instantiates)
 
     # part_of
-    po_list = [plain_medication_administration_part_of(p) for p in (model.part_of or [])]
+    po_list = [
+        plain_medication_administration_part_of(p) for p in (model.part_of or [])
+    ]
     if po_list:
         res["part_of"] = po_list
 
     # status_reason
-    sr_list = [plain_medication_administration_status_reason(sr) for sr in (model.status_reasons or [])]
+    sr_list = [
+        plain_medication_administration_status_reason(sr)
+        for sr in (model.status_reasons or [])
+    ]
     if sr_list:
         res["status_reason"] = sr_list
 
     # supporting_information
-    si_list = [plain_medication_administration_supporting_info(si) for si in (model.supporting_informations or [])]
+    si_list = [
+        plain_medication_administration_supporting_info(si)
+        for si in (model.supporting_informations or [])
+    ]
     if si_list:
         res["supporting_information"] = si_list
 
     # performer
-    perf_list = [plain_medication_administration_performer(p) for p in (model.performers or [])]
+    perf_list = [
+        plain_medication_administration_performer(p) for p in (model.performers or [])
+    ]
     if perf_list:
         res["performer"] = perf_list
 
     # reason_code
-    rc_list = [plain_medication_administration_reason_code(rc) for rc in (model.reason_codes or [])]
+    rc_list = [
+        plain_medication_administration_reason_code(rc)
+        for rc in (model.reason_codes or [])
+    ]
     if rc_list:
         res["reason_code"] = rc_list
 
     # reason_reference
-    rr_list = [plain_medication_administration_reason_reference(rr) for rr in (model.reason_references or [])]
+    rr_list = [
+        plain_medication_administration_reason_reference(rr)
+        for rr in (model.reason_references or [])
+    ]
     if rr_list:
         res["reason_reference"] = rr_list
 
     # device
-    dev_list = [plain_medication_administration_device(d) for d in (model.devices or [])]
+    dev_list = [
+        plain_medication_administration_device(d) for d in (model.devices or [])
+    ]
     if dev_list:
         res["device"] = dev_list
 
@@ -333,12 +381,17 @@ def to_plain_medication_administration(model: MedicationAdministrationModel) -> 
         res["dosage"] = dosage
 
     # event_history
-    eh_list = [plain_medication_administration_event_history(eh) for eh in (model.event_history or [])]
+    eh_list = [
+        plain_medication_administration_event_history(eh)
+        for eh in (model.event_history or [])
+    ]
     if eh_list:
         res["event_history"] = eh_list
 
     # identifier
-    identifiers = [plain_medication_administration_identifier(i) for i in (model.identifiers or [])]
+    identifiers = [
+        plain_medication_administration_identifier(i) for i in (model.identifiers or [])
+    ]
     if identifiers:
         res["identifier"] = identifiers
 

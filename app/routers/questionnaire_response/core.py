@@ -5,7 +5,9 @@ from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.logging import get_logger, log_payload
 from app.core.pagination import ListParams
-from app.di.dependencies.questionnaire_response import get_questionnaire_response_service
+from app.di.dependencies.questionnaire_response import (
+    get_questionnaire_response_service,
+)
 from app.schemas.enums import QuestionnaireResponseStatus
 from app.schemas.questionnaire_response import (
     QuestionnaireResponseCreateSchema,
@@ -61,8 +63,10 @@ async def create_questionnaire_response(
         extra={"event": "route.create_questionnaire_response"},
     )
     log_payload(logger, "questionnaire_response.create.payload", payload)
-    questionnaire_response = await questionnaire_response_service.create_questionnaire_response(
-        payload, actor.org_id, actor.sub
+    questionnaire_response = (
+        await questionnaire_response_service.create_questionnaire_response(
+            payload, actor.org_id, actor.sub
+        )
     )
     return format_response(
         questionnaire_response_service._to_fhir(questionnaire_response),
@@ -89,7 +93,9 @@ async def create_questionnaire_response(
 )
 async def get_questionnaire_response(
     request: Request,
-    questionnaire_response_id: int = Path(..., ge=1, description="Public questionnaire_response identifier."),
+    questionnaire_response_id: int = Path(
+        ..., ge=1, description="Public questionnaire_response identifier."
+    ),
     actor: AuthUser = Depends(require_permission("questionnaire_response", "read")),
     questionnaire_response_service: QuestionnaireResponseService = Depends(
         get_questionnaire_response_service
@@ -102,8 +108,10 @@ async def get_questionnaire_response(
             "questionnaire_response_id": questionnaire_response_id,
         },
     )
-    questionnaire_response = await questionnaire_response_service.get_questionnaire_response_scoped(
-        questionnaire_response_id, actor.org_id
+    questionnaire_response = (
+        await questionnaire_response_service.get_questionnaire_response_scoped(
+            questionnaire_response_id, actor.org_id
+        )
     )
     return format_response(
         questionnaire_response_service._to_fhir(questionnaire_response),
@@ -132,7 +140,9 @@ async def get_questionnaire_response(
 async def patch_questionnaire_response(
     payload: QuestionnaireResponsePatchSchema,
     request: Request,
-    questionnaire_response_id: int = Path(..., ge=1, description="Public questionnaire_response identifier."),
+    questionnaire_response_id: int = Path(
+        ..., ge=1, description="Public questionnaire_response identifier."
+    ),
     actor: AuthUser = Depends(require_permission("questionnaire_response", "update")),
     questionnaire_response_service: QuestionnaireResponseService = Depends(
         get_questionnaire_response_service
@@ -182,11 +192,19 @@ async def list_questionnaire_responses(
     request: Request,
     actor: AuthUser = Depends(require_permission("questionnaire_response", "read")),
     questionnaire_response_status: QuestionnaireResponseStatus | None = Query(
-        None, alias="status", description="in-progress | completed | amended | entered-in-error | stopped."
+        None,
+        alias="status",
+        description="in-progress | completed | amended | entered-in-error | stopped.",
     ),
-    questionnaire: str | None = Query(None, description="Exact match on the canonical Questionnaire reference."),
-    subject: str | None = Query(None, description="Exact match on the subject reference string."),
-    identifier: str | None = Query(None, description="Exact match on the business identifier value."),
+    questionnaire: str | None = Query(
+        None, description="Exact match on the canonical Questionnaire reference."
+    ),
+    subject: str | None = Query(
+        None, description="Exact match on the subject reference string."
+    ),
+    identifier: str | None = Query(
+        None, description="Exact match on the business identifier value."
+    ),
     params: ListParams = Depends(),
     questionnaire_response_service: QuestionnaireResponseService = Depends(
         get_questionnaire_response_service
@@ -237,7 +255,9 @@ async def list_questionnaire_responses(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_questionnaire_response(
-    questionnaire_response_id: int = Path(..., ge=1, description="Public questionnaire_response identifier."),
+    questionnaire_response_id: int = Path(
+        ..., ge=1, description="Public questionnaire_response identifier."
+    ),
     actor: AuthUser = Depends(require_permission("questionnaire_response", "delete")),
     questionnaire_response_service: QuestionnaireResponseService = Depends(
         get_questionnaire_response_service

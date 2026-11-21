@@ -18,12 +18,19 @@ def subject_procedure_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.procedure.search import revinclude_procedures_via_column
 
-        return await revinclude_procedures_via_column("subject", "Patient", key)(session, ctx, rows)
+        return await revinclude_procedures_via_column("subject", "Patient", key)(
+            session, ctx, rows
+        )
 
-    return tuple(IncludeTarget("Procedure", param, "Patient", fetch, reverse=True) for param in ("subject", "patient"))
+    return tuple(
+        IncludeTarget("Procedure", param, "Patient", fetch, reverse=True)
+        for param in ("subject", "patient")
+    )
 
 
-def performer_procedure_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
+def performer_procedure_revincludes(
+    resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
     """Procedure:performer — procedures with a performer actor that is one of the
     matched rows of `resource_type`."""
 
@@ -31,9 +38,13 @@ def performer_procedure_revincludes(resource_type: str, key) -> tuple[IncludeTar
         from app.models.procedure import ProcedurePerformer
         from app.repository.procedure.search import revinclude_procedures_via_child
 
-        return await revinclude_procedures_via_child(ProcedurePerformer, resource_type, key)(session, ctx, rows)
+        return await revinclude_procedures_via_child(
+            ProcedurePerformer, resource_type, key
+        )(session, ctx, rows)
 
-    return (IncludeTarget("Procedure", "performer", resource_type, fetch, reverse=True),)
+    return (
+        IncludeTarget("Procedure", "performer", resource_type, fetch, reverse=True),
+    )
 
 
 def encounter_procedure_revincludes(key) -> tuple[IncludeTarget, ...]:
@@ -43,7 +54,9 @@ def encounter_procedure_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.procedure.search import revinclude_procedures_via_column
 
-        return await revinclude_procedures_via_column("encounter", "Encounter", key)(session, ctx, rows)
+        return await revinclude_procedures_via_column("encounter", "Encounter", key)(
+            session, ctx, rows
+        )
 
     return (IncludeTarget("Procedure", "encounter", "Encounter", fetch, reverse=True),)
 
@@ -54,7 +67,9 @@ def location_procedure_revincludes(key) -> tuple[IncludeTarget, ...]:
     async def fetch(session, ctx, rows):
         from app.repository.procedure.search import revinclude_procedures_via_column
 
-        return await revinclude_procedures_via_column("location", "Location", key)(session, ctx, rows)
+        return await revinclude_procedures_via_column("location", "Location", key)(
+            session, ctx, rows
+        )
 
     return (IncludeTarget("Procedure", "location", "Location", fetch, reverse=True),)
 
@@ -68,7 +83,14 @@ def reason_procedure_revincludes(resource_type: str, key) -> tuple[IncludeTarget
         from app.repository.procedure.search import revinclude_procedures_via_child
 
         return await revinclude_procedures_via_child(
-            ProcedureReference, resource_type, key, ProcedureReference.param == "reason-reference"
+            ProcedureReference,
+            resource_type,
+            key,
+            ProcedureReference.param == "reason-reference",
         )(session, ctx, rows)
 
-    return (IncludeTarget("Procedure", "reason-reference", resource_type, fetch, reverse=True),)
+    return (
+        IncludeTarget(
+            "Procedure", "reason-reference", resource_type, fetch, reverse=True
+        ),
+    )

@@ -22,10 +22,15 @@ logger = get_logger(__name__)
 class _CoreMixin:
     """Core CRUD and list operations for DocumentReference."""
 
-    async def get_by_document_reference_id(self, document_reference_id: int) -> DocumentReferenceModel | None:
+    async def get_by_document_reference_id(
+        self, document_reference_id: int
+    ) -> DocumentReferenceModel | None:
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(DocumentReferenceModel).where(DocumentReferenceModel.document_reference_id == document_reference_id)
+                select(DocumentReferenceModel).where(
+                    DocumentReferenceModel.document_reference_id
+                    == document_reference_id
+                )
             )
             return (await session.execute(stmt)).scalars().first()
 
@@ -37,13 +42,16 @@ class _CoreMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(DocumentReferenceModel).where(
-                    DocumentReferenceModel.document_reference_id == document_reference_id,
+                    DocumentReferenceModel.document_reference_id
+                    == document_reference_id,
                     DocumentReferenceModel.tenant_id == org_id,
                 )
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def document_reference_belongs_to_org(self, document_reference_id: int, org_id: str) -> bool:
+    async def document_reference_belongs_to_org(
+        self, document_reference_id: int, org_id: str
+    ) -> bool:
         async with self.session_factory() as session:
             stmt = select(DocumentReferenceModel.id).where(
                 DocumentReferenceModel.document_reference_id == document_reference_id,
@@ -77,7 +85,8 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(DocumentReferenceTypeCoding.id).where(
-                    DocumentReferenceTypeCoding.document_reference_pk == DocumentReferenceModel.id,
+                    DocumentReferenceTypeCoding.document_reference_pk
+                    == DocumentReferenceModel.id,
                     DocumentReferenceTypeCoding.code == type,
                 ),
             )
@@ -87,10 +96,12 @@ class _CoreMixin:
                 select(DocumentReferenceCategoryCoding.id)
                 .join(
                     DocumentReferenceCategory,
-                    DocumentReferenceCategoryCoding.document_reference_category_id == DocumentReferenceCategory.id,
+                    DocumentReferenceCategoryCoding.document_reference_category_id
+                    == DocumentReferenceCategory.id,
                 )
                 .where(
-                    DocumentReferenceCategory.document_reference_pk == DocumentReferenceModel.id,
+                    DocumentReferenceCategory.document_reference_pk
+                    == DocumentReferenceModel.id,
                     DocumentReferenceCategoryCoding.code == category,
                 ),
             )
@@ -104,7 +115,8 @@ class _CoreMixin:
                 stmt = apply_child_exists_filter(
                     stmt,
                     select(DocumentReferenceAuthor.id).where(
-                        DocumentReferenceAuthor.document_reference_pk == DocumentReferenceModel.id,
+                        DocumentReferenceAuthor.document_reference_pk
+                        == DocumentReferenceModel.id,
                         DocumentReferenceAuthor.author_id == int(author),
                     ),
                 )
@@ -112,7 +124,8 @@ class _CoreMixin:
                 stmt = apply_child_exists_filter(
                     stmt,
                     select(DocumentReferenceAuthor.id).where(
-                        DocumentReferenceAuthor.document_reference_pk == DocumentReferenceModel.id,
+                        DocumentReferenceAuthor.document_reference_pk
+                        == DocumentReferenceModel.id,
                         DocumentReferenceAuthor.author_reference == author,
                     ),
                 )
@@ -120,18 +133,25 @@ class _CoreMixin:
             if custodian.isdigit():
                 stmt = stmt.where(DocumentReferenceModel.custodian_id == int(custodian))
             else:
-                stmt = stmt.where(DocumentReferenceModel.custodian_reference == custodian)
+                stmt = stmt.where(
+                    DocumentReferenceModel.custodian_reference == custodian
+                )
         if authenticator:
             if authenticator.isdigit():
-                stmt = stmt.where(DocumentReferenceModel.authenticator_id == int(authenticator))
+                stmt = stmt.where(
+                    DocumentReferenceModel.authenticator_id == int(authenticator)
+                )
             else:
-                stmt = stmt.where(DocumentReferenceModel.authenticator_reference == authenticator)
+                stmt = stmt.where(
+                    DocumentReferenceModel.authenticator_reference == authenticator
+                )
         if relates_to:
             if relates_to.isdigit():
                 stmt = apply_child_exists_filter(
                     stmt,
                     select(DocumentReferenceRelatesTo.id).where(
-                        DocumentReferenceRelatesTo.document_reference_pk == DocumentReferenceModel.id,
+                        DocumentReferenceRelatesTo.document_reference_pk
+                        == DocumentReferenceModel.id,
                         DocumentReferenceRelatesTo.target_id == int(relates_to),
                     ),
                 )
@@ -139,7 +159,8 @@ class _CoreMixin:
                 stmt = apply_child_exists_filter(
                     stmt,
                     select(DocumentReferenceRelatesTo.id).where(
-                        DocumentReferenceRelatesTo.document_reference_pk == DocumentReferenceModel.id,
+                        DocumentReferenceRelatesTo.document_reference_pk
+                        == DocumentReferenceModel.id,
                         DocumentReferenceRelatesTo.target_reference == relates_to,
                     ),
                 )
@@ -147,12 +168,15 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(DocumentReferenceIdentifier.id).where(
-                    DocumentReferenceIdentifier.document_reference_pk == DocumentReferenceModel.id,
+                    DocumentReferenceIdentifier.document_reference_pk
+                    == DocumentReferenceModel.id,
                     DocumentReferenceIdentifier.value == identifier,
                 ),
             )
         if description:
-            stmt = stmt.where(DocumentReferenceModel.description.ilike(f"%{description}%"))
+            stmt = stmt.where(
+                DocumentReferenceModel.description.ilike(f"%{description}%")
+            )
 
         return stmt
 
@@ -194,7 +218,8 @@ class _CoreMixin:
                 _with_relationships(select(DocumentReferenceModel)), **filter_kwargs
             )
             count_base = self._apply_list_filters(
-                select(func.count()).select_from(DocumentReferenceModel), **filter_kwargs
+                select(func.count()).select_from(DocumentReferenceModel),
+                **filter_kwargs,
             )
             sort_column, sort_desc = resolve_sort(
                 sort,
@@ -217,7 +242,9 @@ class _CoreMixin:
 
     async def delete(self, document_reference_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(DocumentReferenceModel).where(DocumentReferenceModel.document_reference_id == document_reference_id)
+            stmt = select(DocumentReferenceModel).where(
+                DocumentReferenceModel.document_reference_id == document_reference_id
+            )
             doc_ref = (await session.execute(stmt)).scalars().first()
             if not doc_ref:
                 return False

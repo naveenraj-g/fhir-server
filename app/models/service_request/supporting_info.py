@@ -38,7 +38,9 @@ class ServiceRequestSupportingInfo(TenantAuditMixin, Base):
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
-    reference_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     reference_identifier_type_system = Column(String, nullable=True)
     reference_identifier_type_version = Column(String, nullable=True)
     reference_identifier_type_code = Column(String, nullable=True)
@@ -50,4 +52,6 @@ class ServiceRequestSupportingInfo(TenantAuditMixin, Base):
     reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    service_request = relationship("ServiceRequestModel", back_populates="supporting_infos")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="supporting_infos"
+    )

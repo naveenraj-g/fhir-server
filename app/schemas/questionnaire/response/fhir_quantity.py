@@ -3,4 +3,3 @@
 from app.schemas.datatypes import FHIRQuantity, FHIRRange
 
 __all__ = ["FHIRQuantity", "FHIRRange"]
-

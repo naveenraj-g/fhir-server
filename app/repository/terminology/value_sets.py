@@ -85,9 +85,9 @@ class _ValueSetsMixin:
                 .where(TerminologyValueSetConcept.active == True)
             )
             if q:
-                trgm_where = text(
-                    "terminology_concept.display ILIKE :pat"
-                ).bindparams(pat=f"%{q}%")
+                trgm_where = text("terminology_concept.display ILIKE :pat").bindparams(
+                    pat=f"%{q}%"
+                )
                 base = base.where(trgm_where)
                 count_stmt = count_stmt.where(trgm_where)
 

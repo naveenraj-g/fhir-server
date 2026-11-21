@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
@@ -33,7 +42,9 @@ class ObservationValue(Base):
     __table_args__ = (Index("ix_observation_value_param_slot", "param", "slot"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)
+    observation_pk = Column(
+        BigInteger, ForeignKey("observation.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     slot = Column(Integer, nullable=False, default=0)
     quantity_value = Column(Numeric, nullable=True)

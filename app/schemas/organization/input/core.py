@@ -65,7 +65,12 @@ _EXAMPLE = {
             },
             "name": {"family": "Smith", "given": ["John"]},
             "telecom": [{"system": "phone", "value": "555-0001"}],
-            "address": {"type": "both", "city": "Anytown", "state": "CA", "country": "US"},
+            "address": {
+                "type": "both",
+                "city": "Anytown",
+                "state": "CA",
+                "country": "US",
+            },
         }
     ],
     "endpoint": [
@@ -113,9 +118,7 @@ class _OrganizationFields(FhirInputModel):
     type: list[FhirCodeableConceptInput] | None = Field(
         None, description="Kind of organization (e.g. prov, dept, team, govt, ins)."
     )
-    name: str | None = Field(
-        None, description="Name used for the organization."
-    )
+    name: str | None = Field(None, description="Name used for the organization.")
     alias: list[str] | None = Field(
         None,
         description="A list of alternate names that the organization is known as, or was known as in the past.",

@@ -5,7 +5,6 @@ from app.services.encounter import EncounterService
 
 
 class EncounterContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     encounter_repository = providers.Factory(

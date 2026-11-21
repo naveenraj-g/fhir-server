@@ -82,9 +82,7 @@ async def test_create_communication_request_full(client):
     enc_id = await create_test_encounter(client, p_id)
     c_id = await create_test_condition(client, p_id)
 
-    payload = full_communication_request(
-        p_id, pr_id, org_id, enc_id, c_id
-    )
+    payload = full_communication_request(p_id, pr_id, org_id, enc_id, c_id)
     resp = await client.post(BASE + "/", json=payload)
     assert resp.status_code == 201, resp.text
     data = resp.json()
@@ -103,7 +101,10 @@ async def test_create_communication_request_full(client):
     assert len(data["about"]) == 1
     assert data["about"][0]["reference"] == f"Condition/{c_id}"
     assert len(data["payload"]) == 2
-    assert data["payload"][0]["content_string"] == "Please follow up on heart rate test results."
+    assert (
+        data["payload"][0]["content_string"]
+        == "Please follow up on heart rate test results."
+    )
     assert data["payload"][1]["content_attachment"]["title"] == "Notes attachment"
     assert len(data["recipient"]) == 1
     assert data["recipient"][0]["reference"] == f"Patient/{p_id}"
@@ -360,9 +361,7 @@ async def test_cross_org_isolation(client):
     get_resp = await client.get(f"{BASE}/{cr_id}")
     assert get_resp.status_code == 404, get_resp.text
 
-    patch_resp = await client.patch(
-        f"{BASE}/{cr_id}", json={"status": "completed"}
-    )
+    patch_resp = await client.patch(f"{BASE}/{cr_id}", json={"status": "completed"})
     assert patch_resp.status_code == 404, patch_resp.text
 
     del_resp = await client.delete(f"{BASE}/{cr_id}")
@@ -434,7 +433,9 @@ async def test_create_communication_request_with_reference_identifier_fallback(c
     assert resp.status_code == 201, resp.text
     plain_data = resp.json()
     assert plain_data["status"] == "active"
-    assert plain_data["subject_identifier_system"] == "http://external-system.org/patients"
+    assert (
+        plain_data["subject_identifier_system"] == "http://external-system.org/patients"
+    )
     assert plain_data["subject_identifier_value"] == "EXT-12345"
     assert plain_data["subject_identifier_use"] == "official"
     assert plain_data["encounter_identifier_value"] == "ENC-999"
@@ -453,7 +454,10 @@ async def test_create_communication_request_with_reference_identifier_fallback(c
     fhir_data = resp_fhir.json()
     assert fhir_data["resourceType"] == "CommunicationRequest"
     assert fhir_data["subject"]["display"] == "External Patient"
-    assert fhir_data["subject"]["identifier"]["system"] == "http://external-system.org/patients"
+    assert (
+        fhir_data["subject"]["identifier"]["system"]
+        == "http://external-system.org/patients"
+    )
     assert fhir_data["subject"]["identifier"]["value"] == "EXT-12345"
     assert fhir_data["subject"]["identifier"]["use"] == "official"
 
@@ -462,5 +466,7 @@ async def test_create_communication_request_with_reference_identifier_fallback(c
     assert fhir_data["sender"]["identifier"]["value"] == "CLINIC-42"
     assert fhir_data["groupIdentifier"]["assigner"]["identifier"]["value"] == "NET-1"
     assert fhir_data["basedOn"][0]["identifier"]["value"] == "SR-777"
-    assert fhir_data["payload"][0]["contentReference"]["identifier"]["value"] == "DOC-001"
+    assert (
+        fhir_data["payload"][0]["contentReference"]["identifier"]["value"] == "DOC-001"
+    )
     assert fhir_data["note"][0]["authorReference"]["identifier"]["value"] == "AUTH-10"

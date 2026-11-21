@@ -7,6 +7,8 @@ from app.services.organization import OrganizationService
 
 @inject
 def get_organization_service(
-    service: OrganizationService = Depends(Provide[Container.organization.organization_service]),
+    service: OrganizationService = Depends(
+        Provide[Container.organization.organization_service]
+    ),
 ) -> OrganizationService:
     return service

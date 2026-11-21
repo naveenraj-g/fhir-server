@@ -18,7 +18,10 @@ from app.models.document_reference import (
     DocumentReferenceTargetReferenceType,
     DocumentRelationshipType as DocumentRelationshipTypeModel,
 )
-from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType
+from app.models.enums import (
+    IdentifierUse as IdentifierUseModel,
+    OrganizationReferenceType,
+)
 from app.repository._reference_shared import (
     _IDENTIFIER_FALLBACK_SUFFIXES,
     _prefixed_identifier_kwargs,
@@ -32,12 +35,24 @@ def _child_reference_kwargs(r, prefix: str = "reference") -> dict:
             f"{prefix}_display": None,
             **{f"{prefix}_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES},
         }
-    display = getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
-    ref = getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    display = (
+        getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
+    )
+    ref = (
+        getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    )
     if ref is None and prefix != "reference":
-        ref = getattr(r, f"{prefix}_reference", None) if not isinstance(r, dict) else r.get(f"{prefix}_reference")
+        ref = (
+            getattr(r, f"{prefix}_reference", None)
+            if not isinstance(r, dict)
+            else r.get(f"{prefix}_reference")
+        )
     if display is None and prefix != "reference":
-        display = getattr(r, f"{prefix}_display", None) if not isinstance(r, dict) else r.get(f"{prefix}_display")
+        display = (
+            getattr(r, f"{prefix}_display", None)
+            if not isinstance(r, dict)
+            else r.get(f"{prefix}_display")
+        )
     kwargs = {
         f"{prefix}_reference": ref,
         f"{prefix}_display": display,
@@ -45,9 +60,14 @@ def _child_reference_kwargs(r, prefix: str = "reference") -> dict:
     for s in _IDENTIFIER_FALLBACK_SUFFIXES:
         val = getattr(r, s, None) if not isinstance(r, dict) else r.get(s)
         if val is None and prefix != "reference":
-            val = getattr(r, f"{prefix}_{s}", None) if not isinstance(r, dict) else r.get(f"{prefix}_{s}")
+            val = (
+                getattr(r, f"{prefix}_{s}", None)
+                if not isinstance(r, dict)
+                else r.get(f"{prefix}_{s}")
+            )
         kwargs[f"{prefix}_{s}"] = val
     return kwargs
+
 
 _SORTABLE_FIELDS = {
     "document_reference_id": DocumentReferenceModel.document_reference_id,
@@ -95,7 +115,9 @@ def _parse_open_ref(ref: str) -> tuple:
     return ref, None, None, None
 
 
-async def _validate_ref(session, org_id: str, ref_type, ref_id: int | None, field_name: str) -> None:
+async def _validate_ref(
+    session, org_id: str, ref_type, ref_id: int | None, field_name: str
+) -> None:
     if not ref_type or ref_id is None:
         return
     type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)

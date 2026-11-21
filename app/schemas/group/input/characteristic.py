@@ -11,11 +11,10 @@ class GroupCharacteristicInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    code: GroupCodeableConceptInput = Field(
-        ..., description="Kind of characteristic."
-    )
+    code: GroupCodeableConceptInput = Field(..., description="Kind of characteristic.")
     exclude: bool = Field(
-        False, description="Group includes or excludes members with this characteristic."
+        False,
+        description="Group includes or excludes members with this characteristic.",
     )
     period_start: datetime | None = Field(
         None, description="Period over which characteristic is tested (start)."
@@ -38,7 +37,8 @@ class GroupCharacteristicInput(BaseModel):
         None, description="Value held by characteristic (Range)."
     )
     value_reference: str | None = Field(
-        None, description="Value held by characteristic (Reference string e.g. Location/230001)."
+        None,
+        description="Value held by characteristic (Reference string e.g. Location/230001).",
     )
     value_reference_display: str | None = Field(
         None, description="Display text for reference."

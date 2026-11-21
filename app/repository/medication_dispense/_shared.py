@@ -2,7 +2,10 @@ from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
 from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType
+from app.models.enums import (
+    IdentifierUse as IdentifierUseModel,
+    OrganizationReferenceType,
+)
 from app.models.medication_dispense import (
     MedicationDispenseAuthorizingPrescription,
     MedicationDispenseAuthorizingPrescriptionReferenceType,
@@ -72,7 +75,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     if not ref_str:
         return {
             f"{prefix}_type": None,
@@ -144,7 +149,9 @@ def _list_reference_kwargs(obj, enum_cls) -> dict:
         **_ref_kwargs("reference", ref, disp, enum_cls),
     }
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        val = getattr(obj, f"reference_{suffix}", None) or getattr(obj, f"identifier_{suffix}", None)
+        val = getattr(obj, f"reference_{suffix}", None) or getattr(
+            obj, f"identifier_{suffix}", None
+        )
         if suffix == "identifier_use" and val is not None:
             res[f"reference_{suffix}"] = (
                 IdentifierUseModel[val.name] if hasattr(val, "name") else val
@@ -183,11 +190,9 @@ def _with_relationships(stmt):
         selectinload(MedicationDispenseModel.type_codings),
         selectinload(MedicationDispenseModel.receivers),
         selectinload(MedicationDispenseModel.notes),
-        selectinload(MedicationDispenseModel.dosage_instructions).selectinload(
-            MedicationDispenseDosageInstruction.additional_instructions
-        ).selectinload(
-            MedicationDispenseDosageAdditionalInstruction.codings
-        ),
+        selectinload(MedicationDispenseModel.dosage_instructions)
+        .selectinload(MedicationDispenseDosageInstruction.additional_instructions)
+        .selectinload(MedicationDispenseDosageAdditionalInstruction.codings),
         selectinload(MedicationDispenseModel.dosage_instructions).selectinload(
             MedicationDispenseDosageInstruction.site_codings
         ),

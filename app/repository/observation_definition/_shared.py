@@ -46,9 +46,7 @@ async def _validate_ref(
     if not res_type_enum or not res_id:
         return
     res_type_str = (
-        res_type_enum.value
-        if hasattr(res_type_enum, "value")
-        else str(res_type_enum)
+        res_type_enum.value if hasattr(res_type_enum, "value") else str(res_type_enum)
     )
     if res_type_str not in RESOURCE_REGISTRY:
         return
@@ -70,9 +68,7 @@ def _with_relationships(stmt):
         selectinload(
             ObservationDefinitionModel.quantitative_details_customary_unit_codings
         ),
-        selectinload(
-            ObservationDefinitionModel.quantitative_details_unit_codings
-        ),
+        selectinload(ObservationDefinitionModel.quantitative_details_unit_codings),
         selectinload(ObservationDefinitionModel.qualified_intervals).selectinload(
             ObservationDefinitionQualifiedInterval.context_codings
         ),

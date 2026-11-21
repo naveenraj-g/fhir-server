@@ -13,7 +13,10 @@ class ActivityDefinitionParticipant(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     type = Column(
@@ -25,7 +28,9 @@ class ActivityDefinitionParticipant(TenantAuditMixin, Base):
     )
     role_text = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="participants")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="participants"
+    )
     role_codings = relationship(
         "ActivityDefinitionParticipantRoleCoding",
         back_populates="participant",
@@ -46,4 +51,6 @@ class ActivityDefinitionParticipantRoleCoding(FhirCodingMixin, TenantAuditMixin,
         index=True,
     )
 
-    participant = relationship("ActivityDefinitionParticipant", back_populates="role_codings")
+    participant = relationship(
+        "ActivityDefinitionParticipant", back_populates="role_codings"
+    )

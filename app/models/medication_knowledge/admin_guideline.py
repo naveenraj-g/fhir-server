@@ -82,7 +82,9 @@ class MedicationKnowledgeAdminGuideline(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeAdminGuidelineIndicationCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeAdminGuidelineIndicationCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.administrationGuidelines.indicationCodeableConcept.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_ag_indication_coding"
@@ -127,7 +129,9 @@ class MedicationKnowledgeAdminGuidelineDosage(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeAdminGuidelineDosageTypeCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeAdminGuidelineDosageTypeCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.administrationGuidelines.dosage.type.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_ag_dosage_type_coding"
@@ -186,7 +190,9 @@ class MedicationKnowledgeAdminGuidelinePatientCharacteristic(Base, TenantAuditMi
     )
 
 
-class MedicationKnowledgeAdminGuidelinePatientCharCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeAdminGuidelinePatientCharCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.administrationGuidelines.patientCharacteristics.characteristicCodeableConcept.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_ag_patient_char_coding"

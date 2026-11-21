@@ -84,7 +84,9 @@ class MedicationKnowledgeModel(Base, TenantAuditMixin):
     manufacturer_identifier_type_text = Column(String, nullable=True)
     manufacturer_identifier_system = Column(String, nullable=True)
     manufacturer_identifier_value = Column(String, nullable=True)
-    manufacturer_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    manufacturer_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
     manufacturer_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # doseForm (0..1 CodeableConcept) — text flattened, codings in child table

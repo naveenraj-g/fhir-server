@@ -6,7 +6,9 @@ class SimpleQuantityInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    value: float | None = Field(None, description="Numerical value (with implicit precision).")
+    value: float | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
     unit: str | None = Field(None, description="Unit representation.")
     system: str | None = Field(None, description="System that defines coded unit form.")
     code: str | None = Field(None, description="Coded form of the unit.")
@@ -18,4 +20,6 @@ class RatioInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     numerator: SimpleQuantityInput | None = Field(None, description="Numerator value.")
-    denominator: SimpleQuantityInput | None = Field(None, description="Denominator value.")
+    denominator: SimpleQuantityInput | None = Field(
+        None, description="Denominator value."
+    )

@@ -5,9 +5,7 @@ from app.core.database import FHIRBase as Base
 from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 
-class CommunicationRequestStatusReasonCoding(
-    FhirCodingMixin, TenantAuditMixin, Base
-):
+class CommunicationRequestStatusReasonCoding(FhirCodingMixin, TenantAuditMixin, Base):
     """CommunicationRequest.statusReason.coding (0..*) child table."""
 
     __tablename__ = "communication_request_status_reason_coding"

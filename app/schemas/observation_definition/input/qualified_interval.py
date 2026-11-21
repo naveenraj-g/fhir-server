@@ -44,14 +44,30 @@ class ObservationDefinitionQualifiedIntervalInput(BaseModel):
     age_high_system: str | None = Field(None, description="age.high system.")
     age_high_code: str | None = Field(None, description="age.high code.")
 
-    gestational_age_low_value: float | None = Field(None, description="gestationalAge.low value.")
-    gestational_age_low_unit: str | None = Field(None, description="gestationalAge.low unit.")
-    gestational_age_low_system: str | None = Field(None, description="gestationalAge.low system.")
-    gestational_age_low_code: str | None = Field(None, description="gestationalAge.low code.")
-    gestational_age_high_value: float | None = Field(None, description="gestationalAge.high value.")
-    gestational_age_high_unit: str | None = Field(None, description="gestationalAge.high unit.")
-    gestational_age_high_system: str | None = Field(None, description="gestationalAge.high system.")
-    gestational_age_high_code: str | None = Field(None, description="gestationalAge.high code.")
+    gestational_age_low_value: float | None = Field(
+        None, description="gestationalAge.low value."
+    )
+    gestational_age_low_unit: str | None = Field(
+        None, description="gestationalAge.low unit."
+    )
+    gestational_age_low_system: str | None = Field(
+        None, description="gestationalAge.low system."
+    )
+    gestational_age_low_code: str | None = Field(
+        None, description="gestationalAge.low code."
+    )
+    gestational_age_high_value: float | None = Field(
+        None, description="gestationalAge.high value."
+    )
+    gestational_age_high_unit: str | None = Field(
+        None, description="gestationalAge.high unit."
+    )
+    gestational_age_high_system: str | None = Field(
+        None, description="gestationalAge.high system."
+    )
+    gestational_age_high_code: str | None = Field(
+        None, description="gestationalAge.high code."
+    )
 
     condition: str | None = Field(
         None, description="Condition for which the reference range is valid."

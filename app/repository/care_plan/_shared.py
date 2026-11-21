@@ -56,8 +56,12 @@ def _child_reference_kwargs(r) -> dict:
             "reference_display": None,
             **{f"reference_{s}": None for s in _IDENTIFIER_FALLBACK_SUFFIXES},
         }
-    display = getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
-    ref = getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    display = (
+        getattr(r, "display", None) if not isinstance(r, dict) else r.get("display")
+    )
+    ref = (
+        getattr(r, "reference", None) if not isinstance(r, dict) else r.get("reference")
+    )
     kwargs = {
         "reference_reference": ref,
         "reference_display": display,
@@ -66,6 +70,7 @@ def _child_reference_kwargs(r) -> dict:
         val = getattr(r, s, None) if not isinstance(r, dict) else r.get(s)
         kwargs[f"reference_{s}"] = val
     return kwargs
+
 
 _SORTABLE_FIELDS = {
     "care_plan_id": CarePlanModel.care_plan_id,
@@ -151,7 +156,9 @@ def _parse_open_ref(ref: str) -> tuple:
     return ref, None, None, None
 
 
-async def _validate_ref(session, org_id: str, ref_type, ref_id: int | None, field_name: str) -> None:
+async def _validate_ref(
+    session, org_id: str, ref_type, ref_id: int | None, field_name: str
+) -> None:
     if not ref_type or ref_id is None:
         return
     type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
@@ -167,9 +174,7 @@ def _with_relationships(stmt):
         selectinload(CarePlanModel.identifiers).selectinload(
             CarePlanIdentifier.type_codings
         ),
-        selectinload(CarePlanModel.categories).selectinload(
-            CarePlanCategory.codings
-        ),
+        selectinload(CarePlanModel.categories).selectinload(CarePlanCategory.codings),
         selectinload(CarePlanModel.based_on),
         selectinload(CarePlanModel.replaces),
         selectinload(CarePlanModel.part_of),
@@ -178,21 +183,19 @@ def _with_relationships(stmt):
         selectinload(CarePlanModel.addresses),
         selectinload(CarePlanModel.goals),
         selectinload(CarePlanModel.notes),
-        selectinload(CarePlanModel.activities).selectinload(
-            CarePlanActivity.outcome_codeable_concepts
-        ).selectinload(CarePlanActivityOutcomeCC.codings),
+        selectinload(CarePlanModel.activities)
+        .selectinload(CarePlanActivity.outcome_codeable_concepts)
+        .selectinload(CarePlanActivityOutcomeCC.codings),
         selectinload(CarePlanModel.activities).selectinload(
             CarePlanActivity.outcome_references
         ),
-        selectinload(CarePlanModel.activities).selectinload(
-            CarePlanActivity.progress
-        ),
+        selectinload(CarePlanModel.activities).selectinload(CarePlanActivity.progress),
         selectinload(CarePlanModel.activities).selectinload(
             CarePlanActivity.detail_code_codings
         ),
-        selectinload(CarePlanModel.activities).selectinload(
-            CarePlanActivity.detail_reason_codes
-        ).selectinload(CarePlanActivityDetailReasonCode.codings),
+        selectinload(CarePlanModel.activities)
+        .selectinload(CarePlanActivity.detail_reason_codes)
+        .selectinload(CarePlanActivityDetailReasonCode.codings),
         selectinload(CarePlanModel.activities).selectinload(
             CarePlanActivity.detail_reason_references
         ),

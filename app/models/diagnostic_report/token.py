@@ -27,7 +27,9 @@ class DiagnosticReportToken(Base):
     __table_args__ = (Index("ix_diagnostic_report_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
+    diagnostic_report_pk = Column(
+        BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)

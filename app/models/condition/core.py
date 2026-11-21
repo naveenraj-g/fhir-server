@@ -5,7 +5,9 @@ from sqlalchemy.orm import relationship
 from app.core.database import FHIRBase as Base
 from app.models.shared import TenantAuditMixin
 
-condition_id_seq = Sequence("condition_pub_seq", start=120000, increment=1, metadata=Base.metadata)
+condition_id_seq = Sequence(
+    "condition_pub_seq", start=120000, increment=1, metadata=Base.metadata
+)
 
 # R4 targets of Condition.subject, and of Condition.asserter (and recorder).
 SUBJECT_TYPES = ("Patient", "Group")
@@ -76,7 +78,9 @@ class ConditionModel(TenantAuditMixin, Base):
     __table_args__ = (
         Index("ix_condition_recorded_date", "recorded_date_start", "recorded_date_end"),
         Index("ix_condition_onset_date", "onset_date_start", "onset_date_end"),
-        Index("ix_condition_abatement_date", "abatement_date_start", "abatement_date_end"),
+        Index(
+            "ix_condition_abatement_date", "abatement_date_start", "abatement_date_end"
+        ),
         Index("ix_condition_subject_type_id", "subject_type", "subject_id"),
         Index("ix_condition_asserter_type_id", "asserter_type", "asserter_id"),
     )
@@ -141,8 +145,14 @@ class ConditionModel(TenantAuditMixin, Base):
     asserter_identifier_system = Column(String, nullable=True)
     asserter_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("ConditionIdentifier", back_populates="condition", cascade="all, delete-orphan")
-    tokens = relationship("ConditionToken", back_populates="condition", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "ConditionIdentifier", back_populates="condition", cascade="all, delete-orphan"
+    )
+    tokens = relationship(
+        "ConditionToken", back_populates="condition", cascade="all, delete-orphan"
+    )
     evidence_details = relationship(
-        "ConditionEvidenceDetail", back_populates="condition", cascade="all, delete-orphan"
+        "ConditionEvidenceDetail",
+        back_populates="condition",
+        cascade="all, delete-orphan",
     )

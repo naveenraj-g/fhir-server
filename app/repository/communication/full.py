@@ -465,7 +465,9 @@ class CommunicationRepository:
 
             # 5. Insert child collections
             if payload.identifier:
-                await _add_identifiers(session, pk, org_id, payload.identifier, created_by)
+                await _add_identifiers(
+                    session, pk, org_id, payload.identifier, created_by
+                )
 
             if payload.status_reason_coding:
                 _add_status_reason_codings(
@@ -479,7 +481,9 @@ class CommunicationRepository:
                 await _add_medium(session, pk, org_id, payload.medium, created_by)
 
             if payload.topic_coding:
-                _add_topic_codings(session, pk, org_id, payload.topic_coding, created_by)
+                _add_topic_codings(
+                    session, pk, org_id, payload.topic_coding, created_by
+                )
 
             if payload.based_on:
                 await _add_based_on(session, pk, org_id, payload.based_on, created_by)
@@ -496,10 +500,14 @@ class CommunicationRepository:
                 await _add_about(session, pk, org_id, payload.about, created_by)
 
             if payload.recipient:
-                await _add_recipients(session, pk, org_id, payload.recipient, created_by)
+                await _add_recipients(
+                    session, pk, org_id, payload.recipient, created_by
+                )
 
             if payload.reason_code:
-                await _add_reason_codes(session, pk, org_id, payload.reason_code, created_by)
+                await _add_reason_codes(
+                    session, pk, org_id, payload.reason_code, created_by
+                )
 
             if payload.reason_reference:
                 await _add_reason_references(
@@ -598,7 +606,9 @@ class CommunicationRepository:
 
             # Reference fields
             if "subject" in touched or "subject_display" in touched:
-                s_ref = payload.subject if "subject" in touched else row.subject_reference
+                s_ref = (
+                    payload.subject if "subject" in touched else row.subject_reference
+                )
                 s_type, s_id = _parse_subject_ref(s_ref) if s_ref else (None, None)
                 if s_type and s_id:
                     await _validate_ref(session, org_id, s_type, s_id, "subject")
@@ -609,7 +619,11 @@ class CommunicationRepository:
                     row.subject_display = payload.subject_display
 
             if "encounter" in touched or "encounter_display" in touched:
-                e_ref = payload.encounter if "encounter" in touched else row.encounter_reference
+                e_ref = (
+                    payload.encounter
+                    if "encounter" in touched
+                    else row.encounter_reference
+                )
                 e_type, e_id = _parse_encounter_ref(e_ref) if e_ref else (None, None)
                 if e_type and e_id:
                     await _validate_ref(session, org_id, e_type, e_id, "encounter")
@@ -620,8 +634,12 @@ class CommunicationRepository:
                     row.encounter_display = payload.encounter_display
 
             if "sender" in touched or "sender_display" in touched:
-                snd_ref = payload.sender if "sender" in touched else row.sender_reference
-                snd_type, snd_id = _parse_sender_ref(snd_ref) if snd_ref else (None, None)
+                snd_ref = (
+                    payload.sender if "sender" in touched else row.sender_reference
+                )
+                snd_type, snd_id = (
+                    _parse_sender_ref(snd_ref) if snd_ref else (None, None)
+                )
                 if snd_type and snd_id:
                     await _validate_ref(session, org_id, snd_type, snd_id, "sender")
                 row.sender_reference = snd_ref
@@ -677,9 +695,7 @@ class CommunicationRepository:
                     )
                 )
                 if payload.medium:
-                    await _add_medium(
-                        session, pk, org_id, payload.medium, updated_by
-                    )
+                    await _add_medium(session, pk, org_id, payload.medium, updated_by)
 
             if "topic_coding" in touched:
                 await session.execute(
@@ -710,9 +726,7 @@ class CommunicationRepository:
                     )
                 )
                 if payload.part_of:
-                    await _add_part_of(
-                        session, pk, org_id, payload.part_of, updated_by
-                    )
+                    await _add_part_of(session, pk, org_id, payload.part_of, updated_by)
 
             if "in_response_to" in touched:
                 await session.execute(
@@ -732,9 +746,7 @@ class CommunicationRepository:
                     )
                 )
                 if payload.about:
-                    await _add_about(
-                        session, pk, org_id, payload.about, updated_by
-                    )
+                    await _add_about(session, pk, org_id, payload.about, updated_by)
 
             if "recipient" in touched:
                 await session.execute(
@@ -787,9 +799,7 @@ class CommunicationRepository:
                     )
                 )
                 if payload.note:
-                    await _add_notes(
-                        session, pk, org_id, payload.note, updated_by
-                    )
+                    await _add_notes(session, pk, org_id, payload.note, updated_by)
 
             row.updated_by = updated_by
             await session.commit()
@@ -906,9 +916,7 @@ class CommunicationRepository:
                     rec_subquery = rec_subquery.where(
                         CommunicationRecipient.reference_reference == recipient
                     )
-                base_stmt = base_stmt.where(
-                    CommunicationModel.id.in_(rec_subquery)
-                )
+                base_stmt = base_stmt.where(CommunicationModel.id.in_(rec_subquery))
 
             # Count query
             count_stmt = select(func.count()).select_from(base_stmt.subquery())

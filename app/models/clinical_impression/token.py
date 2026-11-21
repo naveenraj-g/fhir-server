@@ -24,14 +24,20 @@ class ClinicalImpressionToken(Base):
     only one parameter lives here today."""
 
     __tablename__ = "clinical_impression_token"
-    __table_args__ = (Index("ix_clinical_impression_token_param_code", "param", "code"),)
+    __table_args__ = (
+        Index("ix_clinical_impression_token_param_code", "param", "code"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    clinical_impression_pk = Column(BigInteger, ForeignKey("clinical_impression.id"), nullable=False, index=True)
+    clinical_impression_pk = Column(
+        BigInteger, ForeignKey("clinical_impression.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)
     display_norm = Column(String, nullable=True)
     text_norm = Column(String, nullable=True)
 
-    clinical_impression = relationship("ClinicalImpressionModel", back_populates="tokens")
+    clinical_impression = relationship(
+        "ClinicalImpressionModel", back_populates="tokens"
+    )

@@ -50,7 +50,11 @@ class ScheduleModel(TenantAuditMixin, Base):
 
     __tablename__ = "schedule"
     __table_args__ = (
-        Index("ix_schedule_planning_horizon", "planning_horizon_start", "planning_horizon_end"),
+        Index(
+            "ix_schedule_planning_horizon",
+            "planning_horizon_start",
+            "planning_horizon_end",
+        ),
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)

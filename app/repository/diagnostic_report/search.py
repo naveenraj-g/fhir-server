@@ -29,7 +29,9 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._clinical_impression_revinclude import reference_impression_revincludes
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
 from app.repository._immunization_revinclude import reason_immunization_revincludes
 from app.repository._procedure_revinclude import reason_procedure_revincludes
 from app.models.diagnostic_report import (
@@ -55,18 +57,48 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/diagnostic-report-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Patient": ("app.models.patient", "PatientModel", "patient_id",
-                "app.repository.patient.search", "patient_search"),
-    "Practitioner": ("app.models.practitioner", "PractitionerModel", "practitioner_id",
-                     "app.repository.practitioner.search", "practitioner_search"),
-    "PractitionerRole": ("app.models.practitioner_role", "PractitionerRoleModel", "practitioner_role_id",
-                         "app.repository.practitioner_role.search", "practitioner_role_search"),
-    "Organization": ("app.models.organization", "OrganizationModel", "organization_id",
-                     "app.repository.organization.search", "organization_search"),
-    "Encounter": ("app.models.encounter", "EncounterModel", "encounter_id",
-                  "app.repository.encounter.search", "encounter_search"),
-    "Location": ("app.models.location", "LocationModel", "location_id",
-                 "app.repository.location.search", "location_search"),
+    "Patient": (
+        "app.models.patient",
+        "PatientModel",
+        "patient_id",
+        "app.repository.patient.search",
+        "patient_search",
+    ),
+    "Practitioner": (
+        "app.models.practitioner",
+        "PractitionerModel",
+        "practitioner_id",
+        "app.repository.practitioner.search",
+        "practitioner_search",
+    ),
+    "PractitionerRole": (
+        "app.models.practitioner_role",
+        "PractitionerRoleModel",
+        "practitioner_role_id",
+        "app.repository.practitioner_role.search",
+        "practitioner_role_search",
+    ),
+    "Organization": (
+        "app.models.organization",
+        "OrganizationModel",
+        "organization_id",
+        "app.repository.organization.search",
+        "organization_search",
+    ),
+    "Encounter": (
+        "app.models.encounter",
+        "EncounterModel",
+        "encounter_id",
+        "app.repository.encounter.search",
+        "encounter_search",
+    ),
+    "Location": (
+        "app.models.location",
+        "LocationModel",
+        "location_id",
+        "app.repository.location.search",
+        "location_search",
+    ),
 }
 
 
@@ -86,7 +118,9 @@ def _registry_of(resource_type: str):
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.diagnostic_report_pk == D.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.diagnostic_report_pk == D.id, *conditions)
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -94,7 +128,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.diagnostic_report_pk == D.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.diagnostic_report_pk == D.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -112,7 +150,9 @@ def _referenced(target: str, inner, ctx):
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return D.diagnostic_report_id == int(token.code)
 
@@ -142,10 +182,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -157,7 +204,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -176,15 +225,23 @@ def _column_ref(prefix: str, targets: tuple[str, ...], narrowed: str | None = No
     """(match, present, chain, sort) for a 0..1 Reference held as `{prefix}_*`
     columns on the diagnostic_report row. `narrowed` restricts a multi-target
     element to one type (`patient` is `subject` resolved to a Patient)."""
-    ref, type_, id_ = (getattr(D, f"{prefix}_{part}") for part in ("reference", "type", "id"))
-    ident_system, ident_value = getattr(D, f"{prefix}_identifier_system"), getattr(D, f"{prefix}_identifier_value")
+    ref, type_, id_ = (
+        getattr(D, f"{prefix}_{part}") for part in ("reference", "type", "id")
+    )
+    ident_system, ident_value = (
+        getattr(D, f"{prefix}_identifier_system"),
+        getattr(D, f"{prefix}_identifier_value"),
+    )
     # `is_not(None)` keeps `NOT present` (`:missing=true`) from going NULL for a row whose
     # reference has no resolved type (a logical, identifier-only reference).
     type_filter = (type_.is_not(None), type_ == narrowed) if narrowed else ()
 
     def match(value, modifier, ctx):
         if modifier == "identifier":
-            return and_(token_condition(ident_system, ident_value, parse_token(value)), *type_filter)
+            return and_(
+                token_condition(ident_system, ident_value, parse_token(value)),
+                *type_filter,
+            )
         # `modifier` is a target type (subject:Patient=10001) or None; a bare id
         # with several targets is ambiguous and is rejected by reference_target().
         return reference_match(type_, id_, ref, value, modifier, ctx, targets, str)
@@ -210,19 +267,35 @@ def _reference_param(param: str, targets: tuple[str, ...]):
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _R,
             _R.param == param,
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
             ),
         )
 
     def present(ctx):
         return _exists(
-            _R, _R.param == param, or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None))
+            _R,
+            _R.param == param,
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def sort():
@@ -243,23 +316,44 @@ def _performer_param(param: str):
             return _exists(
                 _Pf,
                 _Pf.param == param,
-                token_condition(_Pf.reference_identifier_system, _Pf.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _Pf.reference_identifier_system,
+                    _Pf.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _Pf,
             _Pf.param == param,
             reference_match(
-                _Pf.reference_type, _Pf.reference_id, _Pf.reference_reference, value, modifier, ctx, PERFORMER_TYPES, str
+                _Pf.reference_type,
+                _Pf.reference_id,
+                _Pf.reference_reference,
+                value,
+                modifier,
+                ctx,
+                PERFORMER_TYPES,
+                str,
             ),
         )
 
     def present(ctx):
         return _exists(
-            _Pf, _Pf.param == param, or_(_Pf.reference_reference.is_not(None), _Pf.reference_identifier_value.is_not(None))
+            _Pf,
+            _Pf.param == param,
+            or_(
+                _Pf.reference_reference.is_not(None),
+                _Pf.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
-        return _exists(_Pf, _Pf.param == param, _Pf.reference_type == target, _Pf.reference_id.in_(_referenced(target, inner, ctx)))
+        return _exists(
+            _Pf,
+            _Pf.param == param,
+            _Pf.reference_type == target,
+            _Pf.reference_id.in_(_referenced(target, inner, ctx)),
+        )
 
     def sort():
         return _child_sort(_Pf.reference_id, _Pf, _Pf.param == param)
@@ -278,7 +372,9 @@ async def _load(session, ctx, resource_type: str, ids) -> list:
     if not ids:
         return []
     model, id_col = _model(resource_type)
-    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+    )
 
 
 def _include_column(prefix: str, resource_type: str):
@@ -287,7 +383,11 @@ def _include_column(prefix: str, resource_type: str):
 
     async def fetch(session, ctx, reports):
         type_, id_ = f"{prefix}_type", f"{prefix}_id"
-        ids = {getattr(r, id_) for r in reports if getattr(r, type_) == resource_type and getattr(r, id_)}
+        ids = {
+            getattr(r, id_)
+            for r in reports
+            if getattr(r, type_) == resource_type and getattr(r, id_)
+        }
         return await _load(session, ctx, resource_type, ids)
 
     return fetch
@@ -303,7 +403,12 @@ def _include_performer(param: str, resource_type: str):
             _Pf.reference_type == resource_type,
             _Pf.reference_id.is_not(None),
         )
-        return await _load(session, ctx, resource_type, set((await session.execute(ids)).scalars().all()))
+        return await _load(
+            session,
+            ctx,
+            resource_type,
+            set((await session.execute(ids)).scalars().all()),
+        )
 
     return fetch
 
@@ -316,7 +421,12 @@ def revinclude_reports_via_column(prefix: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         type_, id_ = getattr(D, f"{prefix}_type"), getattr(D, f"{prefix}_id")
-        return await _fetch(session, select(D).where(D.tenant_id == ctx.tenant_id, type_ == resource_type, id_.in_(ids)))
+        return await _fetch(
+            session,
+            select(D).where(
+                D.tenant_id == ctx.tenant_id, type_ == resource_type, id_.in_(ids)
+            ),
+        )
 
     return fetch
 
@@ -328,9 +438,13 @@ def revinclude_reports_via_performer(param: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         pks = select(_Pf.diagnostic_report_pk).where(
-            _Pf.param == param, _Pf.reference_type == resource_type, _Pf.reference_id.in_(ids)
+            _Pf.param == param,
+            _Pf.reference_type == resource_type,
+            _Pf.reference_id.in_(ids),
         )
-        return await _fetch(session, select(D).where(D.tenant_id == ctx.tenant_id, D.id.in_(pks)))
+        return await _fetch(
+            session, select(D).where(D.tenant_id == ctx.tenant_id, D.id.in_(pks))
+        )
 
     return fetch
 
@@ -342,7 +456,10 @@ def _register_kind() -> None:
 
     register_kind(
         ResourceKind(
-            "DiagnosticReport", lambda r: r.diagnostic_report_id, to_fhir_diagnostic_report, "diagnostic-reports"
+            "DiagnosticReport",
+            lambda r: r.diagnostic_report_id,
+            to_fhir_diagnostic_report,
+            "diagnostic-reports",
         )
     )
 
@@ -351,7 +468,9 @@ def _register_kind() -> None:
 
 _TOKEN = frozenset({"text", "not", "in", "not-in", "above", "below", "missing"})
 _REFERENCE = frozenset({"identifier", "missing"})
-_IDENTIFIER_DOC = {"identifier": "`:identifier` — match the logical identifier of a target that has no resource here."}
+_IDENTIFIER_DOC = {
+    "identifier": "`:identifier` — match the logical identifier of a target that has no resource here."
+}
 
 
 @cache
@@ -360,14 +479,36 @@ def diagnostic_report_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
-    def column_ref(name, description, expression, prefix, targets, example, narrowed=None):
+    def column_ref(
+        name, description, expression, prefix, targets, example, narrowed=None
+    ):
         match, present, chain, sort = _column_ref(prefix, targets, narrowed)
         modeled = [t for t in targets if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, chain=chain,
-            chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
@@ -376,16 +517,35 @@ def diagnostic_report_search() -> SearchRegistry:
         targets = REFERENCE_TYPES[name]
         match, present, sort = _reference_param(name, targets)
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, sort=sort,
-            example=example, modifier_docs=_IDENTIFIER_DOC,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            sort=sort,
+            example=example,
+            modifier_docs=_IDENTIFIER_DOC,
         )
 
     def performer(name, description, expression, example):
         match, present, chain, sort = _performer_param(name)
         modeled = [t for t in PERFORMER_TYPES if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=PERFORMER_TYPES,
-            chain=chain, chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=PERFORMER_TYPES,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
@@ -393,70 +553,151 @@ def diagnostic_report_search() -> SearchRegistry:
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public diagnostic report id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: D.diagnostic_report_id, example="110001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public diagnostic report id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: D.diagnostic_report_id,
+            example="110001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
-        reference("based-on", "Reference to the service request", "DiagnosticReport.basedOn", "ServiceRequest/80001"),
+        reference(
+            "based-on",
+            "Reference to the service request",
+            "DiagnosticReport.basedOn",
+            "ServiceRequest/80001",
+        ),
         token(
-            "category", "Which diagnostic discipline/department created the report", "DiagnosticReport.category",
+            "category",
+            "Which diagnostic discipline/department created the report",
+            "DiagnosticReport.category",
             "http://terminology.hl7.org/CodeSystem/v2-0074|LAB",
         ),
-        token("code", "The code for the report, as opposed to codes for the atomic results", "DiagnosticReport.code",
-              "http://loinc.org|58410-2"),
-        token("conclusion", "A coded conclusion (interpretation/impression) on the report", "DiagnosticReport.conclusionCode",
-              "http://snomed.info/sct|419099009"),
+        token(
+            "code",
+            "The code for the report, as opposed to codes for the atomic results",
+            "DiagnosticReport.code",
+            "http://loinc.org|58410-2",
+        ),
+        token(
+            "conclusion",
+            "A coded conclusion (interpretation/impression) on the report",
+            "DiagnosticReport.conclusionCode",
+            "http://snomed.info/sct|419099009",
+        ),
         SearchParam(
-            "date", "date", "The clinically relevant time of the report (a dateTime or a Period)",
+            "date",
+            "date",
+            "The clinically relevant time of the report (a dateTime or a Period)",
             "DiagnosticReport.effective",
-            _date_match, lambda ctx: or_(D.effective_date_start.is_not(None), D.effective_date_end.is_not(None)),
-            sort=lambda: D.effective_date_start, example="ge2026-01-01",
+            _date_match,
+            lambda ctx: or_(
+                D.effective_date_start.is_not(None), D.effective_date_end.is_not(None)
+            ),
+            sort=lambda: D.effective_date_start,
+            example="ge2026-01-01",
         ),
         column_ref(
-            "encounter", "The Encounter when the order was made", "DiagnosticReport.encounter", "encounter",
-            ("Encounter",), "Encounter/20001",
+            "encounter",
+            "The Encounter when the order was made",
+            "DiagnosticReport.encounter",
+            "encounter",
+            ("Encounter",),
+            "Encounter/20001",
         ),
         SearchParam(
-            "identifier", "token", "An identifier for the report", "DiagnosticReport.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:reports|DR-1",
+            "identifier",
+            "token",
+            "An identifier for the report",
+            "DiagnosticReport.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:reports|DR-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         SearchParam(
-            "issued", "date", "When the report was issued", "DiagnosticReport.issued",
-            lambda v, m, ctx: date_match(D.issued, v), lambda ctx: D.issued.is_not(None),
-            sort=lambda: D.issued, example="ge2026-01-01",
+            "issued",
+            "date",
+            "When the report was issued",
+            "DiagnosticReport.issued",
+            lambda v, m, ctx: date_match(D.issued, v),
+            lambda ctx: D.issued.is_not(None),
+            sort=lambda: D.issued,
+            example="ge2026-01-01",
         ),
-        reference("media", "A reference to the image source", "DiagnosticReport.media.link", "Media/1"),
+        reference(
+            "media",
+            "A reference to the image source",
+            "DiagnosticReport.media.link",
+            "Media/1",
+        ),
         column_ref(
-            "patient", "The subject of the report if a patient", "DiagnosticReport.subject.where(resolve() is Patient)",
-            "subject", ("Patient",), "Patient/10001", narrowed="Patient",
+            "patient",
+            "The subject of the report if a patient",
+            "DiagnosticReport.subject.where(resolve() is Patient)",
+            "subject",
+            ("Patient",),
+            "Patient/10001",
+            narrowed="Patient",
         ),
         performer(
-            "performer", "Who is responsible for the report", "DiagnosticReport.performer", "Practitioner/30001"
+            "performer",
+            "Who is responsible for the report",
+            "DiagnosticReport.performer",
+            "Practitioner/30001",
         ),
-        reference("result", "Link to an atomic result (observation resource)", "DiagnosticReport.result", "Observation/160001"),
+        reference(
+            "result",
+            "Link to an atomic result (observation resource)",
+            "DiagnosticReport.result",
+            "Observation/160001",
+        ),
         performer(
-            "results-interpreter", "Who was the source of the report's interpretation",
-            "DiagnosticReport.resultsInterpreter", "Practitioner/30001",
+            "results-interpreter",
+            "Who was the source of the report's interpretation",
+            "DiagnosticReport.resultsInterpreter",
+            "Practitioner/30001",
         ),
-        reference("specimen", "The specimen details", "DiagnosticReport.specimen", "Specimen/310001"),
+        reference(
+            "specimen",
+            "The specimen details",
+            "DiagnosticReport.specimen",
+            "Specimen/310001",
+        ),
         SearchParam(
-            "status", "token",
+            "status",
+            "token",
             "registered | partial | preliminary | final | amended | corrected | appended | cancelled | "
             f"entered-in-error | unknown (system {_STATUS_SYSTEM})",
-            "DiagnosticReport.status", _status_match, lambda ctx: D.status.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: D.status, example="final",
+            "DiagnosticReport.status",
+            _status_match,
+            lambda ctx: D.status.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: D.status,
+            example="final",
         ),
         column_ref(
-            "subject", "The subject of the report", "DiagnosticReport.subject", "subject", SUBJECT_TYPES,
+            "subject",
+            "The subject of the report",
+            "DiagnosticReport.subject",
+            "subject",
+            SUBJECT_TYPES,
             "Patient/10001",
         ),
     ]
@@ -474,23 +715,62 @@ def diagnostic_report_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 DiagnosticReport definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "status", "category", "code", "subject", "encounter", "effectiveDateTime",
-             "effectivePeriod", "issued", "performer", "resultsInterpreter", "media", "conclusionCode"}
+            {
+                "identifier",
+                "status",
+                "category",
+                "code",
+                "subject",
+                "encounter",
+                "effectiveDateTime",
+                "effectivePeriod",
+                "issued",
+                "performer",
+                "resultsInterpreter",
+                "media",
+                "conclusionCode",
+            }
         ),
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"status", "code"}),
         includes=(
-            IncludeTarget("DiagnosticReport", "patient", "Patient", _include_column("subject", "Patient")),
-            IncludeTarget("DiagnosticReport", "subject", "Patient", _include_column("subject", "Patient")),
-            IncludeTarget("DiagnosticReport", "subject", "Location", _include_column("subject", "Location")),
-            IncludeTarget("DiagnosticReport", "encounter", "Encounter", _include_column("encounter", "Encounter")),
+            IncludeTarget(
+                "DiagnosticReport",
+                "patient",
+                "Patient",
+                _include_column("subject", "Patient"),
+            ),
+            IncludeTarget(
+                "DiagnosticReport",
+                "subject",
+                "Patient",
+                _include_column("subject", "Patient"),
+            ),
+            IncludeTarget(
+                "DiagnosticReport",
+                "subject",
+                "Location",
+                _include_column("subject", "Location"),
+            ),
+            IncludeTarget(
+                "DiagnosticReport",
+                "encounter",
+                "Encounter",
+                _include_column("encounter", "Encounter"),
+            ),
             *performer_includes,
         ),
         # Procedure.reasonReference points here.
         revincludes=(
-            *reason_procedure_revincludes("DiagnosticReport", lambda r: r.diagnostic_report_id),
-            *reason_immunization_revincludes("DiagnosticReport", lambda r: r.diagnostic_report_id),
-            *reference_impression_revincludes('investigation', 'DiagnosticReport', lambda r: r.diagnostic_report_id),
+            *reason_procedure_revincludes(
+                "DiagnosticReport", lambda r: r.diagnostic_report_id
+            ),
+            *reason_immunization_revincludes(
+                "DiagnosticReport", lambda r: r.diagnostic_report_id
+            ),
+            *reference_impression_revincludes(
+                "investigation", "DiagnosticReport", lambda r: r.diagnostic_report_id
+            ),
         ),
         default_sort=lambda: [D.diagnostic_report_id.desc()],
     )

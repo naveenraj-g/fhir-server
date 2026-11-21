@@ -35,12 +35,18 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import asyncpg
 
 _BUNDLE_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "app" / "fhir" / "spec" / "profiles-resources.json"
+    Path(__file__).resolve().parent.parent.parent
+    / "app"
+    / "fhir"
+    / "spec"
+    / "profiles-resources.json"
 )
 
 _SEED_ACTOR = "system:seed_base_profiles"

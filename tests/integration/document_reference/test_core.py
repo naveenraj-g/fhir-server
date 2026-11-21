@@ -220,26 +220,51 @@ async def test_create_document_reference_with_reference_identifier_fallback(clie
     assert fhir_data["custodian"]["display"] == "External Custodian"
     assert fhir_data["custodian"]["identifier"]["system"] == "urn:custodian:system"
     assert fhir_data["custodian"]["identifier"]["value"] == "CUST-789"
-    assert fhir_data["masterIdentifier"]["assigner"]["display"] == "External Master Assigner"
-    assert fhir_data["masterIdentifier"]["assigner"]["identifier"]["system"] == "urn:mid:assigner"
-    assert fhir_data["masterIdentifier"]["assigner"]["identifier"]["value"] == "ASGN-MID"
+    assert (
+        fhir_data["masterIdentifier"]["assigner"]["display"]
+        == "External Master Assigner"
+    )
+    assert (
+        fhir_data["masterIdentifier"]["assigner"]["identifier"]["system"]
+        == "urn:mid:assigner"
+    )
+    assert (
+        fhir_data["masterIdentifier"]["assigner"]["identifier"]["value"] == "ASGN-MID"
+    )
     assert fhir_data["identifier"][0]["assigner"]["display"] == "External Assigner"
-    assert fhir_data["identifier"][0]["assigner"]["identifier"]["system"] == "urn:ident:assigner"
+    assert (
+        fhir_data["identifier"][0]["assigner"]["identifier"]["system"]
+        == "urn:ident:assigner"
+    )
     assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ASGN-001"
     assert fhir_data["author"][0]["display"] == "External Author"
     assert fhir_data["author"][0]["identifier"]["system"] == "urn:author:system"
     assert fhir_data["author"][0]["identifier"]["value"] == "AUTH-AUTHOR-1"
     assert fhir_data["relatesTo"][0]["target"]["display"] == "External Target"
-    assert fhir_data["relatesTo"][0]["target"]["identifier"]["system"] == "urn:target:system"
+    assert (
+        fhir_data["relatesTo"][0]["target"]["identifier"]["system"]
+        == "urn:target:system"
+    )
     assert fhir_data["relatesTo"][0]["target"]["identifier"]["value"] == "TGT-999"
-    assert fhir_data["context"]["sourcePatientInfo"]["display"] == "External Patient Info"
-    assert fhir_data["context"]["sourcePatientInfo"]["identifier"]["system"] == "urn:pat:info"
-    assert fhir_data["context"]["sourcePatientInfo"]["identifier"]["value"] == "PATINFO-1"
+    assert (
+        fhir_data["context"]["sourcePatientInfo"]["display"] == "External Patient Info"
+    )
+    assert (
+        fhir_data["context"]["sourcePatientInfo"]["identifier"]["system"]
+        == "urn:pat:info"
+    )
+    assert (
+        fhir_data["context"]["sourcePatientInfo"]["identifier"]["value"] == "PATINFO-1"
+    )
     assert fhir_data["context"]["encounter"][0]["display"] == "External Encounter"
-    assert fhir_data["context"]["encounter"][0]["identifier"]["system"] == "urn:enc:system"
+    assert (
+        fhir_data["context"]["encounter"][0]["identifier"]["system"] == "urn:enc:system"
+    )
     assert fhir_data["context"]["encounter"][0]["identifier"]["value"] == "ENC-001"
     assert fhir_data["context"]["related"][0]["display"] == "External Related"
-    assert fhir_data["context"]["related"][0]["identifier"]["system"] == "urn:rel:system"
+    assert (
+        fhir_data["context"]["related"][0]["identifier"]["system"] == "urn:rel:system"
+    )
     assert fhir_data["context"]["related"][0]["identifier"]["value"] == "REL-001"
 
 

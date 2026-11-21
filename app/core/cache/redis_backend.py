@@ -29,7 +29,11 @@ class RedisCacheBackend:
         except redis.exceptions.RedisError:
             logger.error(
                 "Redis cache read failed — treating as a cache miss",
-                extra={"event": "cache.backend_degraded", "reason": "redis_error", "op": "get"},
+                extra={
+                    "event": "cache.backend_degraded",
+                    "reason": "redis_error",
+                    "op": "get",
+                },
             )
             return None
 
@@ -39,7 +43,11 @@ class RedisCacheBackend:
         except redis.exceptions.RedisError:
             logger.error(
                 "Redis cache write failed — value will not be cached this time",
-                extra={"event": "cache.backend_degraded", "reason": "redis_error", "op": "set"},
+                extra={
+                    "event": "cache.backend_degraded",
+                    "reason": "redis_error",
+                    "op": "set",
+                },
             )
 
     async def delete(self, key: str) -> None:
@@ -48,5 +56,9 @@ class RedisCacheBackend:
         except redis.exceptions.RedisError:
             logger.error(
                 "Redis cache delete failed",
-                extra={"event": "cache.backend_degraded", "reason": "redis_error", "op": "delete"},
+                extra={
+                    "event": "cache.backend_degraded",
+                    "reason": "redis_error",
+                    "op": "delete",
+                },
             )

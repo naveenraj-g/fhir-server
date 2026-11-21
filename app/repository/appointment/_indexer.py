@@ -46,7 +46,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     supportingInformation, which target resources this server doesn't rebuild."""
     refs = []
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
     for slot in document.get("slot") or []:
@@ -139,12 +141,20 @@ def index_rows(document: dict) -> dict[str, list]:
             tokens.extend(type_rows(model, concept))
     references = []
     for param, element in REFERENCE_PARAMS.items():
-        references += [r for ref in document.get(element) or [] if (r := _reference_row(param, ref))]
+        references += [
+            r
+            for ref in document.get(element) or []
+            if (r := _reference_row(param, ref))
+        ]
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(AppointmentIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(AppointmentIdentifier, i)
         ],
         "tokens": tokens,
         "references": references,
-        "participants": [_participant_row(p) for p in document.get("participant") or []],
+        "participants": [
+            _participant_row(p) for p in document.get("participant") or []
+        ],
     }

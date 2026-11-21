@@ -1,4 +1,7 @@
-from .codeable_concept import PlainMedicationRequestCode, PlainMedicationRequestCodeableConcept
+from .codeable_concept import (
+    PlainMedicationRequestCode,
+    PlainMedicationRequestCodeableConcept,
+)
 from .core import (
     FHIRDosage,
     FHIRMedicationRequestBundle,
@@ -12,7 +15,10 @@ from .core import (
     PlainMedicationRequestSubstitution,
 )
 from .dosage_instruction import PlainMedicationRequestDosageInstruction
-from .identifier import PlainMedicationRequestGroupIdentifier, PlainMedicationRequestIdentifier
+from .identifier import (
+    PlainMedicationRequestGroupIdentifier,
+    PlainMedicationRequestIdentifier,
+)
 from .note import PlainMedicationRequestNote
 from .reference import (
     PlainMedicationRequestBasedOn,

@@ -34,9 +34,7 @@ logger = get_logger(__name__)
 class _CoreMixin:
     """Core CRUD and list operations for Medication."""
 
-    async def get_by_medication_id(
-        self, medication_id: int
-    ) -> MedicationModel | None:
+    async def get_by_medication_id(self, medication_id: int) -> MedicationModel | None:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(MedicationModel).where(
@@ -59,13 +57,15 @@ class _CoreMixin:
             res = await session.execute(stmt)
             return res.scalar_one_or_none()
 
-    async def medication_belongs_to_org(
-        self, medication_id: int, org_id: str
-    ) -> bool:
+    async def medication_belongs_to_org(self, medication_id: int, org_id: str) -> bool:
         async with self.session_factory() as session:
-            stmt = select(func.count()).select_from(MedicationModel).where(
-                MedicationModel.medication_id == medication_id,
-                MedicationModel.tenant_id == org_id,
+            stmt = (
+                select(func.count())
+                .select_from(MedicationModel)
+                .where(
+                    MedicationModel.medication_id == medication_id,
+                    MedicationModel.tenant_id == org_id,
+                )
             )
             res = await session.execute(stmt)
             count = res.scalar() or 0
@@ -107,11 +107,15 @@ class _CoreMixin:
             )
 
         if manufacturer:
-            ref_type, ref_id = parse_reference(manufacturer, MedicationManufacturerReferenceType)
+            ref_type, ref_id = parse_reference(
+                manufacturer, MedicationManufacturerReferenceType
+            )
             if ref_id:
                 stmt = stmt.where(MedicationModel.manufacturer_id == ref_id)
             else:
-                stmt = stmt.where(MedicationModel.manufacturer_reference == manufacturer)
+                stmt = stmt.where(
+                    MedicationModel.manufacturer_reference == manufacturer
+                )
 
         if form:
             stmt = stmt.where(
@@ -129,7 +133,9 @@ class _CoreMixin:
             )
 
         if ingredient:
-            ref_type, ref_id = parse_reference(ingredient, MedicationIngredientItemReferenceType)
+            ref_type, ref_id = parse_reference(
+                ingredient, MedicationIngredientItemReferenceType
+            )
             if ref_id:
                 stmt = stmt.where(
                     MedicationModel.ingredients.any(
@@ -147,12 +153,19 @@ class _CoreMixin:
             stmt = stmt.where(
                 MedicationModel.ingredients.any(
                     or_(
-                        MedicationIngredient.item_codeable_concept_text.ilike(f"%{ingredient_code}%"),
+                        MedicationIngredient.item_codeable_concept_text.ilike(
+                            f"%{ingredient_code}%"
+                        ),
                         MedicationIngredient.id.in_(
-                            select(MedicationIngredientItemCoding.medication_ingredient_id).where(
+                            select(
+                                MedicationIngredientItemCoding.medication_ingredient_id
+                            ).where(
                                 or_(
-                                    MedicationIngredientItemCoding.code == ingredient_code,
-                                    MedicationIngredientItemCoding.display.ilike(f"%{ingredient_code}%"),
+                                    MedicationIngredientItemCoding.code
+                                    == ingredient_code,
+                                    MedicationIngredientItemCoding.display.ilike(
+                                        f"%{ingredient_code}%"
+                                    ),
                                 )
                             )
                         ),

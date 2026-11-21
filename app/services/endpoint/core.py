@@ -44,9 +44,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Endpoint operation requires an org-scoped token"
             )
-        endpoint = await self.repository.get_by_endpoint_id_in_org(
-            endpoint_id, org_id
-        )
+        endpoint = await self.repository.get_by_endpoint_id_in_org(endpoint_id, org_id)
         if not endpoint:
             raise NotFoundError("Endpoint not found")
         return endpoint
@@ -58,9 +56,7 @@ class _CoreMixin:
         *,
         strict: bool = False,
         fhir_base: str | None = None,
-    ) -> tuple[
-        SearchRequest, list[EndpointModel], int | None, list[EndpointModel]
-    ]:
+    ) -> tuple[SearchRequest, list[EndpointModel], int | None, list[EndpointModel]]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the Endpoint search
         registry (SearchError -> 400 OperationOutcome). `strict` is
@@ -137,9 +133,7 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", endpoint_id, org_id)
             raise NotFoundError("Endpoint not found")
-        existing = await self.repository.get_by_endpoint_id_in_org(
-            endpoint_id, org_id
-        )
+        existing = await self.repository.get_by_endpoint_id_in_org(endpoint_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", endpoint_id, org_id)
             raise NotFoundError("Endpoint not found")

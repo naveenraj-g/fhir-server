@@ -311,9 +311,7 @@ class FlagRepository:
                     )
                 )
                 await session.execute(
-                    delete(FlagIdentifier).where(
-                        FlagIdentifier.flag_pk == model.id
-                    )
+                    delete(FlagIdentifier).where(FlagIdentifier.flag_pk == model.id)
                 )
                 await _add_identifiers(
                     session, model.id, effective_org_id, payload.identifier, updated_by
@@ -331,9 +329,7 @@ class FlagRepository:
                     )
                 )
                 await session.execute(
-                    delete(FlagCategory).where(
-                        FlagCategory.flag_pk == model.id
-                    )
+                    delete(FlagCategory).where(FlagCategory.flag_pk == model.id)
                 )
                 await _add_categories(
                     session, model.id, effective_org_id, payload.category, updated_by
@@ -341,9 +337,7 @@ class FlagRepository:
 
             if "code_coding" in provided:
                 await session.execute(
-                    delete(FlagCodeCoding).where(
-                        FlagCodeCoding.flag_pk == model.id
-                    )
+                    delete(FlagCodeCoding).where(FlagCodeCoding.flag_pk == model.id)
                 )
                 _add_code_codings(
                     session, model.id, effective_org_id, payload.code_coding, updated_by

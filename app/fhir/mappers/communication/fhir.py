@@ -78,13 +78,22 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -114,7 +123,10 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
         if id_period_start or id_period_end:
             identifier["period"] = {
                 k: v
-                for k, v in {"start": fhir_instant(id_period_start), "end": fhir_instant(id_period_end)}.items()
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
                 if v
             }
         entry["identifier"] = identifier
@@ -189,12 +201,7 @@ def _fhir_payload(p: CommunicationPayload) -> dict | None:
     entry: dict = {}
     if p.content_string is not None:
         entry["contentString"] = p.content_string
-    elif (
-        p.data
-        or p.url
-        or p.title
-        or p.content_type
-    ):
+    elif p.data or p.url or p.title or p.content_type:
         att = _fhir_attachment_from_row(p)
         if att:
             entry["contentAttachment"] = att
@@ -279,8 +286,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
         categories = [
             item
             for item in (
-                _fhir_codeable_concept(c.codings, c.text)
-                for c in model.categories
+                _fhir_codeable_concept(c.codings, c.text) for c in model.categories
             )
             if item is not None
         ]
@@ -294,8 +300,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
         medium = [
             item
             for item in (
-                _fhir_codeable_concept(m.codings, m.text)
-                for m in model.medium_list
+                _fhir_codeable_concept(m.codings, m.text) for m in model.medium_list
             )
             if item is not None
         ]
@@ -306,9 +311,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
     if subject:
         result["subject"] = subject
 
-    topic = _fhir_codeable_concept(
-        model.topic_codings, model.topic_text
-    )
+    topic = _fhir_codeable_concept(model.topic_codings, model.topic_text)
     if topic:
         result["topic"] = topic
 
@@ -348,8 +351,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
         reason_codes = [
             item
             for item in (
-                _fhir_codeable_concept(rc.codings, rc.text)
-                for rc in model.reason_codes
+                _fhir_codeable_concept(rc.codings, rc.text) for rc in model.reason_codes
             )
             if item is not None
         ]
@@ -359,9 +361,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
     if model.reason_references:
         reason_refs = [
             item
-            for item in (
-                _fhir_reference_row(rr) for rr in model.reason_references
-            )
+            for item in (_fhir_reference_row(rr) for rr in model.reason_references)
             if item is not None
         ]
         if reason_refs:
@@ -378,9 +378,7 @@ def to_fhir_communication(model: CommunicationModel) -> dict:
 
     if model.notes:
         notes = [
-            item
-            for item in (_fhir_note(n) for n in model.notes)
-            if item is not None
+            item for item in (_fhir_note(n) for n in model.notes) if item is not None
         ]
         if notes:
             result["note"] = notes

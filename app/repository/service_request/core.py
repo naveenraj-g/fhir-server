@@ -21,10 +21,14 @@ class _CoreMixin:
     Default (gateway-trusted) pattern — same as QuestionnaireResponse: no
     org-scoped existence check or ownership enforcement here at all."""
 
-    async def get_by_service_request_id(self, service_request_id: int) -> ServiceRequestModel | None:
+    async def get_by_service_request_id(
+        self, service_request_id: int
+    ) -> ServiceRequestModel | None:
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(ServiceRequestModel).where(ServiceRequestModel.service_request_id == service_request_id)
+                select(ServiceRequestModel).where(
+                    ServiceRequestModel.service_request_id == service_request_id
+                )
             )
             return (await session.execute(stmt)).scalars().first()
 
@@ -42,7 +46,9 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def service_request_belongs_to_org(self, service_request_id: int, org_id: str) -> bool:
+    async def service_request_belongs_to_org(
+        self, service_request_id: int, org_id: str
+    ) -> bool:
         async with self.session_factory() as session:
             stmt = select(ServiceRequestModel.id).where(
                 ServiceRequestModel.service_request_id == service_request_id,
@@ -69,7 +75,8 @@ class _CoreMixin:
             stmt = apply_child_exists_filter(
                 stmt,
                 select(ServiceRequestIdentifier.id).where(
-                    ServiceRequestIdentifier.service_request_pk == ServiceRequestModel.id,
+                    ServiceRequestIdentifier.service_request_pk
+                    == ServiceRequestModel.id,
                     ServiceRequestIdentifier.value == identifier,
                 ),
             )
@@ -95,16 +102,27 @@ class _CoreMixin:
                 "subject": subject,
                 "identifier": identifier,
             }
-            base = self._apply_list_filters(_with_relationships(select(ServiceRequestModel)), **filter_kwargs)
+            base = self._apply_list_filters(
+                _with_relationships(select(ServiceRequestModel)), **filter_kwargs
+            )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ServiceRequestModel), **filter_kwargs
             )
             sort_column, sort_desc = resolve_sort(
-                sort, _SORTABLE_FIELDS, default_column=ServiceRequestModel.service_request_id, default_desc=True
+                sort,
+                _SORTABLE_FIELDS,
+                default_column=ServiceRequestModel.service_request_id,
+                default_desc=True,
             )
             rows, total = await self._execute_paginated(
-                session, base, count_base, sort_column=sort_column, sort_desc=sort_desc,
-                limit=limit, offset=offset, total_mode=total_mode,
+                session,
+                base,
+                count_base,
+                sort_column=sort_column,
+                sort_desc=sort_desc,
+                limit=limit,
+                offset=offset,
+                total_mode=total_mode,
             )
         logger.debug(
             "ServiceRequests listed",
@@ -128,7 +146,9 @@ class _CoreMixin:
         matching every other resource's own `delete()` for consistency
         and because it's no slower."""
         async with self.session_factory() as session:
-            stmt = select(ServiceRequestModel).where(ServiceRequestModel.service_request_id == service_request_id)
+            stmt = select(ServiceRequestModel).where(
+                ServiceRequestModel.service_request_id == service_request_id
+            )
             sr = (await session.execute(stmt)).scalars().first()
             if not sr:
                 return False

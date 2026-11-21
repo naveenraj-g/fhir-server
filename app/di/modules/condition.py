@@ -5,7 +5,6 @@ from app.services.condition import ConditionService
 
 
 class ConditionContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     condition_repository = providers.Factory(

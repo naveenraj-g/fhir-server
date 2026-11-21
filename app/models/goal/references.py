@@ -24,9 +24,7 @@ class GoalAddresses(TenantAuditMixin, Base):
     __tablename__ = "goal_addresses"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
@@ -55,9 +53,7 @@ class GoalOutcomeReference(TenantAuditMixin, Base):
     __tablename__ = "goal_outcome_reference"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(

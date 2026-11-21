@@ -34,7 +34,12 @@ ACTOR_TYPES = tuple(t.value for t in ScheduleActorReferenceType)
 # Patient/RelatedPerson/Device reference is accepted and indexed but not
 # existence-checked: calling ensure_resource_exists() for an unregistered type
 # fails closed (422 on every valid reference to one).
-MODELED_ACTOR_TYPES = {"Practitioner", "PractitionerRole", "HealthcareService", "Location"}
+MODELED_ACTOR_TYPES = {
+    "Practitioner",
+    "PractitionerRole",
+    "HealthcareService",
+    "Location",
+}
 
 _ACTOR_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
@@ -44,7 +49,10 @@ def _with_relationships(stmt):
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from ScheduleModel.content."""
     return stmt.options(
-        *(selectinload(getattr(ScheduleModel, rel)) for rel in ("identifiers", "tokens", "actors"))
+        *(
+            selectinload(getattr(ScheduleModel, rel))
+            for rel in ("identifiers", "tokens", "actors")
+        )
     )
 
 

@@ -107,7 +107,14 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     id_period_start = _get(f"{prefix}_identifier_period_start")
     id_period_end = _get(f"{prefix}_identifier_period_end")
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -157,10 +164,18 @@ def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
         return result
 
     result = {}
-    r = getattr(ref, "reference", None) if not isinstance(ref, dict) else ref.get("reference")
+    r = (
+        getattr(ref, "reference", None)
+        if not isinstance(ref, dict)
+        else ref.get("reference")
+    )
     if r:
         result["reference"] = r
-    d = (getattr(ref, "display", None) if not isinstance(ref, dict) else ref.get("display")) or display
+    d = (
+        getattr(ref, "display", None)
+        if not isinstance(ref, dict)
+        else ref.get("display")
+    ) or display
     if d:
         result["display"] = d
 
@@ -179,7 +194,14 @@ def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
     id_period_start = _get("identifier_period_start")
     id_period_end = _get("identifier_period_end")
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)

@@ -5,7 +5,6 @@ from app.services.medication_request import MedicationRequestService
 
 
 class MedicationRequestContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     medication_request_repository = providers.Factory(

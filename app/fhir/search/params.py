@@ -17,7 +17,15 @@ from typing import Any, Literal
 
 # FHIR R4 Search Parameters Types (reference: https://hl7.org/fhir/R4/search.html#ptypes)
 ParamType = Literal[
-    "string", "token", "reference", "date", "number", "quantity", "uri", "special", "composite"
+    "string",
+    "token",
+    "reference",
+    "date",
+    "number",
+    "quantity",
+    "uri",
+    "special",
+    "composite",
 ]
 
 # Modifiers each parameter type can carry in R4 (search.html §2.21.1.4).

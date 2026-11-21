@@ -29,7 +29,11 @@ ALL = set(KEYS)
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _of_type(bundle: dict, rtype: str, mode: str) -> set[str]:
@@ -45,15 +49,26 @@ async def world(client):
     """Two patients and four related persons with distinct, searchable values.
     Returns {key: id}."""
     w = {}
-    w["p1"] = await create_patient(client, {"active": True, "name": [{"family": "Windsor", "given": ["Anna"]}]})
-    w["p2"] = await create_patient(client, {"active": True, "name": [{"family": "Fairfax", "given": ["Ben"]}]})
+    w["p1"] = await create_patient(
+        client, {"active": True, "name": [{"family": "Windsor", "given": ["Anna"]}]}
+    )
+    w["p2"] = await create_patient(
+        client, {"active": True, "name": [{"family": "Fairfax", "given": ["Ben"]}]}
+    )
     w["a"] = await create_related_person(
         client,
         related_person_body(
             w["p1"],
-            identifier=[{"system": RP_IDS, "value": "RP-A", "type": {"text": "Contact id"}}],
+            identifier=[
+                {"system": RP_IDS, "value": "RP-A", "type": {"text": "Contact id"}}
+            ],
             active=True,
-            relationship=[{"coding": [{"system": ROLE, "code": "MTH", "display": "mother"}], "text": "Mother"}],
+            relationship=[
+                {
+                    "coding": [{"system": ROLE, "code": "MTH", "display": "mother"}],
+                    "text": "Mother",
+                }
+            ],
             name=[{"family": "Windsor", "given": ["Mary", "Ann"], "prefix": ["Mrs"]}],
             telecom=[
                 {"system": "phone", "value": "555-9988", "use": "mobile"},
@@ -61,7 +76,16 @@ async def world(client):
             ],
             gender="female",
             birthDate="1965-04-12",
-            address=[{"use": "home", "line": ["1 Main St"], "city": "Boston", "state": "MA", "postalCode": "02110", "country": "US"}],
+            address=[
+                {
+                    "use": "home",
+                    "line": ["1 Main St"],
+                    "city": "Boston",
+                    "state": "MA",
+                    "postalCode": "02110",
+                    "country": "US",
+                }
+            ],
         ),
     )
     w["b"] = await create_related_person(
@@ -70,12 +94,24 @@ async def world(client):
             w["p2"],
             identifier=[{"system": RP_IDS, "value": "RP-B"}],
             active=False,
-            relationship=[{"text": "Guardian"}, {"coding": [{"system": ROLE, "code": "GUARD"}]}],
+            relationship=[
+                {"text": "Guardian"},
+                {"coding": [{"system": ROLE, "code": "GUARD"}]},
+            ],
             name=[{"family": "Fairfax", "given": ["Robert"], "text": "Bob Fairfax"}],
             telecom=[{"system": "phone", "value": "555-1111", "use": "work"}],
             gender="male",
             birthDate="1990-05",
-            address=[{"use": "work", "line": ["9 Lake Rd"], "city": "Chicago", "state": "IL", "postalCode": "60601", "country": "US"}],
+            address=[
+                {
+                    "use": "work",
+                    "line": ["9 Lake Rd"],
+                    "city": "Chicago",
+                    "state": "IL",
+                    "postalCode": "60601",
+                    "country": "US",
+                }
+            ],
         ),
     )
     w["c"] = await create_related_person(
@@ -91,7 +127,10 @@ async def world(client):
     )
     w["d"] = await create_related_person(
         client,
-        {"patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}, "gender": "unknown"},
+        {
+            "patient": {"identifier": {"system": "urn:pts", "value": "P-9"}},
+            "gender": "unknown",
+        },
     )
     return w
 
@@ -132,7 +171,11 @@ async def test_last_updated(client, world):
 async def test_active(client, world):
     assert await _keys(client, world, active="true") == {"a"}
     assert await _keys(client, world, active="false") == {"b"}
-    assert await _keys(client, world, **{"active:not": "true"}) == {"b", "c", "d"}  # includes "not recorded"
+    assert await _keys(client, world, **{"active:not": "true"}) == {
+        "b",
+        "c",
+        "d",
+    }  # includes "not recorded"
     assert await _keys(client, world, **{"active:missing": "true"}) == {"c", "d"}
     assert await _status(client, active="maybe") == 400
 
@@ -140,7 +183,9 @@ async def test_active(client, world):
 async def test_gender(client, world):
     assert await _keys(client, world, gender="female") == {"a"}
     assert await _keys(client, world, gender="male,other") == {"b", "c"}
-    assert await _keys(client, world, gender="http://hl7.org/fhir/administrative-gender|unknown") == {"d"}
+    assert await _keys(
+        client, world, gender="http://hl7.org/fhir/administrative-gender|unknown"
+    ) == {"d"}
     assert await _keys(client, world, gender="http://wrong|female") == set()
     assert await _keys(client, world, gender="robot") == set()
     assert await _keys(client, world, **{"gender:not": "female"}) == {"b", "c", "d"}
@@ -152,10 +197,14 @@ async def test_gender(client, world):
 
 async def test_birthdate(client, world):
     assert await _keys(client, world, birthdate="1965-04-12") == {"a"}
-    assert await _keys(client, world, birthdate="1965") == {"a"}  # the year contains the day
+    assert await _keys(client, world, birthdate="1965") == {
+        "a"
+    }  # the year contains the day
     assert await _keys(client, world, birthdate="1990-05") == {"b"}
     assert await _keys(client, world, birthdate="2000") == {"c"}
-    assert await _keys(client, world, birthdate="1990-05-15") == set()  # a day inside the month does not equal it
+    assert (
+        await _keys(client, world, birthdate="1990-05-15") == set()
+    )  # a day inside the month does not equal it
 
 
 async def test_birthdate_prefixes_and_missing(client, world):
@@ -216,7 +265,9 @@ async def test_address_parts(client, world):
 async def test_address_use(client, world):
     assert await _keys(client, world, **{"address-use": "home"}) == {"a"}
     assert await _keys(client, world, **{"address-use": "work"}) == {"b"}
-    assert await _keys(client, world, **{"address-use": "http://hl7.org/fhir/address-use|home"}) == {"a"}
+    assert await _keys(
+        client, world, **{"address-use": "http://hl7.org/fhir/address-use|home"}
+    ) == {"a"}
     assert await _keys(client, world, **{"address-use": "http://wrong|home"}) == set()
     assert await _keys(client, world, **{"address-use": "nonsense"}) == set()
     assert await _keys(client, world, **{"address-use:not": "home"}) == {"b", "c", "d"}
@@ -230,9 +281,14 @@ async def test_telecom_phone_email(client, world):
     assert await _keys(client, world, telecom="mobile|555-9988") == {"a"}  # `use|value`
     assert await _keys(client, world, telecom="work|555-9988") == set()
     assert await _keys(client, world, phone="555-1111") == {"b"}
-    assert await _keys(client, world, phone="mary@example.org") == set()  # an email is not a phone
+    assert (
+        await _keys(client, world, phone="mary@example.org") == set()
+    )  # an email is not a phone
     assert await _keys(client, world, email="mary@example.org") == {"a"}
-    assert await _keys(client, world, email="zoe@example.org,mary@example.org") == {"a", "c"}
+    assert await _keys(client, world, email="zoe@example.org,mary@example.org") == {
+        "a",
+        "c",
+    }
     assert await _keys(client, world, **{"phone:missing": "true"}) == {"c", "d"}
     assert await _keys(client, world, **{"email:missing": "true"}) == {"b", "d"}
     assert await _keys(client, world, **{"telecom:not": "555-9988"}) == {"b", "c", "d"}
@@ -264,7 +320,9 @@ async def test_relationship(client, world):
 
 async def test_relationship_text_not_and_missing(client, world):
     assert await _keys(client, world, **{"relationship:text": "moth"}) == {"a"}
-    assert await _keys(client, world, **{"relationship:text": "guard"}) == {"b"}  # a text-only concept is found too
+    assert await _keys(client, world, **{"relationship:text": "guard"}) == {
+        "b"
+    }  # a text-only concept is found too
     assert await _keys(client, world, **{"relationship:not": "MTH"}) == {"b", "c", "d"}
     assert await _keys(client, world, **{"relationship:missing": "true"}) == {"d"}
 
@@ -273,15 +331,22 @@ async def test_relationship_text_not_and_missing(client, world):
 
 
 async def test_patient(client, world):
-    assert await _keys(client, world, patient=str(world["p1"])) == {"a"}  # a bare id works: one target
+    assert await _keys(client, world, patient=str(world["p1"])) == {
+        "a"
+    }  # a bare id works: one target
     assert await _keys(client, world, patient=f"Patient/{world['p2']}") == {"b"}
-    assert await _keys(client, world, patient=f"{world['p1']},{world['p2']}") == {"a", "b"}
+    assert await _keys(client, world, patient=f"{world['p1']},{world['p2']}") == {
+        "a",
+        "b",
+    }
     assert await _keys(client, world, **{"patient:Patient": str(world["p1"])}) == {"a"}
     assert await _keys(client, world, patient="999999") == set()
 
 
 async def test_patient_absolute_identifier_and_missing(client, world):
-    assert await _keys(client, world, patient="https://other.example.org/fhir/Patient/1") == {"c"}
+    assert await _keys(
+        client, world, patient="https://other.example.org/fhir/Patient/1"
+    ) == {"c"}
     assert await _keys(client, world, **{"patient:identifier": "urn:pts|P-9"}) == {"d"}
     assert await _keys(client, world, **{"patient:missing": "true"}) == set()
     assert await _keys(client, world, **{"patient:missing": "false"}) == ALL
@@ -295,7 +360,9 @@ async def test_patient_chain(client, world):
 
 async def test_bad_chains_are_400(client, world):
     assert await _status(client, **{"patient.nonsense": "x"}) == 400
-    assert await _status(client, **{"name.family": "x"}) == 400  # a string cannot be chained through
+    assert (
+        await _status(client, **{"name.family": "x"}) == 400
+    )  # a string cannot be chained through
     assert await _status(client, **{"gender.x": "y"}) == 400
 
 
@@ -303,19 +370,45 @@ async def test_bad_chains_are_400(client, world):
 
 
 async def test_sort_by_other_params(client, world):
-    for key in ("active", "gender", "birthdate", "name", "identifier", "patient", "relationship", "address-city",
-                "address-state", "address-country", "address-postalcode", "_id"):
+    for key in (
+        "active",
+        "gender",
+        "birthdate",
+        "name",
+        "identifier",
+        "patient",
+        "relationship",
+        "address-city",
+        "address-state",
+        "address-country",
+        "address-postalcode",
+        "_id",
+    ):
         assert (await _search(client, _sort=key))["total"] == 4, key
     assert await _status(client, _sort="photo") == 400
 
 
 async def test_sort_by_birthdate_and_name(client, world):
     async def ids(**params):
-        return [int(e["resource"]["id"]) for e in (await _search(client, **params))["entry"]]
+        return [
+            int(e["resource"]["id"]) for e in (await _search(client, **params))["entry"]
+        ]
 
-    assert await ids(**{"birthdate:missing": "false", "_sort": "birthdate"}) == [world["a"], world["b"], world["c"]]
-    assert await ids(**{"birthdate:missing": "false", "_sort": "-birthdate"}) == [world["c"], world["b"], world["a"]]
-    assert await ids(**{"name:missing": "false", "_sort": "name"}) == [world["b"], world["c"], world["a"]]  # Fairfax, Müller, Windsor
+    assert await ids(**{"birthdate:missing": "false", "_sort": "birthdate"}) == [
+        world["a"],
+        world["b"],
+        world["c"],
+    ]
+    assert await ids(**{"birthdate:missing": "false", "_sort": "-birthdate"}) == [
+        world["c"],
+        world["b"],
+        world["a"],
+    ]
+    assert await ids(**{"name:missing": "false", "_sort": "name"}) == [
+        world["b"],
+        world["c"],
+        world["a"],
+    ]  # Fairfax, Müller, Windsor
 
 
 async def test_default_sort_is_newest_first(client, world):
@@ -328,14 +421,19 @@ async def test_paging_and_total(client, world):
     assert page["total"] == 4 and len(page["entry"]) == 2
     assert any(link["relation"] == "next" for link in page["link"])
     nxt = await _search(client, _count=2, _offset=2, _sort="_id")
-    assert not ({e["resource"]["id"] for e in page["entry"]} & {e["resource"]["id"] for e in nxt["entry"]})
+    assert not (
+        {e["resource"]["id"] for e in page["entry"]}
+        & {e["resource"]["id"] for e in nxt["entry"]}
+    )
     assert "entry" not in await _search(client, _count=0)
     assert "total" not in await _search(client, _total="none")
 
 
 async def test_summary_count_and_elements(client, world):
     assert (await _search(client, _summary="count"))["total"] == 4
-    resource = (await _search(client, _elements="gender", _id=str(world["a"])))["entry"][0]["resource"]
+    resource = (await _search(client, _elements="gender", _id=str(world["a"])))[
+        "entry"
+    ][0]["resource"]
     assert resource["gender"] == "female"
     assert "name" not in resource and "telecom" not in resource
 
@@ -344,15 +442,28 @@ async def test_summary_count_and_elements(client, world):
 
 
 async def test_include_patient(client, world):
-    bundle = await _search(client, _id=str(world["a"]), _include="RelatedPerson:patient")
+    bundle = await _search(
+        client, _id=str(world["a"]), _include="RelatedPerson:patient"
+    )
     assert _of_type(bundle, "Patient", "include") == {str(world["p1"])}
 
 
 async def test_include_patient_is_deduplicated_and_skips_non_resources(client, world):
-    bundle = await _search(client, _id=f"{world['a']},{world['c']},{world['d']}", _include="RelatedPerson:patient")
-    assert _of_type(bundle, "Patient", "include") == {str(world["p1"])}  # c and d point elsewhere
-    bundle = await _search(client, patient=str(world["p1"]), _include="RelatedPerson:patient")
-    assert sum(1 for e in bundle["entry"] if e["resource"]["resourceType"] == "Patient") == 1
+    bundle = await _search(
+        client,
+        _id=f"{world['a']},{world['c']},{world['d']}",
+        _include="RelatedPerson:patient",
+    )
+    assert _of_type(bundle, "Patient", "include") == {
+        str(world["p1"])
+    }  # c and d point elsewhere
+    bundle = await _search(
+        client, patient=str(world["p1"]), _include="RelatedPerson:patient"
+    )
+    assert (
+        sum(1 for e in bundle["entry"] if e["resource"]["resourceType"] == "Patient")
+        == 1
+    )
 
 
 async def _other(client, path, **params) -> dict:
@@ -362,38 +473,72 @@ async def _other(client, path, **params) -> dict:
 
 
 async def test_revinclude_related_person_on_patients(client, world):
-    bundle = await _other(client, "patients", _id=str(world["p2"]), _revinclude="RelatedPerson:patient")
+    bundle = await _other(
+        client, "patients", _id=str(world["p2"]), _revinclude="RelatedPerson:patient"
+    )
     assert _of_type(bundle, "RelatedPerson", "include") == {str(world["b"])}
-    bundle = await _other(client, "patients", _id=f"{world['p1']},{world['p2']}", _revinclude="RelatedPerson:patient")
-    assert _of_type(bundle, "RelatedPerson", "include") == {str(world["a"]), str(world["b"])}
+    bundle = await _other(
+        client,
+        "patients",
+        _id=f"{world['p1']},{world['p2']}",
+        _revinclude="RelatedPerson:patient",
+    )
+    assert _of_type(bundle, "RelatedPerson", "include") == {
+        str(world["a"]),
+        str(world["b"]),
+    }
 
 
 async def test_revinclude_what_points_at_a_related_person(client, world):
     rp = world["a"]
     ref = f"RelatedPerson/{rp}"
-    appointment = await create_appointment(client, appointment_body(world["p1"], participant=[participant(ref)]))
+    appointment = await create_appointment(
+        client, appointment_body(world["p1"], participant=[participant(ref)])
+    )
     ar = (
         await client.post(
             f"{API}/appointment-responses/",
-            json={"appointment": {"reference": f"Appointment/{appointment}"}, "participantStatus": "accepted",
-                  "actor": {"reference": ref}},
+            json={
+                "appointment": {"reference": f"Appointment/{appointment}"},
+                "participantStatus": "accepted",
+                "actor": {"reference": ref},
+            },
         )
     ).json()["id"]
     enc = (
         await client.post(
             f"{API}/encounters/",
-            json={"status": "finished", "class": {"code": "AMB"}, "participant": [{"individual": {"reference": ref}}]},
+            json={
+                "status": "finished",
+                "class": {"code": "AMB"},
+                "participant": [{"individual": {"reference": ref}}],
+            },
         )
     ).json()["id"]
-    patient = (await client.post(f"{API}/patients/", json={"link": [{"other": {"reference": ref}, "type": "seealso"}]})).json()["id"]
+    patient = (
+        await client.post(
+            f"{API}/patients/",
+            json={"link": [{"other": {"reference": ref}, "type": "seealso"}]},
+        )
+    ).json()["id"]
 
     def go(**params):
         return _search(client, _id=str(rp), **params)
 
-    assert _of_type(await go(_revinclude="Appointment:actor"), "Appointment", "include") == {str(appointment)}
-    assert _of_type(await go(_revinclude="AppointmentResponse:actor"), "AppointmentResponse", "include") == {ar}
-    assert _of_type(await go(_revinclude="Encounter:participant"), "Encounter", "include") == {enc}
-    assert _of_type(await go(_revinclude="Patient:link"), "Patient", "include") == {patient}
+    assert _of_type(
+        await go(_revinclude="Appointment:actor"), "Appointment", "include"
+    ) == {str(appointment)}
+    assert _of_type(
+        await go(_revinclude="AppointmentResponse:actor"),
+        "AppointmentResponse",
+        "include",
+    ) == {ar}
+    assert _of_type(
+        await go(_revinclude="Encounter:participant"), "Encounter", "include"
+    ) == {enc}
+    assert _of_type(await go(_revinclude="Patient:link"), "Patient", "include") == {
+        patient
+    }
 
 
 async def test_revinclude_is_tenant_scoped(client, other_client):
@@ -403,7 +548,9 @@ async def test_revinclude_is_tenant_scoped(client, other_client):
     from tests.integration.related_person.conftest import RELATED_PERSON_PERMS
 
     def as_user(**kw):
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=RELATED_PERSON_PERMS, **kw)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=RELATED_PERSON_PERMS, **kw
+        )
 
     as_user()
     mine = await create_patient(client)
@@ -411,10 +558,17 @@ async def test_revinclude_is_tenant_scoped(client, other_client):
     as_user(sub="u-other", org_id="org-other")
     try:
         # The other org cannot see the patient, so nothing reaches its related persons.
-        bundle = await _other(other_client, "patients", _id=str(mine), _revinclude="RelatedPerson:patient")
+        bundle = await _other(
+            other_client, "patients", _id=str(mine), _revinclude="RelatedPerson:patient"
+        )
         assert bundle["total"] == 0 and "entry" not in bundle
         theirs = await create_patient(other_client)
-        bundle = await _other(other_client, "patients", _id=str(theirs), _revinclude="RelatedPerson:patient")
+        bundle = await _other(
+            other_client,
+            "patients",
+            _id=str(theirs),
+            _revinclude="RelatedPerson:patient",
+        )
         assert _of_type(bundle, "RelatedPerson", "include") == set()
     finally:
         as_user()
@@ -426,8 +580,12 @@ async def test_revinclude_is_tenant_scoped(client, other_client):
 async def test_params_are_anded(client, world):
     assert await _keys(client, world, gender="female", active="true") == {"a"}
     assert await _keys(client, world, gender="female", active="false") == set()
-    assert await _keys(client, world, patient=str(world["p2"]), relationship="GUARD") == {"b"}
-    assert await _keys(client, world, **{"address-city": "Boston"}, name="Windsor") == {"a"}
+    assert await _keys(
+        client, world, patient=str(world["p2"]), relationship="GUARD"
+    ) == {"b"}
+    assert await _keys(client, world, **{"address-city": "Boston"}, name="Windsor") == {
+        "a"
+    }
 
 
 async def test_bad_value_is_400_operation_outcome(client, world):
@@ -442,7 +600,9 @@ async def test_unknown_param_lenient_vs_strict(client, world):
     lenient = await client.get(BASE + "/", params={"nonsense": "1"})
     assert lenient.status_code == 200
     assert any(e["search"]["mode"] == "outcome" for e in lenient.json()["entry"])
-    strict = await client.get(BASE + "/", params={"nonsense": "1"}, headers={"Prefer": "handling=strict"})
+    strict = await client.get(
+        BASE + "/", params={"nonsense": "1"}, headers={"Prefer": "handling=strict"}
+    )
     assert strict.status_code == 400
 
 
@@ -454,7 +614,9 @@ async def test_query_param_refused(client, world):
 
 
 async def test_post_search_form_encoded(client, world):
-    resp = await client.post(BASE + "/_search", data={"gender": "male", "patient": str(world["p2"])})
+    resp = await client.post(
+        BASE + "/_search", data={"gender": "male", "patient": str(world["p2"])}
+    )
     assert resp.status_code == 200, resp.text
     assert _ids(resp.json()) == {world["b"]}
 

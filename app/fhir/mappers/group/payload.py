@@ -313,7 +313,10 @@ def patch_fragment_to_fhir_group(
 
     if _MANAGING_ENTITY_FIELDS & fields_set:
         touched.add("managingEntity")
-        if payload.managing_entity is not None or payload.managing_entity_display is not None:
+        if (
+            payload.managing_entity is not None
+            or payload.managing_entity_display is not None
+        ):
             ref: dict = {}
             if payload.managing_entity:
                 ref["reference"] = payload.managing_entity
@@ -326,14 +329,20 @@ def patch_fragment_to_fhir_group(
         touched.add("identifier")
         if payload.identifier is not None:
             fragment["identifier"] = [
-                i for i in [_identifier_from_payload(x) for x in payload.identifier] if i
+                i
+                for i in [_identifier_from_payload(x) for x in payload.identifier]
+                if i
             ]
 
     if "characteristic" in fields_set:
         touched.add("characteristic")
         if payload.characteristic is not None:
             fragment["characteristic"] = [
-                c for c in [_characteristic_from_payload(x) for x in payload.characteristic] if c
+                c
+                for c in [
+                    _characteristic_from_payload(x) for x in payload.characteristic
+                ]
+                if c
             ]
 
     if "member" in fields_set:

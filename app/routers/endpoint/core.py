@@ -215,9 +215,7 @@ async def search_endpoints_post(
 )
 async def get_endpoint(
     request: Request,
-    endpoint_id: int = Path(
-        ..., ge=1, description="Public endpoint identifier."
-    ),
+    endpoint_id: int = Path(..., ge=1, description="Public endpoint identifier."),
     actor: AuthUser = Depends(require_permission("endpoint", "read")),
     endpoint_service: EndpointService = Depends(get_endpoint_service),
 ):
@@ -228,9 +226,7 @@ async def get_endpoint(
             "endpoint_id": endpoint_id,
         },
     )
-    endpoint = await endpoint_service.get_endpoint_scoped(
-        endpoint_id, actor.org_id
-    )
+    endpoint = await endpoint_service.get_endpoint_scoped(endpoint_id, actor.org_id)
     return fhir_response(endpoint_service._to_fhir(endpoint))
 
 
@@ -256,9 +252,7 @@ async def get_endpoint(
 async def patch_endpoint(
     payload: EndpointPatchSchema,
     request: Request,
-    endpoint_id: int = Path(
-        ..., ge=1, description="Public endpoint identifier."
-    ),
+    endpoint_id: int = Path(..., ge=1, description="Public endpoint identifier."),
     actor: AuthUser = Depends(require_permission("endpoint", "update")),
     endpoint_service: EndpointService = Depends(get_endpoint_service),
 ):
@@ -295,9 +289,7 @@ async def patch_endpoint(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_endpoint(
-    endpoint_id: int = Path(
-        ..., ge=1, description="Public endpoint identifier."
-    ),
+    endpoint_id: int = Path(..., ge=1, description="Public endpoint identifier."),
     actor: AuthUser = Depends(require_permission("endpoint", "delete")),
     endpoint_service: EndpointService = Depends(get_endpoint_service),
 ):

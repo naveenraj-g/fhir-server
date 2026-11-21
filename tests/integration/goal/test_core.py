@@ -101,10 +101,16 @@ async def test_create_goal_with_reference_identifier_fallback(client):
     assert data["expressed_by_identifier_system"] == "http://example.org/caregivers"
     assert data["expressed_by_identifier_value"] == "CG-987"
     assert len(data["addresses"]) == 1
-    assert data["addresses"][0]["reference_identifier_system"] == "http://lab.example.org/panels"
+    assert (
+        data["addresses"][0]["reference_identifier_system"]
+        == "http://lab.example.org/panels"
+    )
     assert data["addresses"][0]["reference_identifier_value"] == "LAB-4433"
     assert len(data["outcome_reference"]) == 1
-    assert data["outcome_reference"][0]["reference_identifier_system"] == "http://lab.example.org/panels"
+    assert (
+        data["outcome_reference"][0]["reference_identifier_system"]
+        == "http://lab.example.org/panels"
+    )
     assert data["outcome_reference"][0]["reference_identifier_value"] == "LAB-9988"
 
     goal_id = data["id"]
@@ -147,9 +153,7 @@ async def test_create_goal_full(client):
 
 async def test_create_goal_fhir(client):
     p_id = await create_test_patient(client)
-    resp = await client.post(
-        BASE + "/", json=minimal_goal(p_id), headers=FHIR_ACCEPT
-    )
+    resp = await client.post(BASE + "/", json=minimal_goal(p_id), headers=FHIR_ACCEPT)
     assert resp.status_code == 201, resp.text
     data = resp.json()
     assert_fhir_goal(data)

@@ -37,7 +37,9 @@ def _fhir_codeable_concept(codings, text: str | None) -> dict | None:
     return result or None
 
 
-def _fhir_ref(ref_raw: str | None, ref_type, ref_id: int | None, display: str | None) -> dict | None:
+def _fhir_ref(
+    ref_raw: str | None, ref_type, ref_id: int | None, display: str | None
+) -> dict | None:
     result: dict = {}
     if ref_raw:
         result["reference"] = ref_raw
@@ -72,7 +74,9 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -194,7 +198,9 @@ def to_fhir_care_team(model: CareTeamModel) -> dict[str, Any]:
 
     # Meta
     meta: dict[str, Any] = {
-        "versionId": str(model.version_id) if hasattr(model, "version_id") and model.version_id else "1",
+        "versionId": str(model.version_id)
+        if hasattr(model, "version_id") and model.version_id
+        else "1",
     }
     if model.updated_at:
         meta["lastUpdated"] = fhir_instant(model.updated_at)
@@ -245,7 +251,9 @@ def to_fhir_care_team(model: CareTeamModel) -> dict[str, Any]:
 
     # reasonCode
     if model.reason_codes:
-        reasons = [_fhir_codeable_concept(r.codings, r.text) for r in model.reason_codes]
+        reasons = [
+            _fhir_codeable_concept(r.codings, r.text) for r in model.reason_codes
+        ]
         reasons = [r for r in reasons if r]
         if reasons:
             fhir["reasonCode"] = reasons
@@ -280,7 +288,12 @@ def to_fhir_care_team(model: CareTeamModel) -> dict[str, Any]:
                 note_obj["time"] = fhir_instant(n.time)
             if n.author_string:
                 note_obj["authorString"] = n.author_string
-            author_ref = _fhir_ref(n.author_reference_reference, n.author_reference_type, n.author_reference_id, n.author_reference_display)
+            author_ref = _fhir_ref(
+                n.author_reference_reference,
+                n.author_reference_type,
+                n.author_reference_id,
+                n.author_reference_display,
+            )
             if author_ref:
                 note_obj["authorReference"] = author_ref
             notes.append(note_obj)

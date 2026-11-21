@@ -142,9 +142,7 @@ def _identifier_from_payload(i: FlagIdentifierInput | dict) -> dict | None:
         entry: dict = {}
         if i.get("use"):
             entry["use"] = fhir_enum(i["use"])
-        type_codings = [
-            _coding_from_payload(c) for c in (i.get("type_coding") or [])
-        ]
+        type_codings = [_coding_from_payload(c) for c in (i.get("type_coding") or [])]
         type_cc: dict = {}
         if type_codings:
             type_cc["coding"] = type_codings
@@ -171,9 +169,7 @@ def _identifier_from_payload(i: FlagIdentifierInput | dict) -> dict | None:
     entry = {}
     if i.use:
         entry["use"] = fhir_enum(i.use)
-    type_codings = [
-        _coding_from_payload(c) for c in (i.type_coding or [])
-    ]
+    type_codings = [_coding_from_payload(c) for c in (i.type_coding or [])]
     type_cc = {}
     if type_codings:
         type_cc["coding"] = type_codings

@@ -34,25 +34,43 @@ class QuestionnaireResponseAnswerInput(BaseModel):
     value_time: time | None = Field(None, description="value[x]: time.")
     value_string: str | None = Field(None, description="value[x]: string.")
     value_uri: str | None = Field(None, description="value[x]: uri.")
-    value_attachment: AttachmentInput | None = Field(None, description="value[x]: Attachment.")
-    value_coding_system: str | None = Field(None, description="value[x]: Coding — system.")
-    value_coding_version: str | None = Field(None, description="value[x]: Coding — version.")
+    value_attachment: AttachmentInput | None = Field(
+        None, description="value[x]: Attachment."
+    )
+    value_coding_system: str | None = Field(
+        None, description="value[x]: Coding — system."
+    )
+    value_coding_version: str | None = Field(
+        None, description="value[x]: Coding — version."
+    )
     value_coding_code: str | None = Field(None, description="value[x]: Coding — code.")
-    value_coding_display: str | None = Field(None, description="value[x]: Coding — display.")
+    value_coding_display: str | None = Field(
+        None, description="value[x]: Coding — display."
+    )
     value_coding_user_selected: bool | None = Field(
         None, description="value[x]: Coding — whether chosen directly by a user."
     )
-    value_quantity_value: float | None = Field(None, description="value[x]: Quantity — numeric value.")
+    value_quantity_value: float | None = Field(
+        None, description="value[x]: Quantity — numeric value."
+    )
     value_quantity_comparator: QuestionnaireResponseQuantityComparator | None = Field(
         None, description="value[x]: Quantity — < | <= | >= | >."
     )
-    value_quantity_unit: str | None = Field(None, description="value[x]: Quantity — unit representation.")
-    value_quantity_system: str | None = Field(None, description="value[x]: Quantity — unit system.")
-    value_quantity_code: str | None = Field(None, description="value[x]: Quantity — coded unit form.")
+    value_quantity_unit: str | None = Field(
+        None, description="value[x]: Quantity — unit representation."
+    )
+    value_quantity_system: str | None = Field(
+        None, description="value[x]: Quantity — unit system."
+    )
+    value_quantity_code: str | None = Field(
+        None, description="value[x]: Quantity — coded unit form."
+    )
     value_reference: str | None = Field(
         None, description="value[x]: Reference(Any), as a FHIR reference string."
     )
-    value_reference_display: str | None = Field(None, description="value[x]: Reference — plain text display.")
+    value_reference_display: str | None = Field(
+        None, description="value[x]: Reference — plain text display."
+    )
     value_reference_identifier_use: IdentifierUse | None = Field(
         None, description="Fallback identifier — identifies its purpose, if known."
     )

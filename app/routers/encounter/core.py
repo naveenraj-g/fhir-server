@@ -218,9 +218,7 @@ async def search_encounters_post(
 )
 async def get_encounter(
     request: Request,
-    encounter_id: int = Path(
-        ..., ge=1, description="Public encounter identifier."
-    ),
+    encounter_id: int = Path(..., ge=1, description="Public encounter identifier."),
     actor: AuthUser = Depends(require_permission("encounter", "read")),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
@@ -231,9 +229,7 @@ async def get_encounter(
             "encounter_id": encounter_id,
         },
     )
-    encounter = await encounter_service.get_encounter_scoped(
-        encounter_id, actor.org_id
-    )
+    encounter = await encounter_service.get_encounter_scoped(encounter_id, actor.org_id)
     return fhir_response(encounter_service._to_fhir(encounter))
 
 
@@ -258,9 +254,7 @@ async def get_encounter(
 async def patch_encounter(
     payload: EncounterPatchSchema,
     request: Request,
-    encounter_id: int = Path(
-        ..., ge=1, description="Public encounter identifier."
-    ),
+    encounter_id: int = Path(..., ge=1, description="Public encounter identifier."),
     actor: AuthUser = Depends(require_permission("encounter", "update")),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
@@ -297,9 +291,7 @@ async def patch_encounter(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_encounter(
-    encounter_id: int = Path(
-        ..., ge=1, description="Public encounter identifier."
-    ),
+    encounter_id: int = Path(..., ge=1, description="Public encounter identifier."),
     actor: AuthUser = Depends(require_permission("encounter", "delete")),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):

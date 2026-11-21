@@ -7,6 +7,8 @@ from app.services.fhir_profile import FhirProfileService
 
 @inject
 def get_fhir_profile_service(
-    service: FhirProfileService = Depends(Provide[Container.fhir_profile.fhir_profile_service]),
+    service: FhirProfileService = Depends(
+        Provide[Container.fhir_profile.fhir_profile_service]
+    ),
 ) -> FhirProfileService:
     return service

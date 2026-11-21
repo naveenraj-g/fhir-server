@@ -22,11 +22,15 @@ class _CoreMixin:
             stmt = select(_M).where(_M.condition_id == condition_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_condition_id_in_org(self, condition_id: int, org_id: str) -> _M | None:
+    async def get_by_condition_id_in_org(
+        self, condition_id: int, org_id: str
+    ) -> _M | None:
         """Lookup scoped to org_id — returns None unless the condition
         exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.condition_id == condition_id, _M.tenant_id == org_id)
+            stmt = select(_M).where(
+                _M.condition_id == condition_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalars().first()
 
     async def condition_belongs_to_org(self, condition_id: int, org_id: str) -> bool:
@@ -34,7 +38,9 @@ class _CoreMixin:
         gates on write routes — True iff the condition exists AND
         belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M.id).where(_M.condition_id == condition_id, _M.tenant_id == org_id)
+            stmt = select(_M.id).where(
+                _M.condition_id == condition_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
     # ── Search ────────────────────────────────────────────────────────────

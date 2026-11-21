@@ -80,7 +80,9 @@ def _remap_identifier_kwargs(src_prefix: str, dest_prefix: str, payload) -> dict
     }
 
 
-async def _add_identifiers(session, care_plan_pk: int, org_id: str, identifiers, created_by: str) -> None:
+async def _add_identifiers(
+    session, care_plan_pk: int, org_id: str, identifiers, created_by: str
+) -> None:
     for i in identifiers or []:
         a_type, a_id = _parse_assigner_ref(i.assigner) if i.assigner else (None, None)
         if a_type and a_id:
@@ -113,7 +115,9 @@ async def _add_identifiers(session, care_plan_pk: int, org_id: str, identifiers,
                 )
 
 
-async def _add_categories(session, care_plan_pk: int, org_id: str, categories, created_by: str) -> None:
+async def _add_categories(
+    session, care_plan_pk: int, org_id: str, categories, created_by: str
+) -> None:
     for c in categories or []:
         cat = CarePlanCategory(
             care_plan_pk=care_plan_pk,
@@ -133,7 +137,9 @@ async def _add_categories(session, care_plan_pk: int, org_id: str, categories, c
                 )
 
 
-async def _add_based_on(session, care_plan_pk: int, org_id: str, based_on, created_by: str) -> None:
+async def _add_based_on(
+    session, care_plan_pk: int, org_id: str, based_on, created_by: str
+) -> None:
     for item in based_on or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -152,7 +158,9 @@ async def _add_based_on(session, care_plan_pk: int, org_id: str, based_on, creat
         )
 
 
-async def _add_replaces(session, care_plan_pk: int, org_id: str, replaces, created_by: str) -> None:
+async def _add_replaces(
+    session, care_plan_pk: int, org_id: str, replaces, created_by: str
+) -> None:
     for item in replaces or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -171,7 +179,9 @@ async def _add_replaces(session, care_plan_pk: int, org_id: str, replaces, creat
         )
 
 
-async def _add_part_of(session, care_plan_pk: int, org_id: str, part_of, created_by: str) -> None:
+async def _add_part_of(
+    session, care_plan_pk: int, org_id: str, part_of, created_by: str
+) -> None:
     for item in part_of or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -190,7 +200,9 @@ async def _add_part_of(session, care_plan_pk: int, org_id: str, part_of, created
         )
 
 
-async def _add_contributors(session, care_plan_pk: int, org_id: str, contributors, created_by: str) -> None:
+async def _add_contributors(
+    session, care_plan_pk: int, org_id: str, contributors, created_by: str
+) -> None:
     for item in contributors or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -209,7 +221,9 @@ async def _add_contributors(session, care_plan_pk: int, org_id: str, contributor
         )
 
 
-async def _add_care_teams(session, care_plan_pk: int, org_id: str, care_teams, created_by: str) -> None:
+async def _add_care_teams(
+    session, care_plan_pk: int, org_id: str, care_teams, created_by: str
+) -> None:
     for item in care_teams or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -228,7 +242,9 @@ async def _add_care_teams(session, care_plan_pk: int, org_id: str, care_teams, c
         )
 
 
-async def _add_addresses(session, care_plan_pk: int, org_id: str, addresses, created_by: str) -> None:
+async def _add_addresses(
+    session, care_plan_pk: int, org_id: str, addresses, created_by: str
+) -> None:
     for item in addresses or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -247,7 +263,9 @@ async def _add_addresses(session, care_plan_pk: int, org_id: str, addresses, cre
         )
 
 
-async def _add_goals(session, care_plan_pk: int, org_id: str, goals, created_by: str) -> None:
+async def _add_goals(
+    session, care_plan_pk: int, org_id: str, goals, created_by: str
+) -> None:
     for item in goals or []:
         kwargs = _child_reference_kwargs(item)
         ref_str = kwargs["reference_reference"]
@@ -266,9 +284,15 @@ async def _add_goals(session, care_plan_pk: int, org_id: str, goals, created_by:
         )
 
 
-async def _add_notes(session, care_plan_pk: int, org_id: str, notes, created_by: str) -> None:
+async def _add_notes(
+    session, care_plan_pk: int, org_id: str, notes, created_by: str
+) -> None:
     for n in notes or []:
-        a_type, a_id = _parse_author_ref(n.author_reference) if n.author_reference else (None, None)
+        a_type, a_id = (
+            _parse_author_ref(n.author_reference)
+            if n.author_reference
+            else (None, None)
+        )
         if a_type and a_id:
             await _validate_ref(session, org_id, a_type, a_id, "note.author")
         session.add(
@@ -288,20 +312,36 @@ async def _add_notes(session, care_plan_pk: int, org_id: str, notes, created_by:
         )
 
 
-async def _add_activities(session, care_plan_pk: int, org_id: str, activities, created_by: str) -> None:
+async def _add_activities(
+    session, care_plan_pk: int, org_id: str, activities, created_by: str
+) -> None:
     for act in activities or []:
-        ref_type, ref_id = _parse_activity_ref(act.reference) if act.reference else (None, None)
+        ref_type, ref_id = (
+            _parse_activity_ref(act.reference) if act.reference else (None, None)
+        )
         if ref_type and ref_id:
             await _validate_ref(session, org_id, ref_type, ref_id, "activity.reference")
 
         det = act.detail
-        loc_type, loc_id = _parse_activity_detail_location_ref(det.location) if (det and det.location) else (None, None)
+        loc_type, loc_id = (
+            _parse_activity_detail_location_ref(det.location)
+            if (det and det.location)
+            else (None, None)
+        )
         if loc_type and loc_id:
-            await _validate_ref(session, org_id, loc_type, loc_id, "activity.detail.location")
+            await _validate_ref(
+                session, org_id, loc_type, loc_id, "activity.detail.location"
+            )
 
-        prod_type, prod_id = _parse_activity_detail_product_ref(det.product_reference) if (det and det.product_reference) else (None, None)
+        prod_type, prod_id = (
+            _parse_activity_detail_product_ref(det.product_reference)
+            if (det and det.product_reference)
+            else (None, None)
+        )
         if prod_type and prod_id:
-            await _validate_ref(session, org_id, prod_type, prod_id, "activity.detail.productReference")
+            await _validate_ref(
+                session, org_id, prod_type, prod_id, "activity.detail.productReference"
+            )
 
         activity_row = CarePlanActivity(
             care_plan_pk=care_plan_pk,
@@ -317,7 +357,9 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             detail_instantiates_uri=det.instantiates_uri if det else None,
             detail_code_text=det.code.text if (det and det.code) else None,
             detail_status=det.status if det else None,
-            detail_status_reason_text=det.status_reason.text if (det and det.status_reason) else None,
+            detail_status_reason_text=det.status_reason.text
+            if (det and det.status_reason)
+            else None,
             detail_do_not_perform=det.do_not_perform if det else None,
             detail_scheduled_timing=det.scheduled_timing if det else None,
             detail_scheduled_period_start=det.scheduled_period_start if det else None,
@@ -328,21 +370,39 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             detail_location_id=loc_id,
             detail_location_display=det.location_display if det else None,
             **_remap_identifier_kwargs("location", "detail_location", det),
-            detail_product_codeable_concept_text=det.product_codeable_concept.text if (det and det.product_codeable_concept) else None,
+            detail_product_codeable_concept_text=det.product_codeable_concept.text
+            if (det and det.product_codeable_concept)
+            else None,
             detail_product_reference=det.product_reference if det else None,
             detail_product_type=prod_type,
             detail_product_id=prod_id,
             detail_product_display=det.product_display if det else None,
             **_remap_identifier_kwargs("product", "detail_product", det),
-            detail_daily_amount_value=det.daily_amount.value if (det and det.daily_amount) else None,
-            detail_daily_amount_comparator=det.daily_amount.comparator if (det and det.daily_amount) else None,
-            detail_daily_amount_unit=det.daily_amount.unit if (det and det.daily_amount) else None,
-            detail_daily_amount_system=det.daily_amount.system if (det and det.daily_amount) else None,
-            detail_daily_amount_code=det.daily_amount.code if (det and det.daily_amount) else None,
-            detail_quantity_value=det.quantity.value if (det and det.quantity) else None,
-            detail_quantity_comparator=det.quantity.comparator if (det and det.quantity) else None,
+            detail_daily_amount_value=det.daily_amount.value
+            if (det and det.daily_amount)
+            else None,
+            detail_daily_amount_comparator=det.daily_amount.comparator
+            if (det and det.daily_amount)
+            else None,
+            detail_daily_amount_unit=det.daily_amount.unit
+            if (det and det.daily_amount)
+            else None,
+            detail_daily_amount_system=det.daily_amount.system
+            if (det and det.daily_amount)
+            else None,
+            detail_daily_amount_code=det.daily_amount.code
+            if (det and det.daily_amount)
+            else None,
+            detail_quantity_value=det.quantity.value
+            if (det and det.quantity)
+            else None,
+            detail_quantity_comparator=det.quantity.comparator
+            if (det and det.quantity)
+            else None,
             detail_quantity_unit=det.quantity.unit if (det and det.quantity) else None,
-            detail_quantity_system=det.quantity.system if (det and det.quantity) else None,
+            detail_quantity_system=det.quantity.system
+            if (det and det.quantity)
+            else None,
             detail_quantity_code=det.quantity.code if (det and det.quantity) else None,
             detail_description=det.description if det else None,
             created_by=created_by,
@@ -375,7 +435,9 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             for oref in act.outcome_reference:
                 oref_kwargs = _child_reference_kwargs(oref)
                 oref_str = oref_kwargs["reference_reference"]
-                _, oref_type, oref_id, _ = _parse_open_ref(oref_str) if oref_str else (None, None, None, None)
+                _, oref_type, oref_id, _ = (
+                    _parse_open_ref(oref_str) if oref_str else (None, None, None, None)
+                )
                 session.add(
                     CarePlanActivityOutcomeReference(
                         activity_id=activity_row.id,
@@ -390,9 +452,15 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
         # Progress annotations
         if act.progress:
             for p in act.progress:
-                pa_type, pa_id = _parse_author_ref(p.author_reference) if p.author_reference else (None, None)
+                pa_type, pa_id = (
+                    _parse_author_ref(p.author_reference)
+                    if p.author_reference
+                    else (None, None)
+                )
                 if pa_type and pa_id:
-                    await _validate_ref(session, org_id, pa_type, pa_id, "activity.progress.author")
+                    await _validate_ref(
+                        session, org_id, pa_type, pa_id, "activity.progress.author"
+                    )
                 session.add(
                     CarePlanActivityProgress(
                         activity_id=activity_row.id,
@@ -444,9 +512,19 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             for rr in det.reason_reference:
                 rr_kwargs = _child_reference_kwargs(rr)
                 rr_str = rr_kwargs["reference_reference"]
-                rr_type, rr_id = _parse_activity_detail_reason_ref(rr_str) if rr_str else (None, None)
+                rr_type, rr_id = (
+                    _parse_activity_detail_reason_ref(rr_str)
+                    if rr_str
+                    else (None, None)
+                )
                 if rr_type and rr_id:
-                    await _validate_ref(session, org_id, rr_type, rr_id, "activity.detail.reasonReference")
+                    await _validate_ref(
+                        session,
+                        org_id,
+                        rr_type,
+                        rr_id,
+                        "activity.detail.reasonReference",
+                    )
                 session.add(
                     CarePlanActivityDetailReasonReference(
                         activity_id=activity_row.id,
@@ -465,7 +543,9 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
                 g_str = g_kwargs["reference_reference"]
                 g_type, g_id = _parse_goal_ref(g_str) if g_str else (None, None)
                 if g_type and g_id:
-                    await _validate_ref(session, org_id, g_type, g_id, "activity.detail.goal")
+                    await _validate_ref(
+                        session, org_id, g_type, g_id, "activity.detail.goal"
+                    )
                 session.add(
                     CarePlanActivityDetailGoal(
                         activity_id=activity_row.id,
@@ -492,9 +572,15 @@ async def _add_activities(session, care_plan_pk: int, org_id: str, activities, c
             for perf in det.performer:
                 p_kwargs = _child_reference_kwargs(perf)
                 p_str = p_kwargs["reference_reference"]
-                p_type, p_id = _parse_activity_detail_performer_ref(p_str) if p_str else (None, None)
+                p_type, p_id = (
+                    _parse_activity_detail_performer_ref(p_str)
+                    if p_str
+                    else (None, None)
+                )
                 if p_type and p_id:
-                    await _validate_ref(session, org_id, p_type, p_id, "activity.detail.performer")
+                    await _validate_ref(
+                        session, org_id, p_type, p_id, "activity.detail.performer"
+                    )
                 session.add(
                     CarePlanActivityDetailPerformer(
                         activity_id=activity_row.id,
@@ -547,15 +633,23 @@ class _FullMixin:
     ) -> CarePlanModel:
         async with self.session_factory() as session:
             # Parse references
-            s_type, s_id = _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            s_type, s_id = (
+                _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            )
             if s_type and s_id:
                 await _validate_ref(session, org_id, s_type, s_id, "subject")
 
-            e_type, e_id = _parse_encounter_ref(payload.encounter) if payload.encounter else (None, None)
+            e_type, e_id = (
+                _parse_encounter_ref(payload.encounter)
+                if payload.encounter
+                else (None, None)
+            )
             if e_type and e_id:
                 await _validate_ref(session, org_id, e_type, e_id, "encounter")
 
-            a_type, a_id = _parse_author_ref(payload.author) if payload.author else (None, None)
+            a_type, a_id = (
+                _parse_author_ref(payload.author) if payload.author else (None, None)
+            )
             if a_type and a_id:
                 await _validate_ref(session, org_id, a_type, a_id, "author")
 
@@ -591,16 +685,34 @@ class _FullMixin:
             await session.flush()
 
             # Add collections
-            await _add_identifiers(session, care_plan.id, org_id, payload.identifier, created_by)
-            await _add_categories(session, care_plan.id, org_id, payload.category, created_by)
-            await _add_based_on(session, care_plan.id, org_id, payload.based_on, created_by)
-            await _add_replaces(session, care_plan.id, org_id, payload.replaces, created_by)
-            await _add_part_of(session, care_plan.id, org_id, payload.part_of, created_by)
-            await _add_contributors(session, care_plan.id, org_id, payload.contributor, created_by)
-            await _add_care_teams(session, care_plan.id, org_id, payload.care_team, created_by)
-            await _add_addresses(session, care_plan.id, org_id, payload.addresses, created_by)
+            await _add_identifiers(
+                session, care_plan.id, org_id, payload.identifier, created_by
+            )
+            await _add_categories(
+                session, care_plan.id, org_id, payload.category, created_by
+            )
+            await _add_based_on(
+                session, care_plan.id, org_id, payload.based_on, created_by
+            )
+            await _add_replaces(
+                session, care_plan.id, org_id, payload.replaces, created_by
+            )
+            await _add_part_of(
+                session, care_plan.id, org_id, payload.part_of, created_by
+            )
+            await _add_contributors(
+                session, care_plan.id, org_id, payload.contributor, created_by
+            )
+            await _add_care_teams(
+                session, care_plan.id, org_id, payload.care_team, created_by
+            )
+            await _add_addresses(
+                session, care_plan.id, org_id, payload.addresses, created_by
+            )
             await _add_goals(session, care_plan.id, org_id, payload.goal, created_by)
-            await _add_activities(session, care_plan.id, org_id, payload.activity, created_by)
+            await _add_activities(
+                session, care_plan.id, org_id, payload.activity, created_by
+            )
             await _add_notes(session, care_plan.id, org_id, payload.note, created_by)
 
             await session.commit()
@@ -649,7 +761,9 @@ class _FullMixin:
                     if payload.subject:
                         s_type, s_id = _parse_subject_ref(payload.subject)
                         if s_type and s_id:
-                            await _validate_ref(session, org_id, s_type, s_id, "subject")
+                            await _validate_ref(
+                                session, org_id, s_type, s_id, "subject"
+                            )
                         care_plan.subject_reference = payload.subject
                         care_plan.subject_type = s_type
                         care_plan.subject_id = s_id
@@ -669,7 +783,9 @@ class _FullMixin:
                     if payload.encounter:
                         e_type, e_id = _parse_encounter_ref(payload.encounter)
                         if e_type and e_id:
-                            await _validate_ref(session, org_id, e_type, e_id, "encounter")
+                            await _validate_ref(
+                                session, org_id, e_type, e_id, "encounter"
+                            )
                         care_plan.encounter_reference = payload.encounter
                         care_plan.encounter_type = e_type
                         care_plan.encounter_id = e_id
@@ -707,80 +823,124 @@ class _FullMixin:
             # Sub-resource replacements
             if "identifier" in fields_set:
                 await session.execute(
-                    delete(CarePlanIdentifier).where(CarePlanIdentifier.care_plan_pk == care_plan.id)
+                    delete(CarePlanIdentifier).where(
+                        CarePlanIdentifier.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.identifier:
-                    await _add_identifiers(session, care_plan.id, org_id, payload.identifier, updated_by)
+                    await _add_identifiers(
+                        session, care_plan.id, org_id, payload.identifier, updated_by
+                    )
 
             if "category" in fields_set:
                 await session.execute(
-                    delete(CarePlanCategory).where(CarePlanCategory.care_plan_pk == care_plan.id)
+                    delete(CarePlanCategory).where(
+                        CarePlanCategory.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.category:
-                    await _add_categories(session, care_plan.id, org_id, payload.category, updated_by)
+                    await _add_categories(
+                        session, care_plan.id, org_id, payload.category, updated_by
+                    )
 
             if "based_on" in fields_set:
                 await session.execute(
-                    delete(CarePlanBasedOn).where(CarePlanBasedOn.care_plan_pk == care_plan.id)
+                    delete(CarePlanBasedOn).where(
+                        CarePlanBasedOn.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.based_on:
-                    await _add_based_on(session, care_plan.id, org_id, payload.based_on, updated_by)
+                    await _add_based_on(
+                        session, care_plan.id, org_id, payload.based_on, updated_by
+                    )
 
             if "replaces" in fields_set:
                 await session.execute(
-                    delete(CarePlanReplaces).where(CarePlanReplaces.care_plan_pk == care_plan.id)
+                    delete(CarePlanReplaces).where(
+                        CarePlanReplaces.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.replaces:
-                    await _add_replaces(session, care_plan.id, org_id, payload.replaces, updated_by)
+                    await _add_replaces(
+                        session, care_plan.id, org_id, payload.replaces, updated_by
+                    )
 
             if "part_of" in fields_set:
                 await session.execute(
-                    delete(CarePlanPartOf).where(CarePlanPartOf.care_plan_pk == care_plan.id)
+                    delete(CarePlanPartOf).where(
+                        CarePlanPartOf.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.part_of:
-                    await _add_part_of(session, care_plan.id, org_id, payload.part_of, updated_by)
+                    await _add_part_of(
+                        session, care_plan.id, org_id, payload.part_of, updated_by
+                    )
 
             if "contributor" in fields_set:
                 await session.execute(
-                    delete(CarePlanContributor).where(CarePlanContributor.care_plan_pk == care_plan.id)
+                    delete(CarePlanContributor).where(
+                        CarePlanContributor.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.contributor:
-                    await _add_contributors(session, care_plan.id, org_id, payload.contributor, updated_by)
+                    await _add_contributors(
+                        session, care_plan.id, org_id, payload.contributor, updated_by
+                    )
 
             if "care_team" in fields_set:
                 await session.execute(
-                    delete(CarePlanCareTeam).where(CarePlanCareTeam.care_plan_pk == care_plan.id)
+                    delete(CarePlanCareTeam).where(
+                        CarePlanCareTeam.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.care_team:
-                    await _add_care_teams(session, care_plan.id, org_id, payload.care_team, updated_by)
+                    await _add_care_teams(
+                        session, care_plan.id, org_id, payload.care_team, updated_by
+                    )
 
             if "addresses" in fields_set:
                 await session.execute(
-                    delete(CarePlanAddresses).where(CarePlanAddresses.care_plan_pk == care_plan.id)
+                    delete(CarePlanAddresses).where(
+                        CarePlanAddresses.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.addresses:
-                    await _add_addresses(session, care_plan.id, org_id, payload.addresses, updated_by)
+                    await _add_addresses(
+                        session, care_plan.id, org_id, payload.addresses, updated_by
+                    )
 
             if "goal" in fields_set:
                 await session.execute(
-                    delete(CarePlanGoal).where(CarePlanGoal.care_plan_pk == care_plan.id)
+                    delete(CarePlanGoal).where(
+                        CarePlanGoal.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.goal:
-                    await _add_goals(session, care_plan.id, org_id, payload.goal, updated_by)
+                    await _add_goals(
+                        session, care_plan.id, org_id, payload.goal, updated_by
+                    )
 
             if "activity" in fields_set:
                 await session.execute(
-                    delete(CarePlanActivity).where(CarePlanActivity.care_plan_pk == care_plan.id)
+                    delete(CarePlanActivity).where(
+                        CarePlanActivity.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.activity:
-                    await _add_activities(session, care_plan.id, org_id, payload.activity, updated_by)
+                    await _add_activities(
+                        session, care_plan.id, org_id, payload.activity, updated_by
+                    )
 
             if "note" in fields_set:
                 await session.execute(
-                    delete(CarePlanNote).where(CarePlanNote.care_plan_pk == care_plan.id)
+                    delete(CarePlanNote).where(
+                        CarePlanNote.care_plan_pk == care_plan.id
+                    )
                 )
                 if payload.note:
-                    await _add_notes(session, care_plan.id, org_id, payload.note, updated_by)
+                    await _add_notes(
+                        session, care_plan.id, org_id, payload.note, updated_by
+                    )
 
             care_plan.updated_by = updated_by
 

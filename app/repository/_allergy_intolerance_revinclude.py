@@ -16,11 +16,17 @@ def patient_allergy_revincludes(key) -> tuple[IncludeTarget, ...]:
     Patients."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.allergy_intolerance.search import revinclude_allergies_via_column
+        from app.repository.allergy_intolerance.search import (
+            revinclude_allergies_via_column,
+        )
 
-        return await revinclude_allergies_via_column("patient", "Patient", key)(session, ctx, rows)
+        return await revinclude_allergies_via_column("patient", "Patient", key)(
+            session, ctx, rows
+        )
 
-    return (IncludeTarget("AllergyIntolerance", "patient", "Patient", fetch, reverse=True),)
+    return (
+        IncludeTarget("AllergyIntolerance", "patient", "Patient", fetch, reverse=True),
+    )
 
 
 def actor_allergy_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
@@ -29,13 +35,19 @@ def actor_allergy_revincludes(resource_type: str, key) -> tuple[IncludeTarget, .
 
     def make(param: str):
         async def fetch(session, ctx, rows):
-            from app.repository.allergy_intolerance.search import revinclude_allergies_via_column
+            from app.repository.allergy_intolerance.search import (
+                revinclude_allergies_via_column,
+            )
 
-            return await revinclude_allergies_via_column(param, resource_type, key)(session, ctx, rows)
+            return await revinclude_allergies_via_column(param, resource_type, key)(
+                session, ctx, rows
+            )
 
         return fetch
 
     return tuple(
-        IncludeTarget("AllergyIntolerance", param, resource_type, make(param), reverse=True)
+        IncludeTarget(
+            "AllergyIntolerance", param, resource_type, make(param), reverse=True
+        )
         for param in ("recorder", "asserter")
     )

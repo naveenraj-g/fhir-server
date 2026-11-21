@@ -2,7 +2,10 @@ from sqlalchemy.orm import selectinload
 
 from app.core.filters import parse_reference
 from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType
+from app.models.enums import (
+    IdentifierUse as IdentifierUseModel,
+    OrganizationReferenceType,
+)
 from app.models.medication_administration import (
     MedicationAdministrationCategoryCoding,
     MedicationAdministrationContextReferenceType,
@@ -60,7 +63,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     if not ref_str:
         return {
             f"{prefix}_type": None,
@@ -90,14 +95,31 @@ def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls)
 
 
 def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
-    ref = getattr(obj, prefix, None) or getattr(obj, f"{prefix}_reference", None) or getattr(obj, "reference", None) if obj else None
-    disp = getattr(obj, f"{prefix}_display", None) or getattr(obj, "reference_display", None) or getattr(obj, "display", None) if obj else None
+    ref = (
+        getattr(obj, prefix, None)
+        or getattr(obj, f"{prefix}_reference", None)
+        or getattr(obj, "reference", None)
+        if obj
+        else None
+    )
+    disp = (
+        getattr(obj, f"{prefix}_display", None)
+        or getattr(obj, "reference_display", None)
+        or getattr(obj, "display", None)
+        if obj
+        else None
+    )
     res = {
         f"{prefix}_reference": ref,
         **_ref_kwargs(prefix, ref, disp, enum_cls),
     }
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        val = getattr(obj, f"{prefix}_{suffix}", None) or getattr(obj, f"reference_{suffix}", None) if obj else None
+        val = (
+            getattr(obj, f"{prefix}_{suffix}", None)
+            or getattr(obj, f"reference_{suffix}", None)
+            if obj
+            else None
+        )
         if suffix == "identifier_use" and val is not None:
             res[f"{prefix}_{suffix}"] = (
                 IdentifierUseModel[val.name] if hasattr(val, "name") else val
@@ -115,7 +137,9 @@ def _list_reference_kwargs(obj, enum_cls) -> dict:
         **_ref_kwargs("reference", ref, disp, enum_cls),
     }
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        val = getattr(obj, f"reference_{suffix}", None) or getattr(obj, f"identifier_{suffix}", None)
+        val = getattr(obj, f"reference_{suffix}", None) or getattr(
+            obj, f"identifier_{suffix}", None
+        )
         if suffix == "identifier_use" and val is not None:
             res[f"reference_{suffix}"] = (
                 IdentifierUseModel[val.name] if hasattr(val, "name") else val

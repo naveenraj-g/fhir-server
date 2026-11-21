@@ -26,7 +26,9 @@ class ProcedureToken(Base):
     __table_args__ = (Index("ix_procedure_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    procedure_pk = Column(BigInteger, ForeignKey("procedure.id"), nullable=False, index=True)
+    procedure_pk = Column(
+        BigInteger, ForeignKey("procedure.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)

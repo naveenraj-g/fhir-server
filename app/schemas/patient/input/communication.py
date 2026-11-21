@@ -8,8 +8,7 @@ class PatientCommunicationInput(FhirInputModel):
     the patient about his or her health (BackboneElement)."""
 
     language: FhirCodeableConceptInput = Field(
-        ..., description="The language which can be used to communicate with the patient (required by R4)."
+        ...,
+        description="The language which can be used to communicate with the patient (required by R4).",
     )
-    preferred: bool | None = Field(
-        None, description="Language preference indicator."
-    )
+    preferred: bool | None = Field(None, description="Language preference indicator.")

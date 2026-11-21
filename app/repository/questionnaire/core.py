@@ -1,7 +1,11 @@
 from sqlalchemy import delete as sa_delete, func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter, apply_string_filter, apply_token_filter
+from app.core.filters import (
+    apply_child_exists_filter,
+    apply_string_filter,
+    apply_token_filter,
+)
 from app.core.logging import get_logger
 from app.core.pagination import resolve_sort
 from app.models.questionnaire import (
@@ -23,10 +27,14 @@ logger = get_logger(__name__)
 class _CoreMixin:
     """Core CRUD for the Questionnaire parent row (no sub-resources)."""
 
-    async def get_by_questionnaire_id(self, questionnaire_id: int) -> QuestionnaireModel | None:
+    async def get_by_questionnaire_id(
+        self, questionnaire_id: int
+    ) -> QuestionnaireModel | None:
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(QuestionnaireModel).where(QuestionnaireModel.questionnaire_id == questionnaire_id)
+                select(QuestionnaireModel).where(
+                    QuestionnaireModel.questionnaire_id == questionnaire_id
+                )
             )
             return (await session.execute(stmt)).scalars().first()
 
@@ -44,7 +52,9 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def questionnaire_belongs_to_org(self, questionnaire_id: int, org_id: str) -> bool:
+    async def questionnaire_belongs_to_org(
+        self, questionnaire_id: int, org_id: str
+    ) -> bool:
         async with self.session_factory() as session:
             stmt = select(QuestionnaireModel.id).where(
                 QuestionnaireModel.questionnaire_id == questionnaire_id,
@@ -111,12 +121,20 @@ class _CoreMixin:
                 select(func.count()).select_from(QuestionnaireModel), **filter_kwargs
             )
             sort_column, sort_desc = resolve_sort(
-                sort, _SORTABLE_FIELDS, default_column=QuestionnaireModel.questionnaire_id, default_desc=True
+                sort,
+                _SORTABLE_FIELDS,
+                default_column=QuestionnaireModel.questionnaire_id,
+                default_desc=True,
             )
             rows, total = await self._execute_paginated(
-                session, base, count_base,
-                sort_column=sort_column, sort_desc=sort_desc,
-                limit=limit, offset=offset, total_mode=total_mode,
+                session,
+                base,
+                count_base,
+                sort_column=sort_column,
+                sort_desc=sort_desc,
+                limit=limit,
+                offset=offset,
+                total_mode=total_mode,
             )
         logger.debug(
             "Questionnaires listed",
@@ -149,25 +167,47 @@ class _CoreMixin:
         letting the ORM cascade handle every other (non-recursive, two-level
         child/grandchild) sub-resource normally."""
         async with self.session_factory() as session:
-            stmt = select(QuestionnaireModel).where(QuestionnaireModel.questionnaire_id == questionnaire_id)
+            stmt = select(QuestionnaireModel).where(
+                QuestionnaireModel.questionnaire_id == questionnaire_id
+            )
             q = (await session.execute(stmt)).scalars().first()
             if not q:
                 return False
             try:
-                item_ids_subq = select(QuestionnaireItem.id).where(QuestionnaireItem.questionnaire_pk == q.id)
-                await session.execute(
-                    sa_delete(QuestionnaireItemCoding).where(QuestionnaireItemCoding.questionnaire_item_id.in_(item_ids_subq))
+                item_ids_subq = select(QuestionnaireItem.id).where(
+                    QuestionnaireItem.questionnaire_pk == q.id
                 )
                 await session.execute(
-                    sa_delete(QuestionnaireItemEnableWhen).where(QuestionnaireItemEnableWhen.questionnaire_item_id.in_(item_ids_subq))
+                    sa_delete(QuestionnaireItemCoding).where(
+                        QuestionnaireItemCoding.questionnaire_item_id.in_(item_ids_subq)
+                    )
                 )
                 await session.execute(
-                    sa_delete(QuestionnaireItemAnswerOption).where(QuestionnaireItemAnswerOption.questionnaire_item_id.in_(item_ids_subq))
+                    sa_delete(QuestionnaireItemEnableWhen).where(
+                        QuestionnaireItemEnableWhen.questionnaire_item_id.in_(
+                            item_ids_subq
+                        )
+                    )
                 )
                 await session.execute(
-                    sa_delete(QuestionnaireItemInitial).where(QuestionnaireItemInitial.questionnaire_item_id.in_(item_ids_subq))
+                    sa_delete(QuestionnaireItemAnswerOption).where(
+                        QuestionnaireItemAnswerOption.questionnaire_item_id.in_(
+                            item_ids_subq
+                        )
+                    )
                 )
-                await session.execute(sa_delete(QuestionnaireItem).where(QuestionnaireItem.questionnaire_pk == q.id))
+                await session.execute(
+                    sa_delete(QuestionnaireItemInitial).where(
+                        QuestionnaireItemInitial.questionnaire_item_id.in_(
+                            item_ids_subq
+                        )
+                    )
+                )
+                await session.execute(
+                    sa_delete(QuestionnaireItem).where(
+                        QuestionnaireItem.questionnaire_pk == q.id
+                    )
+                )
 
                 await session.delete(q)
                 await session.commit()

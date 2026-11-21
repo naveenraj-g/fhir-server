@@ -291,7 +291,9 @@ class _CoreMixin:
 
     async def delete(self, care_plan_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(CarePlanModel).where(CarePlanModel.care_plan_id == care_plan_id)
+            stmt = select(CarePlanModel).where(
+                CarePlanModel.care_plan_id == care_plan_id
+            )
             care_plan = (await session.execute(stmt)).scalars().first()
             if not care_plan:
                 return False

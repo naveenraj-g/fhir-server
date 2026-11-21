@@ -18,10 +18,17 @@ class FHIRMedicationIngredient(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    itemCodeableConcept: FHIRCodeableConcept | None = Field(None, description="The business code that represents the active or inactive ingredient.")
-    itemReference: FHIRReference | None = Field(None, description="The actual ingredient (Reference(Substance | Medication)).")
+    itemCodeableConcept: FHIRCodeableConcept | None = Field(
+        None,
+        description="The business code that represents the active or inactive ingredient.",
+    )
+    itemReference: FHIRReference | None = Field(
+        None, description="The actual ingredient (Reference(Substance | Medication))."
+    )
     isActive: bool | None = Field(None, description="Active ingredient indicator.")
-    strength: FHIRRatio | None = Field(None, description="Quantity of ingredient present.")
+    strength: FHIRRatio | None = Field(
+        None, description="Quantity of ingredient present."
+    )
 
 
 class PlainMedicationIngredient(BaseModel):

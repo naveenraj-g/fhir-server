@@ -17,12 +17,24 @@ class FHIRMedicationAdministrationDosage(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     text: str | None = Field(None, description="Free text dosage instructions.")
-    site: FHIRCodeableConcept | None = Field(None, description="Body site administered to.")
-    route: FHIRCodeableConcept | None = Field(None, description="Path of substance into body.")
-    method: FHIRCodeableConcept | None = Field(None, description="How drug was administered.")
-    dose: FHIRQuantity | None = Field(None, description="Amount of medication per dose.")
-    rateRatio: FHIRRatio | None = Field(None, description="Dose quantity per unit of time (Ratio).")
-    rateQuantity: FHIRQuantity | None = Field(None, description="Dose quantity per unit of time (Quantity).")
+    site: FHIRCodeableConcept | None = Field(
+        None, description="Body site administered to."
+    )
+    route: FHIRCodeableConcept | None = Field(
+        None, description="Path of substance into body."
+    )
+    method: FHIRCodeableConcept | None = Field(
+        None, description="How drug was administered."
+    )
+    dose: FHIRQuantity | None = Field(
+        None, description="Amount of medication per dose."
+    )
+    rateRatio: FHIRRatio | None = Field(
+        None, description="Dose quantity per unit of time (Ratio)."
+    )
+    rateQuantity: FHIRQuantity | None = Field(
+        None, description="Dose quantity per unit of time (Quantity)."
+    )
 
 
 class PlainQuantity(BaseModel):

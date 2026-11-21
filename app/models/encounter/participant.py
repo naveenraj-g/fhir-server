@@ -24,10 +24,14 @@ class EncounterParticipant(Base):
     No ForeignKey on `reference_id` and no UniqueConstraint."""
 
     __tablename__ = "encounter_participant"
-    __table_args__ = (Index("ix_encounter_participant_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_encounter_participant_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    encounter_pk = Column(BigInteger, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_pk = Column(
+        BigInteger, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)

@@ -65,7 +65,9 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -176,20 +178,26 @@ def _fhir_meta(model: EpisodeOfCareModel) -> dict:
 
     exts = []
     if model.created_at:
-        exts.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-created-at",
-            "valueDateTime": fhir_instant(model.created_at),
-        })
+        exts.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-created-at",
+                "valueDateTime": fhir_instant(model.created_at),
+            }
+        )
     if model.created_by:
-        exts.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-created-by",
-            "valueString": model.created_by,
-        })
+        exts.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-created-by",
+                "valueString": model.created_by,
+            }
+        )
     if model.updated_by:
-        exts.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-updated-by",
-            "valueString": model.updated_by,
-        })
+        exts.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-updated-by",
+                "valueString": model.updated_by,
+            }
+        )
     if exts:
         meta["extension"] = exts
     return meta
@@ -270,10 +278,7 @@ def to_fhir_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
         fhir["period"] = period
 
     if model.referral_requests:
-        referrals = [
-            _fhir_reference(r, "reference")
-            for r in model.referral_requests
-        ]
+        referrals = [_fhir_reference(r, "reference") for r in model.referral_requests]
         referrals = [r for r in referrals if r]
         if referrals:
             fhir["referralRequest"] = referrals
@@ -283,19 +288,13 @@ def to_fhir_episode_of_care(model: EpisodeOfCareModel) -> dict[str, Any]:
         fhir["careManager"] = care_manager_ref
 
     if model.teams:
-        teams = [
-            _fhir_reference(t, "reference")
-            for t in model.teams
-        ]
+        teams = [_fhir_reference(t, "reference") for t in model.teams]
         teams = [t for t in teams if t]
         if teams:
             fhir["team"] = teams
 
     if model.accounts:
-        accounts = [
-            _fhir_reference(a, "reference")
-            for a in model.accounts
-        ]
+        accounts = [_fhir_reference(a, "reference") for a in model.accounts]
         accounts = [a for a in accounts if a]
         if accounts:
             fhir["account"] = accounts

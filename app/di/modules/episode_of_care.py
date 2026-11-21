@@ -5,7 +5,6 @@ from app.services.episode_of_care import EpisodeOfCareService
 
 
 class EpisodeOfCareContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     episode_of_care_repository = providers.Factory(

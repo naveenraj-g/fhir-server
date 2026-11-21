@@ -34,9 +34,7 @@ _LIST_200 = {
         "description": "Paginated list of consents",
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PaginatedConsentResponse.model_json_schema()
-                )
+                "schema": inline_schema(PaginatedConsentResponse.model_json_schema())
             },
             "application/fhir+json": {
                 "schema": inline_schema(FHIRConsentBundle.model_json_schema())

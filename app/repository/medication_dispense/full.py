@@ -160,8 +160,18 @@ _DESTINATION_FIELDS = {
     "destination_identifier_period_end",
 }
 
-_QUANTITY_FIELDS = {"quantity_value", "quantity_unit", "quantity_system", "quantity_code"}
-_DAYS_SUPPLY_FIELDS = {"days_supply_value", "days_supply_unit", "days_supply_system", "days_supply_code"}
+_QUANTITY_FIELDS = {
+    "quantity_value",
+    "quantity_unit",
+    "quantity_system",
+    "quantity_code",
+}
+_DAYS_SUPPLY_FIELDS = {
+    "days_supply_value",
+    "days_supply_unit",
+    "days_supply_system",
+    "days_supply_code",
+}
 
 
 def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
@@ -176,7 +186,9 @@ def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
     }
 
 
-async def _add_identifiers(session, md_pk: int, org_id: str, identifiers, created_by: str) -> None:
+async def _add_identifiers(
+    session, md_pk: int, org_id: str, identifiers, created_by: str
+) -> None:
     for i in identifiers or []:
         a_ref = i.assigner
         a_type, a_id = None, None
@@ -186,7 +198,9 @@ async def _add_identifiers(session, md_pk: int, org_id: str, identifiers, create
 
             a_type, a_id = parse_reference(a_ref, OrganizationReferenceType)
             if a_type and a_id:
-                await _validate_ref(session, org_id, "identifier.assigner", a_type, a_id)
+                await _validate_ref(
+                    session, org_id, "identifier.assigner", a_type, a_id
+                )
 
         ident = MedicationDispenseIdentifier(
             medication_dispense_pk=md_pk,
@@ -212,7 +226,9 @@ async def _add_identifiers(session, md_pk: int, org_id: str, identifiers, create
                 )
 
 
-async def _add_category_codings(session, md_pk: int, org_id: str, codings, created_by: str) -> None:
+async def _add_category_codings(
+    session, md_pk: int, org_id: str, codings, created_by: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationDispenseCategoryCoding(
@@ -222,7 +238,9 @@ async def _add_category_codings(session, md_pk: int, org_id: str, codings, creat
         )
 
 
-async def _add_medication_codings(session, md_pk: int, org_id: str, codings, created_by: str) -> None:
+async def _add_medication_codings(
+    session, md_pk: int, org_id: str, codings, created_by: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationDispenseMedicationCoding(
@@ -232,7 +250,9 @@ async def _add_medication_codings(session, md_pk: int, org_id: str, codings, cre
         )
 
 
-async def _add_status_reason_codings(session, md_pk: int, org_id: str, codings, created_by: str) -> None:
+async def _add_status_reason_codings(
+    session, md_pk: int, org_id: str, codings, created_by: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationDispenseStatusReasonCoding(
@@ -242,7 +262,9 @@ async def _add_status_reason_codings(session, md_pk: int, org_id: str, codings, 
         )
 
 
-async def _add_type_codings(session, md_pk: int, org_id: str, codings, created_by: str) -> None:
+async def _add_type_codings(
+    session, md_pk: int, org_id: str, codings, created_by: str
+) -> None:
     for c in codings or []:
         session.add(
             MedicationDispenseTypeCoding(
@@ -252,10 +274,18 @@ async def _add_type_codings(session, md_pk: int, org_id: str, codings, created_b
         )
 
 
-async def _add_part_of(session, md_pk: int, org_id: str, part_of, created_by: str) -> None:
+async def _add_part_of(
+    session, md_pk: int, org_id: str, part_of, created_by: str
+) -> None:
     for p in part_of or []:
         kwargs = _list_reference_kwargs(p, MedicationDispensePartOfReferenceType)
-        await _validate_ref(session, org_id, "partOf", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        await _validate_ref(
+            session,
+            org_id,
+            "partOf",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispensePartOf(
                 medication_dispense_pk=md_pk,
@@ -266,10 +296,18 @@ async def _add_part_of(session, md_pk: int, org_id: str, part_of, created_by: st
         )
 
 
-async def _add_supporting_informations(session, md_pk: int, org_id: str, supporting_info, created_by: str) -> None:
+async def _add_supporting_informations(
+    session, md_pk: int, org_id: str, supporting_info, created_by: str
+) -> None:
     for si in supporting_info or []:
         kwargs = _list_reference_kwargs(si, None)
-        await _validate_ref(session, org_id, "supportingInformation", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        await _validate_ref(
+            session,
+            org_id,
+            "supportingInformation",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispenseSupportingInfo(
                 medication_dispense_pk=md_pk,
@@ -280,10 +318,20 @@ async def _add_supporting_informations(session, md_pk: int, org_id: str, support
         )
 
 
-async def _add_performers(session, md_pk: int, org_id: str, performers, created_by: str) -> None:
+async def _add_performers(
+    session, md_pk: int, org_id: str, performers, created_by: str
+) -> None:
     for p in performers or []:
-        actor_kwargs = _single_reference_kwargs("actor", p, MedicationDispensePerformerActorReferenceType)
-        await _validate_ref(session, org_id, "performer.actor", actor_kwargs.get("actor_type"), actor_kwargs.get("actor_id"))
+        actor_kwargs = _single_reference_kwargs(
+            "actor", p, MedicationDispensePerformerActorReferenceType
+        )
+        await _validate_ref(
+            session,
+            org_id,
+            "performer.actor",
+            actor_kwargs.get("actor_type"),
+            actor_kwargs.get("actor_id"),
+        )
         perf = MedicationDispensePerformer(
             medication_dispense_pk=md_pk,
             tenant_id=org_id,
@@ -303,10 +351,20 @@ async def _add_performers(session, md_pk: int, org_id: str, performers, created_
                 )
 
 
-async def _add_authorizing_prescriptions(session, md_pk: int, org_id: str, authorizing_prescriptions, created_by: str) -> None:
+async def _add_authorizing_prescriptions(
+    session, md_pk: int, org_id: str, authorizing_prescriptions, created_by: str
+) -> None:
     for a in authorizing_prescriptions or []:
-        kwargs = _list_reference_kwargs(a, MedicationDispenseAuthorizingPrescriptionReferenceType)
-        await _validate_ref(session, org_id, "authorizingPrescription", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        kwargs = _list_reference_kwargs(
+            a, MedicationDispenseAuthorizingPrescriptionReferenceType
+        )
+        await _validate_ref(
+            session,
+            org_id,
+            "authorizingPrescription",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispenseAuthorizingPrescription(
                 medication_dispense_pk=md_pk,
@@ -317,10 +375,18 @@ async def _add_authorizing_prescriptions(session, md_pk: int, org_id: str, autho
         )
 
 
-async def _add_receivers(session, md_pk: int, org_id: str, receivers, created_by: str) -> None:
+async def _add_receivers(
+    session, md_pk: int, org_id: str, receivers, created_by: str
+) -> None:
     for r in receivers or []:
         kwargs = _list_reference_kwargs(r, MedicationDispenseReceiverReferenceType)
-        await _validate_ref(session, org_id, "receiver", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        await _validate_ref(
+            session,
+            org_id,
+            "receiver",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispenseReceiver(
                 medication_dispense_pk=md_pk,
@@ -333,8 +399,16 @@ async def _add_receivers(session, md_pk: int, org_id: str, receivers, created_by
 
 async def _add_notes(session, md_pk: int, org_id: str, notes, created_by: str) -> None:
     for n in notes or []:
-        author_kwargs = _single_reference_kwargs("author", n, MedicationDispenseNoteAuthorReferenceType)
-        await _validate_ref(session, org_id, "note.author", author_kwargs.get("author_type"), author_kwargs.get("author_id"))
+        author_kwargs = _single_reference_kwargs(
+            "author", n, MedicationDispenseNoteAuthorReferenceType
+        )
+        await _validate_ref(
+            session,
+            org_id,
+            "note.author",
+            author_kwargs.get("author_type"),
+            author_kwargs.get("author_id"),
+        )
         session.add(
             MedicationDispenseNote(
                 medication_dispense_pk=md_pk,
@@ -348,7 +422,9 @@ async def _add_notes(session, md_pk: int, org_id: str, notes, created_by: str) -
         )
 
 
-async def _add_dosage_instructions(session, md_pk: int, org_id: str, dosage_instructions, created_by: str) -> None:
+async def _add_dosage_instructions(
+    session, md_pk: int, org_id: str, dosage_instructions, created_by: str
+) -> None:
     for d in dosage_instructions or []:
         dosage = MedicationDispenseDosageInstruction(
             medication_dispense_pk=md_pk,
@@ -359,7 +435,9 @@ async def _add_dosage_instructions(session, md_pk: int, org_id: str, dosage_inst
             patient_instruction=d.patient_instruction,
             timing=d.timing,
             as_needed_boolean=d.as_needed_boolean,
-            as_needed_codeable_concept_text=d.as_needed_codeable_concept.text if d.as_needed_codeable_concept else None,
+            as_needed_codeable_concept_text=d.as_needed_codeable_concept.text
+            if d.as_needed_codeable_concept
+            else None,
             site_text=d.site.text if d.site else None,
             route_text=d.route.text if d.route else None,
             method_text=d.method.text if d.method else None,
@@ -416,7 +494,11 @@ async def _add_dosage_instructions(session, md_pk: int, org_id: str, dosage_inst
                     **_coding_kwargs(c, org_id, created_by),
                 )
             )
-        for c in (d.as_needed_codeable_concept.coding if d.as_needed_codeable_concept else None) or []:
+        for c in (
+            d.as_needed_codeable_concept.coding
+            if d.as_needed_codeable_concept
+            else None
+        ) or []:
             session.add(
                 MedicationDispenseDosageAsNeededCoding(
                     medication_dispense_dosage_instruction_id=dosage.id,
@@ -426,7 +508,11 @@ async def _add_dosage_instructions(session, md_pk: int, org_id: str, dosage_inst
 
 
 async def _add_substitution_elements(
-    session, md_pk: int, org_id: str, sub: MedicationDispenseSubstitutionInput | None, created_by: str
+    session,
+    md_pk: int,
+    org_id: str,
+    sub: MedicationDispenseSubstitutionInput | None,
+    created_by: str,
 ) -> None:
     if not sub:
         return
@@ -458,8 +544,16 @@ async def _add_substitution_elements(
             )
 
     for rp in sub.responsible_party or []:
-        kwargs = _list_reference_kwargs(rp, MedicationDispenseSubstitutionResponsiblePartyReferenceType)
-        await _validate_ref(session, org_id, "substitution.responsibleParty", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        kwargs = _list_reference_kwargs(
+            rp, MedicationDispenseSubstitutionResponsiblePartyReferenceType
+        )
+        await _validate_ref(
+            session,
+            org_id,
+            "substitution.responsibleParty",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispenseSubstitutionResponsibleParty(
                 medication_dispense_pk=md_pk,
@@ -470,10 +564,20 @@ async def _add_substitution_elements(
         )
 
 
-async def _add_detected_issues(session, md_pk: int, org_id: str, detected_issues, created_by: str) -> None:
+async def _add_detected_issues(
+    session, md_pk: int, org_id: str, detected_issues, created_by: str
+) -> None:
     for di in detected_issues or []:
-        kwargs = _list_reference_kwargs(di, MedicationDispenseDetectedIssueReferenceType)
-        await _validate_ref(session, org_id, "detectedIssue", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        kwargs = _list_reference_kwargs(
+            di, MedicationDispenseDetectedIssueReferenceType
+        )
+        await _validate_ref(
+            session,
+            org_id,
+            "detectedIssue",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispenseDetectedIssue(
                 medication_dispense_pk=md_pk,
@@ -484,10 +588,18 @@ async def _add_detected_issues(session, md_pk: int, org_id: str, detected_issues
         )
 
 
-async def _add_event_history(session, md_pk: int, org_id: str, event_history, created_by: str) -> None:
+async def _add_event_history(
+    session, md_pk: int, org_id: str, event_history, created_by: str
+) -> None:
     for eh in event_history or []:
         kwargs = _list_reference_kwargs(eh, MedicationDispenseEventHistoryReferenceType)
-        await _validate_ref(session, org_id, "eventHistory", kwargs.get("reference_type"), kwargs.get("reference_id"))
+        await _validate_ref(
+            session,
+            org_id,
+            "eventHistory",
+            kwargs.get("reference_type"),
+            kwargs.get("reference_id"),
+        )
         session.add(
             MedicationDispenseEventHistory(
                 medication_dispense_pk=md_pk,
@@ -510,10 +622,14 @@ class _FullMixin:
         async with self.session_factory() as session:
             # 1. Resolve & validate single references
             status_reason_ref_kwargs = _single_reference_kwargs(
-                "status_reason_reference", payload, MedicationDispenseStatusReasonReferenceType
+                "status_reason_reference",
+                payload,
+                MedicationDispenseStatusReasonReferenceType,
             )
             await _validate_ref(
-                session, org_id, "statusReasonReference",
+                session,
+                org_id,
+                "statusReasonReference",
                 status_reason_ref_kwargs.get("status_reason_reference_type"),
                 status_reason_ref_kwargs.get("status_reason_reference_id"),
             )
@@ -522,7 +638,9 @@ class _FullMixin:
                 "medication", payload, MedicationDispenseMedicationReferenceType
             )
             await _validate_ref(
-                session, org_id, "medicationReference",
+                session,
+                org_id,
+                "medicationReference",
                 medication_kwargs.get("medication_type"),
                 medication_kwargs.get("medication_id"),
             )
@@ -531,7 +649,9 @@ class _FullMixin:
                 "subject", payload, MedicationDispenseSubjectReferenceType
             )
             await _validate_ref(
-                session, org_id, "subject",
+                session,
+                org_id,
+                "subject",
                 subject_kwargs.get("subject_type"),
                 subject_kwargs.get("subject_id"),
             )
@@ -540,7 +660,9 @@ class _FullMixin:
                 "context", payload, MedicationDispenseContextReferenceType
             )
             await _validate_ref(
-                session, org_id, "context",
+                session,
+                org_id,
+                "context",
                 context_kwargs.get("context_type"),
                 context_kwargs.get("context_id"),
             )
@@ -549,7 +671,9 @@ class _FullMixin:
                 "location", payload, MedicationDispenseLocationReferenceType
             )
             await _validate_ref(
-                session, org_id, "location",
+                session,
+                org_id,
+                "location",
                 location_kwargs.get("location_type"),
                 location_kwargs.get("location_id"),
             )
@@ -558,7 +682,9 @@ class _FullMixin:
                 "destination", payload, MedicationDispenseDestinationReferenceType
             )
             await _validate_ref(
-                session, org_id, "destination",
+                session,
+                org_id,
+                "destination",
                 destination_kwargs.get("destination_type"),
                 destination_kwargs.get("destination_id"),
             )
@@ -597,7 +723,9 @@ class _FullMixin:
                 when_handed_over=payload.when_handed_over,
                 **destination_kwargs,
                 substitution_was_substituted=(
-                    payload.substitution.was_substituted if payload.substitution else None
+                    payload.substitution.was_substituted
+                    if payload.substitution
+                    else None
                 ),
                 substitution_type_text=(
                     payload.substitution.type.text
@@ -610,30 +738,62 @@ class _FullMixin:
             await session.flush()
 
             # 3. Add sub-resources
-            await _add_identifiers(session, md.id, org_id, payload.identifier, created_by)
+            await _add_identifiers(
+                session, md.id, org_id, payload.identifier, created_by
+            )
             await _add_part_of(session, md.id, org_id, payload.part_of, created_by)
-            if payload.status_reason_codeable_concept and payload.status_reason_codeable_concept.coding:
+            if (
+                payload.status_reason_codeable_concept
+                and payload.status_reason_codeable_concept.coding
+            ):
                 await _add_status_reason_codings(
-                    session, md.id, org_id, payload.status_reason_codeable_concept.coding, created_by
+                    session,
+                    md.id,
+                    org_id,
+                    payload.status_reason_codeable_concept.coding,
+                    created_by,
                 )
             if payload.category and payload.category.coding:
-                await _add_category_codings(session, md.id, org_id, payload.category.coding, created_by)
-            if payload.medication_codeable_concept and payload.medication_codeable_concept.coding:
-                await _add_medication_codings(
-                    session, md.id, org_id, payload.medication_codeable_concept.coding, created_by
+                await _add_category_codings(
+                    session, md.id, org_id, payload.category.coding, created_by
                 )
-            await _add_supporting_informations(session, md.id, org_id, payload.supporting_information, created_by)
+            if (
+                payload.medication_codeable_concept
+                and payload.medication_codeable_concept.coding
+            ):
+                await _add_medication_codings(
+                    session,
+                    md.id,
+                    org_id,
+                    payload.medication_codeable_concept.coding,
+                    created_by,
+                )
+            await _add_supporting_informations(
+                session, md.id, org_id, payload.supporting_information, created_by
+            )
             await _add_performers(session, md.id, org_id, payload.performer, created_by)
-            await _add_authorizing_prescriptions(session, md.id, org_id, payload.authorizing_prescription, created_by)
+            await _add_authorizing_prescriptions(
+                session, md.id, org_id, payload.authorizing_prescription, created_by
+            )
             if payload.type and payload.type.coding:
-                await _add_type_codings(session, md.id, org_id, payload.type.coding, created_by)
+                await _add_type_codings(
+                    session, md.id, org_id, payload.type.coding, created_by
+                )
             await _add_receivers(session, md.id, org_id, payload.receiver, created_by)
             await _add_notes(session, md.id, org_id, payload.note, created_by)
-            await _add_dosage_instructions(session, md.id, org_id, payload.dosage_instruction, created_by)
+            await _add_dosage_instructions(
+                session, md.id, org_id, payload.dosage_instruction, created_by
+            )
             if payload.substitution:
-                await _add_substitution_elements(session, md.id, org_id, payload.substitution, created_by)
-            await _add_detected_issues(session, md.id, org_id, payload.detected_issue, created_by)
-            await _add_event_history(session, md.id, org_id, payload.event_history, created_by)
+                await _add_substitution_elements(
+                    session, md.id, org_id, payload.substitution, created_by
+                )
+            await _add_detected_issues(
+                session, md.id, org_id, payload.detected_issue, created_by
+            )
+            await _add_event_history(
+                session, md.id, org_id, payload.event_history, created_by
+            )
 
             await session.commit()
             pub_id = md.medication_dispense_id
@@ -650,7 +810,8 @@ class _FullMixin:
     ) -> MedicationDispenseModel | None:
         async with self.session_factory() as session:
             stmt = select(MedicationDispenseModel).where(
-                MedicationDispenseModel.medication_dispense_id == medication_dispense_id,
+                MedicationDispenseModel.medication_dispense_id
+                == medication_dispense_id,
                 MedicationDispenseModel.tenant_id == org_id,
             )
             md = (await session.execute(stmt)).scalar_one_or_none()
@@ -672,7 +833,8 @@ class _FullMixin:
                     )
                     await session.execute(
                         delete(MedicationDispenseStatusReasonCoding).where(
-                            MedicationDispenseStatusReasonCoding.medication_dispense_pk == md.id
+                            MedicationDispenseStatusReasonCoding.medication_dispense_pk
+                            == md.id
                         )
                     )
                     if (
@@ -680,13 +842,21 @@ class _FullMixin:
                         and payload.status_reason_codeable_concept.coding
                     ):
                         await _add_status_reason_codings(
-                            session, md.id, org_id, payload.status_reason_codeable_concept.coding, updated_by
+                            session,
+                            md.id,
+                            org_id,
+                            payload.status_reason_codeable_concept.coding,
+                            updated_by,
                         )
                 status_reason_ref_kwargs = _single_reference_kwargs(
-                    "status_reason_reference", payload, MedicationDispenseStatusReasonReferenceType
+                    "status_reason_reference",
+                    payload,
+                    MedicationDispenseStatusReasonReferenceType,
                 )
                 await _validate_ref(
-                    session, org_id, "statusReasonReference",
+                    session,
+                    org_id,
+                    "statusReasonReference",
                     status_reason_ref_kwargs.get("status_reason_reference_type"),
                     status_reason_ref_kwargs.get("status_reason_reference_id"),
                 )
@@ -701,7 +871,9 @@ class _FullMixin:
                     )
                 )
                 if payload.category and payload.category.coding:
-                    await _add_category_codings(session, md.id, org_id, payload.category.coding, updated_by)
+                    await _add_category_codings(
+                        session, md.id, org_id, payload.category.coding, updated_by
+                    )
 
             if provided & _MEDICATION_FIELDS:
                 if "medication_codeable_concept" in provided:
@@ -712,7 +884,8 @@ class _FullMixin:
                     )
                     await session.execute(
                         delete(MedicationDispenseMedicationCoding).where(
-                            MedicationDispenseMedicationCoding.medication_dispense_pk == md.id
+                            MedicationDispenseMedicationCoding.medication_dispense_pk
+                            == md.id
                         )
                     )
                     if (
@@ -720,13 +893,19 @@ class _FullMixin:
                         and payload.medication_codeable_concept.coding
                     ):
                         await _add_medication_codings(
-                            session, md.id, org_id, payload.medication_codeable_concept.coding, updated_by
+                            session,
+                            md.id,
+                            org_id,
+                            payload.medication_codeable_concept.coding,
+                            updated_by,
                         )
                 med_kwargs = _single_reference_kwargs(
                     "medication", payload, MedicationDispenseMedicationReferenceType
                 )
                 await _validate_ref(
-                    session, org_id, "medicationReference",
+                    session,
+                    org_id,
+                    "medicationReference",
                     med_kwargs.get("medication_type"),
                     med_kwargs.get("medication_id"),
                 )
@@ -738,7 +917,9 @@ class _FullMixin:
                     "subject", payload, MedicationDispenseSubjectReferenceType
                 )
                 await _validate_ref(
-                    session, org_id, "subject",
+                    session,
+                    org_id,
+                    "subject",
                     subject_kwargs.get("subject_type"),
                     subject_kwargs.get("subject_id"),
                 )
@@ -750,7 +931,9 @@ class _FullMixin:
                     "context", payload, MedicationDispenseContextReferenceType
                 )
                 await _validate_ref(
-                    session, org_id, "context",
+                    session,
+                    org_id,
+                    "context",
                     context_kwargs.get("context_type"),
                     context_kwargs.get("context_id"),
                 )
@@ -762,7 +945,9 @@ class _FullMixin:
                     "location", payload, MedicationDispenseLocationReferenceType
                 )
                 await _validate_ref(
-                    session, org_id, "location",
+                    session,
+                    org_id,
+                    "location",
                     location_kwargs.get("location_type"),
                     location_kwargs.get("location_id"),
                 )
@@ -777,7 +962,9 @@ class _FullMixin:
                     )
                 )
                 if payload.type and payload.type.coding:
-                    await _add_type_codings(session, md.id, org_id, payload.type.coding, updated_by)
+                    await _add_type_codings(
+                        session, md.id, org_id, payload.type.coding, updated_by
+                    )
 
             if provided & _QUANTITY_FIELDS:
                 md.quantity_value = payload.quantity_value
@@ -802,7 +989,9 @@ class _FullMixin:
                     "destination", payload, MedicationDispenseDestinationReferenceType
                 )
                 await _validate_ref(
-                    session, org_id, "destination",
+                    session,
+                    org_id,
+                    "destination",
                     destination_kwargs.get("destination_type"),
                     destination_kwargs.get("destination_id"),
                 )
@@ -811,7 +1000,9 @@ class _FullMixin:
 
             if "substitution" in provided:
                 md.substitution_was_substituted = (
-                    payload.substitution.was_substituted if payload.substitution else None
+                    payload.substitution.was_substituted
+                    if payload.substitution
+                    else None
                 )
                 md.substitution_type_text = (
                     payload.substitution.type.text
@@ -820,11 +1011,14 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationDispenseSubstitutionTypeCoding).where(
-                        MedicationDispenseSubstitutionTypeCoding.medication_dispense_pk == md.id
+                        MedicationDispenseSubstitutionTypeCoding.medication_dispense_pk
+                        == md.id
                     )
                 )
                 # Delete grandchild reasons first
-                sub_reason_ids_subq = select(MedicationDispenseSubstitutionReason.id).where(
+                sub_reason_ids_subq = select(
+                    MedicationDispenseSubstitutionReason.id
+                ).where(
                     MedicationDispenseSubstitutionReason.medication_dispense_pk == md.id
                 )
                 await session.execute(
@@ -836,19 +1030,25 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationDispenseSubstitutionReason).where(
-                        MedicationDispenseSubstitutionReason.medication_dispense_pk == md.id
+                        MedicationDispenseSubstitutionReason.medication_dispense_pk
+                        == md.id
                     )
                 )
                 await session.execute(
                     delete(MedicationDispenseSubstitutionResponsibleParty).where(
-                        MedicationDispenseSubstitutionResponsibleParty.medication_dispense_pk == md.id
+                        MedicationDispenseSubstitutionResponsibleParty.medication_dispense_pk
+                        == md.id
                     )
                 )
                 if payload.substitution:
-                    await _add_substitution_elements(session, md.id, org_id, payload.substitution, updated_by)
+                    await _add_substitution_elements(
+                        session, md.id, org_id, payload.substitution, updated_by
+                    )
 
             if "extension" in provided:
-                md.extension = list(payload.extension) if payload.extension is not None else []
+                md.extension = (
+                    list(payload.extension) if payload.extension is not None else []
+                )
 
             # 0..* collections
             if "identifier" in provided:
@@ -868,7 +1068,9 @@ class _FullMixin:
                     )
                 )
                 if payload.identifier:
-                    await _add_identifiers(session, md.id, org_id, payload.identifier, updated_by)
+                    await _add_identifiers(
+                        session, md.id, org_id, payload.identifier, updated_by
+                    )
 
             if "part_of" in provided:
                 await session.execute(
@@ -877,7 +1079,9 @@ class _FullMixin:
                     )
                 )
                 if payload.part_of:
-                    await _add_part_of(session, md.id, org_id, payload.part_of, updated_by)
+                    await _add_part_of(
+                        session, md.id, org_id, payload.part_of, updated_by
+                    )
 
             if "supporting_information" in provided:
                 await session.execute(
@@ -887,7 +1091,11 @@ class _FullMixin:
                 )
                 if payload.supporting_information:
                     await _add_supporting_informations(
-                        session, md.id, org_id, payload.supporting_information, updated_by
+                        session,
+                        md.id,
+                        org_id,
+                        payload.supporting_information,
+                        updated_by,
                     )
 
             if "performer" in provided:
@@ -907,17 +1115,24 @@ class _FullMixin:
                     )
                 )
                 if payload.performer:
-                    await _add_performers(session, md.id, org_id, payload.performer, updated_by)
+                    await _add_performers(
+                        session, md.id, org_id, payload.performer, updated_by
+                    )
 
             if "authorizing_prescription" in provided:
                 await session.execute(
                     delete(MedicationDispenseAuthorizingPrescription).where(
-                        MedicationDispenseAuthorizingPrescription.medication_dispense_pk == md.id
+                        MedicationDispenseAuthorizingPrescription.medication_dispense_pk
+                        == md.id
                     )
                 )
                 if payload.authorizing_prescription:
                     await _add_authorizing_prescriptions(
-                        session, md.id, org_id, payload.authorizing_prescription, updated_by
+                        session,
+                        md.id,
+                        org_id,
+                        payload.authorizing_prescription,
+                        updated_by,
                     )
 
             if "receiver" in provided:
@@ -927,7 +1142,9 @@ class _FullMixin:
                     )
                 )
                 if payload.receiver:
-                    await _add_receivers(session, md.id, org_id, payload.receiver, updated_by)
+                    await _add_receivers(
+                        session, md.id, org_id, payload.receiver, updated_by
+                    )
 
             if "note" in provided:
                 await session.execute(
@@ -942,7 +1159,9 @@ class _FullMixin:
                 dosage_ids_subq = select(MedicationDispenseDosageInstruction.id).where(
                     MedicationDispenseDosageInstruction.medication_dispense_pk == md.id
                 )
-                ai_ids_subq = select(MedicationDispenseDosageAdditionalInstruction.id).where(
+                ai_ids_subq = select(
+                    MedicationDispenseDosageAdditionalInstruction.id
+                ).where(
                     MedicationDispenseDosageAdditionalInstruction.medication_dispense_dosage_instruction_id.in_(
                         dosage_ids_subq
                     )
@@ -991,7 +1210,8 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(MedicationDispenseDosageInstruction).where(
-                        MedicationDispenseDosageInstruction.medication_dispense_pk == md.id
+                        MedicationDispenseDosageInstruction.medication_dispense_pk
+                        == md.id
                     )
                 )
                 if payload.dosage_instruction:
@@ -1006,7 +1226,9 @@ class _FullMixin:
                     )
                 )
                 if payload.detected_issue:
-                    await _add_detected_issues(session, md.id, org_id, payload.detected_issue, updated_by)
+                    await _add_detected_issues(
+                        session, md.id, org_id, payload.detected_issue, updated_by
+                    )
 
             if "event_history" in provided:
                 await session.execute(
@@ -1015,8 +1237,12 @@ class _FullMixin:
                     )
                 )
                 if payload.event_history:
-                    await _add_event_history(session, md.id, org_id, payload.event_history, updated_by)
+                    await _add_event_history(
+                        session, md.id, org_id, payload.event_history, updated_by
+                    )
 
             await session.commit()
 
-        return await self.get_by_medication_dispense_id_in_org(medication_dispense_id, org_id)
+        return await self.get_by_medication_dispense_id_in_org(
+            medication_dispense_id, org_id
+        )

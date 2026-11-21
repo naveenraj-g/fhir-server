@@ -41,7 +41,8 @@ async def test_create_rejects_naive_datetime_period(client):
     assert body["resourceType"] == "OperationOutcome"
     assert any(
         any(
-            expr in ("Organization.identifier[0].period.start", "identifier.0.period.start")
+            expr
+            in ("Organization.identifier[0].period.start", "identifier.0.period.start")
             or "period.start" in expr
             for expr in issue.get("expression", [])
         )

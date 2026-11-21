@@ -26,21 +26,37 @@ UCUM = "http://unitsofmeasure.org"
 
 
 def risk(code: str = "moderate", display: str | None = None) -> dict:
-    return {"coding": [{"system": RISK, "code": code, **({"display": display} if display else {})}]}
+    return {
+        "coding": [
+            {"system": RISK, "code": code, **({"display": display} if display else {})}
+        ]
+    }
 
 
 def percent(value: float | int) -> dict:
     return {"value": value, "unit": "%", "system": UCUM, "code": "%"}
 
 
-def assessment_body(patient_id: int | None = None, status: str = "final", **extra) -> dict:
+def assessment_body(
+    patient_id: int | None = None, status: str = "final", **extra
+) -> dict:
     """A valid minimal RiskAssessment: R4 requires `status` and `subject`. With no patient the
     subject is an absolute URL (not existence-checked)."""
-    subject = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    subject = {
+        "reference": f"Patient/{patient_id}"
+        if patient_id
+        else "https://other.example.org/fhir/Patient/1"
+    }
     return {"status": status, "subject": subject, **extra}
 
 
-def full_body(patient_id: int, encounter_id: int, condition_id: int, practitioner_id: int, organization_id: int) -> dict:
+def full_body(
+    patient_id: int,
+    encounter_id: int,
+    condition_id: int,
+    practitioner_id: int,
+    organization_id: int,
+) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return assessment_body(
         patient_id,
@@ -55,23 +71,48 @@ def full_body(patient_id: int, encounter_id: int, condition_id: int, practitione
         ],
         basedOn={"reference": "ServiceRequest/80001"},
         parent={"reference": "Procedure/100001"},
-        method={"coding": [{"system": SCT, "code": "225338004", "display": "Risk assessment"}]},
-        code={"coding": [{"system": SCT, "code": "709510001", "display": "Assessment of risk for cardiovascular disease"}]},
+        method={
+            "coding": [
+                {"system": SCT, "code": "225338004", "display": "Risk assessment"}
+            ]
+        },
+        code={
+            "coding": [
+                {
+                    "system": SCT,
+                    "code": "709510001",
+                    "display": "Assessment of risk for cardiovascular disease",
+                }
+            ]
+        },
         encounter={"reference": f"Encounter/{encounter_id}"},
         occurrenceDateTime="2023-01-15T09:30:00Z",
         condition={"reference": f"Condition/{condition_id}"},
         performer={"reference": f"Practitioner/{practitioner_id}"},
         reasonCode=[{"text": "Family history of heart disease"}],
-        reasonReference=[{"reference": f"Condition/{condition_id}"}, {"reference": "Observation/160001"}],
+        reasonReference=[
+            {"reference": f"Condition/{condition_id}"},
+            {"reference": "Observation/160001"},
+        ],
         basis=[{"reference": "Observation/160002"}],
         prediction=[
             {
-                "outcome": {"coding": [{"system": SCT, "code": "54329005", "display": "Acute myocardial infarction"}]},
+                "outcome": {
+                    "coding": [
+                        {
+                            "system": SCT,
+                            "code": "54329005",
+                            "display": "Acute myocardial infarction",
+                        }
+                    ]
+                },
                 "probabilityDecimal": 12.5,
                 "qualitativeRisk": risk("moderate", "moderate likelihood"),
                 "relativeRisk": 1.4,
-                "whenRange": {"low": {"value": 40, "unit": "yr", "system": UCUM, "code": "a"},
-                              "high": {"value": 50, "unit": "yr", "system": UCUM, "code": "a"}},
+                "whenRange": {
+                    "low": {"value": 40, "unit": "yr", "system": UCUM, "code": "a"},
+                    "high": {"value": 50, "unit": "yr", "system": UCUM, "code": "a"},
+                },
                 "rationale": "Based on lipid panel and blood pressure.",
             },
             {
@@ -82,7 +123,13 @@ def full_body(patient_id: int, encounter_id: int, condition_id: int, practitione
             },
         ],
         mitigation="Statin therapy and lifestyle changes.",
-        note=[{"text": "Reassess in 12 months.", "time": "2023-01-15T10:00:00Z", "authorString": "Nurse Joy"}],
+        note=[
+            {
+                "text": "Reassess in 12 months.",
+                "time": "2023-01-15T10:00:00Z",
+                "authorString": "Nurse Joy",
+            }
+        ],
     )
 
 

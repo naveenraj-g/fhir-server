@@ -10,9 +10,7 @@ class TaskRestrictionInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    repetitions: int | None = Field(
-        None, description="How many times to repeat."
-    )
+    repetitions: int | None = Field(None, description="How many times to repeat.")
     period_start: datetime | None = Field(
         None, description="When fulfillment is permitted — start."
     )
@@ -20,5 +18,6 @@ class TaskRestrictionInput(BaseModel):
         None, description="When fulfillment is permitted — end."
     )
     recipient: list[TaskReferenceInput | str] | None = Field(
-        None, description="For whom is task expected to be executed (Reference(Patient|Practitioner|PractitionerRole|RelatedPerson|Group|Organization))."
+        None,
+        description="For whom is task expected to be executed (Reference(Patient|Practitioner|PractitionerRole|RelatedPerson|Group|Organization)).",
     )

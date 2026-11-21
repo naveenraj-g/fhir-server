@@ -20,9 +20,7 @@ class CommunicationReasonCode(TenantAuditMixin, Base):
 
     text = Column(String, nullable=True)
 
-    communication = relationship(
-        "CommunicationModel", back_populates="reason_codes"
-    )
+    communication = relationship("CommunicationModel", back_populates="reason_codes")
     codings = relationship(
         "CommunicationReasonCodeCoding",
         back_populates="reason_code",
@@ -43,6 +41,4 @@ class CommunicationReasonCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
         index=True,
     )
 
-    reason_code = relationship(
-        "CommunicationReasonCode", back_populates="codings"
-    )
+    reason_code = relationship("CommunicationReasonCode", back_populates="codings")

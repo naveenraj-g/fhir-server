@@ -1,4 +1,7 @@
-from .backbone import PractitionerRoleAvailableTimeInput, PractitionerRoleNotAvailableInput
+from .backbone import (
+    PractitionerRoleAvailableTimeInput,
+    PractitionerRoleNotAvailableInput,
+)
 from .core import PractitionerRoleCreateSchema, PractitionerRolePatchSchema
 
 __all__ = [

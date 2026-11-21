@@ -290,11 +290,10 @@ if settings.cors.enabled:
 # (the route isn't registered at all when disabled, same "doesn't exist"
 # behavior FastAPI's own docs_url=None gives those two).
 if settings.app.docs_enabled:
+
     @app.get("/docs/scalar", include_in_schema=False)
     async def scalar_docs():
-        return get_scalar_api_reference(
-            openapi_url=app.openapi_url, title=app.title
-        )
+        return get_scalar_api_reference(openapi_url=app.openapi_url, title=app.title)
 
 
 # ── OpenAPI schema override ────────────────────────────────────────────────────

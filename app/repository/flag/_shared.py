@@ -67,11 +67,7 @@ async def _validate_ref(
 def _with_relationships(stmt):
     """Eager-load all Flag sub-resources to avoid N+1 and async lazy-load failures."""
     return stmt.options(
-        selectinload(FlagModel.identifiers).selectinload(
-            FlagIdentifier.type_codings
-        ),
-        selectinload(FlagModel.categories).selectinload(
-            FlagCategory.codings
-        ),
+        selectinload(FlagModel.identifiers).selectinload(FlagIdentifier.type_codings),
+        selectinload(FlagModel.categories).selectinload(FlagCategory.codings),
         selectinload(FlagModel.code_codings),
     )

@@ -23,7 +23,12 @@ REFERENCE_TYPES = {
     "based-on": ("ServiceRequest",),
     "diagnosis": ("Condition", "Procedure"),
     "episode-of-care": ("EpisodeOfCare",),
-    "reason-reference": ("Condition", "Observation", "Procedure", "ImmunizationRecommendation"),
+    "reason-reference": (
+        "Condition",
+        "Observation",
+        "Procedure",
+        "ImmunizationRecommendation",
+    ),
 }
 
 
@@ -50,10 +55,19 @@ class EncounterReference(Base):
     UniqueConstraint: R4 does not forbid listing the same reference twice."""
 
     __tablename__ = "encounter_reference"
-    __table_args__ = (Index("ix_encounter_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_encounter_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    encounter_pk = Column(BigInteger, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_pk = Column(
+        BigInteger, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)

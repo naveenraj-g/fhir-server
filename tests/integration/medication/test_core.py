@@ -75,7 +75,10 @@ async def test_create_medication_full(client):
     assert data["identifier"][0]["value"] == "MED-12345"
     assert len(data["ingredient"]) == 2
     assert data["ingredient"][0]["item_codeable_concept"]["text"] == "Amoxicillin"
-    assert data["ingredient"][1]["item_reference"]["reference"] == f"Medication/{ing_med_id}"
+    assert (
+        data["ingredient"][1]["item_reference"]["reference"]
+        == f"Medication/{ing_med_id}"
+    )
     assert data["batch"]["lot_number"] == "LOT-9876"
 
 
@@ -355,9 +358,7 @@ async def test_medication_cross_org_isolation(client):
         assert resp.status_code == 404, resp.text
         assert_operation_outcome(resp.json(), 404, resp.status_code)
 
-        patch_resp = await client.patch(
-            f"{BASE}/{med_id}", json={"status": "inactive"}
-        )
+        patch_resp = await client.patch(f"{BASE}/{med_id}", json={"status": "inactive"})
         assert patch_resp.status_code == 404
 
         del_resp = await client.delete(f"{BASE}/{med_id}")

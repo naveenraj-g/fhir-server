@@ -36,7 +36,8 @@ class FHIRPractitionerSchema(BaseModel):
         None, description="The name(s) associated with the practitioner."
     )
     telecom: list[FHIRContactPoint] | None = Field(
-        None, description="A contact detail for the practitioner (that apply to all roles)."
+        None,
+        description="A contact detail for the practitioner (that apply to all roles).",
     )
     address: list[FHIRAddress] | None = Field(
         None, description="Address(es) of the practitioner that are not role specific."
@@ -47,10 +48,12 @@ class FHIRPractitionerSchema(BaseModel):
     )
     photo: list[FHIRAttachment] | None = Field(None, description="Image of the person.")
     qualification: list[FHIRPractitionerQualification] | None = Field(
-        None, description="Certification, licenses, or training pertaining to the provision of care."
+        None,
+        description="Certification, licenses, or training pertaining to the provision of care.",
     )
     communication: list[FHIRCodeableConcept] | None = Field(
-        None, description="A language the practitioner can use in patient communication."
+        None,
+        description="A language the practitioner can use in patient communication.",
     )
 
 

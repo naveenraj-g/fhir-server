@@ -16,7 +16,10 @@ post-write document.
 
 from __future__ import annotations
 
-from app.models.appointment_response import AppointmentResponseIdentifier, AppointmentResponseParticipantStatus
+from app.models.appointment_response import (
+    AppointmentResponseIdentifier,
+    AppointmentResponseParticipantStatus,
+)
 from app.repository._content_index import identifier_rows, relative
 
 from ._shared import MODELED_ACTOR_TYPES, actor_type_and_id, appointment_id_of
@@ -33,10 +36,14 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     resource here (RelatedPerson, Device) point elsewhere and are not checked."""
     refs = []
     for identifier in document.get("identifier") or []:
-        local = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        local = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
-    appointment = relative((document.get("appointment") or {}).get("reference"), "Appointment")
+    appointment = relative(
+        (document.get("appointment") or {}).get("reference"), "Appointment"
+    )
     if appointment:
         refs.append(("appointment", "Appointment", appointment))
     actor = (document.get("actor") or {}).get("reference")
@@ -46,7 +53,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     return refs
 
 
-def _reference_columns(prefix: str, ref: dict | None, parsed: tuple[str, int] | None) -> dict:
+def _reference_columns(
+    prefix: str, ref: dict | None, parsed: tuple[str, int] | None
+) -> dict:
     ref = ref or {}
     identifier = ref.get("identifier") or {}
     return {
@@ -71,7 +80,9 @@ def index_columns(document: dict) -> dict:
     return {
         "participant_status": status,
         **_reference_columns(
-            "appointment", appointment, ("Appointment", appointment_id) if appointment_id is not None else None
+            "appointment",
+            appointment,
+            ("Appointment", appointment_id) if appointment_id is not None else None,
         ),
         **_reference_columns("actor", actor, actor_type_and_id(actor.get("reference"))),
     }
@@ -81,6 +92,8 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by AppointmentResponseModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(AppointmentResponseIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(AppointmentResponseIdentifier, i)
         ],
     }

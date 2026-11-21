@@ -40,7 +40,9 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("EpisodeOfCare operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "EpisodeOfCare operation requires an org-scoped token"
+            )
         episode_of_care = await self.repository.get_by_episode_of_care_id_in_org(
             episode_of_care_id, org_id
         )
@@ -64,7 +66,9 @@ class _CoreMixin:
     ) -> tuple[list[EpisodeOfCareModel], int | None]:
         """Raises PermissionDeniedError (403) for an org-less token."""
         if not org_id:
-            raise PermissionDeniedError("EpisodeOfCare operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "EpisodeOfCare operation requires an org-scoped token"
+            )
         return await self.repository.list(
             org_id=org_id,
             status=status,
@@ -86,15 +90,22 @@ class _CoreMixin:
         created_by: str | None,
     ) -> EpisodeOfCareModel:
         if not org_id:
-            raise PermissionDeniedError("EpisodeOfCare creation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "EpisodeOfCare creation requires an org-scoped token"
+            )
         if not created_by:
-            raise PermissionDeniedError("EpisodeOfCare creation requires an authenticated actor")
+            raise PermissionDeniedError(
+                "EpisodeOfCare creation requires an authenticated actor"
+            )
 
         await self._validate_base_r4(payload_to_fhir_episode_of_care(payload), org_id)
         eoc = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "EpisodeOfCare created",
-            extra={"event": "episode_of_care.created", "episode_of_care_id": eoc.episode_of_care_id},
+            extra={
+                "event": "episode_of_care.created",
+                "episode_of_care_id": eoc.episode_of_care_id,
+            },
         )
         return eoc
 
@@ -108,13 +119,17 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", episode_of_care_id, org_id)
             raise NotFoundError("EpisodeOfCare not found")
-        existing = await self.repository.get_by_episode_of_care_id_in_org(episode_of_care_id, org_id)
+        existing = await self.repository.get_by_episode_of_care_id_in_org(
+            episode_of_care_id, org_id
+        )
         if not existing:
             self._log_org_scope_miss("patch", episode_of_care_id, org_id)
             raise NotFoundError("EpisodeOfCare not found")
 
         fragment, touched = patch_fragment_to_fhir_episode_of_care(payload)
-        merged = merge_patch_fragment(to_fhir_episode_of_care(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_episode_of_care(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         updated = await self.repository.patch_full(
@@ -132,8 +147,12 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_episode_of_care(self, episode_of_care_id: int, org_id: str | None = None) -> None:
-        if not org_id or not await self.repository.episode_of_care_belongs_to_org(episode_of_care_id, org_id):
+    async def delete_episode_of_care(
+        self, episode_of_care_id: int, org_id: str | None = None
+    ) -> None:
+        if not org_id or not await self.repository.episode_of_care_belongs_to_org(
+            episode_of_care_id, org_id
+        ):
             self._log_org_scope_miss("delete", episode_of_care_id, org_id)
             raise NotFoundError("EpisodeOfCare not found")
         deleted = await self.repository.delete(episode_of_care_id)
@@ -141,7 +160,10 @@ class _CoreMixin:
             raise NotFoundError("EpisodeOfCare not found")
         logger.info(
             "EpisodeOfCare deleted",
-            extra={"event": "episode_of_care.deleted", "episode_of_care_id": episode_of_care_id},
+            extra={
+                "event": "episode_of_care.deleted",
+                "episode_of_care_id": episode_of_care_id,
+            },
         )
 
     @staticmethod
@@ -155,7 +177,9 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(operation: str, episode_of_care_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, episode_of_care_id: int, org_id: str | None
+    ) -> None:
         logger.warning(
             "EpisodeOfCare write rejected by org scope",
             extra={

@@ -23,7 +23,10 @@ class ActivityDefinitionUseContext(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     # value[x]: CodeableConcept — text flat here, coding[] is a grandchild table
@@ -64,7 +67,9 @@ class ActivityDefinitionUseContext(FhirCodingMixin, TenantAuditMixin, Base):
     value_reference_id = Column(BigInteger, nullable=True, index=True)
     value_reference_display = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="use_contexts")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="use_contexts"
+    )
     value_codings = relationship(
         "ActivityDefinitionUseContextValueCoding",
         back_populates="use_context",
@@ -85,4 +90,6 @@ class ActivityDefinitionUseContextValueCoding(FhirCodingMixin, TenantAuditMixin,
         index=True,
     )
 
-    use_context = relationship("ActivityDefinitionUseContext", back_populates="value_codings")
+    use_context = relationship(
+        "ActivityDefinitionUseContext", back_populates="value_codings"
+    )

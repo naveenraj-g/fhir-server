@@ -90,9 +90,7 @@ class SpecimenDefinitionService:
         await self._validate_base_r4(
             payload_to_fhir_specimen_definition(payload), org_id
         )
-        model = await self.repository.create(
-            payload, org_id, created_by
-        )
+        model = await self.repository.create(payload, org_id, created_by)
         logger.info(
             "SpecimenDefinition created",
             extra={
@@ -160,9 +158,7 @@ class SpecimenDefinitionService:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource(
             "SpecimenDefinition", fhir_resource, org_id=org_id
         )

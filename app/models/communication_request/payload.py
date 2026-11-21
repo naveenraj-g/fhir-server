@@ -15,9 +15,7 @@ from app.models.enums import IdentifierUse
 from app.models.shared import FhirAttachmentMixin, TenantAuditMixin
 
 
-class CommunicationRequestPayload(
-    FhirAttachmentMixin, TenantAuditMixin, Base
-):
+class CommunicationRequestPayload(FhirAttachmentMixin, TenantAuditMixin, Base):
     """CommunicationRequest.payload (0..*) BackboneElement child table.
     content[x] can be string, Attachment, or Reference(Resource).
     """
@@ -53,9 +51,7 @@ class CommunicationRequestPayload(
     content_reference_identifier_type_code = Column(String, nullable=True)
     content_reference_identifier_type_display = Column(String, nullable=True)
     content_reference_identifier_type_text = Column(String, nullable=True)
-    content_reference_identifier_type_user_selected = Column(
-        Boolean, nullable=True
-    )
+    content_reference_identifier_type_user_selected = Column(Boolean, nullable=True)
     content_reference_identifier_system = Column(String, nullable=True)
     content_reference_identifier_value = Column(String, nullable=True)
     content_reference_identifier_period_start = Column(

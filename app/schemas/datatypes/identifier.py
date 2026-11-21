@@ -11,20 +11,27 @@ class FHIRIdentifier(BaseModel):
     some defined namespace."""
 
     use: Optional[str] = Field(
-        None, description="The purpose of this identifier. usual|official|temp|secondary|old."
+        None,
+        description="The purpose of this identifier. usual|official|temp|secondary|old.",
     )
     type: Optional[FHIRCodeableConcept] = Field(
-        None, description="A coded description of the type of identifier (e.g. MR, SSN, passport)."
+        None,
+        description="A coded description of the type of identifier (e.g. MR, SSN, passport).",
     )
     system: Optional[str] = Field(
-        None, description="The namespace (a URI) that identifies the scope this identifier's value is unique within."
+        None,
+        description="The namespace (a URI) that identifies the scope this identifier's value is unique within.",
     )
-    value: Optional[str] = Field(None, description="The identifier value itself, unique within the given system.")
+    value: Optional[str] = Field(
+        None, description="The identifier value itself, unique within the given system."
+    )
     period: Optional[FHIRPeriod] = Field(
-        None, description="The period during which this identifier is/was valid for use."
+        None,
+        description="The period during which this identifier is/was valid for use.",
     )
     assigner: Optional[FHIRReference] = Field(
-        None, description="Reference(Organization) — the organization that issued this identifier."
+        None,
+        description="Reference(Organization) — the organization that issued this identifier.",
     )
 
 

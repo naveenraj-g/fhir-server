@@ -30,7 +30,9 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
-from app.repository._clinical_impression_revinclude import reference_impression_revincludes
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
 from app.models.family_member_history import (
     REFERENCE_TYPES,
     FamilyMemberHistoryIdentifier,
@@ -53,8 +55,13 @@ _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Patient": ("app.models.patient", "PatientModel", "patient_id",
-                "app.repository.patient.search", "patient_search"),
+    "Patient": (
+        "app.models.patient",
+        "PatientModel",
+        "patient_id",
+        "app.repository.patient.search",
+        "patient_search",
+    ),
 }
 
 
@@ -74,7 +81,9 @@ def _registry_of(resource_type: str):
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.family_member_history_pk == M.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.family_member_history_pk == M.id, *conditions)
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -82,7 +91,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.family_member_history_pk == M.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.family_member_history_pk == M.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -100,7 +113,9 @@ def _referenced(target: str, inner, ctx):
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return M.family_member_history_id == int(token.code)
 
@@ -127,10 +142,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -142,7 +164,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -161,7 +185,11 @@ def _patient_ref():
 
     def match(value, modifier, ctx):
         if modifier == "identifier":
-            return token_condition(M.patient_identifier_system, M.patient_identifier_value, parse_token(value))
+            return token_condition(
+                M.patient_identifier_system,
+                M.patient_identifier_value,
+                parse_token(value),
+            )
         return reference_match(type_, id_, ref, value, modifier, ctx, ("Patient",), str)
 
     def present(ctx):
@@ -183,16 +211,31 @@ def _canonical_param():
 
     def match(value, modifier, ctx):
         conditions = [
-            reference_match(_R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str)
+            reference_match(
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
+            )
         ]
         if modifier is None and "|" not in value and _ABSOLUTE.match(value):
-            conditions.append(_R.reference_reference.like(like_escape(value) + "|%", escape="\\"))
+            conditions.append(
+                _R.reference_reference.like(like_escape(value) + "|%", escape="\\")
+            )
         return _exists(_R, _R.param == param, or_(*conditions))
 
     def present(ctx):
         return _exists(_R, _R.param == param)
 
-    return match, present, lambda: _child_sort(_R.reference_reference, _R, _R.param == param)
+    return (
+        match,
+        present,
+        lambda: _child_sort(_R.reference_reference, _R, _R.param == param),
+    )
 
 
 def _uri_match(value, modifier, ctx):
@@ -210,14 +253,20 @@ async def _load(session, ctx, resource_type: str, ids) -> list:
     if not ids:
         return []
     model, id_col = _model(resource_type)
-    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+    )
 
 
 def _include_patient():
     """_include=FamilyMemberHistory:patient — the Patients these point at."""
 
     async def fetch(session, ctx, histories):
-        ids = {h.patient_id for h in histories if h.patient_type == "Patient" and h.patient_id}
+        ids = {
+            h.patient_id
+            for h in histories
+            if h.patient_type == "Patient" and h.patient_id
+        }
         return await _load(session, ctx, "Patient", ids)
 
     return fetch
@@ -231,7 +280,11 @@ def revinclude_histories_via_patient(key):
         ids = {key(r) for r in rows}
         return await _fetch(
             session,
-            select(M).where(M.tenant_id == ctx.tenant_id, M.patient_type == "Patient", M.patient_id.in_(ids)),
+            select(M).where(
+                M.tenant_id == ctx.tenant_id,
+                M.patient_type == "Patient",
+                M.patient_id.in_(ids),
+            ),
         )
 
     return fetch
@@ -256,7 +309,9 @@ def _register_kind() -> None:
 
 _TOKEN = frozenset({"text", "not", "in", "not-in", "above", "below", "missing"})
 _REFERENCE = frozenset({"identifier", "missing"})
-_IDENTIFIER_DOC = {"identifier": "`:identifier` — match the logical identifier of a target that has no resource here."}
+_IDENTIFIER_DOC = {
+    "identifier": "`:identifier` — match the logical identifier of a target that has no resource here."
+}
 
 
 @cache
@@ -265,51 +320,97 @@ def family_member_history_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
     patient_match, patient_present, patient_chain, patient_sort = _patient_ref()
     canonical_match, canonical_present, canonical_sort = _canonical_param()
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public family member history id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: M.family_member_history_id, example="490001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public family member history id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: M.family_member_history_id,
+            example="490001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         token(
-            "code", "A search by a condition code", "FamilyMemberHistory.condition.code",
+            "code",
+            "A search by a condition code",
+            "FamilyMemberHistory.condition.code",
             "http://snomed.info/sct|254837009",
         ),
         SearchParam(
-            "date", "date", "When history was recorded or last updated", "FamilyMemberHistory.date",
-            _date_match, lambda ctx: M.date_start.is_not(None), sort=lambda: M.date_start, example="ge2026-01-01",
+            "date",
+            "date",
+            "When history was recorded or last updated",
+            "FamilyMemberHistory.date",
+            _date_match,
+            lambda ctx: M.date_start.is_not(None),
+            sort=lambda: M.date_start,
+            example="ge2026-01-01",
         ),
         SearchParam(
-            "identifier", "token", "A search by a record identifier", "FamilyMemberHistory.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:histories|FMH-1",
+            "identifier",
+            "token",
+            "A search by a record identifier",
+            "FamilyMemberHistory.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:histories|FMH-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         SearchParam(
-            "instantiates-canonical", "reference", "Instantiates FHIR protocol or definition (a canonical URL)",
-            "FamilyMemberHistory.instantiatesCanonical", canonical_match, canonical_present, frozenset({"missing"}),
-            targets=REFERENCE_TYPES["instantiates-canonical"], sort=canonical_sort,
+            "instantiates-canonical",
+            "reference",
+            "Instantiates FHIR protocol or definition (a canonical URL)",
+            "FamilyMemberHistory.instantiatesCanonical",
+            canonical_match,
+            canonical_present,
+            frozenset({"missing"}),
+            targets=REFERENCE_TYPES["instantiates-canonical"],
+            sort=canonical_sort,
             example="http://example.org/fhir/PlanDefinition/family-history",
             modifier_docs={
                 "missing": "`:missing=true` — resources with no canonical for this parameter; `:missing=false` — resources that have one."
             },
         ),
         SearchParam(
-            "instantiates-uri", "uri", "Instantiates external protocol or definition",
-            "FamilyMemberHistory.instantiatesUri", _uri_match, lambda ctx: _exists(_U),
-            frozenset({"above", "below", "missing"}), sort=lambda: _child_sort(_U.uri, _U),
+            "instantiates-uri",
+            "uri",
+            "Instantiates external protocol or definition",
+            "FamilyMemberHistory.instantiatesUri",
+            _uri_match,
+            lambda ctx: _exists(_U),
+            frozenset({"above", "below", "missing"}),
+            sort=lambda: _child_sort(_U.uri, _U),
             example="http://example.org/protocols/family-history",
             modifier_docs={
                 "below": "`:below` — stored URIs that start with the value (`http://acme.org/p` finds `http://acme.org/p/1`).",
@@ -317,20 +418,42 @@ def family_member_history_search() -> SearchRegistry:
             },
         ),
         SearchParam(
-            "patient", "reference", "The identity of a subject to list family member history items for",
-            "FamilyMemberHistory.patient", patient_match, patient_present, _REFERENCE, targets=("Patient",),
-            chain=patient_chain, chain_targets={"Patient": _registry_of("Patient")}, sort=patient_sort,
-            example="Patient/10001", modifier_docs=_IDENTIFIER_DOC,
+            "patient",
+            "reference",
+            "The identity of a subject to list family member history items for",
+            "FamilyMemberHistory.patient",
+            patient_match,
+            patient_present,
+            _REFERENCE,
+            targets=("Patient",),
+            chain=patient_chain,
+            chain_targets={"Patient": _registry_of("Patient")},
+            sort=patient_sort,
+            example="Patient/10001",
+            modifier_docs=_IDENTIFIER_DOC,
         ),
         token(
-            "relationship", "A search by a relationship type", "FamilyMemberHistory.relationship",
+            "relationship",
+            "A search by a relationship type",
+            "FamilyMemberHistory.relationship",
             "http://terminology.hl7.org/CodeSystem/v3-RoleCode|MTH",
         ),
-        token("sex", "A search by a sex code of a family member", "FamilyMemberHistory.sex", "male"),
+        token(
+            "sex",
+            "A search by a sex code of a family member",
+            "FamilyMemberHistory.sex",
+            "male",
+        ),
         SearchParam(
-            "status", "token", f"partial | completed | entered-in-error | health-unknown (system {_STATUS_SYSTEM})",
-            "FamilyMemberHistory.status", _status_match, lambda ctx: M.status.is_not(None),
-            frozenset({"not", "missing"}), sort=lambda: M.status, example="completed",
+            "status",
+            "token",
+            f"partial | completed | entered-in-error | health-unknown (system {_STATUS_SYSTEM})",
+            "FamilyMemberHistory.status",
+            _status_match,
+            lambda ctx: M.status.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: M.status,
+            example="completed",
         ),
     ]
 
@@ -339,15 +462,44 @@ def family_member_history_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 FamilyMemberHistory definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "instantiatesCanonical", "instantiatesUri", "status", "dataAbsentReason", "patient",
-             "date", "name", "relationship", "sex", "ageAge", "ageRange", "ageString", "estimatedAge",
-             "deceasedBoolean", "deceasedAge", "deceasedRange", "deceasedDate", "deceasedString", "reasonCode",
-             "reasonReference"}
+            {
+                "identifier",
+                "instantiatesCanonical",
+                "instantiatesUri",
+                "status",
+                "dataAbsentReason",
+                "patient",
+                "date",
+                "name",
+                "relationship",
+                "sex",
+                "ageAge",
+                "ageRange",
+                "ageString",
+                "estimatedAge",
+                "deceasedBoolean",
+                "deceasedAge",
+                "deceasedRange",
+                "deceasedDate",
+                "deceasedString",
+                "reasonCode",
+                "reasonReference",
+            }
         ),
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"status", "patient", "relationship"}),
-        includes=(IncludeTarget("FamilyMemberHistory", "patient", "Patient", _include_patient()),),
+        includes=(
+            IncludeTarget(
+                "FamilyMemberHistory", "patient", "Patient", _include_patient()
+            ),
+        ),
         # ClinicalImpression.investigation points here.
-        revincludes=(*reference_impression_revincludes('investigation', 'FamilyMemberHistory', lambda r: r.family_member_history_id),),
+        revincludes=(
+            *reference_impression_revincludes(
+                "investigation",
+                "FamilyMemberHistory",
+                lambda r: r.family_member_history_id,
+            ),
+        ),
         default_sort=lambda: [M.family_member_history_id.desc()],
     )

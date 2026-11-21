@@ -216,9 +216,7 @@ async def search_schedules_post(
 )
 async def get_schedule(
     request: Request,
-    schedule_id: int = Path(
-        ..., ge=1, description="Public schedule identifier."
-    ),
+    schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
     actor: AuthUser = Depends(require_permission("schedule", "read")),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):
@@ -229,9 +227,7 @@ async def get_schedule(
             "schedule_id": schedule_id,
         },
     )
-    schedule = await schedule_service.get_schedule_scoped(
-        schedule_id, actor.org_id
-    )
+    schedule = await schedule_service.get_schedule_scoped(schedule_id, actor.org_id)
     return fhir_response(schedule_service._to_fhir(schedule))
 
 
@@ -257,9 +253,7 @@ async def get_schedule(
 async def patch_schedule(
     payload: SchedulePatchSchema,
     request: Request,
-    schedule_id: int = Path(
-        ..., ge=1, description="Public schedule identifier."
-    ),
+    schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
     actor: AuthUser = Depends(require_permission("schedule", "update")),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):
@@ -296,9 +290,7 @@ async def patch_schedule(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_schedule(
-    schedule_id: int = Path(
-        ..., ge=1, description="Public schedule identifier."
-    ),
+    schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
     actor: AuthUser = Depends(require_permission("schedule", "delete")),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ):

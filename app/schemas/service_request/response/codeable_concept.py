@@ -5,8 +5,12 @@ from app.schemas.datatypes import PlainCodingRow
 
 class _PlainCodeableConceptFields(BaseModel):
     model_config = ConfigDict(extra="allow")
-    codings: list[PlainCodingRow] | None = Field(None, description="Coding(s) for this concept.")
-    text: str | None = Field(None, description="A human language representation of the concept.")
+    codings: list[PlainCodingRow] | None = Field(
+        None, description="Coding(s) for this concept."
+    )
+    text: str | None = Field(
+        None, description="A human language representation of the concept."
+    )
 
 
 class PlainServiceRequestCodeableConcept(_PlainCodeableConceptFields):

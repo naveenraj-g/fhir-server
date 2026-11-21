@@ -11,11 +11,31 @@ REFERENCE_PARAMS = {
 # list the types an implicated resource can realistically be. A relative reference to a type
 # not listed is still indexed (and found by its absolute URL).
 IMPLICATED_TYPES = (
-    "Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Organization", "Location",
-    "HealthcareService", "Encounter", "Appointment", "Condition", "Observation", "Procedure",
-    "DiagnosticReport", "DocumentReference", "ServiceRequest", "MedicationRequest",
-    "MedicationStatement", "MedicationAdministration", "MedicationDispense", "CarePlan",
-    "AllergyIntolerance", "Immunization", "FamilyMemberHistory", "RiskAssessment", "ClinicalImpression",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "RelatedPerson",
+    "Organization",
+    "Location",
+    "HealthcareService",
+    "Encounter",
+    "Appointment",
+    "Condition",
+    "Observation",
+    "Procedure",
+    "DiagnosticReport",
+    "DocumentReference",
+    "ServiceRequest",
+    "MedicationRequest",
+    "MedicationStatement",
+    "MedicationAdministration",
+    "MedicationDispense",
+    "CarePlan",
+    "AllergyIntolerance",
+    "Immunization",
+    "FamilyMemberHistory",
+    "RiskAssessment",
+    "ClinicalImpression",
     "Device",
 )
 REFERENCE_TYPES = {"implicated": IMPLICATED_TYPES}
@@ -37,10 +57,19 @@ class DetectedIssueReference(Base):
     same reference twice."""
 
     __tablename__ = "detected_issue_reference"
-    __table_args__ = (Index("ix_detected_issue_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_detected_issue_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    detected_issue_pk = Column(BigInteger, ForeignKey("detected_issue.id"), nullable=False, index=True)
+    detected_issue_pk = Column(
+        BigInteger, ForeignKey("detected_issue.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)

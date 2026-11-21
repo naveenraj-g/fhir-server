@@ -319,7 +319,9 @@ def _parse_includes(
     matches = [
         IncludeSpec(t, iterate)
         for t in supported
-        if t.source == source and t.param == param and (target is None or target == t.target)
+        if t.source == source
+        and t.param == param
+        and (target is None or target == t.target)
     ]
     if matches:
         return matches

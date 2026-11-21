@@ -13,7 +13,12 @@ ParticipationStatusCode = Literal["accepted", "declined", "tentative", "needs-ac
 
 _EXAMPLE = {
     "resourceType": "AppointmentResponse",
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/appointment-response-id", "value": "AR-1001"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/appointment-response-id",
+            "value": "AR-1001",
+        }
+    ],
     "appointment": {"reference": "Appointment/40001"},
     "start": "2026-06-01T09:00:00Z",
     "end": "2026-06-01T09:30:00Z",
@@ -48,13 +53,21 @@ class _AppointmentResponseFields(FhirInputModel):
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="External Ids for this item.")
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External Ids for this item."
+    )
     appointment: FhirReferenceInput | None = Field(
         None,
         description="Appointment this response is replying to — Reference(Appointment) (required by R4). A relative 'Appointment/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    start: str | None = Field(None, description="Time from appointment, or requested new start time (a FHIR instant, with a timezone offset).")
-    end: str | None = Field(None, description="Time from appointment, or requested new end time (a FHIR instant, with a timezone offset).")
+    start: str | None = Field(
+        None,
+        description="Time from appointment, or requested new start time (a FHIR instant, with a timezone offset).",
+    )
+    end: str | None = Field(
+        None,
+        description="Time from appointment, or requested new end time (a FHIR instant, with a timezone offset).",
+    )
     participantType: list[FhirCodeableConceptInput] | None = Field(
         None, description="Role of participant in the appointment."
     )
@@ -63,7 +76,8 @@ class _AppointmentResponseFields(FhirInputModel):
         description="Person, Location, HealthcareService, or Device — Reference(Patient | Practitioner | PractitionerRole | RelatedPerson | Device | HealthcareService | Location). A relative reference to a Patient, Practitioner, PractitionerRole, HealthcareService or Location must exist in the caller's org (422 otherwise).",
     )
     participantStatus: ParticipationStatusCode | None = Field(
-        None, description="accepted | declined | tentative | needs-action (required by R4)."
+        None,
+        description="accepted | declined | tentative | needs-action (required by R4).",
     )
     comment: str | None = Field(None, description="Additional comments.")
 
@@ -81,4 +95,8 @@ class AppointmentResponsePatchSchema(_AppointmentResponseFields):
     value wholesale — a list (even `[]`) replaces every existing entry, an
     object such as `actor` replaces the whole value, and `null` clears it."""
 
-    model_config = {"json_schema_extra": {"example": {"participantStatus": "declined", "comment": "Cannot attend"}}}
+    model_config = {
+        "json_schema_extra": {
+            "example": {"participantStatus": "declined", "comment": "Cannot attend"}
+        }
+    }

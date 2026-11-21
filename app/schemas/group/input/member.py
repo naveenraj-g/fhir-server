@@ -21,6 +21,4 @@ class GroupMemberInput(BaseModel):
     period_end: datetime | None = Field(
         None, description="Period member belongs to the group (end)."
     )
-    inactive: bool | None = Field(
-        None, description="If member is no longer in group."
-    )
+    inactive: bool | None = Field(None, description="If member is no longer in group.")

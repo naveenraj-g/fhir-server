@@ -10,10 +10,16 @@ from app.fhir.mappers.questionnaire import (
     to_plain_questionnaire,
 )
 from app.fhir.validation import validate_resource
-from app.models.questionnaire import QuestionnaireModel, QuestionnaireStatus as QuestionnaireStatusModel
+from app.models.questionnaire import (
+    QuestionnaireModel,
+    QuestionnaireStatus as QuestionnaireStatusModel,
+)
 from app.repository.questionnaire import QuestionnaireRepository
 from app.schemas.enums import QuestionnaireStatus
-from app.schemas.questionnaire import QuestionnaireCreateSchema, QuestionnairePatchSchema
+from app.schemas.questionnaire import (
+    QuestionnaireCreateSchema,
+    QuestionnairePatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -112,7 +118,10 @@ class _CoreMixin:
         questionnaire = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "Questionnaire created",
-            extra={"event": "questionnaire.created", "questionnaire_id": questionnaire.questionnaire_id},
+            extra={
+                "event": "questionnaire.created",
+                "questionnaire_id": questionnaire.questionnaire_id,
+            },
         )
         return questionnaire
 
@@ -142,10 +151,14 @@ class _CoreMixin:
             raise NotFoundError("Questionnaire not found")
 
         fragment, touched = patch_fragment_to_fhir_questionnaire(payload)
-        merged = merge_patch_fragment(to_fhir_questionnaire(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_questionnaire(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(questionnaire_id, payload, updated_by)
+        updated = await self.repository.patch_full(
+            questionnaire_id, payload, updated_by
+        )
         if not updated:
             raise NotFoundError("Questionnaire not found")
         logger.info(
@@ -172,7 +185,10 @@ class _CoreMixin:
             raise NotFoundError("Questionnaire not found")
         logger.info(
             "Questionnaire deleted",
-            extra={"event": "questionnaire.deleted", "questionnaire_id": questionnaire_id},
+            extra={
+                "event": "questionnaire.deleted",
+                "questionnaire_id": questionnaire_id,
+            },
         )
 
     # ── Validation helpers ────────────────────────────────────────────────

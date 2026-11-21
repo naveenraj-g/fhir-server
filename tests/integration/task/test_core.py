@@ -102,7 +102,10 @@ async def test_create_task_with_reference_identifier_fallback(client):
     assert data["requester_identifier_system"] == "http://npi.org"
     assert data["requester_identifier_value"] == "NPI-998877"
     assert len(data["based_on_list"]) == 1
-    assert data["based_on_list"][0]["reference_identifier_system"] == "http://external-system.org/requests"
+    assert (
+        data["based_on_list"][0]["reference_identifier_system"]
+        == "http://external-system.org/requests"
+    )
     assert data["based_on_list"][0]["reference_identifier_value"] == "SR-443322"
 
     task_id = data["id"]
@@ -146,9 +149,7 @@ async def test_create_task_full(client):
 
 async def test_create_task_fhir_format(client):
     p_id = await create_test_patient(client)
-    resp = await client.post(
-        BASE + "/", json=minimal_task(p_id), headers=FHIR_ACCEPT
-    )
+    resp = await client.post(BASE + "/", json=minimal_task(p_id), headers=FHIR_ACCEPT)
     assert resp.status_code == 201, resp.text
     data = resp.json()
     assert_fhir_task(data)

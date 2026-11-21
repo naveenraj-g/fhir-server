@@ -41,8 +41,7 @@ logger = get_logger(__name__)
         "A quality measure or clinical quality measure definition. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -57,9 +56,7 @@ async def create_measure(
         extra={"event": "route.create_measure", "org_id": actor.org_id},
     )
     log_payload(logger, "measure.create.payload", payload)
-    model = await measure_service.create_measure(
-        payload, actor.org_id, actor.sub
-    )
+    model = await measure_service.create_measure(payload, actor.org_id, actor.sub)
     return format_response(
         measure_service._to_fhir(model),
         measure_service._to_plain(model),
@@ -84,9 +81,7 @@ async def create_measure(
 )
 async def get_measure(
     request: Request,
-    measure_id: int = Path(
-        ..., ge=1, description="Public Measure identifier."
-    ),
+    measure_id: int = Path(..., ge=1, description="Public Measure identifier."),
     actor: AuthUser = Depends(require_permission("measure", "read")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):
@@ -97,9 +92,7 @@ async def get_measure(
             "measure_id": measure_id,
         },
     )
-    model = await measure_service.get_measure_scoped(
-        measure_id, actor.org_id
-    )
+    model = await measure_service.get_measure_scoped(measure_id, actor.org_id)
     return format_response(
         measure_service._to_fhir(model),
         measure_service._to_plain(model),
@@ -125,9 +118,7 @@ async def get_measure(
 async def patch_measure(
     payload: MeasurePatchSchema,
     request: Request,
-    measure_id: int = Path(
-        ..., ge=1, description="Public Measure identifier."
-    ),
+    measure_id: int = Path(..., ge=1, description="Public Measure identifier."),
     actor: AuthUser = Depends(require_permission("measure", "update")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):
@@ -227,9 +218,7 @@ async def list_measures(
     },
 )
 async def delete_measure(
-    measure_id: int = Path(
-        ..., ge=1, description="Public Measure identifier."
-    ),
+    measure_id: int = Path(..., ge=1, description="Public Measure identifier."),
     actor: AuthUser = Depends(require_permission("measure", "delete")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):

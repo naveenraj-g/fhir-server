@@ -27,11 +27,16 @@ class ImmunizationRecommendationToken(Base):
     One shared table instead of three identical ones."""
 
     __tablename__ = "immunization_recommendation_token"
-    __table_args__ = (Index("ix_immunization_recommendation_token_param_code", "param", "code"),)
+    __table_args__ = (
+        Index("ix_immunization_recommendation_token_param_code", "param", "code"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     immunization_recommendation_pk = Column(
-        BigInteger, ForeignKey("immunization_recommendation.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("immunization_recommendation.id"),
+        nullable=False,
+        index=True,
     )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
@@ -39,4 +44,6 @@ class ImmunizationRecommendationToken(Base):
     display_norm = Column(String, nullable=True)
     text_norm = Column(String, nullable=True)
 
-    immunization_recommendation = relationship("ImmunizationRecommendationModel", back_populates="tokens")
+    immunization_recommendation = relationship(
+        "ImmunizationRecommendationModel", back_populates="tokens"
+    )

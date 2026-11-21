@@ -272,16 +272,24 @@ def _use_context_from_payload(uc: PlanDefinitionUseContextInput | dict) -> dict:
             or uc.get("value_range_high_value") is not None
         ):
             vr: dict[str, Any] = {}
-            if uc.get("value_range_low_value") is not None or uc.get("value_range_low_unit"):
+            if uc.get("value_range_low_value") is not None or uc.get(
+                "value_range_low_unit"
+            ):
                 vr["low"] = {
-                    "value": float(uc["value_range_low_value"]) if uc.get("value_range_low_value") is not None else None,
+                    "value": float(uc["value_range_low_value"])
+                    if uc.get("value_range_low_value") is not None
+                    else None,
                     "unit": uc.get("value_range_low_unit"),
                     "system": uc.get("value_range_low_system"),
                     "code": uc.get("value_range_low_code"),
                 }
-            if uc.get("value_range_high_value") is not None or uc.get("value_range_high_unit"):
+            if uc.get("value_range_high_value") is not None or uc.get(
+                "value_range_high_unit"
+            ):
                 vr["high"] = {
-                    "value": float(uc["value_range_high_value"]) if uc.get("value_range_high_value") is not None else None,
+                    "value": float(uc["value_range_high_value"])
+                    if uc.get("value_range_high_value") is not None
+                    else None,
                     "unit": uc.get("value_range_high_unit"),
                     "system": uc.get("value_range_high_system"),
                     "code": uc.get("value_range_high_code"),
@@ -312,7 +320,9 @@ def _use_context_from_payload(uc: PlanDefinitionUseContextInput | dict) -> dict:
     if uc.value_codeable_concept_coding or uc.value_codeable_concept_text:
         vcc = {}
         if uc.value_codeable_concept_coding:
-            vcc["coding"] = [_coding_from_payload(c) for c in uc.value_codeable_concept_coding]
+            vcc["coding"] = [
+                _coding_from_payload(c) for c in uc.value_codeable_concept_coding
+            ]
         if uc.value_codeable_concept_text:
             vcc["text"] = uc.value_codeable_concept_text
         d["valueCodeableConcept"] = vcc
@@ -334,10 +344,7 @@ def _use_context_from_payload(uc: PlanDefinitionUseContextInput | dict) -> dict:
         if uc.value_quantity_code:
             vq["code"] = uc.value_quantity_code
         d["valueQuantity"] = vq
-    elif (
-        uc.value_range_low_value is not None
-        or uc.value_range_high_value is not None
-    ):
+    elif uc.value_range_low_value is not None or uc.value_range_high_value is not None:
         vr = {}
         if uc.value_range_low_value is not None or uc.value_range_low_unit:
             low_d = {}
@@ -370,7 +377,9 @@ def _use_context_from_payload(uc: PlanDefinitionUseContextInput | dict) -> dict:
     return d
 
 
-def _related_artifact_from_payload(ra: PlanDefinitionRelatedArtifactInput | dict) -> dict:
+def _related_artifact_from_payload(
+    ra: PlanDefinitionRelatedArtifactInput | dict,
+) -> dict:
     if isinstance(ra, dict):
         d: dict[str, Any] = {"type": fhir_enum(ra.get("type"))}
         if ra.get("label"):
@@ -456,9 +465,7 @@ def _goal_from_payload(g: PlanDefinitionGoalInput | dict) -> dict:
         if s:
             d["start"] = s
     if g.addresses:
-        d["addresses"] = [
-            _codeable_concept_from_payload(a) for a in g.addresses if a
-        ]
+        d["addresses"] = [_codeable_concept_from_payload(a) for a in g.addresses if a]
     if g.documentation:
         d["documentation"] = g.documentation
     if g.target:

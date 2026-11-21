@@ -69,7 +69,10 @@ class Database:
         # pool_size/max_overflow/pool_recycle are Postgres (QueuePool)-only —
         # SQLite (used by the test suite, StaticPool) rejects them outright.
         # pool_pre_ping is accepted everywhere, so it's unconditional.
-        engine_kwargs = {"echo": False, "pool_pre_ping": settings.database.pool_pre_ping}
+        engine_kwargs = {
+            "echo": False,
+            "pool_pre_ping": settings.database.pool_pre_ping,
+        }
         if not db_url.startswith("sqlite"):
             engine_kwargs["pool_size"] = settings.database.pool_size
             engine_kwargs["max_overflow"] = settings.database.max_overflow

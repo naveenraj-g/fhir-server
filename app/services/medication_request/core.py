@@ -17,7 +17,10 @@ from app.models.medication_request import (
 )
 from app.repository.medication_request import MedicationRequestRepository
 from app.schemas.enums import MedicationRequestIntent, MedicationRequestStatus
-from app.schemas.medication_request import MedicationRequestCreateSchema, MedicationRequestPatchSchema
+from app.schemas.medication_request import (
+    MedicationRequestCreateSchema,
+    MedicationRequestPatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -47,7 +50,9 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("MedicationRequest operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "MedicationRequest operation requires an org-scoped token"
+            )
         medication_request = await self.repository.get_by_medication_request_id_in_org(
             medication_request_id, org_id
         )
@@ -70,7 +75,9 @@ class _CoreMixin:
         """Raises PermissionDeniedError (403) for an org-less token — same
         invariant as get_medication_request_scoped()."""
         if not org_id:
-            raise PermissionDeniedError("MedicationRequest operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "MedicationRequest operation requires an org-scoped token"
+            )
         return await self.repository.list(
             org_id=org_id,
             status=MedicationRequestStatusModel[status.name] if status else None,
@@ -93,12 +100,21 @@ class _CoreMixin:
         supplied field — there is no bypass, so an org-less/platform token
         cannot create a MedicationRequest at all."""
         if not org_id:
-            raise PermissionDeniedError("MedicationRequest creation requires an org-scoped token")
-        await self._validate_base_r4(payload_to_fhir_medication_request(payload), org_id)
-        medication_request = await self.repository.create_full(payload, org_id, created_by)
+            raise PermissionDeniedError(
+                "MedicationRequest creation requires an org-scoped token"
+            )
+        await self._validate_base_r4(
+            payload_to_fhir_medication_request(payload), org_id
+        )
+        medication_request = await self.repository.create_full(
+            payload, org_id, created_by
+        )
         logger.info(
             "MedicationRequest created",
-            extra={"event": "medication_request.created", "medication_request_id": medication_request.medication_request_id},
+            extra={
+                "event": "medication_request.created",
+                "medication_request_id": medication_request.medication_request_id,
+            },
         )
         return medication_request
 
@@ -115,16 +131,22 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", medication_request_id, org_id)
             raise NotFoundError("MedicationRequest not found")
-        existing = await self.repository.get_by_medication_request_id_in_org(medication_request_id, org_id)
+        existing = await self.repository.get_by_medication_request_id_in_org(
+            medication_request_id, org_id
+        )
         if not existing:
             self._log_org_scope_miss("patch", medication_request_id, org_id)
             raise NotFoundError("MedicationRequest not found")
 
         fragment, touched = patch_fragment_to_fhir_medication_request(payload)
-        merged = merge_patch_fragment(to_fhir_medication_request(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_medication_request(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(medication_request_id, payload, updated_by)
+        updated = await self.repository.patch_full(
+            medication_request_id, payload, updated_by
+        )
         if not updated:
             raise NotFoundError("MedicationRequest not found")
         logger.info(
@@ -137,7 +159,9 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_medication_request(self, medication_request_id: int, org_id: str | None = None) -> None:
+    async def delete_medication_request(
+        self, medication_request_id: int, org_id: str | None = None
+    ) -> None:
         """Same org_id ownership gate as patch_medication_request."""
         if not org_id or not await self.repository.medication_request_belongs_to_org(
             medication_request_id, org_id
@@ -149,12 +173,17 @@ class _CoreMixin:
             raise NotFoundError("MedicationRequest not found")
         logger.info(
             "MedicationRequest deleted",
-            extra={"event": "medication_request.deleted", "medication_request_id": medication_request_id},
+            extra={
+                "event": "medication_request.deleted",
+                "medication_request_id": medication_request_id,
+            },
         )
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
-        errors = await validate_resource("MedicationRequest", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "MedicationRequest", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "MedicationRequest failed base R4 validation",
@@ -163,7 +192,9 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(operation: str, medication_request_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, medication_request_id: int, org_id: str | None
+    ) -> None:
         """The tenant gate rejected a write. The caller gets a plain 404 —
         deliberately indistinguishable from "no such resource" — so this
         log line is the only place the distinction is recorded."""

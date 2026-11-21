@@ -42,8 +42,7 @@ logger = get_logger(__name__)
         "responsible provider, a public health agency that was notified about a reportable condition. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) "
-        "— an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "— an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -51,9 +50,7 @@ async def create_communication(
     payload: CommunicationCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("communication", "create")),
-    communication_service: CommunicationService = Depends(
-        get_communication_service
-    ),
+    communication_service: CommunicationService = Depends(get_communication_service),
 ):
     logger.info(
         "Create a new Communication resource",
@@ -91,9 +88,7 @@ async def get_communication(
         ..., ge=1, description="Public Communication identifier."
     ),
     actor: AuthUser = Depends(require_permission("communication", "read")),
-    communication_service: CommunicationService = Depends(
-        get_communication_service
-    ),
+    communication_service: CommunicationService = Depends(get_communication_service),
 ):
     logger.info(
         "Get a Communication resource by ID",
@@ -134,9 +129,7 @@ async def patch_communication(
         ..., ge=1, description="Public Communication identifier."
     ),
     actor: AuthUser = Depends(require_permission("communication", "update")),
-    communication_service: CommunicationService = Depends(
-        get_communication_service
-    ),
+    communication_service: CommunicationService = Depends(get_communication_service),
 ):
     logger.info(
         "Update a Communication resource",
@@ -186,9 +179,7 @@ async def list_communications(
     sender: str | None = Query(None, description="Message sender."),
     recipient: str | None = Query(None, description="Message recipient."),
     pagination: ListParams = Depends(),
-    communication_service: CommunicationService = Depends(
-        get_communication_service
-    ),
+    communication_service: CommunicationService = Depends(get_communication_service),
 ):
     logger.info(
         "List all Communication resources",
@@ -239,9 +230,7 @@ async def delete_communication(
         ..., ge=1, description="Public Communication identifier."
     ),
     actor: AuthUser = Depends(require_permission("communication", "delete")),
-    communication_service: CommunicationService = Depends(
-        get_communication_service
-    ),
+    communication_service: CommunicationService = Depends(get_communication_service),
 ):
     logger.info(
         "Delete a Communication resource",

@@ -530,7 +530,9 @@ def assert_fhir_bundle(data: dict, *, min_total: int = 1) -> None:
     )
 
 
-def assert_operation_outcome(data: dict, expected_status: int, response_status: int) -> None:
+def assert_operation_outcome(
+    data: dict, expected_status: int, response_status: int
+) -> None:
     """Assert that an error response is a valid FHIR OperationOutcome."""
     assert response_status == expected_status, (
         f"expected HTTP {expected_status}, got {response_status}"
@@ -538,7 +540,9 @@ def assert_operation_outcome(data: dict, expected_status: int, response_status: 
     assert data.get("resourceType") == "OperationOutcome", (
         f"expected OperationOutcome, got {data.get('resourceType')!r}"
     )
-    assert len(data.get("issue", [])) > 0, "OperationOutcome must have at least one issue"
+    assert len(data.get("issue", [])) > 0, (
+        "OperationOutcome must have at least one issue"
+    )
 
 
 def assert_plain_goal(data: dict, **expected) -> None:
@@ -602,6 +606,7 @@ def assert_fhir_communication(data: dict, **expected) -> None:
         assert data.get(field) == value, (
             f"expected communication.{field}={value!r}, got {data.get(field)!r}"
         )
+
 
 def assert_plain_family_member_history(data: dict, **expected) -> None:
     """Assert fields on a plain (snake_case) family_member_history response."""
@@ -916,13 +921,3 @@ def assert_fhir_immunization_evaluation(data: dict, **expected) -> None:
         assert data.get(field) == value, (
             f"expected immunization_evaluation.{field}={value!r}, got {data.get(field)!r}"
         )
-
-
-
-
-
-
-
-
-
-

@@ -49,9 +49,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Patient operation requires an org-scoped token"
             )
-        patient = await self.repository.get_by_patient_id_in_org(
-            patient_id, org_id
-        )
+        patient = await self.repository.get_by_patient_id_in_org(patient_id, org_id)
         if not patient:
             raise NotFoundError("Patient not found")
         return patient
@@ -64,9 +62,7 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
         user_id: str | None = None,
-    ) -> tuple[
-        SearchRequest, list[PatientModel], int | None, list[PatientModel]
-    ]:
+    ) -> tuple[SearchRequest, list[PatientModel], int | None, list[PatientModel]]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the Patient search
         registry (SearchError -> 400 OperationOutcome). `strict` is
@@ -117,9 +113,7 @@ class _CoreMixin:
         checks (see app.fhir.input_payload); falls back to the parsed
         payload for internal callers that have no raw body."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Patient creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Patient creation requires an org-scoped token")
         # The body is already a FHIR Patient — validate it as sent,
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "Patient")
@@ -130,7 +124,9 @@ class _CoreMixin:
                 raise BusinessRuleViolationError(
                     f"User '{link_user_id}' is already linked to Patient/{other.patient_id}."
                 )
-        patient = await self.repository.create_full(document, org_id, created_by, user_id=link_user_id)
+        patient = await self.repository.create_full(
+            document, org_id, created_by, user_id=link_user_id
+        )
         logger.info(
             "Patient created",
             extra={
@@ -161,9 +157,7 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", patient_id, org_id)
             raise NotFoundError("Patient not found")
-        existing = await self.repository.get_by_patient_id_in_org(
-            patient_id, org_id
-        )
+        existing = await self.repository.get_by_patient_id_in_org(patient_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", patient_id, org_id)
             raise NotFoundError("Patient not found")
@@ -187,9 +181,7 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_patient(
-        self, patient_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_patient(self, patient_id: int, org_id: str | None = None) -> None:
         """Same org_id ownership gate as patch_patient."""
         if not org_id or not await self.repository.patient_belongs_to_org(
             patient_id, org_id
@@ -209,9 +201,7 @@ class _CoreMixin:
 
     # ── End-user link ─────────────────────────────────────────────────────
 
-    async def get_user_link(
-        self, patient_id: int, org_id: str | None
-    ) -> PatientModel:
+    async def get_user_link(self, patient_id: int, org_id: str | None) -> PatientModel:
         """The patient row (its `user_id` may be None = unlinked)."""
         return await self.get_patient_scoped(patient_id, org_id)
 

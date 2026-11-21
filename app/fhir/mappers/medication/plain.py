@@ -51,7 +51,8 @@ def _plain_reference(obj, prefix: str) -> dict | None:
         return None
 
     res: dict = {
-        "reference": raw_reference or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
+        "reference": raw_reference
+        or (f"{fhir_enum(ref_type)}/{ref_id}" if ref_type and ref_id else None),
         "type": fhir_enum(ref_type) if ref_type else None,
         "id": ref_id,
         "display": display,
@@ -165,9 +166,7 @@ def to_plain_medication(m: MedicationModel) -> dict:
     res = {
         "id": m.medication_id,
         "extension": list(m.extension) if m.extension else None,
-        "identifier": [
-            plain_medication_identifier(i) for i in (m.identifiers or [])
-        ]
+        "identifier": [plain_medication_identifier(i) for i in (m.identifiers or [])]
         or None,
         "code": _plain_codeable_concept(m.code_codings, m.code_text),
         "status": fhir_enum(m.status) if m.status else None,

@@ -16,7 +16,10 @@ from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLin
 
 
 class FHIRRelatedPersonCommunication(BaseModel):
-    language: FHIRCodeableConcept | None = Field(None, description="The language which can be used to communicate with the related person.")
+    language: FHIRCodeableConcept | None = Field(
+        None,
+        description="The language which can be used to communicate with the related person.",
+    )
     preferred: bool | None = Field(None, description="Language preference indicator.")
 
 
@@ -28,20 +31,43 @@ class FHIRRelatedPersonSchema(BaseModel):
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
     extension: list[dict] | None = Field(
-        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
-    identifier: list[FHIRIdentifier] | None = Field(None, description="A human identifier for this person.")
-    active: bool | None = Field(None, description="Whether this related person record is in active use.")
-    patient: FHIRReference | None = Field(None, description="The patient this person is related to.")
-    relationship: list[FHIRCodeableConcept] | None = Field(None, description="The nature of the relationship.")
-    name: list[FHIRHumanName] | None = Field(None, description="A name associated with the person.")
-    telecom: list[FHIRContactPoint] | None = Field(None, description="A contact detail for the person.")
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="A human identifier for this person."
+    )
+    active: bool | None = Field(
+        None, description="Whether this related person record is in active use."
+    )
+    patient: FHIRReference | None = Field(
+        None, description="The patient this person is related to."
+    )
+    relationship: list[FHIRCodeableConcept] | None = Field(
+        None, description="The nature of the relationship."
+    )
+    name: list[FHIRHumanName] | None = Field(
+        None, description="A name associated with the person."
+    )
+    telecom: list[FHIRContactPoint] | None = Field(
+        None, description="A contact detail for the person."
+    )
     gender: str | None = Field(None, description="male | female | other | unknown.")
-    birthDate: str | None = Field(None, description="The date on which the related person was born.")
-    address: list[FHIRAddress] | None = Field(None, description="Address where the related person can be contacted or visited.")
+    birthDate: str | None = Field(
+        None, description="The date on which the related person was born."
+    )
+    address: list[FHIRAddress] | None = Field(
+        None,
+        description="Address where the related person can be contacted or visited.",
+    )
     photo: list[FHIRAttachment] | None = Field(None, description="Image of the person.")
-    period: FHIRPeriod | None = Field(None, description="Period of time that this relationship is considered valid.")
-    communication: list[FHIRRelatedPersonCommunication] | None = Field(None, description="A language which may be used to communicate with about the patient health.")
+    period: FHIRPeriod | None = Field(
+        None, description="Period of time that this relationship is considered valid."
+    )
+    communication: list[FHIRRelatedPersonCommunication] | None = Field(
+        None,
+        description="A language which may be used to communicate with about the patient health.",
+    )
 
 
 class FHIRRelatedPersonBundleEntry(BaseModel):

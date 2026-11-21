@@ -23,9 +23,13 @@ class ServiceRequestOrderDetail(TenantAuditMixin, Base):
     )
     text = Column(String, nullable=True)
 
-    service_request = relationship("ServiceRequestModel", back_populates="order_details")
+    service_request = relationship(
+        "ServiceRequestModel", back_populates="order_details"
+    )
     codings = relationship(
-        "ServiceRequestOrderDetailCoding", back_populates="order_detail", cascade="all, delete-orphan"
+        "ServiceRequestOrderDetailCoding",
+        back_populates="order_detail",
+        cascade="all, delete-orphan",
     )
 
 
@@ -36,7 +40,10 @@ class ServiceRequestOrderDetailCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_order_detail_id = Column(
-        BigInteger, ForeignKey("service_request_order_detail.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("service_request_order_detail.id"),
+        nullable=False,
+        index=True,
     )
 
     order_detail = relationship("ServiceRequestOrderDetail", back_populates="codings")

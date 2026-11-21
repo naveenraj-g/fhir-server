@@ -1,4 +1,13 @@
-from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -40,7 +49,9 @@ class MedicationRequestDosageInstruction(TenantAuditMixin, Base):
     __tablename__ = "medication_request_dosage_instruction"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-    medication_request_pk = Column(BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True)
+    medication_request_pk = Column(
+        BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True
+    )
 
     sequence = Column(Integer, nullable=True)
     text = Column(Text, nullable=True)
@@ -75,21 +86,33 @@ class MedicationRequestDosageInstruction(TenantAuditMixin, Base):
     max_dose_per_lifetime_system = Column(String, nullable=True)
     max_dose_per_lifetime_code = Column(String, nullable=True)
 
-    medication_request = relationship("MedicationRequestModel", back_populates="dosage_instructions")
+    medication_request = relationship(
+        "MedicationRequestModel", back_populates="dosage_instructions"
+    )
     additional_instructions = relationship(
-        "MedicationRequestDosageAdditionalInstruction", back_populates="dosage_instruction", cascade="all, delete-orphan"
+        "MedicationRequestDosageAdditionalInstruction",
+        back_populates="dosage_instruction",
+        cascade="all, delete-orphan",
     )
     site_codings = relationship(
-        "MedicationRequestDosageSiteCoding", back_populates="dosage_instruction", cascade="all, delete-orphan"
+        "MedicationRequestDosageSiteCoding",
+        back_populates="dosage_instruction",
+        cascade="all, delete-orphan",
     )
     route_codings = relationship(
-        "MedicationRequestDosageRouteCoding", back_populates="dosage_instruction", cascade="all, delete-orphan"
+        "MedicationRequestDosageRouteCoding",
+        back_populates="dosage_instruction",
+        cascade="all, delete-orphan",
     )
     method_codings = relationship(
-        "MedicationRequestDosageMethodCoding", back_populates="dosage_instruction", cascade="all, delete-orphan"
+        "MedicationRequestDosageMethodCoding",
+        back_populates="dosage_instruction",
+        cascade="all, delete-orphan",
     )
     as_needed_codings = relationship(
-        "MedicationRequestDosageAsNeededCoding", back_populates="dosage_instruction", cascade="all, delete-orphan"
+        "MedicationRequestDosageAsNeededCoding",
+        back_populates="dosage_instruction",
+        cascade="all, delete-orphan",
     )
 
 
@@ -106,11 +129,16 @@ class MedicationRequestDosageAdditionalInstruction(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_dosage_instruction_id = Column(
-        BigInteger, ForeignKey("medication_request_dosage_instruction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_dosage_instruction.id"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 
-    dosage_instruction = relationship("MedicationRequestDosageInstruction", back_populates="additional_instructions")
+    dosage_instruction = relationship(
+        "MedicationRequestDosageInstruction", back_populates="additional_instructions"
+    )
     codings = relationship(
         "MedicationRequestDosageAdditionalInstructionCoding",
         back_populates="additional_instruction",
@@ -118,17 +146,24 @@ class MedicationRequestDosageAdditionalInstruction(TenantAuditMixin, Base):
     )
 
 
-class MedicationRequestDosageAdditionalInstructionCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MedicationRequestDosageAdditionalInstructionCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """One entry of .dosageInstruction.additionalInstruction.coding (0..*)."""
 
     __tablename__ = "medication_request_dosage_additional_instruction_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_dosage_additional_instruction_id = Column(
-        BigInteger, ForeignKey("medication_request_dosage_additional_instruction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_dosage_additional_instruction.id"),
+        nullable=False,
+        index=True,
     )
 
-    additional_instruction = relationship("MedicationRequestDosageAdditionalInstruction", back_populates="codings")
+    additional_instruction = relationship(
+        "MedicationRequestDosageAdditionalInstruction", back_populates="codings"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -144,10 +179,15 @@ class MedicationRequestDosageSiteCoding(FhirCodingMixin, TenantAuditMixin, Base)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_dosage_instruction_id = Column(
-        BigInteger, ForeignKey("medication_request_dosage_instruction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_dosage_instruction.id"),
+        nullable=False,
+        index=True,
     )
 
-    dosage_instruction = relationship("MedicationRequestDosageInstruction", back_populates="site_codings")
+    dosage_instruction = relationship(
+        "MedicationRequestDosageInstruction", back_populates="site_codings"
+    )
 
 
 class MedicationRequestDosageRouteCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -157,10 +197,15 @@ class MedicationRequestDosageRouteCoding(FhirCodingMixin, TenantAuditMixin, Base
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_dosage_instruction_id = Column(
-        BigInteger, ForeignKey("medication_request_dosage_instruction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_dosage_instruction.id"),
+        nullable=False,
+        index=True,
     )
 
-    dosage_instruction = relationship("MedicationRequestDosageInstruction", back_populates="route_codings")
+    dosage_instruction = relationship(
+        "MedicationRequestDosageInstruction", back_populates="route_codings"
+    )
 
 
 class MedicationRequestDosageMethodCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -170,10 +215,15 @@ class MedicationRequestDosageMethodCoding(FhirCodingMixin, TenantAuditMixin, Bas
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_dosage_instruction_id = Column(
-        BigInteger, ForeignKey("medication_request_dosage_instruction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_dosage_instruction.id"),
+        nullable=False,
+        index=True,
     )
 
-    dosage_instruction = relationship("MedicationRequestDosageInstruction", back_populates="method_codings")
+    dosage_instruction = relationship(
+        "MedicationRequestDosageInstruction", back_populates="method_codings"
+    )
 
 
 class MedicationRequestDosageAsNeededCoding(FhirCodingMixin, TenantAuditMixin, Base):
@@ -183,7 +233,12 @@ class MedicationRequestDosageAsNeededCoding(FhirCodingMixin, TenantAuditMixin, B
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_dosage_instruction_id = Column(
-        BigInteger, ForeignKey("medication_request_dosage_instruction.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_dosage_instruction.id"),
+        nullable=False,
+        index=True,
     )
 
-    dosage_instruction = relationship("MedicationRequestDosageInstruction", back_populates="as_needed_codings")
+    dosage_instruction = relationship(
+        "MedicationRequestDosageInstruction", back_populates="as_needed_codings"
+    )

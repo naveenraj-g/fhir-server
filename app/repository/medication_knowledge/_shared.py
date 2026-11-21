@@ -50,7 +50,9 @@ _SORTABLE_FIELDS = {
 }
 
 
-def _ref_kwargs(prefix: str, ref_str: str | None, display: str | None, enum_cls) -> dict:
+def _ref_kwargs(
+    prefix: str, ref_str: str | None, display: str | None, enum_cls
+) -> dict:
     if not ref_str:
         return {
             f"{prefix}_type": None,
@@ -159,24 +161,20 @@ def _with_relationships(stmt):
         selectinload(MedicationKnowledgeModel.administration_guidelines).selectinload(
             MedicationKnowledgeAdminGuideline.indication_codings
         ),
-        selectinload(MedicationKnowledgeModel.administration_guidelines).selectinload(
-            MedicationKnowledgeAdminGuideline.dosages
-        ).selectinload(
-            MedicationKnowledgeAdminGuidelineDosage.type_codings
-        ),
-        selectinload(MedicationKnowledgeModel.administration_guidelines).selectinload(
-            MedicationKnowledgeAdminGuideline.patient_characteristics
-        ).selectinload(
+        selectinload(MedicationKnowledgeModel.administration_guidelines)
+        .selectinload(MedicationKnowledgeAdminGuideline.dosages)
+        .selectinload(MedicationKnowledgeAdminGuidelineDosage.type_codings),
+        selectinload(MedicationKnowledgeModel.administration_guidelines)
+        .selectinload(MedicationKnowledgeAdminGuideline.patient_characteristics)
+        .selectinload(
             MedicationKnowledgeAdminGuidelinePatientCharacteristic.characteristic_codings
         ),
         selectinload(MedicationKnowledgeModel.medicine_classifications).selectinload(
             MedicationKnowledgeMedicineClassification.type_codings
         ),
-        selectinload(MedicationKnowledgeModel.medicine_classifications).selectinload(
-            MedicationKnowledgeMedicineClassification.classification_items
-        ).selectinload(
-            MedicationKnowledgeMedicineClassificationItem.codings
-        ),
+        selectinload(MedicationKnowledgeModel.medicine_classifications)
+        .selectinload(MedicationKnowledgeMedicineClassification.classification_items)
+        .selectinload(MedicationKnowledgeMedicineClassificationItem.codings),
         selectinload(MedicationKnowledgeModel.drug_characteristics).selectinload(
             MedicationKnowledgeDrugCharacteristic.type_codings
         ),
@@ -184,16 +182,12 @@ def _with_relationships(stmt):
             MedicationKnowledgeDrugCharacteristic.value_codings
         ),
         selectinload(MedicationKnowledgeModel.contraindications),
-        selectinload(MedicationKnowledgeModel.regulatory).selectinload(
-            MedicationKnowledgeRegulatory.substitutions
-        ).selectinload(
-            MedicationKnowledgeRegulatorySubstitution.type_codings
-        ),
-        selectinload(MedicationKnowledgeModel.regulatory).selectinload(
-            MedicationKnowledgeRegulatory.schedules
-        ).selectinload(
-            MedicationKnowledgeRegulatorySchedule.schedule_codings
-        ),
+        selectinload(MedicationKnowledgeModel.regulatory)
+        .selectinload(MedicationKnowledgeRegulatory.substitutions)
+        .selectinload(MedicationKnowledgeRegulatorySubstitution.type_codings),
+        selectinload(MedicationKnowledgeModel.regulatory)
+        .selectinload(MedicationKnowledgeRegulatory.schedules)
+        .selectinload(MedicationKnowledgeRegulatorySchedule.schedule_codings),
         selectinload(MedicationKnowledgeModel.kinetics).selectinload(
             MedicationKnowledgeKinetics.area_under_curve
         ),

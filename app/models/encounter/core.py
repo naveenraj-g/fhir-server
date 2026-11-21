@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import EncounterStatus
 
-encounter_id_seq = Sequence("encounter_pub_seq", start=20000, increment=1, metadata=Base.metadata)
+encounter_id_seq = Sequence(
+    "encounter_pub_seq", start=20000, increment=1, metadata=Base.metadata
+)
 
 # The two R4 targets of Encounter.subject.
 SUBJECT_TYPES = ("Patient", "Group")
@@ -120,8 +122,18 @@ class EncounterModel(TenantAuditMixin, Base):
     service_provider_identifier_system = Column(String, nullable=True)
     service_provider_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("EncounterIdentifier", back_populates="encounter", cascade="all, delete-orphan")
-    tokens = relationship("EncounterToken", back_populates="encounter", cascade="all, delete-orphan")
-    references = relationship("EncounterReference", back_populates="encounter", cascade="all, delete-orphan")
-    participants = relationship("EncounterParticipant", back_populates="encounter", cascade="all, delete-orphan")
-    locations = relationship("EncounterLocation", back_populates="encounter", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "EncounterIdentifier", back_populates="encounter", cascade="all, delete-orphan"
+    )
+    tokens = relationship(
+        "EncounterToken", back_populates="encounter", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "EncounterReference", back_populates="encounter", cascade="all, delete-orphan"
+    )
+    participants = relationship(
+        "EncounterParticipant", back_populates="encounter", cascade="all, delete-orphan"
+    )
+    locations = relationship(
+        "EncounterLocation", back_populates="encounter", cascade="all, delete-orphan"
+    )

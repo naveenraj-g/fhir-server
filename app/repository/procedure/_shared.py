@@ -5,10 +5,22 @@ from sqlalchemy.orm import selectinload
 from app.models.procedure import REFERENCE_TYPES, ProcedureModel
 from app.repository._reference_shared import _validate_reference
 
-__all__ = ["INDEX_RELATIONSHIPS", "_validate_reference", "_with_relationships", "ref_type_and_id", "typed"]
+__all__ = [
+    "INDEX_RELATIONSHIPS",
+    "_validate_reference",
+    "_with_relationships",
+    "ref_type_and_id",
+    "typed",
+]
 
 # Relationship attributes the search index owns — every one is rebuilt on each write.
-INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references", "performers", "instantiates_uris")
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "tokens",
+    "references",
+    "performers",
+    "instantiates_uris",
+)
 
 _REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
@@ -17,7 +29,9 @@ def _with_relationships(stmt):
     """Eager-load the search-index child rows. Only needed when a write is
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from ProcedureModel.content."""
-    return stmt.options(*(selectinload(getattr(ProcedureModel, rel)) for rel in INDEX_RELATIONSHIPS))
+    return stmt.options(
+        *(selectinload(getattr(ProcedureModel, rel)) for rel in INDEX_RELATIONSHIPS)
+    )
 
 
 def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:

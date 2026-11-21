@@ -25,10 +25,14 @@ class ImmunizationPerformer(Base):
     `performer.function` lives only in `content`."""
 
     __tablename__ = "immunization_performer"
-    __table_args__ = (Index("ix_immunization_performer_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_immunization_performer_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    immunization_pk = Column(BigInteger, ForeignKey("immunization.id"), nullable=False, index=True)
+    immunization_pk = Column(
+        BigInteger, ForeignKey("immunization.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)
@@ -48,10 +52,16 @@ class ImmunizationReasonReference(Base):
       reason-reference:identifier  -> reference_identifier_system/_value"""
 
     __tablename__ = "immunization_reason_reference"
-    __table_args__ = (Index("ix_immunization_reason_reference_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_immunization_reason_reference_type_id", "reference_type", "reference_id"
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    immunization_pk = Column(BigInteger, ForeignKey("immunization.id"), nullable=False, index=True)
+    immunization_pk = Column(
+        BigInteger, ForeignKey("immunization.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)
@@ -75,10 +85,14 @@ class ImmunizationReaction(Base):
     `reaction.reported` lives only in `content`."""
 
     __tablename__ = "immunization_reaction"
-    __table_args__ = (Index("ix_immunization_reaction_detail", "detail_type", "detail_id"),)
+    __table_args__ = (
+        Index("ix_immunization_reaction_detail", "detail_type", "detail_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    immunization_pk = Column(BigInteger, ForeignKey("immunization.id"), nullable=False, index=True)
+    immunization_pk = Column(
+        BigInteger, ForeignKey("immunization.id"), nullable=False, index=True
+    )
     detail_reference = Column(String, nullable=True)
     detail_type = Column(String, nullable=True)
     detail_id = Column(BigInteger, nullable=True)

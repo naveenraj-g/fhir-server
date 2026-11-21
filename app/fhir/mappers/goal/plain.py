@@ -90,15 +90,9 @@ def _plain_reference_fields(obj, prefix: str) -> dict:
         f"{prefix}_identifier_system": getattr(
             obj, f"{prefix}_identifier_system", None
         ),
-        f"{prefix}_identifier_value": getattr(
-            obj, f"{prefix}_identifier_value", None
-        ),
-        f"{prefix}_identifier_period_start": fhir_instant(p_start)
-        if p_start
-        else None,
-        f"{prefix}_identifier_period_end": fhir_instant(p_end)
-        if p_end
-        else None,
+        f"{prefix}_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
+        f"{prefix}_identifier_period_start": fhir_instant(p_start) if p_start else None,
+        f"{prefix}_identifier_period_end": fhir_instant(p_end) if p_end else None,
     }
 
 
@@ -113,8 +107,12 @@ def _plain_reference_row(row) -> dict:
         "reference_type": fhir_enum(row.reference_type),
         "reference_id": row.reference_id,
         "reference_display": row.reference_display,
-        "created_at": fhir_instant(row.created_at) if hasattr(row, "created_at") else None,
-        "updated_at": fhir_instant(row.updated_at) if hasattr(row, "updated_at") else None,
+        "created_at": fhir_instant(row.created_at)
+        if hasattr(row, "created_at")
+        else None,
+        "updated_at": fhir_instant(row.updated_at)
+        if hasattr(row, "updated_at")
+        else None,
         "created_by": getattr(row, "created_by", None),
         "updated_by": getattr(row, "updated_by", None),
         "tenant_id": getattr(row, "tenant_id", None),
@@ -165,9 +163,7 @@ def _plain_category(c: GoalCategory | GoalOutcomeCode) -> dict:
 
 
 def _plain_note(n: GoalNote) -> dict:
-    computed_author = _plain_ref_str(
-        n.author_reference, n.author_type, n.author_id
-    )
+    computed_author = _plain_ref_str(n.author_reference, n.author_type, n.author_id)
     res = {
         "id": n.id,
         "author_string": n.author_string,
@@ -196,31 +192,43 @@ def _plain_target(t: GoalTarget) -> dict:
         "detail_string": t.detail_string,
         "detail_boolean": t.detail_boolean,
         "detail_integer": t.detail_integer,
-        "detail_quantity_value": float(t.detail_quantity_value) if t.detail_quantity_value is not None else None,
+        "detail_quantity_value": float(t.detail_quantity_value)
+        if t.detail_quantity_value is not None
+        else None,
         "detail_quantity_unit": t.detail_quantity_unit,
         "detail_quantity_system": t.detail_quantity_system,
         "detail_quantity_code": t.detail_quantity_code,
         "detail_quantity_comparator": t.detail_quantity_comparator,
-        "detail_range_low_value": float(t.detail_range_low_value) if t.detail_range_low_value is not None else None,
+        "detail_range_low_value": float(t.detail_range_low_value)
+        if t.detail_range_low_value is not None
+        else None,
         "detail_range_low_unit": t.detail_range_low_unit,
         "detail_range_low_system": t.detail_range_low_system,
         "detail_range_low_code": t.detail_range_low_code,
-        "detail_range_high_value": float(t.detail_range_high_value) if t.detail_range_high_value is not None else None,
+        "detail_range_high_value": float(t.detail_range_high_value)
+        if t.detail_range_high_value is not None
+        else None,
         "detail_range_high_unit": t.detail_range_high_unit,
         "detail_range_high_system": t.detail_range_high_system,
         "detail_range_high_code": t.detail_range_high_code,
-        "detail_ratio_numerator_value": float(t.detail_ratio_numerator_value) if t.detail_ratio_numerator_value is not None else None,
+        "detail_ratio_numerator_value": float(t.detail_ratio_numerator_value)
+        if t.detail_ratio_numerator_value is not None
+        else None,
         "detail_ratio_numerator_unit": t.detail_ratio_numerator_unit,
         "detail_ratio_numerator_system": t.detail_ratio_numerator_system,
         "detail_ratio_numerator_code": t.detail_ratio_numerator_code,
-        "detail_ratio_denominator_value": float(t.detail_ratio_denominator_value) if t.detail_ratio_denominator_value is not None else None,
+        "detail_ratio_denominator_value": float(t.detail_ratio_denominator_value)
+        if t.detail_ratio_denominator_value is not None
+        else None,
         "detail_ratio_denominator_unit": t.detail_ratio_denominator_unit,
         "detail_ratio_denominator_system": t.detail_ratio_denominator_system,
         "detail_ratio_denominator_code": t.detail_ratio_denominator_code,
         "detail_codeable_concept_text": t.detail_codeable_concept_text,
         "detail_codings": _plain_coding_list(getattr(t, "detail_codings", None)),
         "due_date": _format_date(t.due_date),
-        "due_duration_value": float(t.due_duration_value) if t.due_duration_value is not None else None,
+        "due_duration_value": float(t.due_duration_value)
+        if t.due_duration_value is not None
+        else None,
         "due_duration_unit": t.due_duration_unit,
         "due_duration_system": t.due_duration_system,
         "due_duration_code": t.due_duration_code,
@@ -234,9 +242,10 @@ def _plain_target(t: GoalTarget) -> dict:
 
 def to_plain_goal(model: GoalModel) -> dict:
     """Serialize GoalModel to a plain snake_case dict."""
-    computed_subject = _plain_ref_str(
-        model.subject_reference, model.subject_type, model.subject_id
-    ) or ""
+    computed_subject = (
+        _plain_ref_str(model.subject_reference, model.subject_type, model.subject_id)
+        or ""
+    )
     computed_expressed_by = _plain_ref_str(
         model.expressed_by_reference,
         model.expressed_by_type,
@@ -249,9 +258,7 @@ def to_plain_goal(model: GoalModel) -> dict:
         "achievement_status": _plain_codeable_concept(
             model.achievement_status_codings, model.achievement_status_text
         ),
-        "category": [
-            _plain_category(c) for c in (model.categories or [])
-        ],
+        "category": [_plain_category(c) for c in (model.categories or [])],
         "priority": _plain_codeable_concept(
             model.priority_codings, model.priority_text
         ),
@@ -273,19 +280,13 @@ def to_plain_goal(model: GoalModel) -> dict:
         "expressed_by_display": model.expressed_by_display,
         "expressed_by_type": fhir_enum(model.expressed_by_type),
         "expressed_by_id": model.expressed_by_id,
-        "addresses": [
-            _plain_reference_row(a) for a in (model.addresses_list or [])
-        ],
+        "addresses": [_plain_reference_row(a) for a in (model.addresses_list or [])],
         "note": [_plain_note(n) for n in (model.notes or [])],
-        "outcome_code": [
-            _plain_category(oc) for oc in (model.outcome_codes or [])
-        ],
+        "outcome_code": [_plain_category(oc) for oc in (model.outcome_codes or [])],
         "outcome_reference": [
             _plain_reference_row(o) for o in (model.outcome_references or [])
         ],
-        "identifier": [
-            _plain_identifier(i) for i in (model.identifiers or [])
-        ],
+        "identifier": [_plain_identifier(i) for i in (model.identifiers or [])],
         "extension": model.extension or [],
         "created_at": fhir_instant(model.created_at),
         "updated_at": fhir_instant(model.updated_at),

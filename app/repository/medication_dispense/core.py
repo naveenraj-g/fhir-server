@@ -101,22 +101,32 @@ class _CoreMixin:
 
         subj_filter = subject or patient
         if subj_filter:
-            ref_type, ref_id = parse_reference(subj_filter, MedicationDispenseSubjectReferenceType)
+            ref_type, ref_id = parse_reference(
+                subj_filter, MedicationDispenseSubjectReferenceType
+            )
             if ref_id:
                 stmt = stmt.where(MedicationDispenseModel.subject_id == ref_id)
             else:
-                stmt = stmt.where(MedicationDispenseModel.subject_reference == subj_filter)
+                stmt = stmt.where(
+                    MedicationDispenseModel.subject_reference == subj_filter
+                )
 
         if code:
             stmt = stmt.where(
                 or_(
-                    MedicationDispenseModel.medication_codeable_concept_text.ilike(f"%{code}%"),
+                    MedicationDispenseModel.medication_codeable_concept_text.ilike(
+                        f"%{code}%"
+                    ),
                     MedicationDispenseModel.medication_reference.ilike(f"%{code}%"),
                     MedicationDispenseModel.id.in_(
-                        select(MedicationDispenseMedicationCoding.medication_dispense_pk).where(
+                        select(
+                            MedicationDispenseMedicationCoding.medication_dispense_pk
+                        ).where(
                             or_(
                                 MedicationDispenseMedicationCoding.code == code,
-                                MedicationDispenseMedicationCoding.display.ilike(f"%{code}%"),
+                                MedicationDispenseMedicationCoding.display.ilike(
+                                    f"%{code}%"
+                                ),
                             )
                         )
                     ),
@@ -128,10 +138,14 @@ class _CoreMixin:
                 or_(
                     MedicationDispenseModel.category_text.ilike(f"%{category}%"),
                     MedicationDispenseModel.id.in_(
-                        select(MedicationDispenseCategoryCoding.medication_dispense_pk).where(
+                        select(
+                            MedicationDispenseCategoryCoding.medication_dispense_pk
+                        ).where(
                             or_(
                                 MedicationDispenseCategoryCoding.code == category,
-                                MedicationDispenseCategoryCoding.display.ilike(f"%{category}%"),
+                                MedicationDispenseCategoryCoding.display.ilike(
+                                    f"%{category}%"
+                                ),
                             )
                         )
                     ),
@@ -143,7 +157,9 @@ class _CoreMixin:
                 or_(
                     MedicationDispenseModel.type_text.ilike(f"%{type}%"),
                     MedicationDispenseModel.id.in_(
-                        select(MedicationDispenseTypeCoding.medication_dispense_pk).where(
+                        select(
+                            MedicationDispenseTypeCoding.medication_dispense_pk
+                        ).where(
                             or_(
                                 MedicationDispenseTypeCoding.code == type,
                                 MedicationDispenseTypeCoding.display.ilike(f"%{type}%"),
@@ -176,7 +192,8 @@ class _CoreMixin:
                 stmt = apply_child_exists_filter(
                     stmt,
                     select(MedicationDispenseIdentifier.id).where(
-                        MedicationDispenseIdentifier.medication_dispense_pk == MedicationDispenseModel.id,
+                        MedicationDispenseIdentifier.medication_dispense_pk
+                        == MedicationDispenseModel.id,
                         MedicationDispenseIdentifier.system == sys,
                         MedicationDispenseIdentifier.value == val,
                     ),
@@ -185,17 +202,22 @@ class _CoreMixin:
                 stmt = apply_child_exists_filter(
                     stmt,
                     select(MedicationDispenseIdentifier.id).where(
-                        MedicationDispenseIdentifier.medication_dispense_pk == MedicationDispenseModel.id,
+                        MedicationDispenseIdentifier.medication_dispense_pk
+                        == MedicationDispenseModel.id,
                         MedicationDispenseIdentifier.value == identifier,
                     ),
                 )
 
         if destination:
-            ref_type, ref_id = parse_reference(destination, MedicationDispenseDestinationReferenceType)
+            ref_type, ref_id = parse_reference(
+                destination, MedicationDispenseDestinationReferenceType
+            )
             if ref_id:
                 stmt = stmt.where(MedicationDispenseModel.destination_id == ref_id)
             else:
-                stmt = stmt.where(MedicationDispenseModel.destination_reference == destination)
+                stmt = stmt.where(
+                    MedicationDispenseModel.destination_reference == destination
+                )
 
         if receiver:
             parts = receiver.split("/")
@@ -269,9 +291,7 @@ class _CoreMixin:
             order_expr = sort_col.desc() if is_desc else sort_col.asc()
             filtered_stmt = filtered_stmt.order_by(order_expr)
 
-            data_stmt = (
-                _with_relationships(filtered_stmt).limit(limit).offset(offset)
-            )
+            data_stmt = _with_relationships(filtered_stmt).limit(limit).offset(offset)
             results = (await session.execute(data_stmt)).scalars().all()
             return list(results), total
 

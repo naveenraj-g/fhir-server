@@ -16,10 +16,16 @@ class QuestionnaireItemAnswerOptionInput(BaseModel):
     value_date: date | None = Field(None, description="value[x]: date.")
     value_time: time | None = Field(None, description="value[x]: time.")
     value_string: str | None = Field(None, description="value[x]: string.")
-    value_coding_system: str | None = Field(None, description="value[x]: Coding — system.")
-    value_coding_version: str | None = Field(None, description="value[x]: Coding — version.")
+    value_coding_system: str | None = Field(
+        None, description="value[x]: Coding — system."
+    )
+    value_coding_version: str | None = Field(
+        None, description="value[x]: Coding — version."
+    )
     value_coding_code: str | None = Field(None, description="value[x]: Coding — code.")
-    value_coding_display: str | None = Field(None, description="value[x]: Coding — display.")
+    value_coding_display: str | None = Field(
+        None, description="value[x]: Coding — display."
+    )
     value_coding_user_selected: bool | None = Field(
         None, description="value[x]: Coding — whether chosen directly by a user."
     )

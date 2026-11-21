@@ -175,7 +175,9 @@ async def test_patch_plan_definition_sub_resources_replace(client):
     assert data["action"][0]["action_id_str"] == "new-act-1"
 
     # Replace again with empty list
-    resp2 = await client.patch(f"{BASE}/{plandef['id']}", json={"goal": [], "action": []})
+    resp2 = await client.patch(
+        f"{BASE}/{plandef['id']}", json={"goal": [], "action": []}
+    )
     assert resp2.status_code == 200, resp2.text
     data2 = resp2.json()
     assert len(data2["goal"]) == 0
@@ -274,9 +276,7 @@ async def test_cross_org_isolation(client):
     assert resp.status_code == 404, resp.text
 
     # Patch -> 404
-    resp = await client.patch(
-        f"{BASE}/{plandef['id']}", json={"title": "Leak Attempt"}
-    )
+    resp = await client.patch(f"{BASE}/{plandef['id']}", json={"title": "Leak Attempt"})
     assert resp.status_code == 404, resp.text
 
     # Delete -> 404

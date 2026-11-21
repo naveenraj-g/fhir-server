@@ -9,7 +9,9 @@ from app.schemas.fhir_input import (
     FhirReferenceInput,
 )
 
-SlotStatusCode = Literal["busy", "free", "busy-unavailable", "busy-tentative", "entered-in-error"]
+SlotStatusCode = Literal[
+    "busy", "free", "busy-unavailable", "busy-tentative", "entered-in-error"
+]
 
 _EXAMPLE = {
     "resourceType": "Slot",
@@ -17,11 +19,18 @@ _EXAMPLE = {
     "schedule": {"reference": "Schedule/200001"},
     "start": "2026-06-01T09:00:00Z",
     "end": "2026-06-01T09:30:00Z",
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/slot-id", "value": "SL-1"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/slot-id",
+            "value": "SL-1",
+        }
+    ],
     "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}]}],
     "serviceType": [{"coding": [{"code": "124", "display": "General Practice"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
-    "appointmentType": {"coding": [{"code": "ROUTINE", "display": "Routine appointment"}]},
+    "appointmentType": {
+        "coding": [{"code": "ROUTINE", "display": "Routine appointment"}]
+    },
     "overbooked": False,
     "comment": "Bring previous reports",
 }
@@ -54,32 +63,39 @@ class _SlotFields(FhirInputModel):
         None, description="External Ids for this item."
     )
     serviceCategory: list[FhirCodeableConceptInput] | None = Field(
-        None, description="A broad categorization of the service that is to be performed during this appointment."
+        None,
+        description="A broad categorization of the service that is to be performed during this appointment.",
     )
     serviceType: list[FhirCodeableConceptInput] | None = Field(
         None, description="The type of appointments that can be booked into this slot."
     )
     specialty: list[FhirCodeableConceptInput] | None = Field(
-        None, description="The specialty of a practitioner that would be required to perform the service requested in this appointment."
+        None,
+        description="The specialty of a practitioner that would be required to perform the service requested in this appointment.",
     )
     appointmentType: FhirCodeableConceptInput | None = Field(
-        None, description="The style of appointment or patient that may be booked in the slot (not service type)."
+        None,
+        description="The style of appointment or patient that may be booked in the slot (not service type).",
     )
     schedule: FhirReferenceInput | None = Field(
         None,
         description="The schedule resource that this slot defines an interval of status information — Reference(Schedule), required by R4. A relative 'Schedule/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     status: SlotStatusCode | None = Field(
-        None, description="busy | free | busy-unavailable | busy-tentative | entered-in-error (required by R4)."
+        None,
+        description="busy | free | busy-unavailable | busy-tentative | entered-in-error (required by R4).",
     )
     start: str | None = Field(
-        None, description="Date/Time that the slot is to begin (a FHIR instant, with a timezone offset; required by R4)."
+        None,
+        description="Date/Time that the slot is to begin (a FHIR instant, with a timezone offset; required by R4).",
     )
     end: str | None = Field(
-        None, description="Date/Time that the slot is to conclude (a FHIR instant, with a timezone offset; required by R4)."
+        None,
+        description="Date/Time that the slot is to conclude (a FHIR instant, with a timezone offset; required by R4).",
     )
     overbooked: bool | None = Field(
-        None, description="This slot has already been overbooked, appointments are unlikely to be accepted for this time."
+        None,
+        description="This slot has already been overbooked, appointments are unlikely to be accepted for this time.",
     )
     comment: str | None = Field(
         None, description="Comments on the slot to describe any extended information."
@@ -100,4 +116,6 @@ class SlotPatchSchema(_SlotFields):
     (even `[]`) replaces every existing entry, an object such as `schedule` or
     `appointmentType` replaces the whole value, and `null` clears it."""
 
-    model_config = {"json_schema_extra": {"example": {"status": "busy", "overbooked": True}}}
+    model_config = {
+        "json_schema_extra": {"example": {"status": "busy", "overbooked": True}}
+    }

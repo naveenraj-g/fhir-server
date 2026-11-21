@@ -54,7 +54,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -105,7 +107,10 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
         if id_period_start or id_period_end:
             identifier["period"] = {
                 k: v
-                for k, v in {"start": fhir_instant(id_period_start), "end": fhir_instant(id_period_end)}.items()
+                for k, v in {
+                    "start": fhir_instant(id_period_start),
+                    "end": fhir_instant(id_period_end),
+                }.items()
                 if v
             }
         entry["identifier"] = identifier
@@ -119,7 +124,9 @@ def _fhir_quantity(obj, prefix: str) -> dict:
         k: v
         for k, v in {
             "value": float(value) if value is not None else None,
-            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator)) if comparator else None,
+            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator))
+            if comparator
+            else None,
             "unit": getattr(obj, f"{prefix}_unit", None),
             "system": getattr(obj, f"{prefix}_system", None),
             "code": getattr(obj, f"{prefix}_code", None),
@@ -157,7 +164,12 @@ def fhir_medication_request_identifier(obj, prefix: str = "") -> dict:
     period_end = getattr(obj, f"{p}period_end", None)
     if period_start or period_end:
         entry["period"] = {
-            k: v for k, v in {"start": fhir_instant(period_start), "end": fhir_instant(period_end)}.items() if v
+            k: v
+            for k, v in {
+                "start": fhir_instant(period_start),
+                "end": fhir_instant(period_end),
+            }.items()
+            if v
         }
     assigner = _fhir_reference_with_identifier_fallback(obj, f"{p}assigner")
     if assigner:
@@ -199,7 +211,8 @@ def fhir_medication_request_dosage_instruction(d) -> dict:
     if d.text:
         entry["text"] = d.text
     additional_instructions = [
-        fhir_medication_request_codeable_concept(ai.codings, ai.text) for ai in (d.additional_instructions or [])
+        fhir_medication_request_codeable_concept(ai.codings, ai.text)
+        for ai in (d.additional_instructions or [])
     ]
     additional_instructions = [ai for ai in additional_instructions if ai]
     if additional_instructions:
@@ -212,7 +225,9 @@ def fhir_medication_request_dosage_instruction(d) -> dict:
     if d.as_needed_boolean is not None:
         entry["asNeededBoolean"] = d.as_needed_boolean
     else:
-        as_needed_cc = fhir_medication_request_codeable_concept(d.as_needed_codings, d.as_needed_codeable_concept_text)
+        as_needed_cc = fhir_medication_request_codeable_concept(
+            d.as_needed_codings, d.as_needed_codeable_concept_text
+        )
         if as_needed_cc:
             entry["asNeededCodeableConcept"] = as_needed_cc
 
@@ -252,11 +267,20 @@ def _fhir_meta(mr: MedicationRequestModel) -> dict:
     if mr.tenant_id:
         extensions.append({"url": f"{_EXT_BASE}/org-id", "valueString": mr.tenant_id})
     if mr.created_by:
-        extensions.append({"url": f"{_EXT_BASE}/created-by", "valueString": mr.created_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": mr.created_by}
+        )
     if mr.updated_by:
-        extensions.append({"url": f"{_EXT_BASE}/updated-by", "valueString": mr.updated_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": mr.updated_by}
+        )
     if mr.created_at:
-        extensions.append({"url": f"{_EXT_BASE}/created-at", "valueDateTime": fhir_instant(mr.created_at)})
+        extensions.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": fhir_instant(mr.created_at),
+            }
+        )
     if extensions:
         meta["extension"] = extensions
     return meta
@@ -278,7 +302,10 @@ def _fhir_dispense_request(mr: MedicationRequestModel) -> dict:
     if dispense_interval:
         entry["dispenseInterval"] = dispense_interval
 
-    if mr.dispense_request_validity_period_start or mr.dispense_request_validity_period_end:
+    if (
+        mr.dispense_request_validity_period_start
+        or mr.dispense_request_validity_period_end
+    ):
         entry["validityPeriod"] = {
             k: v
             for k, v in {
@@ -294,11 +321,15 @@ def _fhir_dispense_request(mr: MedicationRequestModel) -> dict:
     if quantity:
         entry["quantity"] = quantity
 
-    expected_supply_duration = _fhir_quantity(mr, "dispense_request_expected_supply_duration")
+    expected_supply_duration = _fhir_quantity(
+        mr, "dispense_request_expected_supply_duration"
+    )
     if expected_supply_duration:
         entry["expectedSupplyDuration"] = expected_supply_duration
 
-    performer = _fhir_reference_with_identifier_fallback(mr, "dispense_request_performer")
+    performer = _fhir_reference_with_identifier_fallback(
+        mr, "dispense_request_performer"
+    )
     if performer:
         entry["performer"] = performer
 
@@ -311,18 +342,24 @@ def _fhir_substitution(mr: MedicationRequestModel) -> dict:
         entry["allowedBoolean"] = mr.substitution_allowed_boolean
     else:
         allowed_cc = fhir_medication_request_codeable_concept(
-            mr.substitution_allowed_codings, mr.substitution_allowed_codeable_concept_text
+            mr.substitution_allowed_codings,
+            mr.substitution_allowed_codeable_concept_text,
         )
         if allowed_cc:
             entry["allowedCodeableConcept"] = allowed_cc
-    reason = fhir_medication_request_codeable_concept(mr.substitution_reason_codings, mr.substitution_reason_text)
+    reason = fhir_medication_request_codeable_concept(
+        mr.substitution_reason_codings, mr.substitution_reason_text
+    )
     if reason:
         entry["reason"] = reason
     return entry
 
 
 def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
-    result: dict = {"resourceType": "MedicationRequest", "id": str(mr.medication_request_id)}
+    result: dict = {
+        "resourceType": "MedicationRequest",
+        "id": str(mr.medication_request_id),
+    }
 
     meta = _fhir_meta(mr)
     if meta:
@@ -330,21 +367,28 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if mr.extension:
         result["extension"] = list(mr.extension)
 
-    identifiers = [fhir_medication_request_identifier(i) for i in (mr.identifiers or [])]
+    identifiers = [
+        fhir_medication_request_identifier(i) for i in (mr.identifiers or [])
+    ]
     if identifiers:
         result["identifier"] = identifiers
 
     if mr.status:
         result["status"] = fhir_enum(mr.status).replace("_", "-")
 
-    status_reason = fhir_medication_request_codeable_concept(mr.status_reason_codings, mr.status_reason_text)
+    status_reason = fhir_medication_request_codeable_concept(
+        mr.status_reason_codings, mr.status_reason_text
+    )
     if status_reason:
         result["statusReason"] = status_reason
 
     if mr.intent:
         result["intent"] = fhir_enum(mr.intent).replace("_", "-")
 
-    categories = [fhir_medication_request_codeable_concept(c.codings, c.text) for c in (mr.categories or [])]
+    categories = [
+        fhir_medication_request_codeable_concept(c.codings, c.text)
+        for c in (mr.categories or [])
+    ]
     categories = [c for c in categories if c]
     if categories:
         result["category"] = categories
@@ -357,15 +401,21 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if mr.reported_boolean is not None:
         result["reportedBoolean"] = mr.reported_boolean
     else:
-        reported_ref = _fhir_reference_with_identifier_fallback(mr, "reported_reference")
+        reported_ref = _fhir_reference_with_identifier_fallback(
+            mr, "reported_reference"
+        )
         if reported_ref:
             result["reportedReference"] = reported_ref
 
-    medication_cc = fhir_medication_request_codeable_concept(mr.medication_codings, mr.medication_codeable_concept_text)
+    medication_cc = fhir_medication_request_codeable_concept(
+        mr.medication_codings, mr.medication_codeable_concept_text
+    )
     if medication_cc:
         result["medicationCodeableConcept"] = medication_cc
     else:
-        medication_ref = _fhir_reference_with_identifier_fallback(mr, "medication_reference")
+        medication_ref = _fhir_reference_with_identifier_fallback(
+            mr, "medication_reference"
+        )
         if medication_ref:
             result["medicationReference"] = medication_ref
 
@@ -378,7 +428,8 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
         result["encounter"] = encounter
 
     supporting_infos = [
-        _fhir_reference_with_identifier_fallback(si, "reference") for si in (mr.supporting_informations or [])
+        _fhir_reference_with_identifier_fallback(si, "reference")
+        for si in (mr.supporting_informations or [])
     ]
     supporting_infos = [si for si in supporting_infos if si]
     if supporting_infos:
@@ -395,7 +446,9 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if performer:
         result["performer"] = performer
 
-    performer_type = fhir_medication_request_codeable_concept(mr.performer_type_codings, mr.performer_type_text)
+    performer_type = fhir_medication_request_codeable_concept(
+        mr.performer_type_codings, mr.performer_type_text
+    )
     if performer_type:
         result["performerType"] = performer_type
 
@@ -403,13 +456,17 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if recorder:
         result["recorder"] = recorder
 
-    reason_codes = [fhir_medication_request_codeable_concept(rc.codings, rc.text) for rc in (mr.reason_codes or [])]
+    reason_codes = [
+        fhir_medication_request_codeable_concept(rc.codings, rc.text)
+        for rc in (mr.reason_codes or [])
+    ]
     reason_codes = [rc for rc in reason_codes if rc]
     if reason_codes:
         result["reasonCode"] = reason_codes
 
     reason_refs = [
-        _fhir_reference_with_identifier_fallback(rr, "reference") for rr in (mr.reason_references or [])
+        _fhir_reference_with_identifier_fallback(rr, "reference")
+        for rr in (mr.reason_references or [])
     ]
     reason_refs = [rr for rr in reason_refs if rr]
     if reason_refs:
@@ -420,7 +477,10 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if mr.instantiates_uri:
         result["instantiatesUri"] = list(mr.instantiates_uri)
 
-    based_ons = [_fhir_reference_with_identifier_fallback(b, "reference") for b in (mr.based_ons or [])]
+    based_ons = [
+        _fhir_reference_with_identifier_fallback(b, "reference")
+        for b in (mr.based_ons or [])
+    ]
     based_ons = [b for b in based_ons if b]
     if based_ons:
         result["basedOn"] = based_ons
@@ -435,7 +495,10 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if course_of_therapy_type:
         result["courseOfTherapyType"] = course_of_therapy_type
 
-    insurances = [_fhir_reference_with_identifier_fallback(ins, "reference") for ins in (mr.insurances or [])]
+    insurances = [
+        _fhir_reference_with_identifier_fallback(ins, "reference")
+        for ins in (mr.insurances or [])
+    ]
     insurances = [ins for ins in insurances if ins]
     if insurances:
         result["insurance"] = insurances
@@ -445,7 +508,10 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if notes:
         result["note"] = notes
 
-    dosage_instructions = [fhir_medication_request_dosage_instruction(d) for d in (mr.dosage_instructions or [])]
+    dosage_instructions = [
+        fhir_medication_request_dosage_instruction(d)
+        for d in (mr.dosage_instructions or [])
+    ]
     dosage_instructions = [d for d in dosage_instructions if d]
     if dosage_instructions:
         result["dosageInstruction"] = dosage_instructions
@@ -458,16 +524,24 @@ def to_fhir_medication_request(mr: MedicationRequestModel) -> dict:
     if substitution:
         result["substitution"] = substitution
 
-    prior_prescription = _fhir_reference_with_identifier_fallback(mr, "prior_prescription")
+    prior_prescription = _fhir_reference_with_identifier_fallback(
+        mr, "prior_prescription"
+    )
     if prior_prescription:
         result["priorPrescription"] = prior_prescription
 
-    detected_issues = [_fhir_reference_with_identifier_fallback(di, "reference") for di in (mr.detected_issues or [])]
+    detected_issues = [
+        _fhir_reference_with_identifier_fallback(di, "reference")
+        for di in (mr.detected_issues or [])
+    ]
     detected_issues = [di for di in detected_issues if di]
     if detected_issues:
         result["detectedIssue"] = detected_issues
 
-    event_histories = [_fhir_reference_with_identifier_fallback(eh, "reference") for eh in (mr.event_histories or [])]
+    event_histories = [
+        _fhir_reference_with_identifier_fallback(eh, "reference")
+        for eh in (mr.event_histories or [])
+    ]
     event_histories = [eh for eh in event_histories if eh]
     if event_histories:
         result["eventHistory"] = event_histories

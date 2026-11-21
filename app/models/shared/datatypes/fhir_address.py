@@ -42,13 +42,17 @@ class FhirAddressMixin:
     def use(cls):
         # 0..1 on Address — not required even here.
         return Column(
-            f"{cls._address_prefix}use", Enum(AddressUse, name="address_use"), nullable=True
+            f"{cls._address_prefix}use",
+            Enum(AddressUse, name="address_use"),
+            nullable=True,
         )
 
     @declared_attr
     def type(cls):
         return Column(
-            f"{cls._address_prefix}type", Enum(AddressType, name="address_type"), nullable=True
+            f"{cls._address_prefix}type",
+            Enum(AddressType, name="address_type"),
+            nullable=True,
         )
 
     @declared_attr
@@ -83,8 +87,12 @@ class FhirAddressMixin:
 
     @declared_attr
     def period_start(cls):
-        return Column(f"{cls._address_prefix}period_start", DateTime(timezone=True), nullable=True)
+        return Column(
+            f"{cls._address_prefix}period_start", DateTime(timezone=True), nullable=True
+        )
 
     @declared_attr
     def period_end(cls):
-        return Column(f"{cls._address_prefix}period_end", DateTime(timezone=True), nullable=True)
+        return Column(
+            f"{cls._address_prefix}period_end", DateTime(timezone=True), nullable=True
+        )

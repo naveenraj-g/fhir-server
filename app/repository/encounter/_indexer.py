@@ -30,7 +30,12 @@ from app.models.encounter import (
     EncounterStatus,
     EncounterToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import MODELED_PARTICIPANT_TYPES, ref_type_and_id, typed
 
@@ -65,10 +70,18 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, resource_type, local))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("subject", (document.get("subject") or {}).get("reference"), "Patient")
     add("partOf", (document.get("partOf") or {}).get("reference"), "Encounter")
-    add("serviceProvider", (document.get("serviceProvider") or {}).get("reference"), "Organization")
+    add(
+        "serviceProvider",
+        (document.get("serviceProvider") or {}).get("reference"),
+        "Organization",
+    )
     for appointment in document.get("appointment") or []:
         add("appointment", appointment.get("reference"), "Appointment")
     for participant in document.get("participant") or []:
@@ -77,10 +90,18 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         if parsed and parsed[0] in MODELED_PARTICIPANT_TYPES:
             refs.append(("participant.individual", parsed[0], reference))
     for location in document.get("location") or []:
-        add("location.location", (location.get("location") or {}).get("reference"), "Location")
+        add(
+            "location.location",
+            (location.get("location") or {}).get("reference"),
+            "Location",
+        )
     for diagnosis in document.get("diagnosis") or []:
         for resource_type in ("Condition", "Procedure"):
-            add("diagnosis.condition", (diagnosis.get("condition") or {}).get("reference"), resource_type)
+            add(
+                "diagnosis.condition",
+                (diagnosis.get("condition") or {}).get("reference"),
+                resource_type,
+            )
     for reason in document.get("reasonReference") or []:
         for resource_type in ("Condition", "Procedure"):
             add("reasonReference", reason.get("reference"), resource_type)
@@ -90,8 +111,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         for resource_type in ("Location", "Organization"):
             add(f"hospitalization.{element}", reference, resource_type)
     pre_admission = hospitalization.get("preAdmissionIdentifier") or {}
-    add("hospitalization.preAdmissionIdentifier.assigner", (pre_admission.get("assigner") or {}).get("reference"),
-        "Organization")
+    add(
+        "hospitalization.preAdmissionIdentifier.assigner",
+        (pre_admission.get("assigner") or {}).get("reference"),
+        "Organization",
+    )
     return refs
 
 
@@ -144,7 +168,9 @@ def index_columns(document: dict) -> dict:
         "length_unit": length.get("unit"),
         **_ref_columns("subject", document.get("subject"), SUBJECT_TYPES),
         **_ref_columns("part_of", document.get("partOf"), ("Encounter",)),
-        **_ref_columns("service_provider", document.get("serviceProvider"), ("Organization",)),
+        **_ref_columns(
+            "service_provider", document.get("serviceProvider"), ("Organization",)
+        ),
     }
 
 
@@ -221,14 +247,21 @@ def index_rows(document: dict) -> dict[str, list]:
             tokens.extend(type_rows(model, concept))
     references = []
     for param, path in REFERENCE_PARAMS.items():
-        references += [r for ref in _elements(document, path) if (r := _reference_row(param, ref))]
+        references += [
+            r for ref in _elements(document, path) if (r := _reference_row(param, ref))
+        ]
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(EncounterIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(EncounterIdentifier, i)
         ],
         "tokens": tokens,
         "references": references,
-        "participants": [r for p in document.get("participant") or [] if (r := _individual_row(p))],
-        "locations": [r for loc in document.get("location") or [] if (r := _location_row(loc))],
+        "participants": [
+            r for p in document.get("participant") or [] if (r := _individual_row(p))
+        ],
+        "locations": [
+            r for loc in document.get("location") or [] if (r := _location_row(loc))
+        ],
     }
-

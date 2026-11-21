@@ -27,8 +27,20 @@ pb2 = pytest.importorskip(
 D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 PATIENT = {"reference": "Patient/10001"}
 SCT = "http://snomed.info/sct"
-MOTHER = {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode", "code": "MTH", "display": "mother"}]}
-DIABETES = {"coding": [{"system": SCT, "code": "44054006", "display": "Type 2 diabetes mellitus"}]}
+MOTHER = {
+    "coding": [
+        {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+            "code": "MTH",
+            "display": "mother",
+        }
+    ]
+}
+DIABETES = {
+    "coding": [
+        {"system": SCT, "code": "44054006", "display": "Type 2 diabetes mellitus"}
+    ]
+}
 BASE = {"status": "completed", "patient": PATIENT, "relationship": MOTHER}
 AGE = {"value": 70, "unit": "a", "system": "http://unitsofmeasure.org", "code": "a"}
 
@@ -55,12 +67,21 @@ def _condition(**elements) -> FamilyMemberHistoryModel:
 
 CASES = {
     "minimal": _with(),
-    "updated_by_and_updated_at": _history(dict(BASE), updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _history(
+        dict(BASE), updated_by="u-other", updated_at=D
+    ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "FILL"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/family-member-history-id",
                 "value": "FMH-1",
                 "period": {"start": "2020-01-01"},
@@ -68,21 +89,48 @@ CASES = {
             }
         ]
     ),
-    **{f"status_{s}": _with(status=s) for s in ("partial", "completed", "entered-in-error", "health-unknown")},
+    **{
+        f"status_{s}": _with(status=s)
+        for s in ("partial", "completed", "entered-in-error", "health-unknown")
+    },
     "data_absent_reason": _with(
         status="health-unknown",
-        dataAbsentReason={"coding": [{"system": "http://terminology.hl7.org/CodeSystem/history-absent-reason", "code": "withheld"}]},
+        dataAbsentReason={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/history-absent-reason",
+                    "code": "withheld",
+                }
+            ]
+        },
     ),
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
-    "patient_logical": _with(patient={"identifier": {"system": "urn:pts", "value": "P-9"}}),
-    "patient_absolute_url": _with(patient={"reference": "https://other.example.org/fhir/Patient/9"}),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
+    "patient_logical": _with(
+        patient={"identifier": {"system": "urn:pts", "value": "P-9"}}
+    ),
+    "patient_absolute_url": _with(
+        patient={"reference": "https://other.example.org/fhir/Patient/9"}
+    ),
     "instantiates_canonical_and_uri": _with(
-        instantiatesCanonical=["http://example.org/fhir/PlanDefinition/fh|1.0", "Questionnaire/5"],
+        instantiatesCanonical=[
+            "http://example.org/fhir/PlanDefinition/fh|1.0",
+            "Questionnaire/5",
+        ],
         instantiatesUri=["http://example.org/protocols/fh"],
     ),
     "date_name_and_sex": _with(
-        date="2023-01-15T09:30:00Z", name="Mary Windsor",
-        sex={"coding": [{"system": "http://hl7.org/fhir/administrative-gender", "code": "female"}]},
+        date="2023-01-15T09:30:00Z",
+        name="Mary Windsor",
+        sex={
+            "coding": [
+                {
+                    "system": "http://hl7.org/fhir/administrative-gender",
+                    "code": "female",
+                }
+            ]
+        },
     ),
     "date_partial": _with(date="2023-01"),
     "relationship_text_only": _with(relationship={"text": "Aunt"}),
@@ -98,23 +146,67 @@ CASES = {
     "deceased_range": _with(deceasedRange={"low": AGE, "high": {**AGE, "value": 80}}),
     "deceased_date": _with(deceasedDate="2010-05-01"),
     "deceased_string": _with(deceasedString="in the war"),
-    "reason_code": _with(reasonCode=[{"coding": [{"system": SCT, "code": "160303001"}]}, {"text": "Other"}]),
+    "reason_code": _with(
+        reasonCode=[
+            {"coding": [{"system": SCT, "code": "160303001"}]},
+            {"text": "Other"},
+        ]
+    ),
     **{
         f"reason_reference_{t}": _with(reasonReference=[{"reference": f"{t}/1"}])
-        for t in ("Condition", "Observation", "AllergyIntolerance", "QuestionnaireResponse", "DiagnosticReport",
-                  "DocumentReference")
+        for t in (
+            "Condition",
+            "Observation",
+            "AllergyIntolerance",
+            "QuestionnaireResponse",
+            "DiagnosticReport",
+            "DocumentReference",
+        )
     },
-    "note_author_string": _with(note=[{"text": "Since her forties", "time": "2023-01-15T10:00:00Z", "authorString": "Nurse Joy"}]),
-    "note_author_reference": _with(note=[{"text": "n", "authorReference": {"reference": "Practitioner/30001"}}]),
+    "note_author_string": _with(
+        note=[
+            {
+                "text": "Since her forties",
+                "time": "2023-01-15T10:00:00Z",
+                "authorString": "Nurse Joy",
+            }
+        ]
+    ),
+    "note_author_reference": _with(
+        note=[{"text": "n", "authorReference": {"reference": "Practitioner/30001"}}]
+    ),
     "condition_minimal": _condition(),
-    "condition_outcome_and_death": _condition(outcome={"coding": [{"system": SCT, "code": "6736007"}]}, contributedToDeath=True),
+    "condition_outcome_and_death": _condition(
+        outcome={"coding": [{"system": SCT, "code": "6736007"}]},
+        contributedToDeath=True,
+    ),
     "condition_onset_age": _condition(onsetAge=AGE),
-    "condition_onset_range": _condition(onsetRange={"low": AGE, "high": {**AGE, "value": 60}}),
-    "condition_onset_period": _condition(onsetPeriod={"start": "1990-01-01", "end": "1991-01-01"}),
+    "condition_onset_range": _condition(
+        onsetRange={"low": AGE, "high": {**AGE, "value": 60}}
+    ),
+    "condition_onset_period": _condition(
+        onsetPeriod={"start": "1990-01-01", "end": "1991-01-01"}
+    ),
     "condition_onset_string": _condition(onsetString="childhood"),
-    "condition_note": _condition(note=[{"text": "Insulin from 55", "authorReference": {"reference": "Practitioner/30001"}}]),
-    "several_conditions": _with(condition=[{"code": DIABETES}, {"code": {"text": "Hypertension"}}]),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "condition_note": _condition(
+        note=[
+            {
+                "text": "Insulin from 55",
+                "authorReference": {"reference": "Practitioner/30001"},
+            }
+        ]
+    ),
+    "several_conditions": _with(
+        condition=[{"code": DIABETES}, {"code": {"text": "Hypertension"}}]
+    ),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:fmh", "value": "FMH-1"}],
         instantiatesUri=["http://example.org/protocols/fh"],
@@ -127,8 +219,15 @@ CASES = {
         reasonCode=[{"text": "Diabetes"}],
         reasonReference=[{"reference": "Condition/120001"}],
         note=[{"text": "n"}],
-        condition=[{"code": DIABETES, "outcome": {"text": "Moderate"}, "contributedToDeath": False, "onsetAge": AGE,
-                    "note": [{"text": "c"}]}],
+        condition=[
+            {
+                "code": DIABETES,
+                "outcome": {"text": "Moderate"},
+                "contributedToDeath": False,
+                "onsetAge": AGE,
+                "note": [{"text": "c"}],
+            }
+        ],
     ),
 }
 
@@ -143,7 +242,9 @@ def test_mapper_serves_content_unchanged():
     out = to_fhir_family_member_history(_history(content))
     assert out["resourceType"] == "FamilyMemberHistory"
     assert out["id"] == "490001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -171,16 +272,28 @@ def test_mapper_serves_content_unchanged():
         ("estimatedAge as string", {"estimatedAge": "yes"}),
         ("deceasedBoolean as string", {"deceasedBoolean": "no"}),
         ("deceasedDate not a date", {"deceasedDate": "once"}),
-        ("instantiatesCanonical as string not a list", {"instantiatesCanonical": "http://x"}),
+        (
+            "instantiatesCanonical as string not a list",
+            {"instantiatesCanonical": "http://x"},
+        ),
         ("instantiatesUri as string not a list", {"instantiatesUri": "http://x"}),
         ("identifier as object not a list", {"identifier": {"value": "x"}}),
         ("reasonCode as object not a list", {"reasonCode": {"text": "x"}}),
-        ("reasonReference as object not a list", {"reasonReference": {"reference": "Condition/1"}}),
+        (
+            "reasonReference as object not a list",
+            {"reasonReference": {"reference": "Condition/1"}},
+        ),
         ("note as object not a list", {"note": {"text": "x"}}),
         ("condition as object not a list", {"condition": {"code": DIABETES}}),
         ("condition code as string", {"condition": [{"code": "44054006"}]}),
-        ("condition contributedToDeath as string", {"condition": [{"code": DIABETES, "contributedToDeath": "yes"}]}),
-        ("condition onsetAge as string", {"condition": [{"code": DIABETES, "onsetAge": "42"}]}),
+        (
+            "condition contributedToDeath as string",
+            {"condition": [{"code": DIABETES, "contributedToDeath": "yes"}]},
+        ),
+        (
+            "condition onsetAge as string",
+            {"condition": [{"code": DIABETES, "onsetAge": "42"}]},
+        ),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
@@ -188,4 +301,6 @@ def test_validator_rejects_invalid_fhir(label, broken):
 
     payload = {"resourceType": "FamilyMemberHistory", "id": "490001", **BASE, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), pb2.FamilyMemberHistory, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.FamilyMemberHistory, validate=True
+        )

@@ -60,7 +60,9 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict | None:
     id_type_version = getattr(obj, f"{prefix}_identifier_type_version", None)
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
@@ -246,18 +248,14 @@ def to_fhir_medication(m: MedicationModel) -> dict:
         "id": str(m.medication_id),
         "meta": _fhir_meta(m),
         "extension": list(m.extension) if m.extension else None,
-        "identifier": [
-            fhir_medication_identifier(i) for i in (m.identifiers or [])
-        ]
+        "identifier": [fhir_medication_identifier(i) for i in (m.identifiers or [])]
         or None,
         "code": _fhir_codeable_concept(m.code_codings, m.code_text),
         "status": fhir_enum(m.status) if m.status else None,
         "manufacturer": _fhir_reference_with_identifier_fallback(m, "manufacturer"),
         "form": _fhir_codeable_concept(m.form_codings, m.form_text),
         "amount": _fhir_ratio("amount", m),
-        "ingredient": [
-            fhir_medication_ingredient(ing) for ing in (m.ingredients or [])
-        ]
+        "ingredient": [fhir_medication_ingredient(ing) for ing in (m.ingredients or [])]
         or None,
         "batch": _fhir_batch(m),
     }

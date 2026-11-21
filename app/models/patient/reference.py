@@ -42,10 +42,19 @@ class PatientReference(Base):
     UniqueConstraint: R4 doesn't forbid listing the same reference twice."""
 
     __tablename__ = "patient_reference"
-    __table_args__ = (Index("ix_patient_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_patient_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    patient_pk = Column(BigInteger, ForeignKey("patient.id"), nullable=False, index=True)
+    patient_pk = Column(
+        BigInteger, ForeignKey("patient.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)

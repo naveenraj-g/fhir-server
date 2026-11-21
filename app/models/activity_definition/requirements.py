@@ -17,7 +17,10 @@ class ActivityDefinitionSpecimenRequirement(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     reference_reference = Column(String, nullable=True)
@@ -43,7 +46,10 @@ class ActivityDefinitionObservationRequirement(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     reference_reference = Column(String, nullable=True)
@@ -69,7 +75,10 @@ class ActivityDefinitionObservationResultRequirement(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     reference_reference = Column(String, nullable=True)

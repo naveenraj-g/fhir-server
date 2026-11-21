@@ -273,12 +273,20 @@ class _FullMixin:
             await session.flush()
 
             # 3. Add sub-resources
-            await _add_identifiers(session, med.id, org_id, payload.identifier, created_by)
+            await _add_identifiers(
+                session, med.id, org_id, payload.identifier, created_by
+            )
             if payload.code and payload.code.coding:
-                await _add_code_codings(session, med.id, org_id, payload.code.coding, created_by)
+                await _add_code_codings(
+                    session, med.id, org_id, payload.code.coding, created_by
+                )
             if payload.form and payload.form.coding:
-                await _add_form_codings(session, med.id, org_id, payload.form.coding, created_by)
-            await _add_ingredients(session, med.id, org_id, payload.ingredient, created_by)
+                await _add_form_codings(
+                    session, med.id, org_id, payload.form.coding, created_by
+                )
+            await _add_ingredients(
+                session, med.id, org_id, payload.ingredient, created_by
+            )
 
             pub_id = med.medication_id
             await session.commit()

@@ -48,12 +48,21 @@ def _with(**elements) -> RelatedPersonModel:
 
 CASES = {
     "minimal": _with(),
-    "updated_by_and_updated_at": _related_person({"patient": PATIENT}, updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _related_person(
+        {"patient": PATIENT}, updated_by="u-other", updated_at=D
+    ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "PRN",
+                        }
+                    ]
+                },
                 "system": "http://hospital.example.org/related-persons",
                 "value": "RP-1",
                 "period": {"start": "2020-01-01"},
@@ -63,24 +72,45 @@ CASES = {
     ),
     "active_true": _with(active=True),
     "active_false": _with(active=False),
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
-    "patient_logical": _related_person({"patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}),
-    "patient_absolute_url": _related_person({"patient": {"reference": "https://other.example.org/fhir/Patient/9"}}),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
+    "patient_logical": _related_person(
+        {"patient": {"identifier": {"system": "urn:pts", "value": "P-9"}}}
+    ),
+    "patient_absolute_url": _related_person(
+        {"patient": {"reference": "https://other.example.org/fhir/Patient/9"}}
+    ),
     "relationship": _with(
         relationship=[
-            {"coding": [{"system": ROLE, "code": "MTH", "display": "mother"}], "text": "Mother"},
+            {
+                "coding": [{"system": ROLE, "code": "MTH", "display": "mother"}],
+                "text": "Mother",
+            },
             {"text": "Emergency contact"},
         ]
     ),
     "name": _with(
         name=[
-            {"use": "official", "family": "Windsor", "given": ["Mary", "Ann"], "prefix": ["Mrs"], "suffix": ["Jr"]},
+            {
+                "use": "official",
+                "family": "Windsor",
+                "given": ["Mary", "Ann"],
+                "prefix": ["Mrs"],
+                "suffix": ["Jr"],
+            },
             {"text": "Mary W."},
         ]
     ),
     "telecom": _with(
         telecom=[
-            {"system": "phone", "value": "555-9988", "use": "mobile", "rank": 1, "period": {"start": "2020-01-01"}},
+            {
+                "system": "phone",
+                "value": "555-9988",
+                "use": "mobile",
+                "rank": 1,
+                "period": {"start": "2020-01-01"},
+            },
             {"system": "email", "value": "mary@example.org"},
         ]
     ),
@@ -104,12 +134,32 @@ CASES = {
             }
         ]
     ),
-    "photo": _with(photo=[{"contentType": "image/png", "url": "https://example.org/mary.png", "title": "Mary"}]),
+    "photo": _with(
+        photo=[
+            {
+                "contentType": "image/png",
+                "url": "https://example.org/mary.png",
+                "title": "Mary",
+            }
+        ]
+    ),
     "period": _with(period={"start": "2020-01-01", "end": "2026-01-01"}),
     "communication": _with(
-        communication=[{"language": {"coding": [{"code": "en"}], "text": "English"}, "preferred": True}]
+        communication=[
+            {
+                "language": {"coding": [{"code": "en"}], "text": "English"},
+                "preferred": True,
+            }
+        ]
     ),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:rp", "value": "RP-1"}],
         active=True,
@@ -130,11 +180,18 @@ def test_related_person_mapper_emits_valid_fhir_r4(case):
 
 
 def test_mapper_serves_content_unchanged():
-    content = {"patient": PATIENT, "active": True, "gender": "female", "birthDate": "1965"}
+    content = {
+        "patient": PATIENT,
+        "active": True,
+        "gender": "female",
+        "birthDate": "1965",
+    }
     out = to_fhir_related_person(_related_person(content))
     assert out["resourceType"] == "RelatedPerson"
     assert out["id"] == "300001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -167,7 +224,12 @@ def test_mapper_serves_content_unchanged():
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "RelatedPerson", "id": "300001", "patient": PATIENT, **broken}
+    payload = {
+        "resourceType": "RelatedPerson",
+        "id": "300001",
+        "patient": PATIENT,
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
         json_format.json_fhir_string_to_proto(
             fhir_json_text(payload), related_person_pb2.RelatedPerson, validate=True

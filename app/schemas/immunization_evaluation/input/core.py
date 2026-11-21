@@ -14,13 +14,24 @@ StatusCode = Literal["completed", "entered-in-error"]
 _EXAMPLE = {
     "resourceType": "ImmunizationEvaluation",
     "identifier": [
-        {"system": "https://fhir-server.dev/fhir/identifier-system/immunization-evaluation-id", "value": "IE-1001"}
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/immunization-evaluation-id",
+            "value": "IE-1001",
+        }
     ],
     "status": "completed",
     "patient": {"reference": "Patient/10001"},
     "date": "2023-01-15T09:30:00Z",
     "authority": {"reference": "Organization/190001"},
-    "targetDisease": {"coding": [{"system": "http://snomed.info/sct", "code": "6142004", "display": "Influenza"}]},
+    "targetDisease": {
+        "coding": [
+            {
+                "system": "http://snomed.info/sct",
+                "code": "6142004",
+                "display": "Influenza",
+            }
+        ]
+    },
     "immunizationEvent": {"reference": "Immunization/330001"},
     "doseStatus": {
         "coding": [
@@ -32,7 +43,14 @@ _EXAMPLE = {
         ]
     },
     "doseStatusReason": [
-        {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/immunization-evaluation-dose-status-reason", "code": "agedoses"}]}
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/immunization-evaluation-dose-status-reason",
+                    "code": "agedoses",
+                }
+            ]
+        }
     ],
     "description": "Evaluated against the seasonal flu schedule",
     "series": "Seasonal",
@@ -64,30 +82,55 @@ class _ImmunizationEvaluationFields(FhirInputModel):
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="Business identifier.")
-    status: StatusCode | None = Field(None, description="completed | entered-in-error (required by R4).")
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Business identifier."
+    )
+    status: StatusCode | None = Field(
+        None, description="completed | entered-in-error (required by R4)."
+    )
     patient: FhirReferenceInput | None = Field(
         None,
         description="Who this evaluation is for — Reference(Patient) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    date: str | None = Field(None, description="Date the evaluation was performed (a FHIR dateTime).")
+    date: str | None = Field(
+        None, description="Date the evaluation was performed (a FHIR dateTime)."
+    )
     authority: FhirReferenceInput | None = Field(
         None,
         description="Who is responsible for publishing the recommendations — Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    targetDisease: FhirCodeableConceptInput | None = Field(None, description="Evaluation target disease (required by R4).")
+    targetDisease: FhirCodeableConceptInput | None = Field(
+        None, description="Evaluation target disease (required by R4)."
+    )
     immunizationEvent: FhirReferenceInput | None = Field(
         None,
         description="Immunization being evaluated — Reference(Immunization) (required by R4). A relative 'Immunization/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    doseStatus: FhirCodeableConceptInput | None = Field(None, description="Status of the dose relative to published recommendations (required by R4).")
-    doseStatusReason: list[FhirCodeableConceptInput] | None = Field(None, description="Reason for the dose status.")
+    doseStatus: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Status of the dose relative to published recommendations (required by R4).",
+    )
+    doseStatusReason: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Reason for the dose status."
+    )
     description: str | None = Field(None, description="Evaluation notes.")
     series: str | None = Field(None, description="Name of the vaccine series.")
-    doseNumberPositiveInt: int | None = Field(None, description="Dose number within the series (a positiveInt). One of the doseNumber[x] choices.")
-    doseNumberString: str | None = Field(None, description="Dose number within the series (a string). One of the doseNumber[x] choices.")
-    seriesDosesPositiveInt: int | None = Field(None, description="Recommended number of doses for immunity (a positiveInt). One of the seriesDoses[x] choices.")
-    seriesDosesString: str | None = Field(None, description="Recommended number of doses for immunity (a string). One of the seriesDoses[x] choices.")
+    doseNumberPositiveInt: int | None = Field(
+        None,
+        description="Dose number within the series (a positiveInt). One of the doseNumber[x] choices.",
+    )
+    doseNumberString: str | None = Field(
+        None,
+        description="Dose number within the series (a string). One of the doseNumber[x] choices.",
+    )
+    seriesDosesPositiveInt: int | None = Field(
+        None,
+        description="Recommended number of doses for immunity (a positiveInt). One of the seriesDoses[x] choices.",
+    )
+    seriesDosesString: str | None = Field(
+        None,
+        description="Recommended number of doses for immunity (a string). One of the seriesDoses[x] choices.",
+    )
 
 
 class ImmunizationEvaluationCreateSchema(_ImmunizationEvaluationFields):

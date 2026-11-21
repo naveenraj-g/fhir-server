@@ -12,7 +12,9 @@ from app.schemas.medication_administration.response.codeable_concept import (
 class FHIRMedicationAdministrationPerformer(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    function: FHIRCodeableConcept | None = Field(None, description="Type of performance.")
+    function: FHIRCodeableConcept | None = Field(
+        None, description="Type of performance."
+    )
     actor: FHIRReference = Field(..., description="Who performed the administration.")
 
 

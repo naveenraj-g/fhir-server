@@ -25,7 +25,12 @@ from tests.helpers.assertions import (
     assert_fhir_organization,
     assert_operation_outcome,
 )
-from tests.integration.organization.support import BASE, FULL, MINIMAL, create_organization
+from tests.integration.organization.support import (
+    BASE,
+    FULL,
+    MINIMAL,
+    create_organization,
+)
 
 ORG_PERMS = [
     "organization:create",
@@ -107,14 +112,18 @@ async def test_create_ignores_server_managed_id_and_meta(client):
 
 async def test_create_organization_extra_field_rejected(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "nonexistent_field": "value"})
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_create_organization_org_id_in_body_rejected(client):
     """org_id/created_by/updated_by come from the verified token — not
     request-body fields. `org_id` isn't FHIR, so R4 validation rejects it."""
     resp = await client.post(BASE + "/", json={**MINIMAL, "org_id": "sneaky-org"})
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_create_old_flat_fields_rejected(client):
@@ -122,7 +131,10 @@ async def test_create_old_flat_fields_rejected(client):
         {**MINIMAL, "partof": "Organization/1"},
         {**MINIMAL, "address": [{"postal_code": "12345"}]},
         {**MINIMAL, "contact": [{"name_family": "Smith"}]},
-        {**MINIMAL, "identifier": [{"value": "1", "period_start": "2024-01-01T00:00:00Z"}]},
+        {
+            **MINIMAL,
+            "identifier": [{"value": "1", "period_start": "2024-01-01T00:00:00Z"}],
+        },
     ):
         resp = await client.post(BASE + "/", json=body)
         assert resp.status_code == 422, body
@@ -130,7 +142,9 @@ async def test_create_old_flat_fields_rejected(client):
 
 async def test_create_wrong_resource_type_rejected(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "resourceType": "Patient"})
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_create_organization_audit_meta_from_actor(client):
@@ -146,7 +160,11 @@ async def test_create_organization_with_partof(client):
     parent_id = await create_organization(client, {**MINIMAL, "name": "Parent Org"})
     resp = await client.post(
         BASE + "/",
-        json={**MINIMAL, "name": "Child Org", "partOf": {"reference": f"Organization/{parent_id}"}},
+        json={
+            **MINIMAL,
+            "name": "Child Org",
+            "partOf": {"reference": f"Organization/{parent_id}"},
+        },
     )
     assert resp.status_code == 201
     assert resp.json()["partOf"] == {"reference": f"Organization/{parent_id}"}
@@ -156,7 +174,9 @@ async def test_create_organization_nonexistent_partof_rejected(client):
     resp = await client.post(
         BASE + "/", json={**MINIMAL, "partOf": {"reference": "Organization/9999999"}}
     )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_create_nonexistent_identifier_assigner_rejected(client):
@@ -164,10 +184,14 @@ async def test_create_nonexistent_identifier_assigner_rejected(client):
         BASE + "/",
         json={
             **MINIMAL,
-            "identifier": [{"value": "1", "assigner": {"reference": "Organization/9999999"}}],
+            "identifier": [
+                {"value": "1", "assigner": {"reference": "Organization/9999999"}}
+            ],
         },
     )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_create_absolute_partof_reference_stored_not_resolved(client):
@@ -200,7 +224,9 @@ async def test_get_organization_is_fhir_regardless_of_accept(client):
 
 async def test_get_organization_not_found(client):
     resp = await client.get(f"{BASE}/9999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -267,7 +293,8 @@ async def test_patch_partof_resolved(client):
     parent_id = await create_organization(client, {**MINIMAL, "name": "Parent Org"})
     child_id = await create_organization(client, {**MINIMAL, "name": "Child Org"})
     resp = await client.patch(
-        f"{BASE}/{child_id}", json={"partOf": {"reference": f"Organization/{parent_id}"}}
+        f"{BASE}/{child_id}",
+        json={"partOf": {"reference": f"Organization/{parent_id}"}},
     )
     assert resp.status_code == 200
     assert _ids(await _search(client, partof=f"Organization/{parent_id}")) == {child_id}
@@ -277,24 +304,37 @@ async def test_patch_partof_null_clears(client):
     parent_id = await create_organization(client, {**MINIMAL, "name": "Parent Org"})
     child_id = await create_organization(
         client,
-        {**MINIMAL, "name": "Child Org", "partOf": {"reference": f"Organization/{parent_id}"}},
+        {
+            **MINIMAL,
+            "name": "Child Org",
+            "partOf": {"reference": f"Organization/{parent_id}"},
+        },
     )
     resp = await client.patch(f"{BASE}/{child_id}", json={"partOf": None})
     assert resp.status_code == 200, resp.text
     assert "partOf" not in resp.json()
-    assert child_id not in _ids(await _search(client, partof=f"Organization/{parent_id}"))
+    assert child_id not in _ids(
+        await _search(client, partof=f"Organization/{parent_id}")
+    )
 
 
 async def test_patch_organization_partof_cycle_rejected(client):
     parent_id = await create_organization(client, {**MINIMAL, "name": "Parent Org"})
     child_id = await create_organization(
         client,
-        {**MINIMAL, "name": "Child Org", "partOf": {"reference": f"Organization/{parent_id}"}},
+        {
+            **MINIMAL,
+            "name": "Child Org",
+            "partOf": {"reference": f"Organization/{parent_id}"},
+        },
     )
     resp = await client.patch(
-        f"{BASE}/{parent_id}", json={"partOf": {"reference": f"Organization/{child_id}"}}
+        f"{BASE}/{parent_id}",
+        json={"partOf": {"reference": f"Organization/{child_id}"}},
     )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_patch_organization_partof_self_reference_rejected(client):
@@ -302,7 +342,9 @@ async def test_patch_organization_partof_self_reference_rejected(client):
     resp = await client.patch(
         f"{BASE}/{org_id}", json={"partOf": {"reference": f"Organization/{org_id}"}}
     )
-    assert_operation_outcome(resp.json(), expected_status=422, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=422, response_status=resp.status_code
+    )
 
 
 async def test_patch_keeps_reference_type(client):
@@ -315,7 +357,12 @@ async def test_patch_keeps_reference_type(client):
 
 
 async def test_patch_extension_null_clears(client):
-    ext = [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]
+    ext = [
+        {
+            "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+            "valueString": "y",
+        }
+    ]
     org_id = await create_organization(client, {**MINIMAL, "extension": ext})
     resp = await client.patch(f"{BASE}/{org_id}", json={"extension": None})
     assert resp.status_code == 200, resp.text
@@ -324,7 +371,9 @@ async def test_patch_extension_null_clears(client):
 
 async def test_patch_organization_not_found(client):
     resp = await client.patch(f"{BASE}/9999999", json={"name": "X"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -340,37 +389,53 @@ async def test_delete_organization(client):
 
 async def test_delete_organization_not_found(client):
     resp = await client.delete(f"{BASE}/9999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth & tenancy ───────────────────────────────────────────────────────────
 
 
 async def test_create_organization_no_permission(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=["organization:read"])
+    app.dependency_overrides[get_current_user] = make_test_user(
+        permissions=["organization:read"]
+    )
     try:
         resp = await client.post(BASE + "/", json=MINIMAL)
-        assert_operation_outcome(resp.json(), expected_status=403, response_status=resp.status_code)
+        assert_operation_outcome(
+            resp.json(), expected_status=403, response_status=resp.status_code
+        )
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 async def test_create_organization_org_less_token_rejected(client):
-    app.dependency_overrides[get_current_user] = make_test_user(org_id=None, permissions=ORG_PERMS)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        org_id=None, permissions=ORG_PERMS
+    )
     try:
         resp = await client.post(BASE + "/", json=MINIMAL)
         assert resp.status_code == 403
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 async def test_list_organizations_org_less_token_rejected(client):
-    app.dependency_overrides[get_current_user] = make_test_user(org_id=None, permissions=ORG_PERMS)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        org_id=None, permissions=ORG_PERMS
+    )
     try:
         resp = await client.get(BASE + "/")
         assert resp.status_code == 403
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 async def test_get_organization_org_mismatch_returns_404(client, other_client):
@@ -384,9 +449,13 @@ async def test_get_organization_org_mismatch_returns_404(client, other_client):
     )
     try:
         resp = await other_client.get(f"{BASE}/{org_id}")
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+        assert_operation_outcome(
+            resp.json(), expected_status=404, response_status=resp.status_code
+        )
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 async def test_patch_organization_org_mismatch_returns_404(client, other_client):
@@ -397,9 +466,13 @@ async def test_patch_organization_org_mismatch_returns_404(client, other_client)
     )
     try:
         resp = await other_client.patch(f"{BASE}/{org_id}", json={"name": "Hacked"})
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+        assert_operation_outcome(
+            resp.json(), expected_status=404, response_status=resp.status_code
+        )
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 async def test_delete_organization_org_mismatch_returns_404(client, other_client):
@@ -410,9 +483,13 @@ async def test_delete_organization_org_mismatch_returns_404(client, other_client
     )
     try:
         resp = await other_client.delete(f"{BASE}/{org_id}")
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+        assert_operation_outcome(
+            resp.json(), expected_status=404, response_status=resp.status_code
+        )
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 async def test_list_organizations_cross_tenant_isolation(client, other_client):
@@ -426,7 +503,9 @@ async def test_list_organizations_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
         assert "entry" not in bundle
     finally:
-        app.dependency_overrides[get_current_user] = make_test_user(permissions=ORG_PERMS)
+        app.dependency_overrides[get_current_user] = make_test_user(
+            permissions=ORG_PERMS
+        )
 
 
 # ── Content type: always FHIR JSON; 406 only when JSON is ruled out ──────────
@@ -452,14 +531,20 @@ async def test_any_json_compatible_accept_gets_fhir_json(client):
 
 async def test_xml_only_accept_is_406(client):
     org_id = await create_organization(client)
-    for accept in ("application/fhir+xml", "application/xml, text/xml", "application/json;q=0"):
+    for accept in (
+        "application/fhir+xml",
+        "application/xml, text/xml",
+        "application/json;q=0",
+    ):
         resp = await client.get(f"{BASE}/{org_id}", headers={"Accept": accept})
         assert resp.status_code == 406, (accept, resp.text)
         body = resp.json()
         assert body["resourceType"] == "OperationOutcome"
         assert body["issue"][0]["code"] == "not-supported"
     # Search too, not just read.
-    assert (await client.get(BASE + "/", headers={"Accept": "application/fhir+xml"})).status_code == 406
+    assert (
+        await client.get(BASE + "/", headers={"Accept": "application/fhir+xml"})
+    ).status_code == 406
 
 
 async def test_format_overrides_accept(client):
@@ -467,7 +552,9 @@ async def test_format_overrides_accept(client):
     xml = await client.get(f"{BASE}/{org_id}", params={"_format": "xml"})
     assert xml.status_code == 406
     ok = await client.get(
-        f"{BASE}/{org_id}", params={"_format": "json"}, headers={"Accept": "application/fhir+xml"}
+        f"{BASE}/{org_id}",
+        params={"_format": "json"},
+        headers={"Accept": "application/fhir+xml"},
     )
     assert ok.status_code == 200
     assert ok.headers["content-type"].startswith("application/fhir+json")

@@ -12,7 +12,10 @@ class MedicationAdministrationDosageSiteCoding(FhirCodingMixin, TenantAuditMixin
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_administration_pk = Column(
-        BigInteger, ForeignKey("medication_administration.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_administration.id"),
+        nullable=False,
+        index=True,
     )
 
     medication_administration = relationship(
@@ -20,14 +23,19 @@ class MedicationAdministrationDosageSiteCoding(FhirCodingMixin, TenantAuditMixin
     )
 
 
-class MedicationAdministrationDosageRouteCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MedicationAdministrationDosageRouteCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """MedicationAdministration.dosage.route.coding (0..*) child table."""
 
     __tablename__ = "medication_administration_dosage_route_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_administration_pk = Column(
-        BigInteger, ForeignKey("medication_administration.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_administration.id"),
+        nullable=False,
+        index=True,
     )
 
     medication_administration = relationship(
@@ -35,14 +43,19 @@ class MedicationAdministrationDosageRouteCoding(FhirCodingMixin, TenantAuditMixi
     )
 
 
-class MedicationAdministrationDosageMethodCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MedicationAdministrationDosageMethodCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """MedicationAdministration.dosage.method.coding (0..*) child table."""
 
     __tablename__ = "medication_administration_dosage_method_coding"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_administration_pk = Column(
-        BigInteger, ForeignKey("medication_administration.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_administration.id"),
+        nullable=False,
+        index=True,
     )
 
     medication_administration = relationship(

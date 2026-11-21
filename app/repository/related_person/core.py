@@ -22,19 +22,27 @@ class _CoreMixin:
             stmt = select(_M).where(_M.related_person_id == related_person_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_related_person_id_in_org(self, related_person_id: int, org_id: str) -> _M | None:
+    async def get_by_related_person_id_in_org(
+        self, related_person_id: int, org_id: str
+    ) -> _M | None:
         """Lookup scoped to org_id — returns None unless the related_person
         exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.related_person_id == related_person_id, _M.tenant_id == org_id)
+            stmt = select(_M).where(
+                _M.related_person_id == related_person_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalars().first()
 
-    async def related_person_belongs_to_org(self, related_person_id: int, org_id: str) -> bool:
+    async def related_person_belongs_to_org(
+        self, related_person_id: int, org_id: str
+    ) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the related_person exists AND
         belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M.id).where(_M.related_person_id == related_person_id, _M.tenant_id == org_id)
+            stmt = select(_M.id).where(
+                _M.related_person_id == related_person_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
     # ── Search ────────────────────────────────────────────────────────────

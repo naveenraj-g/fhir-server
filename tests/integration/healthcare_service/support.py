@@ -29,21 +29,34 @@ FULL = {
         {
             "system": SERVICE_ID_SYSTEM,
             "value": "HS-1001",
-            "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
+            "assigner": {
+                "identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}
+            },
         }
     ],
-    "category": [{"coding": [{"code": "35", "display": "Specialist Medical"}], "text": "Specialist"}],
+    "category": [
+        {
+            "coding": [{"code": "35", "display": "Specialist Medical"}],
+            "text": "Specialist",
+        }
+    ],
     "type": [{"coding": [{"code": "124", "display": "General Practice"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
     "telecom": [{"system": "phone", "value": "555-0100", "use": "work"}],
     "serviceProvisionCode": [{"coding": [{"code": "free", "display": "Free"}]}],
     "eligibility": [{"code": {"text": "Over 18"}, "comment": "Adults only"}],
     "program": [{"coding": [{"code": "diabetes", "display": "Diabetes"}]}],
-    "characteristic": [{"coding": [{"code": "wheelchair", "display": "Wheelchair access"}]}],
+    "characteristic": [
+        {"coding": [{"code": "wheelchair", "display": "Wheelchair access"}]}
+    ],
     "communication": [{"coding": [{"code": "en", "display": "English"}]}],
     "referralMethod": [{"coding": [{"code": "phone", "display": "Phone"}]}],
     "availableTime": [
-        {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"},
+        {
+            "daysOfWeek": ["mon", "tue"],
+            "availableStartTime": "08:00:00",
+            "availableEndTime": "17:00:00",
+        },
         {"daysOfWeek": ["sat"], "allDay": True},
     ],
     "notAvailable": [
@@ -94,7 +107,12 @@ async def seed_location(
                     "status": "active",
                     "name": name,
                     "mode": "instance",
-                    "address": {"city": city, "state": "TS", "postalCode": "00000", "country": "USA"},
+                    "address": {
+                        "city": city,
+                        "state": "TS",
+                        "postalCode": "00000",
+                        "country": "USA",
+                    },
                 },
                 # Search-index columns for the fields above (normally derived
                 # by app.repository.location._indexer).

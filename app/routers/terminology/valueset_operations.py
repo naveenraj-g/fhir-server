@@ -61,9 +61,7 @@ def _resolve_code_input(
     if sum(given) != 1:
         raise ApplicationError(
             name="InvalidCodeInput",
-            message=(
-                "Supply exactly one of: code+system, coding, or codeableConcept."
-            ),
+            message=("Supply exactly one of: code+system, coding, or codeableConcept."),
             status_code=400,
             code="INVALID_CODE_INPUT",
             issue_type=IssueType.REQUIRED,
@@ -260,7 +258,10 @@ async def validate_code_type_level_post(
     operation_id="valueset_validate_code_operation_instance",
     summary="FHIR $validate-code (ValueSet) — is this code a member of this value set, by internal id",
     description="Instance-level invocation — same operation as the type-level form above, addressed by internal id.",
-    responses={**_OPERATION_RESPONSES, 400: {"description": "ValueSet could not be resolved"}},
+    responses={
+        **_OPERATION_RESPONSES,
+        400: {"description": "ValueSet could not be resolved"},
+    },
     tags=["Terminology"],
 )
 async def validate_code_instance_level(

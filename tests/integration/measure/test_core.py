@@ -154,7 +154,9 @@ async def test_patch_measure_fhir(client):
     patch_payload = {
         "title": "FHIR Updated Title",
     }
-    resp = await client.patch(f"{BASE}/{res_id}", json=patch_payload, headers=FHIR_ACCEPT)
+    resp = await client.patch(
+        f"{BASE}/{res_id}", json=patch_payload, headers=FHIR_ACCEPT
+    )
     assert resp.status_code == 200, resp.text
     assert_fhir_measure(resp.json(), title="FHIR Updated Title")
 
@@ -198,7 +200,9 @@ async def test_list_measures_filter_identifier(client):
     )
     assert resp.status_code == 201, resp.text
 
-    resp = await client.get(f"{BASE}/?identifier=http://example.org/meas-ids|FLT-MEAS-001")
+    resp = await client.get(
+        f"{BASE}/?identifier=http://example.org/meas-ids|FLT-MEAS-001"
+    )
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["total"] >= 1

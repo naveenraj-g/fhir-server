@@ -36,21 +36,48 @@ from app.models.observation import (
     ObservationToken,
     ObservationValue,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import any_typed, typed
 
 _STATUSES = {m.value for m in ObservationStatus}
-_AUTHOR_TYPES = ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson", "Organization")
+_AUTHOR_TYPES = (
+    "Practitioner",
+    "PractitionerRole",
+    "Patient",
+    "RelatedPerson",
+    "Organization",
+)
 
 
 # The resources already rebuilt on the engine — the only targets whose existence is checked on
 # write (the others are stored as sent until they are rebuilt).
 _REBUILT = (
-    "Patient", "Practitioner", "PractitionerRole", "Organization", "Location", "RelatedPerson", "Encounter",
-    "Appointment", "Condition", "Procedure", "DiagnosticReport", "AllergyIntolerance", "Immunization",
-    "ImmunizationRecommendation", "ImmunizationEvaluation", "FamilyMemberHistory", "RiskAssessment",
-    "ClinicalImpression", "DetectedIssue", "Observation",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "Organization",
+    "Location",
+    "RelatedPerson",
+    "Encounter",
+    "Appointment",
+    "Condition",
+    "Procedure",
+    "DiagnosticReport",
+    "AllergyIntolerance",
+    "Immunization",
+    "ImmunizationRecommendation",
+    "ImmunizationEvaluation",
+    "FamilyMemberHistory",
+    "RiskAssessment",
+    "ClinicalImpression",
+    "DetectedIssue",
+    "Observation",
 )
 
 
@@ -80,7 +107,11 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, parsed[0], ref["reference"]))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add_typed("subject", document.get("subject"), SUBJECT_TYPES)
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
     for element, types in (
@@ -93,7 +124,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         for ref in document.get(element) or []:
             add_typed(element, ref, types)
     for note in document.get("note") or []:
-        add_typed("note.authorReference", (note or {}).get("authorReference"), _AUTHOR_TYPES)
+        add_typed(
+            "note.authorReference", (note or {}).get("authorReference"), _AUTHOR_TYPES
+        )
     return refs
 
 
@@ -162,7 +195,11 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept(param: str, slot: int, concept: dict | None) -> list:
-    return type_rows(partial(ObservationToken, param=param, slot=slot), concept) if concept else []
+    return (
+        type_rows(partial(ObservationToken, param=param, slot=slot), concept)
+        if concept
+        else []
+    )
 
 
 def _number(value) -> Decimal | None:
@@ -176,7 +213,9 @@ def _number(value) -> Decimal | None:
         return None
 
 
-def _value_rows(element: dict, slot: int, quantity_param: str, *, searchable_text: bool) -> list:
+def _value_rows(
+    element: dict, slot: int, quantity_param: str, *, searchable_text: bool
+) -> list:
     """The ObservationValue rows of one element's value[x]: its Quantity, and (for the
     Observation only) its string / CodeableConcept text and dateTime / Period."""
     rows = []
@@ -194,15 +233,30 @@ def _value_rows(element: dict, slot: int, quantity_param: str, *, searchable_tex
         )
     if not searchable_text:
         return rows
-    for text in (element.get("valueString"), (element.get("valueCodeableConcept") or {}).get("text")):
+    for text in (
+        element.get("valueString"),
+        (element.get("valueCodeableConcept") or {}).get("text"),
+    ):
         if text:
-            rows.append(ObservationValue(param="value-string", slot=slot, string_norm=normalize(text)))
+            rows.append(
+                ObservationValue(
+                    param="value-string", slot=slot, string_norm=normalize(text)
+                )
+            )
     if element.get("valueDateTime"):
         start, end = _point(element["valueDateTime"])
-        rows.append(ObservationValue(param="value-date", slot=slot, date_start=start, date_end=end))
+        rows.append(
+            ObservationValue(
+                param="value-date", slot=slot, date_start=start, date_end=end
+            )
+        )
     elif element.get("valuePeriod"):
         start, end = period_bounds(element["valuePeriod"])
-        rows.append(ObservationValue(param="value-date", slot=slot, date_start=start, date_end=end))
+        rows.append(
+            ObservationValue(
+                param="value-date", slot=slot, date_start=start, date_end=end
+            )
+        )
     return rows
 
 
@@ -217,15 +271,21 @@ def _token_rows(document: dict) -> list:
     for slot, component in enumerate(document.get("component") or [], start=1):
         component = component or {}
         rows += _concept("component-code", slot, component.get("code"))
-        rows += _concept("component-data-absent-reason", slot, component.get("dataAbsentReason"))
-        rows += _concept("component-value-concept", slot, component.get("valueCodeableConcept"))
+        rows += _concept(
+            "component-data-absent-reason", slot, component.get("dataAbsentReason")
+        )
+        rows += _concept(
+            "component-value-concept", slot, component.get("valueCodeableConcept")
+        )
     return rows
 
 
 def _all_value_rows(document: dict) -> list:
     rows = _value_rows(document, 0, "value-quantity", searchable_text=True)
     for slot, component in enumerate(document.get("component") or [], start=1):
-        rows += _value_rows(component or {}, slot, "component-value-quantity", searchable_text=False)
+        rows += _value_rows(
+            component or {}, slot, "component-value-quantity", searchable_text=False
+        )
     return rows
 
 
@@ -259,14 +319,22 @@ _REFERENCE_ELEMENTS = (
 
 
 def _reference_rows(document: dict) -> list:
-    rows = [_reference_row(param, ref) for param, element in _REFERENCE_ELEMENTS for ref in document.get(element) or []]
+    rows = [
+        _reference_row(param, ref)
+        for param, element in _REFERENCE_ELEMENTS
+        for ref in document.get(element) or []
+    ]
     return [r for r in rows if r]
 
 
 def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by ObservationModel relationship name."""
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(ObservationIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ObservationIdentifier, i)
+        ],
         "tokens": _token_rows(document),
         "values": _all_value_rows(document),
         "references": _reference_rows(document),

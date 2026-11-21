@@ -11,16 +11,25 @@ from __future__ import annotations
 from app.fhir.search import IncludeTarget
 
 
-def subject_report_revincludes(resource_type: str, key, params: tuple[str, ...]) -> tuple[IncludeTarget, ...]:
+def subject_report_revincludes(
+    resource_type: str, key, params: tuple[str, ...]
+) -> tuple[IncludeTarget, ...]:
     """DiagnosticReport:subject (and the narrowed :patient for a Patient) — reports
     whose subject is one of the matched rows of `resource_type`."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.diagnostic_report.search import revinclude_reports_via_column
+        from app.repository.diagnostic_report.search import (
+            revinclude_reports_via_column,
+        )
 
-        return await revinclude_reports_via_column("subject", resource_type, key)(session, ctx, rows)
+        return await revinclude_reports_via_column("subject", resource_type, key)(
+            session, ctx, rows
+        )
 
-    return tuple(IncludeTarget("DiagnosticReport", param, resource_type, fetch, reverse=True) for param in params)
+    return tuple(
+        IncludeTarget("DiagnosticReport", param, resource_type, fetch, reverse=True)
+        for param in params
+    )
 
 
 def performer_report_revincludes(resource_type: str, key) -> tuple[IncludeTarget, ...]:
@@ -29,14 +38,20 @@ def performer_report_revincludes(resource_type: str, key) -> tuple[IncludeTarget
 
     def make(param: str):
         async def fetch(session, ctx, rows):
-            from app.repository.diagnostic_report.search import revinclude_reports_via_performer
+            from app.repository.diagnostic_report.search import (
+                revinclude_reports_via_performer,
+            )
 
-            return await revinclude_reports_via_performer(param, resource_type, key)(session, ctx, rows)
+            return await revinclude_reports_via_performer(param, resource_type, key)(
+                session, ctx, rows
+            )
 
         return fetch
 
     return tuple(
-        IncludeTarget("DiagnosticReport", param, resource_type, make(param), reverse=True)
+        IncludeTarget(
+            "DiagnosticReport", param, resource_type, make(param), reverse=True
+        )
         for param in ("performer", "results-interpreter")
     )
 
@@ -46,8 +61,16 @@ def encounter_report_revincludes(key) -> tuple[IncludeTarget, ...]:
     Encounters."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.diagnostic_report.search import revinclude_reports_via_column
+        from app.repository.diagnostic_report.search import (
+            revinclude_reports_via_column,
+        )
 
-        return await revinclude_reports_via_column("encounter", "Encounter", key)(session, ctx, rows)
+        return await revinclude_reports_via_column("encounter", "Encounter", key)(
+            session, ctx, rows
+        )
 
-    return (IncludeTarget("DiagnosticReport", "encounter", "Encounter", fetch, reverse=True),)
+    return (
+        IncludeTarget(
+            "DiagnosticReport", "encounter", "Encounter", fetch, reverse=True
+        ),
+    )

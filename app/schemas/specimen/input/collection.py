@@ -14,7 +14,8 @@ class SpecimenCollectionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     collector: SpecimenCollectorInput | None = Field(
-        None, description="Who collected the specimen (Reference(Practitioner | PractitionerRole))."
+        None,
+        description="Who collected the specimen (Reference(Practitioner | PractitionerRole)).",
     )
     collected_date_time: datetime | None = Field(
         None, description="The time when specimen was collected."
@@ -59,7 +60,8 @@ class SpecimenCollectionInput(BaseModel):
         None, description="Anatomical collection site."
     )
     fasting_status_codeable_concept: SpecimenCodeableConceptInput | None = Field(
-        None, description="Whether or how long patient abstained from food and/or drink."
+        None,
+        description="Whether or how long patient abstained from food and/or drink.",
     )
     fasting_status_duration_value: float | None = Field(
         None, description="Numerical duration of fasting."

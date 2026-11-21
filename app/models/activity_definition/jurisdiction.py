@@ -12,11 +12,16 @@ class ActivityDefinitionJurisdiction(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="jurisdictions")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="jurisdictions"
+    )
     codings = relationship(
         "ActivityDefinitionJurisdictionCoding",
         back_populates="jurisdiction",
@@ -37,4 +42,6 @@ class ActivityDefinitionJurisdictionCoding(FhirCodingMixin, TenantAuditMixin, Ba
         index=True,
     )
 
-    jurisdiction = relationship("ActivityDefinitionJurisdiction", back_populates="codings")
+    jurisdiction = relationship(
+        "ActivityDefinitionJurisdiction", back_populates="codings"
+    )

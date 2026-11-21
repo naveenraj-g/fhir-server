@@ -18,6 +18,7 @@ def _format_date(d) -> str | None:
         return None
     return d.isoformat() if hasattr(d, "isoformat") else str(d)
 
+
 if TYPE_CHECKING:
     from app.schemas.task.input import (
         TaskCreateSchema,
@@ -57,14 +58,28 @@ _GROUP_IDENTIFIER_FIELDS = {
     "group_identifier_assigner",
     "group_identifier_assigner_display",
 } | {f"group_identifier_assigner_{s}" for s in _IDENTIFIER_SUFFIXES}
-_FOCUS_FIELDS = {"focus", "focus_display"} | {f"focus_{s}" for s in _IDENTIFIER_SUFFIXES}
-_FOR_FIELDS = {"for_", "for", "for_display"} | {f"for_{s}" for s in _IDENTIFIER_SUFFIXES}
-_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {f"encounter_{s}" for s in _IDENTIFIER_SUFFIXES}
+_FOCUS_FIELDS = {"focus", "focus_display"} | {
+    f"focus_{s}" for s in _IDENTIFIER_SUFFIXES
+}
+_FOR_FIELDS = {"for_", "for", "for_display"} | {
+    f"for_{s}" for s in _IDENTIFIER_SUFFIXES
+}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {
+    f"encounter_{s}" for s in _IDENTIFIER_SUFFIXES
+}
 _EXECUTION_PERIOD_FIELDS = {"execution_period_start", "execution_period_end"}
-_REQUESTER_FIELDS = {"requester", "requester_display"} | {f"requester_{s}" for s in _IDENTIFIER_SUFFIXES}
-_OWNER_FIELDS = {"owner", "owner_display"} | {f"owner_{s}" for s in _IDENTIFIER_SUFFIXES}
-_LOCATION_FIELDS = {"location", "location_display"} | {f"location_{s}" for s in _IDENTIFIER_SUFFIXES}
-_REASON_REF_FIELDS = {"reason_reference", "reason_reference_display"} | {f"reason_reference_{s}" for s in _IDENTIFIER_SUFFIXES}
+_REQUESTER_FIELDS = {"requester", "requester_display"} | {
+    f"requester_{s}" for s in _IDENTIFIER_SUFFIXES
+}
+_OWNER_FIELDS = {"owner", "owner_display"} | {
+    f"owner_{s}" for s in _IDENTIFIER_SUFFIXES
+}
+_LOCATION_FIELDS = {"location", "location_display"} | {
+    f"location_{s}" for s in _IDENTIFIER_SUFFIXES
+}
+_REASON_REF_FIELDS = {"reason_reference", "reason_reference_display"} | {
+    f"reason_reference_{s}" for s in _IDENTIFIER_SUFFIXES
+}
 
 
 def _coding_from_payload(c: Any) -> dict:
@@ -132,7 +147,14 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     id_period_start = _get(f"{prefix}_identifier_period_start")
     id_period_end = _get(f"{prefix}_identifier_period_end")
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -182,10 +204,18 @@ def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
         return result
 
     result = {}
-    r = getattr(ref, "reference", None) if not isinstance(ref, dict) else ref.get("reference")
+    r = (
+        getattr(ref, "reference", None)
+        if not isinstance(ref, dict)
+        else ref.get("reference")
+    )
     if r:
         result["reference"] = r
-    d = (getattr(ref, "display", None) if not isinstance(ref, dict) else ref.get("display")) or display
+    d = (
+        getattr(ref, "display", None)
+        if not isinstance(ref, dict)
+        else ref.get("display")
+    ) or display
     if d:
         result["display"] = d
 
@@ -204,7 +234,14 @@ def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
     id_period_start = _get("identifier_period_start")
     id_period_end = _get("identifier_period_end")
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -315,10 +352,14 @@ def _group_identifier_from_payload(payload: Any) -> dict | None:
     if value:
         entry["value"] = value
     p_start = getattr(payload, "group_identifier_period_start", None) or (
-        payload.get("group_identifier_period_start") if isinstance(payload, dict) else None
+        payload.get("group_identifier_period_start")
+        if isinstance(payload, dict)
+        else None
     )
     p_end = getattr(payload, "group_identifier_period_end", None) or (
-        payload.get("group_identifier_period_end") if isinstance(payload, dict) else None
+        payload.get("group_identifier_period_end")
+        if isinstance(payload, dict)
+        else None
     )
     if p_start or p_end:
         period = {}
@@ -352,14 +393,10 @@ def _note_from_payload(n: TaskNoteInput | dict) -> dict | None:
         author_ref = _reference_from_payload(n, "author")
         if author_ref:
             entry["authorReference"] = author_ref
-    time = getattr(n, "time", None) or (
-        n.get("time") if isinstance(n, dict) else None
-    )
+    time = getattr(n, "time", None) or (n.get("time") if isinstance(n, dict) else None)
     if time:
         entry["time"] = fhir_instant(time)
-    text = getattr(n, "text", None) or (
-        n.get("text") if isinstance(n, dict) else None
-    )
+    text = getattr(n, "text", None) or (n.get("text") if isinstance(n, dict) else None)
     if text:
         entry["text"] = text
     return entry or None
@@ -368,6 +405,7 @@ def _note_from_payload(n: TaskNoteInput | dict) -> dict | None:
 def _restriction_from_payload(r: TaskRestrictionInput | dict) -> dict | None:
     if not r:
         return None
+
     def _get(field):
         return r.get(field) if isinstance(r, dict) else getattr(r, field, None)
 
@@ -394,6 +432,7 @@ def _restriction_from_payload(r: TaskRestrictionInput | dict) -> dict | None:
 def _input_from_payload(inp: TaskInputInput | dict) -> dict | None:
     if not inp:
         return None
+
     def _get(field):
         return inp.get(field) if isinstance(inp, dict) else getattr(inp, field, None)
 
@@ -442,6 +481,7 @@ def _input_from_payload(inp: TaskInputInput | dict) -> dict | None:
 def _output_from_payload(out: TaskOutputInput | dict) -> dict | None:
     if not out:
         return None
+
     def _get(field):
         return out.get(field) if isinstance(out, dict) else getattr(out, field, None)
 
@@ -623,7 +663,9 @@ def payload_to_fhir_task(payload: TaskCreateSchema) -> dict:
     if payload.performer_type:
         pts = [
             item
-            for item in (_performer_type_from_payload(pt) for pt in payload.performer_type)
+            for item in (
+                _performer_type_from_payload(pt) for pt in payload.performer_type
+            )
             if item is not None
         ]
         if pts:
@@ -714,9 +756,7 @@ def patch_fragment_to_fhir_task(
 
     if _CODE_FIELDS & fields_set:
         touched.add("code")
-        code = _codeable_concept_from_payload(
-            payload.code_coding, payload.code_text
-        )
+        code = _codeable_concept_from_payload(payload.code_coding, payload.code_text)
         if code:
             fragment["code"] = code
 

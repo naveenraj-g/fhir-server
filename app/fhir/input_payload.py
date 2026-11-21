@@ -33,7 +33,9 @@ def _prune(value: Any) -> Any:
     """Recursively drop None, [], {} (after pruning their own children)."""
     if isinstance(value, dict):
         pruned = {k: _prune(v) for k, v in value.items()}
-        return {k: v for k, v in pruned.items() if v is not None and v != [] and v != {}}
+        return {
+            k: v for k, v in pruned.items() if v is not None and v != [] and v != {}
+        }
     if isinstance(value, list):
         pruned = [_prune(v) for v in value]
         return [v for v in pruned if v is not None and v != [] and v != {}]

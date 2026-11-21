@@ -33,4 +33,6 @@ class EpisodeOfCareStatusHistory(TenantAuditMixin, Base):
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
-    episode_of_care = relationship("EpisodeOfCareModel", back_populates="status_history")
+    episode_of_care = relationship(
+        "EpisodeOfCareModel", back_populates="status_history"
+    )

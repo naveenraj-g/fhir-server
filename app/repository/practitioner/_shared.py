@@ -26,6 +26,12 @@ def _with_relationships(stmt):
     return stmt.options(
         *(
             selectinload(getattr(PractitionerModel, rel))
-            for rel in ("identifiers", "names", "telecoms", "addresses", "communications")
+            for rel in (
+                "identifiers",
+                "names",
+                "telecoms",
+                "addresses",
+                "communications",
+            )
         )
     )

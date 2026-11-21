@@ -39,7 +39,10 @@ from .enums import (
     MedicationRequestStatus,
 )
 from .event_history import MedicationRequestEventHistory
-from .identifier import MedicationRequestIdentifier, MedicationRequestIdentifierTypeCoding
+from .identifier import (
+    MedicationRequestIdentifier,
+    MedicationRequestIdentifierTypeCoding,
+)
 from .insurance import MedicationRequestInsurance
 from .note import MedicationRequestNote
 from .reason_code import MedicationRequestReasonCode, MedicationRequestReasonCodeCoding

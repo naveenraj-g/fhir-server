@@ -9,9 +9,13 @@ from app.core.content_negotiation import (
     require_fhir_json,
 )
 from app.core.logging import get_logger, log_payload
-from app.di.dependencies.immunization_recommendation import get_immunization_recommendation_service
+from app.di.dependencies.immunization_recommendation import (
+    get_immunization_recommendation_service,
+)
 from app.fhir.search.openapi import search_description, search_parameters
-from app.repository.immunization_recommendation.search import immunization_recommendation_search
+from app.repository.immunization_recommendation.search import (
+    immunization_recommendation_search,
+)
 from app.routers._fhir_search import (
     get_query,
     post_query,
@@ -19,7 +23,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.immunization_recommendation import ImmunizationRecommendationCreateSchema, ImmunizationRecommendationPatchSchema
+from app.schemas.immunization_recommendation import (
+    ImmunizationRecommendationCreateSchema,
+    ImmunizationRecommendationPatchSchema,
+)
 from app.services.immunization_recommendation import ImmunizationRecommendationService
 
 from ._responses import (
@@ -66,15 +73,20 @@ logger = get_logger(__name__)
         "`Patient/<id>`, `authority` (Organization), a supporting Immunization, supporting patient information "
         "that is a resource on this server (Condition, Procedure, DiagnosticReport, AllergyIntolerance, ...) and "
         "`identifier.assigner` are rejected with 422 if they do not exist in the caller's org; an "
-        "ImmunizationEvaluation, an Observation, an absolute URL or a logical reference is stored as sent. " + _CONTENT_NEG
+        "ImmunizationEvaluation, an Observation, an absolute URL or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_immunization_recommendation(
     payload: ImmunizationRecommendationCreateSchema,
     request: Request,
-    actor: AuthUser = Depends(require_permission("immunization_recommendation", "create")),
-    immunization_recommendation_service: ImmunizationRecommendationService = Depends(get_immunization_recommendation_service),
+    actor: AuthUser = Depends(
+        require_permission("immunization_recommendation", "create")
+    ),
+    immunization_recommendation_service: ImmunizationRecommendationService = Depends(
+        get_immunization_recommendation_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -84,8 +96,10 @@ async def create_immunization_recommendation(
         extra={"event": "route.create_immunization_recommendation"},
     )
     log_payload(logger, "immunization_recommendation.create.payload", payload)
-    immunization_recommendation = await immunization_recommendation_service.create_immunization_recommendation(
-        payload, actor.org_id, actor.sub, body=await request.json()
+    immunization_recommendation = (
+        await immunization_recommendation_service.create_immunization_recommendation(
+            payload, actor.org_id, actor.sub, body=await request.json()
+        )
     )
     return fhir_response(
         immunization_recommendation_service._to_fhir(immunization_recommendation),
@@ -166,8 +180,12 @@ async def _search(
 )
 async def search_immunization_recommendations(
     request: Request,
-    actor: AuthUser = Depends(require_permission("immunization_recommendation", "read")),
-    immunization_recommendation_service: ImmunizationRecommendationService = Depends(get_immunization_recommendation_service),
+    actor: AuthUser = Depends(
+        require_permission("immunization_recommendation", "read")
+    ),
+    immunization_recommendation_service: ImmunizationRecommendationService = Depends(
+        get_immunization_recommendation_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -175,7 +193,9 @@ async def search_immunization_recommendations(
         "Search ImmunizationRecommendation resources",
         extra={"event": "route.search_immunization_recommendations"},
     )
-    return await _search(request, get_query(request), actor, immunization_recommendation_service)
+    return await _search(
+        request, get_query(request), actor, immunization_recommendation_service
+    )
 
 
 @router.post(
@@ -193,14 +213,20 @@ async def search_immunization_recommendations(
 )
 async def search_immunization_recommendations_post(
     request: Request,
-    actor: AuthUser = Depends(require_permission("immunization_recommendation", "read")),
-    immunization_recommendation_service: ImmunizationRecommendationService = Depends(get_immunization_recommendation_service),
+    actor: AuthUser = Depends(
+        require_permission("immunization_recommendation", "read")
+    ),
+    immunization_recommendation_service: ImmunizationRecommendationService = Depends(
+        get_immunization_recommendation_service
+    ),
 ):
     logger.info(
         "Search ImmunizationRecommendation resources (POST _search)",
         extra={"event": "route.search_immunization_recommendations_post"},
     )
-    return await _search(request, await post_query(request), actor, immunization_recommendation_service)
+    return await _search(
+        request, await post_query(request), actor, immunization_recommendation_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -222,8 +248,12 @@ async def get_immunization_recommendation(
     immunization_recommendation_id: int = Path(
         ..., ge=1, description="Public immunization_recommendation identifier."
     ),
-    actor: AuthUser = Depends(require_permission("immunization_recommendation", "read")),
-    immunization_recommendation_service: ImmunizationRecommendationService = Depends(get_immunization_recommendation_service),
+    actor: AuthUser = Depends(
+        require_permission("immunization_recommendation", "read")
+    ),
+    immunization_recommendation_service: ImmunizationRecommendationService = Depends(
+        get_immunization_recommendation_service
+    ),
 ):
     logger.info(
         "Retrieve an ImmunizationRecommendation resource by public immunization_recommendation_id",
@@ -235,7 +265,9 @@ async def get_immunization_recommendation(
     immunization_recommendation = await immunization_recommendation_service.get_immunization_recommendation_scoped(
         immunization_recommendation_id, actor.org_id
     )
-    return fhir_response(immunization_recommendation_service._to_fhir(immunization_recommendation))
+    return fhir_response(
+        immunization_recommendation_service._to_fhir(immunization_recommendation)
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────
@@ -262,22 +294,31 @@ async def patch_immunization_recommendation(
     immunization_recommendation_id: int = Path(
         ..., ge=1, description="Public immunization_recommendation identifier."
     ),
-    actor: AuthUser = Depends(require_permission("immunization_recommendation", "update")),
-    immunization_recommendation_service: ImmunizationRecommendationService = Depends(get_immunization_recommendation_service),
+    actor: AuthUser = Depends(
+        require_permission("immunization_recommendation", "update")
+    ),
+    immunization_recommendation_service: ImmunizationRecommendationService = Depends(
+        get_immunization_recommendation_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_immunization_recommendation()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update an ImmunizationRecommendation resource",
-        extra={"event": "route.patch_immunization_recommendation", "immunization_recommendation_id": immunization_recommendation_id},
+        extra={
+            "event": "route.patch_immunization_recommendation",
+            "immunization_recommendation_id": immunization_recommendation_id,
+        },
     )
     log_payload(logger, "immunization_recommendation.patch.payload", payload)
-    updated = await immunization_recommendation_service.patch_immunization_recommendation(
-        immunization_recommendation_id,
-        payload,
-        actor.sub,
-        org_id=actor.org_id,
-        body=await request.json(),
+    updated = (
+        await immunization_recommendation_service.patch_immunization_recommendation(
+            immunization_recommendation_id,
+            payload,
+            actor.sub,
+            org_id=actor.org_id,
+            body=await request.json(),
+        )
     )
     return fhir_response(immunization_recommendation_service._to_fhir(updated))
 
@@ -301,8 +342,12 @@ async def delete_immunization_recommendation(
     immunization_recommendation_id: int = Path(
         ..., ge=1, description="Public immunization_recommendation identifier."
     ),
-    actor: AuthUser = Depends(require_permission("immunization_recommendation", "delete")),
-    immunization_recommendation_service: ImmunizationRecommendationService = Depends(get_immunization_recommendation_service),
+    actor: AuthUser = Depends(
+        require_permission("immunization_recommendation", "delete")
+    ),
+    immunization_recommendation_service: ImmunizationRecommendationService = Depends(
+        get_immunization_recommendation_service
+    ),
 ):
     """delete_immunization_recommendation() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -313,4 +358,6 @@ async def delete_immunization_recommendation(
             "immunization_recommendation_id": immunization_recommendation_id,
         },
     )
-    await immunization_recommendation_service.delete_immunization_recommendation(immunization_recommendation_id, org_id=actor.org_id)
+    await immunization_recommendation_service.delete_immunization_recommendation(
+        immunization_recommendation_id, org_id=actor.org_id
+    )

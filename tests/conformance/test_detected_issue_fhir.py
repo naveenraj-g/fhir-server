@@ -53,7 +53,14 @@ CASES = {
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "FILL"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/detected-issue-id",
                 "value": "DI-1",
                 "period": {"start": "2020-01-01"},
@@ -63,41 +70,114 @@ CASES = {
     ),
     **{
         f"status_{s}": _issue({"status": s})
-        for s in ("registered", "preliminary", "final", "amended", "corrected", "cancelled", "entered-in-error", "unknown")
+        for s in (
+            "registered",
+            "preliminary",
+            "final",
+            "amended",
+            "corrected",
+            "cancelled",
+            "entered-in-error",
+            "unknown",
+        )
     },
-    "code": _with(code={"coding": [{"system": ACT, "code": "DUPTHPY", "display": "Duplicate therapy alert"}], "text": "Dup"}),
+    "code": _with(
+        code={
+            "coding": [
+                {"system": ACT, "code": "DUPTHPY", "display": "Duplicate therapy alert"}
+            ],
+            "text": "Dup",
+        }
+    ),
     **{f"severity_{s}": _with(severity=s) for s in ("high", "moderate", "low")},
     "patient": _with(patient={"reference": "Patient/10001"}),
-    "patient_with_display": _with(patient={"reference": "Patient/10001", "display": "A. Patient"}),
-    "patient_logical": _with(patient={"identifier": {"system": "urn:pts", "value": "P-9"}}),
-    "patient_absolute_url": _with(patient={"reference": "https://other.example.org/fhir/Patient/9"}),
+    "patient_with_display": _with(
+        patient={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
+    "patient_logical": _with(
+        patient={"identifier": {"system": "urn:pts", "value": "P-9"}}
+    ),
+    "patient_absolute_url": _with(
+        patient={"reference": "https://other.example.org/fhir/Patient/9"}
+    ),
     "identified_date_time": _with(identifiedDateTime="2023-01-15T09:30:00Z"),
     "identified_date_time_partial": _with(identifiedDateTime="2023-01"),
-    "identified_period": _with(identifiedPeriod={"start": "2023-01-01", "end": "2023-06-01"}),
+    "identified_period": _with(
+        identifiedPeriod={"start": "2023-01-01", "end": "2023-06-01"}
+    ),
     "identified_period_open": _with(identifiedPeriod={"start": "2023-01-01"}),
-    **{f"author_{t}": _with(author={"reference": f"{t}/1"}) for t in ("Practitioner", "PractitionerRole", "Device")},
-    "author_logical": _with(author={"identifier": {"system": "urn:who", "value": "W-1"}}),
-    **{f"implicated_{t}": _with(implicated=[{"reference": f"{t}/1"}])
-       for t in ("Condition", "MedicationRequest", "Observation", "Patient", "ClinicalImpression")},
-    "implicated_several": _with(implicated=[{"reference": "Condition/1"}, {"reference": "MedicationRequest/2"}]),
+    **{
+        f"author_{t}": _with(author={"reference": f"{t}/1"})
+        for t in ("Practitioner", "PractitionerRole", "Device")
+    },
+    "author_logical": _with(
+        author={"identifier": {"system": "urn:who", "value": "W-1"}}
+    ),
+    **{
+        f"implicated_{t}": _with(implicated=[{"reference": f"{t}/1"}])
+        for t in (
+            "Condition",
+            "MedicationRequest",
+            "Observation",
+            "Patient",
+            "ClinicalImpression",
+        )
+    },
+    "implicated_several": _with(
+        implicated=[{"reference": "Condition/1"}, {"reference": "MedicationRequest/2"}]
+    ),
     "evidence_empty": _with(evidence=[{}]),
-    "evidence_code": _with(evidence=[{"code": [{"coding": [{"system": "http://snomed.info/sct", "code": "1"}]}, {"text": "x"}]}]),
-    "evidence_detail": _with(evidence=[{"detail": [{"reference": "DiagnosticReport/110001"}, {"reference": "GuidanceResponse/1"}]}]),
-    "evidence_both": _with(evidence=[{"code": [{"text": "x"}], "detail": [{"reference": "Observation/1"}]}]),
+    "evidence_code": _with(
+        evidence=[
+            {
+                "code": [
+                    {"coding": [{"system": "http://snomed.info/sct", "code": "1"}]},
+                    {"text": "x"},
+                ]
+            }
+        ]
+    ),
+    "evidence_detail": _with(
+        evidence=[
+            {
+                "detail": [
+                    {"reference": "DiagnosticReport/110001"},
+                    {"reference": "GuidanceResponse/1"},
+                ]
+            }
+        ]
+    ),
+    "evidence_both": _with(
+        evidence=[{"code": [{"text": "x"}], "detail": [{"reference": "Observation/1"}]}]
+    ),
     "detail": _with(detail="The patient is prescribed two drugs of the same class."),
     "reference": _with(reference="http://example.org/protocols/duplicate-therapy"),
     "mitigation_action": _with(mitigation=[{"action": {"text": "Stopped"}}]),
     "mitigation_full": _with(
         mitigation=[
             {
-                "action": {"coding": [{"system": ACT, "code": "13"}], "text": "Stopped"},
+                "action": {
+                    "coding": [{"system": ACT, "code": "13"}],
+                    "text": "Stopped",
+                },
                 "date": "2023-01-16T08:00:00Z",
                 "author": {"reference": "Practitioner/30001"},
             }
         ]
     ),
-    "mitigation_author_role": _with(mitigation=[{"action": {"text": "a"}, "author": {"reference": "PractitionerRole/1"}}]),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "mitigation_author_role": _with(
+        mitigation=[
+            {"action": {"text": "a"}, "author": {"reference": "PractitionerRole/1"}}
+        ]
+    ),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:di", "value": "DI-1"}],
         code={"text": "Dup"},
@@ -106,10 +186,21 @@ CASES = {
         identifiedDateTime="2023-01-15T09:30:00Z",
         author={"reference": "Practitioner/30001"},
         implicated=[{"reference": "Condition/120001"}],
-        evidence=[{"code": [{"text": "x"}], "detail": [{"reference": "DiagnosticReport/110001"}]}],
+        evidence=[
+            {
+                "code": [{"text": "x"}],
+                "detail": [{"reference": "DiagnosticReport/110001"}],
+            }
+        ],
         detail="Two drugs of one class.",
         reference="http://example.org/protocols/a",
-        mitigation=[{"action": {"text": "Stopped"}, "date": "2023-01-16", "author": {"reference": "Practitioner/30001"}}],
+        mitigation=[
+            {
+                "action": {"text": "Stopped"},
+                "date": "2023-01-16",
+                "author": {"reference": "Practitioner/30001"},
+            }
+        ],
     ),
 }
 
@@ -120,11 +211,17 @@ def test_detected_issue_mapper_emits_valid_fhir_r4(case):
 
 
 def test_mapper_serves_content_unchanged():
-    content = {**BASE, "detail": "Two drugs of one class.", "evidence": [{"code": [{"text": "x"}]}]}
+    content = {
+        **BASE,
+        "detail": "Two drugs of one class.",
+        "evidence": [{"code": [{"text": "x"}]}],
+    }
     out = to_fhir_detected_issue(_issue(content))
     assert out["resourceType"] == "DetectedIssue"
     assert out["id"] == "540001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -149,16 +246,28 @@ def test_mapper_serves_content_unchanged():
         ("identifiedPeriod as string", {"identifiedPeriod": "2023"}),
         ("author as string not a Reference", {"author": "Practitioner/1"}),
         ("identifier as object not a list", {"identifier": {"value": "x"}}),
-        ("implicated as object not a list", {"implicated": {"reference": "Condition/1"}}),
+        (
+            "implicated as object not a list",
+            {"implicated": {"reference": "Condition/1"}},
+        ),
         ("evidence as object not a list", {"evidence": {"detail": []}}),
         ("evidence code as string", {"evidence": [{"code": "x"}]}),
-        ("evidence detail as object not a list", {"evidence": [{"detail": {"reference": "Observation/1"}}]}),
+        (
+            "evidence detail as object not a list",
+            {"evidence": [{"detail": {"reference": "Observation/1"}}]},
+        ),
         ("detail as number", {"detail": 5}),
         ("reference as number", {"reference": 5}),
         ("mitigation as object not a list", {"mitigation": {"action": {"text": "x"}}}),
         ("mitigation action as string", {"mitigation": [{"action": "x"}]}),
-        ("mitigation date not a dateTime", {"mitigation": [{"action": {"text": "x"}, "date": "yesterday"}]}),
-        ("mitigation author as string", {"mitigation": [{"action": {"text": "x"}, "author": "Practitioner/1"}]}),
+        (
+            "mitigation date not a dateTime",
+            {"mitigation": [{"action": {"text": "x"}, "date": "yesterday"}]},
+        ),
+        (
+            "mitigation author as string",
+            {"mitigation": [{"action": {"text": "x"}, "author": "Practitioner/1"}]},
+        ),
     ],
 )
 def test_validator_rejects_invalid_fhir(label, broken):
@@ -166,4 +275,6 @@ def test_validator_rejects_invalid_fhir(label, broken):
 
     payload = {"resourceType": "DetectedIssue", "id": "540001", **BASE, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), pb2.DetectedIssue, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.DetectedIssue, validate=True
+        )

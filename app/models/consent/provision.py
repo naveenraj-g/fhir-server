@@ -26,7 +26,10 @@ class ConsentProvision(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     parent_provision_id = Column(
         BigInteger,

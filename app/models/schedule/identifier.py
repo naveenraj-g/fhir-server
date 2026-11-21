@@ -26,7 +26,9 @@ class ScheduleIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named schedule_pk (not schedule_id) so it can't be confused with
     # ScheduleModel.schedule_id, the public sequence id.
-    schedule_pk = Column(BigInteger, ForeignKey("schedule.id"), nullable=False, index=True)
+    schedule_pk = Column(
+        BigInteger, ForeignKey("schedule.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

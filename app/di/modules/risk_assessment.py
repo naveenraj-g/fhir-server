@@ -5,7 +5,6 @@ from app.services.risk_assessment import RiskAssessmentService
 
 
 class RiskAssessmentContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     risk_assessment_repository = providers.Factory(

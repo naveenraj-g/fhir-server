@@ -26,7 +26,9 @@ class ImmunizationIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named immunization_pk (not immunization_id) so it can't be
     # confused with ImmunizationModel.immunization_id, the public id.
-    immunization_pk = Column(BigInteger, ForeignKey("immunization.id"), nullable=False, index=True)
+    immunization_pk = Column(
+        BigInteger, ForeignKey("immunization.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

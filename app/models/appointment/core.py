@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import AppointmentStatus
 
-appointment_id_seq = Sequence("appointment_pub_seq", start=40000, increment=1, metadata=Base.metadata)
+appointment_id_seq = Sequence(
+    "appointment_pub_seq", start=40000, increment=1, metadata=Base.metadata
+)
 
 
 class AppointmentModel(TenantAuditMixin, Base):
@@ -76,7 +78,21 @@ class AppointmentModel(TenantAuditMixin, Base):
     )
     start = Column(DateTime(timezone=True), nullable=True, index=True)
 
-    identifiers = relationship("AppointmentIdentifier", back_populates="appointment", cascade="all, delete-orphan")
-    tokens = relationship("AppointmentToken", back_populates="appointment", cascade="all, delete-orphan")
-    references = relationship("AppointmentReference", back_populates="appointment", cascade="all, delete-orphan")
-    participants = relationship("AppointmentParticipant", back_populates="appointment", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "AppointmentIdentifier",
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+    )
+    tokens = relationship(
+        "AppointmentToken", back_populates="appointment", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "AppointmentReference",
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+    )
+    participants = relationship(
+        "AppointmentParticipant",
+        back_populates="appointment",
+        cascade="all, delete-orphan",
+    )

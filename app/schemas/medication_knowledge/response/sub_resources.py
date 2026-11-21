@@ -70,7 +70,9 @@ class PlainMedicationKnowledgeAdminGuidelinePatientChar(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: int | None = None
-    characteristic_codeable_concept: MedicationKnowledgeCodeableConceptResponse | None = None
+    characteristic_codeable_concept: (
+        MedicationKnowledgeCodeableConceptResponse | None
+    ) = None
     characteristic_quantity: MedicationKnowledgeQuantityResponse | None = None
     value: list[str] | None = None
 
@@ -80,9 +82,13 @@ class PlainMedicationKnowledgeAdminGuideline(BaseModel):
 
     id: int | None = None
     dosage: list[PlainMedicationKnowledgeAdminGuidelineDosage] | None = None
-    indication_codeable_concept: MedicationKnowledgeCodeableConceptResponse | None = None
+    indication_codeable_concept: MedicationKnowledgeCodeableConceptResponse | None = (
+        None
+    )
     indication_reference: PlainMedicationKnowledgeReference | None = None
-    patient_characteristics: list[PlainMedicationKnowledgeAdminGuidelinePatientChar] | None = None
+    patient_characteristics: (
+        list[PlainMedicationKnowledgeAdminGuidelinePatientChar] | None
+    ) = None
 
 
 class PlainMedicationKnowledgeMedicineClassification(BaseModel):

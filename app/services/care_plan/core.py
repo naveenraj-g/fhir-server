@@ -40,7 +40,9 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("CarePlan operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "CarePlan operation requires an org-scoped token"
+            )
         care_plan = await self.repository.get_by_care_plan_id_in_org(
             care_plan_id, org_id
         )
@@ -71,7 +73,9 @@ class _CoreMixin:
     ) -> tuple[list[CarePlanModel], int | None]:
         """Raises PermissionDeniedError (403) for an org-less token."""
         if not org_id:
-            raise PermissionDeniedError("CarePlan operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "CarePlan operation requires an org-scoped token"
+            )
         return await self.repository.list(
             org_id=org_id,
             status=status,
@@ -100,9 +104,13 @@ class _CoreMixin:
         created_by: str | None,
     ) -> CarePlanModel:
         if not org_id:
-            raise PermissionDeniedError("CarePlan creation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "CarePlan creation requires an org-scoped token"
+            )
         if not created_by:
-            raise PermissionDeniedError("CarePlan creation requires an authenticated actor")
+            raise PermissionDeniedError(
+                "CarePlan creation requires an authenticated actor"
+            )
 
         await self._validate_base_r4(payload_to_fhir_care_plan(payload), org_id)
         cp = await self.repository.create_full(payload, org_id, created_by)
@@ -122,7 +130,9 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", care_plan_id, org_id)
             raise NotFoundError("CarePlan not found")
-        existing = await self.repository.get_by_care_plan_id_in_org(care_plan_id, org_id)
+        existing = await self.repository.get_by_care_plan_id_in_org(
+            care_plan_id, org_id
+        )
         if not existing:
             self._log_org_scope_miss("patch", care_plan_id, org_id)
             raise NotFoundError("CarePlan not found")
@@ -146,8 +156,12 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_care_plan(self, care_plan_id: int, org_id: str | None = None) -> None:
-        if not org_id or not await self.repository.care_plan_belongs_to_org(care_plan_id, org_id):
+    async def delete_care_plan(
+        self, care_plan_id: int, org_id: str | None = None
+    ) -> None:
+        if not org_id or not await self.repository.care_plan_belongs_to_org(
+            care_plan_id, org_id
+        ):
             self._log_org_scope_miss("delete", care_plan_id, org_id)
             raise NotFoundError("CarePlan not found")
         deleted = await self.repository.delete(care_plan_id)
@@ -169,7 +183,9 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(operation: str, care_plan_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, care_plan_id: int, org_id: str | None
+    ) -> None:
         logger.warning(
             "CarePlan write rejected by org scope",
             extra={

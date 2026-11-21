@@ -26,7 +26,9 @@ class EndpointIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named endpoint_pk (not endpoint_id) so it can't be confused with
     # EndpointModel.endpoint_id, the public sequence id.
-    endpoint_pk = Column(BigInteger, ForeignKey("endpoint.id"), nullable=False, index=True)
+    endpoint_pk = Column(
+        BigInteger, ForeignKey("endpoint.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

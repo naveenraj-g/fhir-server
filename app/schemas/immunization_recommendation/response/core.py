@@ -16,36 +16,70 @@ class FHIRImmunizationRecommendationDateCriterion(BaseModel):
 
 
 class FHIRImmunizationRecommendationRecommendation(BaseModel):
-    vaccineCode: list[FHIRCodeableConcept] | None = Field(None, description="Vaccine or vaccine group the recommendation applies to.")
-    targetDisease: FHIRCodeableConcept | None = Field(None, description="Disease to be immunized against.")
-    contraindicatedVaccineCode: list[FHIRCodeableConcept] | None = Field(None, description="Vaccine which is contraindicated to fulfill the recommendation.")
-    forecastStatus: FHIRCodeableConcept | None = Field(None, description="Vaccine recommendation status.")
-    forecastReason: list[FHIRCodeableConcept] | None = Field(None, description="Vaccine administration status reason.")
-    dateCriterion: list[FHIRImmunizationRecommendationDateCriterion] | None = Field(None, description="Dates governing the proposed immunization.")
+    vaccineCode: list[FHIRCodeableConcept] | None = Field(
+        None, description="Vaccine or vaccine group the recommendation applies to."
+    )
+    targetDisease: FHIRCodeableConcept | None = Field(
+        None, description="Disease to be immunized against."
+    )
+    contraindicatedVaccineCode: list[FHIRCodeableConcept] | None = Field(
+        None,
+        description="Vaccine which is contraindicated to fulfill the recommendation.",
+    )
+    forecastStatus: FHIRCodeableConcept | None = Field(
+        None, description="Vaccine recommendation status."
+    )
+    forecastReason: list[FHIRCodeableConcept] | None = Field(
+        None, description="Vaccine administration status reason."
+    )
+    dateCriterion: list[FHIRImmunizationRecommendationDateCriterion] | None = Field(
+        None, description="Dates governing the proposed immunization."
+    )
     description: str | None = Field(None, description="Protocol details.")
     series: str | None = Field(None, description="Name of the vaccination series.")
-    doseNumberPositiveInt: int | None = Field(None, description="Recommended dose number within the series.")
-    doseNumberString: str | None = Field(None, description="Recommended dose number within the series (string).")
-    seriesDosesPositiveInt: int | None = Field(None, description="Recommended number of doses for immunity.")
-    seriesDosesString: str | None = Field(None, description="Recommended number of doses for immunity (string).")
-    supportingImmunization: list[FHIRReference] | None = Field(None, description="Past immunizations supporting the recommendation.")
-    supportingPatientInformation: list[FHIRReference] | None = Field(None, description="Patient observations supporting the recommendation.")
+    doseNumberPositiveInt: int | None = Field(
+        None, description="Recommended dose number within the series."
+    )
+    doseNumberString: str | None = Field(
+        None, description="Recommended dose number within the series (string)."
+    )
+    seriesDosesPositiveInt: int | None = Field(
+        None, description="Recommended number of doses for immunity."
+    )
+    seriesDosesString: str | None = Field(
+        None, description="Recommended number of doses for immunity (string)."
+    )
+    supportingImmunization: list[FHIRReference] | None = Field(
+        None, description="Past immunizations supporting the recommendation."
+    )
+    supportingPatientInformation: list[FHIRReference] | None = Field(
+        None, description="Patient observations supporting the recommendation."
+    )
 
 
 class FHIRImmunizationRecommendationSchema(BaseModel):
-    resourceType: str = Field("ImmunizationRecommendation", description="Always 'ImmunizationRecommendation'.")
-    id: str = Field(..., description="Public immunization_recommendation_id as a string.")
+    resourceType: str = Field(
+        "ImmunizationRecommendation", description="Always 'ImmunizationRecommendation'."
+    )
+    id: str = Field(
+        ..., description="Public immunization_recommendation_id as a string."
+    )
     meta: FHIRMeta | None = Field(
         None,
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
     extension: list[dict] | None = Field(
-        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
-    identifier: list[FHIRIdentifier] | None = Field(None, description="Business identifier.")
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="Business identifier."
+    )
     patient: FHIRReference | None = Field(None, description="Who this profile is for.")
     date: str | None = Field(None, description="Date recommendation(s) created.")
-    authority: FHIRReference | None = Field(None, description="Who is responsible for the protocol.")
+    authority: FHIRReference | None = Field(
+        None, description="Who is responsible for the protocol."
+    )
     recommendation: list[FHIRImmunizationRecommendationRecommendation] | None = Field(
         None, description="Vaccine administration recommendations."
     )

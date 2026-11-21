@@ -44,9 +44,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Schedule operation requires an org-scoped token"
             )
-        schedule = await self.repository.get_by_schedule_id_in_org(
-            schedule_id, org_id
-        )
+        schedule = await self.repository.get_by_schedule_id_in_org(schedule_id, org_id)
         if not schedule:
             raise NotFoundError("Schedule not found")
         return schedule
@@ -58,9 +56,7 @@ class _CoreMixin:
         *,
         strict: bool = False,
         fhir_base: str | None = None,
-    ) -> tuple[
-        SearchRequest, list[ScheduleModel], int | None, list[ScheduleModel]
-    ]:
+    ) -> tuple[SearchRequest, list[ScheduleModel], int | None, list[ScheduleModel]]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the Schedule search
         registry (SearchError -> 400 OperationOutcome). `strict` is
@@ -137,9 +133,7 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", schedule_id, org_id)
             raise NotFoundError("Schedule not found")
-        existing = await self.repository.get_by_schedule_id_in_org(
-            schedule_id, org_id
-        )
+        existing = await self.repository.get_by_schedule_id_in_org(schedule_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", schedule_id, org_id)
             raise NotFoundError("Schedule not found")

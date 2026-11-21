@@ -8,7 +8,11 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.specimen import to_fhir_specimen
-from app.models.enums import IdentifierUse, OrganizationReferenceType, ServiceRequestReferenceType
+from app.models.enums import (
+    IdentifierUse,
+    OrganizationReferenceType,
+    ServiceRequestReferenceType,
+)
 from app.models.specimen import (
     SpecimenAccessionIdentifierTypeCoding,
     SpecimenAdditiveReferenceType,

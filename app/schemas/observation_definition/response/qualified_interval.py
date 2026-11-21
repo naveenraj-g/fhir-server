@@ -10,13 +10,27 @@ class FHIRQualifiedInterval(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     category: str | None = Field(None, description="reference | critical | absolute")
-    range: FHIRRange | None = Field(None, description="The low and high values determining the interval.")
-    context: FHIRCodeableConcept | None = Field(None, description="Health context the range applies to.")
-    appliesTo: list[FHIRCodeableConcept] | None = Field(None, description="Target population this reference range applies to.")
-    gender: str | None = Field(None, description="Sex of the population the range applies to.")
-    age: FHIRRange | None = Field(None, description="Age at which this reference range is applicable.")
-    gestationalAge: FHIRRange | None = Field(None, description="Gestational age in pregnancy.")
-    condition: str | None = Field(None, description="Condition for which the reference range is valid.")
+    range: FHIRRange | None = Field(
+        None, description="The low and high values determining the interval."
+    )
+    context: FHIRCodeableConcept | None = Field(
+        None, description="Health context the range applies to."
+    )
+    appliesTo: list[FHIRCodeableConcept] | None = Field(
+        None, description="Target population this reference range applies to."
+    )
+    gender: str | None = Field(
+        None, description="Sex of the population the range applies to."
+    )
+    age: FHIRRange | None = Field(
+        None, description="Age at which this reference range is applicable."
+    )
+    gestationalAge: FHIRRange | None = Field(
+        None, description="Gestational age in pregnancy."
+    )
+    condition: str | None = Field(
+        None, description="Condition for which the reference range is valid."
+    )
 
 
 class PlainObservationDefinitionQualifiedIntervalAppliesTo(BaseModel):
@@ -46,9 +60,11 @@ class PlainObservationDefinitionQualifiedInterval(BaseModel):
     range_high_code: str | None = Field(None, description="range.high code.")
 
     context_text: str | None = Field(None, description="Context text.")
-    context_codings: list[PlainCodingRow] | None = Field(None, description="Context codings.")
-    applies_to: list[PlainObservationDefinitionQualifiedIntervalAppliesTo] | None = Field(
-        None, description="Target populations."
+    context_codings: list[PlainCodingRow] | None = Field(
+        None, description="Context codings."
+    )
+    applies_to: list[PlainObservationDefinitionQualifiedIntervalAppliesTo] | None = (
+        Field(None, description="Target populations.")
     )
     gender: str | None = Field(None, description="male | female | other | unknown")
 
@@ -61,13 +77,29 @@ class PlainObservationDefinitionQualifiedInterval(BaseModel):
     age_high_system: str | None = Field(None, description="age.high system.")
     age_high_code: str | None = Field(None, description="age.high code.")
 
-    gestational_age_low_value: float | None = Field(None, description="gestationalAge.low value.")
-    gestational_age_low_unit: str | None = Field(None, description="gestationalAge.low unit.")
-    gestational_age_low_system: str | None = Field(None, description="gestationalAge.low system.")
-    gestational_age_low_code: str | None = Field(None, description="gestationalAge.low code.")
-    gestational_age_high_value: float | None = Field(None, description="gestationalAge.high value.")
-    gestational_age_high_unit: str | None = Field(None, description="gestationalAge.high unit.")
-    gestational_age_high_system: str | None = Field(None, description="gestationalAge.high system.")
-    gestational_age_high_code: str | None = Field(None, description="gestationalAge.high code.")
+    gestational_age_low_value: float | None = Field(
+        None, description="gestationalAge.low value."
+    )
+    gestational_age_low_unit: str | None = Field(
+        None, description="gestationalAge.low unit."
+    )
+    gestational_age_low_system: str | None = Field(
+        None, description="gestationalAge.low system."
+    )
+    gestational_age_low_code: str | None = Field(
+        None, description="gestationalAge.low code."
+    )
+    gestational_age_high_value: float | None = Field(
+        None, description="gestationalAge.high value."
+    )
+    gestational_age_high_unit: str | None = Field(
+        None, description="gestationalAge.high unit."
+    )
+    gestational_age_high_system: str | None = Field(
+        None, description="gestationalAge.high system."
+    )
+    gestational_age_high_code: str | None = Field(
+        None, description="gestationalAge.high code."
+    )
 
     condition: str | None = Field(None, description="Condition text.")

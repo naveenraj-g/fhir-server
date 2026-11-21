@@ -15,9 +15,7 @@ class _SingleReferenceInput(BaseModel):
     reference_display: str | None = Field(
         None, description="Plain text narrative identifying the target."
     )
-    display: str | None = Field(
-        None, description="Alias for reference_display."
-    )
+    display: str | None = Field(None, description="Alias for reference_display.")
     reference_identifier_use: IdentifierUse | None = Field(
         None, description="Fallback identifier — its purpose, if known."
     )

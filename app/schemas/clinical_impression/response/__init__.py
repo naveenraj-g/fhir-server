@@ -1,3 +1,11 @@
-from .core import FHIRClinicalImpressionBundle, FHIRClinicalImpressionBundleEntry, FHIRClinicalImpressionSchema
+from .core import (
+    FHIRClinicalImpressionBundle,
+    FHIRClinicalImpressionBundleEntry,
+    FHIRClinicalImpressionSchema,
+)
 
-__all__ = ["FHIRClinicalImpressionBundle", "FHIRClinicalImpressionBundleEntry", "FHIRClinicalImpressionSchema"]
+__all__ = [
+    "FHIRClinicalImpressionBundle",
+    "FHIRClinicalImpressionBundleEntry",
+    "FHIRClinicalImpressionSchema",
+]

@@ -112,9 +112,7 @@ class MedicationAdministrationService:
         await self._validate_base_r4(
             payload_to_fhir_medication_administration(payload), org_id
         )
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "MedicationAdministration created",
             extra={
@@ -165,12 +163,17 @@ class MedicationAdministrationService:
     async def delete_medication_administration(
         self, medication_administration_id: int, org_id: str | None = None
     ) -> None:
-        if not org_id or not await self.repository.medication_administration_belongs_to_org(
-            medication_administration_id, org_id
+        if (
+            not org_id
+            or not await self.repository.medication_administration_belongs_to_org(
+                medication_administration_id, org_id
+            )
         ):
             self._log_org_scope_miss("delete", medication_administration_id, org_id)
             raise NotFoundError("MedicationAdministration not found")
-        deleted = await self.repository.delete(medication_administration_id, org_id=org_id)
+        deleted = await self.repository.delete(
+            medication_administration_id, org_id=org_id
+        )
         if not deleted:
             raise NotFoundError("MedicationAdministration not found")
         logger.info(
@@ -182,9 +185,7 @@ class MedicationAdministrationService:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource(
             "MedicationAdministration", fhir_resource, org_id=org_id
         )

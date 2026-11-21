@@ -98,7 +98,9 @@ async def _add_identifiers(
             )
 
 
-def _add_codings(session, model_cls, goal_pk: int, org_id: str, codings, created_by: str) -> None:
+def _add_codings(
+    session, model_cls, goal_pk: int, org_id: str, codings, created_by: str
+) -> None:
     for c in codings or []:
         session.add(
             model_cls(
@@ -278,9 +280,7 @@ async def _add_notes(
                 else (None, None)
             )
             if auth_type and auth_id:
-                await _validate_ref(
-                    session, org_id, auth_type, auth_id, "note.author"
-                )
+                await _validate_ref(session, org_id, auth_type, auth_id, "note.author")
             session.add(
                 GoalNote(
                     goal_pk=goal_pk,
@@ -327,9 +327,13 @@ class GoalRepository:
 
     async def goal_belongs_to_org(self, goal_id: int, org_id: str) -> bool:
         async with self.session_factory() as session:
-            stmt = select(func.count()).select_from(GoalModel).where(
-                GoalModel.goal_id == goal_id,
-                GoalModel.tenant_id == org_id,
+            stmt = (
+                select(func.count())
+                .select_from(GoalModel)
+                .where(
+                    GoalModel.goal_id == goal_id,
+                    GoalModel.tenant_id == org_id,
+                )
             )
             res = await session.execute(stmt)
             return bool(res.scalar() or 0)
@@ -352,9 +356,7 @@ class GoalRepository:
                 else (None, None)
             )
             if exp_type and exp_id:
-                await _validate_ref(
-                    session, org_id, exp_type, exp_id, "expressedBy"
-                )
+                await _validate_ref(session, org_id, exp_type, exp_id, "expressedBy")
 
             model = GoalModel(
                 tenant_id=org_id,
@@ -436,9 +438,7 @@ class GoalRepository:
                     session, model.id, org_id, payload.addresses, created_by
                 )
             if payload.note:
-                await _add_notes(
-                    session, model.id, org_id, payload.note, created_by
-                )
+                await _add_notes(session, model.id, org_id, payload.note, created_by)
             if payload.outcome_code:
                 await _add_outcome_codes(
                     session, model.id, org_id, payload.outcome_code, created_by
@@ -594,9 +594,7 @@ class GoalRepository:
 
             if "start_codeable_concept_coding" in provided:
                 await session.execute(
-                    delete(GoalStartCoding).where(
-                        GoalStartCoding.goal_pk == model.id
-                    )
+                    delete(GoalStartCoding).where(GoalStartCoding.goal_pk == model.id)
                 )
                 if payload.start_codeable_concept_coding:
                     _add_codings(
@@ -692,7 +690,11 @@ class GoalRepository:
             sort_col, sort_desc = resolve_sort(
                 sort, _SORTABLE_FIELDS, GoalModel.goal_id, default_desc=True
             )
-            stmt = stmt.order_by(sort_col.desc() if sort_desc else sort_col.asc()).limit(limit).offset(offset)
+            stmt = (
+                stmt.order_by(sort_col.desc() if sort_desc else sort_col.asc())
+                .limit(limit)
+                .offset(offset)
+            )
             stmt = _with_relationships(stmt)
 
             res = await session.execute(stmt)

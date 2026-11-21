@@ -15,7 +15,13 @@ REFERENCE_PARAMS = {
     "specimen": "specimen",
 }
 REFERENCE_TYPES = {
-    "based-on": ("CarePlan", "ImmunizationRecommendation", "MedicationRequest", "NutritionOrder", "ServiceRequest"),
+    "based-on": (
+        "CarePlan",
+        "ImmunizationRecommendation",
+        "MedicationRequest",
+        "NutritionOrder",
+        "ServiceRequest",
+    ),
     "media": ("Media",),
     "result": ("Observation",),
     "specimen": ("Specimen",),
@@ -43,10 +49,19 @@ class DiagnosticReportReference(Base):
     UniqueConstraint: R4 does not forbid listing the same reference twice."""
 
     __tablename__ = "diagnostic_report_reference"
-    __table_args__ = (Index("ix_diagnostic_report_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_diagnostic_report_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
+    diagnostic_report_pk = Column(
+        BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
@@ -54,4 +69,6 @@ class DiagnosticReportReference(Base):
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
 
-    diagnostic_report = relationship("DiagnosticReportModel", back_populates="references")
+    diagnostic_report = relationship(
+        "DiagnosticReportModel", back_populates="references"
+    )

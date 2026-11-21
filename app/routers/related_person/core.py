@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.related_person import RelatedPersonCreateSchema, RelatedPersonPatchSchema
+from app.schemas.related_person import (
+    RelatedPersonCreateSchema,
+    RelatedPersonPatchSchema,
+)
 from app.services.related_person import RelatedPersonService
 
 from ._responses import (
@@ -60,7 +63,8 @@ logger = get_logger(__name__)
         "stored as sent. R4 requires `patient`. The body is checked against base FHIR R4: any valid R4 element "
         "is accepted and stored as sent (server-managed `id`/`meta` are ignored); a key that is not FHIR at all "
         "is rejected with 422. A relative `Patient/<id>` and `identifier.assigner` are rejected with 422 if they "
-        "do not exist in the caller's org; an absolute URL or logical reference is stored as sent. " + _CONTENT_NEG
+        "do not exist in the caller's org; an absolute URL or logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -194,7 +198,9 @@ async def search_related_persons_post(
         "Search RelatedPerson resources (POST _search)",
         extra={"event": "route.search_related_persons_post"},
     )
-    return await _search(request, await post_query(request), actor, related_person_service)
+    return await _search(
+        request, await post_query(request), actor, related_person_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -263,7 +269,10 @@ async def patch_related_person(
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a RelatedPerson resource",
-        extra={"event": "route.patch_related_person", "related_person_id": related_person_id},
+        extra={
+            "event": "route.patch_related_person",
+            "related_person_id": related_person_id,
+        },
     )
     log_payload(logger, "related_person.patch.payload", payload)
     updated = await related_person_service.patch_related_person(
@@ -307,4 +316,6 @@ async def delete_related_person(
             "related_person_id": related_person_id,
         },
     )
-    await related_person_service.delete_related_person(related_person_id, org_id=actor.org_id)
+    await related_person_service.delete_related_person(
+        related_person_id, org_id=actor.org_id
+    )

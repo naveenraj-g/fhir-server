@@ -5,7 +5,6 @@ from app.services.healthcare_service import HealthcareServiceService
 
 
 class HealthcareServiceContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     healthcare_service_repository = providers.Factory(

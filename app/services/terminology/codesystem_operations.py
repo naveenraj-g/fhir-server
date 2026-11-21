@@ -218,9 +218,7 @@ class _CodeSystemOperationsMixin:
                 issue_type=IssueType.NOT_FOUND,
             )
 
-        raw = await self.repository.subsumption_relationship(
-            concept_a.id, concept_b.id
-        )
+        raw = await self.repository.subsumption_relationship(concept_a.id, concept_b.id)
         return build_parameters(param_code("outcome", _SUBSUMES_OUTCOME[raw]))
 
     async def find_matches_operation(

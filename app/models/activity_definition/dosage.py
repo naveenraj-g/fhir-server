@@ -22,7 +22,10 @@ class ActivityDefinitionDosage(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     sequence = Column(Integer, nullable=True)
@@ -47,7 +50,9 @@ class ActivityDefinitionDosage(TenantAuditMixin, Base):
     max_dose_per_lifetime_system = Column(String, nullable=True)
     max_dose_per_lifetime_code = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="dosages")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="dosages"
+    )
 
     site_codings = relationship(
         "ActivityDefinitionDosageSiteCoding",
@@ -132,4 +137,6 @@ class ActivityDefinitionDosageAsNeededCoding(FhirCodingMixin, TenantAuditMixin, 
         index=True,
     )
 
-    dosage = relationship("ActivityDefinitionDosage", back_populates="as_needed_codings")
+    dosage = relationship(
+        "ActivityDefinitionDosage", back_populates="as_needed_codings"
+    )

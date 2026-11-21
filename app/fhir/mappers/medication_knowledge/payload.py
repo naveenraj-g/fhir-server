@@ -190,9 +190,7 @@ def _payload_quantity(q: MedicationKnowledgeQuantityInput | dict | None) -> dict
     if val is not None:
         res["value"] = float(val)
     if cmp_val is not None:
-        res["comparator"] = (
-            cmp_val.value if hasattr(cmp_val, "value") else str(cmp_val)
-        )
+        res["comparator"] = cmp_val.value if hasattr(cmp_val, "value") else str(cmp_val)
     if unit:
         res["unit"] = unit
     if system:
@@ -557,9 +555,7 @@ def payload_to_fhir_medication_knowledge(
             for ir in (payload.intended_route or [])
         ]
         or None,
-        "cost": [
-            payload_medication_knowledge_cost(c) for c in (payload.cost or [])
-        ]
+        "cost": [payload_medication_knowledge_cost(c) for c in (payload.cost or [])]
         or None,
         "monitoringProgram": [
             payload_medication_knowledge_monitoring_program(mp)
@@ -582,9 +578,7 @@ def payload_to_fhir_medication_knowledge(
             for dc in (payload.drug_characteristic or [])
         ]
         or None,
-        "contraindication": [
-            {"reference": c} for c in (payload.contraindication or [])
-        ]
+        "contraindication": [{"reference": c} for c in (payload.contraindication or [])]
         or None,
         "regulatory": [
             payload_medication_knowledge_regulatory(reg)
@@ -592,8 +586,7 @@ def payload_to_fhir_medication_knowledge(
         ]
         or None,
         "kinetics": [
-            payload_medication_knowledge_kinetics(k)
-            for k in (payload.kinetics or [])
+            payload_medication_knowledge_kinetics(k) for k in (payload.kinetics or [])
         ]
         or None,
         "extension": list(payload.extension) if payload.extension else None,
@@ -682,16 +675,14 @@ def patch_fragment_to_fhir_medication_knowledge(
         touched.add("monograph")
         if patch.monograph is not None:
             fragment["monograph"] = [
-                payload_medication_knowledge_monograph(mono)
-                for mono in patch.monograph
+                payload_medication_knowledge_monograph(mono) for mono in patch.monograph
             ]
 
     if "ingredient" in fields_set:
         touched.add("ingredient")
         if patch.ingredient is not None:
             fragment["ingredient"] = [
-                payload_medication_knowledge_ingredient(ing)
-                for ing in patch.ingredient
+                payload_medication_knowledge_ingredient(ing) for ing in patch.ingredient
             ]
 
     if "preparation_instruction" in fields_set:
@@ -764,8 +755,7 @@ def patch_fragment_to_fhir_medication_knowledge(
         touched.add("regulatory")
         if patch.regulatory is not None:
             fragment["regulatory"] = [
-                payload_medication_knowledge_regulatory(reg)
-                for reg in patch.regulatory
+                payload_medication_knowledge_regulatory(reg) for reg in patch.regulatory
             ]
 
     if "kinetics" in fields_set:

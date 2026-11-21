@@ -93,8 +93,13 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
                 coding["code"] = type_code
             if getattr(obj, f"{prefix}_identifier_type_display", None):
                 coding["display"] = getattr(obj, f"{prefix}_identifier_type_display")
-            if getattr(obj, f"{prefix}_identifier_type_user_selected", None) is not None:
-                coding["userSelected"] = getattr(obj, f"{prefix}_identifier_type_user_selected")
+            if (
+                getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+                is not None
+            ):
+                coding["userSelected"] = getattr(
+                    obj, f"{prefix}_identifier_type_user_selected"
+                )
 
             type_dict: dict[str, Any] = {}
             if coding:
@@ -155,7 +160,12 @@ def _fhir_meta(model: FlagModel) -> dict:
     if model.updated_by:
         exts.append({"url": f"{_EXT_BASE}/updated-by", "valueString": model.updated_by})
     if model.created_at:
-        exts.append({"url": f"{_EXT_BASE}/created-at", "valueInstant": fhir_instant(model.created_at)})
+        exts.append(
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueInstant": fhir_instant(model.created_at),
+            }
+        )
     if exts:
         meta["extension"] = exts
     return meta

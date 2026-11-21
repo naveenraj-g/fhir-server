@@ -5,7 +5,6 @@ from app.services.flag import FlagService
 
 
 class FlagContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     flag_repository = providers.Factory(

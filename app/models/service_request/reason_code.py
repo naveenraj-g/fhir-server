@@ -23,7 +23,9 @@ class ServiceRequestReasonCode(TenantAuditMixin, Base):
 
     service_request = relationship("ServiceRequestModel", back_populates="reason_codes")
     codings = relationship(
-        "ServiceRequestReasonCodeCoding", back_populates="reason_code", cascade="all, delete-orphan"
+        "ServiceRequestReasonCodeCoding",
+        back_populates="reason_code",
+        cascade="all, delete-orphan",
     )
 
 
@@ -34,7 +36,10 @@ class ServiceRequestReasonCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_reason_code_id = Column(
-        BigInteger, ForeignKey("service_request_reason_code.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("service_request_reason_code.id"),
+        nullable=False,
+        index=True,
     )
 
     reason_code = relationship("ServiceRequestReasonCode", back_populates="codings")

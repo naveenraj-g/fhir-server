@@ -220,12 +220,17 @@ class _CoreMixin:
             )
         if practitioner.user_id == user_id:
             return practitioner
-        updated = await self.repository.set_user_id(practitioner_id, user_id, updated_by)
+        updated = await self.repository.set_user_id(
+            practitioner_id, user_id, updated_by
+        )
         if not updated:
             raise NotFoundError("Practitioner not found")
         logger.info(
             "Practitioner user linked",
-            extra={"event": "practitioner.user_linked", "practitioner_id": practitioner_id},
+            extra={
+                "event": "practitioner.user_linked",
+                "practitioner_id": practitioner_id,
+            },
         )
         return updated
 
@@ -240,7 +245,10 @@ class _CoreMixin:
             raise NotFoundError("Practitioner not found")
         logger.info(
             "Practitioner user unlinked",
-            extra={"event": "practitioner.user_unlinked", "practitioner_id": practitioner_id},
+            extra={
+                "event": "practitioner.user_unlinked",
+                "practitioner_id": practitioner_id,
+            },
         )
 
     # ── Validation helpers ────────────────────────────────────────────────

@@ -18,7 +18,9 @@ class ImmunizationProtocol(Base):
     __tablename__ = "immunization_protocol"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    immunization_pk = Column(BigInteger, ForeignKey("immunization.id"), nullable=False, index=True)
+    immunization_pk = Column(
+        BigInteger, ForeignKey("immunization.id"), nullable=False, index=True
+    )
     series = Column(String, nullable=True)
     series_norm = Column(String, nullable=True, index=True)
 

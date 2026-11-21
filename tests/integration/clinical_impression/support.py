@@ -5,7 +5,10 @@ every response is FHIR R4 too."""
 
 # The resources a ClinicalImpression points at (and that point back at it) are created through
 # their own routers.
-from tests.integration.allergy_intolerance.support import allergy_body, create_allergy_intolerance  # noqa: F401
+from tests.integration.allergy_intolerance.support import (
+    allergy_body,
+    create_allergy_intolerance,
+)  # noqa: F401
 from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
 from tests.integration.diagnostic_report.support import create_report, report_body  # noqa: F401
 from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
@@ -29,13 +32,30 @@ V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
 
 def finding(code: str, display: str | None = None, **extra) -> dict:
     """A finding with a coded `itemCodeableConcept`."""
-    return {"itemCodeableConcept": {"coding": [{"system": SCT, "code": code, **({"display": display} if display else {})}]}, **extra}
+    return {
+        "itemCodeableConcept": {
+            "coding": [
+                {
+                    "system": SCT,
+                    "code": code,
+                    **({"display": display} if display else {}),
+                }
+            ]
+        },
+        **extra,
+    }
 
 
-def impression_body(patient_id: int | None = None, status: str = "completed", **extra) -> dict:
+def impression_body(
+    patient_id: int | None = None, status: str = "completed", **extra
+) -> dict:
     """A valid minimal ClinicalImpression: R4 requires `status` and `subject`. With no patient the
     subject is an absolute URL (not existence-checked)."""
-    subject = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    subject = {
+        "reference": f"Patient/{patient_id}"
+        if patient_id
+        else "https://other.example.org/fhir/Patient/1"
+    }
     return {"status": status, "subject": subject, **extra}
 
 
@@ -61,7 +81,12 @@ def full_body(
             }
         ],
         statusReason={"text": "Completed after review"},
-        code={"coding": [{"system": SCT, "code": "225338004", "display": "Risk assessment"}], "text": "Assessment"},
+        code={
+            "coding": [
+                {"system": SCT, "code": "225338004", "display": "Risk assessment"}
+            ],
+            "text": "Assessment",
+        },
         description="Assessment of the patient's chest pain.",
         encounter={"reference": f"Encounter/{encounter_id}"},
         effectiveDateTime="2023-01-15T09:30:00Z",
@@ -71,7 +96,10 @@ def full_body(
         investigation=[
             {
                 "code": {"text": "Initial examination"},
-                "item": [{"reference": f"DiagnosticReport/{report_id}"}, {"reference": "Observation/160001"}],
+                "item": [
+                    {"reference": f"DiagnosticReport/{report_id}"},
+                    {"reference": "Observation/160001"},
+                ],
             }
         ],
         protocol=["http://example.org/protocols/chest-pain"],
@@ -83,7 +111,13 @@ def full_body(
         prognosisCodeableConcept=[{"text": "Good"}],
         prognosisReference=[{"reference": f"RiskAssessment/{risk_id}"}],
         supportingInfo=[{"reference": "Observation/160002"}],
-        note=[{"text": "Review in 2 weeks.", "time": "2023-01-15T10:30:00Z", "authorString": "Nurse Joy"}],
+        note=[
+            {
+                "text": "Review in 2 weeks.",
+                "time": "2023-01-15T10:30:00Z",
+                "authorString": "Nurse Joy",
+            }
+        ],
     )
 
 

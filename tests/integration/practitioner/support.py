@@ -22,12 +22,17 @@ FULL = {
             "use": "official",
             "type": {
                 "coding": [
-                    {"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "NPI"}
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                        "code": "NPI",
+                    }
                 ]
             },
         }
     ],
-    "name": [{"use": "official", "family": "Careful", "given": ["Adam"], "prefix": ["Dr"]}],
+    "name": [
+        {"use": "official", "family": "Careful", "given": ["Adam"], "prefix": ["Dr"]}
+    ],
     "telecom": [
         {"system": "phone", "value": "555-9988", "use": "work"},
         {"system": "email", "value": "adam@example.org"},
@@ -48,7 +53,12 @@ FULL = {
     # No `system` on codings below deliberately — an external-terminology
     # system can trigger a slow remote lookup in the sidecar.
     "qualification": [
-        {"code": {"coding": [{"code": "BS", "display": "Bachelor of Science"}], "text": "Bachelor of Science"}}
+        {
+            "code": {
+                "coding": [{"code": "BS", "display": "Bachelor of Science"}],
+                "text": "Bachelor of Science",
+            }
+        }
     ],
     "communication": [{"coding": [{"code": "en", "display": "English"}]}],
 }

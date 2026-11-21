@@ -75,7 +75,9 @@ async def test_create_full_round_trip(client):
     assert resp.status_code == 201, resp.text
     data = resp.json()
     expected = {k: v for k, v in FULL.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
     got = await client.get(f"{BASE}/{data['id']}")
     assert got.status_code == 200
     assert got.json() == data
@@ -91,7 +93,8 @@ async def test_create_keeps_elements_nothing_searches_on(client):
 
 async def test_create_ignores_server_managed_id_and_meta(client):
     resp = await client.post(
-        BASE + "/", json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}}
+        BASE + "/",
+        json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}},
     )
     assert resp.status_code == 201, resp.text
     data = resp.json()
@@ -130,7 +133,9 @@ async def test_create_audit_meta_from_actor(client):
 async def test_create_qualification_issuer_must_exist(client):
     body = {
         **MINIMAL,
-        "qualification": [{"code": {"text": "MD"}, "issuer": {"reference": "Organization/999999"}}],
+        "qualification": [
+            {"code": {"text": "MD"}, "issuer": {"reference": "Organization/999999"}}
+        ],
     }
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 422, resp.text
@@ -143,7 +148,10 @@ async def test_create_qualification_issuer_resolves(client):
     body = {
         **MINIMAL,
         "qualification": [
-            {"code": {"text": "MD"}, "issuer": {"reference": f"Organization/{org.json()['id']}"}}
+            {
+                "code": {"text": "MD"},
+                "issuer": {"reference": f"Organization/{org.json()['id']}"},
+            }
         ],
     }
     assert (await client.post(BASE + "/", json=body)).status_code == 201
@@ -151,7 +159,10 @@ async def test_create_qualification_issuer_resolves(client):
 
 async def test_create_absolute_issuer_reference_stored_not_resolved(client):
     ref = "https://other.example.org/fhir/Organization/42"
-    body = {**MINIMAL, "qualification": [{"code": {"text": "MD"}, "issuer": {"reference": ref}}]}
+    body = {
+        **MINIMAL,
+        "qualification": [{"code": {"text": "MD"}, "issuer": {"reference": ref}}],
+    }
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     assert resp.json()["qualification"][0]["issuer"]["reference"] == ref
@@ -185,7 +196,9 @@ async def test_xml_only_accept_is_406(client):
 
 async def test_get_practitioner_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -193,7 +206,9 @@ async def test_get_practitioner_not_found(client):
 
 async def test_patch_practitioner_scalar(client):
     pid = await create_practitioner(client, FULL)
-    resp = await client.patch(f"{BASE}/{pid}", json={"active": False, "gender": "female"})
+    resp = await client.patch(
+        f"{BASE}/{pid}", json={"active": False, "gender": "female"}
+    )
     assert resp.status_code == 200, resp.text
     assert_fhir_practitioner(resp.json(), active=False, gender="female")
     # Untouched elements survive.
@@ -211,11 +226,15 @@ async def test_patch_reindexes_search(client):
 
 async def test_patch_replaces_list_wholesale_and_empty_clears(client):
     pid = await create_practitioner(client, FULL)
-    resp = await client.patch(f"{BASE}/{pid}", json={"telecom": [{"system": "phone", "value": "111"}]})
+    resp = await client.patch(
+        f"{BASE}/{pid}", json={"telecom": [{"system": "phone", "value": "111"}]}
+    )
     assert [t["value"] for t in resp.json()["telecom"]] == ["111"]
     resp = await client.patch(f"{BASE}/{pid}", json={"telecom": []})
     assert "telecom" not in resp.json()
-    assert pid not in _ids((await client.get(BASE + "/", params={"phone": "111"})).json())
+    assert pid not in _ids(
+        (await client.get(BASE + "/", params={"phone": "111"})).json()
+    )
 
 
 async def test_patch_photo_and_qualification_persist(client):
@@ -229,7 +248,9 @@ async def test_patch_photo_and_qualification_persist(client):
 
 async def test_patch_practitioner_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"active": False})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client):
@@ -294,19 +315,30 @@ async def test_link_needs_its_own_permission(client):
     _as_user(permissions=[p for p in PRACTITIONER_PERMS if p != "practitioner:link"])
     assert (await link_user(client, pid)).status_code == 403
     assert (await client.delete(f"{BASE}/{pid}/user")).status_code == 403
-    assert (await client.get(f"{BASE}/{pid}/user")).status_code == 200  # read is enough to look
+    assert (
+        await client.get(f"{BASE}/{pid}/user")
+    ).status_code == 200  # read is enough to look
 
 
 async def test_link_rejects_empty_or_unknown_fields(client):
     pid = await create_practitioner(client)
-    assert (await client.put(f"{BASE}/{pid}/user", json={"user_id": ""})).status_code == 422
+    assert (
+        await client.put(f"{BASE}/{pid}/user", json={"user_id": ""})
+    ).status_code == 422
     assert (await client.put(f"{BASE}/{pid}/user", json={})).status_code == 422
-    assert (await client.put(f"{BASE}/{pid}/user", json={"user_id": "u", "x": 1})).status_code == 422
+    assert (
+        await client.put(f"{BASE}/{pid}/user", json={"user_id": "u", "x": 1})
+    ).status_code == 422
 
 
 async def test_link_not_found(client):
-    for resp in (await link_user(client, 999999), await client.delete(f"{BASE}/999999/user")):
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    for resp in (
+        await link_user(client, 999999),
+        await client.delete(f"{BASE}/999999/user"),
+    ):
+        assert_operation_outcome(
+            resp.json(), expected_status=404, response_status=resp.status_code
+        )
 
 
 async def test_link_cross_org_returns_404(client, other_client):
@@ -340,8 +372,15 @@ async def test_patch_cannot_set_the_link_through_an_extension(client):
     """An extension named like the old user-id one is just an extension now;
     it does not link anything."""
     pid = await create_practitioner(client)
-    ext = [{"url": "https://fhir-server.dev/fhir/StructureDefinition/user-id", "valueString": "u-test"}]
-    assert (await client.patch(f"{BASE}/{pid}", json={"extension": ext})).status_code == 200
+    ext = [
+        {
+            "url": "https://fhir-server.dev/fhir/StructureDefinition/user-id",
+            "valueString": "u-test",
+        }
+    ]
+    assert (
+        await client.patch(f"{BASE}/{pid}", json={"extension": ext})
+    ).status_code == 200
     assert (await client.get(f"{BASE}/{pid}/user")).json()["user_id"] is None
     assert pid not in _ids((await client.get(BASE + "/me")).json())
 
@@ -349,7 +388,9 @@ async def test_patch_cannot_set_the_link_through_an_extension(client):
 async def test_patch_and_delete_leave_the_link_alone(client):
     pid = await create_practitioner(client, FULL)
     await link_user(client, pid, "user-abc")
-    await client.patch(f"{BASE}/{pid}", json={"active": False, "name": [{"family": "Renamed"}]})
+    await client.patch(
+        f"{BASE}/{pid}", json={"active": False, "name": [{"family": "Renamed"}]}
+    )
     assert (await client.get(f"{BASE}/{pid}/user")).json()["user_id"] == "user-abc"
 
 
@@ -401,12 +442,16 @@ async def test_delete_practitioner(client):
     assert (await client.delete(f"{BASE}/{pid}")).status_code == 204
     assert (await client.get(f"{BASE}/{pid}")).status_code == 404
     # Its index rows are gone with it.
-    assert pid not in _ids((await client.get(BASE + "/", params={"family": "Careful"})).json())
+    assert pid not in _ids(
+        (await client.get(BASE + "/", params={"family": "Careful"})).json()
+    )
 
 
 async def test_delete_practitioner_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -419,7 +464,9 @@ async def test_create_practitioner_no_permission(client):
 
 
 async def test_org_less_token_rejected(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=PRACTITIONER_PERMS)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        permissions=PRACTITIONER_PERMS
+    )
     pid = await create_practitioner(client)
 
     async def _no_org(request: Request):
@@ -441,7 +488,9 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
             await other_client.patch(f"{BASE}/{pid}", json={"active": False}),
             await other_client.delete(f"{BASE}/{pid}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
@@ -451,7 +500,9 @@ async def test_search_cross_tenant_isolation(client, other_client):
     await create_practitioner(client, {"name": [{"family": "TenantAOnly"}]})
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"family": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"family": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0
         assert "entry" not in bundle
     finally:

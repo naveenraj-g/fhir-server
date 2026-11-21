@@ -17,4 +17,6 @@ if TYPE_CHECKING:
 
 
 def to_fhir_detected_issue(detected_issue: DetectedIssueModel) -> dict:
-    return content_resource("DetectedIssue", detected_issue.detected_issue_id, detected_issue)
+    return content_resource(
+        "DetectedIssue", detected_issue.detected_issue_id, detected_issue
+    )

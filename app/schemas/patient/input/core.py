@@ -31,7 +31,14 @@ _EXAMPLE = {
             "value": "MRN-12345",
         }
     ],
-    "name": [{"use": "official", "family": "Chalmers", "given": ["Peter", "James"], "prefix": ["Mr"]}],
+    "name": [
+        {
+            "use": "official",
+            "family": "Chalmers",
+            "given": ["Peter", "James"],
+            "prefix": ["Mr"],
+        }
+    ],
     "telecom": [{"system": "phone", "value": "555-1234", "use": "home"}],
     "address": [
         {
@@ -51,7 +58,12 @@ _EXAMPLE = {
             "telecom": [{"system": "phone", "value": "555-9876"}],
         }
     ],
-    "communication": [{"language": {"coding": [{"code": "en", "display": "English"}]}, "preferred": True}],
+    "communication": [
+        {
+            "language": {"coding": [{"code": "en", "display": "English"}]},
+            "preferred": True,
+        }
+    ],
     "generalPractitioner": [{"reference": "Practitioner/30001"}],
     "managingOrganization": {"reference": "Organization/190001"},
 }
@@ -76,43 +88,64 @@ class _PatientFields(FhirInputModel):
     FHIR element and is not accepted here: it is set afterwards with
     `PUT /patients/{id}/user`, or at create time with `?link_me=true`."""
 
-    resourceType: Literal["Patient"] | None = Field(None, description="Optional; if supplied it must be 'Patient'.")
+    resourceType: Literal["Patient"] | None = Field(
+        None, description="Optional; if supplied it must be 'Patient'."
+    )
     extension: list[dict] | None = Field(
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="An identifier for this patient.")
-    active: bool | None = Field(None, description="Whether this patient's record is in active use.")
-    name: list[FhirHumanNameInput] | None = Field(None, description="A name associated with the patient.")
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="An identifier for this patient."
+    )
+    active: bool | None = Field(
+        None, description="Whether this patient's record is in active use."
+    )
+    name: list[FhirHumanNameInput] | None = Field(
+        None, description="A name associated with the patient."
+    )
     telecom: list[FhirContactPointInput] | None = Field(
         None, description="A contact detail for the individual."
     )
-    gender: AdministrativeGender | None = Field(None, description="male | female | other | unknown.")
+    gender: AdministrativeGender | None = Field(
+        None, description="male | female | other | unknown."
+    )
     birthDate: str | None = Field(
-        None, description="The date of birth for the individual (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD)."
+        None,
+        description="The date of birth for the individual (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD).",
     )
     deceasedBoolean: bool | None = Field(
-        None, description="Indicates if the individual is deceased or not (deceased[x] — send this or deceasedDateTime)."
+        None,
+        description="Indicates if the individual is deceased or not (deceased[x] — send this or deceasedDateTime).",
     )
     deceasedDateTime: str | None = Field(
-        None, description="Date and time of death (deceased[x] — send this or deceasedBoolean)."
+        None,
+        description="Date and time of death (deceased[x] — send this or deceasedBoolean).",
     )
-    address: list[FhirAddressInput] | None = Field(None, description="An address for the individual.")
+    address: list[FhirAddressInput] | None = Field(
+        None, description="An address for the individual."
+    )
     maritalStatus: FhirCodeableConceptInput | None = Field(
         None, description="Marital (civil) status of a patient."
     )
     multipleBirthBoolean: bool | None = Field(
-        None, description="Whether patient is part of a multiple birth (multipleBirth[x] — send this or multipleBirthInteger)."
+        None,
+        description="Whether patient is part of a multiple birth (multipleBirth[x] — send this or multipleBirthInteger).",
     )
     multipleBirthInteger: int | None = Field(
-        None, description="Birth order of a multiple birth (multipleBirth[x] — send this or multipleBirthBoolean)."
+        None,
+        description="Birth order of a multiple birth (multipleBirth[x] — send this or multipleBirthBoolean).",
     )
-    photo: list[FhirAttachmentInput] | None = Field(None, description="Image of the patient.")
+    photo: list[FhirAttachmentInput] | None = Field(
+        None, description="Image of the patient."
+    )
     contact: list[PatientContactInput] | None = Field(
-        None, description="A contact party (e.g. guardian, partner, friend) for the patient."
+        None,
+        description="A contact party (e.g. guardian, partner, friend) for the patient.",
     )
     communication: list[PatientCommunicationInput] | None = Field(
-        None, description="A language which may be used to communicate with the patient about his or her health."
+        None,
+        description="A language which may be used to communicate with the patient about his or her health.",
     )
     generalPractitioner: list[FhirReferenceInput] | None = Field(
         None,
@@ -123,7 +156,8 @@ class _PatientFields(FhirInputModel):
         description="Organization that is the custodian of the patient record — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
     )
     link: list[PatientLinkInput] | None = Field(
-        None, description="Link to another patient resource that concerns the same actual person."
+        None,
+        description="Link to another patient resource that concerns the same actual person.",
     )
 
 
@@ -142,6 +176,9 @@ class PatientPatchSchema(_PatientFields):
 
     model_config = {
         "json_schema_extra": {
-            "example": {"telecom": [{"system": "phone", "value": "555-0000", "use": "mobile"}], "active": False}
+            "example": {
+                "telecom": [{"system": "phone", "value": "555-0000", "use": "mobile"}],
+                "active": False,
+            }
         }
     }

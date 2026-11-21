@@ -5,7 +5,6 @@ from app.services.practitioner import PractitionerService
 
 
 class PractitionerContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     practitioner_repository = providers.Factory(

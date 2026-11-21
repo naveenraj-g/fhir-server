@@ -39,6 +39,4 @@ class ObservationDefinitionCategoryCoding(FhirCodingMixin, TenantAuditMixin, Bas
         index=True,
     )
 
-    category = relationship(
-        "ObservationDefinitionCategory", back_populates="codings"
-    )
+    category = relationship("ObservationDefinitionCategory", back_populates="codings")

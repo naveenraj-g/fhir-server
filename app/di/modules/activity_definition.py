@@ -5,7 +5,6 @@ from app.services.activity_definition import ActivityDefinitionService
 
 
 class ActivityDefinitionContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     activity_definition_repository = providers.Factory(

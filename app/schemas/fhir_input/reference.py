@@ -27,6 +27,4 @@ class FhirReferenceInput(FhirInputModel):
         None,
         description="Logical reference, when a literal reference is not known (the target isn't a resource in this system).",
     )
-    display: str | None = Field(
-        None, description="Text alternative for the resource."
-    )
+    display: str | None = Field(None, description="Text alternative for the resource.")

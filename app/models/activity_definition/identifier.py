@@ -14,7 +14,10 @@ class ActivityDefinitionIdentifier(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     use = Column(
@@ -38,7 +41,9 @@ class ActivityDefinitionIdentifier(TenantAuditMixin, Base):
     assigner_id = Column(BigInteger, nullable=True, index=True)
     assigner_display = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="identifiers")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="identifiers"
+    )
     type_codings = relationship(
         "ActivityDefinitionIdentifierTypeCoding",
         back_populates="identifier",
@@ -59,4 +64,6 @@ class ActivityDefinitionIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, 
         index=True,
     )
 
-    identifier = relationship("ActivityDefinitionIdentifier", back_populates="type_codings")
+    identifier = relationship(
+        "ActivityDefinitionIdentifier", back_populates="type_codings"
+    )

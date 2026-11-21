@@ -14,7 +14,10 @@ class MeasureRelatedArtifact(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     type = Column(

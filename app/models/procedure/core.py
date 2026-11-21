@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import ProcedureStatus
 
-procedure_id_seq = Sequence("procedure_pub_seq", start=100000, increment=1, metadata=Base.metadata)
+procedure_id_seq = Sequence(
+    "procedure_pub_seq", start=100000, increment=1, metadata=Base.metadata
+)
 
 # R4 targets of Procedure.subject, and of Procedure.recorder / .asserter.
 SUBJECT_TYPES = ("Patient", "Group")
@@ -68,7 +70,9 @@ class ProcedureModel(TenantAuditMixin, Base):
 
     __tablename__ = "procedure"
     __table_args__ = (
-        Index("ix_procedure_performed_date", "performed_date_start", "performed_date_end"),
+        Index(
+            "ix_procedure_performed_date", "performed_date_start", "performed_date_end"
+        ),
         Index("ix_procedure_subject_type_id", "subject_type", "subject_id"),
     )
 
@@ -122,10 +126,20 @@ class ProcedureModel(TenantAuditMixin, Base):
     location_identifier_system = Column(String, nullable=True)
     location_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("ProcedureIdentifier", back_populates="procedure", cascade="all, delete-orphan")
-    tokens = relationship("ProcedureToken", back_populates="procedure", cascade="all, delete-orphan")
-    references = relationship("ProcedureReference", back_populates="procedure", cascade="all, delete-orphan")
-    performers = relationship("ProcedurePerformer", back_populates="procedure", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "ProcedureIdentifier", back_populates="procedure", cascade="all, delete-orphan"
+    )
+    tokens = relationship(
+        "ProcedureToken", back_populates="procedure", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "ProcedureReference", back_populates="procedure", cascade="all, delete-orphan"
+    )
+    performers = relationship(
+        "ProcedurePerformer", back_populates="procedure", cascade="all, delete-orphan"
+    )
     instantiates_uris = relationship(
-        "ProcedureInstantiatesUri", back_populates="procedure", cascade="all, delete-orphan"
+        "ProcedureInstantiatesUri",
+        back_populates="procedure",
+        cascade="all, delete-orphan",
     )

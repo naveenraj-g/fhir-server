@@ -5,7 +5,6 @@ from app.services.practitioner_role import PractitionerRoleService
 
 
 class PractitionerRoleContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     practitioner_role_repository = providers.Factory(

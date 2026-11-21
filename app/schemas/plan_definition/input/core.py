@@ -49,7 +49,8 @@ class PlanDefinitionCreateSchema(BaseModel):
         ..., description="draft | active | retired | unknown."
     )
     url: str | None = Field(
-        None, description="Canonical identifier for this plan definition, represented as a URI."
+        None,
+        description="Canonical identifier for this plan definition, represented as a URI.",
     )
     version: str | None = Field(
         None, description="Business version of the plan definition."
@@ -64,7 +65,8 @@ class PlanDefinitionCreateSchema(BaseModel):
         None, description="Subordinate title of the plan definition."
     )
     type: PlanDefinitionCodeableConceptInput | None = Field(
-        None, description="order-set | clinical-protocol | eca-rule | workflow-definition."
+        None,
+        description="order-set | clinical-protocol | eca-rule | workflow-definition.",
     )
     experimental: bool | None = Field(
         None, description="For testing purposes, not real usage."
@@ -78,9 +80,7 @@ class PlanDefinitionCreateSchema(BaseModel):
     subject_display: str | None = Field(
         None, description="Plain text display for subject."
     )
-    date: dt.datetime | None = Field(
-        None, description="Date last changed."
-    )
+    date: dt.datetime | None = Field(None, description="Date last changed.")
     publisher: str | None = Field(
         None, description="Name of the publisher (organization or individual)."
     )
@@ -167,17 +167,27 @@ class PlanDefinitionPatchSchema(BaseModel):
         },
     )
 
-    status: PlanDefinitionStatus | None = Field(None, description="draft | active | retired | unknown.")
+    status: PlanDefinitionStatus | None = Field(
+        None, description="draft | active | retired | unknown."
+    )
     url: str | None = Field(None, description="Canonical identifier.")
     version: str | None = Field(None, description="Business version.")
     name: str | None = Field(None, description="Computer-friendly name.")
     title: str | None = Field(None, description="Human-friendly title.")
     subtitle: str | None = Field(None, description="Subordinate title.")
-    type: PlanDefinitionCodeableConceptInput | None = Field(None, description="Type of plan.")
+    type: PlanDefinitionCodeableConceptInput | None = Field(
+        None, description="Type of plan."
+    )
     experimental: bool | None = Field(None, description="For testing purposes.")
-    subject_codeable_concept: PlanDefinitionCodeableConceptInput | None = Field(None, description="Subject concept.")
-    subject_reference: str | None = Field(None, description="Subject reference (Group/123).")
-    subject_display: str | None = Field(None, description="Plain text display for subject.")
+    subject_codeable_concept: PlanDefinitionCodeableConceptInput | None = Field(
+        None, description="Subject concept."
+    )
+    subject_reference: str | None = Field(
+        None, description="Subject reference (Group/123)."
+    )
+    subject_display: str | None = Field(
+        None, description="Plain text display for subject."
+    )
     date: dt.datetime | None = Field(None, description="Date last changed.")
     publisher: str | None = Field(None, description="Publisher name.")
     description: str | None = Field(None, description="Natural language description.")
@@ -186,20 +196,42 @@ class PlanDefinitionPatchSchema(BaseModel):
     copyright: str | None = Field(None, description="Copyright statement.")
     approval_date: dt.date | None = Field(None, description="Approval date.")
     last_review_date: dt.date | None = Field(None, description="Last review date.")
-    effective_period_start: dt.datetime | None = Field(None, description="Effective start.")
+    effective_period_start: dt.datetime | None = Field(
+        None, description="Effective start."
+    )
     effective_period_end: dt.datetime | None = Field(None, description="Effective end.")
     library: list[str] | None = Field(None, description="Logic libraries.")
     extension: list[dict] | None = Field(None, description="Extensions.")
 
-    identifier: list[PlanDefinitionIdentifierInput] | None = Field(None, description="Identifiers.")
-    contact: list[PlanDefinitionContactInput] | None = Field(None, description="Contacts.")
-    author: list[PlanDefinitionContactInput] | None = Field(None, description="Authors.")
-    editor: list[PlanDefinitionContactInput] | None = Field(None, description="Editors.")
-    reviewer: list[PlanDefinitionContactInput] | None = Field(None, description="Reviewers.")
-    endorser: list[PlanDefinitionContactInput] | None = Field(None, description="Endorsers.")
-    use_context: list[PlanDefinitionUseContextInput] | None = Field(None, description="Contexts.")
-    jurisdiction: list[PlanDefinitionCodeableConceptInput] | None = Field(None, description="Jurisdictions.")
-    topic: list[PlanDefinitionCodeableConceptInput] | None = Field(None, description="Topics.")
-    related_artifact: list[PlanDefinitionRelatedArtifactInput] | None = Field(None, description="Related artifacts.")
+    identifier: list[PlanDefinitionIdentifierInput] | None = Field(
+        None, description="Identifiers."
+    )
+    contact: list[PlanDefinitionContactInput] | None = Field(
+        None, description="Contacts."
+    )
+    author: list[PlanDefinitionContactInput] | None = Field(
+        None, description="Authors."
+    )
+    editor: list[PlanDefinitionContactInput] | None = Field(
+        None, description="Editors."
+    )
+    reviewer: list[PlanDefinitionContactInput] | None = Field(
+        None, description="Reviewers."
+    )
+    endorser: list[PlanDefinitionContactInput] | None = Field(
+        None, description="Endorsers."
+    )
+    use_context: list[PlanDefinitionUseContextInput] | None = Field(
+        None, description="Contexts."
+    )
+    jurisdiction: list[PlanDefinitionCodeableConceptInput] | None = Field(
+        None, description="Jurisdictions."
+    )
+    topic: list[PlanDefinitionCodeableConceptInput] | None = Field(
+        None, description="Topics."
+    )
+    related_artifact: list[PlanDefinitionRelatedArtifactInput] | None = Field(
+        None, description="Related artifacts."
+    )
     goal: list[PlanDefinitionGoalInput] | None = Field(None, description="Goals.")
     action: list[PlanDefinitionActionInput] | None = Field(None, description="Actions.")

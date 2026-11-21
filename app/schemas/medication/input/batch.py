@@ -9,4 +9,6 @@ class MedicationBatchInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     lot_number: str | None = Field(None, description="Identifier assigned to batch.")
-    expiration_date: datetime | None = Field(None, description="When batch will expire.")
+    expiration_date: datetime | None = Field(
+        None, description="When batch will expire."
+    )

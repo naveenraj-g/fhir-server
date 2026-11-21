@@ -72,7 +72,9 @@ class MedicationStatementCreateSchema(BaseModel):
         json_schema_extra={"example": _CREATE_EXAMPLE},
     )
 
-    extension: list[dict] | None = Field(None, description="Resource-level FHIR extensions.")
+    extension: list[dict] | None = Field(
+        None, description="Resource-level FHIR extensions."
+    )
     identifier: list[MedicationStatementIdentifierInput] | None = Field(
         None, description="External identifier for this record."
     )
@@ -109,7 +111,8 @@ class MedicationStatementCreateSchema(BaseModel):
         None, description="Encounter / Episode associated with MedicationStatement."
     )
     effective_date_time: datetime | None = Field(
-        None, description="The date/time or interval when the medication is/was/will be taken."
+        None,
+        description="The date/time or interval when the medication is/was/will be taken.",
     )
     effective_period_start: datetime | None = Field(
         None, description="Effective period start."
@@ -121,7 +124,8 @@ class MedicationStatementCreateSchema(BaseModel):
         None, description="When the statement was asserted/recorded."
     )
     information_source: MedicationStatementInformationSourceInput | None = Field(
-        None, description="Person or organization that provided information about the medication."
+        None,
+        description="Person or organization that provided information about the medication.",
     )
     derived_from: list[MedicationStatementDerivedFromInput] | None = Field(
         None, description="Additional supporting information."
@@ -130,7 +134,8 @@ class MedicationStatementCreateSchema(BaseModel):
         None, description="Reason for medication administration, coded."
     )
     reason_reference: list[MedicationStatementReasonReferenceInput] | None = Field(
-        None, description="Condition or observation that supports why the medication is being/was taken."
+        None,
+        description="Condition or observation that supports why the medication is being/was taken.",
     )
     note: list[MedicationStatementNoteInput] | None = Field(
         None, description="Further information about the statement."
@@ -148,7 +153,9 @@ class MedicationStatementPatchSchema(BaseModel):
         json_schema_extra={"example": {"status": "completed"}},
     )
 
-    extension: list[dict] | None = Field(None, description="Resource-level FHIR extensions.")
+    extension: list[dict] | None = Field(
+        None, description="Resource-level FHIR extensions."
+    )
     identifier: list[MedicationStatementIdentifierInput] | None = Field(
         None, description="External identifier for this record."
     )
@@ -181,7 +188,8 @@ class MedicationStatementPatchSchema(BaseModel):
         None, description="Encounter / Episode associated with MedicationStatement."
     )
     effective_date_time: datetime | None = Field(
-        None, description="The date/time or interval when the medication is/was/will be taken."
+        None,
+        description="The date/time or interval when the medication is/was/will be taken.",
     )
     effective_period_start: datetime | None = Field(
         None, description="Effective period start."
@@ -193,7 +201,8 @@ class MedicationStatementPatchSchema(BaseModel):
         None, description="When the statement was asserted/recorded."
     )
     information_source: MedicationStatementInformationSourceInput | None = Field(
-        None, description="Person or organization that provided information about the medication."
+        None,
+        description="Person or organization that provided information about the medication.",
     )
     derived_from: list[MedicationStatementDerivedFromInput] | None = Field(
         None, description="Additional supporting information."
@@ -202,7 +211,8 @@ class MedicationStatementPatchSchema(BaseModel):
         None, description="Reason for medication administration, coded."
     )
     reason_reference: list[MedicationStatementReasonReferenceInput] | None = Field(
-        None, description="Condition or observation that supports why the medication is being/was taken."
+        None,
+        description="Condition or observation that supports why the medication is being/was taken.",
     )
     note: list[MedicationStatementNoteInput] | None = Field(
         None, description="Further information about the statement."

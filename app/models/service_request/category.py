@@ -25,7 +25,9 @@ class ServiceRequestCategory(TenantAuditMixin, Base):
 
     service_request = relationship("ServiceRequestModel", back_populates="categories")
     codings = relationship(
-        "ServiceRequestCategoryCoding", back_populates="category", cascade="all, delete-orphan"
+        "ServiceRequestCategoryCoding",
+        back_populates="category",
+        cascade="all, delete-orphan",
     )
 
 
@@ -36,7 +38,10 @@ class ServiceRequestCategoryCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     service_request_category_id = Column(
-        BigInteger, ForeignKey("service_request_category.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("service_request_category.id"),
+        nullable=False,
+        index=True,
     )
 
     category = relationship("ServiceRequestCategory", back_populates="codings")

@@ -10,6 +10,7 @@ def _format_date(d) -> str | None:
         return None
     return d.isoformat() if hasattr(d, "isoformat") else str(d)
 
+
 if TYPE_CHECKING:
     from app.models.task import (
         TaskIdentifier,
@@ -88,13 +89,22 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -216,7 +226,9 @@ def _fhir_restriction(model: TaskModel) -> dict | None:
         restriction["period"] = period
     recipients = [
         item
-        for item in (_fhir_reference_row(r) for r in (model.restriction_recipients or []))
+        for item in (
+            _fhir_reference_row(r) for r in (model.restriction_recipients or [])
+        )
         if item is not None
     ]
     if recipients:
@@ -454,7 +466,9 @@ def to_fhir_task(model: TaskModel) -> dict:
 
     relevant_history = [
         item
-        for item in (_fhir_reference_row(r) for r in (model.relevant_history_list or []))
+        for item in (
+            _fhir_reference_row(r) for r in (model.relevant_history_list or [])
+        )
         if item is not None
     ]
     if relevant_history:

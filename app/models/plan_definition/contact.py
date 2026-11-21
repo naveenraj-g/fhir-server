@@ -13,7 +13,10 @@ class PlanDefinitionContact(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     plan_definition_pk = Column(
-        BigInteger, ForeignKey("plan_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("plan_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     role = Column(
         Enum(PlanDefinitionContactRole, name="plan_definition_contact_role"),

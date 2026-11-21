@@ -112,9 +112,7 @@ class _CoreMixin:
         await self._validate_base_r4(
             payload_to_fhir_medication_statement(payload), org_id
         )
-        model = await self.repository.create_full(
-            payload, org_id, created_by
-        )
+        model = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "MedicationStatement created",
             extra={
@@ -182,9 +180,7 @@ class _CoreMixin:
         )
 
     @staticmethod
-    async def _validate_base_r4(
-        fhir_resource: dict, org_id: str | None = None
-    ) -> None:
+    async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
         errors = await validate_resource(
             "MedicationStatement", fhir_resource, org_id=org_id
         )

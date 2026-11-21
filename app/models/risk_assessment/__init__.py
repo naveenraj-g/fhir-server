@@ -1,4 +1,9 @@
-from .core import PERFORMER_TYPES, SUBJECT_TYPES, RiskAssessmentModel, risk_assessment_id_seq
+from .core import (
+    PERFORMER_TYPES,
+    SUBJECT_TYPES,
+    RiskAssessmentModel,
+    risk_assessment_id_seq,
+)
 from .identifier import RiskAssessmentIdentifier
 from .prediction import RiskAssessmentPrediction
 from .token import TOKEN_PARAMS, RiskAssessmentToken

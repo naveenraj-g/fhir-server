@@ -61,7 +61,9 @@ def _fhir_reference(obj, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
@@ -169,7 +171,13 @@ def _fhir_annotation(note) -> dict | None:
 
 
 def _fhir_quantity(val, comp, unit, system, code) -> dict | None:
-    if val is None and comp is None and unit is None and system is None and code is None:
+    if (
+        val is None
+        and comp is None
+        and unit is None
+        and system is None
+        and code is None
+    ):
         return None
     res: dict = {}
     if val is not None:
@@ -230,7 +238,9 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
         detail["instantiatesCanonical"] = list(act.detail_instantiates_canonical)
     if act.detail_instantiates_uri:
         detail["instantiatesUri"] = list(act.detail_instantiates_uri)
-    code_cc = _fhir_codeable_concept(getattr(act, "detail_code_codings", None), act.detail_code_text)
+    code_cc = _fhir_codeable_concept(
+        getattr(act, "detail_code_codings", None), act.detail_code_text
+    )
     if code_cc:
         detail["code"] = code_cc
     if getattr(act, "detail_reason_codes", None):
@@ -243,17 +253,13 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
             detail["reasonCode"] = rc_list
     if getattr(act, "detail_reason_references", None):
         rr_list = [
-            _fhir_reference(rr, "reference")
-            for rr in act.detail_reason_references
+            _fhir_reference(rr, "reference") for rr in act.detail_reason_references
         ]
         rr_list = [rr for rr in rr_list if rr]
         if rr_list:
             detail["reasonReference"] = rr_list
     if getattr(act, "detail_goals", None):
-        goal_list = [
-            _fhir_reference(g, "reference")
-            for g in act.detail_goals
-        ]
+        goal_list = [_fhir_reference(g, "reference") for g in act.detail_goals]
         goal_list = [g for g in goal_list if g]
         if goal_list:
             detail["goal"] = goal_list
@@ -282,10 +288,7 @@ def _fhir_activity_detail(act: CarePlanActivity) -> dict | None:
     if loc:
         detail["location"] = loc
     if getattr(act, "detail_performers", None):
-        perf_list = [
-            _fhir_reference(p, "reference")
-            for p in act.detail_performers
-        ]
+        perf_list = [_fhir_reference(p, "reference") for p in act.detail_performers]
         perf_list = [p for p in perf_list if p]
         if perf_list:
             detail["performer"] = perf_list
@@ -334,8 +337,7 @@ def _fhir_activity(act: CarePlanActivity) -> dict:
             res["outcomeCodeableConcept"] = occ_list
     if getattr(act, "outcome_references", None):
         oref_list = [
-            _fhir_reference(oref, "reference")
-            for oref in act.outcome_references
+            _fhir_reference(oref, "reference") for oref in act.outcome_references
         ]
         oref_list = [o for o in oref_list if o]
         if oref_list:
@@ -361,20 +363,26 @@ def _fhir_meta(model: CarePlanModel) -> dict:
         meta["lastUpdated"] = fhir_instant(last_updated)
     extensions = []
     if model.created_at:
-        extensions.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-created",
-            "valueDateTime": fhir_instant(model.created_at),
-        })
+        extensions.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-created",
+                "valueDateTime": fhir_instant(model.created_at),
+            }
+        )
     if model.created_by:
-        extensions.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-createdBy",
-            "valueString": model.created_by,
-        })
+        extensions.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-createdBy",
+                "valueString": model.created_by,
+            }
+        )
     if model.updated_by:
-        extensions.append({
-            "url": "http://hl7.org/fhir/StructureDefinition/resource-updatedBy",
-            "valueString": model.updated_by,
-        })
+        extensions.append(
+            {
+                "url": "http://hl7.org/fhir/StructureDefinition/resource-updatedBy",
+                "valueString": model.updated_by,
+            }
+        )
     if extensions:
         meta["extension"] = extensions
     return meta
@@ -407,28 +415,19 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
         res["instantiatesUri"] = list(model.instantiates_uri)
 
     if getattr(model, "based_on", None):
-        bo_list = [
-            _fhir_reference(b, "reference")
-            for b in model.based_on
-        ]
+        bo_list = [_fhir_reference(b, "reference") for b in model.based_on]
         bo_list = [b for b in bo_list if b]
         if bo_list:
             res["basedOn"] = bo_list
 
     if getattr(model, "replaces", None):
-        rep_list = [
-            _fhir_reference(r, "reference")
-            for r in model.replaces
-        ]
+        rep_list = [_fhir_reference(r, "reference") for r in model.replaces]
         rep_list = [r for r in rep_list if r]
         if rep_list:
             res["replaces"] = rep_list
 
     if getattr(model, "part_of", None):
-        po_list = [
-            _fhir_reference(p, "reference")
-            for p in model.part_of
-        ]
+        po_list = [_fhir_reference(p, "reference") for p in model.part_of]
         po_list = [p for p in po_list if p]
         if po_list:
             res["partOf"] = po_list
@@ -475,37 +474,25 @@ def to_fhir_care_plan(model: CarePlanModel) -> dict:
         res["author"] = auth
 
     if getattr(model, "contributors", None):
-        cont_list = [
-            _fhir_reference(c, "reference")
-            for c in model.contributors
-        ]
+        cont_list = [_fhir_reference(c, "reference") for c in model.contributors]
         cont_list = [c for c in cont_list if c]
         if cont_list:
             res["contributor"] = cont_list
 
     if getattr(model, "care_teams", None):
-        ct_list = [
-            _fhir_reference(ct, "reference")
-            for ct in model.care_teams
-        ]
+        ct_list = [_fhir_reference(ct, "reference") for ct in model.care_teams]
         ct_list = [ct for ct in ct_list if ct]
         if ct_list:
             res["careTeam"] = ct_list
 
     if getattr(model, "addresses", None):
-        addr_list = [
-            _fhir_reference(a, "reference")
-            for a in model.addresses
-        ]
+        addr_list = [_fhir_reference(a, "reference") for a in model.addresses]
         addr_list = [a for a in addr_list if a]
         if addr_list:
             res["addresses"] = addr_list
 
     if getattr(model, "goals", None):
-        goal_list = [
-            _fhir_reference(g, "reference")
-            for g in model.goals
-        ]
+        goal_list = [_fhir_reference(g, "reference") for g in model.goals]
         goal_list = [g for g in goal_list if g]
         if goal_list:
             res["goal"] = goal_list

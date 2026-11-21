@@ -15,9 +15,7 @@ class FHIRCareTeamParticipant(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    role: list[FHIRCodeableConcept] | None = Field(
-        None, description="Type of role."
-    )
+    role: list[FHIRCodeableConcept] | None = Field(None, description="Type of role.")
     member: FHIRReference | None = Field(
         None, description="Who is involved (Reference)."
     )

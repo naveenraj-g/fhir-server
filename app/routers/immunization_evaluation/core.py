@@ -9,7 +9,9 @@ from app.core.content_negotiation import (
     require_fhir_json,
 )
 from app.core.logging import get_logger, log_payload
-from app.di.dependencies.immunization_evaluation import get_immunization_evaluation_service
+from app.di.dependencies.immunization_evaluation import (
+    get_immunization_evaluation_service,
+)
 from app.fhir.search.openapi import search_description, search_parameters
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
 from app.routers._fhir_search import (
@@ -19,7 +21,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.immunization_evaluation import ImmunizationEvaluationCreateSchema, ImmunizationEvaluationPatchSchema
+from app.schemas.immunization_evaluation import (
+    ImmunizationEvaluationCreateSchema,
+    ImmunizationEvaluationPatchSchema,
+)
 from app.services.immunization_evaluation import ImmunizationEvaluationService
 
 from ._responses import (
@@ -72,7 +77,9 @@ async def create_immunization_evaluation(
     payload: ImmunizationEvaluationCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("immunization_evaluation", "create")),
-    immunization_evaluation_service: ImmunizationEvaluationService = Depends(get_immunization_evaluation_service),
+    immunization_evaluation_service: ImmunizationEvaluationService = Depends(
+        get_immunization_evaluation_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -82,8 +89,10 @@ async def create_immunization_evaluation(
         extra={"event": "route.create_immunization_evaluation"},
     )
     log_payload(logger, "immunization_evaluation.create.payload", payload)
-    immunization_evaluation = await immunization_evaluation_service.create_immunization_evaluation(
-        payload, actor.org_id, actor.sub, body=await request.json()
+    immunization_evaluation = (
+        await immunization_evaluation_service.create_immunization_evaluation(
+            payload, actor.org_id, actor.sub, body=await request.json()
+        )
     )
     return fhir_response(
         immunization_evaluation_service._to_fhir(immunization_evaluation),
@@ -165,7 +174,9 @@ async def _search(
 async def search_immunization_evaluations(
     request: Request,
     actor: AuthUser = Depends(require_permission("immunization_evaluation", "read")),
-    immunization_evaluation_service: ImmunizationEvaluationService = Depends(get_immunization_evaluation_service),
+    immunization_evaluation_service: ImmunizationEvaluationService = Depends(
+        get_immunization_evaluation_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -173,7 +184,9 @@ async def search_immunization_evaluations(
         "Search ImmunizationEvaluation resources",
         extra={"event": "route.search_immunization_evaluations"},
     )
-    return await _search(request, get_query(request), actor, immunization_evaluation_service)
+    return await _search(
+        request, get_query(request), actor, immunization_evaluation_service
+    )
 
 
 @router.post(
@@ -192,13 +205,17 @@ async def search_immunization_evaluations(
 async def search_immunization_evaluations_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("immunization_evaluation", "read")),
-    immunization_evaluation_service: ImmunizationEvaluationService = Depends(get_immunization_evaluation_service),
+    immunization_evaluation_service: ImmunizationEvaluationService = Depends(
+        get_immunization_evaluation_service
+    ),
 ):
     logger.info(
         "Search ImmunizationEvaluation resources (POST _search)",
         extra={"event": "route.search_immunization_evaluations_post"},
     )
-    return await _search(request, await post_query(request), actor, immunization_evaluation_service)
+    return await _search(
+        request, await post_query(request), actor, immunization_evaluation_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -221,7 +238,9 @@ async def get_immunization_evaluation(
         ..., ge=1, description="Public immunization_evaluation identifier."
     ),
     actor: AuthUser = Depends(require_permission("immunization_evaluation", "read")),
-    immunization_evaluation_service: ImmunizationEvaluationService = Depends(get_immunization_evaluation_service),
+    immunization_evaluation_service: ImmunizationEvaluationService = Depends(
+        get_immunization_evaluation_service
+    ),
 ):
     logger.info(
         "Retrieve an ImmunizationEvaluation resource by public immunization_evaluation_id",
@@ -230,10 +249,14 @@ async def get_immunization_evaluation(
             "immunization_evaluation_id": immunization_evaluation_id,
         },
     )
-    immunization_evaluation = await immunization_evaluation_service.get_immunization_evaluation_scoped(
-        immunization_evaluation_id, actor.org_id
+    immunization_evaluation = (
+        await immunization_evaluation_service.get_immunization_evaluation_scoped(
+            immunization_evaluation_id, actor.org_id
+        )
     )
-    return fhir_response(immunization_evaluation_service._to_fhir(immunization_evaluation))
+    return fhir_response(
+        immunization_evaluation_service._to_fhir(immunization_evaluation)
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────
@@ -261,13 +284,18 @@ async def patch_immunization_evaluation(
         ..., ge=1, description="Public immunization_evaluation identifier."
     ),
     actor: AuthUser = Depends(require_permission("immunization_evaluation", "update")),
-    immunization_evaluation_service: ImmunizationEvaluationService = Depends(get_immunization_evaluation_service),
+    immunization_evaluation_service: ImmunizationEvaluationService = Depends(
+        get_immunization_evaluation_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_immunization_evaluation()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update an ImmunizationEvaluation resource",
-        extra={"event": "route.patch_immunization_evaluation", "immunization_evaluation_id": immunization_evaluation_id},
+        extra={
+            "event": "route.patch_immunization_evaluation",
+            "immunization_evaluation_id": immunization_evaluation_id,
+        },
     )
     log_payload(logger, "immunization_evaluation.patch.payload", payload)
     updated = await immunization_evaluation_service.patch_immunization_evaluation(
@@ -300,7 +328,9 @@ async def delete_immunization_evaluation(
         ..., ge=1, description="Public immunization_evaluation identifier."
     ),
     actor: AuthUser = Depends(require_permission("immunization_evaluation", "delete")),
-    immunization_evaluation_service: ImmunizationEvaluationService = Depends(get_immunization_evaluation_service),
+    immunization_evaluation_service: ImmunizationEvaluationService = Depends(
+        get_immunization_evaluation_service
+    ),
 ):
     """delete_immunization_evaluation() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -311,4 +341,6 @@ async def delete_immunization_evaluation(
             "immunization_evaluation_id": immunization_evaluation_id,
         },
     )
-    await immunization_evaluation_service.delete_immunization_evaluation(immunization_evaluation_id, org_id=actor.org_id)
+    await immunization_evaluation_service.delete_immunization_evaluation(
+        immunization_evaluation_id, org_id=actor.org_id
+    )

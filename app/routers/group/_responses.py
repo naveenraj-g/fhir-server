@@ -12,13 +12,19 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "Group not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainGroupResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRGroupSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainGroupResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRGroupSchema.model_json_schema())
+            },
         }
     }
 }
@@ -27,8 +33,12 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of groups",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedGroupResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRGroupBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PaginatedGroupResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRGroupBundle.model_json_schema())
+            },
         },
     }
 }

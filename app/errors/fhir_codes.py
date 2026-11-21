@@ -31,10 +31,14 @@ class IssueType(str, Enum):
     STRUCTURE = "structure"  # A structural issue in the content such as wrong namespace, unable to parse the content completely, or invalid json/xml syntax.
     REQUIRED = "required"  # A required element is missing.
     VALUE = "value"  # An element or header value is invalid.
-    INVARIANT = "invariant"  # A content validation rule failed - e.g. a schematron rule.
+    INVARIANT = (
+        "invariant"  # A content validation rule failed - e.g. a schematron rule.
+    )
 
     # --- security ---
-    SECURITY = "security"  # An authentication/authorization/permissions issue of some kind.
+    SECURITY = (
+        "security"  # An authentication/authorization/permissions issue of some kind.
+    )
     LOGIN = "login"  # The client needs to initiate an authentication process.
     UNKNOWN = "unknown"  # The user or system was not able to be authenticated (either there is no process, or the proferred token is unacceptable).
     EXPIRED = "expired"  # User session expired; a login may be required.

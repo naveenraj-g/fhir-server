@@ -5,7 +5,6 @@ from app.services.allergy_intolerance import AllergyIntoleranceService
 
 
 class AllergyIntoleranceContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     allergy_intolerance_repository = providers.Factory(

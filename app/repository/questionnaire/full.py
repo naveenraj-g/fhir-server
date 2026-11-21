@@ -23,7 +23,10 @@ from app.models.questionnaire import (
     QuestionnaireUseContext,
     QuestionnaireUseContextValueCoding,
 )
-from app.schemas.questionnaire import QuestionnaireCreateSchema, QuestionnairePatchSchema
+from app.schemas.questionnaire import (
+    QuestionnaireCreateSchema,
+    QuestionnairePatchSchema,
+)
 
 from ._shared import (
     _any_ref_kwargs,
@@ -80,7 +83,9 @@ def _model_comparator(c) -> QuestionnaireQuantityComparatorModel:
     return QuestionnaireQuantityComparatorModel[c.name]
 
 
-async def _insert_items(session, questionnaire_pk: int, items_payload, parent_item_id, org_id, created_by):
+async def _insert_items(
+    session, questionnaire_pk: int, items_payload, parent_item_id, org_id, created_by
+):
     """Recursively inserts QuestionnaireItemInput rows (and their own
     grandchildren) — every row gets BOTH `questionnaire_pk` (denormalized
     straight to the root) and `parent_item_id` (the actual tree edge). See
@@ -113,7 +118,9 @@ async def _insert_items(session, questionnaire_pk: int, items_payload, parent_it
         for coding in item_payload.code or []:
             session.add(
                 QuestionnaireItemCoding(
-                    questionnaire_item_id=item.id, tenant_id=org_id, **_coding_kwargs(coding, created_by)
+                    questionnaire_item_id=item.id,
+                    tenant_id=org_id,
+                    **_coding_kwargs(coding, created_by),
                 )
             )
 
@@ -141,14 +148,20 @@ async def _insert_items(session, questionnaire_pk: int, items_payload, parent_it
                     display=ew.answer_coding_display,
                     user_selected=ew.answer_coding_user_selected,
                     answer_quantity_value=ew.answer_quantity_value,
-                    answer_quantity_comparator=_model_comparator(ew.answer_quantity_comparator)
+                    answer_quantity_comparator=_model_comparator(
+                        ew.answer_quantity_comparator
+                    )
                     if ew.answer_quantity_comparator
                     else None,
                     answer_quantity_unit=ew.answer_quantity_unit,
                     answer_quantity_system=ew.answer_quantity_system,
                     answer_quantity_code=ew.answer_quantity_code,
                     answer_reference_reference=ew.answer_reference,
-                    **_any_ref_kwargs("answer_reference", ew.answer_reference, ew.answer_reference_display),
+                    **_any_ref_kwargs(
+                        "answer_reference",
+                        ew.answer_reference,
+                        ew.answer_reference_display,
+                    ),
                 )
             )
 
@@ -170,7 +183,11 @@ async def _insert_items(session, questionnaire_pk: int, items_payload, parent_it
                     display=ao.value_coding_display,
                     user_selected=ao.value_coding_user_selected,
                     value_reference_reference=ao.value_reference,
-                    **_any_ref_kwargs("value_reference", ao.value_reference, ao.value_reference_display),
+                    **_any_ref_kwargs(
+                        "value_reference",
+                        ao.value_reference,
+                        ao.value_reference_display,
+                    ),
                     initial_selected=ao.initial_selected,
                 )
             )
@@ -207,19 +224,32 @@ async def _insert_items(session, questionnaire_pk: int, items_payload, parent_it
                     display=ini.value_coding_display,
                     user_selected=ini.value_coding_user_selected,
                     value_quantity_value=ini.value_quantity_value,
-                    value_quantity_comparator=_model_comparator(ini.value_quantity_comparator)
+                    value_quantity_comparator=_model_comparator(
+                        ini.value_quantity_comparator
+                    )
                     if ini.value_quantity_comparator
                     else None,
                     value_quantity_unit=ini.value_quantity_unit,
                     value_quantity_system=ini.value_quantity_system,
                     value_quantity_code=ini.value_quantity_code,
                     value_reference_reference=ini.value_reference,
-                    **_any_ref_kwargs("value_reference", ini.value_reference, ini.value_reference_display),
+                    **_any_ref_kwargs(
+                        "value_reference",
+                        ini.value_reference,
+                        ini.value_reference_display,
+                    ),
                 )
             )
 
         if item_payload.item:
-            await _insert_items(session, questionnaire_pk, item_payload.item, item.id, org_id, created_by)
+            await _insert_items(
+                session,
+                questionnaire_pk,
+                item_payload.item,
+                item.id,
+                org_id,
+                created_by,
+            )
 
 
 class _FullMixin:
@@ -259,12 +289,20 @@ class _FullMixin:
 
             for coding in payload.code or []:
                 session.add(
-                    QuestionnaireCoding(questionnaire_pk=q.id, tenant_id=org_id, **_coding_kwargs(coding, created_by))
+                    QuestionnaireCoding(
+                        questionnaire_pk=q.id,
+                        tenant_id=org_id,
+                        **_coding_kwargs(coding, created_by),
+                    )
                 )
 
             for i in payload.identifier or []:
-                a_type, a_id = _parse_org_ref(i.assigner) if i.assigner else (None, None)
-                await _validate_reference(session, org_id, a_type, a_id, "identifier.assigner")
+                a_type, a_id = (
+                    _parse_org_ref(i.assigner) if i.assigner else (None, None)
+                )
+                await _validate_reference(
+                    session, org_id, a_type, a_id, "identifier.assigner"
+                )
                 identifier = QuestionnaireIdentifier(
                     questionnaire_pk=q.id,
                     tenant_id=org_id,
@@ -293,7 +331,10 @@ class _FullMixin:
 
             for c in payload.contact or []:
                 contact = QuestionnaireContact(
-                    questionnaire_pk=q.id, tenant_id=org_id, name=c.name, created_by=created_by
+                    questionnaire_pk=q.id,
+                    tenant_id=org_id,
+                    name=c.name,
+                    created_by=created_by,
                 )
                 session.add(contact)
                 if c.telecom:
@@ -315,9 +356,13 @@ class _FullMixin:
 
             for uc in payload.use_context or []:
                 vref_type, vref_id = (
-                    _parse_use_context_value_ref(uc.value_reference) if uc.value_reference else (None, None)
+                    _parse_use_context_value_ref(uc.value_reference)
+                    if uc.value_reference
+                    else (None, None)
                 )
-                await _validate_reference(session, org_id, vref_type, vref_id, "useContext.valueReference")
+                await _validate_reference(
+                    session, org_id, vref_type, vref_id, "useContext.valueReference"
+                )
                 use_context = QuestionnaireUseContext(
                     questionnaire_pk=q.id,
                     tenant_id=org_id,
@@ -328,7 +373,9 @@ class _FullMixin:
                     user_selected=uc.code_user_selected,
                     value_codeable_concept_text=uc.value_codeable_concept_text,
                     value_quantity_value=uc.value_quantity_value,
-                    value_quantity_comparator=_model_comparator(uc.value_quantity_comparator)
+                    value_quantity_comparator=_model_comparator(
+                        uc.value_quantity_comparator
+                    )
                     if uc.value_quantity_comparator
                     else None,
                     value_quantity_unit=uc.value_quantity_unit,
@@ -343,7 +390,9 @@ class _FullMixin:
                     value_range_high_system=uc.value_range_high_system,
                     value_range_high_code=uc.value_range_high_code,
                     value_reference_reference=uc.value_reference,
-                    **_use_context_value_ref_kwargs(uc.value_reference, uc.value_reference_display),
+                    **_use_context_value_ref_kwargs(
+                        uc.value_reference, uc.value_reference_display
+                    ),
                     created_by=created_by,
                 )
                 session.add(use_context)
@@ -360,7 +409,10 @@ class _FullMixin:
 
             for j in payload.jurisdiction or []:
                 jurisdiction = QuestionnaireJurisdiction(
-                    questionnaire_pk=q.id, tenant_id=org_id, text=j.text, created_by=created_by
+                    questionnaire_pk=q.id,
+                    tenant_id=org_id,
+                    text=j.text,
+                    created_by=created_by,
                 )
                 session.add(jurisdiction)
                 if j.coding:
@@ -375,7 +427,9 @@ class _FullMixin:
                         )
 
             if payload.item:
-                await _insert_items(session, q.id, payload.item, None, org_id, created_by)
+                await _insert_items(
+                    session, q.id, payload.item, None, org_id, created_by
+                )
 
             try:
                 await session.commit()
@@ -398,7 +452,9 @@ class _FullMixin:
         follow the plain child-then-parent subquery pattern used by every
         other list here — see the inline comment above that block."""
         async with self.session_factory() as session:
-            stmt = select(QuestionnaireModel).where(QuestionnaireModel.questionnaire_id == questionnaire_id)
+            stmt = select(QuestionnaireModel).where(
+                QuestionnaireModel.questionnaire_id == questionnaire_id
+            )
             q = (await session.execute(stmt)).scalars().first()
             if not q:
                 return None
@@ -429,11 +485,17 @@ class _FullMixin:
             sub_created_by = updated_by if updated_by is not None else q.created_by
 
             if payload.code is not None:
-                await session.execute(delete(QuestionnaireCoding).where(QuestionnaireCoding.questionnaire_pk == q.id))
+                await session.execute(
+                    delete(QuestionnaireCoding).where(
+                        QuestionnaireCoding.questionnaire_pk == q.id
+                    )
+                )
                 for coding in payload.code:
                     session.add(
                         QuestionnaireCoding(
-                            questionnaire_pk=q.id, tenant_id=q.tenant_id, **_coding_kwargs(coding, sub_created_by)
+                            questionnaire_pk=q.id,
+                            tenant_id=q.tenant_id,
+                            **_coding_kwargs(coding, sub_created_by),
                         )
                     )
 
@@ -448,11 +510,17 @@ class _FullMixin:
                     )
                 )
                 await session.execute(
-                    delete(QuestionnaireIdentifier).where(QuestionnaireIdentifier.questionnaire_pk == q.id)
+                    delete(QuestionnaireIdentifier).where(
+                        QuestionnaireIdentifier.questionnaire_pk == q.id
+                    )
                 )
                 for i in payload.identifier:
-                    a_type, a_id = _parse_org_ref(i.assigner) if i.assigner else (None, None)
-                    await _validate_reference(session, q.tenant_id, a_type, a_id, "identifier.assigner")
+                    a_type, a_id = (
+                        _parse_org_ref(i.assigner) if i.assigner else (None, None)
+                    )
+                    await _validate_reference(
+                        session, q.tenant_id, a_type, a_id, "identifier.assigner"
+                    )
                     identifier = QuestionnaireIdentifier(
                         questionnaire_pk=q.id,
                         tenant_id=q.tenant_id,
@@ -483,14 +551,23 @@ class _FullMixin:
                 await session.execute(
                     delete(QuestionnaireContactTelecom).where(
                         QuestionnaireContactTelecom.questionnaire_contact_id.in_(
-                            select(QuestionnaireContact.id).where(QuestionnaireContact.questionnaire_pk == q.id)
+                            select(QuestionnaireContact.id).where(
+                                QuestionnaireContact.questionnaire_pk == q.id
+                            )
                         )
                     )
                 )
-                await session.execute(delete(QuestionnaireContact).where(QuestionnaireContact.questionnaire_pk == q.id))
+                await session.execute(
+                    delete(QuestionnaireContact).where(
+                        QuestionnaireContact.questionnaire_pk == q.id
+                    )
+                )
                 for c in payload.contact:
                     contact = QuestionnaireContact(
-                        questionnaire_pk=q.id, tenant_id=q.tenant_id, name=c.name, created_by=sub_created_by
+                        questionnaire_pk=q.id,
+                        tenant_id=q.tenant_id,
+                        name=c.name,
+                        created_by=sub_created_by,
                     )
                     session.add(contact)
                     if c.telecom:
@@ -521,13 +598,23 @@ class _FullMixin:
                     )
                 )
                 await session.execute(
-                    delete(QuestionnaireUseContext).where(QuestionnaireUseContext.questionnaire_pk == q.id)
+                    delete(QuestionnaireUseContext).where(
+                        QuestionnaireUseContext.questionnaire_pk == q.id
+                    )
                 )
                 for uc in payload.use_context:
                     vref_type, vref_id = (
-                        _parse_use_context_value_ref(uc.value_reference) if uc.value_reference else (None, None)
+                        _parse_use_context_value_ref(uc.value_reference)
+                        if uc.value_reference
+                        else (None, None)
                     )
-                    await _validate_reference(session, q.tenant_id, vref_type, vref_id, "useContext.valueReference")
+                    await _validate_reference(
+                        session,
+                        q.tenant_id,
+                        vref_type,
+                        vref_id,
+                        "useContext.valueReference",
+                    )
                     use_context = QuestionnaireUseContext(
                         questionnaire_pk=q.id,
                         tenant_id=q.tenant_id,
@@ -538,7 +625,9 @@ class _FullMixin:
                         user_selected=uc.code_user_selected,
                         value_codeable_concept_text=uc.value_codeable_concept_text,
                         value_quantity_value=uc.value_quantity_value,
-                        value_quantity_comparator=_model_comparator(uc.value_quantity_comparator)
+                        value_quantity_comparator=_model_comparator(
+                            uc.value_quantity_comparator
+                        )
                         if uc.value_quantity_comparator
                         else None,
                         value_quantity_unit=uc.value_quantity_unit,
@@ -553,7 +642,9 @@ class _FullMixin:
                         value_range_high_system=uc.value_range_high_system,
                         value_range_high_code=uc.value_range_high_code,
                         value_reference_reference=uc.value_reference,
-                        **_use_context_value_ref_kwargs(uc.value_reference, uc.value_reference_display),
+                        **_use_context_value_ref_kwargs(
+                            uc.value_reference, uc.value_reference_display
+                        ),
                         created_by=sub_created_by,
                     )
                     session.add(use_context)
@@ -579,11 +670,16 @@ class _FullMixin:
                     )
                 )
                 await session.execute(
-                    delete(QuestionnaireJurisdiction).where(QuestionnaireJurisdiction.questionnaire_pk == q.id)
+                    delete(QuestionnaireJurisdiction).where(
+                        QuestionnaireJurisdiction.questionnaire_pk == q.id
+                    )
                 )
                 for j in payload.jurisdiction:
                     jurisdiction = QuestionnaireJurisdiction(
-                        questionnaire_pk=q.id, tenant_id=q.tenant_id, text=j.text, created_by=sub_created_by
+                        questionnaire_pk=q.id,
+                        tenant_id=q.tenant_id,
+                        text=j.text,
+                        created_by=sub_created_by,
                     )
                     session.add(jurisdiction)
                     if j.coding:
@@ -609,29 +705,45 @@ class _FullMixin:
                 # `questionnaire_item` itself removes the entire tree in 5
                 # statements regardless of how deep it was — no recursive
                 # CTE, no per-level subquery chaining needed.
-                item_ids_subq = select(QuestionnaireItem.id).where(QuestionnaireItem.questionnaire_pk == q.id)
+                item_ids_subq = select(QuestionnaireItem.id).where(
+                    QuestionnaireItem.questionnaire_pk == q.id
+                )
                 await session.execute(
-                    delete(QuestionnaireItemCoding).where(QuestionnaireItemCoding.questionnaire_item_id.in_(item_ids_subq))
+                    delete(QuestionnaireItemCoding).where(
+                        QuestionnaireItemCoding.questionnaire_item_id.in_(item_ids_subq)
+                    )
                 )
                 await session.execute(
                     delete(QuestionnaireItemEnableWhen).where(
-                        QuestionnaireItemEnableWhen.questionnaire_item_id.in_(item_ids_subq)
+                        QuestionnaireItemEnableWhen.questionnaire_item_id.in_(
+                            item_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(QuestionnaireItemAnswerOption).where(
-                        QuestionnaireItemAnswerOption.questionnaire_item_id.in_(item_ids_subq)
+                        QuestionnaireItemAnswerOption.questionnaire_item_id.in_(
+                            item_ids_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(QuestionnaireItemInitial).where(
-                        QuestionnaireItemInitial.questionnaire_item_id.in_(item_ids_subq)
+                        QuestionnaireItemInitial.questionnaire_item_id.in_(
+                            item_ids_subq
+                        )
                     )
                 )
-                await session.execute(delete(QuestionnaireItem).where(QuestionnaireItem.questionnaire_pk == q.id))
+                await session.execute(
+                    delete(QuestionnaireItem).where(
+                        QuestionnaireItem.questionnaire_pk == q.id
+                    )
+                )
 
                 if payload.item:
-                    await _insert_items(session, q.id, payload.item, None, q.tenant_id, sub_created_by)
+                    await _insert_items(
+                        session, q.id, payload.item, None, q.tenant_id, sub_created_by
+                    )
 
             try:
                 await session.commit()

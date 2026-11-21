@@ -18,9 +18,13 @@ class MedicationRequestIdentifier(TenantAuditMixin, Base):
     __tablename__ = "medication_request_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    medication_request_pk = Column(BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True)
+    medication_request_pk = Column(
+        BigInteger, ForeignKey("medication_request.id"), nullable=False, index=True
+    )
 
-    use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=True)
@@ -29,10 +33,19 @@ class MedicationRequestIdentifier(TenantAuditMixin, Base):
 
     assigner_reference = Column(String, nullable=True)
     assigner_id = Column(BigInteger, nullable=True, index=True)
-    assigner_type = Column(Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False), nullable=True)
+    assigner_type = Column(
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
+        nullable=True,
+    )
     assigner_display = Column(String, nullable=True)
 
-    assigner_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    assigner_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     assigner_identifier_type_system = Column(String, nullable=True)
     assigner_identifier_type_version = Column(String, nullable=True)
     assigner_identifier_type_code = Column(String, nullable=True)
@@ -44,9 +57,13 @@ class MedicationRequestIdentifier(TenantAuditMixin, Base):
     assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    medication_request = relationship("MedicationRequestModel", back_populates="identifiers")
+    medication_request = relationship(
+        "MedicationRequestModel", back_populates="identifiers"
+    )
     type_codings = relationship(
-        "MedicationRequestIdentifierTypeCoding", back_populates="identifier", cascade="all, delete-orphan"
+        "MedicationRequestIdentifierTypeCoding",
+        back_populates="identifier",
+        cascade="all, delete-orphan",
     )
 
 
@@ -57,7 +74,12 @@ class MedicationRequestIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, B
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     medication_request_identifier_id = Column(
-        BigInteger, ForeignKey("medication_request_identifier.id"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("medication_request_identifier.id"),
+        nullable=False,
+        index=True,
     )
 
-    identifier = relationship("MedicationRequestIdentifier", back_populates="type_codings")
+    identifier = relationship(
+        "MedicationRequestIdentifier", back_populates="type_codings"
+    )

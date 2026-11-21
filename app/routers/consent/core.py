@@ -57,9 +57,7 @@ async def create_consent(
         extra={"event": "route.create_consent"},
     )
     log_payload(logger, "consent.create.payload", payload)
-    consent = await consent_service.create_consent(
-        payload, actor.org_id, actor.sub
-    )
+    consent = await consent_service.create_consent(payload, actor.org_id, actor.sub)
     return format_response(
         consent_service._to_fhir(consent),
         consent_service._to_plain(consent),
@@ -84,9 +82,7 @@ async def create_consent(
 )
 async def get_consent(
     request: Request,
-    consent_id: int = Path(
-        ..., ge=1, description="Public consent identifier."
-    ),
+    consent_id: int = Path(..., ge=1, description="Public consent identifier."),
     actor: AuthUser = Depends(require_permission("consent", "read")),
     consent_service: ConsentService = Depends(get_consent_service),
 ):
@@ -94,9 +90,7 @@ async def get_consent(
         "Get a Consent resource by ID",
         extra={"event": "route.get_consent", "consent_id": consent_id},
     )
-    consent = await consent_service.get_consent_scoped(
-        consent_id, actor.org_id
-    )
+    consent = await consent_service.get_consent_scoped(consent_id, actor.org_id)
     return format_response(
         consent_service._to_fhir(consent),
         consent_service._to_plain(consent),
@@ -122,9 +116,7 @@ async def get_consent(
 async def patch_consent(
     payload: ConsentPatchSchema,
     request: Request,
-    consent_id: int = Path(
-        ..., ge=1, description="Public consent identifier."
-    ),
+    consent_id: int = Path(..., ge=1, description="Public consent identifier."),
     actor: AuthUser = Depends(require_permission("consent", "update")),
     consent_service: ConsentService = Depends(get_consent_service),
 ):
@@ -183,38 +175,28 @@ async def list_consents(
     date_from: datetime | None = Query(
         None, description="Consent dateTime range start."
     ),
-    date_to: datetime | None = Query(
-        None, description="Consent dateTime range end."
-    ),
+    date_to: datetime | None = Query(None, description="Consent dateTime range end."),
     period_from: datetime | None = Query(
         None, description="Provision period range start."
     ),
-    period_to: datetime | None = Query(
-        None, description="Provision period range end."
-    ),
+    period_to: datetime | None = Query(None, description="Provision period range end."),
     actor_ref: str | None = Query(
         None,
         alias="actor",
         description="Who|what controlled by this rule (actor reference).",
     ),
-    action: str | None = Query(
-        None, description="Actions controlled by this rule."
-    ),
+    action: str | None = Query(None, description="Actions controlled by this rule."),
     purpose: str | None = Query(
         None, description="Context of activities covered by this rule."
     ),
     data: str | None = Query(
         None, description="Data reference controlled by this rule."
     ),
-    source_reference: str | None = Query(
-        None, description="Source reference string."
-    ),
+    source_reference: str | None = Query(None, description="Source reference string."),
     organization: str | None = Query(
         None, description="Custodian of the consent (Organization reference)."
     ),
-    identifier: str | None = Query(
-        None, description="Business identifier value."
-    ),
+    identifier: str | None = Query(None, description="Business identifier value."),
     list_params: ListParams = Depends(),
     consent_service: ConsentService = Depends(get_consent_service),
 ):
@@ -271,9 +253,7 @@ async def list_consents(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_consent(
-    consent_id: int = Path(
-        ..., ge=1, description="Public consent identifier."
-    ),
+    consent_id: int = Path(..., ge=1, description="Public consent identifier."),
     actor: AuthUser = Depends(require_permission("consent", "delete")),
     consent_service: ConsentService = Depends(get_consent_service),
 ):

@@ -18,7 +18,12 @@ from app.models.terminology.terminology import (
     TerminologyValueSetConcept,
 )
 from tests.helpers.seed import seed_endpoint
-from tests.integration.organization.support import BASE, FULL, MINIMAL, create_organization
+from tests.integration.organization.support import (
+    BASE,
+    FULL,
+    MINIMAL,
+    create_organization,
+)
 
 ORG_TYPE = "http://terminology.hl7.org/CodeSystem/organization-type"
 NPI = "http://hl7.org/fhir/sid/us-npi"
@@ -44,7 +49,11 @@ def _ids(bundle: dict, mode: str = "match") -> set[int]:
 
 
 def _order(bundle: dict) -> list[int]:
-    return [int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"]
+    return [
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    ]
 
 
 async def _ids_for(client, params) -> set[int]:
@@ -120,7 +129,9 @@ async def test_string_exact_is_case_and_accent_sensitive(client):
 
 async def test_name_matches_alias_array(client):
     by_name = await _org(client, name="Riverside Clinic")
-    by_alias = await _org(client, name="Unrelated", alias=["Old Name", "Riverside Annex"])
+    by_alias = await _org(
+        client, name="Unrelated", alias=["Old Name", "Riverside Annex"]
+    )
     assert await _ids_for(client, {"name": "riverside"}) == {by_name, by_alias}
     assert await _ids_for(client, {"name:contains": "annex"}) == {by_alias}
     assert await _ids_for(client, {"name:exact": "Riverside Annex"}) == {by_alias}
@@ -129,7 +140,9 @@ async def test_name_matches_alias_array(client):
 
 async def test_string_missing(client):
     named = await _org(client, name="Named")
-    unnamed = await create_organization(client, {"active": True, "alias": ["Only Alias"]})
+    unnamed = await create_organization(
+        client, {"active": True, "alias": ["Only Alias"]}
+    )
     nothing = await create_organization(
         client, {"active": True, "identifier": [{"value": "x"}]}
     )
@@ -181,10 +194,28 @@ async def test_phonetic_rejects_exact_and_contains(client):
 async def test_address_matches_start_of_any_part(client):
     org_id = await _org(
         client,
-        address=[{"line": ["Suite 5", "123 Main St"], "city": "Springfield", "district": "Greene",
-                  "state": "Illinois", "postalCode": "62701", "country": "USA", "text": "Main campus"}],
+        address=[
+            {
+                "line": ["Suite 5", "123 Main St"],
+                "city": "Springfield",
+                "district": "Greene",
+                "state": "Illinois",
+                "postalCode": "62701",
+                "country": "USA",
+                "text": "Main campus",
+            }
+        ],
     )
-    for value in ("suite", "123 main", "spring", "greene", "illi", "627", "us", "main campus"):
+    for value in (
+        "suite",
+        "123 main",
+        "spring",
+        "greene",
+        "illi",
+        "627",
+        "us",
+        "main campus",
+    ):
         assert await _ids_for(client, {"address": value}) == {org_id}, value
     assert await _ids_for(client, {"address": "field"}) == set()
     assert await _ids_for(client, {"address:contains": "field"}) == {org_id}
@@ -208,7 +239,10 @@ async def test_address_part_missing(client):
     with_city = await create_organization(client, FULL)
     no_address = await _org(client)
     no_city = await _org(client, address=[{"country": "US"}])
-    assert await _ids_for(client, {"address-city:missing": "true"}) == {no_address, no_city}
+    assert await _ids_for(client, {"address-city:missing": "true"}) == {
+        no_address,
+        no_city,
+    }
     assert await _ids_for(client, {"address-city:missing": "false"}) == {with_city}
     assert await _ids_for(client, {"address:missing": "true"}) == {no_address}
 
@@ -236,7 +270,9 @@ async def test_address_use_token(client):
     org_id = await create_organization(client, FULL)  # use=work
     other = await _org(client, address=[{"use": "billing", "city": "X"}])
     assert await _ids_for(client, {"address-use": "work"}) == {org_id}
-    assert await _ids_for(client, {"address-use": "http://hl7.org/fhir/address-use|work"}) == {org_id}
+    assert await _ids_for(
+        client, {"address-use": "http://hl7.org/fhir/address-use|work"}
+    ) == {org_id}
     assert await _ids_for(client, {"address-use": "urn:other|work"}) == set()
     assert await _ids_for(client, {"address-use": "bogus"}) == set()
     assert await _ids_for(client, {"address-use:not": "work"}) == {other}
@@ -250,14 +286,19 @@ async def test_identifier_token_forms(client):
     assert await _ids_for(client, {"identifier": "|1234567893"}) == {other}
     assert await _ids_for(client, {"identifier": f"{NPI}|"}) == {org_id}
     assert await _ids_for(client, {"identifier": "urn:other|1234567893"}) == set()
-    assert await _ids_for(client, {"identifier": "123456789"}) == set()  # tokens match whole codes
+    assert (
+        await _ids_for(client, {"identifier": "123456789"}) == set()
+    )  # tokens match whole codes
 
 
 async def test_identifier_not_and_missing(client):
     org_id = await create_organization(client, FULL)
     other = await _org(client, identifier=[{"value": "A-1"}])
     bare = await _org(client)
-    assert await _ids_for(client, {"identifier:not": f"{NPI}|1234567893"}) == {other, bare}
+    assert await _ids_for(client, {"identifier:not": f"{NPI}|1234567893"}) == {
+        other,
+        bare,
+    }
     assert await _ids_for(client, {"identifier:missing": "true"}) == {bare}
     assert await _ids_for(client, {"identifier:missing": "false"}) == {org_id, other}
 
@@ -266,10 +307,18 @@ async def test_identifier_of_type_and_text(client):
     v2 = "http://terminology.hl7.org/CodeSystem/v2-0203"
     org_id = await _org(
         client,
-        identifier=[{
-            "type": {"coding": [{"system": v2, "code": "TAX", "display": "Tax ID number"}], "text": "GSTIN"},
-            "system": "urn:gstin", "value": "29AAF",
-        }],
+        identifier=[
+            {
+                "type": {
+                    "coding": [
+                        {"system": v2, "code": "TAX", "display": "Tax ID number"}
+                    ],
+                    "text": "GSTIN",
+                },
+                "system": "urn:gstin",
+                "value": "29AAF",
+            }
+        ],
     )
     await _org(client, identifier=[{"system": "urn:gstin", "value": "29AAF"}])
     assert await _ids_for(client, {"identifier:of-type": f"{v2}|TAX|29AAF"}) == {org_id}
@@ -300,13 +349,27 @@ async def _seed_terminology(engine):
         cs = TerminologyCodeSystem(canonical_url=ORG_TYPE, name="OrganizationType")
         session.add(cs)
         await session.flush()
-        prov = TerminologyConcept(code_system_id=cs.id, code="prov", display="Healthcare Provider")
-        hosp = TerminologyConcept(code_system_id=cs.id, code="prov-hosp", display="Hospital")
+        prov = TerminologyConcept(
+            code_system_id=cs.id, code="prov", display="Healthcare Provider"
+        )
+        hosp = TerminologyConcept(
+            code_system_id=cs.id, code="prov-hosp", display="Hospital"
+        )
         ins = TerminologyConcept(code_system_id=cs.id, code="ins", display="Insurer")
         session.add_all([prov, hosp, ins])
         await session.flush()
-        session.add(TerminologyRelationship(parent_concept_id=prov.id, child_concept_id=hosp.id, relationship_type="is-a"))
-        vs = TerminologyValueSet(canonical_url="urn:vs:providers", name="Providers", binding_strength="example")
+        session.add(
+            TerminologyRelationship(
+                parent_concept_id=prov.id,
+                child_concept_id=hosp.id,
+                relationship_type="is-a",
+            )
+        )
+        vs = TerminologyValueSet(
+            canonical_url="urn:vs:providers",
+            name="Providers",
+            binding_strength="example",
+        )
         session.add(vs)
         await session.flush()
         session.add(TerminologyValueSetConcept(value_set_id=vs.id, concept_id=prov.id))
@@ -316,13 +379,18 @@ async def _seed_terminology(engine):
 async def test_type_in_not_in_above_below(client, _engine):
     await _seed_terminology(_engine)
     prov = await _org(client, type=[{"coding": [{"system": ORG_TYPE, "code": "prov"}]}])
-    hosp = await _org(client, type=[{"coding": [{"system": ORG_TYPE, "code": "prov-hosp"}]}])
+    hosp = await _org(
+        client, type=[{"coding": [{"system": ORG_TYPE, "code": "prov-hosp"}]}]
+    )
     ins = await _org(client, type=[{"coding": [{"system": ORG_TYPE, "code": "ins"}]}])
     assert await _ids_for(client, {"type:in": "urn:vs:providers"}) == {prov}
     assert await _ids_for(client, {"type:not-in": "urn:vs:providers"}) == {hosp, ins}
     assert await _ids_for(client, {"type:in": "urn:vs:unknown"}) == set()
     assert await _ids_for(client, {"type:below": f"{ORG_TYPE}|prov"}) == {prov, hosp}
-    assert await _ids_for(client, {"type:above": f"{ORG_TYPE}|prov-hosp"}) == {prov, hosp}
+    assert await _ids_for(client, {"type:above": f"{ORG_TYPE}|prov-hosp"}) == {
+        prov,
+        hosp,
+    }
     assert await _ids_for(client, {"type:below": "ins"}) == {ins}
 
 
@@ -331,7 +399,9 @@ async def test_type_in_not_in_above_below(client, _engine):
 
 async def test_partof_reference_forms(client):
     parent = await _org(client, name="Parent")
-    child = await _org(client, name="Child", partOf={"reference": f"Organization/{parent}"})
+    child = await _org(
+        client, name="Child", partOf={"reference": f"Organization/{parent}"}
+    )
     for value in (
         str(parent),
         f"Organization/{parent}",
@@ -348,7 +418,9 @@ async def test_partof_reference_forms(client):
 async def test_partof_absolute_external_and_identifier(client):
     url = "https://other.example/fhir/Organization/42"
     external = await _org(client, partOf={"reference": url})
-    by_ident = await _org(client, partOf={"identifier": {"system": "urn:reg", "value": "R-9"}})
+    by_ident = await _org(
+        client, partOf={"identifier": {"system": "urn:reg", "value": "R-9"}}
+    )
     root = await _org(client)
     assert await _ids_for(client, {"partof": url}) == {external}
     assert await _ids_for(client, {"partof:identifier": "urn:reg|R-9"}) == {by_ident}
@@ -360,32 +432,50 @@ async def test_partof_above_and_below(client):
     root = await _org(client, name="Root")
     mid = await _org(client, name="Mid", partOf={"reference": f"Organization/{root}"})
     leaf = await _org(client, name="Leaf", partOf={"reference": f"Organization/{mid}"})
-    assert await _ids_for(client, {"partof:below": f"Organization/{root}"}) == {mid, leaf}
+    assert await _ids_for(client, {"partof:below": f"Organization/{root}"}) == {
+        mid,
+        leaf,
+    }
     assert await _ids_for(client, {"partof:below": str(mid)}) == {leaf}
-    assert await _ids_for(client, {"partof:above": f"Organization/{mid}"}) == {mid, leaf}
+    assert await _ids_for(client, {"partof:above": f"Organization/{mid}"}) == {
+        mid,
+        leaf,
+    }
     assert await _ids_for(client, {"partof:above": str(root)}) == {mid}
 
 
 async def test_partof_chaining(client):
     root = await _org(client, name="Acme Holdings")
-    mid = await _org(client, name="Acme Regional", partOf={"reference": f"Organization/{root}"})
-    leaf = await _org(client, name="Acme Clinic", partOf={"reference": f"Organization/{mid}"})
+    mid = await _org(
+        client, name="Acme Regional", partOf={"reference": f"Organization/{root}"}
+    )
+    leaf = await _org(
+        client, name="Acme Clinic", partOf={"reference": f"Organization/{mid}"}
+    )
     assert await _ids_for(client, {"partof.name": "acme hold"}) == {mid}
     assert await _ids_for(client, {"partof:Organization.name": "acme reg"}) == {leaf}
-    assert await _ids_for(client, {"partof.partof.name:exact": "Acme Holdings"}) == {leaf}
+    assert await _ids_for(client, {"partof.partof.name:exact": "Acme Holdings"}) == {
+        leaf
+    }
     assert await _ids_for(client, {"partof._id": str(root)}) == {mid}
     _rejected(await _get(client, {"partof.nonsense": "x"}), "not-supported")
     _rejected(await _get(client, {"name.foo": "x"}))
 
 
 async def test_endpoint_reference_and_identifier(client, _engine):
-    await seed_endpoint(_engine, endpoint_id=7)  # a local Endpoint reference must resolve
+    await seed_endpoint(
+        _engine, endpoint_id=7
+    )  # a local Endpoint reference must resolve
     org_id = await _org(client, endpoint=[{"reference": "Endpoint/7"}])
-    by_ident = await create_organization(client, FULL)  # endpoint identifier urn:ext-endpoint|EP-1
+    by_ident = await create_organization(
+        client, FULL
+    )  # endpoint identifier urn:ext-endpoint|EP-1
     assert await _ids_for(client, {"endpoint": "Endpoint/7"}) == {org_id}
     assert await _ids_for(client, {"endpoint": "7"}) == {org_id}
     assert await _ids_for(client, {"endpoint": "Endpoint/8"}) == set()
-    assert await _ids_for(client, {"endpoint:identifier": "urn:ext-endpoint|EP-1"}) == {by_ident}
+    assert await _ids_for(client, {"endpoint:identifier": "urn:ext-endpoint|EP-1"}) == {
+        by_ident
+    }
     _rejected(await _get(client, {"endpoint.name": "x"}), "not-supported")
 
 
@@ -409,13 +499,17 @@ async def test_last_updated_prefixes(client):
     tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
     assert await _ids_for(client, {"_lastUpdated": f"gt{yesterday}"}) == {org_id}
     assert await _ids_for(client, {"_lastUpdated": f"ge{now.year}"}) == {org_id}
-    assert await _ids_for(client, {"_lastUpdated": str(now.year)}) == {org_id}  # eq at year precision
+    assert await _ids_for(client, {"_lastUpdated": str(now.year)}) == {
+        org_id
+    }  # eq at year precision
     assert await _ids_for(client, {"_lastUpdated": f"lt{tomorrow}"}) == {org_id}
     assert await _ids_for(client, {"_lastUpdated": "lt2000-01-01"}) == set()
     assert await _ids_for(client, {"_lastUpdated": f"sa{tomorrow}"}) == set()
     assert await _ids_for(client, {"_lastUpdated": "eb2000"}) == set()
     assert await _ids_for(client, {"_lastUpdated": f"ne{now.year}"}) == set()
-    ranged = await _search(client, [("_lastUpdated", f"ge{yesterday}"), ("_lastUpdated", f"lt{tomorrow}")])
+    ranged = await _search(
+        client, [("_lastUpdated", f"ge{yesterday}"), ("_lastUpdated", f"lt{tomorrow}")]
+    )
     assert _ids(ranged) == {org_id}
     _rejected(await _get(client, {"_lastUpdated": "xx2024"}))
     _rejected(await _get(client, {"_lastUpdated": "2024-13-01"}))
@@ -441,8 +535,12 @@ async def test_sort_multiple_values_uses_earliest_in_sort_order(client):
     the one that comes earliest in the requested order — the smallest
     ascending, the largest descending. `name` is `name | alias`."""
     m = await _org(client, name="Mike")
-    z = await _org(client, name="Zulu", alias=["Alpha Clinic"])  # alias sorts first ascending
-    k = await _org(client, name="Kilo", alias=["Yankee"])  # alias sorts first descending
+    z = await _org(
+        client, name="Zulu", alias=["Alpha Clinic"]
+    )  # alias sorts first ascending
+    k = await _org(
+        client, name="Kilo", alias=["Yankee"]
+    )  # alias sorts first descending
     no_alias = await _org(client, name="Lima")
     assert _order(await _search(client, {"_sort": "name"})) == [z, k, no_alias, m]
     assert _order(await _search(client, {"_sort": "-name"})) == [z, k, m, no_alias]
@@ -451,8 +549,12 @@ async def test_sort_multiple_values_uses_earliest_in_sort_order(client):
     a = await _org(client, name="A", address=[{"city": "Boston"}, {"city": "Zagreb"}])
     b = await _org(client, name="B", address=[{"city": "Madrid"}])
     ids = {a, b}
-    asc = [i for i in _order(await _search(client, {"_sort": "address-city"})) if i in ids]
-    desc = [i for i in _order(await _search(client, {"_sort": "-address-city"})) if i in ids]
+    asc = [
+        i for i in _order(await _search(client, {"_sort": "address-city"})) if i in ids
+    ]
+    desc = [
+        i for i in _order(await _search(client, {"_sort": "-address-city"})) if i in ids
+    ]
     assert asc == [a, b] and desc == [a, b]
 
 
@@ -501,7 +603,17 @@ def _subsetted(resource):
 async def test_summary_true_returns_summary_elements(client):
     await create_organization(client, FULL)
     resource = (await _search(client, {"_summary": "true"}))["entry"][0]["resource"]
-    assert set(resource) <= {"resourceType", "id", "meta", "implicitRules", "identifier", "active", "type", "name", "partOf"}
+    assert set(resource) <= {
+        "resourceType",
+        "id",
+        "meta",
+        "implicitRules",
+        "identifier",
+        "active",
+        "type",
+        "name",
+        "partOf",
+    }
     assert resource["name"] == "General Hospital"
     assert "address" not in resource and "telecom" not in resource
     assert _subsetted(resource)
@@ -518,7 +630,9 @@ async def test_summary_count_and_data(client):
 
 async def test_elements(client):
     await create_organization(client, FULL)
-    resource = (await _search(client, {"_elements": "name,alias"}))["entry"][0]["resource"]
+    resource = (await _search(client, {"_elements": "name,alias"}))["entry"][0][
+        "resource"
+    ]
     assert set(resource) == {"resourceType", "id", "meta", "name", "alias"}
     assert _subsetted(resource)
 
@@ -530,31 +644,45 @@ async def test_include_partof(client):
     root = await _org(client, name="Root")
     mid = await _org(client, name="Mid", partOf={"reference": f"Organization/{root}"})
     leaf = await _org(client, name="Leaf", partOf={"reference": f"Organization/{mid}"})
-    bundle = await _search(client, {"_id": str(leaf), "_include": "Organization:partof"})
+    bundle = await _search(
+        client, {"_id": str(leaf), "_include": "Organization:partof"}
+    )
     assert _ids(bundle) == {leaf}
     assert _ids(bundle, "include") == {mid}
     assert bundle["total"] == 1  # included resources aren't counted
 
-    iterated = await _search(client, {"_id": str(leaf), "_include:iterate": "Organization:partof"})
+    iterated = await _search(
+        client, {"_id": str(leaf), "_include:iterate": "Organization:partof"}
+    )
     assert _ids(iterated, "include") == {mid, root}
-    assert _ids(await _search(client, {"_id": str(leaf), "_include": "*"}), "include") == {mid}
+    assert _ids(
+        await _search(client, {"_id": str(leaf), "_include": "*"}), "include"
+    ) == {mid}
 
 
 async def test_revinclude_partof(client):
     root = await _org(client, name="Root")
     mid = await _org(client, name="Mid", partOf={"reference": f"Organization/{root}"})
     leaf = await _org(client, name="Leaf", partOf={"reference": f"Organization/{mid}"})
-    bundle = await _search(client, {"_id": str(root), "_revinclude": "Organization:partof"})
+    bundle = await _search(
+        client, {"_id": str(root), "_revinclude": "Organization:partof"}
+    )
     assert _ids(bundle, "include") == {mid}
-    iterated = await _search(client, {"_id": str(root), "_revinclude:iterate": "Organization:partof"})
+    iterated = await _search(
+        client, {"_id": str(root), "_revinclude:iterate": "Organization:partof"}
+    )
     assert _ids(iterated, "include") == {mid, leaf}
 
 
 async def test_include_unsupported(client):
-    _rejected(await _get(client, {"_include": "Organization:nonsense"}), "not-supported")
+    _rejected(
+        await _get(client, {"_include": "Organization:nonsense"}), "not-supported"
+    )
     # Schedule isn't on the search engine yet, so nothing can _revinclude it.
     _rejected(await _get(client, {"_revinclude": "Schedule:actor"}), "not-supported")
-    _rejected(await _get(client, {"_include": "Organization:partof", "_summary": "text"}))
+    _rejected(
+        await _get(client, {"_include": "Organization:partof", "_summary": "text"})
+    )
 
 
 # ── unknown parameters, modifiers, handling ──────────────────────────────────
@@ -566,7 +694,10 @@ async def test_unknown_parameter_lenient_is_ignored_and_reported(client):
     assert _ids(bundle) == {org_id}
     outcome = [e for e in bundle["entry"] if e["search"]["mode"] == "outcome"]
     assert len(outcome) == 1
-    assert {i["expression"][0] for i in outcome[0]["resource"]["issue"]} == {"nonsense", "_tag"}
+    assert {i["expression"][0] for i in outcome[0]["resource"]["issue"]} == {
+        "nonsense",
+        "_tag",
+    }
     assert "nonsense" not in _link(bundle, "self")
 
 
@@ -577,12 +708,16 @@ async def test_unknown_parameter_strict_is_rejected(client):
 
 async def test_modifier_errors(client):
     _rejected(await _get(client, {"name:bogus": "x"}))  # unknown modifier
-    _rejected(await _get(client, {"name:not": "x"}), "not-supported")  # wrong type's modifier
+    _rejected(
+        await _get(client, {"name:not": "x"}), "not-supported"
+    )  # wrong type's modifier
     _rejected(await _get(client, {"identifier:in": "urn:vs"}), "not-supported")
     _rejected(await _get(client, {"name:missing": "maybe"}))
     _rejected(await _get(client, {"_query": "anything"}), "not-supported")
     _rejected(await _get(client, {"_contained": "true"}), "not-supported")
-    xml = await _get(client, {"_format": "xml"})  # can't serve XML at all -> 406, not 400
+    xml = await _get(
+        client, {"_format": "xml"}
+    )  # can't serve XML at all -> 406, not 400
     assert xml.status_code == 406 and xml.json()["issue"][0]["code"] == "not-supported"
 
 
@@ -622,6 +757,8 @@ async def test_post_search_form_body(client):
 
 async def test_chain_and_hierarchy_stay_in_tenant(client):
     parent = await _org(client, name="Scoped Parent")
-    child = await _org(client, name="Scoped Child", partOf={"reference": f"Organization/{parent}"})
+    child = await _org(
+        client, name="Scoped Child", partOf={"reference": f"Organization/{parent}"}
+    )
     assert await _ids_for(client, {"partof.name": "scoped"}) == {child}
     assert await _ids_for(client, {"partof:below": str(parent)}) == {child}

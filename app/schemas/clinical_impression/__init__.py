@@ -1,4 +1,7 @@
-from app.schemas.clinical_impression.input import ClinicalImpressionCreateSchema, ClinicalImpressionPatchSchema
+from app.schemas.clinical_impression.input import (
+    ClinicalImpressionCreateSchema,
+    ClinicalImpressionPatchSchema,
+)
 from app.schemas.clinical_impression.response import (
     FHIRClinicalImpressionBundle,
     FHIRClinicalImpressionBundleEntry,

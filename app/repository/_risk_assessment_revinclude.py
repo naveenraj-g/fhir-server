@@ -17,8 +17,15 @@ def column_risk_revincludes(
     `encounter` or `performer` for the others)."""
 
     async def fetch(session, ctx, rows):
-        from app.repository.risk_assessment.search import revinclude_assessments_via_column
+        from app.repository.risk_assessment.search import (
+            revinclude_assessments_via_column,
+        )
 
-        return await revinclude_assessments_via_column(prefix, resource_type, key)(session, ctx, rows)
+        return await revinclude_assessments_via_column(prefix, resource_type, key)(
+            session, ctx, rows
+        )
 
-    return tuple(IncludeTarget("RiskAssessment", param, resource_type, fetch, reverse=True) for param in params)
+    return tuple(
+        IncludeTarget("RiskAssessment", param, resource_type, fetch, reverse=True)
+        for param in params
+    )

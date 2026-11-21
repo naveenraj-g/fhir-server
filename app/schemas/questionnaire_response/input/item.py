@@ -18,17 +18,22 @@ class QuestionnaireResponseItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     link_id: str = Field(
-        ..., description="The linkId for the item this is answering, as defined in the matching Questionnaire."
+        ...,
+        description="The linkId for the item this is answering, as defined in the matching Questionnaire.",
     )
     definition: str | None = Field(
         None, description="ElementDefinition reference (uri) matching the linkId."
     )
-    text: str | None = Field(None, description="Text that is displayed above the contents of the group or question.")
+    text: str | None = Field(
+        None,
+        description="Text that is displayed above the contents of the group or question.",
+    )
     answer: list[QuestionnaireResponseAnswerInput] | None = Field(
         None, description="The response(s) to this question."
     )
     item: list["QuestionnaireResponseItemInput"] | None = Field(
-        None, description="Nested groups/questions beneath this one (mutually exclusive with populating answer.item on the same item — see the FHIR invariant 'Nested item can't be beneath both item and answer')."
+        None,
+        description="Nested groups/questions beneath this one (mutually exclusive with populating answer.item on the same item — see the FHIR invariant 'Nested item can't be beneath both item and answer').",
     )
 
 

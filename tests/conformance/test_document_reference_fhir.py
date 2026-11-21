@@ -471,7 +471,10 @@ def test_document_reference_identifiers():
     ]
     d.identifiers = [ident]
     out = to_fhir_document_reference(d)
-    assert out["masterIdentifier"]["value"] == "urn:uuid:0c2873fc-94c6-11ec-b909-0242ac120002"
+    assert (
+        out["masterIdentifier"]["value"]
+        == "urn:uuid:0c2873fc-94c6-11ec-b909-0242ac120002"
+    )
     assert out["masterIdentifier"]["type"]["coding"][0]["code"] == "MR"
     assert out["identifier"][0]["value"] == "DOC-12345"
     assert out["identifier"][0]["type"]["coding"][0]["code"] == "FILL"

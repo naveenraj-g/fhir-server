@@ -28,16 +28,33 @@ async def people(client):
                 {
                     "system": NPI,
                     "value": "1111",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "NPI"}], "text": "National Provider"},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "NPI",
+                            }
+                        ],
+                        "text": "National Provider",
+                    },
                 }
             ],
-            "name": [{"family": "Careful", "given": ["Adam", "Quincy"], "prefix": ["Dr"]}],
+            "name": [
+                {"family": "Careful", "given": ["Adam", "Quincy"], "prefix": ["Dr"]}
+            ],
             "telecom": [
                 {"system": "phone", "value": "555-0001", "use": "work"},
                 {"system": "email", "value": "adam@example.org"},
             ],
             "address": [
-                {"use": "work", "line": ["534 Erewhon St"], "city": "Boston", "state": "MA", "postalCode": "02110", "country": "US"}
+                {
+                    "use": "work",
+                    "line": ["534 Erewhon St"],
+                    "city": "Boston",
+                    "state": "MA",
+                    "postalCode": "02110",
+                    "country": "US",
+                }
             ],
             "communication": [{"coding": [{"code": "en", "display": "English"}]}],
         },
@@ -48,9 +65,20 @@ async def people(client):
             "active": False,
             "gender": "female",
             "identifier": [{"system": NPI, "value": "2222"}],
-            "name": [{"family": "Zimmermann", "given": ["Beth"], "suffix": ["PhD"]}, {"family": "Alt", "given": ["Bette"]}],
+            "name": [
+                {"family": "Zimmermann", "given": ["Beth"], "suffix": ["PhD"]},
+                {"family": "Alt", "given": ["Bette"]},
+            ],
             "telecom": [{"system": "phone", "value": "555-0002", "use": "home"}],
-            "address": [{"use": "home", "city": "Austin", "state": "TX", "postalCode": "73301", "country": "US"}],
+            "address": [
+                {
+                    "use": "home",
+                    "city": "Austin",
+                    "state": "TX",
+                    "postalCode": "73301",
+                    "country": "US",
+                }
+            ],
             "communication": [{"coding": [{"code": "es", "display": "Spanish"}]}],
         },
     )
@@ -58,11 +86,19 @@ async def people(client):
         client,
         {
             "gender": "other",
-            "name": [{"text": "Cara Müller-Lüdenscheid", "family": "Müller", "given": ["Cara"]}],
+            "name": [
+                {
+                    "text": "Cara Müller-Lüdenscheid",
+                    "family": "Müller",
+                    "given": ["Cara"],
+                }
+            ],
             "address": [{"city": "München", "country": "DE"}],
         },
     )
-    ids["dan"] = await create_practitioner(client, {"name": [{"family": "Dunn", "given": ["Dan"]}]})
+    ids["dan"] = await create_practitioner(
+        client, {"name": [{"family": "Dunn", "given": ["Dan"]}]}
+    )
     return ids
 
 
@@ -91,8 +127,14 @@ async def _found(client, people, **params) -> set[str]:
 async def test_id(client, people):
     assert await _found(client, people, _id=str(people["beth"])) == {"beth"}
     assert await _found(client, people, _id="999999") == set()
-    assert await _found(client, people, **{"_id": f"{people['beth']},{people['dan']}"}) == {"beth", "dan"}
-    assert await _found(client, people, **{"_id:not": str(people["beth"])}) == {"adam", "cara", "dan"}
+    assert await _found(
+        client, people, **{"_id": f"{people['beth']},{people['dan']}"}
+    ) == {"beth", "dan"}
+    assert await _found(client, people, **{"_id:not": str(people["beth"])}) == {
+        "adam",
+        "cara",
+        "dan",
+    }
 
 
 async def test_last_updated(client, people):
@@ -107,15 +149,25 @@ async def test_active(client, people):
     assert await _found(client, people, active="true") == {"adam"}
     assert await _found(client, people, active="false") == {"beth"}
     # :not includes the records where active isn't recorded at all.
-    assert await _found(client, people, **{"active:not": "true"}) == {"beth", "cara", "dan"}
+    assert await _found(client, people, **{"active:not": "true"}) == {
+        "beth",
+        "cara",
+        "dan",
+    }
     assert (await client.get(BASE + "/", params={"active": "maybe"})).status_code == 400
 
 
 async def test_gender(client, people):
     assert await _found(client, people, gender="male") == {"adam"}
-    assert await _found(client, people, gender="http://hl7.org/fhir/administrative-gender|female") == {"beth"}
+    assert await _found(
+        client, people, gender="http://hl7.org/fhir/administrative-gender|female"
+    ) == {"beth"}
     assert await _found(client, people, **{"gender": "male,other"}) == {"adam", "cara"}
-    assert await _found(client, people, **{"gender:not": "male"}) == {"beth", "cara", "dan"}
+    assert await _found(client, people, **{"gender:not": "male"}) == {
+        "beth",
+        "cara",
+        "dan",
+    }
     assert await _found(client, people, gender="robot") == set()
     assert await _found(client, people, gender="urn:other|male") == set()
     assert await _found(client, people, **{"gender:missing": "true"}) == {"dan"}
@@ -161,10 +213,14 @@ async def test_name_matches_any_string_field_of_the_humanname(client, people):
 
 async def test_phonetic(client, people):
     assert await _found(client, people, phonetic="Carefull") == {"adam"}  # Soundex C614
-    assert await _found(client, people, phonetic="Karefull") == set()  # first letter must match
+    assert (
+        await _found(client, people, phonetic="Karefull") == set()
+    )  # first letter must match
     assert await _found(client, people, phonetic="Dunne") == {"dan"}
     assert await _found(client, people, phonetic="Qxyz") == set()
-    assert await _found(client, people, phonetic="") == set(people)  # R4: a parameter with no value is ignored
+    assert await _found(client, people, phonetic="") == set(
+        people
+    )  # R4: a parameter with no value is ignored
 
 
 # ── identifier ───────────────────────────────────────────────────────────────
@@ -175,14 +231,26 @@ async def test_identifier(client, people):
     assert await _found(client, people, identifier=f"{NPI}|2222") == {"beth"}
     assert await _found(client, people, identifier=f"{NPI}|") == {"adam", "beth"}
     assert await _found(client, people, identifier="|1111") == set()  # has a system
-    assert await _found(client, people, **{"identifier:not": f"{NPI}|1111"}) == {"beth", "cara", "dan"}
-    assert await _found(client, people, **{"identifier:missing": "true"}) == {"cara", "dan"}
+    assert await _found(client, people, **{"identifier:not": f"{NPI}|1111"}) == {
+        "beth",
+        "cara",
+        "dan",
+    }
+    assert await _found(client, people, **{"identifier:missing": "true"}) == {
+        "cara",
+        "dan",
+    }
 
 
 async def test_identifier_of_type_and_text(client, people):
     v2 = "http://terminology.hl7.org/CodeSystem/v2-0203"
-    assert await _found(client, people, **{"identifier:of-type": f"{v2}|NPI|1111"}) == {"adam"}
-    assert await _found(client, people, **{"identifier:of-type": f"{v2}|NPI|2222"}) == set()
+    assert await _found(client, people, **{"identifier:of-type": f"{v2}|NPI|1111"}) == {
+        "adam"
+    }
+    assert (
+        await _found(client, people, **{"identifier:of-type": f"{v2}|NPI|2222"})
+        == set()
+    )
     assert await _found(client, people, **{"identifier:text": "National"}) == {"adam"}
 
 
@@ -200,21 +268,31 @@ async def test_telecom_phone_email(client, people):
     assert await _found(client, people, telecom="work|555-0001") == {"adam"}
     assert await _found(client, people, telecom="home|555-0001") == set()
     assert await _found(client, people, **{"phone:missing": "true"}) == {"cara", "dan"}
-    assert await _found(client, people, **{"phone:not": "555-0001"}) == {"beth", "cara", "dan"}
+    assert await _found(client, people, **{"phone:not": "555-0001"}) == {
+        "beth",
+        "cara",
+        "dan",
+    }
 
 
 # ── address ──────────────────────────────────────────────────────────────────
 
 
 async def test_address_matches_any_part(client, people):
-    assert await _found(client, people, address="534 Erewhon") == {"adam"}  # line (starts-with)
-    assert await _found(client, people, address="Erewhon") == set()  # not a prefix of the line
+    assert await _found(client, people, address="534 Erewhon") == {
+        "adam"
+    }  # line (starts-with)
+    assert (
+        await _found(client, people, address="Erewhon") == set()
+    )  # not a prefix of the line
     assert await _found(client, people, **{"address:contains": "Erewhon"}) == {"adam"}
     assert await _found(client, people, address="Austin") == {"beth"}  # city
     assert await _found(client, people, address="TX") == {"beth"}  # state
     assert await _found(client, people, address="02110") == {"adam"}  # postal code
     assert await _found(client, people, address="muenchen") == set()
-    assert await _found(client, people, address="munchen") == {"cara"}  # accent-insensitive
+    assert await _found(client, people, address="munchen") == {
+        "cara"
+    }  # accent-insensitive
 
 
 async def test_address_parts(client, people):
@@ -224,7 +302,11 @@ async def test_address_parts(client, people):
     assert await _found(client, people, **{"address-country": "us"}) == {"adam", "beth"}
     assert await _found(client, people, **{"address-country:exact": "us"}) == set()
     assert await _found(client, people, **{"address-use": "home"}) == {"beth"}
-    assert await _found(client, people, **{"address-use:not": "home"}) == {"adam", "cara", "dan"}
+    assert await _found(client, people, **{"address-use:not": "home"}) == {
+        "adam",
+        "cara",
+        "dan",
+    }
     assert await _found(client, people, **{"address-city:missing": "true"}) == {"dan"}
 
 
@@ -235,7 +317,10 @@ async def test_communication(client, people):
     assert await _found(client, people, communication="en") == {"adam"}
     assert await _found(client, people, communication="en,es") == {"adam", "beth"}
     assert await _found(client, people, **{"communication:text": "Span"}) == {"beth"}
-    assert await _found(client, people, **{"communication:missing": "true"}) == {"cara", "dan"}
+    assert await _found(client, people, **{"communication:missing": "true"}) == {
+        "cara",
+        "dan",
+    }
 
 
 # ── combination rules ────────────────────────────────────────────────────────
@@ -250,8 +335,13 @@ async def test_comma_is_or_and_repeat_is_and(client, people):
 
 
 async def test_different_parameters_and_together(client, people):
-    assert await _found(client, people, gender="male", **{"address-city": "Boston"}) == {"adam"}
-    assert await _found(client, people, gender="female", **{"address-city": "Boston"}) == set()
+    assert await _found(
+        client, people, gender="male", **{"address-city": "Boston"}
+    ) == {"adam"}
+    assert (
+        await _found(client, people, gender="female", **{"address-city": "Boston"})
+        == set()
+    )
 
 
 async def test_escaped_comma_is_literal(client, people):
@@ -264,7 +354,9 @@ async def test_escaped_comma_is_literal(client, people):
 async def test_sort_by_family(client, people):
     asc = await _search(client, {"_sort": "family"})
     order = [int(e["resource"]["id"]) for e in asc["entry"]]
-    assert order == [people[k] for k in ("beth", "adam", "dan", "cara")]  # Alt, Careful, Dunn, Müller
+    assert order == [
+        people[k] for k in ("beth", "adam", "dan", "cara")
+    ]  # Alt, Careful, Dunn, Müller
     desc = await _search(client, {"_sort": "-family"})
     ids_desc = [int(e["resource"]["id"]) for e in desc["entry"]]
     assert ids_desc[:1] == [people["beth"]]  # Zimmermann is the largest family name
@@ -273,7 +365,10 @@ async def test_sort_by_family(client, people):
 async def test_sort_by_id_default_is_newest_first(client, people):
     default = [int(e["resource"]["id"]) for e in (await _search(client))["entry"]]
     assert default == sorted(people.values(), reverse=True)
-    asc = [int(e["resource"]["id"]) for e in (await _search(client, {"_sort": "_id"}))["entry"]]
+    asc = [
+        int(e["resource"]["id"])
+        for e in (await _search(client, {"_sort": "_id"}))["entry"]
+    ]
     assert asc == sorted(people.values())
 
 
@@ -313,7 +408,9 @@ async def test_summary_and_elements(client, people):
     resource = data["entry"][0]["resource"]
     assert "name" in resource and "communication" not in resource
     assert any(t.get("code") == "SUBSETTED" for t in resource["meta"]["tag"])
-    el = (await _search(client, {"_id": str(people["adam"]), "_elements": "gender"}))["entry"][0]["resource"]
+    el = (await _search(client, {"_id": str(people["adam"]), "_elements": "gender"}))[
+        "entry"
+    ][0]["resource"]
     assert el["gender"] == "male" and "name" not in el
 
 
@@ -328,7 +425,9 @@ async def test_unknown_parameter_is_ignored_with_outcome(client, people):
 
 
 async def test_unknown_parameter_is_400_when_strict(client, people):
-    resp = await client.get(BASE + "/", params={"bogus": "x"}, headers={"Prefer": "handling=strict"})
+    resp = await client.get(
+        BASE + "/", params={"bogus": "x"}, headers={"Prefer": "handling=strict"}
+    )
     assert resp.status_code == 400
     assert resp.json()["resourceType"] == "OperationOutcome"
 
@@ -350,8 +449,12 @@ async def test_bad_modifier_and_malformed_value_are_400(client, people):
         assert (await client.get(BASE + "/", params=params)).status_code == 400, params
 
 
-async def test_chaining_is_rejected_because_practitioner_has_no_reference_params(client, people):
-    assert (await client.get(BASE + "/", params={"family.name": "x"})).status_code == 400
+async def test_chaining_is_rejected_because_practitioner_has_no_reference_params(
+    client, people
+):
+    assert (
+        await client.get(BASE + "/", params={"family.name": "x"})
+    ).status_code == 400
 
 
 # ── Bundle shape ─────────────────────────────────────────────────────────────
@@ -368,7 +471,9 @@ async def test_bundle_shape(client, people):
 
 
 async def test_xml_only_accept_is_406_on_search(client):
-    assert (await client.get(BASE + "/", headers={"Accept": "application/fhir+xml"})).status_code == 406
+    assert (
+        await client.get(BASE + "/", headers={"Accept": "application/fhir+xml"})
+    ).status_code == 406
 
 
 # ── POST _search ─────────────────────────────────────────────────────────────

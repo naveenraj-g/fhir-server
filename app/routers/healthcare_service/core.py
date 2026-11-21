@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.healthcare_service import HealthcareServiceCreateSchema, HealthcareServicePatchSchema
+from app.schemas.healthcare_service import (
+    HealthcareServiceCreateSchema,
+    HealthcareServicePatchSchema,
+)
 from app.services.healthcare_service import HealthcareServiceService
 
 from ._responses import (
@@ -63,7 +66,7 @@ logger = get_logger(__name__)
         "against base FHIR R4: any valid R4 element is accepted and stored as sent "
         "(server-managed `id`/`meta` are ignored); a key that isn't FHIR at all is rejected "
         "with 422. `providedBy` may reference an Organization and `location` / `coverageArea` "
-        "a Location (e.g. `{\"reference\": \"Location/230001\"}`) — rejected with 422 if the "
+        'a Location (e.g. `{"reference": "Location/230001"}`) — rejected with 422 if the '
         "referenced resource doesn't exist in the caller's org. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
@@ -72,7 +75,9 @@ async def create_healthcare_service(
     payload: HealthcareServiceCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("healthcare_service", "create")),
-    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+    healthcare_service_service: HealthcareServiceService = Depends(
+        get_healthcare_service_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -165,7 +170,9 @@ async def _search(
 async def search_healthcare_services(
     request: Request,
     actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
-    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+    healthcare_service_service: HealthcareServiceService = Depends(
+        get_healthcare_service_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -192,13 +199,17 @@ async def search_healthcare_services(
 async def search_healthcare_services_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
-    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+    healthcare_service_service: HealthcareServiceService = Depends(
+        get_healthcare_service_service
+    ),
 ):
     logger.info(
         "Search HealthcareService resources (POST _search)",
         extra={"event": "route.search_healthcare_services_post"},
     )
-    return await _search(request, await post_query(request), actor, healthcare_service_service)
+    return await _search(
+        request, await post_query(request), actor, healthcare_service_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -221,7 +232,9 @@ async def get_healthcare_service(
         ..., ge=1, description="Public healthcare_service identifier."
     ),
     actor: AuthUser = Depends(require_permission("healthcare_service", "read")),
-    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+    healthcare_service_service: HealthcareServiceService = Depends(
+        get_healthcare_service_service
+    ),
 ):
     logger.info(
         "Retrieve a HealthcareService resource by public healthcare_service_id",
@@ -263,13 +276,18 @@ async def patch_healthcare_service(
         ..., ge=1, description="Public healthcare_service identifier."
     ),
     actor: AuthUser = Depends(require_permission("healthcare_service", "update")),
-    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+    healthcare_service_service: HealthcareServiceService = Depends(
+        get_healthcare_service_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_healthcare_service()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a HealthcareService resource",
-        extra={"event": "route.patch_healthcare_service", "healthcare_service_id": healthcare_service_id},
+        extra={
+            "event": "route.patch_healthcare_service",
+            "healthcare_service_id": healthcare_service_id,
+        },
     )
     log_payload(logger, "healthcare_service.patch.payload", payload)
     updated = await healthcare_service_service.patch_healthcare_service(
@@ -302,7 +320,9 @@ async def delete_healthcare_service(
         ..., ge=1, description="Public healthcare_service identifier."
     ),
     actor: AuthUser = Depends(require_permission("healthcare_service", "delete")),
-    healthcare_service_service: HealthcareServiceService = Depends(get_healthcare_service_service),
+    healthcare_service_service: HealthcareServiceService = Depends(
+        get_healthcare_service_service
+    ),
 ):
     """delete_healthcare_service() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -313,4 +333,6 @@ async def delete_healthcare_service(
             "healthcare_service_id": healthcare_service_id,
         },
     )
-    await healthcare_service_service.delete_healthcare_service(healthcare_service_id, org_id=actor.org_id)
+    await healthcare_service_service.delete_healthcare_service(
+        healthcare_service_id, org_id=actor.org_id
+    )

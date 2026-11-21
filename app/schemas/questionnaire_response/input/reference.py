@@ -20,23 +20,47 @@ class _ReferenceListInput(BaseModel):
     whole object IS the reference."""
 
     model_config = ConfigDict(extra="forbid")
-    reference: str | None = Field(None, description="FHIR reference string, e.g. 'ServiceRequest/123'.")
+    reference: str | None = Field(
+        None, description="FHIR reference string, e.g. 'ServiceRequest/123'."
+    )
     reference_display: str | None = Field(
-        None, description="Plain text narrative that identifies the target in addition to the reference."
+        None,
+        description="Plain text narrative that identifies the target in addition to the reference.",
     )
     reference_identifier_use: IdentifierUse | None = Field(
-        None, description="Logical-identifier fallback (used when there's no resolvable reference) — identifies its purpose, if known."
+        None,
+        description="Logical-identifier fallback (used when there's no resolvable reference) — identifies its purpose, if known.",
     )
-    reference_identifier_type_system: str | None = Field(None, description="Fallback identifier — code system for its type.")
-    reference_identifier_type_version: str | None = Field(None, description="Fallback identifier — version of the type code system.")
-    reference_identifier_type_code: str | None = Field(None, description="Fallback identifier — a symbol for its type.")
-    reference_identifier_type_display: str | None = Field(None, description="Fallback identifier — display for its type.")
-    reference_identifier_type_text: str | None = Field(None, description="Fallback identifier — human language rendering of its type.")
-    reference_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — whether its type was user-selected.")
-    reference_identifier_system: str | None = Field(None, description="Fallback identifier — namespace URL for the value.")
-    reference_identifier_value: str | None = Field(None, description="Fallback identifier — value within the given system.")
-    reference_identifier_period_start: datetime | None = Field(None, description="Fallback identifier — start of validity period.")
-    reference_identifier_period_end: datetime | None = Field(None, description="Fallback identifier — end of validity period.")
+    reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    reference_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether its type was user-selected."
+    )
+    reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    reference_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    reference_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
 
 class QuestionnaireResponseBasedOnInput(_ReferenceListInput):
@@ -57,23 +81,47 @@ class _SingleReferenceInput(BaseModel):
     used as a single nested object rather than a list item."""
 
     model_config = ConfigDict(extra="forbid")
-    reference: str | None = Field(None, description="FHIR reference string, e.g. 'Practitioner/30001'.")
+    reference: str | None = Field(
+        None, description="FHIR reference string, e.g. 'Practitioner/30001'."
+    )
     reference_display: str | None = Field(
-        None, description="Plain text narrative that identifies the target in addition to the reference."
+        None,
+        description="Plain text narrative that identifies the target in addition to the reference.",
     )
     reference_identifier_use: IdentifierUse | None = Field(
-        None, description="Logical-identifier fallback (used when there's no resolvable reference) — identifies its purpose, if known."
+        None,
+        description="Logical-identifier fallback (used when there's no resolvable reference) — identifies its purpose, if known.",
     )
-    reference_identifier_type_system: str | None = Field(None, description="Fallback identifier — code system for its type.")
-    reference_identifier_type_version: str | None = Field(None, description="Fallback identifier — version of the type code system.")
-    reference_identifier_type_code: str | None = Field(None, description="Fallback identifier — a symbol for its type.")
-    reference_identifier_type_display: str | None = Field(None, description="Fallback identifier — display for its type.")
-    reference_identifier_type_text: str | None = Field(None, description="Fallback identifier — human language rendering of its type.")
-    reference_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — whether its type was user-selected.")
-    reference_identifier_system: str | None = Field(None, description="Fallback identifier — namespace URL for the value.")
-    reference_identifier_value: str | None = Field(None, description="Fallback identifier — value within the given system.")
-    reference_identifier_period_start: datetime | None = Field(None, description="Fallback identifier — start of validity period.")
-    reference_identifier_period_end: datetime | None = Field(None, description="Fallback identifier — end of validity period.")
+    reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — code system for its type."
+    )
+    reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — version of the type code system."
+    )
+    reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — a symbol for its type."
+    )
+    reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — display for its type."
+    )
+    reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — human language rendering of its type."
+    )
+    reference_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — whether its type was user-selected."
+    )
+    reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — namespace URL for the value."
+    )
+    reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value within the given system."
+    )
+    reference_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — start of validity period."
+    )
+    reference_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — end of validity period."
+    )
 
 
 class QuestionnaireResponseSubjectInput(_SingleReferenceInput):

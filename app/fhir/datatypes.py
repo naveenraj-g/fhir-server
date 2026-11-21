@@ -74,10 +74,14 @@ def fhir_human_name(n) -> dict:
     if suffix:
         entry["suffix"] = suffix
     if n.period_start or n.period_end:
-        entry["period"] = {k: v for k, v in {
-            "start": n.period_start.isoformat() if n.period_start else None,
-            "end": n.period_end.isoformat() if n.period_end else None,
-        }.items() if v}
+        entry["period"] = {
+            k: v
+            for k, v in {
+                "start": n.period_start.isoformat() if n.period_start else None,
+                "end": n.period_end.isoformat() if n.period_end else None,
+            }.items()
+            if v
+        }
     return entry
 
 
@@ -88,13 +92,19 @@ def fhir_identifier(i) -> dict:
     if i.type_system or i.type_code or i.type_text:
         type_cc: dict = {}
         if i.type_system or i.type_code:
-            type_cc["coding"] = [{k: v for k, v in {
-                "system": i.type_system,
-                "version": getattr(i, "type_version", None),
-                "code": i.type_code,
-                "display": i.type_display,
-                "userSelected": getattr(i, "type_user_selected", None),
-            }.items() if v is not None}]
+            type_cc["coding"] = [
+                {
+                    k: v
+                    for k, v in {
+                        "system": i.type_system,
+                        "version": getattr(i, "type_version", None),
+                        "code": i.type_code,
+                        "display": i.type_display,
+                        "userSelected": getattr(i, "type_user_selected", None),
+                    }.items()
+                    if v is not None
+                }
+            ]
         if i.type_text:
             type_cc["text"] = i.type_text
         entry["type"] = type_cc
@@ -103,10 +113,14 @@ def fhir_identifier(i) -> dict:
     if i.value:
         entry["value"] = i.value
     if i.period_start or i.period_end:
-        entry["period"] = {k: v for k, v in {
-            "start": i.period_start.isoformat() if i.period_start else None,
-            "end": i.period_end.isoformat() if i.period_end else None,
-        }.items() if v}
+        entry["period"] = {
+            k: v
+            for k, v in {
+                "start": i.period_start.isoformat() if i.period_start else None,
+                "end": i.period_end.isoformat() if i.period_end else None,
+            }.items()
+            if v
+        }
     if i.assigner:
         entry["assigner"] = {"display": i.assigner}
     return entry
@@ -123,10 +137,14 @@ def fhir_telecom(t) -> dict:
     if t.rank is not None:
         entry["rank"] = t.rank
     if t.period_start or t.period_end:
-        entry["period"] = {k: v for k, v in {
-            "start": t.period_start.isoformat() if t.period_start else None,
-            "end": t.period_end.isoformat() if t.period_end else None,
-        }.items() if v}
+        entry["period"] = {
+            k: v
+            for k, v in {
+                "start": t.period_start.isoformat() if t.period_start else None,
+                "end": t.period_end.isoformat() if t.period_end else None,
+            }.items()
+            if v
+        }
     return entry
 
 
@@ -152,34 +170,46 @@ def fhir_address(a) -> dict:
     if a.country:
         entry["country"] = a.country
     if a.period_start or a.period_end:
-        entry["period"] = {k: v for k, v in {
-            "start": a.period_start.isoformat() if a.period_start else None,
-            "end": a.period_end.isoformat() if a.period_end else None,
-        }.items() if v}
+        entry["period"] = {
+            k: v
+            for k, v in {
+                "start": a.period_start.isoformat() if a.period_start else None,
+                "end": a.period_end.isoformat() if a.period_end else None,
+            }.items()
+            if v
+        }
     return entry
 
 
 def fhir_photo(p) -> dict:
-    return {k: v for k, v in {
-        "contentType": p.content_type,
-        "language": p.language,
-        "data": p.data,
-        "url": p.url,
-        "size": p.size,
-        "hash": p.hash,
-        "title": p.title,
-        "creation": p.creation.isoformat() if p.creation else None,
-    }.items() if v is not None}
+    return {
+        k: v
+        for k, v in {
+            "contentType": p.content_type,
+            "language": p.language,
+            "data": p.data,
+            "url": p.url,
+            "size": p.size,
+            "hash": p.hash,
+            "title": p.title,
+            "creation": p.creation.isoformat() if p.creation else None,
+        }.items()
+        if v is not None
+    }
 
 
 def fhir_communication(cm) -> dict:
-    coding = {k: v for k, v in {
-        "system": cm.language_system,
-        "version": getattr(cm, "language_version", None),
-        "code": cm.language_code,
-        "display": cm.language_display,
-        "userSelected": getattr(cm, "language_user_selected", None),
-    }.items() if v is not None}
+    coding = {
+        k: v
+        for k, v in {
+            "system": cm.language_system,
+            "version": getattr(cm, "language_version", None),
+            "code": cm.language_code,
+            "display": cm.language_display,
+            "userSelected": getattr(cm, "language_user_selected", None),
+        }.items()
+        if v is not None
+    }
     language_cc: dict = {}
     if coding:
         language_cc["coding"] = [coding]

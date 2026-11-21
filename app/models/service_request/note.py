@@ -45,7 +45,10 @@ class ServiceRequestNote(TenantAuditMixin, Base):
     author_string = Column(String, nullable=True)
     author_reference = Column(String, nullable=True)
     author_type = Column(
-        Enum(ServiceRequestNoteAuthorReferenceType, name="service_request_note_author_reference_type"),
+        Enum(
+            ServiceRequestNoteAuthorReferenceType,
+            name="service_request_note_author_reference_type",
+        ),
         nullable=True,
     )
     author_id = Column(BigInteger, nullable=True, index=True)

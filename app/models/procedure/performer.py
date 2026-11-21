@@ -4,7 +4,14 @@ from sqlalchemy.orm import relationship
 from app.core.database import FHIRBase as Base
 
 # The six R4 targets of Procedure.performer.actor.
-PERFORMER_TYPES = ("Practitioner", "PractitionerRole", "Organization", "Patient", "RelatedPerson", "Device")
+PERFORMER_TYPES = (
+    "Practitioner",
+    "PractitionerRole",
+    "Organization",
+    "Patient",
+    "RelatedPerson",
+    "Device",
+)
 
 
 class ProcedurePerformer(Base):
@@ -23,10 +30,14 @@ class ProcedurePerformer(Base):
     `function` and `onBehalfOf` live only in `content`."""
 
     __tablename__ = "procedure_performer"
-    __table_args__ = (Index("ix_procedure_performer_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_procedure_performer_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    procedure_pk = Column(BigInteger, ForeignKey("procedure.id"), nullable=False, index=True)
+    procedure_pk = Column(
+        BigInteger, ForeignKey("procedure.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)

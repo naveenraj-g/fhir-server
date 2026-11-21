@@ -163,7 +163,8 @@ async def patch_activity_definition(
     description=(
         "Returns a paginated list of ActivityDefinition resources. Filter by name, "
         "title, status, kind, intent, priority, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )

@@ -9,21 +9,16 @@ class FhirAddressInput(FhirInputModel):
     """FHIR R4 Address — a postal or physical address."""
 
     use: AddressUse | None = Field(
-        None, description="home | work | temp | old | billing — purpose of this address."
+        None,
+        description="home | work | temp | old | billing — purpose of this address.",
     )
-    type: AddressType | None = Field(
-        None, description="postal | physical | both."
-    )
-    text: str | None = Field(
-        None, description="Text representation of the address."
-    )
+    type: AddressType | None = Field(None, description="postal | physical | both.")
+    text: str | None = Field(None, description="Text representation of the address.")
     line: list[str] | None = Field(
         None,
         description="Street name, number, direction & P.O. Box etc. — one entry per line, in order.",
     )
-    city: str | None = Field(
-        None, description="Name of city, town etc."
-    )
+    city: str | None = Field(None, description="Name of city, town etc.")
     district: str | None = Field(None, description="District name (aka county).")
     state: str | None = Field(
         None, description="Sub-unit of country (abbreviations ok)."

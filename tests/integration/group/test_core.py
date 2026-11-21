@@ -82,9 +82,7 @@ async def test_create_group_full(client):
 
 async def test_create_group_fhir_format(client):
     p_id = await create_test_patient(client)
-    resp = await client.post(
-        BASE + "/", json=minimal_group(), headers=FHIR_ACCEPT
-    )
+    resp = await client.post(BASE + "/", json=minimal_group(), headers=FHIR_ACCEPT)
     assert resp.status_code == 201, resp.text
     data = resp.json()
     assert_fhir_group(data)
@@ -140,7 +138,11 @@ async def test_patch_group_scalar_and_collections(client):
         "name": "Updated Group Name",
         "quantity": 2,
         "member": [
-            {"entity": f"Patient/{p_id2}", "entity_display": "Second Patient", "inactive": False}
+            {
+                "entity": f"Patient/{p_id2}",
+                "entity_display": "Second Patient",
+                "inactive": False,
+            }
         ],
     }
     resp = await client.patch(f"{BASE}/{gid}", json=patch_payload)
@@ -229,7 +231,9 @@ async def test_cross_org_isolation(client):
         org_id="org-beta", permissions=GROUP_PERMS
     )
     assert (await client.get(f"{BASE}/{gid}")).status_code == 404
-    assert (await client.patch(f"{BASE}/{gid}", json={"name": "Hacked"})).status_code == 404
+    assert (
+        await client.patch(f"{BASE}/{gid}", json={"name": "Hacked"})
+    ).status_code == 404
     assert (await client.delete(f"{BASE}/{gid}")).status_code == 404
 
 

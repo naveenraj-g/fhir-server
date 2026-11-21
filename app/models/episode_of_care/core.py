@@ -102,8 +102,12 @@ class EpisodeOfCareModel(TenantAuditMixin, Base):
     managing_organization_identifier_type_text = Column(String, nullable=True)
     managing_organization_identifier_system = Column(String, nullable=True)
     managing_organization_identifier_value = Column(String, nullable=True)
-    managing_organization_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    managing_organization_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    managing_organization_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    managing_organization_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # period (0..1 Period)
     period_start = Column(DateTime(timezone=True), nullable=True)
@@ -131,7 +135,9 @@ class EpisodeOfCareModel(TenantAuditMixin, Base):
     care_manager_identifier_type_text = Column(String, nullable=True)
     care_manager_identifier_system = Column(String, nullable=True)
     care_manager_identifier_value = Column(String, nullable=True)
-    care_manager_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    care_manager_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
     care_manager_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # extension (0..* Extension)

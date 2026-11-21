@@ -264,7 +264,9 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         "id": model.activity_definition_id,
         "tenant_id": model.tenant_id,
         "url": model.url,
-        "identifier": _plain_identifiers(model.identifiers) if model.identifiers else [],
+        "identifier": _plain_identifiers(model.identifiers)
+        if model.identifiers
+        else [],
         "version": model.version,
         "name": model.name,
         "title": model.title,
@@ -275,8 +277,12 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         "publisher": model.publisher,
         "contact": _plain_contacts(model.contacts, "contact") if model.contacts else [],
         "description": model.description,
-        "use_context": _plain_use_contexts(model.use_contexts) if model.use_contexts else [],
-        "jurisdiction": [_plain_concept(j) for j in model.jurisdictions] if model.jurisdictions else [],
+        "use_context": _plain_use_contexts(model.use_contexts)
+        if model.use_contexts
+        else [],
+        "jurisdiction": [_plain_concept(j) for j in model.jurisdictions]
+        if model.jurisdictions
+        else [],
         "purpose": model.purpose,
         "usage": model.usage,
         "copyright": model.copyright,
@@ -287,8 +293,12 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         "topic": [_plain_concept(t) for t in model.topics] if model.topics else [],
         "author": _plain_contacts(model.contacts, "author") if model.contacts else [],
         "editor": _plain_contacts(model.contacts, "editor") if model.contacts else [],
-        "reviewer": _plain_contacts(model.contacts, "reviewer") if model.contacts else [],
-        "endorser": _plain_contacts(model.contacts, "endorser") if model.contacts else [],
+        "reviewer": _plain_contacts(model.contacts, "reviewer")
+        if model.contacts
+        else [],
+        "endorser": _plain_contacts(model.contacts, "endorser")
+        if model.contacts
+        else [],
         "related_artifact": (
             _plain_related_artifacts(model.related_artifacts)
             if model.related_artifacts
@@ -304,7 +314,9 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         "timing_timing": model.timing_timing,
         "timing_date_time": model.timing_date_time,
         "timing_age_value": (
-            float(model.timing_age_value) if model.timing_age_value is not None else None
+            float(model.timing_age_value)
+            if model.timing_age_value is not None
+            else None
         ),
         "timing_age_unit": model.timing_age_unit,
         "timing_age_system": model.timing_age_system,
@@ -333,7 +345,9 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         "timing_duration_code": model.timing_duration_code,
         "location": loc_ref,
         "location_display": model.location_display,
-        "participant": _plain_participants(model.participants) if model.participants else [],
+        "participant": _plain_participants(model.participants)
+        if model.participants
+        else [],
         "product_codeable_concept": _plain_single_concept(
             model.product_codings, model.product_codeable_concept_text
         ),
@@ -349,7 +363,9 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         "quantity_system": model.quantity_system,
         "quantity_code": model.quantity_code,
         "dosage": _plain_dosages(model.dosages) if model.dosages else [],
-        "body_site": [_plain_concept(b) for b in model.body_sites] if model.body_sites else [],
+        "body_site": [_plain_concept(b) for b in model.body_sites]
+        if model.body_sites
+        else [],
         "specimen_requirement": (
             _plain_requirements(model.specimen_requirements)
             if model.specimen_requirements
@@ -367,9 +383,7 @@ def to_plain_activity_definition(model) -> dict[str, Any]:
         ),
         "transform": model.transform,
         "dynamic_value": (
-            _plain_dynamic_values(model.dynamic_values)
-            if model.dynamic_values
-            else []
+            _plain_dynamic_values(model.dynamic_values) if model.dynamic_values else []
         ),
         "subject_codeable_concept": _plain_single_concept(
             model.subject_codings, model.subject_codeable_concept_text

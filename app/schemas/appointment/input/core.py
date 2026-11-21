@@ -11,8 +11,16 @@ from app.schemas.fhir_input import (
 )
 
 AppointmentStatusCode = Literal[
-    "proposed", "pending", "booked", "arrived", "fulfilled", "cancelled", "noshow",
-    "entered-in-error", "checked-in", "waitlist",
+    "proposed",
+    "pending",
+    "booked",
+    "arrived",
+    "fulfilled",
+    "cancelled",
+    "noshow",
+    "entered-in-error",
+    "checked-in",
+    "waitlist",
 ]
 ParticipantRequiredCode = Literal["required", "optional", "information-only"]
 ParticipationStatusCode = Literal["accepted", "declined", "tentative", "needs-action"]
@@ -20,11 +28,18 @@ ParticipationStatusCode = Literal["accepted", "declined", "tentative", "needs-ac
 _EXAMPLE = {
     "resourceType": "Appointment",
     "status": "booked",
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/appointment-id", "value": "AP-1001"}],
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/appointment-id",
+            "value": "AP-1001",
+        }
+    ],
     "serviceCategory": [{"coding": [{"code": "17", "display": "General Practice"}]}],
     "serviceType": [{"coding": [{"code": "124", "display": "General Practice"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
-    "appointmentType": {"coding": [{"code": "ROUTINE", "display": "Routine appointment"}]},
+    "appointmentType": {
+        "coding": [{"code": "ROUTINE", "display": "Routine appointment"}]
+    },
     "reasonCode": [{"text": "Annual check-up"}],
     "priority": 5,
     "description": "Discussion on the results of your recent MRI",
@@ -36,8 +51,16 @@ _EXAMPLE = {
     "comment": "Further expand on the results of the MRI",
     "patientInstruction": "Please arrive 15 minutes early",
     "participant": [
-        {"actor": {"reference": "Patient/10001"}, "required": "required", "status": "accepted"},
-        {"actor": {"reference": "Practitioner/30001"}, "required": "required", "status": "accepted"},
+        {
+            "actor": {"reference": "Patient/10001"},
+            "required": "required",
+            "status": "accepted",
+        },
+        {
+            "actor": {"reference": "Practitioner/30001"},
+            "required": "required",
+            "status": "accepted",
+        },
     ],
     "requestedPeriod": [{"start": "2026-06-01", "end": "2026-06-07"}],
 }
@@ -58,9 +81,12 @@ class AppointmentParticipantInput(FhirInputModel):
         None, description="required | optional | information-only."
     )
     status: ParticipationStatusCode | None = Field(
-        None, description="accepted | declined | tentative | needs-action (required by R4)."
+        None,
+        description="accepted | declined | tentative | needs-action (required by R4).",
     )
-    period: FhirPeriodInput | None = Field(None, description="Participation period of the actor.")
+    period: FhirPeriodInput | None = Field(
+        None, description="Participation period of the actor."
+    )
 
 
 class _AppointmentFields(FhirInputModel):
@@ -86,7 +112,9 @@ class _AppointmentFields(FhirInputModel):
         None,
         description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[FhirIdentifierInput] | None = Field(None, description="External Ids for this item.")
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External Ids for this item."
+    )
     status: AppointmentStatusCode | None = Field(
         None,
         description="proposed | pending | booked | arrived | fulfilled | cancelled | noshow | entered-in-error | checked-in | waitlist (required by R4).",
@@ -95,50 +123,77 @@ class _AppointmentFields(FhirInputModel):
         None, description="The coded reason for the appointment being cancelled."
     )
     serviceCategory: list[FhirCodeableConceptInput] | None = Field(
-        None, description="A broad categorization of the service that is to be performed during this appointment."
+        None,
+        description="A broad categorization of the service that is to be performed during this appointment.",
     )
     serviceType: list[FhirCodeableConceptInput] | None = Field(
-        None, description="The specific service that is to be performed during this appointment."
+        None,
+        description="The specific service that is to be performed during this appointment.",
     )
     specialty: list[FhirCodeableConceptInput] | None = Field(
-        None, description="The specialty of a practitioner that would be required to perform the service requested in this appointment."
+        None,
+        description="The specialty of a practitioner that would be required to perform the service requested in this appointment.",
     )
     appointmentType: FhirCodeableConceptInput | None = Field(
-        None, description="The style of appointment or patient that has been booked in the slot (not service type)."
+        None,
+        description="The style of appointment or patient that has been booked in the slot (not service type).",
     )
     reasonCode: list[FhirCodeableConceptInput] | None = Field(
         None, description="Coded reason this appointment is scheduled."
     )
     reasonReference: list[FhirReferenceInput] | None = Field(
-        None, description="Reason the appointment is to take place (resource) — Reference(Condition | Procedure | Observation | ImmunizationRecommendation)."
+        None,
+        description="Reason the appointment is to take place (resource) — Reference(Condition | Procedure | Observation | ImmunizationRecommendation).",
     )
     priority: int | None = Field(
-        None, ge=0, description="Used to make informed decisions if needing to re-prioritize (unsignedInt)."
+        None,
+        ge=0,
+        description="Used to make informed decisions if needing to re-prioritize (unsignedInt).",
     )
-    description: str | None = Field(None, description="Shown on a subject line in a meeting request, or appointment list.")
+    description: str | None = Field(
+        None,
+        description="Shown on a subject line in a meeting request, or appointment list.",
+    )
     supportingInformation: list[FhirReferenceInput] | None = Field(
-        None, description="Additional information to support the appointment — Reference(Any)."
+        None,
+        description="Additional information to support the appointment — Reference(Any).",
     )
-    start: str | None = Field(None, description="When appointment is to take place (a FHIR instant, with a timezone offset).")
-    end: str | None = Field(None, description="When appointment is to conclude (a FHIR instant, with a timezone offset).")
-    minutesDuration: int | None = Field(None, ge=1, description="Can be less than start/end (e.g. estimate) (positiveInt).")
+    start: str | None = Field(
+        None,
+        description="When appointment is to take place (a FHIR instant, with a timezone offset).",
+    )
+    end: str | None = Field(
+        None,
+        description="When appointment is to conclude (a FHIR instant, with a timezone offset).",
+    )
+    minutesDuration: int | None = Field(
+        None,
+        ge=1,
+        description="Can be less than start/end (e.g. estimate) (positiveInt).",
+    )
     slot: list[FhirReferenceInput] | None = Field(
         None,
         description="The slots that this appointment is filling — Reference(Slot). A relative 'Slot/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    created: str | None = Field(None, description="The date that this appointment was initially created (dateTime).")
+    created: str | None = Field(
+        None,
+        description="The date that this appointment was initially created (dateTime).",
+    )
     comment: str | None = Field(None, description="Additional comments.")
     patientInstruction: str | None = Field(
         None, description="Detailed information and instructions for the patient."
     )
     basedOn: list[FhirReferenceInput] | None = Field(
-        None, description="The service request this appointment is allocated to assess — Reference(ServiceRequest)."
+        None,
+        description="The service request this appointment is allocated to assess — Reference(ServiceRequest).",
     )
     participant: list[AppointmentParticipantInput] | None = Field(
-        None, description="Participants involved in the appointment (required by R4, at least one)."
+        None,
+        description="Participants involved in the appointment (required by R4, at least one).",
     )
     requestedPeriod: list[FhirPeriodInput] | None = Field(
-        None, description="Potential date/time interval(s) requested to allocate the appointment within."
+        None,
+        description="Potential date/time interval(s) requested to allocate the appointment within.",
     )
 
 
@@ -157,5 +212,10 @@ class AppointmentPatchSchema(_AppointmentFields):
     `appointmentType` replaces the whole value, and `null` clears it."""
 
     model_config = {
-        "json_schema_extra": {"example": {"status": "cancelled", "cancelationReason": {"text": "Patient unwell"}}}
+        "json_schema_extra": {
+            "example": {
+                "status": "cancelled",
+                "cancelationReason": {"text": "Patient unwell"},
+            }
+        }
     }

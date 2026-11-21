@@ -185,7 +185,12 @@ def test_group_characteristics_conformance():
         tenant_id="org-test",
         code_text="Age",
         exclude=False,
-        value_quantity={"value": 18, "unit": "years", "system": "http://unitsofmeasure.org", "code": "a"},
+        value_quantity={
+            "value": 18,
+            "unit": "years",
+            "system": "http://unitsofmeasure.org",
+            "code": "a",
+        },
         created_by="u-test",
     )
     c3.code_codings = []
@@ -197,7 +202,10 @@ def test_group_characteristics_conformance():
         tenant_id="org-test",
         code_text="Age Range",
         exclude=True,
-        value_range={"low": {"value": 0, "unit": "years"}, "high": {"value": 17, "unit": "years"}},
+        value_range={
+            "low": {"value": 0, "unit": "years"},
+            "high": {"value": 17, "unit": "years"},
+        },
         created_by="u-test",
     )
     c4.code_codings = []

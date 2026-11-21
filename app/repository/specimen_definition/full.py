@@ -72,8 +72,16 @@ def _to_db_preference(val) -> SpecimenDefinitionPreference:
 def _to_db_identifier_use(val) -> IdentifierUseModel | None:
     if not val:
         return None
-    val_str = val.name if hasattr(val, "name") else (val.value if hasattr(val, "value") else str(val))
-    return IdentifierUseModel[val_str] if val_str in IdentifierUseModel.__members__ else None
+    val_str = (
+        val.name
+        if hasattr(val, "name")
+        else (val.value if hasattr(val, "value") else str(val))
+    )
+    return (
+        IdentifierUseModel[val_str]
+        if val_str in IdentifierUseModel.__members__
+        else None
+    )
 
 
 def _build_identifier_fields(ident, org_id: str, actor_id: str):
@@ -97,7 +105,9 @@ def _build_identifier_fields(ident, org_id: str, actor_id: str):
     use = _to_db_identifier_use(getattr(ident, "use", None))
     assigner_str = getattr(ident, "assigner", None)
     assigner_display = getattr(ident, "assigner_display", None)
-    ass_kw = _ref_kwargs("identifier_assigner", assigner_str, assigner_display, OrganizationReferenceType)
+    ass_kw = _ref_kwargs(
+        "identifier_assigner", assigner_str, assigner_display, OrganizationReferenceType
+    )
 
     cols = {
         "identifier_use": use,
@@ -215,7 +225,9 @@ def _build_types_tested(tts, org_id: str, actor_id: str):
             preference=_to_db_preference(getattr(tt, "preference", None)),
             requirement=getattr(tt, "requirement", None),
             retention_time_value=getattr(tt, "retention_time_value", None),
-            retention_time_comparator=_to_db_comparator(getattr(tt, "retention_time_comparator", None)),
+            retention_time_comparator=_to_db_comparator(
+                getattr(tt, "retention_time_comparator", None)
+            ),
             retention_time_unit=getattr(tt, "retention_time_unit", None),
             retention_time_system=getattr(tt, "retention_time_system", None),
             retention_time_code=getattr(tt, "retention_time_code", None),
@@ -248,21 +260,39 @@ def _build_types_tested(tts, org_id: str, actor_id: str):
 
             tt_model.container_description = getattr(c, "description", None)
             tt_model.container_preparation = getattr(c, "preparation", None)
-            tt_model.container_material_text = getattr(mat_obj, "text", None) if mat_obj else None
-            tt_model.container_type_text = getattr(c_type_obj, "text", None) if c_type_obj else None
-            tt_model.container_cap_text = getattr(cap_obj, "text", None) if cap_obj else None
+            tt_model.container_material_text = (
+                getattr(mat_obj, "text", None) if mat_obj else None
+            )
+            tt_model.container_type_text = (
+                getattr(c_type_obj, "text", None) if c_type_obj else None
+            )
+            tt_model.container_cap_text = (
+                getattr(cap_obj, "text", None) if cap_obj else None
+            )
 
             tt_model.container_capacity_value = getattr(c, "capacity_value", None)
             tt_model.container_capacity_unit = getattr(c, "capacity_unit", None)
             tt_model.container_capacity_system = getattr(c, "capacity_system", None)
             tt_model.container_capacity_code = getattr(c, "capacity_code", None)
 
-            tt_model.container_minimum_volume_string = getattr(c, "minimum_volume_string", None)
-            tt_model.container_minimum_volume_quantity_value = getattr(c, "minimum_volume_quantity_value", None)
-            tt_model.container_minimum_volume_quantity_comparator = _to_db_comparator(getattr(c, "minimum_volume_quantity_comparator", None))
-            tt_model.container_minimum_volume_quantity_unit = getattr(c, "minimum_volume_quantity_unit", None)
-            tt_model.container_minimum_volume_quantity_system = getattr(c, "minimum_volume_quantity_system", None)
-            tt_model.container_minimum_volume_quantity_code = getattr(c, "minimum_volume_quantity_code", None)
+            tt_model.container_minimum_volume_string = getattr(
+                c, "minimum_volume_string", None
+            )
+            tt_model.container_minimum_volume_quantity_value = getattr(
+                c, "minimum_volume_quantity_value", None
+            )
+            tt_model.container_minimum_volume_quantity_comparator = _to_db_comparator(
+                getattr(c, "minimum_volume_quantity_comparator", None)
+            )
+            tt_model.container_minimum_volume_quantity_unit = getattr(
+                c, "minimum_volume_quantity_unit", None
+            )
+            tt_model.container_minimum_volume_quantity_system = getattr(
+                c, "minimum_volume_quantity_system", None
+            )
+            tt_model.container_minimum_volume_quantity_code = getattr(
+                c, "minimum_volume_quantity_code", None
+            )
 
             # container codings
             mat_codings = []
@@ -281,7 +311,9 @@ def _build_types_tested(tts, org_id: str, actor_id: str):
             tt_model.container_material_codings = mat_codings
 
             c_type_codings = []
-            for cd in (getattr(c_type_obj, "coding", None) if c_type_obj else None) or []:
+            for cd in (
+                getattr(c_type_obj, "coding", None) if c_type_obj else None
+            ) or []:
                 c_type_codings.append(
                     SpecimenDefinitionContainerTypeCoding(
                         system=getattr(cd, "system", None),
@@ -315,10 +347,14 @@ def _build_types_tested(tts, org_id: str, actor_id: str):
             for a in getattr(c, "additive", None) or []:
                 a_cc = getattr(a, "additive_codeable_concept", None)
                 a_ref = getattr(a, "additive_reference", None)
-                ref_kw = _single_reference_kwargs("additive_reference", a_ref, SpecimenDefinitionAdditiveReferenceType)
+                ref_kw = _single_reference_kwargs(
+                    "additive_reference", a_ref, SpecimenDefinitionAdditiveReferenceType
+                )
 
                 ad_model = SpecimenDefinitionContainerAdditive(
-                    additive_codeable_concept_text=getattr(a_cc, "text", None) if a_cc else None,
+                    additive_codeable_concept_text=getattr(a_cc, "text", None)
+                    if a_cc
+                    else None,
                     tenant_id=org_id,
                     created_by=actor_id,
                     **ref_kw,
@@ -370,17 +406,37 @@ def _build_types_tested(tts, org_id: str, actor_id: str):
         for h in getattr(tt, "handling", None) or []:
             t_qual = getattr(h, "temperature_qualifier", None)
             h_model = SpecimenDefinitionTypeTestedHandling(
-                temperature_qualifier_text=getattr(t_qual, "text", None) if t_qual else None,
-                temperature_range_low_value=getattr(h, "temperature_range_low_value", None),
-                temperature_range_low_unit=getattr(h, "temperature_range_low_unit", None),
-                temperature_range_low_system=getattr(h, "temperature_range_low_system", None),
-                temperature_range_low_code=getattr(h, "temperature_range_low_code", None),
-                temperature_range_high_value=getattr(h, "temperature_range_high_value", None),
-                temperature_range_high_unit=getattr(h, "temperature_range_high_unit", None),
-                temperature_range_high_system=getattr(h, "temperature_range_high_system", None),
-                temperature_range_high_code=getattr(h, "temperature_range_high_code", None),
+                temperature_qualifier_text=getattr(t_qual, "text", None)
+                if t_qual
+                else None,
+                temperature_range_low_value=getattr(
+                    h, "temperature_range_low_value", None
+                ),
+                temperature_range_low_unit=getattr(
+                    h, "temperature_range_low_unit", None
+                ),
+                temperature_range_low_system=getattr(
+                    h, "temperature_range_low_system", None
+                ),
+                temperature_range_low_code=getattr(
+                    h, "temperature_range_low_code", None
+                ),
+                temperature_range_high_value=getattr(
+                    h, "temperature_range_high_value", None
+                ),
+                temperature_range_high_unit=getattr(
+                    h, "temperature_range_high_unit", None
+                ),
+                temperature_range_high_system=getattr(
+                    h, "temperature_range_high_system", None
+                ),
+                temperature_range_high_code=getattr(
+                    h, "temperature_range_high_code", None
+                ),
                 max_duration_value=getattr(h, "max_duration_value", None),
-                max_duration_comparator=_to_db_comparator(getattr(h, "max_duration_comparator", None)),
+                max_duration_comparator=_to_db_comparator(
+                    getattr(h, "max_duration_comparator", None)
+                ),
                 max_duration_unit=getattr(h, "max_duration_unit", None),
                 max_duration_system=getattr(h, "max_duration_system", None),
                 max_duration_code=getattr(h, "max_duration_code", None),
@@ -421,8 +477,14 @@ class _FullMixin:
         async with self.session_factory() as session:
             # 1. References validation
             ident = payload.identifier
-            ident_cols, ident_codings = _build_identifier_fields(ident, org_id, actor_id)
-            if ident and ident_cols.get("identifier_assigner_type") and ident_cols.get("identifier_assigner_id"):
+            ident_cols, ident_codings = _build_identifier_fields(
+                ident, org_id, actor_id
+            )
+            if (
+                ident
+                and ident_cols.get("identifier_assigner_type")
+                and ident_cols.get("identifier_assigner_id")
+            ):
                 await _validate_ref(
                     session,
                     ident_cols["identifier_assigner_type"],
@@ -433,7 +495,9 @@ class _FullMixin:
 
             tc = payload.type_collected
             tc_codings = _build_type_collected_codings(tc, org_id, actor_id)
-            preps = _build_patient_preparations(payload.patient_preparation, org_id, actor_id)
+            preps = _build_patient_preparations(
+                payload.patient_preparation, org_id, actor_id
+            )
             colls = _build_collections(payload.collection, org_id, actor_id)
             tts = _build_types_tested(payload.type_tested, org_id, actor_id)
 
@@ -468,7 +532,8 @@ class _FullMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id == specimen_definition_id,
+                    SpecimenDefinitionModel.specimen_definition_id
+                    == specimen_definition_id,
                     SpecimenDefinitionModel.tenant_id == org_id,
                 )
             )
@@ -484,12 +549,20 @@ class _FullMixin:
             if "type_collected" in provided:
                 tc = payload.type_collected
                 model.type_collected_text = tc.text if tc else None
-                model.type_collected_codings = _build_type_collected_codings(tc, org_id, actor_id)
+                model.type_collected_codings = _build_type_collected_codings(
+                    tc, org_id, actor_id
+                )
 
             if "identifier" in provided:
                 ident = payload.identifier
-                ident_cols, ident_codings = _build_identifier_fields(ident, org_id, actor_id)
-                if ident and ident_cols.get("identifier_assigner_type") and ident_cols.get("identifier_assigner_id"):
+                ident_cols, ident_codings = _build_identifier_fields(
+                    ident, org_id, actor_id
+                )
+                if (
+                    ident
+                    and ident_cols.get("identifier_assigner_type")
+                    and ident_cols.get("identifier_assigner_id")
+                ):
                     await _validate_ref(
                         session,
                         ident_cols["identifier_assigner_type"],
@@ -502,13 +575,19 @@ class _FullMixin:
                 model.identifier_type_codings = ident_codings
 
             if "patient_preparation" in provided:
-                model.patient_preparations = _build_patient_preparations(payload.patient_preparation, org_id, actor_id)
+                model.patient_preparations = _build_patient_preparations(
+                    payload.patient_preparation, org_id, actor_id
+                )
 
             if "collection" in provided:
-                model.collections = _build_collections(payload.collection, org_id, actor_id)
+                model.collections = _build_collections(
+                    payload.collection, org_id, actor_id
+                )
 
             if "type_tested" in provided:
-                model.types_tested = _build_types_tested(payload.type_tested, org_id, actor_id)
+                model.types_tested = _build_types_tested(
+                    payload.type_tested, org_id, actor_id
+                )
 
             model.updated_by = actor_id
             await session.commit()

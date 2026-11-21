@@ -160,10 +160,7 @@ def plain_medication_knowledge_related(r: MedicationKnowledgeRelated) -> dict:
     type_cc = _plain_codeable_concept(r.type_codings, r.type_text)
     if type_cc:
         res["type"] = type_cc
-    refs = [
-        _plain_reference(ref, "reference")
-        for ref in (r.references or [])
-    ]
+    refs = [_plain_reference(ref, "reference") for ref in (r.references or [])]
     refs = [ref for ref in refs if ref is not None]
     if refs:
         res["reference"] = refs
@@ -238,7 +235,9 @@ def plain_medication_knowledge_admin_guideline(
     if dosages:
         res["dosage"] = dosages
 
-    ind_cc = _plain_codeable_concept(ag.indication_codings, ag.indication_codeable_concept_text)
+    ind_cc = _plain_codeable_concept(
+        ag.indication_codings, ag.indication_codeable_concept_text
+    )
     if ind_cc:
         res["indication_codeable_concept"] = ind_cc
     ind_ref = _plain_reference(ag, "indication")
@@ -378,13 +377,11 @@ def to_plain_medication_knowledge(m: MedicationKnowledgeModel) -> dict:
         "amount": _plain_quantity(m, "amount"),
         "synonym": list(m.synonym) if m.synonym else None,
         "related_medication_knowledge": [
-            plain_medication_knowledge_related(r)
-            for r in (m.related_knowledge or [])
+            plain_medication_knowledge_related(r) for r in (m.related_knowledge or [])
         ]
         or None,
         "associated_medication": [
-            _plain_reference(a, "reference")
-            for a in (m.associated_medications or [])
+            _plain_reference(a, "reference") for a in (m.associated_medications or [])
         ]
         or None,
         "product_type": [
@@ -393,13 +390,11 @@ def to_plain_medication_knowledge(m: MedicationKnowledgeModel) -> dict:
         ]
         or None,
         "monograph": [
-            plain_medication_knowledge_monograph(mono)
-            for mono in (m.monographs or [])
+            plain_medication_knowledge_monograph(mono) for mono in (m.monographs or [])
         ]
         or None,
         "ingredient": [
-            plain_medication_knowledge_ingredient(ing)
-            for ing in (m.ingredients or [])
+            plain_medication_knowledge_ingredient(ing) for ing in (m.ingredients or [])
         ]
         or None,
         "preparation_instruction": m.preparation_instruction,
@@ -408,10 +403,7 @@ def to_plain_medication_knowledge(m: MedicationKnowledgeModel) -> dict:
             for ir in (m.intended_routes or [])
         ]
         or None,
-        "cost": [
-            plain_medication_knowledge_cost(c) for c in (m.costs or [])
-        ]
-        or None,
+        "cost": [plain_medication_knowledge_cost(c) for c in (m.costs or [])] or None,
         "monitoring_program": [
             plain_medication_knowledge_monitoring_program(mp)
             for mp in (m.monitoring_programs or [])
@@ -434,18 +426,14 @@ def to_plain_medication_knowledge(m: MedicationKnowledgeModel) -> dict:
         ]
         or None,
         "contraindication": [
-            _plain_reference(c, "reference")
-            for c in (m.contraindications or [])
+            _plain_reference(c, "reference") for c in (m.contraindications or [])
         ]
         or None,
         "regulatory": [
-            plain_medication_knowledge_regulatory(reg)
-            for reg in (m.regulatory or [])
+            plain_medication_knowledge_regulatory(reg) for reg in (m.regulatory or [])
         ]
         or None,
-        "kinetics": [
-            plain_medication_knowledge_kinetics(k) for k in (m.kinetics or [])
-        ]
+        "kinetics": [plain_medication_knowledge_kinetics(k) for k in (m.kinetics or [])]
         or None,
     }
     return {k: v for k, v in res.items() if v is not None}

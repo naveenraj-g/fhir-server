@@ -41,4 +41,6 @@ class DocumentReferenceAuthor(TenantAuditMixin, Base):
     author_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     author_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="authors")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="authors"
+    )

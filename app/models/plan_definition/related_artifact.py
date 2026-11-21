@@ -14,7 +14,10 @@ class PlanDefinitionRelatedArtifact(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     plan_definition_pk = Column(
-        BigInteger, ForeignKey("plan_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("plan_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     type = Column(
@@ -31,4 +34,6 @@ class PlanDefinitionRelatedArtifact(TenantAuditMixin, Base):
     document = Column(JSONB, nullable=True)
     resource = Column(String, nullable=True)
 
-    plan_definition = relationship("PlanDefinitionModel", back_populates="related_artifacts")
+    plan_definition = relationship(
+        "PlanDefinitionModel", back_populates="related_artifacts"
+    )

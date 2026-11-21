@@ -38,10 +38,16 @@ _IDENTIFIER_SUFFIXES = {
 }
 
 _STATUS_REASON_FIELDS = {"status_reason_coding", "status_reason_text"}
-_SUBJECT_FIELDS = {"subject", "subject_display"} | {f"subject_{s}" for s in _IDENTIFIER_SUFFIXES}
+_SUBJECT_FIELDS = {"subject", "subject_display"} | {
+    f"subject_{s}" for s in _IDENTIFIER_SUFFIXES
+}
 _TOPIC_FIELDS = {"topic_coding", "topic_text"}
-_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {f"encounter_{s}" for s in _IDENTIFIER_SUFFIXES}
-_SENDER_FIELDS = {"sender", "sender_display"} | {f"sender_{s}" for s in _IDENTIFIER_SUFFIXES}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {
+    f"encounter_{s}" for s in _IDENTIFIER_SUFFIXES
+}
+_SENDER_FIELDS = {"sender", "sender_display"} | {
+    f"sender_{s}" for s in _IDENTIFIER_SUFFIXES
+}
 
 
 def _coding_from_payload(c: Any) -> dict:
@@ -98,13 +104,22 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -154,10 +169,18 @@ def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
         return result
 
     result = {}
-    r = getattr(ref, "reference", None) if not isinstance(ref, dict) else ref.get("reference")
+    r = (
+        getattr(ref, "reference", None)
+        if not isinstance(ref, dict)
+        else ref.get("reference")
+    )
     if r:
         result["reference"] = r
-    d = (getattr(ref, "display", None) if not isinstance(ref, dict) else ref.get("display")) or display
+    d = (
+        getattr(ref, "display", None)
+        if not isinstance(ref, dict)
+        else ref.get("display")
+    ) or display
     if d:
         result["display"] = d
 
@@ -176,7 +199,14 @@ def _ref_from_payload(ref: Any, display: str | None = None) -> dict | None:
     id_period_start = _get("identifier_period_start")
     id_period_end = _get("identifier_period_end")
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -392,8 +422,7 @@ def payload_to_fhir_communication(payload: CommunicationCreateSchema) -> dict:
         medium = [
             item
             for item in (
-                _codeable_concept_from_payload(m.coding, m.text)
-                for m in payload.medium
+                _codeable_concept_from_payload(m.coding, m.text) for m in payload.medium
             )
             if item is not None
         ]
@@ -405,9 +434,7 @@ def payload_to_fhir_communication(payload: CommunicationCreateSchema) -> dict:
         result["subject"] = subject
 
     if payload.topic_coding or payload.topic_text:
-        topic = _codeable_concept_from_payload(
-            payload.topic_coding, payload.topic_text
-        )
+        topic = _codeable_concept_from_payload(payload.topic_coding, payload.topic_text)
         if topic:
             result["topic"] = topic
 
@@ -510,7 +537,9 @@ def patch_fragment_to_fhir_communication(
     if "instantiates_canonical" in touched_schema_fields:
         touched_fhir_keys.add("instantiatesCanonical")
         fragment["instantiatesCanonical"] = (
-            list(patch.instantiates_canonical) if patch.instantiates_canonical is not None else None
+            list(patch.instantiates_canonical)
+            if patch.instantiates_canonical is not None
+            else None
         )
 
     if "instantiates_uri" in touched_schema_fields:
@@ -554,7 +583,9 @@ def patch_fragment_to_fhir_communication(
 
     if "status" in touched_schema_fields:
         touched_fhir_keys.add("status")
-        fragment["status"] = fhir_enum(patch.status) if patch.status is not None else None
+        fragment["status"] = (
+            fhir_enum(patch.status) if patch.status is not None else None
+        )
 
     if touched_schema_fields & _STATUS_REASON_FIELDS:
         touched_fhir_keys.add("statusReason")
@@ -581,7 +612,9 @@ def patch_fragment_to_fhir_communication(
 
     if "priority" in touched_schema_fields:
         touched_fhir_keys.add("priority")
-        fragment["priority"] = fhir_enum(patch.priority) if patch.priority is not None else None
+        fragment["priority"] = (
+            fhir_enum(patch.priority) if patch.priority is not None else None
+        )
 
     if "medium" in touched_schema_fields:
         touched_fhir_keys.add("medium")
@@ -631,7 +664,9 @@ def patch_fragment_to_fhir_communication(
 
     if "received" in touched_schema_fields:
         touched_fhir_keys.add("received")
-        fragment["received"] = fhir_instant(patch.received) if patch.received is not None else None
+        fragment["received"] = (
+            fhir_instant(patch.received) if patch.received is not None else None
+        )
 
     if "recipient" in touched_schema_fields:
         touched_fhir_keys.add("recipient")

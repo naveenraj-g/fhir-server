@@ -79,7 +79,8 @@ class _ConceptMapOperationsMixin:
         # result=true only when at least one match is a real equivalence,
         # not just unmatched/disjoint — see §4.2's own rule.
         real_matches = [
-            cm for cm, _concept, _cs in rows
+            cm
+            for cm, _concept, _cs in rows
             if cm.equivalence.value not in ("unmatched", "disjoint")
         ]
         result = len(real_matches) > 0

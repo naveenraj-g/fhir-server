@@ -37,9 +37,5 @@ class SpecimenNoteInput(BaseModel):
     )
     author_identifier_period_start: datetime | None = Field(None)
     author_identifier_period_end: datetime | None = Field(None)
-    time: datetime | None = Field(
-        None, description="When the annotation was made."
-    )
-    text: str = Field(
-        ..., description="The annotation content (markdown text)."
-    )
+    time: datetime | None = Field(None, description="When the annotation was made.")
+    text: str = Field(..., description="The annotation content (markdown text).")

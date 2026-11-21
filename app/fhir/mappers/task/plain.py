@@ -10,6 +10,7 @@ def _format_date(d) -> str | None:
         return None
     return d.isoformat() if hasattr(d, "isoformat") else str(d)
 
+
 if TYPE_CHECKING:
     from app.models.task import (
         TaskIdentifier,
@@ -153,7 +154,9 @@ def _plain_input(inp: TaskInput) -> dict:
         "value_string": inp.value_string,
         "value_boolean": inp.value_boolean,
         "value_integer": inp.value_integer,
-        "value_decimal": float(inp.value_decimal) if inp.value_decimal is not None else None,
+        "value_decimal": float(inp.value_decimal)
+        if inp.value_decimal is not None
+        else None,
         "value_date": _format_date(inp.value_date) if inp.value_date else None,
         "value_date_time": fhir_instant(inp.value_date_time),
         "value_time": str(inp.value_time) if inp.value_time else None,
@@ -177,7 +180,9 @@ def _plain_output(out: TaskOutput) -> dict:
         "value_string": out.value_string,
         "value_boolean": out.value_boolean,
         "value_integer": out.value_integer,
-        "value_decimal": float(out.value_decimal) if out.value_decimal is not None else None,
+        "value_decimal": float(out.value_decimal)
+        if out.value_decimal is not None
+        else None,
         "value_date": _format_date(out.value_date) if out.value_date else None,
         "value_date_time": fhir_instant(out.value_date_time),
         "value_time": str(out.value_time) if out.value_time else None,
@@ -236,9 +241,7 @@ def to_plain_task(model: TaskModel) -> dict:
         "group_identifier_period_start": fhir_instant(
             model.group_identifier_period_start
         ),
-        "group_identifier_period_end": fhir_instant(
-            model.group_identifier_period_end
-        ),
+        "group_identifier_period_end": fhir_instant(model.group_identifier_period_end),
         **_plain_reference_fields(model, "group_identifier_assigner"),
         "restriction_repetitions": model.restriction_repetitions,
         "restriction_period_start": fhir_instant(model.restriction_period_start),

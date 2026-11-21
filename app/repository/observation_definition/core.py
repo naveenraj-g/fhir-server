@@ -144,7 +144,8 @@ class _CoreMixin:
                 _with_relationships(select(ObservationDefinitionModel)), **filter_kwargs
             )
             count_base = self._apply_list_filters(
-                select(func.count()).select_from(ObservationDefinitionModel), **filter_kwargs
+                select(func.count()).select_from(ObservationDefinitionModel),
+                **filter_kwargs,
             )
             sort_column, sort_desc = resolve_sort(
                 sort,

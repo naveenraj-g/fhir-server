@@ -21,9 +21,7 @@ from app.models.care_plan.enums import (
 )
 from app.models.shared import TenantAuditMixin
 
-care_plan_pub_seq = Sequence(
-    "care_plan_pub_seq", start=290000, metadata=Base.metadata
-)
+care_plan_pub_seq = Sequence("care_plan_pub_seq", start=290000, metadata=Base.metadata)
 
 
 class CarePlanModel(TenantAuditMixin, Base):

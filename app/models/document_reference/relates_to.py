@@ -51,4 +51,6 @@ class DocumentReferenceRelatesTo(TenantAuditMixin, Base):
     target_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     target_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="relates_to")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="relates_to"
+    )

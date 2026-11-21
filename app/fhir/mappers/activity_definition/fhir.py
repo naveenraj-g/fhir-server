@@ -406,7 +406,9 @@ def to_fhir_activity_definition(model) -> dict:
     if model.last_review_date:
         fhir["lastReviewDate"] = model.last_review_date.isoformat()
 
-    effective_period = _fhir_period(model.effective_period_start, model.effective_period_end)
+    effective_period = _fhir_period(
+        model.effective_period_start, model.effective_period_end
+    )
     if effective_period:
         fhir["effectivePeriod"] = effective_period
 
@@ -453,7 +455,9 @@ def to_fhir_activity_definition(model) -> dict:
         if timing_age:
             fhir["timingAge"] = timing_age
         else:
-            timing_period = _fhir_period(model.timing_period_start, model.timing_period_end)
+            timing_period = _fhir_period(
+                model.timing_period_start, model.timing_period_end
+            )
             if timing_period:
                 fhir["timingPeriod"] = timing_period
             else:
@@ -505,7 +509,9 @@ def to_fhir_activity_definition(model) -> dict:
             fhir["dosage"] = dosages
 
     if model.body_sites:
-        body_sites = [_fhir_codeable_concept(b.codings, b.text) for b in model.body_sites]
+        body_sites = [
+            _fhir_codeable_concept(b.codings, b.text) for b in model.body_sites
+        ]
         body_sites = [b for b in body_sites if b]
         if body_sites:
             fhir["bodySite"] = body_sites

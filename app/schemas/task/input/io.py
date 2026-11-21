@@ -12,9 +12,7 @@ class TaskInputInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    type_coding: list[CodingInput] | None = Field(
-        None, description="Label for input."
-    )
+    type_coding: list[CodingInput] | None = Field(None, description="Label for input.")
     type_text: str | None = Field(
         None, description="Plain text description for input type."
     )
@@ -45,7 +43,8 @@ class TaskInputInput(BaseModel):
         None, description="Representation defined by the system for identifier type."
     )
     value_reference_identifier_type_user_selected: bool | None = Field(
-        None, description="If this identifier type coding was chosen directly by the user."
+        None,
+        description="If this identifier type coding was chosen directly by the user.",
     )
     value_reference_identifier_type_text: str | None = Field(
         None, description="Plain text representation of the identifier type."
@@ -54,7 +53,8 @@ class TaskInputInput(BaseModel):
         None, description="The namespace for the identifier value."
     )
     value_reference_identifier_value: str | None = Field(
-        None, description="The portion of the identifier typically relevant to the user."
+        None,
+        description="The portion of the identifier typically relevant to the user.",
     )
     value_reference_identifier_period_start: datetime | None = Field(
         None, description="Time period when id is/was valid for use - start."
@@ -70,9 +70,7 @@ class TaskOutputInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    type_coding: list[CodingInput] | None = Field(
-        None, description="Label for output."
-    )
+    type_coding: list[CodingInput] | None = Field(None, description="Label for output.")
     type_text: str | None = Field(
         None, description="Plain text description for output type."
     )
@@ -103,7 +101,8 @@ class TaskOutputInput(BaseModel):
         None, description="Representation defined by the system for identifier type."
     )
     value_reference_identifier_type_user_selected: bool | None = Field(
-        None, description="If this identifier type coding was chosen directly by the user."
+        None,
+        description="If this identifier type coding was chosen directly by the user.",
     )
     value_reference_identifier_type_text: str | None = Field(
         None, description="Plain text representation of the identifier type."
@@ -112,7 +111,8 @@ class TaskOutputInput(BaseModel):
         None, description="The namespace for the identifier value."
     )
     value_reference_identifier_value: str | None = Field(
-        None, description="The portion of the identifier typically relevant to the user."
+        None,
+        description="The portion of the identifier typically relevant to the user.",
     )
     value_reference_identifier_period_start: datetime | None = Field(
         None, description="Time period when id is/was valid for use - start."

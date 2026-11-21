@@ -11,7 +11,10 @@ from app.fhir.validation import validate_resource
 from app.models.allergy_intolerance import AllergyIntoleranceModel
 from app.repository.allergy_intolerance import AllergyIntoleranceRepository
 from app.repository.allergy_intolerance.search import allergy_intolerance_search
-from app.schemas.allergy_intolerance import AllergyIntoleranceCreateSchema, AllergyIntolerancePatchSchema
+from app.schemas.allergy_intolerance import (
+    AllergyIntoleranceCreateSchema,
+    AllergyIntolerancePatchSchema,
+)
 
 logger = get_logger(__name__)
 
@@ -44,8 +47,10 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "AllergyIntolerance operation requires an org-scoped token"
             )
-        allergy_intolerance = await self.repository.get_by_allergy_intolerance_id_in_org(
-            allergy_intolerance_id, org_id
+        allergy_intolerance = (
+            await self.repository.get_by_allergy_intolerance_id_in_org(
+                allergy_intolerance_id, org_id
+            )
         )
         if not allergy_intolerance:
             raise NotFoundError("AllergyIntolerance not found")
@@ -59,7 +64,10 @@ class _CoreMixin:
         strict: bool = False,
         fhir_base: str | None = None,
     ) -> tuple[
-        SearchRequest, list[AllergyIntoleranceModel], int | None, list[AllergyIntoleranceModel]
+        SearchRequest,
+        list[AllergyIntoleranceModel],
+        int | None,
+        list[AllergyIntoleranceModel],
     ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the AllergyIntolerance search
@@ -107,7 +115,9 @@ class _CoreMixin:
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "AllergyIntolerance")
         await self._validate_base_r4(document, org_id)
-        allergy_intolerance = await self.repository.create_full(document, org_id, created_by)
+        allergy_intolerance = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "AllergyIntolerance created",
             extra={
@@ -145,12 +155,16 @@ class _CoreMixin:
             raise NotFoundError("AllergyIntolerance not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_allergy_intolerance(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_allergy_intolerance(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(allergy_intolerance_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            allergy_intolerance_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("AllergyIntolerance not found")
         logger.info(
@@ -203,11 +217,16 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("AllergyIntolerance", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "AllergyIntolerance", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "AllergyIntolerance failed base R4 validation",
-                extra={"event": "allergy_intolerance.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "allergy_intolerance.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

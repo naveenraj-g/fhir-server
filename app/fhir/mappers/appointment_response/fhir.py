@@ -16,5 +16,11 @@ if TYPE_CHECKING:
     from app.models.appointment_response import AppointmentResponseModel
 
 
-def to_fhir_appointment_response(appointment_response: AppointmentResponseModel) -> dict:
-    return content_resource("AppointmentResponse", appointment_response.appointment_response_id, appointment_response)
+def to_fhir_appointment_response(
+    appointment_response: AppointmentResponseModel,
+) -> dict:
+    return content_resource(
+        "AppointmentResponse",
+        appointment_response.appointment_response_id,
+        appointment_response,
+    )

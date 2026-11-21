@@ -14,27 +14,70 @@ REFERENCE_PARAMS = {
 }
 # R4 targets of each parameter.
 BASED_ON_TYPES = (
-    "CarePlan", "DeviceRequest", "ImmunizationRecommendation", "MedicationRequest", "NutritionOrder",
+    "CarePlan",
+    "DeviceRequest",
+    "ImmunizationRecommendation",
+    "MedicationRequest",
+    "NutritionOrder",
     "ServiceRequest",
 )
 PART_OF_TYPES = (
-    "MedicationAdministration", "MedicationDispense", "MedicationStatement", "Procedure", "Immunization",
+    "MedicationAdministration",
+    "MedicationDispense",
+    "MedicationStatement",
+    "Procedure",
+    "Immunization",
     "ImagingStudy",
 )
-PERFORMER_TYPES = ("Practitioner", "PractitionerRole", "Organization", "CareTeam", "Patient", "RelatedPerson")
+PERFORMER_TYPES = (
+    "Practitioner",
+    "PractitionerRole",
+    "Organization",
+    "CareTeam",
+    "Patient",
+    "RelatedPerson",
+)
 HAS_MEMBER_TYPES = ("Observation", "QuestionnaireResponse", "MolecularSequence")
 DERIVED_FROM_TYPES = (
-    "DocumentReference", "ImagingStudy", "Media", "QuestionnaireResponse", "Observation", "MolecularSequence",
+    "DocumentReference",
+    "ImagingStudy",
+    "Media",
+    "QuestionnaireResponse",
+    "Observation",
+    "MolecularSequence",
 )
 # `focus` is Reference(Any): the parser only accepts `:Type` for a declared target, so list the
 # types an Observation can realistically focus on. A relative reference to a type not listed is
 # still indexed (and found by its absolute URL).
 FOCUS_TYPES = (
-    "Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Organization", "Location",
-    "HealthcareService", "Encounter", "Appointment", "Condition", "Observation", "Procedure",
-    "DiagnosticReport", "DocumentReference", "ServiceRequest", "MedicationRequest", "MedicationStatement",
-    "MedicationAdministration", "MedicationDispense", "CarePlan", "AllergyIntolerance", "Immunization",
-    "FamilyMemberHistory", "RiskAssessment", "ClinicalImpression", "DetectedIssue", "Specimen", "Device",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "RelatedPerson",
+    "Organization",
+    "Location",
+    "HealthcareService",
+    "Encounter",
+    "Appointment",
+    "Condition",
+    "Observation",
+    "Procedure",
+    "DiagnosticReport",
+    "DocumentReference",
+    "ServiceRequest",
+    "MedicationRequest",
+    "MedicationStatement",
+    "MedicationAdministration",
+    "MedicationDispense",
+    "CarePlan",
+    "AllergyIntolerance",
+    "Immunization",
+    "FamilyMemberHistory",
+    "RiskAssessment",
+    "ClinicalImpression",
+    "DetectedIssue",
+    "Specimen",
+    "Device",
 )
 REFERENCE_TYPES = {
     "based-on": BASED_ON_TYPES,
@@ -64,10 +107,19 @@ class ObservationReference(Base):
     reference twice."""
 
     __tablename__ = "observation_reference"
-    __table_args__ = (Index("ix_observation_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_observation_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    observation_pk = Column(BigInteger, ForeignKey("observation.id"), nullable=False, index=True)
+    observation_pk = Column(
+        BigInteger, ForeignKey("observation.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)

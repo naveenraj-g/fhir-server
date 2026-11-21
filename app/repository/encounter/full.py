@@ -22,7 +22,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
     individuals and locations of a modeled type, hospitalization.origin/destination), scoped to
     the caller's org — 422 if one does not resolve."""
     for label, resource_type, ref in local_references(document):
-        await _validate_reference(session, tenant_id, resource_type, int(ref.split("/")[1]), label)
+        await _validate_reference(
+            session, tenant_id, resource_type, int(ref.split("/")[1]), label
+        )
 
 
 class _FullMixin:

@@ -103,9 +103,7 @@ class ConsentProvisionInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    type: ConsentProvisionType | None = Field(
-        None, description="deny | permit."
-    )
+    type: ConsentProvisionType | None = Field(None, description="deny | permit.")
     period_start: datetime | None = Field(
         None, description="Timeframe for this rule (start)."
     )

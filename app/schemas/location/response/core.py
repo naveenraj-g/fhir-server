@@ -37,12 +37,8 @@ class FHIRLocationHoursOfOperation(BaseModel):
     allDay: bool | None = Field(
         None, description="The Location is open all day (24 hours)."
     )
-    openingTime: str | None = Field(
-        None, description="Time that the Location opens."
-    )
-    closingTime: str | None = Field(
-        None, description="Time that the Location closes."
-    )
+    openingTime: str | None = Field(None, description="Time that the Location opens.")
+    closingTime: str | None = Field(None, description="Time that the Location closes.")
 
 
 class FHIRLocationSchema(BaseModel):

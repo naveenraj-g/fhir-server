@@ -26,7 +26,9 @@ class FamilyMemberHistoryIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named family_member_history_pk (not family_member_history_id) so it can't be
     # confused with FamilyMemberHistoryModel.family_member_history_id, the public id.
-    family_member_history_pk = Column(BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True)
+    family_member_history_pk = Column(
+        BigInteger, ForeignKey("family_member_history.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)
@@ -34,4 +36,6 @@ class FamilyMemberHistoryIdentifier(Base):
     type_text_norm = Column(String, nullable=True)
     type_display_norm = Column(String, nullable=True)
 
-    family_member_history = relationship("FamilyMemberHistoryModel", back_populates="identifiers")
+    family_member_history = relationship(
+        "FamilyMemberHistoryModel", back_populates="identifiers"
+    )

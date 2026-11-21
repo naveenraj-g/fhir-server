@@ -12,7 +12,10 @@ from tests.integration.practitioner_role.support import (  # noqa: F401
     create_practitioner,
     create_role as create_practitioner_role,
 )
-from tests.integration.related_person.support import create_related_person, related_person_body  # noqa: F401
+from tests.integration.related_person.support import (
+    create_related_person,
+    related_person_body,
+)  # noqa: F401
 
 BASE = "/api/fhir/v1/allergy-intolerances"
 API = "/api/fhir/v1"
@@ -38,11 +41,17 @@ def verification(code: str = "confirmed") -> dict:
 def allergy_body(patient_id: int | None = None, **extra) -> dict:
     """A valid minimal AllergyIntolerance: R4 requires `patient`. With no patient
     the reference is an absolute URL (not existence-checked)."""
-    patient = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    patient = {
+        "reference": f"Patient/{patient_id}"
+        if patient_id
+        else "https://other.example.org/fhir/Patient/1"
+    }
     return {"patient": patient, **extra}
 
 
-def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int) -> dict:
+def full_body(
+    patient_id: int, encounter_id: int, practitioner_id: int, organization_id: int
+) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return allergy_body(
         patient_id,
@@ -51,7 +60,14 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
             {
                 "system": AI_IDS,
                 "value": "AI-1001",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "PRN",
+                        }
+                    ]
+                },
                 "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
@@ -60,7 +76,10 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
         type="allergy",
         category=["food", "environment"],
         criticality="high",
-        code={"coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}], "text": "Cashew nut allergy"},
+        code={
+            "coding": [{"system": SCT, "code": "227493005", "display": "Cashew nuts"}],
+            "text": "Cashew nut allergy",
+        },
         encounter={"reference": f"Encounter/{encounter_id}"},
         onsetDateTime="2023-01-15T09:30:00Z",
         recordedDate="2023-01-15T10:00:00Z",
@@ -76,13 +95,31 @@ def full_body(patient_id: int, encounter_id: int, practitioner_id: int, organiza
         ],
         reaction=[
             {
-                "substance": {"coding": [{"system": SCT, "code": "227493005"}], "text": "Cashew"},
-                "manifestation": [{"coding": [{"system": SCT, "code": "64305001", "display": "Urticaria"}]}],
+                "substance": {
+                    "coding": [{"system": SCT, "code": "227493005"}],
+                    "text": "Cashew",
+                },
+                "manifestation": [
+                    {
+                        "coding": [
+                            {"system": SCT, "code": "64305001", "display": "Urticaria"}
+                        ]
+                    }
+                ],
                 "description": "Severe hives on face and neck",
                 "onset": "2023-01-15T09:40:00Z",
                 "severity": "severe",
-                "exposureRoute": {"coding": [{"system": SCT, "code": "26643006", "display": "Oral route"}]},
-                "note": [{"authorString": "Triage nurse", "text": "Resolved after epinephrine."}],
+                "exposureRoute": {
+                    "coding": [
+                        {"system": SCT, "code": "26643006", "display": "Oral route"}
+                    ]
+                },
+                "note": [
+                    {
+                        "authorString": "Triage nurse",
+                        "text": "Resolved after epinephrine.",
+                    }
+                ],
             }
         ],
     )

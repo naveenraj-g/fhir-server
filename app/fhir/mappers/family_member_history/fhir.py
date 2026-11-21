@@ -16,5 +16,11 @@ if TYPE_CHECKING:
     from app.models.family_member_history import FamilyMemberHistoryModel
 
 
-def to_fhir_family_member_history(family_member_history: FamilyMemberHistoryModel) -> dict:
-    return content_resource("FamilyMemberHistory", family_member_history.family_member_history_id, family_member_history)
+def to_fhir_family_member_history(
+    family_member_history: FamilyMemberHistoryModel,
+) -> dict:
+    return content_resource(
+        "FamilyMemberHistory",
+        family_member_history.family_member_history_id,
+        family_member_history,
+    )

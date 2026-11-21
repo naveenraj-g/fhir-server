@@ -53,17 +53,31 @@ def _clinical(code):
     return {"coding": [{"system": CLIN, "code": code}]}
 
 
-_AGE = {"value": 12, "unit": "years", "system": "http://unitsofmeasure.org", "code": "a"}
+_AGE = {
+    "value": 12,
+    "unit": "years",
+    "system": "http://unitsofmeasure.org",
+    "code": "a",
+}
 _RANGE = {"low": {"value": 5, "unit": "years"}, "high": {"value": 10, "unit": "years"}}
 
 CASES = {
     "minimal": _with(),
-    "updated_by_and_updated_at": _condition({"subject": SUBJECT}, updated_by="u-other", updated_at=D),
+    "updated_by_and_updated_at": _condition(
+        {"subject": SUBJECT}, updated_by="u-other", updated_at=D
+    ),
     "identifier_with_type_and_assigner": _with(
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "PRN"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "PRN",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/condition-id",
                 "value": "C-1",
                 "period": {"start": "2020-01-01"},
@@ -73,25 +87,67 @@ CASES = {
     ),
     **{
         f"clinical_status_{c}": _with(clinicalStatus=_clinical(c))
-        for c in ("active", "recurrence", "relapse", "inactive", "remission", "resolved")
+        for c in (
+            "active",
+            "recurrence",
+            "relapse",
+            "inactive",
+            "remission",
+            "resolved",
+        )
     },
     **{
         f"verification_status_{v}": _with(
             verificationStatus={"coding": [{"system": VERIF, "code": v}]},
-            **({} if v == "entered-in-error" else {"clinicalStatus": _clinical("active")}),
+            **(
+                {}
+                if v == "entered-in-error"
+                else {"clinicalStatus": _clinical("active")}
+            ),
         )
-        for v in ("unconfirmed", "provisional", "differential", "confirmed", "refuted", "entered-in-error")
+        for v in (
+            "unconfirmed",
+            "provisional",
+            "differential",
+            "confirmed",
+            "refuted",
+            "entered-in-error",
+        )
     },
     "category_both": _with(
-        category=[{"coding": [{"system": CAT, "code": "problem-list-item"}]}, {"coding": [{"system": CAT, "code": "encounter-diagnosis"}]}]
+        category=[
+            {"coding": [{"system": CAT, "code": "problem-list-item"}]},
+            {"coding": [{"system": CAT, "code": "encounter-diagnosis"}]},
+        ]
     ),
-    "severity": _with(severity={"coding": [{"system": SCT, "code": "24484000", "display": "Severe"}], "text": "Severe"}),
-    "code": _with(code={"coding": [{"system": SCT, "code": "38341003", "display": "Hypertension"}], "text": "HTN"}),
-    "body_site": _with(bodySite=[{"coding": [{"system": SCT, "code": "368208006"}]}, {"text": "Left arm"}]),
-    "subject_with_display": _with(subject={"reference": "Patient/10001", "display": "A. Patient"}),
+    "severity": _with(
+        severity={
+            "coding": [{"system": SCT, "code": "24484000", "display": "Severe"}],
+            "text": "Severe",
+        }
+    ),
+    "code": _with(
+        code={
+            "coding": [{"system": SCT, "code": "38341003", "display": "Hypertension"}],
+            "text": "HTN",
+        }
+    ),
+    "body_site": _with(
+        bodySite=[
+            {"coding": [{"system": SCT, "code": "368208006"}]},
+            {"text": "Left arm"},
+        ]
+    ),
+    "subject_with_display": _with(
+        subject={"reference": "Patient/10001", "display": "A. Patient"}
+    ),
     "subject_group": _condition({"subject": {"reference": "Group/5"}}),
-    "subject_logical": _condition({"subject": {"identifier": {"system": "urn:pts", "value": "P-9"}}}),
-    "subject_absolute_url": _condition({"subject": {"reference": "https://other.example.org/fhir/Patient/9"}}),
+    "subject_logical": _condition(
+        {"subject": {"identifier": {"system": "urn:pts", "value": "P-9"}}}
+    ),
+    "subject_absolute_url": _condition(
+        {"subject": {"reference": "https://other.example.org/fhir/Patient/9"}}
+    ),
     "encounter": _with(encounter={"reference": "Encounter/20001"}),
     "onset_date_time": _with(onsetDateTime="2023-01-15T09:30:00Z"),
     "onset_date_time_partial": _with(onsetDateTime="2023-01"),
@@ -99,11 +155,19 @@ CASES = {
     "onset_period": _with(onsetPeriod={"start": "2020-01-01", "end": "2020-02-01"}),
     "onset_range": _with(onsetRange=_RANGE),
     "onset_string": _with(onsetString="as a child"),
-    "abatement_date_time": _with(abatementDateTime="2024-05-01", clinicalStatus=_clinical("resolved")),
+    "abatement_date_time": _with(
+        abatementDateTime="2024-05-01", clinicalStatus=_clinical("resolved")
+    ),
     "abatement_age": _with(abatementAge=_AGE, clinicalStatus=_clinical("remission")),
-    "abatement_period": _with(abatementPeriod={"start": "2024-01-01"}, clinicalStatus=_clinical("inactive")),
-    "abatement_range": _with(abatementRange=_RANGE, clinicalStatus=_clinical("resolved")),
-    "abatement_string": _with(abatementString="resolved by itself", clinicalStatus=_clinical("resolved")),
+    "abatement_period": _with(
+        abatementPeriod={"start": "2024-01-01"}, clinicalStatus=_clinical("inactive")
+    ),
+    "abatement_range": _with(
+        abatementRange=_RANGE, clinicalStatus=_clinical("resolved")
+    ),
+    "abatement_string": _with(
+        abatementString="resolved by itself", clinicalStatus=_clinical("resolved")
+    ),
     "recorded_date": _with(recordedDate="2023-01-15T10:00:00Z"),
     **{
         f"recorder_{t}": _with(recorder={"reference": f"{t}/1"})
@@ -113,18 +177,58 @@ CASES = {
         f"asserter_{t}": _with(asserter={"reference": f"{t}/1"})
         for t in ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
     },
-    "asserter_logical": _with(asserter={"identifier": {"system": "urn:who", "value": "W-1"}}),
-    "stage_summary": _with(stage=[{"summary": {"coding": [{"system": SCT, "code": "14803004"}]}}]),
-    "stage_assessment_and_type": _with(
-        stage=[{"assessment": [{"reference": "Observation/160001"}], "type": {"text": "clinical"}}]
+    "asserter_logical": _with(
+        asserter={"identifier": {"system": "urn:who", "value": "W-1"}}
     ),
-    "evidence_code": _with(evidence=[{"code": [{"coding": [{"system": SCT, "code": "29857009"}]}, {"text": "Cough"}]}]),
-    "evidence_detail": _with(evidence=[{"detail": [{"reference": "Observation/160001"}, {"reference": "Encounter/1"}]}]),
+    "stage_summary": _with(
+        stage=[{"summary": {"coding": [{"system": SCT, "code": "14803004"}]}}]
+    ),
+    "stage_assessment_and_type": _with(
+        stage=[
+            {
+                "assessment": [{"reference": "Observation/160001"}],
+                "type": {"text": "clinical"},
+            }
+        ]
+    ),
+    "evidence_code": _with(
+        evidence=[
+            {
+                "code": [
+                    {"coding": [{"system": SCT, "code": "29857009"}]},
+                    {"text": "Cough"},
+                ]
+            }
+        ]
+    ),
+    "evidence_detail": _with(
+        evidence=[
+            {
+                "detail": [
+                    {"reference": "Observation/160001"},
+                    {"reference": "Encounter/1"},
+                ]
+            }
+        ]
+    ),
     "note_author_reference": _with(
-        note=[{"authorReference": {"reference": "Practitioner/30001"}, "time": "2023-01-15T10:05:00Z", "text": "Hives"}]
+        note=[
+            {
+                "authorReference": {"reference": "Practitioner/30001"},
+                "time": "2023-01-15T10:05:00Z",
+                "text": "Hives",
+            }
+        ]
     ),
     "note_author_string": _with(note=[{"authorString": "Dr Smith", "text": "Hives"}]),
-    "extension": _with(extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]),
+    "extension": _with(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
     "full": _with(
         identifier=[{"system": "urn:c", "value": "C-1"}],
         clinicalStatus=_clinical("active"),
@@ -139,7 +243,12 @@ CASES = {
         recorder={"reference": "Practitioner/30001"},
         asserter={"reference": "Patient/10001"},
         stage=[{"summary": {"coding": [{"system": SCT, "code": "14803004"}]}}],
-        evidence=[{"code": [{"coding": [{"system": SCT, "code": "29857009"}]}], "detail": [{"reference": "Observation/160001"}]}],
+        evidence=[
+            {
+                "code": [{"coding": [{"system": SCT, "code": "29857009"}]}],
+                "detail": [{"reference": "Observation/160001"}],
+            }
+        ],
         note=[{"text": "Hives"}],
     ),
 }
@@ -151,11 +260,17 @@ def test_condition_mapper_emits_valid_fhir_r4(case):
 
 
 def test_mapper_serves_content_unchanged():
-    content = {"subject": SUBJECT, "clinicalStatus": _clinical("active"), "recordedDate": "2023"}
+    content = {
+        "subject": SUBJECT,
+        "clinicalStatus": _clinical("active"),
+        "recordedDate": "2023",
+    }
     out = to_fhir_condition(_condition(content))
     assert out["resourceType"] == "Condition"
     assert out["id"] == "120001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -174,7 +289,10 @@ def test_mapper_serves_content_unchanged():
     [
         ("misspelled element", {"typo": "x"}),
         ("subject as string not a Reference", {"subject": "Patient/1"}),
-        ("clinicalStatus as string not a CodeableConcept", {"clinicalStatus": "active"}),
+        (
+            "clinicalStatus as string not a CodeableConcept",
+            {"clinicalStatus": "active"},
+        ),
         ("category as object not a list", {"category": {"text": "x"}}),
         ("bodySite as object not a list", {"bodySite": {"text": "x"}}),
         ("recordedDate not a dateTime", {"recordedDate": "tomorrow"}),
@@ -192,6 +310,13 @@ def test_mapper_serves_content_unchanged():
 def test_validator_rejects_invalid_fhir(label, broken):
     from google.fhir.r4 import json_format
 
-    payload = {"resourceType": "Condition", "id": "120001", "subject": SUBJECT, **broken}
+    payload = {
+        "resourceType": "Condition",
+        "id": "120001",
+        "subject": SUBJECT,
+        **broken,
+    }
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), condition_pb2.Condition, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), condition_pb2.Condition, validate=True
+        )

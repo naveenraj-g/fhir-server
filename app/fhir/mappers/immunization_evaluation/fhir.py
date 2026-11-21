@@ -16,5 +16,11 @@ if TYPE_CHECKING:
     from app.models.immunization_evaluation import ImmunizationEvaluationModel
 
 
-def to_fhir_immunization_evaluation(immunization_evaluation: ImmunizationEvaluationModel) -> dict:
-    return content_resource("ImmunizationEvaluation", immunization_evaluation.immunization_evaluation_id, immunization_evaluation)
+def to_fhir_immunization_evaluation(
+    immunization_evaluation: ImmunizationEvaluationModel,
+) -> dict:
+    return content_resource(
+        "ImmunizationEvaluation",
+        immunization_evaluation.immunization_evaluation_id,
+        immunization_evaluation,
+    )

@@ -26,7 +26,10 @@ class MeasureReportGroup(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_report_pk = Column(
-        BigInteger, ForeignKey("measure_report.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure_report.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     code_text = Column(String, nullable=True)
@@ -146,7 +149,9 @@ class MeasureReportGroupPopulationCodeCoding(FhirCodingMixin, TenantAuditMixin, 
         index=True,
     )
 
-    population = relationship("MeasureReportGroupPopulation", back_populates="code_coding")
+    population = relationship(
+        "MeasureReportGroupPopulation", back_populates="code_coding"
+    )
 
 
 class MeasureReportGroupStratifier(TenantAuditMixin, Base):

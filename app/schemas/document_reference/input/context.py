@@ -16,7 +16,8 @@ class DocumentReferenceContextInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     encounter: list[DocumentReferenceReferenceInput | str] | None = Field(
-        None, description="Context of the document (Encounter or EpisodeOfCare references)."
+        None,
+        description="Context of the document (Encounter or EpisodeOfCare references).",
     )
     event: list[DocumentReferenceCodeableConceptInput] | None = Field(
         None, description="Main clinical acts being documented."

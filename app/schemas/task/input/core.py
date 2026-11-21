@@ -153,9 +153,7 @@ class TaskCreateSchema(BaseModel):
     code_coding: list[CodingInput] | None = Field(
         None, description="Task Type codings."
     )
-    code_text: str | None = Field(
-        None, description="Task Type text description."
-    )
+    code_text: str | None = Field(None, description="Task Type text description.")
     description: str | None = Field(
         None, description="Human-readable explanation of task."
     )
@@ -240,7 +238,8 @@ class TaskCreateSchema(BaseModel):
         None, description="Beneficiary identifier period end."
     )
     encounter: str | None = Field(
-        None, description="Healthcare event during which task was created (Reference(Encounter))."
+        None,
+        description="Healthcare event during which task was created (Reference(Encounter)).",
     )
     encounter_display: str | None = Field(
         None, description="Narrative for encounter reference."
@@ -284,12 +283,8 @@ class TaskCreateSchema(BaseModel):
     execution_period_end: datetime | None = Field(
         None, description="End of execution period."
     )
-    authored_on: datetime | None = Field(
-        None, description="Task Creation Date."
-    )
-    last_modified: datetime | None = Field(
-        None, description="Task Last Modified Date."
-    )
+    authored_on: datetime | None = Field(None, description="Task Creation Date.")
+    last_modified: datetime | None = Field(None, description="Task Last Modified Date.")
     requester: str | None = Field(
         None,
         description="Who is asking for task to be done (Reference(Device|Organization|Patient|Practitioner|PractitionerRole|RelatedPerson)).",
@@ -415,9 +410,7 @@ class TaskCreateSchema(BaseModel):
     reason_code_coding: list[CodingInput] | None = Field(
         None, description="Why task is needed codings."
     )
-    reason_code_text: str | None = Field(
-        None, description="Why task is needed text."
-    )
+    reason_code_text: str | None = Field(None, description="Why task is needed text.")
     reason_reference: str | None = Field(
         None, description="Why task is needed reference (Reference(Any))."
     )
@@ -458,7 +451,8 @@ class TaskCreateSchema(BaseModel):
         None, description="Reason reference identifier period end."
     )
     insurance: list[TaskReferenceInput | str] | None = Field(
-        None, description="Associated insurance coverage (Reference(Coverage|ClaimResponse))."
+        None,
+        description="Associated insurance coverage (Reference(Coverage|ClaimResponse)).",
     )
     note: list[TaskNoteInput] | None = Field(
         None, description="Comments made about the task."

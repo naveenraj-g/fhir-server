@@ -20,14 +20,10 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PlainMeasureResponse.model_json_schema()
-                )
+                "schema": inline_schema(PlainMeasureResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRMeasureSchema.model_json_schema()
-                )
+                "schema": inline_schema(FHIRMeasureSchema.model_json_schema())
             },
         }
     }
@@ -38,14 +34,10 @@ _LIST_200 = {
         "description": "Paginated list of measures",
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PaginatedMeasureResponse.model_json_schema()
-                )
+                "schema": inline_schema(PaginatedMeasureResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRMeasureBundle.model_json_schema()
-                )
+                "schema": inline_schema(FHIRMeasureBundle.model_json_schema())
             },
         },
     }

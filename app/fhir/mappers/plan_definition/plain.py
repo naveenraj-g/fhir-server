@@ -170,7 +170,9 @@ def _plain_goals(goals) -> list[dict]:
                 "id": g.id,
                 "goal_id": g.goal_id,
                 "category": _plain_single_concept(g.category_codings, g.category_text),
-                "description": _plain_single_concept(g.description_codings, g.description_text),
+                "description": _plain_single_concept(
+                    g.description_codings, g.description_text
+                ),
                 "priority": _plain_single_concept(g.priority_codings, g.priority_text),
                 "start": _plain_single_concept(g.start_codings, g.start_text),
                 "addresses": g.addresses,
@@ -216,11 +218,21 @@ def _plain_action_single(act) -> dict:
         "participant": act.participant,
         "type_text": act.type_text,
         "type_codings": _plain_codings(act.type_codings),
-        "grouping_behavior": fhir_enum(act.grouping_behavior) if act.grouping_behavior else None,
-        "selection_behavior": fhir_enum(act.selection_behavior) if act.selection_behavior else None,
-        "required_behavior": fhir_enum(act.required_behavior) if act.required_behavior else None,
-        "precheck_behavior": fhir_enum(act.precheck_behavior) if act.precheck_behavior else None,
-        "cardinality_behavior": fhir_enum(act.cardinality_behavior) if act.cardinality_behavior else None,
+        "grouping_behavior": fhir_enum(act.grouping_behavior)
+        if act.grouping_behavior
+        else None,
+        "selection_behavior": fhir_enum(act.selection_behavior)
+        if act.selection_behavior
+        else None,
+        "required_behavior": fhir_enum(act.required_behavior)
+        if act.required_behavior
+        else None,
+        "precheck_behavior": fhir_enum(act.precheck_behavior)
+        if act.precheck_behavior
+        else None,
+        "cardinality_behavior": fhir_enum(act.cardinality_behavior)
+        if act.cardinality_behavior
+        else None,
         "definition_canonical": act.definition_canonical,
         "definition_uri": act.definition_uri,
         "transform": act.transform,

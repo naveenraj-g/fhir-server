@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.appointment_response import AppointmentResponseCreateSchema, AppointmentResponsePatchSchema
+from app.schemas.appointment_response import (
+    AppointmentResponseCreateSchema,
+    AppointmentResponsePatchSchema,
+)
 from app.services.appointment_response import AppointmentResponseService
 
 from ._responses import (
@@ -71,7 +74,9 @@ async def create_appointment_response(
     payload: AppointmentResponseCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("appointment_response", "create")),
-    appointment_response_service: AppointmentResponseService = Depends(get_appointment_response_service),
+    appointment_response_service: AppointmentResponseService = Depends(
+        get_appointment_response_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -81,8 +86,10 @@ async def create_appointment_response(
         extra={"event": "route.create_appointment_response"},
     )
     log_payload(logger, "appointment_response.create.payload", payload)
-    appointment_response = await appointment_response_service.create_appointment_response(
-        payload, actor.org_id, actor.sub, body=await request.json()
+    appointment_response = (
+        await appointment_response_service.create_appointment_response(
+            payload, actor.org_id, actor.sub, body=await request.json()
+        )
     )
     return fhir_response(
         appointment_response_service._to_fhir(appointment_response),
@@ -164,7 +171,9 @@ async def _search(
 async def search_appointment_responses(
     request: Request,
     actor: AuthUser = Depends(require_permission("appointment_response", "read")),
-    appointment_response_service: AppointmentResponseService = Depends(get_appointment_response_service),
+    appointment_response_service: AppointmentResponseService = Depends(
+        get_appointment_response_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -172,7 +181,9 @@ async def search_appointment_responses(
         "Search AppointmentResponse resources",
         extra={"event": "route.search_appointment_responses"},
     )
-    return await _search(request, get_query(request), actor, appointment_response_service)
+    return await _search(
+        request, get_query(request), actor, appointment_response_service
+    )
 
 
 @router.post(
@@ -191,13 +202,17 @@ async def search_appointment_responses(
 async def search_appointment_responses_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("appointment_response", "read")),
-    appointment_response_service: AppointmentResponseService = Depends(get_appointment_response_service),
+    appointment_response_service: AppointmentResponseService = Depends(
+        get_appointment_response_service
+    ),
 ):
     logger.info(
         "Search AppointmentResponse resources (POST _search)",
         extra={"event": "route.search_appointment_responses_post"},
     )
-    return await _search(request, await post_query(request), actor, appointment_response_service)
+    return await _search(
+        request, await post_query(request), actor, appointment_response_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -220,7 +235,9 @@ async def get_appointment_response(
         ..., ge=1, description="Public appointment response identifier."
     ),
     actor: AuthUser = Depends(require_permission("appointment_response", "read")),
-    appointment_response_service: AppointmentResponseService = Depends(get_appointment_response_service),
+    appointment_response_service: AppointmentResponseService = Depends(
+        get_appointment_response_service
+    ),
 ):
     logger.info(
         "Retrieve an AppointmentResponse resource by public appointment_response_id",
@@ -229,8 +246,10 @@ async def get_appointment_response(
             "appointment_response_id": appointment_response_id,
         },
     )
-    appointment_response = await appointment_response_service.get_appointment_response_scoped(
-        appointment_response_id, actor.org_id
+    appointment_response = (
+        await appointment_response_service.get_appointment_response_scoped(
+            appointment_response_id, actor.org_id
+        )
     )
     return fhir_response(appointment_response_service._to_fhir(appointment_response))
 
@@ -260,13 +279,18 @@ async def patch_appointment_response(
         ..., ge=1, description="Public appointment response identifier."
     ),
     actor: AuthUser = Depends(require_permission("appointment_response", "update")),
-    appointment_response_service: AppointmentResponseService = Depends(get_appointment_response_service),
+    appointment_response_service: AppointmentResponseService = Depends(
+        get_appointment_response_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_appointment_response()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update an AppointmentResponse resource",
-        extra={"event": "route.patch_appointment_response", "appointment_response_id": appointment_response_id},
+        extra={
+            "event": "route.patch_appointment_response",
+            "appointment_response_id": appointment_response_id,
+        },
     )
     log_payload(logger, "appointment_response.patch.payload", payload)
     updated = await appointment_response_service.patch_appointment_response(
@@ -299,7 +323,9 @@ async def delete_appointment_response(
         ..., ge=1, description="Public appointment response identifier."
     ),
     actor: AuthUser = Depends(require_permission("appointment_response", "delete")),
-    appointment_response_service: AppointmentResponseService = Depends(get_appointment_response_service),
+    appointment_response_service: AppointmentResponseService = Depends(
+        get_appointment_response_service
+    ),
 ):
     """delete_appointment_response() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -310,4 +336,6 @@ async def delete_appointment_response(
             "appointment_response_id": appointment_response_id,
         },
     )
-    await appointment_response_service.delete_appointment_response(appointment_response_id, org_id=actor.org_id)
+    await appointment_response_service.delete_appointment_response(
+        appointment_response_id, org_id=actor.org_id
+    )

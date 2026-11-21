@@ -14,7 +14,9 @@ class FhirCodingInput(FhirInputModel):
         None,
         description="The version of the code system which was used when choosing this code.",
     )
-    code: str | None = Field(None, description="A symbol in syntax defined by the code system.")
+    code: str | None = Field(
+        None, description="A symbol in syntax defined by the code system."
+    )
     display: str | None = Field(
         None,
         description="A representation of the meaning of the code in the system, following the rules of the system.",

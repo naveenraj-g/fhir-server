@@ -9,7 +9,11 @@ from app.schemas.care_plan.input.codeable_concept import (
 from app.schemas.care_plan.input.note import CarePlanNoteInput
 from app.schemas.care_plan.input.quantity import CarePlanQuantityInput
 from app.schemas.care_plan.input.reference import CarePlanReferenceInput
-from app.schemas.enums import CarePlanActivityKind, CarePlanActivityStatus, IdentifierUse
+from app.schemas.enums import (
+    CarePlanActivityKind,
+    CarePlanActivityStatus,
+    IdentifierUse,
+)
 
 
 class CarePlanActivityDetailInput(BaseModel):
@@ -17,7 +21,8 @@ class CarePlanActivityDetailInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     kind: CarePlanActivityKind | None = Field(
-        None, description="Appointment | CommunicationRequest | DeviceRequest | MedicationRequest | NutritionOrder | Task | ServiceRequest | VisionPrescription"
+        None,
+        description="Appointment | CommunicationRequest | DeviceRequest | MedicationRequest | NutritionOrder | Task | ServiceRequest | VisionPrescription",
     )
     instantiates_canonical: list[str] | None = Field(
         None, description="Instantiates FHIR protocol or definition."
@@ -38,7 +43,8 @@ class CarePlanActivityDetailInput(BaseModel):
         None, description="Goals this activity will contribute towards."
     )
     status: CarePlanActivityStatus | None = Field(
-        None, description="not-started | scheduled | in-progress | on-hold | completed | cancelled | stopped | unknown | entered-in-error."
+        None,
+        description="not-started | scheduled | in-progress | on-hold | completed | cancelled | stopped | unknown | entered-in-error.",
     )
     status_reason: CarePlanCodeableConceptInput | None = Field(
         None, description="Reason for current status."
@@ -83,7 +89,8 @@ class CarePlanActivityDetailInput(BaseModel):
         None, description="What is to be administered/supplied (CodeableConcept)."
     )
     product_reference: str | None = Field(
-        None, description="What is to be administered/supplied (Reference(Medication | Substance))."
+        None,
+        description="What is to be administered/supplied (Reference(Medication | Substance)).",
     )
     product_display: str | None = Field(
         None, description="Display name for product reference."

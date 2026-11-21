@@ -26,7 +26,12 @@ from app.models.condition import (
     ConditionIdentifier,
     ConditionToken,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import any_typed, typed
 
@@ -55,16 +60,32 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, parsed[0], reference))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("subject", (document.get("subject") or {}).get("reference"), "Patient")
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add_typed("recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES)
-    add_typed("asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES)
+    add_typed(
+        "recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES
+    )
+    add_typed(
+        "asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES
+    )
     for stage in document.get("stage") or []:
         for assessment in stage.get("assessment") or []:
-            add_typed("stage.assessment", assessment.get("reference"), ("DiagnosticReport", "ClinicalImpression"))
+            add_typed(
+                "stage.assessment",
+                assessment.get("reference"),
+                ("DiagnosticReport", "ClinicalImpression"),
+            )
     for note in document.get("note") or []:
-        add_typed("note.authorReference", (note.get("authorReference") or {}).get("reference"), _NOTE_AUTHOR_TYPES)
+        add_typed(
+            "note.authorReference",
+            (note.get("authorReference") or {}).get("reference"),
+            _NOTE_AUTHOR_TYPES,
+        )
     return refs
 
 
@@ -106,7 +127,13 @@ def _quantity_bounds(age: dict | None, range_: dict | None) -> dict:
     from the low bound, or the high one when there is no low."""
     if age:
         value = _decimal(age.get("value"))
-        return {"low": value, "high": value, "system": age.get("system"), "code": age.get("code"), "unit": age.get("unit")}
+        return {
+            "low": value,
+            "high": value,
+            "system": age.get("system"),
+            "code": age.get("code"),
+            "unit": age.get("unit"),
+        }
     if range_:
         low, high = range_.get("low") or {}, range_.get("high") or {}
         unit = low if low.get("value") is not None else high
@@ -127,7 +154,9 @@ def _choice_columns(document: dict, element: str) -> dict:
         start, end = _instant_bounds(document[f"{element}DateTime"])
     else:
         start, end = period_bounds(document.get(f"{element}Period"))
-    quantity = _quantity_bounds(document.get(f"{element}Age"), document.get(f"{element}Range"))
+    quantity = _quantity_bounds(
+        document.get(f"{element}Age"), document.get(f"{element}Range")
+    )
     text = document.get(f"{element}String")
     return {
         f"{element}_date_start": start,
@@ -202,7 +231,11 @@ def _evidence_detail_rows(document: dict) -> list:
 def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by ConditionModel relationship name."""
     return {
-        "identifiers": [r for i in document.get("identifier") or [] for r in identifier_rows(ConditionIdentifier, i)],
+        "identifiers": [
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(ConditionIdentifier, i)
+        ],
         "tokens": _token_rows(document),
         "evidence_details": _evidence_detail_rows(document),
     }

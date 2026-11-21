@@ -19,15 +19,31 @@ class FHIRScheduleSchema(BaseModel):
         description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
     extension: list[dict] | None = Field(
-        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
-    identifier: list[FHIRIdentifier] | None = Field(None, description="External Ids for this item.")
-    active: bool | None = Field(None, description="Whether this schedule is in active use.")
-    serviceCategory: list[FHIRCodeableConcept] | None = Field(None, description="High-level category.")
-    serviceType: list[FHIRCodeableConcept] | None = Field(None, description="Specific service.")
-    specialty: list[FHIRCodeableConcept] | None = Field(None, description="Type of specialty needed.")
-    actor: list[FHIRReference] | None = Field(None, description="Resource(s) that availability information is being provided for.")
-    planningHorizon: FHIRPeriod | None = Field(None, description="Period of time covered by schedule.")
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="External Ids for this item."
+    )
+    active: bool | None = Field(
+        None, description="Whether this schedule is in active use."
+    )
+    serviceCategory: list[FHIRCodeableConcept] | None = Field(
+        None, description="High-level category."
+    )
+    serviceType: list[FHIRCodeableConcept] | None = Field(
+        None, description="Specific service."
+    )
+    specialty: list[FHIRCodeableConcept] | None = Field(
+        None, description="Type of specialty needed."
+    )
+    actor: list[FHIRReference] | None = Field(
+        None,
+        description="Resource(s) that availability information is being provided for.",
+    )
+    planningHorizon: FHIRPeriod | None = Field(
+        None, description="Period of time covered by schedule."
+    )
     comment: str | None = Field(None, description="Comments on availability.")
 
 

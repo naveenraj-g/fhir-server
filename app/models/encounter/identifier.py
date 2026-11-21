@@ -19,7 +19,9 @@ class EncounterIdentifier(Base):
     __tablename__ = "encounter_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    encounter_pk = Column(BigInteger, ForeignKey("encounter.id"), nullable=False, index=True)
+    encounter_pk = Column(
+        BigInteger, ForeignKey("encounter.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

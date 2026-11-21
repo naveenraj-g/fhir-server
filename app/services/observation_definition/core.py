@@ -152,8 +152,11 @@ class _CoreMixin:
     async def delete_observation_definition(
         self, observation_definition_id: int, org_id: str | None = None
     ) -> None:
-        if not org_id or not await self.repository.observation_definition_belongs_to_org(
-            observation_definition_id, org_id
+        if (
+            not org_id
+            or not await self.repository.observation_definition_belongs_to_org(
+                observation_definition_id, org_id
+            )
         ):
             self._log_org_scope_miss("delete", observation_definition_id, org_id)
             raise NotFoundError("ObservationDefinition not found")
@@ -176,7 +179,10 @@ class _CoreMixin:
         if errors:
             logger.warning(
                 "ObservationDefinition failed base R4 validation",
-                extra={"event": "observation_definition.base_r4_invalid", "errors": errors},
+                extra={
+                    "event": "observation_definition.base_r4_invalid",
+                    "errors": errors,
+                },
             )
             raise FhirValidationError(errors)
 

@@ -20,7 +20,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
     """Existence-check every relative local reference in the document
     (identifier.assigner, patient, encounter, location, manufacturer, performers, reason references, authority, note authors), scoped to the caller's org — 422 if one does not resolve."""
     for label, resource_type, ref in local_references(document):
-        await _validate_reference(session, tenant_id, resource_type, int(ref.split("/")[1]), label)
+        await _validate_reference(
+            session, tenant_id, resource_type, int(ref.split("/")[1]), label
+        )
 
 
 class _FullMixin:
@@ -65,14 +67,17 @@ class _FullMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(FamilyMemberHistoryModel).where(
-                    FamilyMemberHistoryModel.family_member_history_id == family_member_history_id
+                    FamilyMemberHistoryModel.family_member_history_id
+                    == family_member_history_id
                 )
             )
             family_member_history = (await session.execute(stmt)).scalars().first()
             if not family_member_history:
                 return None
 
-            await _validate_local_references(session, family_member_history.tenant_id, document)
+            await _validate_local_references(
+                session, family_member_history.tenant_id, document
+            )
 
             family_member_history.content = _storable(document)
             for column, value in index_columns(document).items():

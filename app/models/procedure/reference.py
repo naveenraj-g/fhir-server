@@ -18,9 +18,21 @@ REFERENCE_PARAMS = {
 }
 REFERENCE_TYPES = {
     "based-on": ("CarePlan", "ServiceRequest"),
-    "instantiates-canonical": ("ActivityDefinition", "Measure", "OperationDefinition", "PlanDefinition", "Questionnaire"),
+    "instantiates-canonical": (
+        "ActivityDefinition",
+        "Measure",
+        "OperationDefinition",
+        "PlanDefinition",
+        "Questionnaire",
+    ),
     "part-of": ("MedicationAdministration", "Observation", "Procedure"),
-    "reason-reference": ("Condition", "DiagnosticReport", "DocumentReference", "Observation", "Procedure"),
+    "reason-reference": (
+        "Condition",
+        "DiagnosticReport",
+        "DocumentReference",
+        "Observation",
+        "Procedure",
+    ),
 }
 
 
@@ -48,10 +60,19 @@ class ProcedureReference(Base):
     UniqueConstraint: R4 does not forbid listing the same reference twice."""
 
     __tablename__ = "procedure_reference"
-    __table_args__ = (Index("ix_procedure_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_procedure_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    procedure_pk = Column(BigInteger, ForeignKey("procedure.id"), nullable=False, index=True)
+    procedure_pk = Column(
+        BigInteger, ForeignKey("procedure.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)

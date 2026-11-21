@@ -5,7 +5,6 @@ from app.services.document_reference import DocumentReferenceService
 
 
 class DocumentReferenceContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     document_reference_repository = providers.Factory(

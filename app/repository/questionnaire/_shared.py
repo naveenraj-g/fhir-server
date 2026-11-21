@@ -111,7 +111,11 @@ def _with_relationships(stmt):
         ),
         selectinload(QuestionnaireModel.codings),
         selectinload(QuestionnaireModel.items).selectinload(QuestionnaireItem.codings),
-        selectinload(QuestionnaireModel.items).selectinload(QuestionnaireItem.enable_whens),
-        selectinload(QuestionnaireModel.items).selectinload(QuestionnaireItem.answer_options),
+        selectinload(QuestionnaireModel.items).selectinload(
+            QuestionnaireItem.enable_whens
+        ),
+        selectinload(QuestionnaireModel.items).selectinload(
+            QuestionnaireItem.answer_options
+        ),
         selectinload(QuestionnaireModel.items).selectinload(QuestionnaireItem.initials),
     )

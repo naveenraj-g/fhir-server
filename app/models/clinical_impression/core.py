@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import ClinicalImpressionStatus
 
-clinical_impression_id_seq = Sequence("clinical_impression_pub_seq", start=530000, increment=1, metadata=Base.metadata)
+clinical_impression_id_seq = Sequence(
+    "clinical_impression_pub_seq", start=530000, increment=1, metadata=Base.metadata
+)
 
 # The R4 targets of ClinicalImpression.subject and .assessor.
 SUBJECT_TYPES = ("Patient", "Group")
@@ -127,9 +129,17 @@ class ClinicalImpressionModel(TenantAuditMixin, Base):
     previous_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "ClinicalImpressionIdentifier", back_populates="clinical_impression", cascade="all, delete-orphan"
+        "ClinicalImpressionIdentifier",
+        back_populates="clinical_impression",
+        cascade="all, delete-orphan",
     )
-    tokens = relationship("ClinicalImpressionToken", back_populates="clinical_impression", cascade="all, delete-orphan")
+    tokens = relationship(
+        "ClinicalImpressionToken",
+        back_populates="clinical_impression",
+        cascade="all, delete-orphan",
+    )
     references = relationship(
-        "ClinicalImpressionReference", back_populates="clinical_impression", cascade="all, delete-orphan"
+        "ClinicalImpressionReference",
+        back_populates="clinical_impression",
+        cascade="all, delete-orphan",
     )

@@ -12,13 +12,19 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "EpisodeOfCare not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainEpisodeOfCareResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIREpisodeOfCareSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainEpisodeOfCareResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIREpisodeOfCareSchema.model_json_schema())
+            },
         }
     }
 }
@@ -27,8 +33,14 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of episodes of care",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedEpisodeOfCareResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIREpisodeOfCareBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PaginatedEpisodeOfCareResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIREpisodeOfCareBundle.model_json_schema())
+            },
         },
     }
 }

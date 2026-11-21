@@ -168,7 +168,10 @@ async def codesystem_find_matches_post(
 ):
     properties = []
     for p in get_params_list(body, "property"):
-        parts = {part.get("name"): get_param({"parameter": [part]}, part.get("name")) for part in p.get("part", [])}
+        parts = {
+            part.get("name"): get_param({"parameter": [part]}, part.get("name"))
+            for part in p.get("part", [])
+        }
         properties.append(parts)
     result = await service.find_matches_operation(
         system=get_param(body, "system"),

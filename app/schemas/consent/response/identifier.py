@@ -21,9 +21,7 @@ class PlainConsentIdentifier(BaseModel):
     )
     system: str | None = Field(None, description="Namespace of identifier.")
     value: str | None = Field(None, description="Unique value.")
-    period_start: datetime | None = Field(
-        None, description="Validity start date."
-    )
+    period_start: datetime | None = Field(None, description="Validity start date.")
     period_end: datetime | None = Field(None, description="Validity end date.")
     assigner: str | None = Field(None, description="Organization reference.")
     assigner_display: str | None = Field(

@@ -17,4 +17,8 @@ if TYPE_CHECKING:
 
 
 def to_fhir_clinical_impression(clinical_impression: ClinicalImpressionModel) -> dict:
-    return content_resource("ClinicalImpression", clinical_impression.clinical_impression_id, clinical_impression)
+    return content_resource(
+        "ClinicalImpression",
+        clinical_impression.clinical_impression_id,
+        clinical_impression,
+    )

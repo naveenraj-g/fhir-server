@@ -12,7 +12,10 @@ class MeasureGroup(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     measure_pk = Column(
-        BigInteger, ForeignKey("measure.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("measure.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     code_text = Column(String, nullable=True)
     description = Column(String, nullable=True)
@@ -178,7 +181,9 @@ class MeasureGroupStratifierComponent(TenantAuditMixin, Base):
     )
 
 
-class MeasureGroupStratifierComponentCodeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class MeasureGroupStratifierComponentCodeCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """Coding within Measure.group.stratifier.component.code."""
 
     __tablename__ = "measure_group_stratifier_component_code_coding"
@@ -191,4 +196,6 @@ class MeasureGroupStratifierComponentCodeCoding(FhirCodingMixin, TenantAuditMixi
         index=True,
     )
 
-    component = relationship("MeasureGroupStratifierComponent", back_populates="code_codings")
+    component = relationship(
+        "MeasureGroupStratifierComponent", back_populates="code_codings"
+    )

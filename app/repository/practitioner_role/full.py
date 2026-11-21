@@ -75,7 +75,9 @@ class _FullMixin:
             if not practitioner_role:
                 return None
 
-            await _validate_local_references(session, practitioner_role.tenant_id, document)
+            await _validate_local_references(
+                session, practitioner_role.tenant_id, document
+            )
 
             practitioner_role.content = _storable(document)
             for column, value in index_columns(document).items():

@@ -12,9 +12,7 @@ class FhirHumanNameInput(FhirInputModel):
         None,
         description="usual | official | temp | nickname | anonymous | old | maiden.",
     )
-    text: str | None = Field(
-        None, description="Text representation of the full name."
-    )
+    text: str | None = Field(None, description="Text representation of the full name.")
     family: str | None = Field(
         None, description="Family name (often called 'Surname')."
     )

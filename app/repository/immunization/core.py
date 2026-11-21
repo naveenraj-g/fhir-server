@@ -22,19 +22,27 @@ class _CoreMixin:
             stmt = select(_M).where(_M.immunization_id == immunization_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_immunization_id_in_org(self, immunization_id: int, org_id: str) -> _M | None:
+    async def get_by_immunization_id_in_org(
+        self, immunization_id: int, org_id: str
+    ) -> _M | None:
         """Lookup scoped to org_id — returns None unless the immunization
         exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M).where(_M.immunization_id == immunization_id, _M.tenant_id == org_id)
+            stmt = select(_M).where(
+                _M.immunization_id == immunization_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalars().first()
 
-    async def immunization_belongs_to_org(self, immunization_id: int, org_id: str) -> bool:
+    async def immunization_belongs_to_org(
+        self, immunization_id: int, org_id: str
+    ) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the immunization exists AND
         belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(_M.id).where(_M.immunization_id == immunization_id, _M.tenant_id == org_id)
+            stmt = select(_M.id).where(
+                _M.immunization_id == immunization_id, _M.tenant_id == org_id
+            )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
     # ── Search ────────────────────────────────────────────────────────────

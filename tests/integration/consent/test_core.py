@@ -371,7 +371,10 @@ async def test_create_consent_with_reference_identifier_fallback(client):
     plain_data = resp.json()
     c_id = plain_data["id"]
     assert plain_data["patient"] is None
-    assert plain_data["patient_identifier_system"] == "http://hospital.example.org/patients"
+    assert (
+        plain_data["patient_identifier_system"]
+        == "http://hospital.example.org/patients"
+    )
     assert plain_data["patient_identifier_value"] == "MRN-CONSENT-999"
     assert plain_data["patient_display"] == "Fallback Patient"
     assert plain_data["source_reference"] is None
@@ -379,9 +382,17 @@ async def test_create_consent_with_reference_identifier_fallback(client):
     assert plain_data["identifier"][0]["assigner_identifier_value"] == "ORG-ASSIGNER-1"
     assert plain_data["performer"][0]["identifier_value"] == "PRAC-PERFORMER-1"
     assert plain_data["organization"][0]["identifier_value"] == "ORG-CONSENT-1"
-    assert plain_data["verification"][0]["verified_with_identifier_value"] == "VERIFIER-1"
-    assert plain_data["provision"]["actor"][0]["reference_identifier_value"] == "ACTOR-FALLBACK-1"
-    assert plain_data["provision"]["data"][0]["reference_identifier_value"] == "DATA-FALLBACK-1"
+    assert (
+        plain_data["verification"][0]["verified_with_identifier_value"] == "VERIFIER-1"
+    )
+    assert (
+        plain_data["provision"]["actor"][0]["reference_identifier_value"]
+        == "ACTOR-FALLBACK-1"
+    )
+    assert (
+        plain_data["provision"]["data"][0]["reference_identifier_value"]
+        == "DATA-FALLBACK-1"
+    )
 
     # Verify FHIR serialization
     fhir_resp = await client.get(f"{BASE}/{c_id}", headers=FHIR_ACCEPT)
@@ -391,12 +402,24 @@ async def test_create_consent_with_reference_identifier_fallback(client):
     assert "reference" not in fhir_data["patient"]
     assert fhir_data["patient"]["identifier"]["value"] == "MRN-CONSENT-999"
     assert fhir_data["sourceReference"]["identifier"]["value"] == "DOC-REF-111"
-    assert fhir_data["identifier"][0]["assigner"]["identifier"]["value"] == "ORG-ASSIGNER-1"
+    assert (
+        fhir_data["identifier"][0]["assigner"]["identifier"]["value"]
+        == "ORG-ASSIGNER-1"
+    )
     assert fhir_data["performer"][0]["identifier"]["value"] == "PRAC-PERFORMER-1"
     assert fhir_data["organization"][0]["identifier"]["value"] == "ORG-CONSENT-1"
-    assert fhir_data["verification"][0]["verifiedWith"]["identifier"]["value"] == "VERIFIER-1"
-    assert fhir_data["provision"]["actor"][0]["reference"]["identifier"]["value"] == "ACTOR-FALLBACK-1"
-    assert fhir_data["provision"]["data"][0]["reference"]["identifier"]["value"] == "DATA-FALLBACK-1"
+    assert (
+        fhir_data["verification"][0]["verifiedWith"]["identifier"]["value"]
+        == "VERIFIER-1"
+    )
+    assert (
+        fhir_data["provision"]["actor"][0]["reference"]["identifier"]["value"]
+        == "ACTOR-FALLBACK-1"
+    )
+    assert (
+        fhir_data["provision"]["data"][0]["reference"]["identifier"]["value"]
+        == "DATA-FALLBACK-1"
+    )
 
     # Patch patient fallback identifier
     patch_resp = await client.patch(
@@ -405,4 +428,3 @@ async def test_create_consent_with_reference_identifier_fallback(client):
     )
     assert patch_resp.status_code == 200, patch_resp.text
     assert patch_resp.json()["patient_identifier_value"] == "MRN-CONSENT-999-UPDATED"
-

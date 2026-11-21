@@ -95,7 +95,11 @@ async def _add_characteristics(
         )
         if val_ref_type and val_ref_id:
             await _validate_ref(
-                session, org_id, val_ref_type, val_ref_id, "characteristic.value_reference"
+                session,
+                org_id,
+                val_ref_type,
+                val_ref_id,
+                "characteristic.value_reference",
             )
 
         row = GroupCharacteristic(
@@ -201,12 +205,18 @@ class _FullMixin:
             session.add(group)
             await session.flush()
 
-            await _add_identifiers(session, group.id, org_id, payload.identifier, created_by)
+            await _add_identifiers(
+                session, group.id, org_id, payload.identifier, created_by
+            )
 
             if payload.code and payload.code.coding:
-                await _add_code_codings(session, group.id, org_id, payload.code.coding, created_by)
+                await _add_code_codings(
+                    session, group.id, org_id, payload.code.coding, created_by
+                )
 
-            await _add_characteristics(session, group.id, org_id, payload.characteristic, created_by)
+            await _add_characteristics(
+                session, group.id, org_id, payload.characteristic, created_by
+            )
             await _add_members(session, group.id, org_id, payload.member, created_by)
 
             await session.commit()
@@ -244,14 +254,21 @@ class _FullMixin:
             if "extension" in fields_set:
                 group.extension = payload.extension or []
 
-            if "managing_entity" in fields_set or "managing_entity_display" in fields_set:
+            if (
+                "managing_entity" in fields_set
+                or "managing_entity_display" in fields_set
+            ):
                 if payload.managing_entity:
                     me_type, me_id = _parse_managing_entity_ref(payload.managing_entity)
-                    await _validate_ref(session, org_id, me_type, me_id, "managing_entity")
+                    await _validate_ref(
+                        session, org_id, me_type, me_id, "managing_entity"
+                    )
                     group.managing_entity_reference = payload.managing_entity
                     group.managing_entity_type = me_type
                     group.managing_entity_id = me_id
-                elif "managing_entity" in fields_set and payload.managing_entity is None:
+                elif (
+                    "managing_entity" in fields_set and payload.managing_entity is None
+                ):
                     group.managing_entity_reference = None
                     group.managing_entity_type = None
                     group.managing_entity_id = None

@@ -6,7 +6,10 @@ from app.core.database import FHIRBase as Base
 from app.models.shared import TenantAuditMixin
 
 immunization_recommendation_id_seq = Sequence(
-    "immunization_recommendation_pub_seq", start=510000, increment=1, metadata=Base.metadata
+    "immunization_recommendation_pub_seq",
+    start=510000,
+    increment=1,
+    metadata=Base.metadata,
 )
 
 
@@ -59,7 +62,9 @@ class ImmunizationRecommendationModel(TenantAuditMixin, Base):
     shared tenant-level entity. No DB-level CHECK constraints."""
 
     __tablename__ = "immunization_recommendation"
-    __table_args__ = (Index("ix_immunization_recommendation_date", "date_start", "date_end"),)
+    __table_args__ = (
+        Index("ix_immunization_recommendation_date", "date_start", "date_end"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     immunization_recommendation_id = Column(
@@ -87,11 +92,17 @@ class ImmunizationRecommendationModel(TenantAuditMixin, Base):
     patient_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "ImmunizationRecommendationIdentifier", back_populates="immunization_recommendation", cascade="all, delete-orphan"
+        "ImmunizationRecommendationIdentifier",
+        back_populates="immunization_recommendation",
+        cascade="all, delete-orphan",
     )
     tokens = relationship(
-        "ImmunizationRecommendationToken", back_populates="immunization_recommendation", cascade="all, delete-orphan"
+        "ImmunizationRecommendationToken",
+        back_populates="immunization_recommendation",
+        cascade="all, delete-orphan",
     )
     references = relationship(
-        "ImmunizationRecommendationReference", back_populates="immunization_recommendation", cascade="all, delete-orphan"
+        "ImmunizationRecommendationReference",
+        back_populates="immunization_recommendation",
+        cascade="all, delete-orphan",
     )

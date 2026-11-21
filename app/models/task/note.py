@@ -21,9 +21,7 @@ class TaskNote(TenantAuditMixin, Base):
     __tablename__ = "task_note"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    task_pk = Column(
-        BigInteger, ForeignKey("task.id"), nullable=False, index=True
-    )
+    task_pk = Column(BigInteger, ForeignKey("task.id"), nullable=False, index=True)
 
     author_string = Column(String, nullable=True)
     author_reference = Column(String, nullable=True)

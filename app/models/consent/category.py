@@ -12,7 +12,10 @@ class ConsentCategory(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     consent_pk = Column(
-        BigInteger, ForeignKey("consent.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     text = Column(String, nullable=True)
@@ -33,7 +36,10 @@ class ConsentCategoryCoding(FhirCodingMixin, TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     category_id = Column(
-        BigInteger, ForeignKey("consent_category.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("consent_category.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     category = relationship("ConsentCategory", back_populates="codings")

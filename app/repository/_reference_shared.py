@@ -64,7 +64,9 @@ def _org_ref_kwargs(prefix: str, ref: str | None, display: str | None) -> dict:
     }
 
 
-async def _validate_reference(session, org_id, ref_type, ref_id, field_name: str) -> None:
+async def _validate_reference(
+    session, org_id, ref_type, ref_id, field_name: str
+) -> None:
     """Confirms a resolved `type`+`id` reference actually exists, scoped to
     the acting resource's own org_id — the identifier fallback is the
     intended path for anything cross-org/external, so a resolved reference

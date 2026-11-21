@@ -57,7 +57,7 @@ def _identifier_kwargs(i) -> dict:
     itself is `None` or a given sub-field is absent, so the same helper
     works for CREATE (every field considered present) and PATCH's
     explicit-clear semantics (payload.identifier provided as `null`)."""
-    a_type, a_id = (_parse_org_ref(i.assigner) if i and i.assigner else (None, None))
+    a_type, a_id = _parse_org_ref(i.assigner) if i and i.assigner else (None, None)
     return {
         "identifier_use": i.use if i else None,
         "identifier_type_text": i.type_text if i else None,
@@ -70,16 +70,36 @@ def _identifier_kwargs(i) -> dict:
         "identifier_assigner_id": a_id,
         "identifier_assigner_display": i.assigner_display if i else None,
         "identifier_assigner_identifier_use": i.assigner_identifier_use if i else None,
-        "identifier_assigner_identifier_type_system": i.assigner_identifier_type_system if i else None,
-        "identifier_assigner_identifier_type_version": i.assigner_identifier_type_version if i else None,
-        "identifier_assigner_identifier_type_code": i.assigner_identifier_type_code if i else None,
-        "identifier_assigner_identifier_type_display": i.assigner_identifier_type_display if i else None,
-        "identifier_assigner_identifier_type_text": i.assigner_identifier_type_text if i else None,
-        "identifier_assigner_identifier_type_user_selected": i.assigner_identifier_type_user_selected if i else None,
-        "identifier_assigner_identifier_system": i.assigner_identifier_system if i else None,
-        "identifier_assigner_identifier_value": i.assigner_identifier_value if i else None,
-        "identifier_assigner_identifier_period_start": i.assigner_identifier_period_start if i else None,
-        "identifier_assigner_identifier_period_end": i.assigner_identifier_period_end if i else None,
+        "identifier_assigner_identifier_type_system": i.assigner_identifier_type_system
+        if i
+        else None,
+        "identifier_assigner_identifier_type_version": i.assigner_identifier_type_version
+        if i
+        else None,
+        "identifier_assigner_identifier_type_code": i.assigner_identifier_type_code
+        if i
+        else None,
+        "identifier_assigner_identifier_type_display": i.assigner_identifier_type_display
+        if i
+        else None,
+        "identifier_assigner_identifier_type_text": i.assigner_identifier_type_text
+        if i
+        else None,
+        "identifier_assigner_identifier_type_user_selected": i.assigner_identifier_type_user_selected
+        if i
+        else None,
+        "identifier_assigner_identifier_system": i.assigner_identifier_system
+        if i
+        else None,
+        "identifier_assigner_identifier_value": i.assigner_identifier_value
+        if i
+        else None,
+        "identifier_assigner_identifier_period_start": i.assigner_identifier_period_start
+        if i
+        else None,
+        "identifier_assigner_identifier_period_end": i.assigner_identifier_period_end
+        if i
+        else None,
     }
 
 
@@ -105,11 +125,15 @@ def _single_reference_kwargs(prefix: str, obj, ref_kwargs_fn) -> dict:
     display = obj.reference_display if obj else None
     kwargs = {f"{prefix}_reference": ref, **ref_kwargs_fn(prefix, ref, display)}
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        kwargs[f"{prefix}_{suffix}"] = getattr(obj, f"reference_{suffix}") if obj else None
+        kwargs[f"{prefix}_{suffix}"] = (
+            getattr(obj, f"reference_{suffix}") if obj else None
+        )
     return kwargs
 
 
-async def _validate_single_reference(session, tenant_id, prefix: str, kwargs: dict) -> None:
+async def _validate_single_reference(
+    session, tenant_id, prefix: str, kwargs: dict
+) -> None:
     """Runs the matching existence check (only `encounter` and the
     modeled subsets of `author`/`source` ever actually check anything —
     see `_shared`'s `_validate_author_reference`/`_validate_source_reference`)."""
@@ -184,7 +208,9 @@ async def _insert_items(
                 display=ans_payload.value_coding_display,
                 user_selected=ans_payload.value_coding_user_selected,
                 value_quantity_value=ans_payload.value_quantity_value,
-                value_quantity_comparator=_model_comparator(ans_payload.value_quantity_comparator)
+                value_quantity_comparator=_model_comparator(
+                    ans_payload.value_quantity_comparator
+                )
                 if ans_payload.value_quantity_comparator
                 else None,
                 value_quantity_unit=ans_payload.value_quantity_unit,
@@ -192,7 +218,9 @@ async def _insert_items(
                 value_quantity_code=ans_payload.value_quantity_code,
                 value_reference_reference=ans_payload.value_reference,
                 **_any_ref_kwargs(
-                    "value_reference", ans_payload.value_reference, ans_payload.value_reference_display
+                    "value_reference",
+                    ans_payload.value_reference,
+                    ans_payload.value_reference_display,
                 ),
                 value_reference_identifier_use=ans_payload.value_reference_identifier_use,
                 value_reference_identifier_type_system=ans_payload.value_reference_identifier_type_system,
@@ -210,10 +238,20 @@ async def _insert_items(
             await session.flush()
 
             if ans_payload.item:
-                await _insert_items(session, qr_pk, ans_payload.item, None, answer.id, tenant_id, created_by)
+                await _insert_items(
+                    session,
+                    qr_pk,
+                    ans_payload.item,
+                    None,
+                    answer.id,
+                    tenant_id,
+                    created_by,
+                )
 
         if item_payload.item:
-            await _insert_items(session, qr_pk, item_payload.item, item.id, None, tenant_id, created_by)
+            await _insert_items(
+                session, qr_pk, item_payload.item, item.id, None, tenant_id, created_by
+            )
 
 
 class _FullMixin:
@@ -229,12 +267,22 @@ class _FullMixin:
         actor.sub), passed as explicit parameters — not read off the
         payload, which no longer carries either field."""
         async with self.session_factory() as session:
-            subject_kwargs = _single_reference_kwargs("subject", payload.subject, _any_ref_kwargs)
-            encounter_kwargs = _single_reference_kwargs("encounter", payload.encounter, _encounter_ref_kwargs)
-            author_kwargs = _single_reference_kwargs("author", payload.author, _author_ref_kwargs)
-            source_kwargs = _single_reference_kwargs("source", payload.source, _source_ref_kwargs)
+            subject_kwargs = _single_reference_kwargs(
+                "subject", payload.subject, _any_ref_kwargs
+            )
+            encounter_kwargs = _single_reference_kwargs(
+                "encounter", payload.encounter, _encounter_ref_kwargs
+            )
+            author_kwargs = _single_reference_kwargs(
+                "author", payload.author, _author_ref_kwargs
+            )
+            source_kwargs = _single_reference_kwargs(
+                "source", payload.source, _source_ref_kwargs
+            )
 
-            await _validate_single_reference(session, org_id, "encounter", encounter_kwargs)
+            await _validate_single_reference(
+                session, org_id, "encounter", encounter_kwargs
+            )
             await _validate_single_reference(session, org_id, "author", author_kwargs)
             await _validate_single_reference(session, org_id, "source", source_kwargs)
 
@@ -271,7 +319,9 @@ class _FullMixin:
                         tenant_id=org_id,
                         created_by=created_by,
                         reference_reference=b.reference,
-                        **_based_on_ref_kwargs("reference", b.reference, b.reference_display),
+                        **_based_on_ref_kwargs(
+                            "reference", b.reference, b.reference_display
+                        ),
                         **{
                             f"reference_{suffix}": getattr(b, f"reference_{suffix}")
                             for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
@@ -286,7 +336,9 @@ class _FullMixin:
                         tenant_id=org_id,
                         created_by=created_by,
                         reference_reference=p.reference,
-                        **_part_of_ref_kwargs("reference", p.reference, p.reference_display),
+                        **_part_of_ref_kwargs(
+                            "reference", p.reference, p.reference_display
+                        ),
                         **{
                             f"reference_{suffix}": getattr(p, f"reference_{suffix}")
                             for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
@@ -295,7 +347,9 @@ class _FullMixin:
                 )
 
             if payload.item:
-                await _insert_items(session, qr.id, payload.item, None, None, org_id, created_by)
+                await _insert_items(
+                    session, qr.id, payload.item, None, None, org_id, created_by
+                )
 
             try:
                 await session.commit()
@@ -321,7 +375,8 @@ class _FullMixin:
         deleted before `item`."""
         async with self.session_factory() as session:
             stmt = select(QuestionnaireResponseModel).where(
-                QuestionnaireResponseModel.questionnaire_response_id == questionnaire_response_id
+                QuestionnaireResponseModel.questionnaire_response_id
+                == questionnaire_response_id
             )
             qr = (await session.execute(stmt)).scalars().first()
             if not qr:
@@ -351,7 +406,8 @@ class _FullMixin:
                     setattr(qr, col, value)
                 await session.execute(
                     delete(QuestionnaireResponseIdentifierTypeCoding).where(
-                        QuestionnaireResponseIdentifierTypeCoding.questionnaire_response_pk == qr.id
+                        QuestionnaireResponseIdentifierTypeCoding.questionnaire_response_pk
+                        == qr.id
                     )
                 )
                 if payload.identifier and payload.identifier.type_coding:
@@ -360,7 +416,9 @@ class _FullMixin:
                             QuestionnaireResponseIdentifierTypeCoding(
                                 questionnaire_response_pk=qr.id,
                                 tenant_id=qr.tenant_id,
-                                **_identifier_type_coding_kwargs(coding, sub_created_by),
+                                **_identifier_type_coding_kwargs(
+                                    coding, sub_created_by
+                                ),
                             )
                         )
 
@@ -371,8 +429,12 @@ class _FullMixin:
                 ("source", _source_ref_kwargs),
             ):
                 if prefix in provided:
-                    kwargs = _single_reference_kwargs(prefix, getattr(payload, prefix), ref_kwargs_fn)
-                    await _validate_single_reference(session, qr.tenant_id, prefix, kwargs)
+                    kwargs = _single_reference_kwargs(
+                        prefix, getattr(payload, prefix), ref_kwargs_fn
+                    )
+                    await _validate_single_reference(
+                        session, qr.tenant_id, prefix, kwargs
+                    )
                     for col, value in kwargs.items():
                         setattr(qr, col, value)
 
@@ -389,7 +451,9 @@ class _FullMixin:
                             tenant_id=qr.tenant_id,
                             created_by=sub_created_by,
                             reference_reference=b.reference,
-                            **_based_on_ref_kwargs("reference", b.reference, b.reference_display),
+                            **_based_on_ref_kwargs(
+                                "reference", b.reference, b.reference_display
+                            ),
                             **{
                                 f"reference_{suffix}": getattr(b, f"reference_{suffix}")
                                 for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
@@ -410,7 +474,9 @@ class _FullMixin:
                             tenant_id=qr.tenant_id,
                             created_by=sub_created_by,
                             reference_reference=p.reference,
-                            **_part_of_ref_kwargs("reference", p.reference, p.reference_display),
+                            **_part_of_ref_kwargs(
+                                "reference", p.reference, p.reference_display
+                            ),
                             **{
                                 f"reference_{suffix}": getattr(p, f"reference_{suffix}")
                                 for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
@@ -442,7 +508,15 @@ class _FullMixin:
                 )
 
                 if payload.item:
-                    await _insert_items(session, qr.id, payload.item, None, None, qr.tenant_id, sub_created_by)
+                    await _insert_items(
+                        session,
+                        qr.id,
+                        payload.item,
+                        None,
+                        None,
+                        qr.tenant_id,
+                        sub_created_by,
+                    )
 
             try:
                 await session.commit()

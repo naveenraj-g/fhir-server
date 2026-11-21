@@ -26,7 +26,9 @@ class ProcedureIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named procedure_pk (not procedure_id) so it can't be
     # confused with ProcedureModel.procedure_id, the public id.
-    procedure_pk = Column(BigInteger, ForeignKey("procedure.id"), nullable=False, index=True)
+    procedure_pk = Column(
+        BigInteger, ForeignKey("procedure.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

@@ -38,13 +38,18 @@ class ServiceRequestInsurance(TenantAuditMixin, Base):
 
     reference_reference = Column(String, nullable=True)
     reference_type = Column(
-        Enum(ServiceRequestInsuranceReferenceType, name="service_request_insurance_reference_type"),
+        Enum(
+            ServiceRequestInsuranceReferenceType,
+            name="service_request_insurance_reference_type",
+        ),
         nullable=True,
     )
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
-    reference_identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    reference_identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     reference_identifier_type_system = Column(String, nullable=True)
     reference_identifier_type_version = Column(String, nullable=True)
     reference_identifier_type_code = Column(String, nullable=True)

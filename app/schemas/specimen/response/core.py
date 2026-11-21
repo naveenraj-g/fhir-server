@@ -35,16 +35,16 @@ class FHIRSpecimenSchema(BaseModel):
         None, description="External identifiers for this specimen."
     )
     accessionIdentifier: FHIRIdentifier | None = Field(
-        None, description="Identifier assigned by the lab when the specimen was received."
+        None,
+        description="Identifier assigned by the lab when the specimen was received.",
     )
     status: str | None = Field(
         None, description="available | unavailable | unsatisfactory | entered-in-error."
     )
-    type: FHIRCodeableConcept | None = Field(
-        None, description="Kind for specimen."
-    )
+    type: FHIRCodeableConcept | None = Field(None, description="Kind for specimen.")
     subject: FHIRReference | None = Field(
-        None, description="Where the specimen came from (Patient | Group | Device | Substance | Location)."
+        None,
+        description="Where the specimen came from (Patient | Group | Device | Substance | Location).",
     )
     receivedTime: str | None = Field(
         None, description="The time when specimen was received for processing."
@@ -67,9 +67,7 @@ class FHIRSpecimenSchema(BaseModel):
     condition: list[FHIRCodeableConcept] | None = Field(
         None, description="State of the specimen (e.g. frozen, cooled)."
     )
-    note: list[FHIRAnnotation] | None = Field(
-        None, description="Comments."
-    )
+    note: list[FHIRAnnotation] | None = Field(None, description="Comments.")
 
 
 class FHIRSpecimenBundleEntry(BaseModel):
@@ -91,7 +89,8 @@ class PlainSpecimenResponse(BaseModel):
         None, description="External identifiers for this specimen."
     )
     accession_identifier: PlainSpecimenIdentifier | None = Field(
-        None, description="Identifier assigned by the lab when the specimen was received."
+        None,
+        description="Identifier assigned by the lab when the specimen was received.",
     )
     status: str | None = Field(
         None, description="available | unavailable | unsatisfactory | entered-in-error."
@@ -123,9 +122,7 @@ class PlainSpecimenResponse(BaseModel):
     condition: list[PlainSpecimenCondition] | None = Field(
         None, description="State of the specimen."
     )
-    note: list[PlainSpecimenNote] | None = Field(
-        None, description="Comments."
-    )
+    note: list[PlainSpecimenNote] | None = Field(None, description="Comments.")
     extension: list[dict] | None = Field(
         None, description="Resource-level FHIR extensions."
     )

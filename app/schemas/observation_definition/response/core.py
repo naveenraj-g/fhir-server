@@ -30,7 +30,8 @@ class FHIRObservationDefinitionQuantitativeDetails(BaseModel):
         None, description="SI unit used to report quantitative results."
     )
     conversionFactor: float | None = Field(
-        None, description="Factor for converting value expressed with SI unit to customary unit."
+        None,
+        description="Factor for converting value expressed with SI unit to customary unit.",
     )
     decimalPrecision: int | None = Field(
         None, description="Number of digits after decimal separator."
@@ -43,7 +44,9 @@ class PlainObservationDefinitionQuantitativeDetails(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     customary_unit_text: str | None = Field(None, description="Customary unit text.")
-    customary_unit_codings: list[PlainCodingRow] | None = Field(None, description="Customary unit codings.")
+    customary_unit_codings: list[PlainCodingRow] | None = Field(
+        None, description="Customary unit codings."
+    )
     unit_text: str | None = Field(None, description="Unit text.")
     unit_codings: list[PlainCodingRow] | None = Field(None, description="Unit codings.")
     conversion_factor: float | None = Field(None, description="Conversion factor.")
@@ -104,9 +107,7 @@ class FHIRObservationDefinitionSchema(BaseModel):
     method: FHIRCodeableConcept | None = Field(
         None, description="Method or technique used."
     )
-    preferredReportName: str | None = Field(
-        None, description="Preferred report name."
-    )
+    preferredReportName: str | None = Field(None, description="Preferred report name.")
     quantitativeDetails: FHIRObservationDefinitionQuantitativeDetails | None = Field(
         None, description="Characteristics for quantitative results."
     )
@@ -135,27 +136,57 @@ class PlainObservationDefinitionResponse(BaseModel):
 
     id: int = Field(..., description="Public observation_definition_id identifier.")
     tenant_id: str = Field(..., description="Tenant organization ID.")
-    code: PlainObservationDefinitionCode | None = Field(None, description="Observation code.")
-    category: list[PlainObservationDefinitionCategory] | None = Field(None, description="Categories.")
-    identifier: list[PlainObservationDefinitionIdentifier] | None = Field(None, description="Identifiers.")
-    permitted_data_type: list[str] | None = Field(None, description="Permitted data types.")
-    multiple_results_allowed: bool | None = Field(None, description="Multiple results allowed.")
-    method: PlainObservationDefinitionMethod | None = Field(None, description="Observation method.")
-    preferred_report_name: str | None = Field(None, description="Preferred report name.")
+    code: PlainObservationDefinitionCode | None = Field(
+        None, description="Observation code."
+    )
+    category: list[PlainObservationDefinitionCategory] | None = Field(
+        None, description="Categories."
+    )
+    identifier: list[PlainObservationDefinitionIdentifier] | None = Field(
+        None, description="Identifiers."
+    )
+    permitted_data_type: list[str] | None = Field(
+        None, description="Permitted data types."
+    )
+    multiple_results_allowed: bool | None = Field(
+        None, description="Multiple results allowed."
+    )
+    method: PlainObservationDefinitionMethod | None = Field(
+        None, description="Observation method."
+    )
+    preferred_report_name: str | None = Field(
+        None, description="Preferred report name."
+    )
     quantitative_details: PlainObservationDefinitionQuantitativeDetails | None = Field(
         None, description="Quantitative details."
     )
-    qualified_interval: list[PlainObservationDefinitionQualifiedInterval] | None = Field(
-        None, description="Qualified intervals."
+    qualified_interval: list[PlainObservationDefinitionQualifiedInterval] | None = (
+        Field(None, description="Qualified intervals.")
     )
-    valid_coded_value_set: str | None = Field(None, description="Valid coded ValueSet reference.")
-    valid_coded_value_set_display: str | None = Field(None, description="Valid coded ValueSet display.")
-    normal_coded_value_set: str | None = Field(None, description="Normal coded ValueSet reference.")
-    normal_coded_value_set_display: str | None = Field(None, description="Normal coded ValueSet display.")
-    abnormal_coded_value_set: str | None = Field(None, description="Abnormal coded ValueSet reference.")
-    abnormal_coded_value_set_display: str | None = Field(None, description="Abnormal coded ValueSet display.")
-    critical_coded_value_set: str | None = Field(None, description="Critical coded ValueSet reference.")
-    critical_coded_value_set_display: str | None = Field(None, description="Critical coded ValueSet display.")
+    valid_coded_value_set: str | None = Field(
+        None, description="Valid coded ValueSet reference."
+    )
+    valid_coded_value_set_display: str | None = Field(
+        None, description="Valid coded ValueSet display."
+    )
+    normal_coded_value_set: str | None = Field(
+        None, description="Normal coded ValueSet reference."
+    )
+    normal_coded_value_set_display: str | None = Field(
+        None, description="Normal coded ValueSet display."
+    )
+    abnormal_coded_value_set: str | None = Field(
+        None, description="Abnormal coded ValueSet reference."
+    )
+    abnormal_coded_value_set_display: str | None = Field(
+        None, description="Abnormal coded ValueSet display."
+    )
+    critical_coded_value_set: str | None = Field(
+        None, description="Critical coded ValueSet reference."
+    )
+    critical_coded_value_set_display: str | None = Field(
+        None, description="Critical coded ValueSet display."
+    )
     extension: list[dict] | None = Field(None, description="Extension list.")
     created_by: str = Field(..., description="Creator user ID.")
     updated_by: str | None = Field(None, description="Last updater user ID.")
@@ -168,7 +199,9 @@ class PaginatedObservationDefinitionResponse(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    data: list[PlainObservationDefinitionResponse] = Field(..., description="List of observation definitions.")
+    data: list[PlainObservationDefinitionResponse] = Field(
+        ..., description="List of observation definitions."
+    )
     total: int | None = Field(None, description="Total matching records.")
     limit: int = Field(..., description="Page size.")
     offset: int = Field(..., description="Page offset.")
@@ -180,7 +213,9 @@ class FHIRObservationDefinitionBundleEntry(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     fullUrl: str | None = Field(None, description="Full URL for resource.")
-    resource: FHIRObservationDefinitionSchema = Field(..., description="ObservationDefinition resource.")
+    resource: FHIRObservationDefinitionSchema = Field(
+        ..., description="ObservationDefinition resource."
+    )
 
 
 class FHIRObservationDefinitionBundle(BaseModel):

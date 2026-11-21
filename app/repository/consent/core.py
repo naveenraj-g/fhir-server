@@ -177,9 +177,7 @@ class _CoreMixin:
                         ConsentProvision.id.in_(
                             select(ConsentProvisionAction.provision_id).where(
                                 or_(
-                                    ConsentProvisionAction.text.ilike(
-                                        f"%{action}%"
-                                    ),
+                                    ConsentProvisionAction.text.ilike(f"%{action}%"),
                                     ConsentProvisionAction.id.in_(
                                         select(
                                             ConsentProvisionActionCoding.action_id

@@ -62,11 +62,17 @@ async def patient(client) -> int:
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _as_user(sub="u-test", org_id="org-test", permissions=IMMUNIZATION_PERMS):
-    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        sub=sub, org_id=org_id, permissions=permissions
+    )
 
 
 async def _full(client, patient) -> tuple[int, dict]:
@@ -94,7 +100,9 @@ async def test_create_full_round_trip(client, patient):
     immunization, body = await _full(client, patient)
     data = (await client.get(f"{BASE}/{immunization}")).json()
     expected = {k: v for k, v in body.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
 
 
 async def test_create_keeps_elements_nothing_searches_on(client, patient):
@@ -104,7 +112,11 @@ async def test_create_keeps_elements_nothing_searches_on(client, patient):
     data = (await client.get(f"{BASE}/{immunization}")).json()
     assert data["recorded"] == "2023-01-15T10:00:00Z" and data["primarySource"] is True
     assert data["expirationDate"] == "2025-02-15"
-    assert data["doseQuantity"] == {"value": 5, "system": "http://unitsofmeasure.org", "code": "mg"}
+    assert data["doseQuantity"] == {
+        "value": 5,
+        "system": "http://unitsofmeasure.org",
+        "code": "mg",
+    }
     assert data["note"][0]["authorString"] == "Nurse Joy"
     assert data["education"][0]["documentType"] == "flu-fact-sheet"
     assert data["reaction"][0]["reported"] is True
@@ -132,7 +144,9 @@ async def test_create_every_status_round_trips(client, patient, status):
 
 
 async def test_create_ignores_server_managed_id_and_meta(client, patient):
-    body = immunization_body(patient, id="999", meta={"lastUpdated": "2000-01-01T00:00:00Z"})
+    body = immunization_body(
+        patient, id="999", meta={"lastUpdated": "2000-01-01T00:00:00Z"}
+    )
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     assert resp.json()["id"] != "999"
@@ -140,25 +154,49 @@ async def test_create_ignores_server_managed_id_and_meta(client, patient):
 
 
 async def test_create_bad_datatypes_rejected(client, patient):
-    for bad in ({"status": "robot"}, {"vaccineCode": "140"}, {"performer": {"actor": {"reference": "Practitioner/1"}}},
-                {"reasonCode": {"text": "x"}}, {"primarySource": "yes"}, {"doseQuantity": "5 mg"}):
+    for bad in (
+        {"status": "robot"},
+        {"vaccineCode": "140"},
+        {"performer": {"actor": {"reference": "Practitioner/1"}}},
+        {"reasonCode": {"text": "x"}},
+        {"primarySource": "yes"},
+        {"doseQuantity": "5 mg"},
+    ):
         resp = await client.post(BASE + "/", json=immunization_body(patient, **bad))
         assert resp.status_code == 422, (bad, resp.text)
-    assert (await client.post(BASE + "/", json={"status": "completed", "patient": "Patient/1"})).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json={"status": "completed", "patient": "Patient/1"}
+        )
+    ).status_code == 422
 
 
 async def test_create_non_fhir_key_rejected(client, patient, native_validation):
-    assert (await client.post(BASE + "/", json=immunization_body(patient, not_a_fhir_element=1))).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json=immunization_body(patient, not_a_fhir_element=1)
+        )
+    ).status_code == 422
 
 
 async def test_create_old_flat_fields_rejected(client, patient, native_validation):
-    for stale in ({"vaccine_code_text": "x"}, {"occurrence_date_time": "2020-01-01"}, {"org_id": "x"}):
-        resp = await client.post(BASE + "/", json={**immunization_body(patient), **stale})
+    for stale in (
+        {"vaccine_code_text": "x"},
+        {"occurrence_date_time": "2020-01-01"},
+        {"org_id": "x"},
+    ):
+        resp = await client.post(
+            BASE + "/", json={**immunization_body(patient), **stale}
+        )
         assert resp.status_code == 422, (stale, resp.text)
 
 
 async def test_create_wrong_resource_type_rejected(client, patient):
-    assert (await client.post(BASE + "/", json=immunization_body(patient, resourceType="Patient"))).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json=immunization_body(patient, resourceType="Patient")
+        )
+    ).status_code == 422
 
 
 async def test_create_audit_meta_from_actor(client, patient):
@@ -172,7 +210,9 @@ async def test_create_audit_meta_from_actor(client, patient):
 
 
 async def test_create_patient_must_exist(client):
-    assert (await client.post(BASE + "/", json=immunization_body(999999))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=immunization_body(999999))
+    ).status_code == 422
 
 
 async def test_create_patient_in_another_org_is_rejected(client, other_client):
@@ -181,7 +221,9 @@ async def test_create_patient_in_another_org_is_rejected(client, other_client):
         theirs = await create_patient(other_client)
     finally:
         _as_user()
-    assert (await client.post(BASE + "/", json=immunization_body(theirs))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=immunization_body(theirs))
+    ).status_code == 422
 
 
 async def test_create_encounter_location_manufacturer_must_exist(client, patient):
@@ -196,9 +238,14 @@ async def test_create_encounter_location_manufacturer_must_exist(client, patient
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     for element, missing in (
-        ("encounter", "Encounter/999999"), ("location", "Location/999999"), ("manufacturer", "Organization/999999"),
+        ("encounter", "Encounter/999999"),
+        ("location", "Location/999999"),
+        ("manufacturer", "Organization/999999"),
     ):
-        resp = await client.post(BASE + "/", json=immunization_body(patient, **{element: {"reference": missing}}))
+        resp = await client.post(
+            BASE + "/",
+            json=immunization_body(patient, **{element: {"reference": missing}}),
+        )
         assert resp.status_code == 422, (element, resp.text)
 
 
@@ -206,25 +253,42 @@ async def test_create_performer_actor_is_checked(client, patient):
     practitioner = await create_practitioner(client)
     role = await create_practitioner_role(client)
     organization = await create_organization(client)
-    for ref in (f"Practitioner/{practitioner}", f"PractitionerRole/{role}", f"Organization/{organization}"):
+    for ref in (
+        f"Practitioner/{practitioner}",
+        f"PractitionerRole/{role}",
+        f"Organization/{organization}",
+    ):
         body = immunization_body(patient, performer=[{"actor": {"reference": ref}}])
         resp = await client.post(BASE + "/", json=body)
         assert resp.status_code == 201, (ref, resp.text)
-    for missing in ("Practitioner/999999", "PractitionerRole/999999", "Organization/999999"):
+    for missing in (
+        "Practitioner/999999",
+        "PractitionerRole/999999",
+        "Organization/999999",
+    ):
         body = immunization_body(patient, performer=[{"actor": {"reference": missing}}])
         resp = await client.post(BASE + "/", json=body)
         assert resp.status_code == 422, (missing, resp.text)
 
 
-async def test_create_reason_reference_condition_and_report_are_checked(client, patient):
+async def test_create_reason_reference_condition_and_report_are_checked(
+    client, patient
+):
     condition = await create_condition(client, condition_body(patient))
     report = await create_report(client, report_body(patient))
     body = immunization_body(
-        patient, reasonReference=[{"reference": f"Condition/{condition}"}, {"reference": f"DiagnosticReport/{report}"}]
+        patient,
+        reasonReference=[
+            {"reference": f"Condition/{condition}"},
+            {"reference": f"DiagnosticReport/{report}"},
+        ],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
     for missing in ("Condition/999999", "DiagnosticReport/999999"):
-        resp = await client.post(BASE + "/", json=immunization_body(patient, reasonReference=[{"reference": missing}]))
+        resp = await client.post(
+            BASE + "/",
+            json=immunization_body(patient, reasonReference=[{"reference": missing}]),
+        )
         assert resp.status_code == 422, (missing, resp.text)
 
 
@@ -233,23 +297,48 @@ async def test_create_protocol_authority_and_note_author_are_checked(client, pat
     practitioner = await create_practitioner(client)
     ok = immunization_body(
         patient,
-        protocolApplied=[{"authority": {"reference": f"Organization/{organization}"}, "doseNumberPositiveInt": 1}],
-        note=[{"text": "n", "authorReference": {"reference": f"Practitioner/{practitioner}"}}],
+        protocolApplied=[
+            {
+                "authority": {"reference": f"Organization/{organization}"},
+                "doseNumberPositiveInt": 1,
+            }
+        ],
+        note=[
+            {
+                "text": "n",
+                "authorReference": {"reference": f"Practitioner/{practitioner}"},
+            }
+        ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     bad_authority = immunization_body(
-        patient, protocolApplied=[{"authority": {"reference": "Organization/999999"}, "doseNumberPositiveInt": 1}]
+        patient,
+        protocolApplied=[
+            {
+                "authority": {"reference": "Organization/999999"},
+                "doseNumberPositiveInt": 1,
+            }
+        ],
     )
     assert (await client.post(BASE + "/", json=bad_authority)).status_code == 422
-    bad_author = immunization_body(patient, note=[{"text": "n", "authorReference": {"reference": "Practitioner/999999"}}])
+    bad_author = immunization_body(
+        patient,
+        note=[{"text": "n", "authorReference": {"reference": "Practitioner/999999"}}],
+    )
     assert (await client.post(BASE + "/", json=bad_author)).status_code == 422
 
 
 async def test_create_identifier_assigner_must_exist(client, patient):
-    body = immunization_body(patient, identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}])
+    body = immunization_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 422
     org = await create_organization(client)
-    body = immunization_body(patient, identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}])
+    body = immunization_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
@@ -259,7 +348,9 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     body = immunization_body(
         patient,
         reasonReference=[{"reference": "Observation/999999"}],
-        reaction=[{"date": "2023-01-16", "detail": {"reference": "Observation/999999"}}],
+        reaction=[
+            {"date": "2023-01-16", "detail": {"reference": "Observation/999999"}}
+        ],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
@@ -269,16 +360,23 @@ async def test_create_absolute_and_logical_references_not_resolved(client):
     resp = await client.post(BASE + "/", json=immunization_body(patient_id=None))
     assert resp.status_code == 201, resp.text
     assert resp.json()["patient"] == {"reference": absolute}
-    logical = {"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "External"}
+    logical = {
+        "identifier": {"system": "urn:pts", "value": "P-9"},
+        "display": "External",
+    }
     body = immunization_body(
         None,
         patient=logical,
-        performer=[{"actor": {"reference": "https://other.example.org/fhir/Practitioner/7"}}],
+        performer=[
+            {"actor": {"reference": "https://other.example.org/fhir/Practitioner/7"}}
+        ],
     )
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     assert resp.json()["patient"] == logical
-    assert resp.json()["performer"] == [{"actor": {"reference": "https://other.example.org/fhir/Practitioner/7"}}]
+    assert resp.json()["performer"] == [
+        {"actor": {"reference": "https://other.example.org/fhir/Practitioner/7"}}
+    ]
 
 
 # ── Read ─────────────────────────────────────────────────────────────────────
@@ -301,13 +399,17 @@ async def test_get_is_fhir_regardless_of_accept(client, patient):
 
 async def test_xml_only_accept_is_406(client, patient):
     immunization = await create_immunization(client, immunization_body(patient))
-    resp = await client.get(f"{BASE}/{immunization}", headers={"Accept": "application/fhir+xml"})
+    resp = await client.get(
+        f"{BASE}/{immunization}", headers={"Accept": "application/fhir+xml"}
+    )
     assert resp.status_code == 406 and resp.json()["resourceType"] == "OperationOutcome"
 
 
 async def test_get_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -315,9 +417,15 @@ async def test_get_not_found(client):
 
 async def test_patch_scalar_keeps_the_rest(client, patient):
     immunization, _ = await _full(client, patient)
-    resp = await client.patch(f"{BASE}/{immunization}", json={"status": "entered-in-error", "lotNumber": "ZZ99"})
+    resp = await client.patch(
+        f"{BASE}/{immunization}",
+        json={"status": "entered-in-error", "lotNumber": "ZZ99"},
+    )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "entered-in-error" and resp.json()["lotNumber"] == "ZZ99"
+    assert (
+        resp.json()["status"] == "entered-in-error"
+        and resp.json()["lotNumber"] == "ZZ99"
+    )
     assert resp.json()["patient"] == {"reference": f"Patient/{patient}"}  # untouched
     assert resp.json()["education"][0]["documentType"] == "flu-fact-sheet"
     assert resp.json()["doseQuantity"]["value"] == 5
@@ -327,8 +435,14 @@ async def test_patch_reindexes_search(client, patient):
     immunization, _ = await _full(client, patient)
     await client.patch(
         f"{BASE}/{immunization}",
-        json={"status": "not-done", "vaccineCode": {"coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "03"}]},
-              "occurrenceDateTime": "2024-05-01", "lotNumber": "NEWLOT"},
+        json={
+            "status": "not-done",
+            "vaccineCode": {
+                "coding": [{"system": "http://hl7.org/fhir/sid/cvx", "code": "03"}]
+            },
+            "occurrenceDateTime": "2024-05-01",
+            "lotNumber": "NEWLOT",
+        },
     )
     for param, old, new in (
         ("status", "completed", "not-done"),
@@ -336,66 +450,115 @@ async def test_patch_reindexes_search(client, patient):
         ("date", "2023-01-15", "2024-05-01"),
         ("lot-number", "AAJN11K", "NEWLOT"),
     ):
-        assert immunization not in _ids((await client.get(BASE + "/", params={param: old})).json()), param
-        assert immunization in _ids((await client.get(BASE + "/", params={param: new})).json()), param
+        assert immunization not in _ids(
+            (await client.get(BASE + "/", params={param: old})).json()
+        ), param
+        assert immunization in _ids(
+            (await client.get(BASE + "/", params={param: new})).json()
+        ), param
 
 
 async def test_patch_patient_replaced_and_reindexed(client, patient):
     immunization = await create_immunization(client, immunization_body(patient))
     other = await create_patient(client)
-    resp = await client.patch(f"{BASE}/{immunization}", json={"patient": {"reference": f"Patient/{other}"}})
+    resp = await client.patch(
+        f"{BASE}/{immunization}", json={"patient": {"reference": f"Patient/{other}"}}
+    )
     assert resp.status_code == 200, resp.text
-    assert immunization not in _ids((await client.get(BASE + "/", params={"patient": str(patient)})).json())
-    assert immunization in _ids((await client.get(BASE + "/", params={"patient": str(other)})).json())
+    assert immunization not in _ids(
+        (await client.get(BASE + "/", params={"patient": str(patient)})).json()
+    )
+    assert immunization in _ids(
+        (await client.get(BASE + "/", params={"patient": str(other)})).json()
+    )
 
 
 async def test_patch_replaces_lists_and_empty_clears(client, patient):
     immunization, _ = await _full(client, patient)
-    assert immunization in _ids((await client.get(BASE + "/", params={"series": "2-dose"})).json())
+    assert immunization in _ids(
+        (await client.get(BASE + "/", params={"series": "2-dose"})).json()
+    )
     resp = await client.patch(
         f"{BASE}/{immunization}",
-        json={"performer": [], "reasonCode": [], "reasonReference": [], "reaction": [], "protocolApplied": [],
-              "identifier": [], "note": []},
+        json={
+            "performer": [],
+            "reasonCode": [],
+            "reasonReference": [],
+            "reaction": [],
+            "protocolApplied": [],
+            "identifier": [],
+            "note": [],
+        },
     )
-    for gone in ("performer", "reasonCode", "reasonReference", "reaction", "protocolApplied", "identifier", "note"):
+    for gone in (
+        "performer",
+        "reasonCode",
+        "reasonReference",
+        "reaction",
+        "protocolApplied",
+        "identifier",
+        "note",
+    ):
         assert gone not in resp.json()
     assert resp.json()["lotNumber"] == "AAJN11K"  # untouched
     for param, value in (
-        ("series", "2-dose"), ("target-disease", "6142004"), ("reason-code", "429060002"),
-        ("identifier", "IM-1001"), ("reaction", "Observation/160002"), ("reaction-date", "2023-01-16"),
+        ("series", "2-dose"),
+        ("target-disease", "6142004"),
+        ("reason-code", "429060002"),
+        ("identifier", "IM-1001"),
+        ("reaction", "Observation/160002"),
+        ("reaction-date", "2023-01-16"),
         ("reason-reference", "Observation/160001"),
     ):
-        assert immunization not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
-    assert immunization in _ids((await client.get(BASE + "/", params={"performer:missing": "true"})).json())
+        assert immunization not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
+    assert immunization in _ids(
+        (await client.get(BASE + "/", params={"performer:missing": "true"})).json()
+    )
 
 
 async def test_patch_clears_a_date_and_missing_follows(client, patient):
-    immunization = await create_immunization(client, immunization_body(patient, occurrenceDateTime="2024-05-01"))
+    immunization = await create_immunization(
+        client, immunization_body(patient, occurrenceDateTime="2024-05-01")
+    )
     resp = await client.patch(
-        f"{BASE}/{immunization}", json={"occurrenceDateTime": None, "occurrenceString": "sometime in May"}
+        f"{BASE}/{immunization}",
+        json={"occurrenceDateTime": None, "occurrenceString": "sometime in May"},
     )
     assert "occurrenceDateTime" not in resp.json()
-    assert immunization in _ids((await client.get(BASE + "/", params={"date:missing": "true"})).json())
+    assert immunization in _ids(
+        (await client.get(BASE + "/", params={"date:missing": "true"})).json()
+    )
 
 
-async def test_patch_nonexistent_reference_rejected_and_nothing_written(client, patient):
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(
+    client, patient
+):
     immunization = await create_immunization(client, immunization_body(patient))
     resp = await client.patch(
-        f"{BASE}/{immunization}", json={"performer": [{"actor": {"reference": "Practitioner/999999"}}]}
+        f"{BASE}/{immunization}",
+        json={"performer": [{"actor": {"reference": "Practitioner/999999"}}]},
     )
     assert resp.status_code == 422
     assert "performer" not in (await client.get(f"{BASE}/{immunization}")).json()
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client, patient):
-    immunization = await create_immunization(client, immunization_body(patient, "completed"))
-    assert (await client.patch(f"{BASE}/{immunization}", json={"status": "broken"})).status_code == 422
+    immunization = await create_immunization(
+        client, immunization_body(patient, "completed")
+    )
+    assert (
+        await client.patch(f"{BASE}/{immunization}", json={"status": "broken"})
+    ).status_code == 422
     assert (await client.get(f"{BASE}/{immunization}")).json()["status"] == "completed"
 
 
 async def test_patch_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"status": "entered-in-error"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -406,14 +569,22 @@ async def test_delete(client, patient):
     assert (await client.delete(f"{BASE}/{immunization}")).status_code == 204
     assert (await client.get(f"{BASE}/{immunization}")).status_code == 404
     # Its index rows are gone with it.
-    for param, value in (("identifier", "IM-1001"), ("vaccine-code", "140"), ("series", "2-dose"),
-                         ("target-disease", "6142004")):
-        assert immunization not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+    for param, value in (
+        ("identifier", "IM-1001"),
+        ("vaccine-code", "140"),
+        ("series", "2-dose"),
+        ("target-disease", "6142004"),
+    ):
+        assert immunization not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
 
 
 async def test_delete_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -421,7 +592,9 @@ async def test_delete_not_found(client):
 
 async def test_create_without_permission(client, patient):
     _as_user(permissions=["immunization:read"])
-    assert (await client.post(BASE + "/", json=immunization_body(patient))).status_code == 403
+    assert (
+        await client.post(BASE + "/", json=immunization_body(patient))
+    ).status_code == 403
 
 
 async def test_org_less_token_rejected(client, patient):
@@ -443,20 +616,29 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
     try:
         for resp in (
             await other_client.get(f"{BASE}/{immunization}"),
-            await other_client.patch(f"{BASE}/{immunization}", json={"status": "entered-in-error"}),
+            await other_client.patch(
+                f"{BASE}/{immunization}", json={"status": "entered-in-error"}
+            ),
             await other_client.delete(f"{BASE}/{immunization}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
 
 async def test_search_cross_tenant_isolation(client, other_client):
     _as_user()
-    await create_immunization(client, immunization_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]))
+    await create_immunization(
+        client,
+        immunization_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]),
+    )
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0
     finally:
         _as_user()

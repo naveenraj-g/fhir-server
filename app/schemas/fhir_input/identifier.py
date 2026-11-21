@@ -27,10 +27,13 @@ class FhirIdentifierInput(FhirInputModel):
         None, description="Time period when the identifier is/was valid for use."
     )
     assigner: FhirReferenceInput | None = Field(
-        None, description="Organization that issued the identifier — Reference(Organization)."
+        None,
+        description="Organization that issued the identifier — Reference(Organization).",
     )
 
 
 # Reference.identifier is itself an Identifier (whose assigner is a
 # Reference) — resolve the forward reference now that both exist.
-FhirReferenceInput.model_rebuild(_types_namespace={"FhirIdentifierInput": FhirIdentifierInput})
+FhirReferenceInput.model_rebuild(
+    _types_namespace={"FhirIdentifierInput": FhirIdentifierInput}
+)

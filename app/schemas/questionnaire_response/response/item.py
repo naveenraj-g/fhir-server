@@ -30,10 +30,18 @@ class PlainQuestionnaireResponseItem(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: int = Field(..., description="Internal row ID.")
     link_id: str = Field(..., description="The linkId for the item this is answering.")
-    definition: str | None = Field(None, description="ElementDefinition reference (uri) matching the linkId.")
-    text: str | None = Field(None, description="Text displayed above the group or question.")
-    answer: list[PlainQuestionnaireResponseAnswer] | None = Field(None, description="The response(s) to this question.")
-    item: list[PlainQuestionnaireResponseItem] | None = Field(None, description="Nested groups/questions beneath this one.")
+    definition: str | None = Field(
+        None, description="ElementDefinition reference (uri) matching the linkId."
+    )
+    text: str | None = Field(
+        None, description="Text displayed above the group or question."
+    )
+    answer: list[PlainQuestionnaireResponseAnswer] | None = Field(
+        None, description="The response(s) to this question."
+    )
+    item: list[PlainQuestionnaireResponseItem] | None = Field(
+        None, description="Nested groups/questions beneath this one."
+    )
 
 
 PlainQuestionnaireResponseAnswer.model_rebuild()

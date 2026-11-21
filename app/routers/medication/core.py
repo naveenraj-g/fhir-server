@@ -46,8 +46,7 @@ logger = get_logger(__name__)
         "for making statements about medication use. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -62,9 +61,7 @@ async def create_medication(
         extra={"event": "route.create_medication", "org_id": actor.org_id},
     )
     log_payload(logger, "medication.create.payload", payload)
-    model = await medication_service.create_medication(
-        payload, actor.org_id, actor.sub
-    )
+    model = await medication_service.create_medication(payload, actor.org_id, actor.sub)
     return format_response(
         medication_service._to_fhir(model),
         medication_service._to_plain(model),
@@ -89,9 +86,7 @@ async def create_medication(
 )
 async def get_medication(
     request: Request,
-    medication_id: int = Path(
-        ..., ge=1, description="Public Medication identifier."
-    ),
+    medication_id: int = Path(..., ge=1, description="Public Medication identifier."),
     actor: AuthUser = Depends(require_permission("medication", "read")),
     medication_service: MedicationService = Depends(get_medication_service),
 ):
@@ -103,9 +98,7 @@ async def get_medication(
             "org_id": actor.org_id,
         },
     )
-    model = await medication_service.get_medication_scoped(
-        medication_id, actor.org_id
-    )
+    model = await medication_service.get_medication_scoped(medication_id, actor.org_id)
     return format_response(
         medication_service._to_fhir(model),
         medication_service._to_plain(model),
@@ -130,9 +123,7 @@ async def get_medication(
 async def patch_medication(
     payload: MedicationPatchSchema,
     request: Request,
-    medication_id: int = Path(
-        ..., ge=1, description="Public Medication identifier."
-    ),
+    medication_id: int = Path(..., ge=1, description="Public Medication identifier."),
     actor: AuthUser = Depends(require_permission("medication", "update")),
     medication_service: MedicationService = Depends(get_medication_service),
 ):
@@ -261,9 +252,7 @@ async def list_medications(
     },
 )
 async def delete_medication(
-    medication_id: int = Path(
-        ..., ge=1, description="Public Medication identifier."
-    ),
+    medication_id: int = Path(..., ge=1, description="Public Medication identifier."),
     actor: AuthUser = Depends(require_permission("medication", "delete")),
     medication_service: MedicationService = Depends(get_medication_service),
 ):

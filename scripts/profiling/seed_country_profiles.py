@@ -28,11 +28,15 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(
+    0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 import asyncpg
 
-_PROFILING_ROOT = Path(__file__).resolve().parent.parent / "data" / "profiling" / "resources"
+_PROFILING_ROOT = (
+    Path(__file__).resolve().parent.parent / "data" / "profiling" / "resources"
+)
 
 _SEED_ACTOR = "system:seed_country_profiles"
 

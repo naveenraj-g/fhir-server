@@ -62,11 +62,17 @@ async def patient(client) -> int:
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _as_user(sub="u-test", org_id="org-test", permissions=HISTORY_PERMS):
-    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        sub=sub, org_id=org_id, permissions=permissions
+    )
 
 
 async def _full(client, patient) -> tuple[int, dict]:
@@ -85,7 +91,9 @@ async def test_create_minimal(client, patient):
     assert resp.status_code == 201, resp.text
     assert "application/fhir+json" in resp.headers["content-type"]
     data = resp.json()
-    assert data["resourceType"] == "FamilyMemberHistory" and data["status"] == "completed"
+    assert (
+        data["resourceType"] == "FamilyMemberHistory" and data["status"] == "completed"
+    )
     assert data["patient"] == {"reference": f"Patient/{patient}"}
     assert data["relationship"]["coding"][0]["code"] == "MTH"
 
@@ -94,7 +102,9 @@ async def test_create_full_round_trip(client, patient):
     history, body = await _full(client, patient)
     data = (await client.get(f"{BASE}/{history}")).json()
     expected = {k: v for k, v in body.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
 
 
 async def test_create_keeps_elements_nothing_searches_on(client, patient):
@@ -103,13 +113,23 @@ async def test_create_keeps_elements_nothing_searches_on(client, patient):
     history, _ = await _full(client, patient)
     data = (await client.get(f"{BASE}/{history}")).json()
     assert data["name"] == "Mary Windsor"
-    assert data["ageAge"]["value"] == 70 and data["estimatedAge"] is True and data["deceasedBoolean"] is False
+    assert (
+        data["ageAge"]["value"] == 70
+        and data["estimatedAge"] is True
+        and data["deceasedBoolean"] is False
+    )
     assert data["reasonCode"][0]["coding"][0]["code"] == "160303001"
     assert data["note"][0]["authorString"] == "Nurse Joy"
     assert data["dataAbsentReason"]["coding"][0]["code"] == "withheld"
     first, second = data["condition"]
-    assert first["outcome"]["coding"][0]["code"] == "6736007" and first["contributedToDeath"] is False
-    assert first["onsetAge"]["value"] == 42 and first["note"][0]["text"] == "Insulin from 55"
+    assert (
+        first["outcome"]["coding"][0]["code"] == "6736007"
+        and first["contributedToDeath"] is False
+    )
+    assert (
+        first["onsetAge"]["value"] == 42
+        and first["note"][0]["text"] == "Insulin from 55"
+    )
     assert second["onsetString"] == "in her fifties"
 
 
@@ -120,18 +140,41 @@ async def test_create_keeps_elements_nothing_searches_on(client, patient):
         {"bornPeriod": {"start": "1950-01-01", "end": "1951-01-01"}},
         {"bornString": "around 1950"},
         {"ageAge": {"value": 70, "unit": "yr"}, "estimatedAge": False},
-        {"ageRange": {"low": {"value": 60, "unit": "yr"}, "high": {"value": 70, "unit": "yr"}}},
+        {
+            "ageRange": {
+                "low": {"value": 60, "unit": "yr"},
+                "high": {"value": 70, "unit": "yr"},
+            }
+        },
         {"ageString": "elderly"},
         {"deceasedBoolean": True},
         {"deceasedAge": {"value": 80, "comparator": ">", "unit": "yr"}},
-        {"deceasedRange": {"low": {"value": 70, "unit": "yr"}, "high": {"value": 80, "unit": "yr"}}},
+        {
+            "deceasedRange": {
+                "low": {"value": 70, "unit": "yr"},
+                "high": {"value": 80, "unit": "yr"},
+            }
+        },
         {"deceasedDate": "2010-05-01"},
         {"deceasedString": "in the war"},
     ],
-    ids=["bornDate", "bornPeriod", "bornString", "ageAge", "ageRange", "ageString", "deceasedBoolean", "deceasedAge",
-         "deceasedRange", "deceasedDate", "deceasedString"],
+    ids=[
+        "bornDate",
+        "bornPeriod",
+        "bornString",
+        "ageAge",
+        "ageRange",
+        "ageString",
+        "deceasedBoolean",
+        "deceasedAge",
+        "deceasedRange",
+        "deceasedDate",
+        "deceasedString",
+    ],
 )
-async def test_create_each_born_age_and_deceased_choice_round_trips(client, patient, extra):
+async def test_create_each_born_age_and_deceased_choice_round_trips(
+    client, patient, extra
+):
     resp = await client.post(BASE + "/", json=history_body(patient, **extra))
     assert resp.status_code == 201, resp.text
     for key, value in extra.items():
@@ -142,7 +185,12 @@ async def test_create_each_born_age_and_deceased_choice_round_trips(client, pati
     "onset",
     [
         {"onsetAge": {"value": 42, "unit": "yr"}},
-        {"onsetRange": {"low": {"value": 40, "unit": "yr"}, "high": {"value": 50, "unit": "yr"}}},
+        {
+            "onsetRange": {
+                "low": {"value": 40, "unit": "yr"},
+                "high": {"value": 50, "unit": "yr"},
+            }
+        },
         {"onsetPeriod": {"start": "1990-01-01", "end": "1991-01-01"}},
         {"onsetString": "childhood"},
     ],
@@ -156,7 +204,9 @@ async def test_create_each_condition_onset_choice_round_trips(client, patient, o
         assert resp.json()["condition"][0][key] == value
 
 
-@pytest.mark.parametrize("status", ["partial", "completed", "entered-in-error", "health-unknown"])
+@pytest.mark.parametrize(
+    "status", ["partial", "completed", "entered-in-error", "health-unknown"]
+)
 async def test_create_every_status_round_trips(client, patient, status):
     resp = await client.post(BASE + "/", json=history_body(patient, status))
     assert resp.status_code == 201, resp.text
@@ -172,26 +222,49 @@ async def test_create_ignores_server_managed_id_and_meta(client, patient):
 
 
 async def test_create_bad_datatypes_rejected(client, patient):
-    for bad in ({"status": "robot"}, {"date": "yesterday"}, {"relationship": "MTH"}, {"sex": "female"},
-                {"condition": {"code": {"text": "x"}}}, {"identifier": {"value": "x"}}, {"estimatedAge": "yes"},
-                {"instantiatesCanonical": "http://x"}, {"bornDate": "long ago"}, {"ageAge": "70"}):
+    for bad in (
+        {"status": "robot"},
+        {"date": "yesterday"},
+        {"relationship": "MTH"},
+        {"sex": "female"},
+        {"condition": {"code": {"text": "x"}}},
+        {"identifier": {"value": "x"}},
+        {"estimatedAge": "yes"},
+        {"instantiatesCanonical": "http://x"},
+        {"bornDate": "long ago"},
+        {"ageAge": "70"},
+    ):
         resp = await client.post(BASE + "/", json=history_body(patient, **bad))
         assert resp.status_code == 422, (bad, resp.text)
-    assert (await client.post(BASE + "/", json={"status": "completed", "patient": "Patient/1"})).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json={"status": "completed", "patient": "Patient/1"}
+        )
+    ).status_code == 422
 
 
 async def test_create_non_fhir_key_rejected(client, patient, native_validation):
-    assert (await client.post(BASE + "/", json=history_body(patient, not_a_fhir_element=1))).status_code == 422
+    assert (
+        await client.post(BASE + "/", json=history_body(patient, not_a_fhir_element=1))
+    ).status_code == 422
 
 
 async def test_create_old_flat_fields_rejected(client, patient, native_validation):
-    for stale in ({"relationship_text": "x"}, {"born_date": "1950-01-01"}, {"org_id": "x"}):
+    for stale in (
+        {"relationship_text": "x"},
+        {"born_date": "1950-01-01"},
+        {"org_id": "x"},
+    ):
         resp = await client.post(BASE + "/", json={**history_body(patient), **stale})
         assert resp.status_code == 422, (stale, resp.text)
 
 
 async def test_create_wrong_resource_type_rejected(client, patient):
-    assert (await client.post(BASE + "/", json=history_body(patient, resourceType="Patient"))).status_code == 422
+    assert (
+        await client.post(
+            BASE + "/", json=history_body(patient, resourceType="Patient")
+        )
+    ).status_code == 422
 
 
 async def test_create_audit_meta_from_actor(client, patient):
@@ -224,15 +297,24 @@ async def test_create_reason_reference_is_checked_for_resources_here(client, pat
     ok = history_body(
         patient,
         reasonReference=[
-            {"reference": f"Condition/{condition}"}, {"reference": f"AllergyIntolerance/{allergy}"},
+            {"reference": f"Condition/{condition}"},
+            {"reference": f"AllergyIntolerance/{allergy}"},
             {"reference": f"DiagnosticReport/{report}"},
-            {"reference": "Observation/999999"}, {"reference": "QuestionnaireResponse/999999"},
+            {"reference": "Observation/999999"},
+            {"reference": "QuestionnaireResponse/999999"},
             {"reference": "DocumentReference/999999"},  # not rebuilt: stored as sent
         ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    for missing in ("Condition/999999", "AllergyIntolerance/999999", "DiagnosticReport/999999"):
-        resp = await client.post(BASE + "/", json=history_body(patient, reasonReference=[{"reference": missing}]))
+    for missing in (
+        "Condition/999999",
+        "AllergyIntolerance/999999",
+        "DiagnosticReport/999999",
+    ):
+        resp = await client.post(
+            BASE + "/",
+            json=history_body(patient, reasonReference=[{"reference": missing}]),
+        )
         assert resp.status_code == 422, (missing, resp.text)
 
 
@@ -240,28 +322,51 @@ async def test_create_note_authors_are_checked_in_both_places(client, patient):
     practitioner = await create_practitioner(client)
     role = await create_practitioner_role(client)
     organization = await create_organization(client)
-    for ref in (f"Practitioner/{practitioner}", f"PractitionerRole/{role}", f"Organization/{organization}",
-                f"Patient/{patient}"):
+    for ref in (
+        f"Practitioner/{practitioner}",
+        f"PractitionerRole/{role}",
+        f"Organization/{organization}",
+        f"Patient/{patient}",
+    ):
         body = history_body(
             patient,
             note=[{"text": "n", "authorReference": {"reference": ref}}],
-            condition=[{"code": disease("44054006"), "note": [{"text": "c", "authorReference": {"reference": ref}}]}],
+            condition=[
+                {
+                    "code": disease("44054006"),
+                    "note": [{"text": "c", "authorReference": {"reference": ref}}],
+                }
+            ],
         )
         assert (await client.post(BASE + "/", json=body)).status_code == 201, ref
     missing = "Practitioner/999999"
-    top = history_body(patient, note=[{"text": "n", "authorReference": {"reference": missing}}])
+    top = history_body(
+        patient, note=[{"text": "n", "authorReference": {"reference": missing}}]
+    )
     assert (await client.post(BASE + "/", json=top)).status_code == 422
     nested = history_body(
-        patient, condition=[{"code": disease("44054006"), "note": [{"text": "c", "authorReference": {"reference": missing}}]}]
+        patient,
+        condition=[
+            {
+                "code": disease("44054006"),
+                "note": [{"text": "c", "authorReference": {"reference": missing}}],
+            }
+        ],
     )
     assert (await client.post(BASE + "/", json=nested)).status_code == 422
 
 
 async def test_create_identifier_assigner_must_exist(client, patient):
-    body = history_body(patient, identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}])
+    body = history_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 422
     org = await create_organization(client)
-    body = history_body(patient, identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}])
+    body = history_body(
+        patient,
+        identifier=[{"value": "1", "assigner": {"reference": f"Organization/{org}"}}],
+    )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
@@ -270,7 +375,10 @@ async def test_create_absolute_and_logical_references_not_resolved(client):
     resp = await client.post(BASE + "/", json=history_body())
     assert resp.status_code == 201, resp.text
     assert resp.json()["patient"] == {"reference": absolute}
-    logical = {"identifier": {"system": "urn:pts", "value": "P-9"}, "display": "External"}
+    logical = {
+        "identifier": {"system": "urn:pts", "value": "P-9"},
+        "display": "External",
+    }
     resp = await client.post(BASE + "/", json=history_body(None, patient=logical))
     assert resp.status_code == 201, resp.text
     assert resp.json()["patient"] == logical
@@ -296,13 +404,17 @@ async def test_get_is_fhir_regardless_of_accept(client, patient):
 
 async def test_xml_only_accept_is_406(client, patient):
     history = await create_history(client, history_body(patient))
-    resp = await client.get(f"{BASE}/{history}", headers={"Accept": "application/fhir+xml"})
+    resp = await client.get(
+        f"{BASE}/{history}", headers={"Accept": "application/fhir+xml"}
+    )
     assert resp.status_code == 406 and resp.json()["resourceType"] == "OperationOutcome"
 
 
 async def test_get_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -310,9 +422,14 @@ async def test_get_not_found(client):
 
 async def test_patch_scalar_keeps_the_rest(client, patient):
     history, _ = await _full(client, patient)
-    resp = await client.patch(f"{BASE}/{history}", json={"status": "entered-in-error", "name": "M. Windsor"})
+    resp = await client.patch(
+        f"{BASE}/{history}", json={"status": "entered-in-error", "name": "M. Windsor"}
+    )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["status"] == "entered-in-error" and resp.json()["name"] == "M. Windsor"
+    assert (
+        resp.json()["status"] == "entered-in-error"
+        and resp.json()["name"] == "M. Windsor"
+    )
     assert resp.json()["patient"] == {"reference": f"Patient/{patient}"}  # untouched
     assert resp.json()["ageAge"]["value"] == 70
     assert len(resp.json()["condition"]) == 2
@@ -322,8 +439,13 @@ async def test_patch_reindexes_search(client, patient):
     history, _ = await _full(client, patient)
     await client.patch(
         f"{BASE}/{history}",
-        json={"status": "partial", "date": "2024-05-01", "relationship": relationship("FTH", "father"),
-              "sex": sex("male"), "condition": [{"code": disease("195967001", "Asthma")}]},
+        json={
+            "status": "partial",
+            "date": "2024-05-01",
+            "relationship": relationship("FTH", "father"),
+            "sex": sex("male"),
+            "condition": [{"code": disease("195967001", "Asthma")}],
+        },
     )
     for param, old, new in (
         ("status", "completed", "partial"),
@@ -332,62 +454,105 @@ async def test_patch_reindexes_search(client, patient):
         ("sex", "female", "male"),
         ("code", "44054006", "195967001"),
     ):
-        assert history not in _ids((await client.get(BASE + "/", params={param: old})).json()), param
-        assert history in _ids((await client.get(BASE + "/", params={param: new})).json()), param
+        assert history not in _ids(
+            (await client.get(BASE + "/", params={param: old})).json()
+        ), param
+        assert history in _ids(
+            (await client.get(BASE + "/", params={param: new})).json()
+        ), param
 
 
 async def test_patch_patient_replaced_and_reindexed(client, patient):
     history = await create_history(client, history_body(patient))
     other = await create_patient(client)
-    resp = await client.patch(f"{BASE}/{history}", json={"patient": {"reference": f"Patient/{other}"}})
+    resp = await client.patch(
+        f"{BASE}/{history}", json={"patient": {"reference": f"Patient/{other}"}}
+    )
     assert resp.status_code == 200, resp.text
-    assert history not in _ids((await client.get(BASE + "/", params={"patient": str(patient)})).json())
-    assert history in _ids((await client.get(BASE + "/", params={"patient": str(other)})).json())
+    assert history not in _ids(
+        (await client.get(BASE + "/", params={"patient": str(patient)})).json()
+    )
+    assert history in _ids(
+        (await client.get(BASE + "/", params={"patient": str(other)})).json()
+    )
 
 
 async def test_patch_replaces_lists_and_empty_clears(client, patient):
     history, _ = await _full(client, patient)
-    assert history in _ids((await client.get(BASE + "/", params={"identifier": "FMH-1001"})).json())
+    assert history in _ids(
+        (await client.get(BASE + "/", params={"identifier": "FMH-1001"})).json()
+    )
     resp = await client.patch(
         f"{BASE}/{history}",
-        json={"identifier": [], "instantiatesCanonical": [], "instantiatesUri": [], "condition": [],
-              "note": [], "reasonCode": [], "reasonReference": []},
+        json={
+            "identifier": [],
+            "instantiatesCanonical": [],
+            "instantiatesUri": [],
+            "condition": [],
+            "note": [],
+            "reasonCode": [],
+            "reasonReference": [],
+        },
     )
-    for gone in ("identifier", "instantiatesCanonical", "instantiatesUri", "condition", "note", "reasonCode",
-                 "reasonReference"):
+    for gone in (
+        "identifier",
+        "instantiatesCanonical",
+        "instantiatesUri",
+        "condition",
+        "note",
+        "reasonCode",
+        "reasonReference",
+    ):
         assert gone not in resp.json()
     assert resp.json()["name"] == "Mary Windsor"  # untouched
     for param, value in (
-        ("identifier", "FMH-1001"), ("code", "44054006"),
+        ("identifier", "FMH-1001"),
+        ("code", "44054006"),
         ("instantiates-uri", "http://example.org/protocols/family-history"),
-        ("instantiates-canonical", "http://example.org/fhir/PlanDefinition/family-history"),
+        (
+            "instantiates-canonical",
+            "http://example.org/fhir/PlanDefinition/family-history",
+        ),
     ):
-        assert history not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+        assert history not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
 
 
 async def test_patch_clears_a_date_and_missing_follows(client, patient):
     history = await create_history(client, history_body(patient, date="2024-05-01"))
     resp = await client.patch(f"{BASE}/{history}", json={"date": None})
     assert "date" not in resp.json()
-    assert history in _ids((await client.get(BASE + "/", params={"date:missing": "true"})).json())
+    assert history in _ids(
+        (await client.get(BASE + "/", params={"date:missing": "true"})).json()
+    )
 
 
-async def test_patch_nonexistent_reference_rejected_and_nothing_written(client, patient):
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(
+    client, patient
+):
     history = await create_history(client, history_body(patient))
-    resp = await client.patch(f"{BASE}/{history}", json={"reasonReference": [{"reference": "Condition/999999"}]})
+    resp = await client.patch(
+        f"{BASE}/{history}",
+        json={"reasonReference": [{"reference": "Condition/999999"}]},
+    )
     assert resp.status_code == 422
     assert "reasonReference" not in (await client.get(f"{BASE}/{history}")).json()
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client, patient):
     history = await create_history(client, history_body(patient, "completed"))
-    assert (await client.patch(f"{BASE}/{history}", json={"status": "broken"})).status_code == 422
+    assert (
+        await client.patch(f"{BASE}/{history}", json={"status": "broken"})
+    ).status_code == 422
     assert (await client.get(f"{BASE}/{history}")).json()["status"] == "completed"
 
 
 async def test_patch_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"status": "entered-in-error"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -398,14 +563,22 @@ async def test_delete(client, patient):
     assert (await client.delete(f"{BASE}/{history}")).status_code == 204
     assert (await client.get(f"{BASE}/{history}")).status_code == 404
     # Its index rows are gone with it.
-    for param, value in (("identifier", "FMH-1001"), ("relationship", "MTH"), ("code", "44054006"),
-                         ("instantiates-uri", "http://example.org/protocols/family-history")):
-        assert history not in _ids((await client.get(BASE + "/", params={param: value})).json()), param
+    for param, value in (
+        ("identifier", "FMH-1001"),
+        ("relationship", "MTH"),
+        ("code", "44054006"),
+        ("instantiates-uri", "http://example.org/protocols/family-history"),
+    ):
+        assert history not in _ids(
+            (await client.get(BASE + "/", params={param: value})).json()
+        ), param
 
 
 async def test_delete_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -413,7 +586,9 @@ async def test_delete_not_found(client):
 
 async def test_create_without_permission(client, patient):
     _as_user(permissions=["family_member_history:read"])
-    assert (await client.post(BASE + "/", json=history_body(patient))).status_code == 403
+    assert (
+        await client.post(BASE + "/", json=history_body(patient))
+    ).status_code == 403
 
 
 async def test_org_less_token_rejected(client, patient):
@@ -435,20 +610,28 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
     try:
         for resp in (
             await other_client.get(f"{BASE}/{history}"),
-            await other_client.patch(f"{BASE}/{history}", json={"status": "entered-in-error"}),
+            await other_client.patch(
+                f"{BASE}/{history}", json={"status": "entered-in-error"}
+            ),
             await other_client.delete(f"{BASE}/{history}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
 
 async def test_search_cross_tenant_isolation(client, other_client):
     _as_user()
-    await create_history(client, history_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}]))
+    await create_history(
+        client, history_body(identifier=[{"system": "urn:t", "value": "TenantAOnly"}])
+    )
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"identifier": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0
     finally:
         _as_user()

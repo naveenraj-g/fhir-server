@@ -39,12 +39,8 @@ class FHIRSpecimenDefinitionContainer(BaseModel):
     cap: FHIRCodeableConcept | None = Field(
         None, description="Color of the cap of the container."
     )
-    description: str | None = Field(
-        None, description="Description of the container."
-    )
-    capacity: FHIRQuantity | None = Field(
-        None, description="Container volume or size."
-    )
+    description: str | None = Field(None, description="Description of the container.")
+    capacity: FHIRQuantity | None = Field(None, description="Container volume or size.")
     minimumVolumeQuantity: FHIRQuantity | None = Field(
         None, description="Minimum volume required as Quantity."
     )
@@ -67,15 +63,11 @@ class FHIRSpecimenDefinitionHandling(BaseModel):
     temperatureQualifier: FHIRCodeableConcept | None = Field(
         None, description="Temperature qualifier."
     )
-    temperatureRange: FHIRRange | None = Field(
-        None, description="Temperature range."
-    )
+    temperatureRange: FHIRRange | None = Field(None, description="Temperature range.")
     maxDuration: FHIRQuantity | None = Field(
         None, description="Maximum preservation time."
     )
-    instruction: str | None = Field(
-        None, description="Preservation instruction."
-    )
+    instruction: str | None = Field(None, description="Preservation instruction.")
 
 
 class FHIRSpecimenDefinitionTypeTested(BaseModel):
@@ -83,24 +75,16 @@ class FHIRSpecimenDefinitionTypeTested(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    isDerived: bool | None = Field(
-        None, description="Primary or secondary specimen."
-    )
+    isDerived: bool | None = Field(None, description="Primary or secondary specimen.")
     type: FHIRCodeableConcept | None = Field(
         None, description="Type of intended specimen."
     )
-    preference: str = Field(
-        ..., description="preferred | alternate."
-    )
+    preference: str = Field(..., description="preferred | alternate.")
     container: FHIRSpecimenDefinitionContainer | None = Field(
         None, description="The specimen's container."
     )
-    requirement: str | None = Field(
-        None, description="Specimen requirements."
-    )
-    retentionTime: FHIRQuantity | None = Field(
-        None, description="Retention time."
-    )
+    requirement: str | None = Field(None, description="Specimen requirements.")
+    retentionTime: FHIRQuantity | None = Field(None, description="Retention time.")
     rejectionCriterion: list[FHIRCodeableConcept] | None = Field(
         None, description="Rejection criteria."
     )
@@ -146,12 +130,8 @@ class PlainSpecimenDefinitionContainer(BaseModel):
     cap: PlainSpecimenDefinitionCodeableConcept | None = Field(
         None, description="Color of the cap of the container."
     )
-    description: str | None = Field(
-        None, description="Description of the container."
-    )
-    capacity_value: float | None = Field(
-        None, description="Container volume value."
-    )
+    description: str | None = Field(None, description="Description of the container.")
+    capacity_value: float | None = Field(None, description="Container volume value.")
     capacity_unit: str | None = Field(None, description="Container capacity unit.")
     capacity_system: str | None = Field(None, description="Container capacity system.")
     capacity_code: str | None = Field(None, description="Container capacity code.")
@@ -165,9 +145,15 @@ class PlainSpecimenDefinitionContainer(BaseModel):
     minimum_volume_quantity_comparator: str | None = Field(
         None, description="Minimum volume comparator."
     )
-    minimum_volume_quantity_unit: str | None = Field(None, description="Minimum volume unit.")
-    minimum_volume_quantity_system: str | None = Field(None, description="Minimum volume system.")
-    minimum_volume_quantity_code: str | None = Field(None, description="Minimum volume code.")
+    minimum_volume_quantity_unit: str | None = Field(
+        None, description="Minimum volume unit."
+    )
+    minimum_volume_quantity_system: str | None = Field(
+        None, description="Minimum volume system."
+    )
+    minimum_volume_quantity_code: str | None = Field(
+        None, description="Minimum volume code."
+    )
 
     additive: list[PlainSpecimenDefinitionAdditive] | None = Field(
         None, description="Additive associated with container."
@@ -190,14 +176,22 @@ class PlainSpecimenDefinitionHandling(BaseModel):
         None, description="Low limit of temperature range."
     )
     temperature_range_low_unit: str | None = Field(None, description="Low limit unit.")
-    temperature_range_low_system: str | None = Field(None, description="Low limit system.")
+    temperature_range_low_system: str | None = Field(
+        None, description="Low limit system."
+    )
     temperature_range_low_code: str | None = Field(None, description="Low limit code.")
     temperature_range_high_value: float | None = Field(
         None, description="High limit of temperature range."
     )
-    temperature_range_high_unit: str | None = Field(None, description="High limit unit.")
-    temperature_range_high_system: str | None = Field(None, description="High limit system.")
-    temperature_range_high_code: str | None = Field(None, description="High limit code.")
+    temperature_range_high_unit: str | None = Field(
+        None, description="High limit unit."
+    )
+    temperature_range_high_system: str | None = Field(
+        None, description="High limit system."
+    )
+    temperature_range_high_code: str | None = Field(
+        None, description="High limit code."
+    )
 
     max_duration_value: float | None = Field(
         None, description="Maximum preservation time value."
@@ -206,12 +200,12 @@ class PlainSpecimenDefinitionHandling(BaseModel):
         None, description="Maximum duration comparator."
     )
     max_duration_unit: str | None = Field(None, description="Maximum duration unit.")
-    max_duration_system: str | None = Field(None, description="Maximum duration system.")
+    max_duration_system: str | None = Field(
+        None, description="Maximum duration system."
+    )
     max_duration_code: str | None = Field(None, description="Maximum duration code.")
 
-    instruction: str | None = Field(
-        None, description="Preservation instruction."
-    )
+    instruction: str | None = Field(None, description="Preservation instruction.")
 
 
 class PlainSpecimenDefinitionTypeTested(BaseModel):
@@ -220,21 +214,15 @@ class PlainSpecimenDefinitionTypeTested(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     id: int = Field(..., description="Internal DB ID.")
-    is_derived: bool | None = Field(
-        None, description="Primary or secondary specimen."
-    )
+    is_derived: bool | None = Field(None, description="Primary or secondary specimen.")
     type: PlainSpecimenDefinitionCodeableConcept | None = Field(
         None, description="Type of intended specimen."
     )
-    preference: str = Field(
-        ..., description="preferred | alternate."
-    )
+    preference: str = Field(..., description="preferred | alternate.")
     container: PlainSpecimenDefinitionContainer | None = Field(
         None, description="The specimen's container."
     )
-    requirement: str | None = Field(
-        None, description="Specimen requirements."
-    )
+    requirement: str | None = Field(None, description="Specimen requirements.")
     retention_time_value: float | None = Field(
         None, description="Retention time duration value."
     )
@@ -242,7 +230,9 @@ class PlainSpecimenDefinitionTypeTested(BaseModel):
         None, description="Retention time duration comparator."
     )
     retention_time_unit: str | None = Field(None, description="Retention time unit.")
-    retention_time_system: str | None = Field(None, description="Retention time system.")
+    retention_time_system: str | None = Field(
+        None, description="Retention time system."
+    )
     retention_time_code: str | None = Field(None, description="Retention time code.")
 
     rejection_criterion: list[PlainSpecimenDefinitionChildConcept] | None = Field(

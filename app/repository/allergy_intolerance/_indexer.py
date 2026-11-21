@@ -27,7 +27,12 @@ from app.models.allergy_intolerance import (
     AllergyIntoleranceToken,
     AllergyIntoleranceType,
 )
-from app.repository._content_index import identifier_rows, period_bounds, relative, type_rows
+from app.repository._content_index import (
+    identifier_rows,
+    period_bounds,
+    relative,
+    type_rows,
+)
 
 from ._shared import typed
 
@@ -54,13 +59,25 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             refs.append((label, parsed[0], reference))
 
     for identifier in document.get("identifier") or []:
-        add("identifier.assigner", (identifier.get("assigner") or {}).get("reference"), "Organization")
+        add(
+            "identifier.assigner",
+            (identifier.get("assigner") or {}).get("reference"),
+            "Organization",
+        )
     add("patient", (document.get("patient") or {}).get("reference"), "Patient")
     add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add_typed("recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES)
-    add_typed("asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES)
+    add_typed(
+        "recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES
+    )
+    add_typed(
+        "asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES
+    )
     for note in document.get("note") or []:
-        add_typed("note.authorReference", (note.get("authorReference") or {}).get("reference"), _NOTE_AUTHOR_TYPES)
+        add_typed(
+            "note.authorReference",
+            (note.get("authorReference") or {}).get("reference"),
+            _NOTE_AUTHOR_TYPES,
+        )
     for reaction in document.get("reaction") or []:
         for note in reaction.get("note") or []:
             add_typed(
@@ -107,7 +124,9 @@ def index_columns(document: dict) -> dict:
     occurrence_start, occurrence_end = _instant_bounds(document.get("lastOccurrence"))
     return {
         "type": _enum(AllergyIntoleranceType, document.get("type")),
-        "criticality": _enum(AllergyIntoleranceCriticality, document.get("criticality")),
+        "criticality": _enum(
+            AllergyIntoleranceCriticality, document.get("criticality")
+        ),
         "recorded_date_start": recorded_start,
         "recorded_date_end": recorded_end,
         "last_occurrence_start": occurrence_start,
@@ -119,13 +138,21 @@ def index_columns(document: dict) -> dict:
 
 
 def _concept_rows(param: str, concept: dict | None) -> list:
-    return type_rows(partial(AllergyIntoleranceToken, param=param), concept) if concept else []
+    return (
+        type_rows(partial(AllergyIntoleranceToken, param=param), concept)
+        if concept
+        else []
+    )
 
 
 def _code_row(param: str, code: str | None) -> list:
     """A row for a plain `code` element (category, severity): the code with its
     fixed FHIR system."""
-    return [AllergyIntoleranceToken(param=param, system=CODE_SYSTEMS[param], code=code)] if code else []
+    return (
+        [AllergyIntoleranceToken(param=param, system=CODE_SYSTEMS[param], code=code)]
+        if code
+        else []
+    )
 
 
 def _token_rows(document: dict) -> list:
@@ -157,7 +184,9 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by AllergyIntoleranceModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(AllergyIntoleranceIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(AllergyIntoleranceIdentifier, i)
         ],
         "tokens": _token_rows(document),
         "reactions": _reaction_rows(document),

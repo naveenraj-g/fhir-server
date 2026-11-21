@@ -63,12 +63,8 @@ class CommunicationRequestIdentifier(TenantAuditMixin, Base):
     assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
     assigner_identifier_system = Column(String, nullable=True)
     assigner_identifier_value = Column(String, nullable=True)
-    assigner_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    assigner_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
     communication_request = relationship(
         "CommunicationRequestModel", back_populates="identifiers"
@@ -80,9 +76,7 @@ class CommunicationRequestIdentifier(TenantAuditMixin, Base):
     )
 
 
-class CommunicationRequestIdentifierTypeCoding(
-    FhirCodingMixin, TenantAuditMixin, Base
-):
+class CommunicationRequestIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
     """CommunicationRequest.identifier.type.coding (0..*) grandchild table."""
 
     __tablename__ = "communication_request_identifier_type_coding"

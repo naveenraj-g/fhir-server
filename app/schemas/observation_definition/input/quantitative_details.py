@@ -15,7 +15,8 @@ class ObservationDefinitionQuantitativeDetailsInput(BaseModel):
         None, description="SI unit used to report quantitative results."
     )
     conversion_factor: float | None = Field(
-        None, description="Factor for converting value expressed with SI unit to customary unit."
+        None,
+        description="Factor for converting value expressed with SI unit to customary unit.",
     )
     decimal_precision: int | None = Field(
         None, description="Number of digits after decimal separator."

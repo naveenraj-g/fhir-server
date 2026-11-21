@@ -63,7 +63,9 @@ class ObservationDefinitionIdentifier(TenantAuditMixin, Base):
     )
 
 
-class ObservationDefinitionIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
+class ObservationDefinitionIdentifierTypeCoding(
+    FhirCodingMixin, TenantAuditMixin, Base
+):
     """ObservationDefinition.identifier.type.coding (0..*) grandchild table."""
 
     __tablename__ = "observation_definition_identifier_type_coding"

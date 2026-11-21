@@ -21,7 +21,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import FHIRBase
-from app.main import app, container, mount_routers  # triggers all model & router imports
+from app.main import (
+    app,
+    container,
+    mount_routers,
+)  # triggers all model & router imports
 from app.auth.dependencies import get_current_user
 from app.middleware.rate_limit import RateLimitMiddleware
 
@@ -70,6 +74,7 @@ _orig_array_result_processor = ARRAY.result_processor
 
 def _array_bind_processor(self, dialect):
     if dialect.name == "sqlite":
+
         def process(value):
             return None if value is None else json.dumps(list(value))
 
@@ -79,6 +84,7 @@ def _array_bind_processor(self, dialect):
 
 def _array_result_processor(self, dialect, coltype):
     if dialect.name == "sqlite":
+
         def process(value):
             return None if value is None else json.loads(value)
 
@@ -123,6 +129,7 @@ def _array_contains_sqlite(element, compiler, **kw):
     col_sql = compiler.process(element.column, **kw)
     val_sql = compiler.process(bindparam(None, element.value), **kw)
     return f"EXISTS (SELECT 1 FROM json_each({col_sql}) WHERE value = {val_sql})"
+
 
 # app.fhir.search.sql.ArrayAnyLike — FHIR string search (default starts-with /
 # :contains) over a normalized ARRAY(String) column (Organization alias,
@@ -244,6 +251,7 @@ def _simulate_bigint_pk(mapper, connection, target) -> None:
 
 # ── TestDatabase ───────────────────────────────────────────────────────────────
 
+
 class TestDatabase:
     """Drop-in replacement for app.core.database.Database using a pre-built engine."""
 
@@ -271,6 +279,7 @@ class TestDatabase:
 
 
 # ── Auth helpers ───────────────────────────────────────────────────────────────
+
 
 def make_test_user(
     sub: str = "u-test",
@@ -345,7 +354,9 @@ def _register_sqlite_math(dbapi_conn, _connection_record) -> None:
 # from the bundle instead makes every resource's base layer available here
 # too, matching production exactly.
 
-_PROFILING_ROOT = Path(__file__).resolve().parent.parent / "scripts" / "data" / "profiling"
+_PROFILING_ROOT = (
+    Path(__file__).resolve().parent.parent / "scripts" / "data" / "profiling"
+)
 _SPEC_ROOT = Path(__file__).resolve().parent.parent / "app" / "fhir" / "spec"
 
 
@@ -375,10 +386,14 @@ async def _seed_fhir_profiles(engine) -> None:
     from app.models.fhir_profile.fhir_profile import FhirProfile
 
     country_sd = json.loads(
-        (_PROFILING_ROOT / "resources" / "organization" / "country_in.json").read_text(encoding="utf-8")
+        (_PROFILING_ROOT / "resources" / "organization" / "country_in.json").read_text(
+            encoding="utf-8"
+        )
     )
 
-    session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    session_maker = async_sessionmaker(
+        bind=engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_maker() as session:
         base_rows = {}
         for sd in _discover_base_structure_definitions():
@@ -423,6 +438,7 @@ async def _seed_fhir_profiles(engine) -> None:
 
 # ── Shared engine fixture ──────────────────────────────────────────────────────
 
+
 @pytest.fixture
 async def _engine():
     """Single in-memory SQLite engine per test (StaticPool → one connection)."""
@@ -443,6 +459,7 @@ async def _engine():
 
 # ── Primary test client ────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 async def client(_engine):
     """AsyncClient authenticated as u-test / org-test with full patient permissions."""
@@ -461,6 +478,7 @@ async def client(_engine):
 
 
 # ── Alternate-org client (same database, different identity) ───────────────────
+
 
 @pytest.fixture
 async def other_client(_engine):

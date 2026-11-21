@@ -75,9 +75,7 @@ class _FullMixin:
         rebuilt."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(EndpointModel).where(
-                    EndpointModel.endpoint_id == endpoint_id
-                )
+                select(EndpointModel).where(EndpointModel.endpoint_id == endpoint_id)
             )
             endpoint = (await session.execute(stmt)).scalars().first()
             if not endpoint:

@@ -7,7 +7,10 @@ from app.core.database import FHIRBase as Base
 PERFORMER_TYPES = ("Practitioner", "PractitionerRole", "Organization", "CareTeam")
 
 # Which search parameter a row feeds, and the DiagnosticReport element it is read from.
-PERFORMER_PARAMS = {"performer": "performer", "results-interpreter": "resultsInterpreter"}
+PERFORMER_PARAMS = {
+    "performer": "performer",
+    "results-interpreter": "resultsInterpreter",
+}
 
 
 class DiagnosticReportPerformer(Base):
@@ -27,10 +30,19 @@ class DiagnosticReportPerformer(Base):
                    -> reference_identifier_system/_value"""
 
     __tablename__ = "diagnostic_report_performer"
-    __table_args__ = (Index("ix_diagnostic_report_performer_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_diagnostic_report_performer_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    diagnostic_report_pk = Column(BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True)
+    diagnostic_report_pk = Column(
+        BigInteger, ForeignKey("diagnostic_report.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
@@ -38,4 +50,6 @@ class DiagnosticReportPerformer(Base):
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
 
-    diagnostic_report = relationship("DiagnosticReportModel", back_populates="performers")
+    diagnostic_report = relationship(
+        "DiagnosticReportModel", back_populates="performers"
+    )

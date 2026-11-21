@@ -24,7 +24,8 @@ class SpecimenDefinitionIdentifierInput(BaseModel):
         None, description="Establishes the namespace for the value."
     )
     value: str | None = Field(
-        None, description="The portion typically relevant to the user, unique within the system."
+        None,
+        description="The portion typically relevant to the user, unique within the system.",
     )
     period_start: datetime | None = Field(
         None, description="Start of the identifier's validity period."
@@ -33,7 +34,8 @@ class SpecimenDefinitionIdentifierInput(BaseModel):
         None, description="End of the identifier's validity period."
     )
     assigner: str | None = Field(
-        None, description="Organization that issued/manages this identifier, as a FHIR reference string."
+        None,
+        description="Organization that issued/manages this identifier, as a FHIR reference string.",
     )
     assigner_display: str | None = Field(
         None, description="Plain text narrative identifying the assigning organization."

@@ -17,7 +17,12 @@ def _with_relationships(stmt):
     """Eager-load the search-index child rows. Only needed when a write is
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from ImmunizationEvaluationModel.content."""
-    return stmt.options(*(selectinload(getattr(ImmunizationEvaluationModel, rel)) for rel in INDEX_RELATIONSHIPS))
+    return stmt.options(
+        *(
+            selectinload(getattr(ImmunizationEvaluationModel, rel))
+            for rel in INDEX_RELATIONSHIPS
+        )
+    )
 
 
 def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:

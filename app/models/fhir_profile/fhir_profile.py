@@ -105,9 +105,7 @@ class FhirProfile(FHIRBase):
     # "baseDefinition" field — a plain FK here means walking/validating the
     # chain is a cheap indexed query, not a JSONB parse, and the DB can
     # enforce a child's parent genuinely exists.
-    parent_profile_id = Column(
-        BigInteger, ForeignKey("fhir_profile.id"), nullable=True
-    )
+    parent_profile_id = Column(BigInteger, ForeignKey("fhir_profile.id"), nullable=True)
 
     # Redundant with (but kept in sync against) structure_definition's own
     # "url" field — the same value that gets passed as the `profile` query

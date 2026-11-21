@@ -7,7 +7,9 @@ from app.models.shared import TenantAuditMixin
 
 from .enums import DiagnosticReportStatus
 
-diagnostic_report_id_seq = Sequence("diagnostic_report_pub_seq", start=110000, increment=1, metadata=Base.metadata)
+diagnostic_report_id_seq = Sequence(
+    "diagnostic_report_pub_seq", start=110000, increment=1, metadata=Base.metadata
+)
 
 # R4 targets of DiagnosticReport.subject.
 SUBJECT_TYPES = ("Patient", "Group", "Device", "Location")
@@ -67,7 +69,11 @@ class DiagnosticReportModel(TenantAuditMixin, Base):
 
     __tablename__ = "diagnostic_report"
     __table_args__ = (
-        Index("ix_diagnostic_report_effective_date", "effective_date_start", "effective_date_end"),
+        Index(
+            "ix_diagnostic_report_effective_date",
+            "effective_date_start",
+            "effective_date_end",
+        ),
         Index("ix_diagnostic_report_subject_type_id", "subject_type", "subject_id"),
     )
 
@@ -117,7 +123,23 @@ class DiagnosticReportModel(TenantAuditMixin, Base):
     encounter_identifier_system = Column(String, nullable=True)
     encounter_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("DiagnosticReportIdentifier", back_populates="diagnostic_report", cascade="all, delete-orphan")
-    tokens = relationship("DiagnosticReportToken", back_populates="diagnostic_report", cascade="all, delete-orphan")
-    references = relationship("DiagnosticReportReference", back_populates="diagnostic_report", cascade="all, delete-orphan")
-    performers = relationship("DiagnosticReportPerformer", back_populates="diagnostic_report", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "DiagnosticReportIdentifier",
+        back_populates="diagnostic_report",
+        cascade="all, delete-orphan",
+    )
+    tokens = relationship(
+        "DiagnosticReportToken",
+        back_populates="diagnostic_report",
+        cascade="all, delete-orphan",
+    )
+    references = relationship(
+        "DiagnosticReportReference",
+        back_populates="diagnostic_report",
+        cascade="all, delete-orphan",
+    )
+    performers = relationship(
+        "DiagnosticReportPerformer",
+        back_populates="diagnostic_report",
+        cascade="all, delete-orphan",
+    )

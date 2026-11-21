@@ -26,7 +26,13 @@ __all__ = [
 # on this server (registered in RESOURCE_REGISTRY — see
 # app/core/reference_resolver.py). Every one is registered, so a
 # relative reference to one is existence-checked on write.
-MODELED_TYPES = {"Organization", "Practitioner", "PractitionerRole", "Patient", "RelatedPerson"}
+MODELED_TYPES = {
+    "Organization",
+    "Practitioner",
+    "PractitionerRole",
+    "Patient",
+    "RelatedPerson",
+}
 
 _REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
@@ -38,7 +44,14 @@ def _with_relationships(stmt):
     return stmt.options(
         *(
             selectinload(getattr(PatientModel, rel))
-            for rel in ("identifiers", "names", "telecoms", "addresses", "communications", "references")
+            for rel in (
+                "identifiers",
+                "names",
+                "telecoms",
+                "addresses",
+                "communications",
+                "references",
+            )
         )
     )
 

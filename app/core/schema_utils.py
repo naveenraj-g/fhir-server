@@ -21,7 +21,7 @@ def inline_schema(schema: dict) -> dict:
     def _resolve(node: Any, seen: frozenset) -> Any:
         if isinstance(node, dict):
             if "$ref" in node and node["$ref"].startswith("#/$defs/"):
-                name = node["$ref"][len("#/$defs/"):]
+                name = node["$ref"][len("#/$defs/") :]
                 if name in seen or name not in defs:
                     return {"type": "object", "description": f"(recursive ref: {name})"}
                 return _resolve(defs[name], seen | {name})

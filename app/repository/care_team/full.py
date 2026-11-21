@@ -72,12 +72,16 @@ def _coding_kwargs(coding, org_id: str, created_by: str) -> dict:
     }
 
 
-async def _add_identifiers(session, care_team_pk: int, org_id: str, identifiers, created_by: str) -> None:
+async def _add_identifiers(
+    session, care_team_pk: int, org_id: str, identifiers, created_by: str
+) -> None:
     for i in identifiers or []:
         a_type, a_id = _parse_assigner_ref(i.assigner) if i.assigner else (None, None)
         if a_type and a_id:
             await _validate_ref(session, org_id, a_type, a_id, "identifier.assigner")
-        type_text = getattr(i, "type_text", None) or (i.type.text if getattr(i, "type", None) else None)
+        type_text = getattr(i, "type_text", None) or (
+            i.type.text if getattr(i, "type", None) else None
+        )
         ident = CareTeamIdentifier(
             care_team_pk=care_team_pk,
             tenant_id=org_id,
@@ -96,7 +100,9 @@ async def _add_identifiers(session, care_team_pk: int, org_id: str, identifiers,
         )
         session.add(ident)
         await session.flush()
-        type_codings = getattr(i, "type_coding", None) or (i.type.coding if getattr(i, "type", None) else None)
+        type_codings = getattr(i, "type_coding", None) or (
+            i.type.coding if getattr(i, "type", None) else None
+        )
         if type_codings:
             for c in type_codings:
                 session.add(
@@ -107,7 +113,9 @@ async def _add_identifiers(session, care_team_pk: int, org_id: str, identifiers,
                 )
 
 
-async def _add_categories(session, care_team_pk: int, org_id: str, categories, created_by: str) -> None:
+async def _add_categories(
+    session, care_team_pk: int, org_id: str, categories, created_by: str
+) -> None:
     for c in categories or []:
         cat = CareTeamCategory(
             care_team_pk=care_team_pk,
@@ -127,14 +135,20 @@ async def _add_categories(session, care_team_pk: int, org_id: str, categories, c
                 )
 
 
-async def _add_participants(session, care_team_pk: int, org_id: str, participants, created_by: str) -> None:
+async def _add_participants(
+    session, care_team_pk: int, org_id: str, participants, created_by: str
+) -> None:
     for p in participants or []:
         m_type, m_id = _parse_member_ref(p.member) if p.member else (None, None)
         if m_type and m_id:
             await _validate_ref(session, org_id, m_type, m_id, "participant.member")
-        ob_type, ob_id = _parse_on_behalf_of_ref(p.on_behalf_of) if p.on_behalf_of else (None, None)
+        ob_type, ob_id = (
+            _parse_on_behalf_of_ref(p.on_behalf_of) if p.on_behalf_of else (None, None)
+        )
         if ob_type and ob_id:
-            await _validate_ref(session, org_id, ob_type, ob_id, "participant.on_behalf_of")
+            await _validate_ref(
+                session, org_id, ob_type, ob_id, "participant.on_behalf_of"
+            )
 
         participant = CareTeamParticipant(
             care_team_pk=care_team_pk,
@@ -176,7 +190,9 @@ async def _add_participants(session, care_team_pk: int, org_id: str, participant
                         )
 
 
-async def _add_reason_codes(session, care_team_pk: int, org_id: str, reason_codes, created_by: str) -> None:
+async def _add_reason_codes(
+    session, care_team_pk: int, org_id: str, reason_codes, created_by: str
+) -> None:
     for r in reason_codes or []:
         rc = CareTeamReasonCode(
             care_team_pk=care_team_pk,
@@ -196,7 +212,9 @@ async def _add_reason_codes(session, care_team_pk: int, org_id: str, reason_code
                 )
 
 
-async def _add_reason_references(session, care_team_pk: int, org_id: str, reason_references, created_by: str) -> None:
+async def _add_reason_references(
+    session, care_team_pk: int, org_id: str, reason_references, created_by: str
+) -> None:
     for ref_item in reason_references or []:
         ref_kwargs = _child_reference_kwargs(ref_item)
         r_type, r_id = (
@@ -218,7 +236,9 @@ async def _add_reason_references(session, care_team_pk: int, org_id: str, reason
         )
 
 
-async def _add_managing_organizations(session, care_team_pk: int, org_id: str, managing_organizations, created_by: str) -> None:
+async def _add_managing_organizations(
+    session, care_team_pk: int, org_id: str, managing_organizations, created_by: str
+) -> None:
     for ref_item in managing_organizations or []:
         ref_kwargs = _child_reference_kwargs(ref_item)
         m_type, m_id = (
@@ -240,7 +260,9 @@ async def _add_managing_organizations(session, care_team_pk: int, org_id: str, m
         )
 
 
-async def _add_telecoms(session, care_team_pk: int, org_id: str, telecoms, created_by: str) -> None:
+async def _add_telecoms(
+    session, care_team_pk: int, org_id: str, telecoms, created_by: str
+) -> None:
     for t in telecoms or []:
         session.add(
             CareTeamTelecom(
@@ -252,11 +274,7 @@ async def _add_telecoms(session, care_team_pk: int, org_id: str, telecoms, creat
                     else t.system
                 ),
                 value=t.value,
-                use=(
-                    ContactPointUse(t.use)
-                    if isinstance(t.use, str)
-                    else t.use
-                ),
+                use=(ContactPointUse(t.use) if isinstance(t.use, str) else t.use),
                 rank=t.rank,
                 period_start=t.period_start,
                 period_end=t.period_end,
@@ -265,7 +283,9 @@ async def _add_telecoms(session, care_team_pk: int, org_id: str, telecoms, creat
         )
 
 
-async def _add_notes(session, care_team_pk: int, org_id: str, notes, created_by: str) -> None:
+async def _add_notes(
+    session, care_team_pk: int, org_id: str, notes, created_by: str
+) -> None:
     for n in notes or []:
         auth_type, auth_id = (
             _parse_note_author_ref(n.author_reference)
@@ -300,11 +320,17 @@ class _FullMixin:
         created_by: str,
     ) -> CareTeamModel:
         async with self.session_factory() as session:
-            s_type, s_id = _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            s_type, s_id = (
+                _parse_subject_ref(payload.subject) if payload.subject else (None, None)
+            )
             if s_type and s_id:
                 await _validate_ref(session, org_id, s_type, s_id, "subject")
 
-            e_type, e_id = _parse_encounter_ref(payload.encounter) if payload.encounter else (None, None)
+            e_type, e_id = (
+                _parse_encounter_ref(payload.encounter)
+                if payload.encounter
+                else (None, None)
+            )
             if e_type and e_id:
                 await _validate_ref(session, org_id, e_type, e_id, "encounter")
 
@@ -330,13 +356,27 @@ class _FullMixin:
             await session.flush()
 
             # Add collections
-            await _add_identifiers(session, care_team.id, org_id, payload.identifier, created_by)
-            await _add_categories(session, care_team.id, org_id, payload.category, created_by)
-            await _add_participants(session, care_team.id, org_id, payload.participant, created_by)
-            await _add_reason_codes(session, care_team.id, org_id, payload.reason_code, created_by)
-            await _add_reason_references(session, care_team.id, org_id, payload.reason_reference, created_by)
-            await _add_managing_organizations(session, care_team.id, org_id, payload.managing_organization, created_by)
-            await _add_telecoms(session, care_team.id, org_id, payload.telecom, created_by)
+            await _add_identifiers(
+                session, care_team.id, org_id, payload.identifier, created_by
+            )
+            await _add_categories(
+                session, care_team.id, org_id, payload.category, created_by
+            )
+            await _add_participants(
+                session, care_team.id, org_id, payload.participant, created_by
+            )
+            await _add_reason_codes(
+                session, care_team.id, org_id, payload.reason_code, created_by
+            )
+            await _add_reason_references(
+                session, care_team.id, org_id, payload.reason_reference, created_by
+            )
+            await _add_managing_organizations(
+                session, care_team.id, org_id, payload.managing_organization, created_by
+            )
+            await _add_telecoms(
+                session, care_team.id, org_id, payload.telecom, created_by
+            )
             await _add_notes(session, care_team.id, org_id, payload.note, created_by)
 
             await session.commit()
@@ -373,8 +413,14 @@ class _FullMixin:
             if "period_end" in fields_set:
                 care_team.period_end = payload.period_end
 
-            subject_fallback_fields = {f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
-            if "subject" in fields_set or "subject_display" in fields_set or (fields_set & subject_fallback_fields):
+            subject_fallback_fields = {
+                f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+            }
+            if (
+                "subject" in fields_set
+                or "subject_display" in fields_set
+                or (fields_set & subject_fallback_fields)
+            ):
                 if payload.subject:
                     s_type, s_id = _parse_subject_ref(payload.subject)
                     await _validate_ref(session, org_id, s_type, s_id, "subject")
@@ -392,8 +438,14 @@ class _FullMixin:
                     if f_name in fields_set:
                         setattr(care_team, f_name, getattr(payload, f_name))
 
-            encounter_fallback_fields = {f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
-            if "encounter" in fields_set or "encounter_display" in fields_set or (fields_set & encounter_fallback_fields):
+            encounter_fallback_fields = {
+                f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+            }
+            if (
+                "encounter" in fields_set
+                or "encounter_display" in fields_set
+                or (fields_set & encounter_fallback_fields)
+            ):
                 if payload.encounter:
                     e_type, e_id = _parse_encounter_ref(payload.encounter)
                     await _validate_ref(session, org_id, e_type, e_id, "encounter")
@@ -414,59 +466,99 @@ class _FullMixin:
             # Sub-resource replacements
             if "identifier" in fields_set:
                 await session.execute(
-                    delete(CareTeamIdentifier).where(CareTeamIdentifier.care_team_pk == care_team.id)
+                    delete(CareTeamIdentifier).where(
+                        CareTeamIdentifier.care_team_pk == care_team.id
+                    )
                 )
                 if payload.identifier:
-                    await _add_identifiers(session, care_team.id, org_id, payload.identifier, updated_by)
+                    await _add_identifiers(
+                        session, care_team.id, org_id, payload.identifier, updated_by
+                    )
 
             if "category" in fields_set:
                 await session.execute(
-                    delete(CareTeamCategory).where(CareTeamCategory.care_team_pk == care_team.id)
+                    delete(CareTeamCategory).where(
+                        CareTeamCategory.care_team_pk == care_team.id
+                    )
                 )
                 if payload.category:
-                    await _add_categories(session, care_team.id, org_id, payload.category, updated_by)
+                    await _add_categories(
+                        session, care_team.id, org_id, payload.category, updated_by
+                    )
 
             if "participant" in fields_set:
                 await session.execute(
-                    delete(CareTeamParticipant).where(CareTeamParticipant.care_team_pk == care_team.id)
+                    delete(CareTeamParticipant).where(
+                        CareTeamParticipant.care_team_pk == care_team.id
+                    )
                 )
                 if payload.participant:
-                    await _add_participants(session, care_team.id, org_id, payload.participant, updated_by)
+                    await _add_participants(
+                        session, care_team.id, org_id, payload.participant, updated_by
+                    )
 
             if "reason_code" in fields_set:
                 await session.execute(
-                    delete(CareTeamReasonCode).where(CareTeamReasonCode.care_team_pk == care_team.id)
+                    delete(CareTeamReasonCode).where(
+                        CareTeamReasonCode.care_team_pk == care_team.id
+                    )
                 )
                 if payload.reason_code:
-                    await _add_reason_codes(session, care_team.id, org_id, payload.reason_code, updated_by)
+                    await _add_reason_codes(
+                        session, care_team.id, org_id, payload.reason_code, updated_by
+                    )
 
             if "reason_reference" in fields_set:
                 await session.execute(
-                    delete(CareTeamReasonReference).where(CareTeamReasonReference.care_team_pk == care_team.id)
+                    delete(CareTeamReasonReference).where(
+                        CareTeamReasonReference.care_team_pk == care_team.id
+                    )
                 )
                 if payload.reason_reference:
-                    await _add_reason_references(session, care_team.id, org_id, payload.reason_reference, updated_by)
+                    await _add_reason_references(
+                        session,
+                        care_team.id,
+                        org_id,
+                        payload.reason_reference,
+                        updated_by,
+                    )
 
             if "managing_organization" in fields_set:
                 await session.execute(
-                    delete(CareTeamManagingOrganization).where(CareTeamManagingOrganization.care_team_pk == care_team.id)
+                    delete(CareTeamManagingOrganization).where(
+                        CareTeamManagingOrganization.care_team_pk == care_team.id
+                    )
                 )
                 if payload.managing_organization:
-                    await _add_managing_organizations(session, care_team.id, org_id, payload.managing_organization, updated_by)
+                    await _add_managing_organizations(
+                        session,
+                        care_team.id,
+                        org_id,
+                        payload.managing_organization,
+                        updated_by,
+                    )
 
             if "telecom" in fields_set:
                 await session.execute(
-                    delete(CareTeamTelecom).where(CareTeamTelecom.care_team_pk == care_team.id)
+                    delete(CareTeamTelecom).where(
+                        CareTeamTelecom.care_team_pk == care_team.id
+                    )
                 )
                 if payload.telecom:
-                    await _add_telecoms(session, care_team.id, org_id, payload.telecom, updated_by)
+                    await _add_telecoms(
+                        session, care_team.id, org_id, payload.telecom, updated_by
+                    )
 
             if "note" in fields_set:
                 await session.execute(
-                    delete(CareTeamNote).where(CareTeamNote.care_team_pk == care_team.id)
+                    delete(CareTeamNote).where(
+                        CareTeamNote.care_team_pk == care_team.id
+                    )
                 )
                 if payload.note:
-                    await _add_notes(session, care_team.id, org_id, payload.note, updated_by)
+                    await _add_notes(
+                        session, care_team.id, org_id, payload.note, updated_by
+                    )
 
             care_team.updated_by = updated_by
 

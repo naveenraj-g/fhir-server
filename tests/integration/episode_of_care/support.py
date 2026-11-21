@@ -125,7 +125,9 @@ def full_episode_of_care(
     }
     if org_id:
         payload["managing_organization"] = f"Organization/{org_id}"
-        payload["managing_organization_display"] = "Princeton-Plainsboro Teaching Hospital"
+        payload["managing_organization_display"] = (
+            "Princeton-Plainsboro Teaching Hospital"
+        )
     if practitioner_id:
         payload["care_manager"] = f"Practitioner/{practitioner_id}"
         payload["care_manager_display"] = "Dr. Gregory House"
@@ -152,7 +154,9 @@ def full_episode_of_care(
     return payload
 
 
-async def create_episode_of_care(client, patient_id: int | None = None, **overrides) -> dict:
+async def create_episode_of_care(
+    client, patient_id: int | None = None, **overrides
+) -> dict:
     if patient_id is None:
         patient_id = await create_test_patient(client)
     payload = minimal_episode_of_care(patient_id)

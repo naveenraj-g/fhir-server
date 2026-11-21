@@ -18,7 +18,15 @@ if TYPE_CHECKING:
     )
 
 _COMPARATOR_SYMBOLS = {"lt": "<", "le": "<=", "ge": ">=", "gt": ">"}
-_OPERATOR_SYMBOLS = {"exists": "exists", "eq": "=", "ne": "!=", "gt": ">", "lt": "<", "ge": ">=", "le": "<="}
+_OPERATOR_SYMBOLS = {
+    "exists": "exists",
+    "eq": "=",
+    "ne": "!=",
+    "gt": ">",
+    "lt": "<",
+    "ge": ">=",
+    "le": "<=",
+}
 
 
 def _fhir_coding_list(codings) -> list[dict]:
@@ -77,13 +85,22 @@ def _fhir_reference_with_identifier_fallback(obj, prefix: str) -> dict:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = fhir_enum(id_use)
@@ -130,7 +147,9 @@ def _fhir_quantity(obj, prefix: str) -> dict:
         k: v
         for k, v in {
             "value": float(value) if value is not None else None,
-            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator)) if comparator else None,
+            "comparator": _COMPARATOR_SYMBOLS.get(fhir_enum(comparator))
+            if comparator
+            else None,
             "unit": getattr(obj, f"{prefix}_unit", None),
             "system": getattr(obj, f"{prefix}_system", None),
             "code": getattr(obj, f"{prefix}_code", None),
@@ -158,7 +177,10 @@ def fhir_questionnaire_identifier(i: QuestionnaireIdentifier) -> dict:
     if i.period_start or i.period_end:
         entry["period"] = {
             k: v
-            for k, v in {"start": fhir_instant(i.period_start), "end": fhir_instant(i.period_end)}.items()
+            for k, v in {
+                "start": fhir_instant(i.period_start),
+                "end": fhir_instant(i.period_end),
+            }.items()
             if v
         }
     assigner = _fhir_reference_with_identifier_fallback(i, "assigner")
@@ -210,9 +232,16 @@ def fhir_questionnaire_use_context(uc: QuestionnaireUseContext) -> dict:
         if uc.value_codeable_concept_text:
             cc["text"] = uc.value_codeable_concept_text
         entry["valueCodeableConcept"] = cc
-    elif uc.value_quantity_value is not None or uc.value_quantity_unit or uc.value_quantity_system or uc.value_quantity_code:
+    elif (
+        uc.value_quantity_value is not None
+        or uc.value_quantity_unit
+        or uc.value_quantity_system
+        or uc.value_quantity_code
+    ):
         entry["valueQuantity"] = _fhir_quantity(uc, "value_quantity")
-    elif any([uc.value_range_low_value is not None, uc.value_range_high_value is not None]):
+    elif any(
+        [uc.value_range_low_value is not None, uc.value_range_high_value is not None]
+    ):
         rng: dict = {}
         low = _fhir_quantity(uc, "value_range_low")
         high = _fhir_quantity(uc, "value_range_high")
@@ -221,7 +250,9 @@ def fhir_questionnaire_use_context(uc: QuestionnaireUseContext) -> dict:
         if high:
             rng["high"] = high
         entry["valueRange"] = rng
-    elif uc.value_reference_reference or (uc.value_reference_type and uc.value_reference_id):
+    elif uc.value_reference_reference or (
+        uc.value_reference_type and uc.value_reference_id
+    ):
         ref = _fhir_reference(uc, "value_reference")
         if ref:
             entry["valueReference"] = ref
@@ -232,7 +263,9 @@ def fhir_questionnaire_use_context(uc: QuestionnaireUseContext) -> dict:
 def fhir_questionnaire_item_enable_when(ew: QuestionnaireItemEnableWhen) -> dict:
     entry: dict = {
         "question": ew.question,
-        "operator": _OPERATOR_SYMBOLS.get(fhir_enum(ew.operator), fhir_enum(ew.operator)),
+        "operator": _OPERATOR_SYMBOLS.get(
+            fhir_enum(ew.operator), fhir_enum(ew.operator)
+        ),
     }
 
     if ew.answer_boolean is not None:
@@ -264,9 +297,16 @@ def fhir_questionnaire_item_enable_when(ew: QuestionnaireItemEnableWhen) -> dict
             }.items()
             if v is not None
         }
-    elif ew.answer_quantity_value is not None or ew.answer_quantity_unit or ew.answer_quantity_system or ew.answer_quantity_code:
+    elif (
+        ew.answer_quantity_value is not None
+        or ew.answer_quantity_unit
+        or ew.answer_quantity_system
+        or ew.answer_quantity_code
+    ):
         entry["answerQuantity"] = _fhir_quantity(ew, "answer_quantity")
-    elif ew.answer_reference_reference or (ew.answer_reference_type and ew.answer_reference_id):
+    elif ew.answer_reference_reference or (
+        ew.answer_reference_type and ew.answer_reference_id
+    ):
         ref = _fhir_reference(ew, "answer_reference")
         if ref:
             entry["answerReference"] = ref
@@ -297,7 +337,9 @@ def fhir_questionnaire_item_answer_option(ao: QuestionnaireItemAnswerOption) -> 
             }.items()
             if v is not None
         }
-    elif ao.value_reference_reference or (ao.value_reference_type and ao.value_reference_id):
+    elif ao.value_reference_reference or (
+        ao.value_reference_type and ao.value_reference_id
+    ):
         ref = _fhir_reference(ao, "value_reference")
         if ref:
             entry["valueReference"] = ref
@@ -357,9 +399,16 @@ def fhir_questionnaire_item_initial(ini: QuestionnaireItemInitial) -> dict:
             }.items()
             if v is not None
         }
-    elif ini.value_quantity_value is not None or ini.value_quantity_unit or ini.value_quantity_system or ini.value_quantity_code:
+    elif (
+        ini.value_quantity_value is not None
+        or ini.value_quantity_unit
+        or ini.value_quantity_system
+        or ini.value_quantity_code
+    ):
         entry["valueQuantity"] = _fhir_quantity(ini, "value_quantity")
-    elif ini.value_reference_reference or (ini.value_reference_type and ini.value_reference_id):
+    elif ini.value_reference_reference or (
+        ini.value_reference_type and ini.value_reference_id
+    ):
         ref = _fhir_reference(ini, "value_reference")
         if ref:
             entry["valueReference"] = ref
@@ -392,7 +441,10 @@ def _build_fhir_item_tree(items: list[QuestionnaireItem]) -> list[dict]:
                 entry["prefix"] = item.prefix
             if item.text:
                 entry["text"] = item.text
-            enable_whens = [fhir_questionnaire_item_enable_when(ew) for ew in (item.enable_whens or [])]
+            enable_whens = [
+                fhir_questionnaire_item_enable_when(ew)
+                for ew in (item.enable_whens or [])
+            ]
             if enable_whens:
                 entry["enableWhen"] = enable_whens
             if item.enable_behavior:
@@ -407,10 +459,15 @@ def _build_fhir_item_tree(items: list[QuestionnaireItem]) -> list[dict]:
                 entry["maxLength"] = item.max_length
             if item.answer_value_set:
                 entry["answerValueSet"] = item.answer_value_set
-            answer_options = [fhir_questionnaire_item_answer_option(ao) for ao in (item.answer_options or [])]
+            answer_options = [
+                fhir_questionnaire_item_answer_option(ao)
+                for ao in (item.answer_options or [])
+            ]
             if answer_options:
                 entry["answerOption"] = answer_options
-            initials = [fhir_questionnaire_item_initial(ini) for ini in (item.initials or [])]
+            initials = [
+                fhir_questionnaire_item_initial(ini) for ini in (item.initials or [])
+            ]
             if initials:
                 entry["initial"] = initials
 
@@ -440,12 +497,19 @@ def _fhir_meta(q: QuestionnaireModel) -> dict:
     if q.tenant_id:
         extensions.append({"url": f"{_EXT_BASE}/org-id", "valueString": q.tenant_id})
     if q.created_by:
-        extensions.append({"url": f"{_EXT_BASE}/created-by", "valueString": q.created_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/created-by", "valueString": q.created_by}
+        )
     if q.updated_by:
-        extensions.append({"url": f"{_EXT_BASE}/updated-by", "valueString": q.updated_by})
+        extensions.append(
+            {"url": f"{_EXT_BASE}/updated-by", "valueString": q.updated_by}
+        )
     if q.created_at:
         extensions.append(
-            {"url": f"{_EXT_BASE}/created-at", "valueDateTime": fhir_instant(q.created_at)}
+            {
+                "url": f"{_EXT_BASE}/created-at",
+                "valueDateTime": fhir_instant(q.created_at),
+            }
         )
     if extensions:
         meta["extension"] = extensions
@@ -523,7 +587,9 @@ def to_fhir_questionnaire(q: QuestionnaireModel) -> dict:
     if use_contexts:
         result["useContext"] = use_contexts
 
-    jurisdictions = [fhir_questionnaire_jurisdiction(j) for j in (q.jurisdictions or [])]
+    jurisdictions = [
+        fhir_questionnaire_jurisdiction(j) for j in (q.jurisdictions or [])
+    ]
     if jurisdictions:
         result["jurisdiction"] = jurisdictions
 

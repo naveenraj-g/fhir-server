@@ -12,14 +12,24 @@ from app.schemas.fhir_input import (
     FhirReferenceInput,
 )
 
-EndpointStatusCode = Literal["active", "suspended", "error", "off", "entered-in-error", "test"]
+EndpointStatusCode = Literal[
+    "active", "suspended", "error", "off", "entered-in-error", "test"
+]
 
 _EXAMPLE = {
     "resourceType": "Endpoint",
     "status": "active",
     "name": "General Hospital FHIR API",
-    "managingOrganization": {"reference": "Organization/190001", "display": "General Hospital"},
-    "identifier": [{"system": "https://fhir-server.dev/fhir/identifier-system/endpoint", "value": "EP-1"}],
+    "managingOrganization": {
+        "reference": "Organization/190001",
+        "display": "General Hospital",
+    },
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/endpoint",
+            "value": "EP-1",
+        }
+    ],
     "connectionType": {
         "system": "http://terminology.hl7.org/CodeSystem/endpoint-connection-type",
         "code": "hl7-fhir-rest",
@@ -60,13 +70,16 @@ class _EndpointFields(FhirInputModel):
         None, description="Identifies this endpoint across multiple systems."
     )
     status: EndpointStatusCode | None = Field(
-        None, description="active | suspended | error | off | entered-in-error | test (required by R4)."
+        None,
+        description="active | suspended | error | off | entered-in-error | test (required by R4).",
     )
     connectionType: FhirCodingInput | None = Field(
         None,
         description="Protocol/Profile/Standard to be used with this endpoint connection (required by R4; extensible binding).",
     )
-    name: str | None = Field(None, description="A name that this endpoint can be identified by.")
+    name: str | None = Field(
+        None, description="A name that this endpoint can be identified by."
+    )
     managingOrganization: FhirReferenceInput | None = Field(
         None,
         description="Organization that manages this endpoint — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
@@ -78,13 +91,16 @@ class _EndpointFields(FhirInputModel):
         None, description="Interval the endpoint is expected to be operational."
     )
     payloadType: list[FhirCodeableConceptInput] | None = Field(
-        None, description="The type of content that may be used at this endpoint (required by R4)."
+        None,
+        description="The type of content that may be used at this endpoint (required by R4).",
     )
     payloadMimeType: list[str] | None = Field(
-        None, description="Mimetype to send. If not specified, the content could be anything (including no payload, if the connectionType defined this)."
+        None,
+        description="Mimetype to send. If not specified, the content could be anything (including no payload, if the connectionType defined this).",
     )
     address: str | None = Field(
-        None, description="The technical base address for connecting to this endpoint (a URL; required by R4)."
+        None,
+        description="The technical base address for connecting to this endpoint (a URL; required by R4).",
     )
     header: list[str] | None = Field(
         None, description="Usage depends on the channel type (e.g. HTTP headers)."
@@ -107,6 +123,9 @@ class EndpointPatchSchema(_EndpointFields):
 
     model_config = {
         "json_schema_extra": {
-            "example": {"status": "suspended", "address": "https://fhir.generalhospital.example/r4-new"}
+            "example": {
+                "status": "suspended",
+                "address": "https://fhir.generalhospital.example/r4-new",
+            }
         }
     }

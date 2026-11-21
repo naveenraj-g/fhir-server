@@ -12,7 +12,10 @@ class ActivityDefinitionDynamicValue(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     path = Column(String, nullable=False)
@@ -22,4 +25,6 @@ class ActivityDefinitionDynamicValue(TenantAuditMixin, Base):
     expression_expression = Column(Text, nullable=True)
     expression_reference = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="dynamic_values")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="dynamic_values"
+    )

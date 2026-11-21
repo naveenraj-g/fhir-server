@@ -85,4 +85,6 @@ class GroupCharacteristicValueCoding(FhirCodingMixin, TenantAuditMixin, Base):
         index=True,
     )
 
-    characteristic = relationship("GroupCharacteristic", back_populates="value_codeable_concept_codings")
+    characteristic = relationship(
+        "GroupCharacteristic", back_populates="value_codeable_concept_codings"
+    )

@@ -5,7 +5,6 @@ from app.services.service_request import ServiceRequestService
 
 
 class ServiceRequestContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     service_request_repository = providers.Factory(

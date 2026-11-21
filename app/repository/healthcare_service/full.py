@@ -87,14 +87,17 @@ class _FullMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(HealthcareServiceModel).where(
-                    HealthcareServiceModel.healthcare_service_id == healthcare_service_id
+                    HealthcareServiceModel.healthcare_service_id
+                    == healthcare_service_id
                 )
             )
             healthcare_service = (await session.execute(stmt)).scalars().first()
             if not healthcare_service:
                 return None
 
-            await _validate_local_references(session, healthcare_service.tenant_id, document)
+            await _validate_local_references(
+                session, healthcare_service.tenant_id, document
+            )
 
             healthcare_service.content = _storable(document)
             for column, value in index_columns(document).items():

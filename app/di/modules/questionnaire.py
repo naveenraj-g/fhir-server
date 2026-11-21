@@ -5,7 +5,6 @@ from app.services.questionnaire import QuestionnaireService
 
 
 class QuestionnaireContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     questionnaire_repository = providers.Factory(

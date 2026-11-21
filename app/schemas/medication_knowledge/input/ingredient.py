@@ -23,22 +23,44 @@ class MedicationKnowledgeIngredientInput(BaseModel):
         None,
         description="Active or inactive ingredient reference. Reference(Substance | Medication).",
     )
-    item_display: str | None = Field(None, description="Display text for item reference.")
-    item_identifier_use: IdentifierUse | None = Field(None, description="Fallback identifier — purpose.")
-    item_identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
-    item_identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
-    item_identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
-    item_identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
-    item_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user selected.")
-    item_identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
-    item_identifier_system: str | None = Field(None, description="Fallback identifier — system.")
-    item_identifier_value: str | None = Field(None, description="Fallback identifier — value.")
-    item_identifier_period_start: datetime | None = Field(None, description="Fallback identifier — period start.")
-    item_identifier_period_end: datetime | None = Field(None, description="Fallback identifier — period end.")
-
-    is_active: bool | None = Field(
-        None, description="Active ingredient indicator."
+    item_display: str | None = Field(
+        None, description="Display text for item reference."
     )
+    item_identifier_use: IdentifierUse | None = Field(
+        None, description="Fallback identifier — purpose."
+    )
+    item_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — type system."
+    )
+    item_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — type version."
+    )
+    item_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — type code."
+    )
+    item_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — type display."
+    )
+    item_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — type user selected."
+    )
+    item_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — type text."
+    )
+    item_identifier_system: str | None = Field(
+        None, description="Fallback identifier — system."
+    )
+    item_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value."
+    )
+    item_identifier_period_start: datetime | None = Field(
+        None, description="Fallback identifier — period start."
+    )
+    item_identifier_period_end: datetime | None = Field(
+        None, description="Fallback identifier — period end."
+    )
+
+    is_active: bool | None = Field(None, description="Active ingredient indicator.")
     strength: MedicationKnowledgeRatioInput | None = Field(
         None, description="Quantity of ingredient present."
     )

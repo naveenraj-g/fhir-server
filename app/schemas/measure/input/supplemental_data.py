@@ -9,9 +9,16 @@ class MeasureSupplementalDataInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    code: MeasureCodeableConceptInput | None = Field(None, description="Meaning of the supplemental data.")
+    code: MeasureCodeableConceptInput | None = Field(
+        None, description="Meaning of the supplemental data."
+    )
     usage: list[MeasureCodeableConceptInput] | None = Field(
         None, description="supplemental-data | risk-adjustment-factor."
     )
-    description: str | None = Field(None, description="The human readable description of this supplemental data.")
-    criteria: MeasureExpressionInput = Field(..., description="The criteria that defines the supplemental data (1..1 Expression).")
+    description: str | None = Field(
+        None, description="The human readable description of this supplemental data."
+    )
+    criteria: MeasureExpressionInput = Field(
+        ...,
+        description="The criteria that defines the supplemental data (1..1 Expression).",
+    )

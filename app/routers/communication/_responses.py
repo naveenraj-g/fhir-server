@@ -20,14 +20,10 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PlainCommunicationResponse.model_json_schema()
-                )
+                "schema": inline_schema(PlainCommunicationResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRCommunicationSchema.model_json_schema()
-                )
+                "schema": inline_schema(FHIRCommunicationSchema.model_json_schema())
             },
         }
     }
@@ -43,9 +39,7 @@ _LIST_200 = {
                 )
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRCommunicationBundle.model_json_schema()
-                )
+                "schema": inline_schema(FHIRCommunicationBundle.model_json_schema())
             },
         },
     }

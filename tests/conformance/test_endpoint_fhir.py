@@ -32,11 +32,15 @@ D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 def _endpoint(**changes) -> EndpointModel:
-    overrides = {k: changes.pop(k) for k in ("updated_by", "updated_at") if k in changes}
+    overrides = {
+        k: changes.pop(k) for k in ("updated_by", "updated_at") if k in changes
+    }
     fields = {
         "endpoint_id": 620001,
         "tenant_id": "org-test",
@@ -65,7 +69,14 @@ CASES = {
         identifier=[
             {
                 "use": "official",
-                "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "EPT"}]},
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "EPT",
+                        }
+                    ]
+                },
                 "system": "https://fhir-server.dev/fhir/identifier-system/endpoint",
                 "value": "EP-1",
                 "assigner": {"reference": "Organization/190001"},
@@ -74,7 +85,9 @@ CASES = {
     ),
     "name_contact_period": _endpoint(
         name="General Hospital FHIR API",
-        contact=[{"system": "email", "value": "it@example.org", "use": "work", "rank": 1}],
+        contact=[
+            {"system": "email", "value": "it@example.org", "use": "work", "rank": 1}
+        ],
         period={"start": "2026-01-01T00:00:00Z", "end": "2027-01-01T00:00:00Z"},
     ),
     "payload_types_and_mime_types": _endpoint(
@@ -86,10 +99,19 @@ CASES = {
     ),
     "headers": _endpoint(header=["Authorization: Bearer abc", "X-Tenant: one"]),
     "extension": _endpoint(
-        extension=[{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
     ),
     "full_payload": EndpointModel(
-        endpoint_id=620001, tenant_id="org-test", created_by="u-test", created_at=D, content=_stored(FULL)
+        endpoint_id=620001,
+        tenant_id="org-test",
+        created_by="u-test",
+        created_at=D,
+        content=_stored(FULL),
     ),
 }
 
@@ -102,11 +124,19 @@ def test_endpoint_mapper_emits_valid_fhir_r4(case):
 def test_mapper_serves_content_unchanged():
     content = _stored(FULL)
     out = to_fhir_endpoint(
-        EndpointModel(endpoint_id=620001, tenant_id="org-test", created_by="u-test", created_at=D, content=content)
+        EndpointModel(
+            endpoint_id=620001,
+            tenant_id="org-test",
+            created_by="u-test",
+            created_at=D,
+            content=content,
+        )
     )
     assert out["resourceType"] == "Endpoint"
     assert out["id"] == "620001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -126,7 +156,10 @@ def test_mapper_serves_content_unchanged():
         ("connectionType as string not Coding", {"connectionType": "hl7-fhir-rest"}),
         ("payloadType as strings not CodeableConcepts", {"payloadType": ["any"]}),
         ("payloadMimeType as objects", {"payloadMimeType": [{"code": "x"}]}),
-        ("managingOrganization as string not Reference", {"managingOrganization": "Organization/1"}),
+        (
+            "managingOrganization as string not Reference",
+            {"managingOrganization": "Organization/1"},
+        ),
         ("contact as string not ContactPoint", {"contact": ["it@example.org"]}),
         ("period as string", {"period": "2026"}),
         ("header as objects not strings", {"header": [{"name": "x"}]}),
@@ -137,4 +170,6 @@ def test_validator_rejects_invalid_fhir(label, broken):
 
     payload = {"resourceType": "Endpoint", "id": "620001", **MINIMAL, **broken}
     with pytest.raises(Exception):  # noqa: B017 — the library raises several types
-        json_format.json_fhir_string_to_proto(fhir_json_text(payload), endpoint_pb2.Endpoint, validate=True)
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), endpoint_pb2.Endpoint, validate=True
+        )

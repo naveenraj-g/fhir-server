@@ -83,13 +83,22 @@ def _reference_with_identifier_fallback_from_payload(obj, prefix: str) -> dict:
     id_type_code = getattr(obj, f"{prefix}_identifier_type_code", None)
     id_type_display = getattr(obj, f"{prefix}_identifier_type_display", None)
     id_type_text = getattr(obj, f"{prefix}_identifier_type_text", None)
-    id_type_user_selected = getattr(obj, f"{prefix}_identifier_type_user_selected", None)
+    id_type_user_selected = getattr(
+        obj, f"{prefix}_identifier_type_user_selected", None
+    )
     id_system = getattr(obj, f"{prefix}_identifier_system", None)
     id_value = getattr(obj, f"{prefix}_identifier_value", None)
     id_period_start = getattr(obj, f"{prefix}_identifier_period_start", None)
     id_period_end = getattr(obj, f"{prefix}_identifier_period_end", None)
 
-    if id_use or id_type_system or id_type_code or id_type_text or id_system or id_value:
+    if (
+        id_use
+        or id_type_system
+        or id_type_code
+        or id_type_text
+        or id_system
+        or id_value
+    ):
         identifier: dict = {}
         if id_use:
             identifier["use"] = id_use.value if hasattr(id_use, "value") else id_use
@@ -222,7 +231,12 @@ def payload_questionnaire_use_context(uc: QuestionnaireUseContextInput) -> dict:
         if uc.value_codeable_concept_text:
             cc["text"] = uc.value_codeable_concept_text
         entry["valueCodeableConcept"] = cc
-    elif uc.value_quantity_value is not None or uc.value_quantity_unit or uc.value_quantity_system or uc.value_quantity_code:
+    elif (
+        uc.value_quantity_value is not None
+        or uc.value_quantity_unit
+        or uc.value_quantity_system
+        or uc.value_quantity_code
+    ):
         entry["valueQuantity"] = _quantity_from_payload(uc, "value_quantity")
     elif uc.value_range_low_value is not None or uc.value_range_high_value is not None:
         rng: dict = {}
@@ -241,7 +255,9 @@ def payload_questionnaire_use_context(uc: QuestionnaireUseContextInput) -> dict:
     return entry
 
 
-def payload_questionnaire_item_enable_when(ew: QuestionnaireItemEnableWhenInput) -> dict:
+def payload_questionnaire_item_enable_when(
+    ew: QuestionnaireItemEnableWhenInput,
+) -> dict:
     entry: dict = {"question": ew.question, "operator": ew.operator.value}
 
     if ew.answer_boolean is not None:
@@ -270,7 +286,12 @@ def payload_questionnaire_item_enable_when(ew: QuestionnaireItemEnableWhenInput)
             }.items()
             if v is not None
         }
-    elif ew.answer_quantity_value is not None or ew.answer_quantity_unit or ew.answer_quantity_system or ew.answer_quantity_code:
+    elif (
+        ew.answer_quantity_value is not None
+        or ew.answer_quantity_unit
+        or ew.answer_quantity_system
+        or ew.answer_quantity_code
+    ):
         entry["answerQuantity"] = _quantity_from_payload(ew, "answer_quantity")
     elif ew.answer_reference:
         ref = _reference_from_payload(ew, "answer_reference")
@@ -280,7 +301,9 @@ def payload_questionnaire_item_enable_when(ew: QuestionnaireItemEnableWhenInput)
     return entry
 
 
-def payload_questionnaire_item_answer_option(ao: QuestionnaireItemAnswerOptionInput) -> dict:
+def payload_questionnaire_item_answer_option(
+    ao: QuestionnaireItemAnswerOptionInput,
+) -> dict:
     entry: dict = {}
 
     if ao.value_integer is not None:
@@ -361,7 +384,12 @@ def payload_questionnaire_item_initial(ini: QuestionnaireItemInitialInput) -> di
             }.items()
             if v is not None
         }
-    elif ini.value_quantity_value is not None or ini.value_quantity_unit or ini.value_quantity_system or ini.value_quantity_code:
+    elif (
+        ini.value_quantity_value is not None
+        or ini.value_quantity_unit
+        or ini.value_quantity_system
+        or ini.value_quantity_code
+    ):
         entry["valueQuantity"] = _quantity_from_payload(ini, "value_quantity")
     elif ini.value_reference:
         ref = _reference_from_payload(ini, "value_reference")
@@ -386,7 +414,9 @@ def payload_questionnaire_item(item: QuestionnaireItemInput) -> dict:
     if item.text:
         entry["text"] = item.text
     if item.enable_when:
-        entry["enableWhen"] = [payload_questionnaire_item_enable_when(ew) for ew in item.enable_when]
+        entry["enableWhen"] = [
+            payload_questionnaire_item_enable_when(ew) for ew in item.enable_when
+        ]
     if item.enable_behavior:
         entry["enableBehavior"] = item.enable_behavior.value
     if item.required is not None:
@@ -400,9 +430,13 @@ def payload_questionnaire_item(item: QuestionnaireItemInput) -> dict:
     if item.answer_value_set:
         entry["answerValueSet"] = item.answer_value_set
     if item.answer_option:
-        entry["answerOption"] = [payload_questionnaire_item_answer_option(ao) for ao in item.answer_option]
+        entry["answerOption"] = [
+            payload_questionnaire_item_answer_option(ao) for ao in item.answer_option
+        ]
     if item.initial:
-        entry["initial"] = [payload_questionnaire_item_initial(ini) for ini in item.initial]
+        entry["initial"] = [
+            payload_questionnaire_item_initial(ini) for ini in item.initial
+        ]
     if item.item:
         entry["item"] = [payload_questionnaire_item(child) for child in item.item]
 
@@ -577,6 +611,8 @@ def patch_fragment_to_fhir_questionnaire(
     if "item" in provided:
         touched.add("item")
         if payload.item:
-            fragment["item"] = [payload_questionnaire_item(item) for item in payload.item]
+            fragment["item"] = [
+                payload_questionnaire_item(item) for item in payload.item
+            ]
 
     return fragment, touched

@@ -12,13 +12,23 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "ObservationDefinition not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainObservationDefinitionResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRObservationDefinitionSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PlainObservationDefinitionResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRObservationDefinitionSchema.model_json_schema()
+                )
+            },
         }
     }
 }
@@ -27,8 +37,16 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of observation definitions",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedObservationDefinitionResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRObservationDefinitionBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PaginatedObservationDefinitionResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(
+                    FHIRObservationDefinitionBundle.model_json_schema()
+                )
+            },
         },
     }
 }

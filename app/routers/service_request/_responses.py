@@ -12,13 +12,19 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "ServiceRequest not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainServiceRequestResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRServiceRequestSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainServiceRequestResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRServiceRequestSchema.model_json_schema())
+            },
         }
     }
 }
@@ -27,8 +33,14 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of service requests",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedServiceRequestResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRServiceRequestBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PaginatedServiceRequestResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRServiceRequestBundle.model_json_schema())
+            },
         },
     }
 }

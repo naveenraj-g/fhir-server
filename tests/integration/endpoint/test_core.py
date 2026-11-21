@@ -54,11 +54,17 @@ def native_validation(monkeypatch):
 
 
 def _ids(bundle: dict) -> set[int]:
-    return {int(e["resource"]["id"]) for e in bundle.get("entry") or [] if e["search"]["mode"] == "match"}
+    return {
+        int(e["resource"]["id"])
+        for e in bundle.get("entry") or []
+        if e["search"]["mode"] == "match"
+    }
 
 
 def _as_user(sub="u-test", org_id="org-test", permissions=PERMS):
-    app.dependency_overrides[get_current_user] = make_test_user(sub=sub, org_id=org_id, permissions=permissions)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        sub=sub, org_id=org_id, permissions=permissions
+    )
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -70,7 +76,9 @@ async def test_create_minimal(client):
     assert "application/fhir+json" in resp.headers["content-type"]
     data = resp.json()
     assert data["resourceType"] == "Endpoint"
-    assert data["status"] == "active" and data["address"] == "https://fhir.example.org/r4"
+    assert (
+        data["status"] == "active" and data["address"] == "https://fhir.example.org/r4"
+    )
 
 
 async def test_create_full_round_trip(client):
@@ -80,7 +88,9 @@ async def test_create_full_round_trip(client):
     assert resp.status_code == 201, resp.text
     data = resp.json()
     expected = {k: v for k, v in body.items() if k != "resourceType"}
-    assert {k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")} == expected
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
     assert (await client.get(f"{BASE}/{data['id']}")).json() == data
 
 
@@ -94,7 +104,8 @@ async def test_create_keeps_elements_nothing_searches_on(client):
 
 async def test_create_ignores_server_managed_id_and_meta(client):
     resp = await client.post(
-        BASE + "/", json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}}
+        BASE + "/",
+        json={**MINIMAL, "id": "999", "meta": {"lastUpdated": "2000-01-01T00:00:00Z"}},
     )
     assert resp.status_code == 201, resp.text
     assert resp.json()["id"] != "999"
@@ -107,7 +118,12 @@ async def test_create_non_fhir_key_rejected(client, native_validation):
 
 
 async def test_create_old_style_fields_rejected(client, native_validation):
-    for stale in ({"org_id": "x"}, {"user_id": "u"}, {"payload_type": "x"}, {"connection_type": "x"}):
+    for stale in (
+        {"org_id": "x"},
+        {"user_id": "u"},
+        {"payload_type": "x"},
+        {"connection_type": "x"},
+    ):
         resp = await client.post(BASE + "/", json={**MINIMAL, **stale})
         assert resp.status_code == 422, (stale, resp.text)
 
@@ -118,7 +134,9 @@ async def test_create_wrong_resource_type_rejected(client):
 
 
 async def test_create_bad_status_rejected(client):
-    assert (await client.post(BASE + "/", json={**MINIMAL, "status": "broken"})).status_code == 422
+    assert (
+        await client.post(BASE + "/", json={**MINIMAL, "status": "broken"})
+    ).status_code == 422
 
 
 async def test_every_status_code_is_accepted(client):
@@ -141,17 +159,26 @@ async def test_create_managing_organization_must_exist(client):
 
 
 async def test_create_identifier_assigner_must_exist(client):
-    body = {**MINIMAL, "identifier": [{"value": "1", "assigner": {"reference": "Organization/999999"}}]}
+    body = {
+        **MINIMAL,
+        "identifier": [
+            {"value": "1", "assigner": {"reference": "Organization/999999"}}
+        ],
+    }
     assert (await client.post(BASE + "/", json=body)).status_code == 422
 
 
 async def test_create_absolute_and_logical_references_not_resolved(client):
     ref = "https://other.example.org/fhir/Organization/42"
-    resp = await client.post(BASE + "/", json={**MINIMAL, "managingOrganization": {"reference": ref}})
+    resp = await client.post(
+        BASE + "/", json={**MINIMAL, "managingOrganization": {"reference": ref}}
+    )
     assert resp.status_code == 201, resp.text
     assert resp.json()["managingOrganization"]["reference"] == ref
     logical = {"identifier": {"system": "urn:registry", "value": "ORG-9"}}
-    assert (await client.post(BASE + "/", json={**MINIMAL, "managingOrganization": logical})).status_code == 201
+    assert (
+        await client.post(BASE + "/", json={**MINIMAL, "managingOrganization": logical})
+    ).status_code == 201
 
 
 async def test_create_reference_in_another_org_is_rejected(client, other_client):
@@ -160,7 +187,10 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
         other_org = await create_organization(other_client, "Other Tenant Org")
     finally:
         _as_user()
-    body = {**MINIMAL, "managingOrganization": {"reference": f"Organization/{other_org}"}}
+    body = {
+        **MINIMAL,
+        "managingOrganization": {"reference": f"Organization/{other_org}"},
+    }
     assert (await client.post(BASE + "/", json=body)).status_code == 422
 
 
@@ -168,17 +198,25 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
 
 
 async def test_organization_endpoint_reference_must_exist(client):
-    resp = await client.post(ORG_BASE + "/", json={"name": "Org", "endpoint": [{"reference": "Endpoint/999999"}]})
+    resp = await client.post(
+        ORG_BASE + "/",
+        json={"name": "Org", "endpoint": [{"reference": "Endpoint/999999"}]},
+    )
     assert resp.status_code == 422, resp.text
 
 
 async def test_organization_endpoint_reference_resolves_to_a_real_endpoint(client):
     ep = await create_endpoint(client)
-    resp = await client.post(ORG_BASE + "/", json={"name": "Org", "endpoint": [{"reference": f"Endpoint/{ep}"}]})
+    resp = await client.post(
+        ORG_BASE + "/",
+        json={"name": "Org", "endpoint": [{"reference": f"Endpoint/{ep}"}]},
+    )
     assert resp.status_code == 201, resp.text
 
 
-async def test_organization_endpoint_by_identifier_or_absolute_url_needs_no_endpoint(client):
+async def test_organization_endpoint_by_identifier_or_absolute_url_needs_no_endpoint(
+    client,
+):
     body = {
         "name": "Org",
         "endpoint": [
@@ -195,7 +233,10 @@ async def test_endpoint_in_another_org_cannot_be_referenced(client, other_client
         other_ep = await create_endpoint(other_client)
     finally:
         _as_user()
-    resp = await client.post(ORG_BASE + "/", json={"name": "Org", "endpoint": [{"reference": f"Endpoint/{other_ep}"}]})
+    resp = await client.post(
+        ORG_BASE + "/",
+        json={"name": "Org", "endpoint": [{"reference": f"Endpoint/{other_ep}"}]},
+    )
     assert resp.status_code == 422, resp.text
 
 
@@ -225,7 +266,9 @@ async def test_xml_only_accept_is_406(client):
 
 async def test_get_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────
@@ -233,19 +276,30 @@ async def test_get_not_found(client):
 
 async def test_patch_scalar_keeps_the_rest(client):
     ep = await create_endpoint(client, FULL)
-    resp = await client.patch(f"{BASE}/{ep}", json={"status": "suspended", "name": "Renamed"})
+    resp = await client.patch(
+        f"{BASE}/{ep}", json={"status": "suspended", "name": "Renamed"}
+    )
     assert resp.status_code == 200, resp.text
     assert resp.json()["status"] == "suspended" and resp.json()["name"] == "Renamed"
-    assert resp.json()["payloadMimeType"] == ["application/fhir+json", "application/fhir+xml"]
-    assert resp.json()["address"] == "https://fhir.example.org/r4"  # required, untouched
+    assert resp.json()["payloadMimeType"] == [
+        "application/fhir+json",
+        "application/fhir+xml",
+    ]
+    assert (
+        resp.json()["address"] == "https://fhir.example.org/r4"
+    )  # required, untouched
 
 
 async def test_patch_reindexes_search(client):
     ep = await create_endpoint(client, FULL)
     await client.patch(f"{BASE}/{ep}", json={"status": "off", "name": "Retired API"})
-    assert ep not in _ids((await client.get(BASE + "/", params={"status": "active"})).json())
+    assert ep not in _ids(
+        (await client.get(BASE + "/", params={"status": "active"})).json()
+    )
     assert ep in _ids((await client.get(BASE + "/", params={"status": "off"})).json())
-    assert ep not in _ids((await client.get(BASE + "/", params={"name": "General"})).json())
+    assert ep not in _ids(
+        (await client.get(BASE + "/", params={"name": "General"})).json()
+    )
     assert ep in _ids((await client.get(BASE + "/", params={"name": "Retired"})).json())
 
 
@@ -253,12 +307,27 @@ async def test_patch_connection_type_and_payload_type_reindex(client):
     ep = await create_endpoint(client, FULL)
     await client.patch(
         f"{BASE}/{ep}",
-        json={"connectionType": {"code": "dicom-wado-rs"}, "payloadType": [{"coding": [{"code": "ccda"}]}]},
+        json={
+            "connectionType": {"code": "dicom-wado-rs"},
+            "payloadType": [{"coding": [{"code": "ccda"}]}],
+        },
     )
-    assert ep not in _ids((await client.get(BASE + "/", params={"connection-type": "hl7-fhir-rest"})).json())
-    assert ep in _ids((await client.get(BASE + "/", params={"connection-type": "dicom-wado-rs"})).json())
-    assert ep not in _ids((await client.get(BASE + "/", params={"payload-type": "any"})).json())
-    assert ep in _ids((await client.get(BASE + "/", params={"payload-type": "ccda"})).json())
+    assert ep not in _ids(
+        (
+            await client.get(BASE + "/", params={"connection-type": "hl7-fhir-rest"})
+        ).json()
+    )
+    assert ep in _ids(
+        (
+            await client.get(BASE + "/", params={"connection-type": "dicom-wado-rs"})
+        ).json()
+    )
+    assert ep not in _ids(
+        (await client.get(BASE + "/", params={"payload-type": "any"})).json()
+    )
+    assert ep in _ids(
+        (await client.get(BASE + "/", params={"payload-type": "ccda"})).json()
+    )
 
 
 async def test_patch_replaces_list_wholesale_and_empty_clears(client):
@@ -272,29 +341,43 @@ async def test_patch_replaces_list_wholesale_and_empty_clears(client):
 async def test_patch_managing_organization_resolved_then_cleared(client):
     org = await create_organization(client)
     ep = await create_endpoint(client)
-    await client.patch(f"{BASE}/{ep}", json={"managingOrganization": {"reference": f"Organization/{org}"}})
-    assert ep in _ids((await client.get(BASE + "/", params={"organization": str(org)})).json())
+    await client.patch(
+        f"{BASE}/{ep}",
+        json={"managingOrganization": {"reference": f"Organization/{org}"}},
+    )
+    assert ep in _ids(
+        (await client.get(BASE + "/", params={"organization": str(org)})).json()
+    )
     resp = await client.patch(f"{BASE}/{ep}", json={"managingOrganization": None})
     assert "managingOrganization" not in resp.json()
-    assert ep not in _ids((await client.get(BASE + "/", params={"organization": str(org)})).json())
+    assert ep not in _ids(
+        (await client.get(BASE + "/", params={"organization": str(org)})).json()
+    )
 
 
 async def test_patch_nonexistent_reference_rejected_and_nothing_written(client):
     ep = await create_endpoint(client, FULL)
-    resp = await client.patch(f"{BASE}/{ep}", json={"managingOrganization": {"reference": "Organization/999999"}})
+    resp = await client.patch(
+        f"{BASE}/{ep}",
+        json={"managingOrganization": {"reference": "Organization/999999"}},
+    )
     assert resp.status_code == 422
     assert "managingOrganization" not in (await client.get(f"{BASE}/{ep}")).json()
 
 
 async def test_patch_invalid_value_rejected_and_nothing_written(client):
     ep = await create_endpoint(client, FULL)
-    assert (await client.patch(f"{BASE}/{ep}", json={"status": "broken"})).status_code == 422
+    assert (
+        await client.patch(f"{BASE}/{ep}", json={"status": "broken"})
+    ).status_code == 422
     assert (await client.get(f"{BASE}/{ep}")).json()["status"] == "active"
 
 
 async def test_patch_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"status": "off"})
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -305,13 +388,19 @@ async def test_delete(client):
     assert (await client.delete(f"{BASE}/{ep}")).status_code == 204
     assert (await client.get(f"{BASE}/{ep}")).status_code == 404
     # Its index rows are gone with it.
-    assert ep not in _ids((await client.get(BASE + "/", params={"name": "General"})).json())
-    assert ep not in _ids((await client.get(BASE + "/", params={"payload-type": "any"})).json())
+    assert ep not in _ids(
+        (await client.get(BASE + "/", params={"name": "General"})).json()
+    )
+    assert ep not in _ids(
+        (await client.get(BASE + "/", params={"payload-type": "any"})).json()
+    )
 
 
 async def test_delete_not_found(client):
     resp = await client.delete(f"{BASE}/999999")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -344,7 +433,9 @@ async def test_cross_org_get_patch_delete_return_404(client, other_client):
             await other_client.patch(f"{BASE}/{ep}", json={"status": "off"}),
             await other_client.delete(f"{BASE}/{ep}"),
         ):
-            assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
     finally:
         _as_user()
 
@@ -354,7 +445,9 @@ async def test_search_cross_tenant_isolation(client, other_client):
     await create_endpoint(client, {**MINIMAL, "name": "TenantAOnly API"})
     _as_user(sub="u-other", org_id="org-other")
     try:
-        bundle = (await other_client.get(BASE + "/", params={"name": "TenantAOnly"})).json()
+        bundle = (
+            await other_client.get(BASE + "/", params={"name": "TenantAOnly"})
+        ).json()
         assert bundle["total"] == 0 and "entry" not in bundle
     finally:
         _as_user()

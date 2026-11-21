@@ -1,4 +1,7 @@
-from .backbone import FHIRPractitionerRoleAvailableTime, FHIRPractitionerRoleNotAvailable
+from .backbone import (
+    FHIRPractitionerRoleAvailableTime,
+    FHIRPractitionerRoleNotAvailable,
+)
 from .core import (
     FHIRPractitionerRoleBundle,
     FHIRPractitionerRoleBundleEntry,

@@ -5,7 +5,6 @@ from app.services.diagnostic_report import DiagnosticReportService
 
 
 class DiagnosticReportContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     diagnostic_report_repository = providers.Factory(

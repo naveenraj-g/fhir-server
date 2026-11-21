@@ -17,4 +17,6 @@ if TYPE_CHECKING:
 
 
 def to_fhir_diagnostic_report(diagnostic_report: DiagnosticReportModel) -> dict:
-    return content_resource("DiagnosticReport", diagnostic_report.diagnostic_report_id, diagnostic_report)
+    return content_resource(
+        "DiagnosticReport", diagnostic_report.diagnostic_report_id, diagnostic_report
+    )

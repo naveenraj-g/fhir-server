@@ -50,6 +50,8 @@ IMPRESSION_PERMS = [
 
 @pytest.fixture(autouse=True)
 def _set_permissions(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=IMPRESSION_PERMS)
+    app.dependency_overrides[get_current_user] = make_test_user(
+        permissions=IMPRESSION_PERMS
+    )
     yield
     app.dependency_overrides[get_current_user] = make_test_user()

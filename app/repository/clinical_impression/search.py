@@ -52,31 +52,90 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/event-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
-    "Patient": ("app.models.patient", "PatientModel", "patient_id",
-                "app.repository.patient.search", "patient_search"),
-    "Encounter": ("app.models.encounter", "EncounterModel", "encounter_id",
-                  "app.repository.encounter.search", "encounter_search"),
-    "Practitioner": ("app.models.practitioner", "PractitionerModel", "practitioner_id",
-                     "app.repository.practitioner.search", "practitioner_search"),
-    "PractitionerRole": ("app.models.practitioner_role", "PractitionerRoleModel", "practitioner_role_id",
-                         "app.repository.practitioner_role.search", "practitioner_role_search"),
-    "Condition": ("app.models.condition", "ConditionModel", "condition_id",
-                  "app.repository.condition.search", "condition_search"),
-    "AllergyIntolerance": ("app.models.allergy_intolerance", "AllergyIntoleranceModel", "allergy_intolerance_id",
-                           "app.repository.allergy_intolerance.search", "allergy_intolerance_search"),
-    "Procedure": ("app.models.procedure", "ProcedureModel", "procedure_id",
-                  "app.repository.procedure.search", "procedure_search"),
-    "DiagnosticReport": ("app.models.diagnostic_report", "DiagnosticReportModel", "diagnostic_report_id",
-                         "app.repository.diagnostic_report.search", "diagnostic_report_search"),
-    "Immunization": ("app.models.immunization", "ImmunizationModel", "immunization_id",
-                     "app.repository.immunization.search", "immunization_search"),
-    "FamilyMemberHistory": ("app.models.family_member_history", "FamilyMemberHistoryModel",
-                            "family_member_history_id", "app.repository.family_member_history.search",
-                            "family_member_history_search"),
-    "RiskAssessment": ("app.models.risk_assessment", "RiskAssessmentModel", "risk_assessment_id",
-                       "app.repository.risk_assessment.search", "risk_assessment_search"),
-    "ClinicalImpression": ("app.models.clinical_impression", "ClinicalImpressionModel", "clinical_impression_id",
-                           "app.repository.clinical_impression.search", "clinical_impression_search"),
+    "Patient": (
+        "app.models.patient",
+        "PatientModel",
+        "patient_id",
+        "app.repository.patient.search",
+        "patient_search",
+    ),
+    "Encounter": (
+        "app.models.encounter",
+        "EncounterModel",
+        "encounter_id",
+        "app.repository.encounter.search",
+        "encounter_search",
+    ),
+    "Practitioner": (
+        "app.models.practitioner",
+        "PractitionerModel",
+        "practitioner_id",
+        "app.repository.practitioner.search",
+        "practitioner_search",
+    ),
+    "PractitionerRole": (
+        "app.models.practitioner_role",
+        "PractitionerRoleModel",
+        "practitioner_role_id",
+        "app.repository.practitioner_role.search",
+        "practitioner_role_search",
+    ),
+    "Condition": (
+        "app.models.condition",
+        "ConditionModel",
+        "condition_id",
+        "app.repository.condition.search",
+        "condition_search",
+    ),
+    "AllergyIntolerance": (
+        "app.models.allergy_intolerance",
+        "AllergyIntoleranceModel",
+        "allergy_intolerance_id",
+        "app.repository.allergy_intolerance.search",
+        "allergy_intolerance_search",
+    ),
+    "Procedure": (
+        "app.models.procedure",
+        "ProcedureModel",
+        "procedure_id",
+        "app.repository.procedure.search",
+        "procedure_search",
+    ),
+    "DiagnosticReport": (
+        "app.models.diagnostic_report",
+        "DiagnosticReportModel",
+        "diagnostic_report_id",
+        "app.repository.diagnostic_report.search",
+        "diagnostic_report_search",
+    ),
+    "Immunization": (
+        "app.models.immunization",
+        "ImmunizationModel",
+        "immunization_id",
+        "app.repository.immunization.search",
+        "immunization_search",
+    ),
+    "FamilyMemberHistory": (
+        "app.models.family_member_history",
+        "FamilyMemberHistoryModel",
+        "family_member_history_id",
+        "app.repository.family_member_history.search",
+        "family_member_history_search",
+    ),
+    "RiskAssessment": (
+        "app.models.risk_assessment",
+        "RiskAssessmentModel",
+        "risk_assessment_id",
+        "app.repository.risk_assessment.search",
+        "risk_assessment_search",
+    ),
+    "ClinicalImpression": (
+        "app.models.clinical_impression",
+        "ClinicalImpressionModel",
+        "clinical_impression_id",
+        "app.repository.clinical_impression.search",
+        "clinical_impression_search",
+    ),
 }
 
 
@@ -96,7 +155,9 @@ def _registry_of(resource_type: str):
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.clinical_impression_pk == M.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.clinical_impression_pk == M.id, *conditions)
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -104,7 +165,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.clinical_impression_pk == M.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.clinical_impression_pk == M.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -122,7 +187,9 @@ def _referenced(target: str, inner, ctx):
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return M.clinical_impression_id == int(token.code)
 
@@ -149,10 +216,17 @@ def _date_match(value, modifier, ctx):
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
@@ -164,7 +238,9 @@ def _token_param(param: str):
         return _exists(
             _Tk,
             _Tk.param == param,
-            coded_token_match(_Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)),
+            coded_token_match(
+                _Tk.system, _Tk.code, value, modifier, (_Tk.text_norm, _Tk.display_norm)
+            ),
         )
 
     def present(ctx):
@@ -183,15 +259,23 @@ def _column_ref(prefix: str, targets: tuple[str, ...], narrowed: str | None = No
     """(match, present, chain, sort) for a 0..1 Reference held as `{prefix}_*` columns on
     the clinical_impression row. `narrowed` restricts a multi-target element to one type
     (`patient` is `subject` resolved to a Patient)."""
-    ref, type_, id_ = (getattr(M, f"{prefix}_{part}") for part in ("reference", "type", "id"))
-    ident_system, ident_value = getattr(M, f"{prefix}_identifier_system"), getattr(M, f"{prefix}_identifier_value")
+    ref, type_, id_ = (
+        getattr(M, f"{prefix}_{part}") for part in ("reference", "type", "id")
+    )
+    ident_system, ident_value = (
+        getattr(M, f"{prefix}_identifier_system"),
+        getattr(M, f"{prefix}_identifier_value"),
+    )
     # `is_not(None)` keeps `NOT present` (`:missing=true`) from going NULL for a row whose
     # reference has no resolved type (a logical, identifier-only reference).
     type_filter = (type_.is_not(None), type_ == narrowed) if narrowed else ()
 
     def match(value, modifier, ctx):
         if modifier == "identifier":
-            return and_(token_condition(ident_system, ident_value, parse_token(value)), *type_filter)
+            return and_(
+                token_condition(ident_system, ident_value, parse_token(value)),
+                *type_filter,
+            )
         # `modifier` is a target type (subject:Patient=10001) or None; a bare id with several
         # targets is ambiguous and is rejected by reference_target().
         return reference_match(type_, id_, ref, value, modifier, ctx, targets, str)
@@ -218,24 +302,43 @@ def _reference_param(param: str):
             return _exists(
                 _R,
                 _R.param == param,
-                token_condition(_R.reference_identifier_system, _R.reference_identifier_value, parse_token(value)),
+                token_condition(
+                    _R.reference_identifier_system,
+                    _R.reference_identifier_value,
+                    parse_token(value),
+                ),
             )
         return _exists(
             _R,
             _R.param == param,
             reference_match(
-                _R.reference_type, _R.reference_id, _R.reference_reference, value, modifier, ctx, targets, str
+                _R.reference_type,
+                _R.reference_id,
+                _R.reference_reference,
+                value,
+                modifier,
+                ctx,
+                targets,
+                str,
             ),
         )
 
     def present(ctx):
         return _exists(
-            _R, _R.param == param, or_(_R.reference_reference.is_not(None), _R.reference_identifier_value.is_not(None))
+            _R,
+            _R.param == param,
+            or_(
+                _R.reference_reference.is_not(None),
+                _R.reference_identifier_value.is_not(None),
+            ),
         )
 
     def chain(target, inner, ctx):
         return _exists(
-            _R, _R.param == param, _R.reference_type == target, _R.reference_id.in_(_referenced(target, inner, ctx))
+            _R,
+            _R.param == param,
+            _R.reference_type == target,
+            _R.reference_id.in_(_referenced(target, inner, ctx)),
         )
 
     def sort():
@@ -255,7 +358,9 @@ async def _load(session, ctx, resource_type: str, ids) -> list:
     if not ids:
         return []
     model, id_col = _model(resource_type)
-    return await _fetch(session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+    )
 
 
 def _include_column(prefix: str, resource_type: str):
@@ -264,7 +369,11 @@ def _include_column(prefix: str, resource_type: str):
 
     async def fetch(session, ctx, impressions):
         type_, id_ = f"{prefix}_type", f"{prefix}_id"
-        ids = {getattr(r, id_) for r in impressions if getattr(r, type_) == resource_type and getattr(r, id_)}
+        ids = {
+            getattr(r, id_)
+            for r in impressions
+            if getattr(r, type_) == resource_type and getattr(r, id_)
+        }
         return await _load(session, ctx, resource_type, ids)
 
     return fetch
@@ -280,7 +389,12 @@ def _include_reference(param: str, resource_type: str):
             _R.reference_type == resource_type,
             _R.reference_id.is_not(None),
         )
-        return await _load(session, ctx, resource_type, set((await session.execute(ids)).scalars().all()))
+        return await _load(
+            session,
+            ctx,
+            resource_type,
+            set((await session.execute(ids)).scalars().all()),
+        )
 
     return fetch
 
@@ -293,7 +407,12 @@ def revinclude_impressions_via_column(prefix: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         type_, id_ = getattr(M, f"{prefix}_type"), getattr(M, f"{prefix}_id")
-        return await _fetch(session, select(M).where(M.tenant_id == ctx.tenant_id, type_ == resource_type, id_.in_(ids)))
+        return await _fetch(
+            session,
+            select(M).where(
+                M.tenant_id == ctx.tenant_id, type_ == resource_type, id_.in_(ids)
+            ),
+        )
 
     return fetch
 
@@ -305,9 +424,13 @@ def revinclude_impressions_via_reference(param: str, resource_type: str, key):
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
         pks = select(_R.clinical_impression_pk).where(
-            _R.param == param, _R.reference_type == resource_type, _R.reference_id.in_(ids)
+            _R.param == param,
+            _R.reference_type == resource_type,
+            _R.reference_id.in_(ids),
         )
-        return await _fetch(session, select(M).where(M.tenant_id == ctx.tenant_id, M.id.in_(pks)))
+        return await _fetch(
+            session, select(M).where(M.tenant_id == ctx.tenant_id, M.id.in_(pks))
+        )
 
     return fetch
 
@@ -319,7 +442,9 @@ def _register_kind() -> None:
 
     register_kind(
         ResourceKind(
-            "ClinicalImpression", lambda r: r.clinical_impression_id, to_fhir_clinical_impression,
+            "ClinicalImpression",
+            lambda r: r.clinical_impression_id,
+            to_fhir_clinical_impression,
             "clinical-impressions",
         )
     )
@@ -329,7 +454,9 @@ def _register_kind() -> None:
 
 _TOKEN = frozenset({"text", "not", "in", "not-in", "above", "below", "missing"})
 _REFERENCE = frozenset({"identifier", "missing"})
-_IDENTIFIER_DOC = {"identifier": "`:identifier` — match the logical identifier of a target that has no resource here."}
+_IDENTIFIER_DOC = {
+    "identifier": "`:identifier` — match the logical identifier of a target that has no resource here."
+}
 
 
 @cache
@@ -338,14 +465,36 @@ def clinical_impression_search() -> SearchRegistry:
 
     def token(name, description, expression, example):
         match, present, sort = _token_param(name)
-        return SearchParam(name, "token", description, expression, match, present, _TOKEN, sort=sort, example=example)
+        return SearchParam(
+            name,
+            "token",
+            description,
+            expression,
+            match,
+            present,
+            _TOKEN,
+            sort=sort,
+            example=example,
+        )
 
-    def column_ref(name, description, expression, prefix, targets, example, narrowed=None):
+    def column_ref(
+        name, description, expression, prefix, targets, example, narrowed=None
+    ):
         match, present, chain, sort = _column_ref(prefix, targets, narrowed)
         modeled = [t for t in targets if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, chain=chain,
-            chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
@@ -355,76 +504,148 @@ def clinical_impression_search() -> SearchRegistry:
         match, present, chain, sort = _reference_param(name)
         modeled = [t for t in targets if t in _MODELED]
         return SearchParam(
-            name, "reference", description, expression, match, present, _REFERENCE, targets=targets, chain=chain,
-            chain_targets={t: _registry_of(t) for t in modeled}, sort=sort, example=example,
+            name,
+            "reference",
+            description,
+            expression,
+            match,
+            present,
+            _REFERENCE,
+            targets=targets,
+            chain=chain,
+            chain_targets={t: _registry_of(t) for t in modeled},
+            sort=sort,
+            example=example,
             modifier_docs=_IDENTIFIER_DOC,
         )
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public clinical impression id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: M.clinical_impression_id, example="530001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public clinical impression id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: M.clinical_impression_id,
+            example="530001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         column_ref(
-            "assessor", "The clinician performing the assessment", "ClinicalImpression.assessor", "assessor",
-            ASSESSOR_TYPES, "Practitioner/30001",
+            "assessor",
+            "The clinician performing the assessment",
+            "ClinicalImpression.assessor",
+            "assessor",
+            ASSESSOR_TYPES,
+            "Practitioner/30001",
         ),
         SearchParam(
-            "date", "date", "When the assessment was documented", "ClinicalImpression.date",
-            _date_match, lambda ctx: M.date_start.is_not(None), sort=lambda: M.date_start, example="ge2026-01-01",
+            "date",
+            "date",
+            "When the assessment was documented",
+            "ClinicalImpression.date",
+            _date_match,
+            lambda ctx: M.date_start.is_not(None),
+            sort=lambda: M.date_start,
+            example="ge2026-01-01",
         ),
         column_ref(
-            "encounter", "Encounter created as part of", "ClinicalImpression.encounter", "encounter", ("Encounter",),
+            "encounter",
+            "Encounter created as part of",
+            "ClinicalImpression.encounter",
+            "encounter",
+            ("Encounter",),
             "Encounter/20001",
         ),
         token(
-            "finding-code", "What was found", "ClinicalImpression.finding.itemCodeableConcept",
+            "finding-code",
+            "What was found",
+            "ClinicalImpression.finding.itemCodeableConcept",
             "http://snomed.info/sct|386661006",
         ),
         table_ref(
-            "finding-ref", "What was found", "ClinicalImpression.finding.itemReference", "Condition/120001",
+            "finding-ref",
+            "What was found",
+            "ClinicalImpression.finding.itemReference",
+            "Condition/120001",
         ),
         SearchParam(
-            "identifier", "token", "Business identifier", "ClinicalImpression.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:impressions|CI-1",
+            "identifier",
+            "token",
+            "Business identifier",
+            "ClinicalImpression.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:impressions|CI-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         table_ref(
-            "investigation", "Record of a specific investigation", "ClinicalImpression.investigation.item",
+            "investigation",
+            "Record of a specific investigation",
+            "ClinicalImpression.investigation.item",
             "DiagnosticReport/110001",
         ),
         column_ref(
-            "patient", "Patient or group assessed", "ClinicalImpression.subject.where(resolve() is Patient)",
-            "subject", ("Patient",), "Patient/10001", narrowed="Patient",
+            "patient",
+            "Patient or group assessed",
+            "ClinicalImpression.subject.where(resolve() is Patient)",
+            "subject",
+            ("Patient",),
+            "Patient/10001",
+            narrowed="Patient",
         ),
         column_ref(
-            "previous", "Reference to last assessment", "ClinicalImpression.previous", "previous",
-            ("ClinicalImpression",), "ClinicalImpression/530001",
+            "previous",
+            "Reference to last assessment",
+            "ClinicalImpression.previous",
+            "previous",
+            ("ClinicalImpression",),
+            "ClinicalImpression/530001",
         ),
         table_ref(
-            "problem", "Relevant impressions of patient state", "ClinicalImpression.problem", "Condition/120001",
+            "problem",
+            "Relevant impressions of patient state",
+            "ClinicalImpression.problem",
+            "Condition/120001",
         ),
         SearchParam(
-            "status", "token", f"in-progress | completed | entered-in-error (system {_STATUS_SYSTEM})",
-            "ClinicalImpression.status", _status_match, lambda ctx: M.status.is_not(None),
-            frozenset({"not", "missing"}), sort=lambda: M.status, example="completed",
+            "status",
+            "token",
+            f"in-progress | completed | entered-in-error (system {_STATUS_SYSTEM})",
+            "ClinicalImpression.status",
+            _status_match,
+            lambda ctx: M.status.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: M.status,
+            example="completed",
         ),
         column_ref(
-            "subject", "Patient or group assessed", "ClinicalImpression.subject", "subject", SUBJECT_TYPES,
+            "subject",
+            "Patient or group assessed",
+            "ClinicalImpression.subject",
+            "subject",
+            SUBJECT_TYPES,
             "Patient/10001",
         ),
         table_ref(
-            "supporting-info", "Information supporting the clinical impression (Reference(Any): needs a type)",
-            "ClinicalImpression.supportingInfo", "Observation/160001",
+            "supporting-info",
+            "Information supporting the clinical impression (Reference(Any): needs a type)",
+            "ClinicalImpression.supportingInfo",
+            "Observation/160001",
         ),
     ]
 
@@ -449,17 +670,45 @@ def clinical_impression_search() -> SearchRegistry:
         params={p.name: p for p in params},
         # Σ elements in the R4 ClinicalImpression definition (beyond id/meta/implicitRules).
         summary_elements=frozenset(
-            {"identifier", "status", "code", "description", "subject", "encounter", "effectiveDateTime",
-             "effectivePeriod", "date", "assessor", "problem"}
+            {
+                "identifier",
+                "status",
+                "code",
+                "description",
+                "subject",
+                "encounter",
+                "effectiveDateTime",
+                "effectivePeriod",
+                "date",
+                "assessor",
+                "problem",
+            }
         ),
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"status", "subject"}),
         includes=(
-            IncludeTarget("ClinicalImpression", "patient", "Patient", _include_column("subject", "Patient")),
-            IncludeTarget("ClinicalImpression", "subject", "Patient", _include_column("subject", "Patient")),
-            IncludeTarget("ClinicalImpression", "encounter", "Encounter", _include_column("encounter", "Encounter")),
             IncludeTarget(
-                "ClinicalImpression", "previous", "ClinicalImpression",
+                "ClinicalImpression",
+                "patient",
+                "Patient",
+                _include_column("subject", "Patient"),
+            ),
+            IncludeTarget(
+                "ClinicalImpression",
+                "subject",
+                "Patient",
+                _include_column("subject", "Patient"),
+            ),
+            IncludeTarget(
+                "ClinicalImpression",
+                "encounter",
+                "Encounter",
+                _include_column("encounter", "Encounter"),
+            ),
+            IncludeTarget(
+                "ClinicalImpression",
+                "previous",
+                "ClinicalImpression",
                 _include_column("previous", "ClinicalImpression"),
             ),
             *column_includes("assessor", "assessor", ASSESSOR_TYPES),
@@ -471,8 +720,12 @@ def clinical_impression_search() -> SearchRegistry:
         # ClinicalImpression:previous — the impressions that follow one of these.
         revincludes=(
             IncludeTarget(
-                "ClinicalImpression", "previous", "ClinicalImpression",
-                revinclude_impressions_via_column("previous", "ClinicalImpression", lambda r: r.clinical_impression_id),
+                "ClinicalImpression",
+                "previous",
+                "ClinicalImpression",
+                revinclude_impressions_via_column(
+                    "previous", "ClinicalImpression", lambda r: r.clinical_impression_id
+                ),
                 reverse=True,
             ),
         ),

@@ -8,7 +8,9 @@ from app.services.immunization_recommendation import ImmunizationRecommendationS
 @inject
 def get_immunization_recommendation_service(
     service: ImmunizationRecommendationService = Depends(
-        Provide[Container.immunization_recommendation.immunization_recommendation_service]
+        Provide[
+            Container.immunization_recommendation.immunization_recommendation_service
+        ]
     ),
 ) -> ImmunizationRecommendationService:
     return service

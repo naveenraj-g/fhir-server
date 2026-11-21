@@ -13,7 +13,10 @@ class PlanDefinitionIdentifier(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     plan_definition_pk = Column(
-        BigInteger, ForeignKey("plan_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("plan_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
 
     use = Column(
@@ -28,7 +31,11 @@ class PlanDefinitionIdentifier(TenantAuditMixin, Base):
 
     assigner_reference = Column(String, nullable=True)
     assigner_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     assigner_id = Column(BigInteger, nullable=True, index=True)

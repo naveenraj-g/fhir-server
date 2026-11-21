@@ -5,7 +5,6 @@ from app.services.goal import GoalService
 
 
 class GoalContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     goal_repository = providers.Factory(

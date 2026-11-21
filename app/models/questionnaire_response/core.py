@@ -1,9 +1,22 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Sequence, String, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Sequence,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import EncounterReferenceType, IdentifierUse, OrganizationReferenceType
+from app.models.enums import (
+    EncounterReferenceType,
+    IdentifierUse,
+    OrganizationReferenceType,
+)
 from app.models.questionnaire_response.enums import (
     QuestionnaireResponseAuthorReferenceType,
     QuestionnaireResponseSourceReferenceType,
@@ -105,7 +118,9 @@ class QuestionnaireResponseModel(TenantAuditMixin, Base):
 
     # ── identifier (0..1 Identifier) — flattened ──────────────────────────
 
-    identifier_use = Column(Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True)
+    identifier_use = Column(
+        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
+    )
     identifier_type_text = Column(String, nullable=True)
     identifier_system = Column(String, nullable=True)
     identifier_value = Column(String, nullable=True)
@@ -115,7 +130,11 @@ class QuestionnaireResponseModel(TenantAuditMixin, Base):
     identifier_assigner_reference = Column(String, nullable=True)
     identifier_assigner_id = Column(BigInteger, nullable=True, index=True)
     identifier_assigner_type = Column(
-        Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+        Enum(
+            OrganizationReferenceType,
+            name="organization_reference_type",
+            create_type=False,
+        ),
         nullable=True,
     )
     identifier_assigner_display = Column(String, nullable=True)
@@ -131,8 +150,12 @@ class QuestionnaireResponseModel(TenantAuditMixin, Base):
     identifier_assigner_identifier_type_user_selected = Column(Boolean, nullable=True)
     identifier_assigner_identifier_system = Column(String, nullable=True)
     identifier_assigner_identifier_value = Column(String, nullable=True)
-    identifier_assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    identifier_assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    identifier_assigner_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    identifier_assigner_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # ── questionnaire (0..1 canonical(Questionnaire)) ─────────────────────
 
@@ -141,7 +164,8 @@ class QuestionnaireResponseModel(TenantAuditMixin, Base):
     # ── status (1..1 code) — required ─────────────────────────────────────
 
     status = Column(
-        Enum(QuestionnaireResponseStatus, name="questionnaire_response_status"), nullable=False
+        Enum(QuestionnaireResponseStatus, name="questionnaire_response_status"),
+        nullable=False,
     )
 
     # ── subject (0..1 Reference(Any)) ─────────────────────────────────────
@@ -169,7 +193,10 @@ class QuestionnaireResponseModel(TenantAuditMixin, Base):
 
     encounter_reference = Column(String, nullable=True)
     encounter_type = Column(
-        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False), nullable=True
+        Enum(
+            EncounterReferenceType, name="encounter_reference_type", create_type=False
+        ),
+        nullable=True,
     )
     encounter_id = Column(BigInteger, nullable=True, index=True)
     encounter_display = Column(String, nullable=True)

@@ -1,4 +1,4 @@
-﻿"""Auto-seed FHIR R4 field bindings from HL7 StructureDefinition files.
+"""Auto-seed FHIR R4 field bindings from HL7 StructureDefinition files.
 
 Two-pass approach:
   Pass 1 â€” profiles-types.json: extract bindings from datatype SDs
@@ -14,6 +14,7 @@ Run:
   # or
   just terminology-seed-bindings-r4
 """
+
 import asyncio
 import json
 import os
@@ -23,17 +24,47 @@ import time
 import asyncpg
 
 _SKIP_RESOURCE_TYPES = {
-    "Resource", "DomainResource", "Element", "BackboneElement",
-    "Parameters", "OperationOutcome", "Bundle", "Binary",
-    "CapabilityStatement", "StructureDefinition", "ImplementationGuide",
-    "SearchParameter", "MessageDefinition", "OperationDefinition",
-    "CompartmentDefinition", "StructureMap", "GraphDefinition", "ExampleScenario",
+    "Resource",
+    "DomainResource",
+    "Element",
+    "BackboneElement",
+    "Parameters",
+    "OperationOutcome",
+    "Bundle",
+    "Binary",
+    "CapabilityStatement",
+    "StructureDefinition",
+    "ImplementationGuide",
+    "SearchParameter",
+    "MessageDefinition",
+    "OperationDefinition",
+    "CompartmentDefinition",
+    "StructureMap",
+    "GraphDefinition",
+    "ExampleScenario",
 }
 
 _PRIMITIVE_TYPES = {
-    "boolean", "integer", "string", "decimal", "uri", "url", "canonical",
-    "base64Binary", "instant", "date", "dateTime", "time", "code", "oid",
-    "id", "markdown", "unsignedInt", "positiveInt", "uuid", "xhtml",
+    "boolean",
+    "integer",
+    "string",
+    "decimal",
+    "uri",
+    "url",
+    "canonical",
+    "base64Binary",
+    "instant",
+    "date",
+    "dateTime",
+    "time",
+    "code",
+    "oid",
+    "id",
+    "markdown",
+    "unsignedInt",
+    "positiveInt",
+    "uuid",
+    "xhtml",
 }
 
 
@@ -78,16 +109,18 @@ def build_type_bindings(types_bundle: dict) -> dict[str, list[tuple]]:
             if not vs_url:
                 continue
 
-            sub_field = path[len(prefix):]
+            sub_field = path[len(prefix) :]
             if not sub_field:
                 continue
 
-            bindings.append((
-                sub_field,
-                _strip_version(vs_url),
-                binding.get("strength", "example"),
-                _max_to_multiple(elem.get("max", "1")),
-            ))
+            bindings.append(
+                (
+                    sub_field,
+                    _strip_version(vs_url),
+                    binding.get("strength", "example"),
+                    _max_to_multiple(elem.get("max", "1")),
+                )
+            )
 
         if bindings:
             result[type_name] = bindings
@@ -124,7 +157,7 @@ def extract_bindings(
             if not path.startswith(prefix):
                 continue
 
-            field_name = path[len(prefix):]
+            field_name = path[len(prefix) :]
             if not field_name:
                 continue
 
@@ -134,26 +167,32 @@ def extract_bindings(
             if binding:
                 vs_url = binding.get("valueSet") or ""
                 if vs_url:
-                    results.append((
-                        resource_type,
-                        field_name,
-                        _strip_version(vs_url),
-                        binding.get("strength", "example"),
-                        multiple,
-                    ))
+                    results.append(
+                        (
+                            resource_type,
+                            field_name,
+                            _strip_version(vs_url),
+                            binding.get("strength", "example"),
+                            multiple,
+                        )
+                    )
 
             for type_def in elem.get("type", []):
                 type_code: str = type_def.get("code", "")
                 if not type_code or type_code in _PRIMITIVE_TYPES:
                     continue
-                for sub_field, vs_url, strength, sub_multiple in type_bindings.get(type_code, []):
-                    results.append((
-                        resource_type,
-                        f"{field_name}.{sub_field}",
-                        vs_url,
-                        strength,
-                        sub_multiple,
-                    ))
+                for sub_field, vs_url, strength, sub_multiple in type_bindings.get(
+                    type_code, []
+                ):
+                    results.append(
+                        (
+                            resource_type,
+                            f"{field_name}.{sub_field}",
+                            vs_url,
+                            strength,
+                            sub_multiple,
+                        )
+                    )
 
     return results
 
@@ -177,7 +216,9 @@ async def seed(db_url: str, resources_path: str, types_path: str) -> None:
         seen[(r, f)] = (r, f, v, s, m)
     unique = list(seen.values())
 
-    print(f"[SEED-R4] {len(bindings)} total â†’ {len(unique)} unique (resource, field) pairs")
+    print(
+        f"[SEED-R4] {len(bindings)} total â†’ {len(unique)} unique (resource, field) pairs"
+    )
 
     conn = await asyncpg.connect(db_url)
     t0 = time.monotonic()
@@ -205,7 +246,11 @@ async def seed(db_url: str, resources_path: str, types_path: str) -> None:
                     multiple_allowed = EXCLUDED.multiple_allowed,
                     active           = TRUE
                 """,
-                resource_type, field_name, vs_id, strength, multiple_allowed,
+                resource_type,
+                field_name,
+                vs_id,
+                strength,
+                multiple_allowed,
             )
             inserted += 1
 

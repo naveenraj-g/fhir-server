@@ -26,7 +26,9 @@ class RiskAssessmentIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named risk_assessment_pk (not risk_assessment_id) so it can't be
     # confused with RiskAssessmentModel.risk_assessment_id, the public id.
-    risk_assessment_pk = Column(BigInteger, ForeignKey("risk_assessment.id"), nullable=False, index=True)
+    risk_assessment_pk = Column(
+        BigInteger, ForeignKey("risk_assessment.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

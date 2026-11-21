@@ -78,9 +78,7 @@ class _FullMixin:
         rebuilt."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(ScheduleModel).where(
-                    ScheduleModel.schedule_id == schedule_id
-                )
+                select(ScheduleModel).where(ScheduleModel.schedule_id == schedule_id)
             )
             schedule = (await session.execute(stmt)).scalars().first()
             if not schedule:

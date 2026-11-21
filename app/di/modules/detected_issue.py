@@ -5,7 +5,6 @@ from app.services.detected_issue import DetectedIssueService
 
 
 class DetectedIssueContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     detected_issue_repository = providers.Factory(

@@ -15,13 +15,9 @@ class _CoreMixin:
     itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_schedule_id(
-        self, schedule_id: int
-    ) -> ScheduleModel | None:
+    async def get_by_schedule_id(self, schedule_id: int) -> ScheduleModel | None:
         async with self.session_factory() as session:
-            stmt = select(ScheduleModel).where(
-                ScheduleModel.schedule_id == schedule_id
-            )
+            stmt = select(ScheduleModel).where(ScheduleModel.schedule_id == schedule_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_schedule_id_in_org(
@@ -36,9 +32,7 @@ class _CoreMixin:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    async def schedule_belongs_to_org(
-        self, schedule_id: int, org_id: str
-    ) -> bool:
+    async def schedule_belongs_to_org(self, schedule_id: int, org_id: str) -> bool:
         """Lightweight existence check (no eager-loading) for tenant-ownership
         gates on write routes — True iff the schedule exists AND belongs
         to org_id."""
@@ -85,9 +79,7 @@ class _CoreMixin:
 
     async def delete(self, schedule_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(ScheduleModel).where(
-                ScheduleModel.schedule_id == schedule_id
-            )
+            stmt = select(ScheduleModel).where(ScheduleModel.schedule_id == schedule_id)
             schedule = (await session.execute(stmt)).scalars().first()
             if not schedule:
                 return False

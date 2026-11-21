@@ -32,7 +32,9 @@ class ScheduleToken(Base):
     __table_args__ = (Index("ix_schedule_token_param_code", "param", "code"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    schedule_pk = Column(BigInteger, ForeignKey("schedule.id"), nullable=False, index=True)
+    schedule_pk = Column(
+        BigInteger, ForeignKey("schedule.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     system = Column(String, nullable=True)
     code = Column(String, nullable=True)

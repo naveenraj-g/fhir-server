@@ -5,7 +5,6 @@ from app.services.communication_request import CommunicationRequestService
 
 
 class CommunicationRequestContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     communication_request_repository = providers.Factory(

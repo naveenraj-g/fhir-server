@@ -20,7 +20,11 @@ from app.models.service_request import (
     ServiceRequestSpecimenReferenceType,
     ServiceRequestSubjectReferenceType,
 )
-from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES, _org_ref_kwargs, _parse_org_ref
+from app.repository._reference_shared import (
+    _IDENTIFIER_FALLBACK_SUFFIXES,
+    _org_ref_kwargs,
+    _parse_org_ref,
+)
 
 __all__ = [
     "_IDENTIFIER_FALLBACK_SUFFIXES",
@@ -89,12 +93,24 @@ def _ref_kwargs(prefix: str, ref: str | None, display: str | None, enum_cls) -> 
     column, never a Postgres Enum) — otherwise `enum_cls` is whichever
     resource-scoped (or shared) reference-type enum this field uses."""
     if not ref:
-        return {f"{prefix}_type": None, f"{prefix}_id": None, f"{prefix}_display": display}
-    ref_type, ref_id = _parse_any_ref(ref) if enum_cls is None else parse_reference(ref, enum_cls)
-    return {f"{prefix}_type": ref_type, f"{prefix}_id": ref_id, f"{prefix}_display": display}
+        return {
+            f"{prefix}_type": None,
+            f"{prefix}_id": None,
+            f"{prefix}_display": display,
+        }
+    ref_type, ref_id = (
+        _parse_any_ref(ref) if enum_cls is None else parse_reference(ref, enum_cls)
+    )
+    return {
+        f"{prefix}_type": ref_type,
+        f"{prefix}_id": ref_id,
+        f"{prefix}_display": display,
+    }
 
 
-async def _validate_ref(session, tenant_id, field_name: str, ref_type, ref_id, modeled_types: set | None) -> None:
+async def _validate_ref(
+    session, tenant_id, field_name: str, ref_type, ref_id, modeled_types: set | None
+) -> None:
     """`modeled_types=None` means "always validate" (the field's only
     allowed type IS the modeled resource); a set means "only validate
     when ref_type is in this subset"; an empty set means "never
@@ -103,7 +119,9 @@ async def _validate_ref(session, tenant_id, field_name: str, ref_type, ref_id, m
         return
     if modeled_types is not None and ref_type not in modeled_types:
         return
-    await ensure_resource_exists(session, ref_type, ref_id, org_id=tenant_id, field_name=field_name)
+    await ensure_resource_exists(
+        session, ref_type, ref_id, org_id=tenant_id, field_name=field_name
+    )
 
 
 def _identifier_fallback_kwargs(model_prefix: str, obj) -> dict:
@@ -115,7 +133,10 @@ def _identifier_fallback_kwargs(model_prefix: str, obj) -> dict:
     identifier_*`. The list-reference child tables' own columns ARE bare
     `reference_identifier_*` already, so those reuse `_reference_kwargs`-
     style direct attribute access instead — see full.py."""
-    return {f"{model_prefix}_{suffix}": getattr(obj, f"reference_{suffix}") for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
+    return {
+        f"{model_prefix}_{suffix}": getattr(obj, f"reference_{suffix}")
+        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
+    }
 
 
 def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
@@ -127,7 +148,9 @@ def _single_reference_kwargs(prefix: str, obj, enum_cls) -> dict:
     display = obj.reference_display if obj else None
     kwargs = {f"{prefix}_reference": ref, **_ref_kwargs(prefix, ref, display, enum_cls)}
     for suffix in _IDENTIFIER_FALLBACK_SUFFIXES:
-        kwargs[f"{prefix}_{suffix}"] = getattr(obj, f"reference_{suffix}") if obj else None
+        kwargs[f"{prefix}_{suffix}"] = (
+            getattr(obj, f"reference_{suffix}") if obj else None
+        )
     return kwargs
 
 
@@ -149,14 +172,24 @@ def _with_relationships(stmt):
         selectinload(ServiceRequestModel.code_codings),
         selectinload(ServiceRequestModel.as_needed_codings),
         selectinload(ServiceRequestModel.performer_type_codings),
-        selectinload(ServiceRequestModel.identifiers).selectinload(ServiceRequestIdentifier.type_codings),
+        selectinload(ServiceRequestModel.identifiers).selectinload(
+            ServiceRequestIdentifier.type_codings
+        ),
         selectinload(ServiceRequestModel.based_ons),
         selectinload(ServiceRequestModel.replaces),
-        selectinload(ServiceRequestModel.categories).selectinload(ServiceRequestCategory.codings),
-        selectinload(ServiceRequestModel.order_details).selectinload(ServiceRequestOrderDetail.codings),
-        selectinload(ServiceRequestModel.location_codes).selectinload(ServiceRequestLocationCode.codings),
+        selectinload(ServiceRequestModel.categories).selectinload(
+            ServiceRequestCategory.codings
+        ),
+        selectinload(ServiceRequestModel.order_details).selectinload(
+            ServiceRequestOrderDetail.codings
+        ),
+        selectinload(ServiceRequestModel.location_codes).selectinload(
+            ServiceRequestLocationCode.codings
+        ),
         selectinload(ServiceRequestModel.location_references),
-        selectinload(ServiceRequestModel.reason_codes).selectinload(ServiceRequestReasonCode.codings),
+        selectinload(ServiceRequestModel.reason_codes).selectinload(
+            ServiceRequestReasonCode.codings
+        ),
         selectinload(ServiceRequestModel.reason_references),
         selectinload(ServiceRequestModel.insurances),
         selectinload(ServiceRequestModel.supporting_infos),
@@ -164,5 +197,7 @@ def _with_relationships(stmt):
         selectinload(ServiceRequestModel.relevant_histories),
         selectinload(ServiceRequestModel.notes),
         selectinload(ServiceRequestModel.performers),
-        selectinload(ServiceRequestModel.body_sites).selectinload(ServiceRequestBodySite.codings),
+        selectinload(ServiceRequestModel.body_sites).selectinload(
+            ServiceRequestBodySite.codings
+        ),
     )

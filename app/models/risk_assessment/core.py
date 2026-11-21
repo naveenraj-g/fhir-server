@@ -5,7 +5,9 @@ from sqlalchemy.orm import relationship
 from app.core.database import FHIRBase as Base
 from app.models.shared import TenantAuditMixin
 
-risk_assessment_id_seq = Sequence("risk_assessment_pub_seq", start=520000, increment=1, metadata=Base.metadata)
+risk_assessment_id_seq = Sequence(
+    "risk_assessment_pub_seq", start=520000, increment=1, metadata=Base.metadata
+)
 
 # The R4 targets of RiskAssessment.subject and .performer.
 SUBJECT_TYPES = ("Patient", "Group")
@@ -107,6 +109,18 @@ class RiskAssessmentModel(TenantAuditMixin, Base):
     performer_identifier_system = Column(String, nullable=True)
     performer_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("RiskAssessmentIdentifier", back_populates="risk_assessment", cascade="all, delete-orphan")
-    tokens = relationship("RiskAssessmentToken", back_populates="risk_assessment", cascade="all, delete-orphan")
-    predictions = relationship("RiskAssessmentPrediction", back_populates="risk_assessment", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "RiskAssessmentIdentifier",
+        back_populates="risk_assessment",
+        cascade="all, delete-orphan",
+    )
+    tokens = relationship(
+        "RiskAssessmentToken",
+        back_populates="risk_assessment",
+        cascade="all, delete-orphan",
+    )
+    predictions = relationship(
+        "RiskAssessmentPrediction",
+        back_populates="risk_assessment",
+        cascade="all, delete-orphan",
+    )

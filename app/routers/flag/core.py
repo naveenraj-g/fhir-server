@@ -41,8 +41,7 @@ logger = get_logger(__name__)
         "Prospective warnings of potential issues when providing care to the patient. "
         "Accepts the full nested payload atomically in one DB transaction. "
         "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) "
-        "— an org-less token is rejected outright (403). "
-        + _CONTENT_NEG
+        "— an org-less token is rejected outright (403). " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -57,9 +56,7 @@ async def create_flag(
         extra={"event": "route.create_flag"},
     )
     log_payload(logger, "flag.create.payload", payload)
-    model = await flag_service.create_flag(
-        payload, actor.org_id, actor.sub
-    )
+    model = await flag_service.create_flag(payload, actor.org_id, actor.sub)
     return format_response(
         flag_service._to_fhir(model),
         flag_service._to_plain(model),
@@ -95,9 +92,7 @@ async def get_flag(
             "flag_id": flag_id,
         },
     )
-    model = await flag_service.get_flag_scoped(
-        flag_id, actor.org_id
-    )
+    model = await flag_service.get_flag_scoped(flag_id, actor.org_id)
     return format_response(
         flag_service._to_fhir(model),
         flag_service._to_plain(model),
@@ -169,12 +164,8 @@ async def list_flags(
     flag_status: str | None = Query(
         None, alias="status", description="active | inactive | entered-in-error."
     ),
-    encounter: str | None = Query(
-        None, description="Alert relevant to encounter."
-    ),
-    author: str | None = Query(
-        None, description="Flag creator."
-    ),
+    encounter: str | None = Query(None, description="Alert relevant to encounter."),
+    author: str | None = Query(None, description="Flag creator."),
     pagination: ListParams = Depends(),
     flag_service: FlagService = Depends(get_flag_service),
 ):

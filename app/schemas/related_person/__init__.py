@@ -1,4 +1,7 @@
-from app.schemas.related_person.input import RelatedPersonCreateSchema, RelatedPersonPatchSchema
+from app.schemas.related_person.input import (
+    RelatedPersonCreateSchema,
+    RelatedPersonPatchSchema,
+)
 from app.schemas.related_person.response import (
     FHIRRelatedPersonBundle,
     FHIRRelatedPersonBundleEntry,

@@ -137,7 +137,9 @@ async def _add_performers(
     session, consent_pk: int, org_id: str, performers, created_by: str
 ) -> None:
     for p in performers or []:
-        p_type, p_id = _parse_performer_ref(p.reference) if p.reference else (None, None)
+        p_type, p_id = (
+            _parse_performer_ref(p.reference) if p.reference else (None, None)
+        )
         if p_type and p_id:
             await _validate_ref(session, org_id, p_type, p_id, "performer")
         session.add(
@@ -158,7 +160,9 @@ async def _add_organizations(
     session, consent_pk: int, org_id: str, organizations, created_by: str
 ) -> None:
     for o in organizations or []:
-        o_type, o_id = _parse_organization_ref(o.reference) if o.reference else (None, None)
+        o_type, o_id = (
+            _parse_organization_ref(o.reference) if o.reference else (None, None)
+        )
         if o_type and o_id:
             await _validate_ref(session, org_id, o_type, o_id, "organization")
         session.add(
@@ -256,7 +260,9 @@ async def _add_provision_tree(
 
     if prov_input.actor:
         for a in prov_input.actor:
-            a_type, a_id = _parse_actor_ref(a.reference) if a.reference else (None, None)
+            a_type, a_id = (
+                _parse_actor_ref(a.reference) if a.reference else (None, None)
+            )
             if a_type and a_id:
                 await _validate_ref(
                     session, org_id, a_type, a_id, "provision.actor.reference"
@@ -354,7 +360,9 @@ async def _add_provision_tree(
 
     if prov_input.data:
         for dt in prov_input.data:
-            dt_type, dt_id = _parse_generic_ref(dt.reference) if dt.reference else (None, None)
+            dt_type, dt_id = (
+                _parse_generic_ref(dt.reference) if dt.reference else (None, None)
+            )
             if dt_type and dt_id:
                 await _validate_ref(
                     session, org_id, dt_type, dt_id, "provision.data.reference"
@@ -388,9 +396,7 @@ class _FullMixin:
         async with self.session_factory() as session:
             # Resolve patient
             pat_type, pat_id = (
-                _parse_patient_ref(payload.patient)
-                if payload.patient
-                else (None, None)
+                _parse_patient_ref(payload.patient) if payload.patient else (None, None)
             )
             if pat_type and pat_id:
                 await _validate_ref(session, org_id, pat_type, pat_id, "patient")
@@ -449,9 +455,7 @@ class _FullMixin:
             await _add_organizations(
                 session, consent.id, org_id, payload.organization, created_by
             )
-            await _add_policies(
-                session, consent.id, org_id, payload.policy, created_by
-            )
+            await _add_policies(session, consent.id, org_id, payload.policy, created_by)
 
             if payload.policy_rule and payload.policy_rule.coding:
                 await _add_policy_rule_codings(
@@ -507,13 +511,17 @@ class _FullMixin:
             if "extension" in fields_set:
                 consent.extension = payload.extension or []
 
-            patient_fallback_fields = {f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
-            if "patient" in fields_set or "patient_display" in fields_set or (fields_set & patient_fallback_fields):
+            patient_fallback_fields = {
+                f"patient_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+            }
+            if (
+                "patient" in fields_set
+                or "patient_display" in fields_set
+                or (fields_set & patient_fallback_fields)
+            ):
                 if payload.patient:
                     pat_type, pat_id = _parse_patient_ref(payload.patient)
-                    await _validate_ref(
-                        session, org_id, pat_type, pat_id, "patient"
-                    )
+                    await _validate_ref(session, org_id, pat_type, pat_id, "patient")
                     consent.patient_reference = payload.patient
                     consent.patient_type = pat_type
                     consent.patient_id = pat_id
@@ -528,22 +536,20 @@ class _FullMixin:
                     if f_name in fields_set:
                         setattr(consent, f_name, getattr(payload, f_name))
 
-            source_ref_fallback_fields = {f"source_reference_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+            source_ref_fallback_fields = {
+                f"source_reference_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+            }
             if (
                 "source_reference" in fields_set
                 or "source_reference_display" in fields_set
                 or (fields_set & source_ref_fallback_fields)
             ):
                 if payload.source_reference:
-                    src_type, src_id = _parse_source_ref(
-                        payload.source_reference
-                    )
+                    src_type, src_id = _parse_source_ref(payload.source_reference)
                     await _validate_ref(
                         session, org_id, src_type, src_id, "source_reference"
                     )
-                    consent.source_reference_reference = (
-                        payload.source_reference
-                    )
+                    consent.source_reference_reference = payload.source_reference
                     consent.source_reference_type = src_type
                     consent.source_reference_id = src_id
                 elif (
@@ -554,9 +560,7 @@ class _FullMixin:
                     consent.source_reference_type = None
                     consent.source_reference_id = None
                 if "source_reference_display" in fields_set:
-                    consent.source_reference_display = (
-                        payload.source_reference_display
-                    )
+                    consent.source_reference_display = payload.source_reference_display
                 for s in _IDENTIFIER_FALLBACK_SUFFIXES:
                     f_name = f"source_reference_{s}"
                     if f_name in fields_set:
@@ -568,9 +572,7 @@ class _FullMixin:
                         ConsentScopeCoding.consent_pk == consent.id
                     )
                 )
-                consent.scope_text = (
-                    payload.scope.text if payload.scope else None
-                )
+                consent.scope_text = payload.scope.text if payload.scope else None
                 if payload.scope and payload.scope.coding:
                     await _add_scope_codings(
                         session,
@@ -627,9 +629,7 @@ class _FullMixin:
 
             if "policy" in fields_set:
                 await session.execute(
-                    delete(ConsentPolicy).where(
-                        ConsentPolicy.consent_pk == consent.id
-                    )
+                    delete(ConsentPolicy).where(ConsentPolicy.consent_pk == consent.id)
                 )
                 if payload.policy:
                     await _add_policies(

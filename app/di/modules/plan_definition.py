@@ -5,7 +5,6 @@ from app.services.plan_definition import PlanDefinitionService
 
 
 class PlanDefinitionContainer(containers.DeclarativeContainer):
-
     core = providers.DependenciesContainer()
 
     plan_definition_repository = providers.Factory(

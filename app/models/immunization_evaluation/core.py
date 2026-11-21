@@ -51,7 +51,9 @@ class ImmunizationEvaluationModel(TenantAuditMixin, Base):
     (the old dose-number / series-doses choice checks are the validator's job)."""
 
     __tablename__ = "immunization_evaluation"
-    __table_args__ = (Index("ix_immunization_evaluation_date", "date_start", "date_end"),)
+    __table_args__ = (
+        Index("ix_immunization_evaluation_date", "date_start", "date_end"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     immunization_evaluation_id = Column(
@@ -96,8 +98,12 @@ class ImmunizationEvaluationModel(TenantAuditMixin, Base):
     immunization_event_identifier_value = Column(String, nullable=True)
 
     identifiers = relationship(
-        "ImmunizationEvaluationIdentifier", back_populates="immunization_evaluation", cascade="all, delete-orphan"
+        "ImmunizationEvaluationIdentifier",
+        back_populates="immunization_evaluation",
+        cascade="all, delete-orphan",
     )
     tokens = relationship(
-        "ImmunizationEvaluationToken", back_populates="immunization_evaluation", cascade="all, delete-orphan"
+        "ImmunizationEvaluationToken",
+        back_populates="immunization_evaluation",
+        cascade="all, delete-orphan",
     )

@@ -19,7 +19,10 @@ from app.routers._fhir_search import (
     searchset_response,
     strict_handling,
 )
-from app.schemas.family_member_history import FamilyMemberHistoryCreateSchema, FamilyMemberHistoryPatchSchema
+from app.schemas.family_member_history import (
+    FamilyMemberHistoryCreateSchema,
+    FamilyMemberHistoryPatchSchema,
+)
 from app.services.family_member_history import FamilyMemberHistoryService
 
 from ._responses import (
@@ -65,7 +68,8 @@ logger = get_logger(__name__)
         "`Patient/<id>`, a Condition, AllergyIntolerance or DiagnosticReport reason, a note author "
         "(Practitioner, PractitionerRole, Patient, RelatedPerson, Organization) and `identifier.assigner` are "
         "rejected with 422 if they do not exist in the caller's org; an Observation / QuestionnaireResponse / "
-        "DocumentReference reason, an absolute URL or a logical reference is stored as sent. " + _CONTENT_NEG
+        "DocumentReference reason, an absolute URL or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -73,7 +77,9 @@ async def create_family_member_history(
     payload: FamilyMemberHistoryCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("family_member_history", "create")),
-    family_member_history_service: FamilyMemberHistoryService = Depends(get_family_member_history_service),
+    family_member_history_service: FamilyMemberHistoryService = Depends(
+        get_family_member_history_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -83,8 +89,10 @@ async def create_family_member_history(
         extra={"event": "route.create_family_member_history"},
     )
     log_payload(logger, "family_member_history.create.payload", payload)
-    family_member_history = await family_member_history_service.create_family_member_history(
-        payload, actor.org_id, actor.sub, body=await request.json()
+    family_member_history = (
+        await family_member_history_service.create_family_member_history(
+            payload, actor.org_id, actor.sub, body=await request.json()
+        )
     )
     return fhir_response(
         family_member_history_service._to_fhir(family_member_history),
@@ -166,7 +174,9 @@ async def _search(
 async def search_family_member_histories(
     request: Request,
     actor: AuthUser = Depends(require_permission("family_member_history", "read")),
-    family_member_history_service: FamilyMemberHistoryService = Depends(get_family_member_history_service),
+    family_member_history_service: FamilyMemberHistoryService = Depends(
+        get_family_member_history_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -174,7 +184,9 @@ async def search_family_member_histories(
         "Search FamilyMemberHistory resources",
         extra={"event": "route.search_family_member_histories"},
     )
-    return await _search(request, get_query(request), actor, family_member_history_service)
+    return await _search(
+        request, get_query(request), actor, family_member_history_service
+    )
 
 
 @router.post(
@@ -193,13 +205,17 @@ async def search_family_member_histories(
 async def search_family_member_histories_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("family_member_history", "read")),
-    family_member_history_service: FamilyMemberHistoryService = Depends(get_family_member_history_service),
+    family_member_history_service: FamilyMemberHistoryService = Depends(
+        get_family_member_history_service
+    ),
 ):
     logger.info(
         "Search FamilyMemberHistory resources (POST _search)",
         extra={"event": "route.search_family_member_histories_post"},
     )
-    return await _search(request, await post_query(request), actor, family_member_history_service)
+    return await _search(
+        request, await post_query(request), actor, family_member_history_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -222,7 +238,9 @@ async def get_family_member_history(
         ..., ge=1, description="Public family_member_history identifier."
     ),
     actor: AuthUser = Depends(require_permission("family_member_history", "read")),
-    family_member_history_service: FamilyMemberHistoryService = Depends(get_family_member_history_service),
+    family_member_history_service: FamilyMemberHistoryService = Depends(
+        get_family_member_history_service
+    ),
 ):
     logger.info(
         "Retrieve an FamilyMemberHistory resource by public family_member_history_id",
@@ -231,8 +249,10 @@ async def get_family_member_history(
             "family_member_history_id": family_member_history_id,
         },
     )
-    family_member_history = await family_member_history_service.get_family_member_history_scoped(
-        family_member_history_id, actor.org_id
+    family_member_history = (
+        await family_member_history_service.get_family_member_history_scoped(
+            family_member_history_id, actor.org_id
+        )
     )
     return fhir_response(family_member_history_service._to_fhir(family_member_history))
 
@@ -262,13 +282,18 @@ async def patch_family_member_history(
         ..., ge=1, description="Public family_member_history identifier."
     ),
     actor: AuthUser = Depends(require_permission("family_member_history", "update")),
-    family_member_history_service: FamilyMemberHistoryService = Depends(get_family_member_history_service),
+    family_member_history_service: FamilyMemberHistoryService = Depends(
+        get_family_member_history_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_family_member_history()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update an FamilyMemberHistory resource",
-        extra={"event": "route.patch_family_member_history", "family_member_history_id": family_member_history_id},
+        extra={
+            "event": "route.patch_family_member_history",
+            "family_member_history_id": family_member_history_id,
+        },
     )
     log_payload(logger, "family_member_history.patch.payload", payload)
     updated = await family_member_history_service.patch_family_member_history(
@@ -301,7 +326,9 @@ async def delete_family_member_history(
         ..., ge=1, description="Public family_member_history identifier."
     ),
     actor: AuthUser = Depends(require_permission("family_member_history", "delete")),
-    family_member_history_service: FamilyMemberHistoryService = Depends(get_family_member_history_service),
+    family_member_history_service: FamilyMemberHistoryService = Depends(
+        get_family_member_history_service
+    ),
 ):
     """delete_family_member_history() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -312,4 +339,6 @@ async def delete_family_member_history(
             "family_member_history_id": family_member_history_id,
         },
     )
-    await family_member_history_service.delete_family_member_history(family_member_history_id, org_id=actor.org_id)
+    await family_member_history_service.delete_family_member_history(
+        family_member_history_id, org_id=actor.org_id
+    )

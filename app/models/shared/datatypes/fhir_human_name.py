@@ -58,11 +58,15 @@ class FhirHumanNameMixin:
     @declared_attr
     def period_start(cls):
         return Column(
-            f"{cls._human_name_prefix}period_start", DateTime(timezone=True), nullable=True
+            f"{cls._human_name_prefix}period_start",
+            DateTime(timezone=True),
+            nullable=True,
         )
 
     @declared_attr
     def period_end(cls):
         return Column(
-            f"{cls._human_name_prefix}period_end", DateTime(timezone=True), nullable=True
+            f"{cls._human_name_prefix}period_end",
+            DateTime(timezone=True),
+            nullable=True,
         )

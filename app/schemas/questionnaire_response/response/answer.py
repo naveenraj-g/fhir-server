@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.datatypes import FHIRAttachment, FHIRCoding, FHIRReference, PlainAttachmentRow
+from app.schemas.datatypes import (
+    FHIRAttachment,
+    FHIRCoding,
+    FHIRReference,
+    PlainAttachmentRow,
+)
 from app.schemas.questionnaire.response import FHIRQuantity
 
 # ---------------------------------------------------------------------------
@@ -43,32 +48,80 @@ class PlainQuestionnaireResponseAnswer(BaseModel):
     value_time: str | None = Field(None, description="value[x]: time.")
     value_string: str | None = Field(None, description="value[x]: string.")
     value_uri: str | None = Field(None, description="value[x]: uri.")
-    value_attachment: PlainAttachmentRow | None = Field(None, description="value[x]: Attachment.")
-    value_coding_system: str | None = Field(None, description="value[x]: Coding — system.")
-    value_coding_version: str | None = Field(None, description="value[x]: Coding — version.")
+    value_attachment: PlainAttachmentRow | None = Field(
+        None, description="value[x]: Attachment."
+    )
+    value_coding_system: str | None = Field(
+        None, description="value[x]: Coding — system."
+    )
+    value_coding_version: str | None = Field(
+        None, description="value[x]: Coding — version."
+    )
     value_coding_code: str | None = Field(None, description="value[x]: Coding — code.")
-    value_coding_display: str | None = Field(None, description="value[x]: Coding — display.")
-    value_coding_user_selected: bool | None = Field(None, description="value[x]: Coding — whether chosen directly by a user.")
-    value_quantity_value: float | None = Field(None, description="value[x]: Quantity — numeric value.")
-    value_quantity_comparator: str | None = Field(None, description="value[x]: Quantity — < | <= | >= | >.")
-    value_quantity_unit: str | None = Field(None, description="value[x]: Quantity — unit representation.")
-    value_quantity_system: str | None = Field(None, description="value[x]: Quantity — unit system.")
-    value_quantity_code: str | None = Field(None, description="value[x]: Quantity — coded unit form.")
+    value_coding_display: str | None = Field(
+        None, description="value[x]: Coding — display."
+    )
+    value_coding_user_selected: bool | None = Field(
+        None, description="value[x]: Coding — whether chosen directly by a user."
+    )
+    value_quantity_value: float | None = Field(
+        None, description="value[x]: Quantity — numeric value."
+    )
+    value_quantity_comparator: str | None = Field(
+        None, description="value[x]: Quantity — < | <= | >= | >."
+    )
+    value_quantity_unit: str | None = Field(
+        None, description="value[x]: Quantity — unit representation."
+    )
+    value_quantity_system: str | None = Field(
+        None, description="value[x]: Quantity — unit system."
+    )
+    value_quantity_code: str | None = Field(
+        None, description="value[x]: Quantity — coded unit form."
+    )
     value_reference: str | None = Field(None, description="Resolved FHIR reference.")
-    value_reference_type: str | None = Field(None, description="Resolved reference target type.")
-    value_reference_id: int | None = Field(None, description="Internal ID of the resolved target, if any.")
-    value_reference_display: str | None = Field(None, description="value[x]: Reference — plain text display.")
-    value_reference_identifier_use: str | None = Field(None, description="Fallback identifier — use.")
-    value_reference_identifier_type_system: str | None = Field(None, description="Fallback identifier — type system.")
-    value_reference_identifier_type_version: str | None = Field(None, description="Fallback identifier — type version.")
-    value_reference_identifier_type_code: str | None = Field(None, description="Fallback identifier — type code.")
-    value_reference_identifier_type_display: str | None = Field(None, description="Fallback identifier — type display.")
-    value_reference_identifier_type_user_selected: bool | None = Field(None, description="Fallback identifier — type user_selected.")
-    value_reference_identifier_type_text: str | None = Field(None, description="Fallback identifier — type text.")
-    value_reference_identifier_system: str | None = Field(None, description="Fallback identifier — system.")
-    value_reference_identifier_value: str | None = Field(None, description="Fallback identifier — value.")
-    value_reference_identifier_period_start: str | None = Field(None, description="Fallback identifier — period start.")
-    value_reference_identifier_period_end: str | None = Field(None, description="Fallback identifier — period end.")
+    value_reference_type: str | None = Field(
+        None, description="Resolved reference target type."
+    )
+    value_reference_id: int | None = Field(
+        None, description="Internal ID of the resolved target, if any."
+    )
+    value_reference_display: str | None = Field(
+        None, description="value[x]: Reference — plain text display."
+    )
+    value_reference_identifier_use: str | None = Field(
+        None, description="Fallback identifier — use."
+    )
+    value_reference_identifier_type_system: str | None = Field(
+        None, description="Fallback identifier — type system."
+    )
+    value_reference_identifier_type_version: str | None = Field(
+        None, description="Fallback identifier — type version."
+    )
+    value_reference_identifier_type_code: str | None = Field(
+        None, description="Fallback identifier — type code."
+    )
+    value_reference_identifier_type_display: str | None = Field(
+        None, description="Fallback identifier — type display."
+    )
+    value_reference_identifier_type_user_selected: bool | None = Field(
+        None, description="Fallback identifier — type user_selected."
+    )
+    value_reference_identifier_type_text: str | None = Field(
+        None, description="Fallback identifier — type text."
+    )
+    value_reference_identifier_system: str | None = Field(
+        None, description="Fallback identifier — system."
+    )
+    value_reference_identifier_value: str | None = Field(
+        None, description="Fallback identifier — value."
+    )
+    value_reference_identifier_period_start: str | None = Field(
+        None, description="Fallback identifier — period start."
+    )
+    value_reference_identifier_period_end: str | None = Field(
+        None, description="Fallback identifier — period end."
+    )
 
     item: list["PlainQuestionnaireResponseItem"] | None = Field(
         None, description="Nested items under this specific answer."

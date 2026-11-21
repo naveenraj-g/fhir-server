@@ -24,7 +24,9 @@ class ImmunizationEvaluationToken(Base):
     One shared table instead of two identical ones."""
 
     __tablename__ = "immunization_evaluation_token"
-    __table_args__ = (Index("ix_immunization_evaluation_token_param_code", "param", "code"),)
+    __table_args__ = (
+        Index("ix_immunization_evaluation_token_param_code", "param", "code"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     immunization_evaluation_pk = Column(
@@ -36,4 +38,6 @@ class ImmunizationEvaluationToken(Base):
     display_norm = Column(String, nullable=True)
     text_norm = Column(String, nullable=True)
 
-    immunization_evaluation = relationship("ImmunizationEvaluationModel", back_populates="tokens")
+    immunization_evaluation = relationship(
+        "ImmunizationEvaluationModel", back_populates="tokens"
+    )

@@ -7,8 +7,6 @@ from app.services.procedure import ProcedureService
 
 @inject
 def get_procedure_service(
-    service: ProcedureService = Depends(
-        Provide[Container.procedure.procedure_service]
-    ),
+    service: ProcedureService = Depends(Provide[Container.procedure.procedure_service]),
 ) -> ProcedureService:
     return service

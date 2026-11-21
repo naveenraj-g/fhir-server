@@ -10,9 +10,15 @@ class MedicationRequestNoteInput(BaseModel):
     app.schemas.service_request.input.note.ServiceRequestNoteInput."""
 
     model_config = ConfigDict(extra="forbid")
-    author_string: str | None = Field(None, description="author[x]: string — free-text author.")
-    author_reference: str | None = Field(None, description="author[x]: Reference — FHIR reference string.")
-    author_reference_display: str | None = Field(None, description="author[x]: Reference — plain text display.")
+    author_string: str | None = Field(
+        None, description="author[x]: string — free-text author."
+    )
+    author_reference: str | None = Field(
+        None, description="author[x]: Reference — FHIR reference string."
+    )
+    author_reference_display: str | None = Field(
+        None, description="author[x]: Reference — plain text display."
+    )
     author_identifier_use: IdentifierUse | None = Field(
         None, description="Fallback identifier — identifies its purpose, if known."
     )
@@ -46,5 +52,7 @@ class MedicationRequestNoteInput(BaseModel):
     author_identifier_period_end: datetime | None = Field(
         None, description="Fallback identifier — end of validity period."
     )
-    time: datetime | None = Field(None, description="When this comment/annotation was made.")
+    time: datetime | None = Field(
+        None, description="When this comment/annotation was made."
+    )
     text: str = Field(..., description="The annotation text (markdown).")

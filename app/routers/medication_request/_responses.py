@@ -12,13 +12,21 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "MedicationRequest not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainMedicationRequestResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRMedicationRequestSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PlainMedicationRequestResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRMedicationRequestSchema.model_json_schema())
+            },
         }
     }
 }
@@ -27,8 +35,14 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of medication requests",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedMedicationRequestResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRMedicationRequestBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(
+                    PaginatedMedicationRequestResponse.model_json_schema()
+                )
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRMedicationRequestBundle.model_json_schema())
+            },
         },
     }
 }

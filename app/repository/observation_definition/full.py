@@ -332,22 +332,34 @@ class _FullMixin:
             await session.flush()
 
             if payload.code and payload.code.coding:
-                _add_code_codings(session, model.id, org_id, payload.code.coding, created_by)
+                _add_code_codings(
+                    session, model.id, org_id, payload.code.coding, created_by
+                )
 
             if payload.category:
-                await _add_categories(session, model.id, org_id, payload.category, created_by)
+                await _add_categories(
+                    session, model.id, org_id, payload.category, created_by
+                )
 
             if payload.identifier:
-                await _add_identifiers(session, model.id, org_id, payload.identifier, created_by)
+                await _add_identifiers(
+                    session, model.id, org_id, payload.identifier, created_by
+                )
 
             if payload.method and payload.method.coding:
-                _add_method_codings(session, model.id, org_id, payload.method.coding, created_by)
+                _add_method_codings(
+                    session, model.id, org_id, payload.method.coding, created_by
+                )
 
             if payload.quantitative_details:
-                _add_quantitative_details_codings(session, model.id, org_id, payload.quantitative_details, created_by)
+                _add_quantitative_details_codings(
+                    session, model.id, org_id, payload.quantitative_details, created_by
+                )
 
             if payload.qualified_interval:
-                await _add_qualified_intervals(session, model.id, org_id, payload.qualified_interval, created_by)
+                await _add_qualified_intervals(
+                    session, model.id, org_id, payload.qualified_interval, created_by
+                )
 
             await session.commit()
 
@@ -397,7 +409,10 @@ class _FullMixin:
                 model.extension = payload.extension or []
 
             # ValueSet references
-            if "valid_coded_value_set" in fields_set or "valid_coded_value_set_display" in fields_set:
+            if (
+                "valid_coded_value_set" in fields_set
+                or "valid_coded_value_set_display" in fields_set
+            ):
                 v_type, v_id = (
                     _parse_value_set_ref(payload.valid_coded_value_set)
                     if payload.valid_coded_value_set
@@ -406,9 +421,14 @@ class _FullMixin:
                 model.valid_coded_value_set_reference = payload.valid_coded_value_set
                 model.valid_coded_value_set_type = v_type
                 model.valid_coded_value_set_id = v_id
-                model.valid_coded_value_set_display = payload.valid_coded_value_set_display
+                model.valid_coded_value_set_display = (
+                    payload.valid_coded_value_set_display
+                )
 
-            if "normal_coded_value_set" in fields_set or "normal_coded_value_set_display" in fields_set:
+            if (
+                "normal_coded_value_set" in fields_set
+                or "normal_coded_value_set_display" in fields_set
+            ):
                 n_type, n_id = (
                     _parse_value_set_ref(payload.normal_coded_value_set)
                     if payload.normal_coded_value_set
@@ -417,40 +437,63 @@ class _FullMixin:
                 model.normal_coded_value_set_reference = payload.normal_coded_value_set
                 model.normal_coded_value_set_type = n_type
                 model.normal_coded_value_set_id = n_id
-                model.normal_coded_value_set_display = payload.normal_coded_value_set_display
+                model.normal_coded_value_set_display = (
+                    payload.normal_coded_value_set_display
+                )
 
-            if "abnormal_coded_value_set" in fields_set or "abnormal_coded_value_set_display" in fields_set:
+            if (
+                "abnormal_coded_value_set" in fields_set
+                or "abnormal_coded_value_set_display" in fields_set
+            ):
                 a_type, a_id = (
                     _parse_value_set_ref(payload.abnormal_coded_value_set)
                     if payload.abnormal_coded_value_set
                     else (None, None)
                 )
-                model.abnormal_coded_value_set_reference = payload.abnormal_coded_value_set
+                model.abnormal_coded_value_set_reference = (
+                    payload.abnormal_coded_value_set
+                )
                 model.abnormal_coded_value_set_type = a_type
                 model.abnormal_coded_value_set_id = a_id
-                model.abnormal_coded_value_set_display = payload.abnormal_coded_value_set_display
+                model.abnormal_coded_value_set_display = (
+                    payload.abnormal_coded_value_set_display
+                )
 
-            if "critical_coded_value_set" in fields_set or "critical_coded_value_set_display" in fields_set:
+            if (
+                "critical_coded_value_set" in fields_set
+                or "critical_coded_value_set_display" in fields_set
+            ):
                 c_type, c_id = (
                     _parse_value_set_ref(payload.critical_coded_value_set)
                     if payload.critical_coded_value_set
                     else (None, None)
                 )
-                model.critical_coded_value_set_reference = payload.critical_coded_value_set
+                model.critical_coded_value_set_reference = (
+                    payload.critical_coded_value_set
+                )
                 model.critical_coded_value_set_type = c_type
                 model.critical_coded_value_set_id = c_id
-                model.critical_coded_value_set_display = payload.critical_coded_value_set_display
+                model.critical_coded_value_set_display = (
+                    payload.critical_coded_value_set_display
+                )
 
             # code
             if "code" in fields_set:
                 model.code_text = payload.code.text if payload.code else None
                 await session.execute(
                     delete(ObservationDefinitionCodeCoding).where(
-                        ObservationDefinitionCodeCoding.observation_definition_pk == model.id
+                        ObservationDefinitionCodeCoding.observation_definition_pk
+                        == model.id
                     )
                 )
                 if payload.code and payload.code.coding:
-                    _add_code_codings(session, model.id, org_id, payload.code.coding, updated_by or model.created_by)
+                    _add_code_codings(
+                        session,
+                        model.id,
+                        org_id,
+                        payload.code.coding,
+                        updated_by or model.created_by,
+                    )
 
             # category
             if "category" in fields_set:
@@ -464,92 +507,148 @@ class _FullMixin:
                 )
                 await session.execute(
                     delete(ObservationDefinitionCategory).where(
-                        ObservationDefinitionCategory.observation_definition_pk == model.id
+                        ObservationDefinitionCategory.observation_definition_pk
+                        == model.id
                     )
                 )
                 if payload.category:
-                    await _add_categories(session, model.id, org_id, payload.category, updated_by or model.created_by)
+                    await _add_categories(
+                        session,
+                        model.id,
+                        org_id,
+                        payload.category,
+                        updated_by or model.created_by,
+                    )
 
             # method
             if "method" in fields_set:
                 model.method_text = payload.method.text if payload.method else None
                 await session.execute(
                     delete(ObservationDefinitionMethodCoding).where(
-                        ObservationDefinitionMethodCoding.observation_definition_pk == model.id
+                        ObservationDefinitionMethodCoding.observation_definition_pk
+                        == model.id
                     )
                 )
                 if payload.method and payload.method.coding:
-                    _add_method_codings(session, model.id, org_id, payload.method.coding, updated_by or model.created_by)
+                    _add_method_codings(
+                        session,
+                        model.id,
+                        org_id,
+                        payload.method.coding,
+                        updated_by or model.created_by,
+                    )
 
             # quantitative_details
             if "quantitative_details" in fields_set:
                 qd = payload.quantitative_details
-                model.quantitative_details_customary_unit_text = qd.customary_unit.text if (qd and qd.customary_unit) else None
-                model.quantitative_details_unit_text = qd.unit.text if (qd and qd.unit) else None
-                model.quantitative_details_conversion_factor = qd.conversion_factor if qd else None
-                model.quantitative_details_decimal_precision = qd.decimal_precision if qd else None
+                model.quantitative_details_customary_unit_text = (
+                    qd.customary_unit.text if (qd and qd.customary_unit) else None
+                )
+                model.quantitative_details_unit_text = (
+                    qd.unit.text if (qd and qd.unit) else None
+                )
+                model.quantitative_details_conversion_factor = (
+                    qd.conversion_factor if qd else None
+                )
+                model.quantitative_details_decimal_precision = (
+                    qd.decimal_precision if qd else None
+                )
 
                 await session.execute(
-                    delete(ObservationDefinitionQuantitativeDetailsCustomaryUnitCoding).where(
-                        ObservationDefinitionQuantitativeDetailsCustomaryUnitCoding.observation_definition_pk == model.id
+                    delete(
+                        ObservationDefinitionQuantitativeDetailsCustomaryUnitCoding
+                    ).where(
+                        ObservationDefinitionQuantitativeDetailsCustomaryUnitCoding.observation_definition_pk
+                        == model.id
                     )
                 )
                 await session.execute(
                     delete(ObservationDefinitionQuantitativeDetailsUnitCoding).where(
-                        ObservationDefinitionQuantitativeDetailsUnitCoding.observation_definition_pk == model.id
+                        ObservationDefinitionQuantitativeDetailsUnitCoding.observation_definition_pk
+                        == model.id
                     )
                 )
                 if qd:
-                    _add_quantitative_details_codings(session, model.id, org_id, qd, updated_by or model.created_by)
+                    _add_quantitative_details_codings(
+                        session, model.id, org_id, qd, updated_by or model.created_by
+                    )
 
             # qualified_interval
             if "qualified_interval" in fields_set:
                 qi_subq = select(ObservationDefinitionQualifiedInterval.id).where(
-                    ObservationDefinitionQualifiedInterval.observation_definition_pk == model.id
+                    ObservationDefinitionQualifiedInterval.observation_definition_pk
+                    == model.id
                 )
-                at_subq = select(ObservationDefinitionQualifiedIntervalAppliesTo.id).where(
-                    ObservationDefinitionQualifiedIntervalAppliesTo.qualified_interval_id.in_(qi_subq)
+                at_subq = select(
+                    ObservationDefinitionQualifiedIntervalAppliesTo.id
+                ).where(
+                    ObservationDefinitionQualifiedIntervalAppliesTo.qualified_interval_id.in_(
+                        qi_subq
+                    )
                 )
                 await session.execute(
                     delete(ObservationDefinitionQualifiedIntervalAppliesToCoding).where(
-                        ObservationDefinitionQualifiedIntervalAppliesToCoding.applies_to_id.in_(at_subq)
+                        ObservationDefinitionQualifiedIntervalAppliesToCoding.applies_to_id.in_(
+                            at_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ObservationDefinitionQualifiedIntervalAppliesTo).where(
-                        ObservationDefinitionQualifiedIntervalAppliesTo.qualified_interval_id.in_(qi_subq)
+                        ObservationDefinitionQualifiedIntervalAppliesTo.qualified_interval_id.in_(
+                            qi_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ObservationDefinitionQualifiedIntervalContextCoding).where(
-                        ObservationDefinitionQualifiedIntervalContextCoding.qualified_interval_id.in_(qi_subq)
+                        ObservationDefinitionQualifiedIntervalContextCoding.qualified_interval_id.in_(
+                            qi_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ObservationDefinitionQualifiedInterval).where(
-                        ObservationDefinitionQualifiedInterval.observation_definition_pk == model.id
+                        ObservationDefinitionQualifiedInterval.observation_definition_pk
+                        == model.id
                     )
                 )
                 if payload.qualified_interval:
-                    await _add_qualified_intervals(session, model.id, org_id, payload.qualified_interval, updated_by or model.created_by)
+                    await _add_qualified_intervals(
+                        session,
+                        model.id,
+                        org_id,
+                        payload.qualified_interval,
+                        updated_by or model.created_by,
+                    )
 
             # identifier
             if "identifier" in fields_set:
                 ident_subq = select(ObservationDefinitionIdentifier.id).where(
-                    ObservationDefinitionIdentifier.observation_definition_pk == model.id
+                    ObservationDefinitionIdentifier.observation_definition_pk
+                    == model.id
                 )
                 await session.execute(
                     delete(ObservationDefinitionIdentifierTypeCoding).where(
-                        ObservationDefinitionIdentifierTypeCoding.identifier_id.in_(ident_subq)
+                        ObservationDefinitionIdentifierTypeCoding.identifier_id.in_(
+                            ident_subq
+                        )
                     )
                 )
                 await session.execute(
                     delete(ObservationDefinitionIdentifier).where(
-                        ObservationDefinitionIdentifier.observation_definition_pk == model.id
+                        ObservationDefinitionIdentifier.observation_definition_pk
+                        == model.id
                     )
                 )
                 if payload.identifier:
-                    await _add_identifiers(session, model.id, org_id, payload.identifier, updated_by or model.created_by)
+                    await _add_identifiers(
+                        session,
+                        model.id,
+                        org_id,
+                        payload.identifier,
+                        updated_by or model.created_by,
+                    )
 
             if updated_by:
                 model.updated_by = updated_by

@@ -5,7 +5,9 @@ from sqlalchemy.orm import relationship
 from app.core.database import FHIRBase as Base
 from app.models.shared import TenantAuditMixin
 
-detected_issue_id_seq = Sequence("detected_issue_pub_seq", start=540000, increment=1, metadata=Base.metadata)
+detected_issue_id_seq = Sequence(
+    "detected_issue_pub_seq", start=540000, increment=1, metadata=Base.metadata
+)
 
 # The R4 targets of DetectedIssue.author.
 AUTHOR_TYPES = ("Practitioner", "PractitionerRole", "Device")
@@ -49,7 +51,9 @@ class DetectedIssueModel(TenantAuditMixin, Base):
     DetectedIssue is a shared tenant-level entity. No DB-level CHECK constraints."""
 
     __tablename__ = "detected_issue"
-    __table_args__ = (Index("ix_detected_issue_identified", "identified_start", "identified_end"),)
+    __table_args__ = (
+        Index("ix_detected_issue_identified", "identified_start", "identified_end"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     detected_issue_id = Column(
@@ -83,6 +87,18 @@ class DetectedIssueModel(TenantAuditMixin, Base):
     author_identifier_system = Column(String, nullable=True)
     author_identifier_value = Column(String, nullable=True)
 
-    identifiers = relationship("DetectedIssueIdentifier", back_populates="detected_issue", cascade="all, delete-orphan")
-    tokens = relationship("DetectedIssueToken", back_populates="detected_issue", cascade="all, delete-orphan")
-    references = relationship("DetectedIssueReference", back_populates="detected_issue", cascade="all, delete-orphan")
+    identifiers = relationship(
+        "DetectedIssueIdentifier",
+        back_populates="detected_issue",
+        cascade="all, delete-orphan",
+    )
+    tokens = relationship(
+        "DetectedIssueToken",
+        back_populates="detected_issue",
+        cascade="all, delete-orphan",
+    )
+    references = relationship(
+        "DetectedIssueReference",
+        back_populates="detected_issue",
+        cascade="all, delete-orphan",
+    )

@@ -25,10 +25,14 @@ class ConditionEvidenceDetail(Base):
     UniqueConstraint: R4 does not forbid listing the same reference twice."""
 
     __tablename__ = "condition_evidence_detail"
-    __table_args__ = (Index("ix_condition_evidence_detail_type_id", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index("ix_condition_evidence_detail_type_id", "reference_type", "reference_id"),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    condition_pk = Column(BigInteger, ForeignKey("condition.id"), nullable=False, index=True)
+    condition_pk = Column(
+        BigInteger, ForeignKey("condition.id"), nullable=False, index=True
+    )
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True)

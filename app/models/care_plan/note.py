@@ -50,7 +50,11 @@ class CarePlanNote(TenantAuditMixin, Base):
     author_reference_identifier_type_text = Column(String, nullable=True)
     author_reference_identifier_system = Column(String, nullable=True)
     author_reference_identifier_value = Column(String, nullable=True)
-    author_reference_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    author_reference_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    author_reference_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    author_reference_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     care_plan = relationship("CarePlanModel", back_populates="notes")

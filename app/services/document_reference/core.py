@@ -40,7 +40,9 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("DocumentReference operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "DocumentReference operation requires an org-scoped token"
+            )
         document_reference = await self.repository.get_by_document_reference_id_in_org(
             document_reference_id, org_id
         )
@@ -69,7 +71,9 @@ class _CoreMixin:
     ) -> tuple[list[DocumentReferenceModel], int | None]:
         """Raises PermissionDeniedError (403) for an org-less token."""
         if not org_id:
-            raise PermissionDeniedError("DocumentReference operation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "DocumentReference operation requires an org-scoped token"
+            )
         return await self.repository.list(
             org_id=org_id,
             status=status,
@@ -96,15 +100,24 @@ class _CoreMixin:
         created_by: str | None,
     ) -> DocumentReferenceModel:
         if not org_id:
-            raise PermissionDeniedError("DocumentReference creation requires an org-scoped token")
+            raise PermissionDeniedError(
+                "DocumentReference creation requires an org-scoped token"
+            )
         if not created_by:
-            raise PermissionDeniedError("DocumentReference creation requires an authenticated actor")
+            raise PermissionDeniedError(
+                "DocumentReference creation requires an authenticated actor"
+            )
 
-        await self._validate_base_r4(payload_to_fhir_document_reference(payload), org_id)
+        await self._validate_base_r4(
+            payload_to_fhir_document_reference(payload), org_id
+        )
         doc = await self.repository.create_full(payload, org_id, created_by)
         logger.info(
             "DocumentReference created",
-            extra={"event": "document_reference.created", "document_reference_id": doc.document_reference_id},
+            extra={
+                "event": "document_reference.created",
+                "document_reference_id": doc.document_reference_id,
+            },
         )
         return doc
 
@@ -118,13 +131,17 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", document_reference_id, org_id)
             raise NotFoundError("DocumentReference not found")
-        existing = await self.repository.get_by_document_reference_id_in_org(document_reference_id, org_id)
+        existing = await self.repository.get_by_document_reference_id_in_org(
+            document_reference_id, org_id
+        )
         if not existing:
             self._log_org_scope_miss("patch", document_reference_id, org_id)
             raise NotFoundError("DocumentReference not found")
 
         fragment, touched = patch_fragment_to_fhir_document_reference(payload)
-        merged = merge_patch_fragment(to_fhir_document_reference(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_document_reference(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         updated = await self.repository.patch_full(
@@ -142,8 +159,12 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_document_reference(self, document_reference_id: int, org_id: str | None = None) -> None:
-        if not org_id or not await self.repository.document_reference_belongs_to_org(document_reference_id, org_id):
+    async def delete_document_reference(
+        self, document_reference_id: int, org_id: str | None = None
+    ) -> None:
+        if not org_id or not await self.repository.document_reference_belongs_to_org(
+            document_reference_id, org_id
+        ):
             self._log_org_scope_miss("delete", document_reference_id, org_id)
             raise NotFoundError("DocumentReference not found")
         deleted = await self.repository.delete(document_reference_id)
@@ -151,12 +172,17 @@ class _CoreMixin:
             raise NotFoundError("DocumentReference not found")
         logger.info(
             "DocumentReference deleted",
-            extra={"event": "document_reference.deleted", "document_reference_id": document_reference_id},
+            extra={
+                "event": "document_reference.deleted",
+                "document_reference_id": document_reference_id,
+            },
         )
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
-        errors = await validate_resource("DocumentReference", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "DocumentReference", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "DocumentReference failed base R4 validation",
@@ -165,7 +191,9 @@ class _CoreMixin:
             raise FhirValidationError(errors)
 
     @staticmethod
-    def _log_org_scope_miss(operation: str, document_reference_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, document_reference_id: int, org_id: str | None
+    ) -> None:
         logger.warning(
             "DocumentReference write rejected by org scope",
             extra={

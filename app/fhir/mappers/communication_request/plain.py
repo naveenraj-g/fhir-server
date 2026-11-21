@@ -105,8 +105,12 @@ def _plain_reference_row(row) -> dict:
     return {
         "id": row.id,
         **_plain_reference_fields(row, "reference"),
-        "created_at": fhir_instant(row.created_at) if hasattr(row, "created_at") else None,
-        "updated_at": fhir_instant(row.updated_at) if hasattr(row, "updated_at") else None,
+        "created_at": fhir_instant(row.created_at)
+        if hasattr(row, "created_at")
+        else None,
+        "updated_at": fhir_instant(row.updated_at)
+        if hasattr(row, "updated_at")
+        else None,
         "created_by": getattr(row, "created_by", None),
         "updated_by": getattr(row, "updated_by", None),
         "tenant_id": getattr(row, "tenant_id", None),
@@ -149,12 +153,7 @@ def _plain_note(n: CommunicationRequestNote) -> dict:
 
 def _plain_payload(p: CommunicationRequestPayload) -> dict:
     att = None
-    if (
-        p.data
-        or p.url
-        or p.title
-        or p.content_type
-    ):
+    if p.data or p.url or p.title or p.content_type:
         att = {
             "content_type": p.content_type,
             "language": p.language,
@@ -163,9 +162,7 @@ def _plain_payload(p: CommunicationRequestPayload) -> dict:
             "size": p.size,
             "hash": p.hash,
             "title": p.title,
-            "creation": fhir_instant(p.creation)
-            if p.creation
-            else None,
+            "creation": fhir_instant(p.creation) if p.creation else None,
         }
     return {
         "id": p.id,
@@ -187,7 +184,9 @@ def to_plain_communication_request(model: CommunicationRequestModel) -> dict:
         "group_identifier_use": fhir_enum(model.group_identifier_use),
         "group_identifier_system": model.group_identifier_system,
         "group_identifier_value": model.group_identifier_value,
-        "group_identifier_period_start": fhir_instant(model.group_identifier_period_start)
+        "group_identifier_period_start": fhir_instant(
+            model.group_identifier_period_start
+        )
         if model.group_identifier_period_start
         else None,
         "group_identifier_period_end": fhir_instant(model.group_identifier_period_end)
@@ -266,9 +265,7 @@ def to_plain_communication_request(model: CommunicationRequestModel) -> dict:
         ]
         if model.reason_references
         else None,
-        "note": [_plain_note(n) for n in model.notes or []]
-        if model.notes
-        else None,
+        "note": [_plain_note(n) for n in model.notes or []] if model.notes else None,
         "extension": model.extension or None,
         "tenant_id": model.tenant_id,
         "created_by": model.created_by,

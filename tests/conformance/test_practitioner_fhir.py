@@ -30,7 +30,9 @@ D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
 
 def _stored(document: dict) -> dict:
     """What the write path stores: everything but resourceType/id/meta."""
-    return {k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")}
+    return {
+        k: v for k, v in document.items() if k not in ("resourceType", "id", "meta")
+    }
 
 
 def _practitioner(content: dict, **overrides) -> PractitionerModel:
@@ -48,7 +50,9 @@ def _practitioner(content: dict, **overrides) -> PractitionerModel:
 CASES = {
     "minimal": _practitioner({"name": [{"family": "Careful"}]}),
     "active_false": _practitioner({"active": False, "name": [{"family": "Careful"}]}),
-    "gender_and_birthdate": _practitioner({"gender": "female", "birthDate": "1980-05-15"}),
+    "gender_and_birthdate": _practitioner(
+        {"gender": "female", "birthDate": "1980-05-15"}
+    ),
     "partial_birthdate": _practitioner({"birthDate": "1980-05"}),
     "updated_by_and_updated_at": _practitioner(
         {"name": [{"family": "Careful"}]}, updated_by="u-other", updated_at=D
@@ -57,13 +61,30 @@ CASES = {
         {"name": [{"family": "Careful"}]}, user_id="end-user-1"
     ),
     "extension": _practitioner(
-        {"extension": [{"url": "https://fhir-server.dev/fhir/StructureDefinition/x", "valueString": "y"}]}
+        {
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ]
+        }
     ),
     "several_names": _practitioner(
         {
             "name": [
-                {"use": "official", "family": "Careful", "given": ["Adam", "Quincy"], "prefix": ["Dr"], "suffix": ["Jr"]},
-                {"use": "maiden", "text": "A. Hasty", "period": {"start": "2000-01-01T00:00:00Z"}},
+                {
+                    "use": "official",
+                    "family": "Careful",
+                    "given": ["Adam", "Quincy"],
+                    "prefix": ["Dr"],
+                    "suffix": ["Jr"],
+                },
+                {
+                    "use": "maiden",
+                    "text": "A. Hasty",
+                    "period": {"start": "2000-01-01T00:00:00Z"},
+                },
             ]
         }
     ),
@@ -72,18 +93,37 @@ CASES = {
             "identifier": [
                 {
                     "use": "official",
-                    "type": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/v2-0203", "code": "NPI"}]},
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "NPI",
+                            }
+                        ]
+                    },
                     "system": "http://hl7.org/fhir/sid/us-npi",
                     "value": "9941339108",
-                    "assigner": {"reference": "Organization/190001", "display": "NPI Registry"},
+                    "assigner": {
+                        "reference": "Organization/190001",
+                        "display": "NPI Registry",
+                    },
                 }
             ]
         }
     ),
     "telecom_address_photo": _practitioner(
         {
-            "telecom": [{"system": "phone", "value": "555-9988", "use": "work", "rank": 1}],
-            "address": [{"use": "work", "line": ["534 Erewhon St"], "city": "PleasantVille", "postalCode": "3999"}],
+            "telecom": [
+                {"system": "phone", "value": "555-9988", "use": "work", "rank": 1}
+            ],
+            "address": [
+                {
+                    "use": "work",
+                    "line": ["534 Erewhon St"],
+                    "city": "PleasantVille",
+                    "postalCode": "3999",
+                }
+            ],
             "photo": [{"url": "https://fhir-server.dev/fhir/assets/photo.png"}],
         }
     ),
@@ -92,14 +132,29 @@ CASES = {
             "qualification": [
                 {
                     "identifier": [{"system": "urn:license", "value": "L-1"}],
-                    "code": {"coding": [{"code": "BS", "display": "Bachelor of Science"}], "text": "BS"},
-                    "period": {"start": "2001-01-01T00:00:00Z", "end": "2005-01-01T00:00:00Z"},
-                    "issuer": {"reference": "Organization/190001", "display": "State Board"},
+                    "code": {
+                        "coding": [{"code": "BS", "display": "Bachelor of Science"}],
+                        "text": "BS",
+                    },
+                    "period": {
+                        "start": "2001-01-01T00:00:00Z",
+                        "end": "2005-01-01T00:00:00Z",
+                    },
+                    "issuer": {
+                        "reference": "Organization/190001",
+                        "display": "State Board",
+                    },
                 }
             ]
         }
     ),
-    "communication": _practitioner({"communication": [{"coding": [{"code": "en", "display": "English"}], "text": "English"}]}),
+    "communication": _practitioner(
+        {
+            "communication": [
+                {"coding": [{"code": "en", "display": "English"}], "text": "English"}
+            ]
+        }
+    ),
     "full_payload": _practitioner(_stored(FULL)),
 }
 
@@ -110,7 +165,9 @@ def test_practitioner_mapper_emits_valid_fhir_r4(case):
 
 
 def test_user_link_never_leaks_into_the_resource():
-    out = to_fhir_practitioner(_practitioner({"name": [{"family": "Careful"}]}, user_id="end-user-1"))
+    out = to_fhir_practitioner(
+        _practitioner({"name": [{"family": "Careful"}]}, user_id="end-user-1")
+    )
     assert "end-user-1" not in str(out)
 
 
@@ -119,7 +176,9 @@ def test_mapper_serves_content_unchanged():
     out = to_fhir_practitioner(_practitioner(content))
     assert out["resourceType"] == "Practitioner"
     assert out["id"] == "30001"
-    assert {k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")} == content
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
 # ── Guarding the oracle ────────────────────────────────────────────────────────
@@ -137,7 +196,10 @@ def test_mapper_serves_content_unchanged():
         ("gender not in the required binding", {"gender": "robot"}),
         ("birthDate not a date", {"birthDate": "not-a-date"}),
         ("telecom as string not ContactPoint", {"telecom": ["555-9988"]}),
-        ("qualification without its required code", {"qualification": [{"issuer": {"reference": "Organization/1"}}]}),
+        (
+            "qualification without its required code",
+            {"qualification": [{"issuer": {"reference": "Organization/1"}}]},
+        ),
         ("communication as strings not CodeableConcepts", {"communication": ["en"]}),
     ],
 )

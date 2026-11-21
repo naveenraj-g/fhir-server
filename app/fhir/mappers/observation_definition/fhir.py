@@ -206,10 +206,7 @@ def to_fhir_observation_definition(model) -> dict:
         )
         if cu:
             qd["customaryUnit"] = cu
-    if (
-        model.quantitative_details_unit_codings
-        or model.quantitative_details_unit_text
-    ):
+    if model.quantitative_details_unit_codings or model.quantitative_details_unit_text:
         u = _fhir_codeable_concept(
             model.quantitative_details_unit_codings,
             model.quantitative_details_unit_text,

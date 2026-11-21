@@ -26,7 +26,9 @@ class DetectedIssueIdentifier(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     # Named detected_issue_pk (not detected_issue_id) so it can't be
     # confused with DetectedIssueModel.detected_issue_id, the public id.
-    detected_issue_pk = Column(BigInteger, ForeignKey("detected_issue.id"), nullable=False, index=True)
+    detected_issue_pk = Column(
+        BigInteger, ForeignKey("detected_issue.id"), nullable=False, index=True
+    )
     system = Column(String, nullable=True)
     value = Column(String, nullable=True, index=True)
     type_system = Column(String, nullable=True)

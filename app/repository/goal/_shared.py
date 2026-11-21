@@ -22,6 +22,8 @@ def _child_reference_identifier_kwargs(ref_item) -> dict:
         f"reference_{suffix}": getattr(ref_item, suffix, None)
         for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
     }
+
+
 from app.models.goal import (
     GoalAddresses,
     GoalAddressesReferenceType,
@@ -89,26 +91,16 @@ async def _validate_ref(
 def _with_relationships(stmt):
     """Eager-load all Goal sub-resources to avoid N+1 and async lazy-load failures."""
     return stmt.options(
-        selectinload(GoalModel.identifiers).selectinload(
-            GoalIdentifier.type_codings
-        ),
+        selectinload(GoalModel.identifiers).selectinload(GoalIdentifier.type_codings),
         selectinload(GoalModel.achievement_status_codings),
         selectinload(GoalModel.priority_codings),
         selectinload(GoalModel.description_codings),
         selectinload(GoalModel.start_codings),
-        selectinload(GoalModel.categories).selectinload(
-            GoalCategory.codings
-        ),
-        selectinload(GoalModel.targets).selectinload(
-            GoalTarget.measure_codings
-        ),
-        selectinload(GoalModel.targets).selectinload(
-            GoalTarget.detail_codings
-        ),
+        selectinload(GoalModel.categories).selectinload(GoalCategory.codings),
+        selectinload(GoalModel.targets).selectinload(GoalTarget.measure_codings),
+        selectinload(GoalModel.targets).selectinload(GoalTarget.detail_codings),
         selectinload(GoalModel.addresses_list),
         selectinload(GoalModel.notes),
-        selectinload(GoalModel.outcome_codes).selectinload(
-            GoalOutcomeCode.codings
-        ),
+        selectinload(GoalModel.outcome_codes).selectinload(GoalOutcomeCode.codings),
         selectinload(GoalModel.outcome_references),
     )

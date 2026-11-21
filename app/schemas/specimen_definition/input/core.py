@@ -94,9 +94,7 @@ class SpecimenDefinitionCreateSchema(BaseModel):
                         },
                         "handling": [
                             {
-                                "temperature_qualifier": {
-                                    "text": "Refrigerated"
-                                },
+                                "temperature_qualifier": {"text": "Refrigerated"},
                                 "temperature_range_low_value": 2.0,
                                 "temperature_range_low_unit": "degC",
                                 "temperature_range_low_system": "http://unitsofmeasure.org",

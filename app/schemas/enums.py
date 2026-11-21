@@ -1257,17 +1257,3 @@ class ImmunizationEvaluationAuthorityReferenceType(str, Enum):
 
 class ImmunizationEvaluationImmunizationEventReferenceType(str, Enum):
     Immunization = "Immunization"
-
-
-
-
-
-
-
-
-
-
-
-
-
-

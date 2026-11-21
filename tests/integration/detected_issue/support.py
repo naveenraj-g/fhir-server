@@ -5,8 +5,14 @@ every response is FHIR R4 too."""
 
 # The resources a DetectedIssue points at (and that point back at it) are created through
 # their own routers.
-from tests.integration.allergy_intolerance.support import allergy_body, create_allergy_intolerance  # noqa: F401
-from tests.integration.clinical_impression.support import create_impression, impression_body  # noqa: F401
+from tests.integration.allergy_intolerance.support import (
+    allergy_body,
+    create_allergy_intolerance,
+)  # noqa: F401
+from tests.integration.clinical_impression.support import (
+    create_impression,
+    impression_body,
+)  # noqa: F401
 from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
 from tests.integration.diagnostic_report.support import create_report, report_body  # noqa: F401
 from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
@@ -26,7 +32,15 @@ V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
 
 
 def category(code: str = "DUPTHPY", display: str | None = None) -> dict:
-    return {"coding": [{"system": ACT_CODE, "code": code, **({"display": display} if display else {})}]}
+    return {
+        "coding": [
+            {
+                "system": ACT_CODE,
+                "code": code,
+                **({"display": display} if display else {}),
+            }
+        ]
+    }
 
 
 def issue_body(patient_id: int | None = None, status: str = "final", **extra) -> dict:
@@ -38,7 +52,13 @@ def issue_body(patient_id: int | None = None, status: str = "final", **extra) ->
     return body
 
 
-def full_body(patient_id: int, practitioner_id: int, condition_id: int, report_id: int, organization_id: int) -> dict:
+def full_body(
+    patient_id: int,
+    practitioner_id: int,
+    condition_id: int,
+    report_id: int,
+    organization_id: int,
+) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return issue_body(
         patient_id,
@@ -55,7 +75,10 @@ def full_body(patient_id: int, practitioner_id: int, condition_id: int, report_i
         severity="high",
         identifiedDateTime="2023-01-15T09:30:00Z",
         author={"reference": f"Practitioner/{practitioner_id}"},
-        implicated=[{"reference": f"Condition/{condition_id}"}, {"reference": "MedicationRequest/90001"}],
+        implicated=[
+            {"reference": f"Condition/{condition_id}"},
+            {"reference": "MedicationRequest/90001"},
+        ],
         evidence=[
             {
                 "code": [{"text": "Two active statin prescriptions"}],

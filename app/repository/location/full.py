@@ -32,7 +32,9 @@ def _storable(document: dict) -> dict:
     return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
 
 
-async def _validate_local_references(session, tenant_id: str, document: dict) -> int | None:
+async def _validate_local_references(
+    session, tenant_id: str, document: dict
+) -> int | None:
     """Existence-check every relative local Reference in the document —
     managingOrganization, partOf, identifier.assigner and endpoint[] — scoped to the
     caller's org (422 if one doesn't resolve). Returns partOf's resolved
@@ -40,7 +42,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
     org_ref = managing_organization_reference(document)
     if org_ref:
         ref_type, ref_id = _parse_org_ref(org_ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, "managingOrganization")
+        await _validate_reference(
+            session, tenant_id, ref_type, ref_id, "managingOrganization"
+        )
     part_of_id = None
     part_of = part_of_reference(document)
     if part_of:
@@ -48,7 +52,9 @@ async def _validate_local_references(session, tenant_id: str, document: dict) ->
         await _validate_reference(session, tenant_id, ref_type, part_of_id, "partOf")
     for ref in assigner_references(document):
         ref_type, ref_id = _parse_org_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, "identifier.assigner")
+        await _validate_reference(
+            session, tenant_id, ref_type, ref_id, "identifier.assigner"
+        )
     for ref in endpoint_references(document):
         ref_type, ref_id = _parse_endpoint_ref(ref)
         await _validate_reference(session, tenant_id, ref_type, ref_id, "endpoint")
@@ -105,7 +111,9 @@ class _FullMixin:
             if not loc:
                 return None
 
-            part_of_id = await _validate_local_references(session, loc.tenant_id, document)
+            part_of_id = await _validate_local_references(
+                session, loc.tenant_id, document
+            )
             if part_of_id is not None and await _partof_chain_contains(
                 session, loc.tenant_id, part_of_id, loc.location_id
             ):

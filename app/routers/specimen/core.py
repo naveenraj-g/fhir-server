@@ -45,7 +45,9 @@ async def create_specimen(
     actor: AuthUser = Depends(require_permission("specimen", "create")),
     specimen_service: SpecimenService = Depends(get_specimen_service),
 ):
-    logger.info("Create a new Specimen resource", extra={"event": "route.create_specimen"})
+    logger.info(
+        "Create a new Specimen resource", extra={"event": "route.create_specimen"}
+    )
     log_payload(logger, "specimen.create.payload", payload)
     specimen = await specimen_service.create_specimen(payload, actor.org_id, actor.sub)
     return format_response(
@@ -136,18 +138,27 @@ async def patch_specimen(
     description=(
         "Returns a paginated list of Specimen resources. Filter by status, type, "
         "subject, accession_identifier, identifier. "
-        "Always scoped to the caller's own org (from the verified token). " + _CONTENT_NEG
+        "Always scoped to the caller's own org (from the verified token). "
+        + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
 async def list_specimens(
     request: Request,
     actor: AuthUser = Depends(require_permission("specimen", "read")),
-    status: str | None = Query(None, description="Status code, e.g. available, unavailable."),
+    status: str | None = Query(
+        None, description="Status code, e.g. available, unavailable."
+    ),
     type: str | None = Query(None, description="Specimen type code."),
-    subject: str | None = Query(None, description="Exact match on subject reference string."),
-    accession_identifier: str | None = Query(None, description="Exact match on accession identifier value."),
-    identifier: str | None = Query(None, description="Exact match on business identifier value."),
+    subject: str | None = Query(
+        None, description="Exact match on subject reference string."
+    ),
+    accession_identifier: str | None = Query(
+        None, description="Exact match on accession identifier value."
+    ),
+    identifier: str | None = Query(
+        None, description="Exact match on business identifier value."
+    ),
     params: ListParams = Depends(),
     specimen_service: SpecimenService = Depends(get_specimen_service),
 ):

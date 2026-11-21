@@ -23,17 +23,35 @@ def _plain_coding_list(codings) -> list[dict]:
     return result
 
 
-def _plain_reference_fields(obj, prefix: str, out_prefix: str | None = None) -> dict[str, Any]:
+def _plain_reference_fields(
+    obj, prefix: str, out_prefix: str | None = None
+) -> dict[str, Any]:
     target = out_prefix or prefix
     return {
-        f"{target}_identifier_use": fhir_enum(getattr(obj, f"{prefix}_identifier_use", None)),
-        f"{target}_identifier_type_system": getattr(obj, f"{prefix}_identifier_type_system", None),
-        f"{target}_identifier_type_version": getattr(obj, f"{prefix}_identifier_type_version", None),
-        f"{target}_identifier_type_code": getattr(obj, f"{prefix}_identifier_type_code", None),
-        f"{target}_identifier_type_display": getattr(obj, f"{prefix}_identifier_type_display", None),
-        f"{target}_identifier_type_user_selected": getattr(obj, f"{prefix}_identifier_type_user_selected", None),
-        f"{target}_identifier_type_text": getattr(obj, f"{prefix}_identifier_type_text", None),
-        f"{target}_identifier_system": getattr(obj, f"{prefix}_identifier_system", None),
+        f"{target}_identifier_use": fhir_enum(
+            getattr(obj, f"{prefix}_identifier_use", None)
+        ),
+        f"{target}_identifier_type_system": getattr(
+            obj, f"{prefix}_identifier_type_system", None
+        ),
+        f"{target}_identifier_type_version": getattr(
+            obj, f"{prefix}_identifier_type_version", None
+        ),
+        f"{target}_identifier_type_code": getattr(
+            obj, f"{prefix}_identifier_type_code", None
+        ),
+        f"{target}_identifier_type_display": getattr(
+            obj, f"{prefix}_identifier_type_display", None
+        ),
+        f"{target}_identifier_type_user_selected": getattr(
+            obj, f"{prefix}_identifier_type_user_selected", None
+        ),
+        f"{target}_identifier_type_text": getattr(
+            obj, f"{prefix}_identifier_type_text", None
+        ),
+        f"{target}_identifier_system": getattr(
+            obj, f"{prefix}_identifier_system", None
+        ),
         f"{target}_identifier_value": getattr(obj, f"{prefix}_identifier_value", None),
         f"{target}_identifier_period_start": (
             getattr(obj, f"{prefix}_identifier_period_start").isoformat()
@@ -83,10 +101,16 @@ def _plain_ref_row(r) -> dict:
         "display": r.reference_display,
         "identifier_use": fhir_enum(getattr(r, "reference_identifier_use", None)),
         "identifier_type_system": getattr(r, "reference_identifier_type_system", None),
-        "identifier_type_version": getattr(r, "reference_identifier_type_version", None),
+        "identifier_type_version": getattr(
+            r, "reference_identifier_type_version", None
+        ),
         "identifier_type_code": getattr(r, "reference_identifier_type_code", None),
-        "identifier_type_display": getattr(r, "reference_identifier_type_display", None),
-        "identifier_type_user_selected": getattr(r, "reference_identifier_type_user_selected", None),
+        "identifier_type_display": getattr(
+            r, "reference_identifier_type_display", None
+        ),
+        "identifier_type_user_selected": getattr(
+            r, "reference_identifier_type_user_selected", None
+        ),
         "identifier_type_text": getattr(r, "reference_identifier_type_text", None),
         "identifier_system": getattr(r, "reference_identifier_system", None),
         "identifier_value": getattr(r, "reference_identifier_value", None),
@@ -110,7 +134,9 @@ def _plain_note(n) -> dict:
         "time": n.time.isoformat() if n.time else None,
         "author_string": n.author_string,
         "author_reference": n.author_reference_reference,
-        "author_type": fhir_enum(n.author_reference_type) if n.author_reference_type else None,
+        "author_type": fhir_enum(n.author_reference_type)
+        if n.author_reference_type
+        else None,
         "author_id": n.author_reference_id,
         "author_display": n.author_reference_display,
         **_plain_reference_fields(n, "author_reference"),
@@ -157,30 +183,47 @@ def _plain_activity_detail(act: CarePlanActivity) -> dict | None:
 
     detail: dict[str, Any] = {
         "kind": fhir_enum(act.detail_kind) if act.detail_kind else None,
-        "instantiates_canonical": list(act.detail_instantiates_canonical) if act.detail_instantiates_canonical else None,
-        "instantiates_uri": list(act.detail_instantiates_uri) if act.detail_instantiates_uri else None,
+        "instantiates_canonical": list(act.detail_instantiates_canonical)
+        if act.detail_instantiates_canonical
+        else None,
+        "instantiates_uri": list(act.detail_instantiates_uri)
+        if act.detail_instantiates_uri
+        else None,
         "code_text": act.detail_code_text,
         "code_codings": _plain_coding_list(getattr(act, "detail_code_codings", None)),
         "reason_codes": [
-            {"id": rc.id, "text": rc.text, "codings": _plain_coding_list(getattr(rc, "codings", None))}
+            {
+                "id": rc.id,
+                "text": rc.text,
+                "codings": _plain_coding_list(getattr(rc, "codings", None)),
+            }
             for rc in (getattr(act, "detail_reason_codes", None) or [])
         ],
         "reason_references": [
-            _plain_ref_row(rr) for rr in (getattr(act, "detail_reason_references", None) or [])
+            _plain_ref_row(rr)
+            for rr in (getattr(act, "detail_reason_references", None) or [])
         ],
         "goals": [
             _plain_ref_row(g) for g in (getattr(act, "detail_goals", None) or [])
         ],
         "status": fhir_enum(act.detail_status) if act.detail_status else None,
         "status_reason_text": act.detail_status_reason_text,
-        "status_reason_codings": _plain_coding_list(getattr(act, "detail_status_reason_codings", None)),
+        "status_reason_codings": _plain_coding_list(
+            getattr(act, "detail_status_reason_codings", None)
+        ),
         "do_not_perform": act.detail_do_not_perform,
         "scheduled_timing": act.detail_scheduled_timing,
-        "scheduled_period_start": act.detail_scheduled_period_start.isoformat() if act.detail_scheduled_period_start else None,
-        "scheduled_period_end": act.detail_scheduled_period_end.isoformat() if act.detail_scheduled_period_end else None,
+        "scheduled_period_start": act.detail_scheduled_period_start.isoformat()
+        if act.detail_scheduled_period_start
+        else None,
+        "scheduled_period_end": act.detail_scheduled_period_end.isoformat()
+        if act.detail_scheduled_period_end
+        else None,
         "scheduled_string": act.detail_scheduled_string,
         "location_id": act.detail_location_id,
-        "location_type": fhir_enum(act.detail_location_type) if act.detail_location_type else None,
+        "location_type": fhir_enum(act.detail_location_type)
+        if act.detail_location_type
+        else None,
         "location_reference": act.detail_location_reference,
         "location_display": act.detail_location_display,
         **_plain_reference_fields(act, "detail_location", "location"),
@@ -188,19 +231,31 @@ def _plain_activity_detail(act: CarePlanActivity) -> dict | None:
             _plain_ref_row(p) for p in (getattr(act, "detail_performers", None) or [])
         ],
         "product_codeable_concept_text": act.detail_product_codeable_concept_text,
-        "product_codings": _plain_coding_list(getattr(act, "detail_product_codings", None)),
+        "product_codings": _plain_coding_list(
+            getattr(act, "detail_product_codings", None)
+        ),
         "product_id": act.detail_product_id,
-        "product_type": fhir_enum(act.detail_product_type) if act.detail_product_type else None,
+        "product_type": fhir_enum(act.detail_product_type)
+        if act.detail_product_type
+        else None,
         "product_reference": act.detail_product_reference,
         "product_display": act.detail_product_display,
         **_plain_reference_fields(act, "detail_product", "product"),
-        "daily_amount_value": float(act.detail_daily_amount_value) if act.detail_daily_amount_value is not None else None,
-        "daily_amount_comparator": fhir_enum(act.detail_daily_amount_comparator) if act.detail_daily_amount_comparator else None,
+        "daily_amount_value": float(act.detail_daily_amount_value)
+        if act.detail_daily_amount_value is not None
+        else None,
+        "daily_amount_comparator": fhir_enum(act.detail_daily_amount_comparator)
+        if act.detail_daily_amount_comparator
+        else None,
         "daily_amount_unit": act.detail_daily_amount_unit,
         "daily_amount_system": act.detail_daily_amount_system,
         "daily_amount_code": act.detail_daily_amount_code,
-        "quantity_value": float(act.detail_quantity_value) if act.detail_quantity_value is not None else None,
-        "quantity_comparator": fhir_enum(act.detail_quantity_comparator) if act.detail_quantity_comparator else None,
+        "quantity_value": float(act.detail_quantity_value)
+        if act.detail_quantity_value is not None
+        else None,
+        "quantity_comparator": fhir_enum(act.detail_quantity_comparator)
+        if act.detail_quantity_comparator
+        else None,
         "quantity_unit": act.detail_quantity_unit,
         "quantity_system": act.detail_quantity_system,
         "quantity_code": act.detail_quantity_code,
@@ -218,11 +273,16 @@ def _plain_activity(act: CarePlanActivity) -> dict:
         "reference_display": act.reference_display,
         **_plain_reference_fields(act, "reference"),
         "outcome_codeable_concepts": [
-            {"id": occ.id, "text": occ.text, "codings": _plain_coding_list(getattr(occ, "codings", None))}
+            {
+                "id": occ.id,
+                "text": occ.text,
+                "codings": _plain_coding_list(getattr(occ, "codings", None)),
+            }
             for occ in (getattr(act, "outcome_codeable_concepts", None) or [])
         ],
         "outcome_references": [
-            _plain_ref_row(oref) for oref in (getattr(act, "outcome_references", None) or [])
+            _plain_ref_row(oref)
+            for oref in (getattr(act, "outcome_references", None) or [])
         ],
         "progress": [_plain_note(p) for p in (getattr(act, "progress", None) or [])],
         "detail": _plain_activity_detail(act),
@@ -233,40 +293,77 @@ def to_plain_care_plan(model: CarePlanModel) -> dict:
     """Transform CarePlanModel into plain snake_case representation."""
     return {
         "id": model.care_plan_id,
-        "instantiates_canonical": list(model.instantiates_canonical) if model.instantiates_canonical else None,
-        "instantiates_uri": list(model.instantiates_uri) if model.instantiates_uri else None,
+        "instantiates_canonical": list(model.instantiates_canonical)
+        if model.instantiates_canonical
+        else None,
+        "instantiates_uri": list(model.instantiates_uri)
+        if model.instantiates_uri
+        else None,
         "status": fhir_enum(model.status),
         "intent": fhir_enum(model.intent),
         "title": model.title,
         "description": model.description,
-        "subject": model.subject_reference or (f"{fhir_enum(model.subject_type)}/{model.subject_id}" if model.subject_type and model.subject_id else None),
+        "subject": model.subject_reference
+        or (
+            f"{fhir_enum(model.subject_type)}/{model.subject_id}"
+            if model.subject_type and model.subject_id
+            else None
+        ),
         "subject_id": model.subject_id,
         "subject_type": fhir_enum(model.subject_type) if model.subject_type else None,
         "subject_display": model.subject_display,
         **_plain_reference_fields(model, "subject"),
-        "encounter": model.encounter_reference or (f"{fhir_enum(model.encounter_type)}/{model.encounter_id}" if model.encounter_type and model.encounter_id else None),
+        "encounter": model.encounter_reference
+        or (
+            f"{fhir_enum(model.encounter_type)}/{model.encounter_id}"
+            if model.encounter_type and model.encounter_id
+            else None
+        ),
         "encounter_id": model.encounter_id,
-        "encounter_type": fhir_enum(model.encounter_type) if model.encounter_type else None,
+        "encounter_type": fhir_enum(model.encounter_type)
+        if model.encounter_type
+        else None,
         "encounter_display": model.encounter_display,
         **_plain_reference_fields(model, "encounter"),
         "period_start": model.period_start.isoformat() if model.period_start else None,
         "period_end": model.period_end.isoformat() if model.period_end else None,
         "created": model.created.isoformat() if model.created else None,
-        "author": model.author_reference or (f"{fhir_enum(model.author_type)}/{model.author_id}" if model.author_type and model.author_id else None),
+        "author": model.author_reference
+        or (
+            f"{fhir_enum(model.author_type)}/{model.author_id}"
+            if model.author_type and model.author_id
+            else None
+        ),
         "author_id": model.author_id,
         "author_type": fhir_enum(model.author_type) if model.author_type else None,
         "author_display": model.author_display,
         **_plain_reference_fields(model, "author"),
-        "identifiers": [_plain_identifier(i) for i in (getattr(model, "identifiers", None) or [])],
-        "categories": [_plain_category(c) for c in (getattr(model, "categories", None) or [])],
-        "based_on": [_plain_ref_row(b) for b in (getattr(model, "based_on", None) or [])],
-        "replaces": [_plain_ref_row(r) for r in (getattr(model, "replaces", None) or [])],
+        "identifiers": [
+            _plain_identifier(i) for i in (getattr(model, "identifiers", None) or [])
+        ],
+        "categories": [
+            _plain_category(c) for c in (getattr(model, "categories", None) or [])
+        ],
+        "based_on": [
+            _plain_ref_row(b) for b in (getattr(model, "based_on", None) or [])
+        ],
+        "replaces": [
+            _plain_ref_row(r) for r in (getattr(model, "replaces", None) or [])
+        ],
         "part_of": [_plain_ref_row(p) for p in (getattr(model, "part_of", None) or [])],
-        "contributors": [_plain_ref_row(c) for c in (getattr(model, "contributors", None) or [])],
-        "care_teams": [_plain_ref_row(ct) for ct in (getattr(model, "care_teams", None) or [])],
-        "addresses": [_plain_ref_row(a) for a in (getattr(model, "addresses", None) or [])],
+        "contributors": [
+            _plain_ref_row(c) for c in (getattr(model, "contributors", None) or [])
+        ],
+        "care_teams": [
+            _plain_ref_row(ct) for ct in (getattr(model, "care_teams", None) or [])
+        ],
+        "addresses": [
+            _plain_ref_row(a) for a in (getattr(model, "addresses", None) or [])
+        ],
         "goals": [_plain_ref_row(g) for g in (getattr(model, "goals", None) or [])],
-        "activities": [_plain_activity(a) for a in (getattr(model, "activities", None) or [])],
+        "activities": [
+            _plain_activity(a) for a in (getattr(model, "activities", None) or [])
+        ],
         "notes": [_plain_note(n) for n in (getattr(model, "notes", None) or [])],
         "tenant_id": model.tenant_id,
         "created_by": model.created_by,

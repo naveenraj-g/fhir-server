@@ -16,7 +16,12 @@ REFERENCE_PARAMS = {
 }
 REFERENCE_TYPES = {
     "based-on": ("ServiceRequest",),
-    "reason-reference": ("Condition", "Procedure", "Observation", "ImmunizationRecommendation"),
+    "reason-reference": (
+        "Condition",
+        "Procedure",
+        "Observation",
+        "ImmunizationRecommendation",
+    ),
     "slot": ("Slot",),
     # Reference(Any): no finite list, so any `Type/<id>` is indexed (None).
     "supporting-info": None,
@@ -45,10 +50,19 @@ class AppointmentReference(Base):
     UniqueConstraint: R4 doesn't forbid listing the same reference twice."""
 
     __tablename__ = "appointment_reference"
-    __table_args__ = (Index("ix_appointment_reference_param_type_id", "param", "reference_type", "reference_id"),)
+    __table_args__ = (
+        Index(
+            "ix_appointment_reference_param_type_id",
+            "param",
+            "reference_type",
+            "reference_id",
+        ),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    appointment_pk = Column(BigInteger, ForeignKey("appointment.id"), nullable=False, index=True)
+    appointment_pk = Column(
+        BigInteger, ForeignKey("appointment.id"), nullable=False, index=True
+    )
     param = Column(String, nullable=False)
     reference_reference = Column(String, nullable=True)
     reference_type = Column(String, nullable=True)

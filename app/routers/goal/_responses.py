@@ -20,14 +20,10 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PlainGoalResponse.model_json_schema()
-                )
+                "schema": inline_schema(PlainGoalResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRGoalSchema.model_json_schema()
-                )
+                "schema": inline_schema(FHIRGoalSchema.model_json_schema())
             },
         }
     }
@@ -38,14 +34,10 @@ _LIST_200 = {
         "description": "Paginated list of goals",
         "content": {
             "application/json": {
-                "schema": inline_schema(
-                    PaginatedGoalResponse.model_json_schema()
-                )
+                "schema": inline_schema(PaginatedGoalResponse.model_json_schema())
             },
             "application/fhir+json": {
-                "schema": inline_schema(
-                    FHIRGoalBundle.model_json_schema()
-                )
+                "schema": inline_schema(FHIRGoalBundle.model_json_schema())
             },
         },
     }

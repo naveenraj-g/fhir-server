@@ -76,7 +76,9 @@ def plain_measure_contact(c) -> dict:
     return {
         "id": c.id,
         "name": c.name,
-        "telecoms": [plain_measure_telecom(t) for t in c.telecoms] if c.telecoms else None,
+        "telecoms": [plain_measure_telecom(t) for t in c.telecoms]
+        if c.telecoms
+        else None,
     }
 
 
@@ -102,16 +104,24 @@ def plain_measure_use_context(uc) -> dict:
         "code_user_selected": uc.user_selected,
         "value_codeable_concept_text": uc.value_codeable_concept_text,
         "value_codings": _plain_coding_list(uc.value_codings),
-        "value_quantity_value": float(uc.value_quantity_value) if uc.value_quantity_value is not None else None,
-        "value_quantity_comparator": fhir_enum(uc.value_quantity_comparator) if uc.value_quantity_comparator else None,
+        "value_quantity_value": float(uc.value_quantity_value)
+        if uc.value_quantity_value is not None
+        else None,
+        "value_quantity_comparator": fhir_enum(uc.value_quantity_comparator)
+        if uc.value_quantity_comparator
+        else None,
         "value_quantity_unit": uc.value_quantity_unit,
         "value_quantity_system": uc.value_quantity_system,
         "value_quantity_code": uc.value_quantity_code,
-        "value_range_low_value": float(uc.value_range_low_value) if uc.value_range_low_value is not None else None,
+        "value_range_low_value": float(uc.value_range_low_value)
+        if uc.value_range_low_value is not None
+        else None,
         "value_range_low_unit": uc.value_range_low_unit,
         "value_range_low_system": uc.value_range_low_system,
         "value_range_low_code": uc.value_range_low_code,
-        "value_range_high_value": float(uc.value_range_high_value) if uc.value_range_high_value is not None else None,
+        "value_range_high_value": float(uc.value_range_high_value)
+        if uc.value_range_high_value is not None
+        else None,
         "value_range_high_unit": uc.value_range_high_unit,
         "value_range_high_system": uc.value_range_high_system,
         "value_range_high_code": uc.value_range_high_code,
@@ -232,7 +242,8 @@ def to_plain_measure(model: MeasureModel) -> dict[str, Any]:
     return {
         "id": model.measure_id,
         "url": model.url,
-        "identifier": [plain_measure_identifier(i) for i in (model.identifiers or [])] or None,
+        "identifier": [plain_measure_identifier(i) for i in (model.identifiers or [])]
+        or None,
         "version": model.version,
         "name": model.name,
         "title": model.title,
@@ -248,8 +259,12 @@ def to_plain_measure(model: MeasureModel) -> dict[str, Any]:
         "publisher": model.publisher,
         "contact": _contacts_by_role(model.contacts, "contact"),
         "description": model.description,
-        "use_context": [plain_measure_use_context(uc) for uc in (model.use_contexts or [])] or None,
-        "jurisdiction": [plain_measure_concept(j) for j in (model.jurisdictions or [])] or None,
+        "use_context": [
+            plain_measure_use_context(uc) for uc in (model.use_contexts or [])
+        ]
+        or None,
+        "jurisdiction": [plain_measure_concept(j) for j in (model.jurisdictions or [])]
+        or None,
         "purpose": model.purpose,
         "usage": model.usage,
         "copyright": model.copyright,
@@ -286,7 +301,8 @@ def to_plain_measure(model: MeasureModel) -> dict[str, Any]:
         "guidance": model.guidance,
         "group": [plain_measure_group(g) for g in (model.groups or [])] or None,
         "supplemental_data": [
-            plain_measure_supplemental_data(sd) for sd in (model.supplemental_data or [])
+            plain_measure_supplemental_data(sd)
+            for sd in (model.supplemental_data or [])
         ]
         or None,
         "extension": list(model.extension) if model.extension else None,

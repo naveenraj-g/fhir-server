@@ -50,7 +50,9 @@ def _coding_from_payload(c) -> dict:
     }
 
 
-def _codeable_concept_from_payload(concept: CareTeamCodeableConceptInput | None) -> dict | None:
+def _codeable_concept_from_payload(
+    concept: CareTeamCodeableConceptInput | None,
+) -> dict | None:
     if not concept:
         return None
     codings = [_coding_from_payload(c) for c in (concept.coding or [])]
@@ -84,11 +86,21 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
         entry["display"] = display
 
     id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
-    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
-    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
-    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
-    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
-    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get(
+        "identifier_type_system"
+    )
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get(
+        "identifier_type_version"
+    )
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get(
+        "identifier_type_code"
+    )
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get(
+        "identifier_type_display"
+    )
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get(
+        "identifier_type_text"
+    )
     id_type_user_selected = (
         _get(f"{prefix}_identifier_type_user_selected")
         if _get(f"{prefix}_identifier_type_user_selected") is not None
@@ -96,8 +108,12 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
     )
     id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
     id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
-    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
-    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get(
+        "identifier_period_start"
+    )
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get(
+        "identifier_period_end"
+    )
 
     if (
         id_use
@@ -351,8 +367,12 @@ def payload_to_fhir_care_team(payload: CareTeamCreateSchema) -> dict:
     return fhir
 
 
-_SUBJECT_FIELDS = {"subject", "subject_display"} | {f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
-_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES}
+_SUBJECT_FIELDS = {"subject", "subject_display"} | {
+    f"subject_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
+_ENCOUNTER_FIELDS = {"encounter", "encounter_display"} | {
+    f"encounter_{s}" for s in _IDENTIFIER_FALLBACK_SUFFIXES
+}
 
 
 def patch_fragment_to_fhir_care_team(
@@ -399,7 +419,9 @@ def patch_fragment_to_fhir_care_team(
         touched.add("category")
         if payload.category is not None:
             fragment["category"] = [
-                c for c in [_codeable_concept_from_payload(x) for x in payload.category] if c
+                c
+                for c in [_codeable_concept_from_payload(x) for x in payload.category]
+                if c
             ]
 
     if "participant" in fields_set:
@@ -413,21 +435,29 @@ def patch_fragment_to_fhir_care_team(
         touched.add("reasonCode")
         if payload.reason_code is not None:
             fragment["reasonCode"] = [
-                r for r in [_codeable_concept_from_payload(x) for x in payload.reason_code] if r
+                r
+                for r in [
+                    _codeable_concept_from_payload(x) for x in payload.reason_code
+                ]
+                if r
             ]
 
     if "reason_reference" in fields_set:
         touched.add("reasonReference")
         if payload.reason_reference is not None:
             fragment["reasonReference"] = [
-                _child_reference_from_payload(r) for r in payload.reason_reference if _child_reference_from_payload(r)
+                _child_reference_from_payload(r)
+                for r in payload.reason_reference
+                if _child_reference_from_payload(r)
             ]
 
     if "managing_organization" in fields_set:
         touched.add("managingOrganization")
         if payload.managing_organization is not None:
             fragment["managingOrganization"] = [
-                _child_reference_from_payload(m) for m in payload.managing_organization if _child_reference_from_payload(m)
+                _child_reference_from_payload(m)
+                for m in payload.managing_organization
+                if _child_reference_from_payload(m)
             ]
 
     if "telecom" in fields_set:
@@ -443,6 +473,8 @@ def patch_fragment_to_fhir_care_team(
     if "identifier" in fields_set:
         touched.add("identifier")
         if payload.identifier is not None:
-            fragment["identifier"] = [_identifier_from_payload(i) for i in payload.identifier]
+            fragment["identifier"] = [
+                _identifier_from_payload(i) for i in payload.identifier
+            ]
 
     return fragment, touched

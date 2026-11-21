@@ -5,14 +5,21 @@ from pydantic import BaseModel, Field
 class FHIRCoding(BaseModel):
     """FHIR R4 Coding — a reference to a code defined by a terminology system."""
 
-    system: Optional[str] = Field(None, description="Identity of the terminology system that defines this code.")
-    version: Optional[str] = Field(
-        None, description="Version of the terminology system in which this code was defined."
+    system: Optional[str] = Field(
+        None, description="Identity of the terminology system that defines this code."
     )
-    code: Optional[str] = Field(None, description="Symbol in the syntax defined by the terminology system.")
+    version: Optional[str] = Field(
+        None,
+        description="Version of the terminology system in which this code was defined.",
+    )
+    code: Optional[str] = Field(
+        None, description="Symbol in the syntax defined by the terminology system."
+    )
     display: Optional[str] = Field(
-        None, description="Representation defined by the terminology system for this code."
+        None,
+        description="Representation defined by the terminology system for this code.",
     )
     userSelected: Optional[bool] = Field(
-        None, description="Whether this coding was chosen directly by the user (vs. derived by the system)."
+        None,
+        description="Whether this coding was chosen directly by the user (vs. derived by the system).",
     )

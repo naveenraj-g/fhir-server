@@ -87,7 +87,9 @@ async def test_create_measure_report_full_plain(client):
     assert data["group"][0]["stratifier"][0]["code"][0]["text"] == "Gender"
     assert len(data["group"][0]["stratifier"][0]["stratum"]) == 1
     assert data["group"][0]["stratifier"][0]["stratum"][0]["value_text"] == "Male"
-    assert data["group"][0]["stratifier"][0]["stratum"][0]["measure_score_value"] == 0.85
+    assert (
+        data["group"][0]["stratifier"][0]["stratum"][0]["measure_score_value"] == 0.85
+    )
 
 
 async def test_create_measure_report_fhir(client):
@@ -157,7 +159,9 @@ async def test_patch_measure_report_fhir(client):
     patch_payload = {
         "status": "pending",
     }
-    resp = await client.patch(f"{BASE}/{res_id}", json=patch_payload, headers=FHIR_ACCEPT)
+    resp = await client.patch(
+        f"{BASE}/{res_id}", json=patch_payload, headers=FHIR_ACCEPT
+    )
     assert resp.status_code == 200, resp.text
     assert_fhir_measure_report(resp.json(), status="pending")
 

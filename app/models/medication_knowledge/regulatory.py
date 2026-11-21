@@ -56,8 +56,12 @@ class MedicationKnowledgeRegulatory(Base, TenantAuditMixin):
     regulatory_authority_identifier_type_text = Column(String, nullable=True)
     regulatory_authority_identifier_system = Column(String, nullable=True)
     regulatory_authority_identifier_value = Column(String, nullable=True)
-    regulatory_authority_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    regulatory_authority_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    regulatory_authority_identifier_period_start = Column(
+        DateTime(timezone=True), nullable=True
+    )
+    regulatory_authority_identifier_period_end = Column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # maxDispense (0..1 BackboneElement)
     max_dispense_quantity_value = Column(Numeric, nullable=True)
@@ -127,7 +131,9 @@ class MedicationKnowledgeRegulatorySubstitution(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeRegulatorySubstitutionTypeCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeRegulatorySubstitutionTypeCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.regulatory.substitution.type.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_reg_sub_type_coding"
@@ -170,7 +176,9 @@ class MedicationKnowledgeRegulatorySchedule(Base, TenantAuditMixin):
     )
 
 
-class MedicationKnowledgeRegulatoryScheduleCoding(Base, TenantAuditMixin, FhirCodingMixin):
+class MedicationKnowledgeRegulatoryScheduleCoding(
+    Base, TenantAuditMixin, FhirCodingMixin
+):
     """MedicationKnowledge.regulatory.schedule.schedule.coding (0..* Coding)."""
 
     __tablename__ = "medication_knowledge_reg_sched_coding"

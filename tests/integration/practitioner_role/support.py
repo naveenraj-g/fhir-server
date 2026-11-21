@@ -20,18 +20,29 @@ FULL = {
         {
             "system": ROLE_IDS,
             "value": "R-1001",
-            "assigner": {"identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}},
+            "assigner": {
+                "identifier": {"system": "urn:external-registry", "value": "EXTERNAL-1"}
+            },
         }
     ],
     "code": [{"coding": [{"system": ROLE_CS, "code": "doctor", "display": "Doctor"}]}],
-    "specialty": [{"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}],
+    "specialty": [
+        {"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}
+    ],
     "telecom": [{"system": "phone", "value": "555-0100", "use": "work"}],
     "availableTime": [
-        {"daysOfWeek": ["mon", "tue"], "availableStartTime": "08:00:00", "availableEndTime": "17:00:00"},
+        {
+            "daysOfWeek": ["mon", "tue"],
+            "availableStartTime": "08:00:00",
+            "availableEndTime": "17:00:00",
+        },
         {"daysOfWeek": ["sat"], "allDay": True},
     ],
     "notAvailable": [
-        {"description": "Conference week", "during": {"start": "2026-09-01T00:00:00Z", "end": "2026-09-08T00:00:00Z"}}
+        {
+            "description": "Conference week",
+            "during": {"start": "2026-09-01T00:00:00Z", "end": "2026-09-08T00:00:00Z"},
+        }
     ],
     "availabilityExceptions": "Not on public holidays",
 }
@@ -49,7 +60,11 @@ async def create_role(client, payload=None) -> int:
 
 
 async def create_practitioner(client, family="Careful", given="Adam") -> int:
-    return await _create(client, "practitioners", {"active": True, "name": [{"family": family, "given": [given]}]})
+    return await _create(
+        client,
+        "practitioners",
+        {"active": True, "name": [{"family": family, "given": [given]}]},
+    )
 
 
 async def create_organization(client, name="Providing Org") -> int:
@@ -58,7 +73,14 @@ async def create_organization(client, name="Providing Org") -> int:
 
 async def create_location(client, name="North Wing", city="Boston") -> int:
     return await _create(
-        client, "locations", {"status": "active", "name": name, "mode": "instance", "address": {"city": city}}
+        client,
+        "locations",
+        {
+            "status": "active",
+            "name": name,
+            "mode": "instance",
+            "address": {"city": city},
+        },
     )
 
 

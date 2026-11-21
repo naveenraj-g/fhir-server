@@ -140,7 +140,9 @@ class _CoreMixin:
                     or_(
                         GroupCharacteristic.code_text.ilike(f"%{characteristic}%"),
                         GroupCharacteristic.id.in_(
-                            select(GroupCharacteristicCodeCoding.characteristic_id).where(
+                            select(
+                                GroupCharacteristicCodeCoding.characteristic_id
+                            ).where(
                                 GroupCharacteristicCodeCoding.code == characteristic
                             )
                         ),
@@ -158,8 +160,11 @@ class _CoreMixin:
                             f"%{characteristic_value}%"
                         ),
                         GroupCharacteristic.id.in_(
-                            select(GroupCharacteristicValueCoding.characteristic_id).where(
-                                GroupCharacteristicValueCoding.code == characteristic_value
+                            select(
+                                GroupCharacteristicValueCoding.characteristic_id
+                            ).where(
+                                GroupCharacteristicValueCoding.code
+                                == characteristic_value
                             )
                         ),
                     ),

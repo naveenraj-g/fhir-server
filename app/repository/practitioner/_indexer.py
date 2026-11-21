@@ -34,7 +34,14 @@ from app.repository._content_index import (
 from app.schemas.enums import AddressUse, AdministrativeGender
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
-INDEX_RELATIONSHIPS = ("identifiers", "names", "telecoms", "addresses", "communications")
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "names",
+    "telecoms",
+    "addresses",
+    "communications",
+)
+
 
 def organization_references(document: dict) -> list[tuple[str, str]]:
     """(element label, relative Organization reference) for every local
@@ -42,11 +49,15 @@ def organization_references(document: dict) -> list[tuple[str, str]]:
     qualification.issuer — so each can be existence-checked on write."""
     refs = []
     for identifier in document.get("identifier") or []:
-        ref = relative((identifier.get("assigner") or {}).get("reference"), "Organization")
+        ref = relative(
+            (identifier.get("assigner") or {}).get("reference"), "Organization"
+        )
         if ref:
             refs.append(("identifier.assigner", ref))
     for qualification in document.get("qualification") or []:
-        ref = relative((qualification.get("issuer") or {}).get("reference"), "Organization")
+        ref = relative(
+            (qualification.get("issuer") or {}).get("reference"), "Organization"
+        )
         if ref:
             refs.append(("qualification.issuer", ref))
     return refs
@@ -64,7 +75,11 @@ def index_columns(document: dict) -> dict:
 
 
 def _name_row(n: dict) -> PractitionerName:
-    given, prefix, suffix = strings(n.get("given")), strings(n.get("prefix")), strings(n.get("suffix"))
+    given, prefix, suffix = (
+        strings(n.get("given")),
+        strings(n.get("prefix")),
+        strings(n.get("suffix")),
+    )
     phonetic_source = " ".join([n.get("family") or "", *(given or [])]).strip()
     return PractitionerName(
         text=n.get("text"),
@@ -84,7 +99,9 @@ def _name_row(n: dict) -> PractitionerName:
 def _telecom_row(t: dict) -> PractitionerTelecom | None:
     if not t.get("value"):
         return None
-    return PractitionerTelecom(system=t.get("system"), value=t["value"], use=t.get("use"))
+    return PractitionerTelecom(
+        system=t.get("system"), value=t["value"], use=t.get("use")
+    )
 
 
 def _address_row(a: dict) -> PractitionerAddress:
@@ -112,12 +129,18 @@ def index_rows(document: dict) -> dict[str, list]:
     """Child index rows, keyed by PractitionerModel relationship name."""
     return {
         "identifiers": [
-            r for i in document.get("identifier") or [] for r in identifier_rows(PractitionerIdentifier, i)
+            r
+            for i in document.get("identifier") or []
+            for r in identifier_rows(PractitionerIdentifier, i)
         ],
         "names": [_name_row(n) for n in document.get("name") or []],
-        "telecoms": [r for t in document.get("telecom") or [] if (r := _telecom_row(t))],
+        "telecoms": [
+            r for t in document.get("telecom") or [] if (r := _telecom_row(t))
+        ],
         "addresses": [_address_row(a) for a in document.get("address") or []],
         "communications": [
-            r for cc in document.get("communication") or [] for r in type_rows(PractitionerCommunication, cc)
+            r
+            for cc in document.get("communication") or []
+            for r in type_rows(PractitionerCommunication, cc)
         ],
     }

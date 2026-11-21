@@ -61,7 +61,9 @@ class DocumentReferenceIdentifier(TenantAuditMixin, Base):
     assigner_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
     assigner_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    document_reference = relationship("DocumentReferenceModel", back_populates="identifiers")
+    document_reference = relationship(
+        "DocumentReferenceModel", back_populates="identifiers"
+    )
     type_codings = relationship(
         "DocumentReferenceIdentifierTypeCoding",
         back_populates="identifier",
@@ -82,4 +84,6 @@ class DocumentReferenceIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, B
         index=True,
     )
 
-    identifier = relationship("DocumentReferenceIdentifier", back_populates="type_codings")
+    identifier = relationship(
+        "DocumentReferenceIdentifier", back_populates="type_codings"
+    )

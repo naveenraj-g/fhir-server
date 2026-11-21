@@ -18,7 +18,13 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.fhir.search import IncludeTarget, MultiValueSort, SearchError, SearchParam, SearchRegistry
+from app.fhir.search import (
+    IncludeTarget,
+    MultiValueSort,
+    SearchError,
+    SearchParam,
+    SearchRegistry,
+)
 from app.fhir.search.sql import (
     array_string_match,
     coded_token_match,
@@ -67,7 +73,9 @@ def _patient_registry():
 
 def _exists(model, *conditions):
     """Correlated EXISTS against one of the index child tables."""
-    return exists(select(literal(1)).where(model.related_person_pk == R.id, *conditions))
+    return exists(
+        select(literal(1)).where(model.related_person_pk == R.id, *conditions)
+    )
 
 
 def _child_sort(column, model, *conditions):
@@ -75,7 +83,11 @@ def _child_sort(column, model, *conditions):
     resource): its smallest value ascending, its largest descending."""
 
     def agg(fn):
-        return select(fn(column)).where(model.related_person_pk == R.id, *conditions).scalar_subquery()
+        return (
+            select(fn(column))
+            .where(model.related_person_pk == R.id, *conditions)
+            .scalar_subquery()
+        )
 
     return MultiValueSort(ascending=agg(func.min), descending=agg(func.max))
 
@@ -89,7 +101,9 @@ def last_updated():
 
 def _id_match(value, modifier, ctx):
     token = parse_token(value)
-    if token.system or not (token.code or "").isdigit():  # ids are the numeric public id
+    if (
+        token.system or not (token.code or "").isdigit()
+    ):  # ids are the numeric public id
         return false()
     return R.related_person_id == int(token.code)
 
@@ -107,7 +121,9 @@ def _active_match(value, modifier, ctx):
 def _gender_match(value, modifier, ctx):
     token = parse_token(value)
     if token.system is not None and token.system != _GENDER_SYSTEM:
-        return false()  # another system, or `|code` (no system) — gender is always coded in its own
+        return (
+            false()
+        )  # another system, or `|code` (no system) — gender is always coded in its own
     if token.code is None:
         return R.gender.is_not(None)
     try:
@@ -188,7 +204,10 @@ def _address_match(value, modifier, ctx):
         _A,
         or_(
             array_string_match(_A.line, _A.line_norm, value, modifier),
-            *(string_match(raw, norm, value, modifier) for raw, norm in _ADDRESS_PARTS.values()),
+            *(
+                string_match(raw, norm, value, modifier)
+                for raw, norm in _ADDRESS_PARTS.values()
+            ),
         ),
     )
 
@@ -213,16 +232,26 @@ _Rel = RelatedPersonRelationship
 
 def _identifier_match(value, modifier, ctx):
     if modifier == "text":
-        return _exists(_I, token_text_match((_I.type_text_norm, _I.type_display_norm), value))
+        return _exists(
+            _I, token_text_match((_I.type_text_norm, _I.type_display_norm), value)
+        )
     if modifier == "of-type":
         type_system, type_code, ident = parse_of_type(value)
-        return _exists(_I, _I.type_system == type_system, _I.type_code == type_code, _I.value == ident)
+        return _exists(
+            _I,
+            _I.type_system == type_system,
+            _I.type_code == type_code,
+            _I.value == ident,
+        )
     return _exists(_I, token_match(_I.system, _I.value, value))
 
 
 def _relationship_match(value, modifier, ctx):
     return _exists(
-        _Rel, coded_token_match(_Rel.system, _Rel.code, value, modifier, (_Rel.text_norm, _Rel.display_norm))
+        _Rel,
+        coded_token_match(
+            _Rel.system, _Rel.code, value, modifier, (_Rel.text_norm, _Rel.display_norm)
+        ),
     )
 
 
@@ -238,7 +267,11 @@ def _telecom_match(system: str | None):
 
     def match(value, modifier, ctx):
         condition = token_condition(_T.use, _T.value, parse_token(value))
-        return _exists(_T, condition, _T.system == system) if system else _exists(_T, condition)
+        return (
+            _exists(_T, condition, _T.system == system)
+            if system
+            else _exists(_T, condition)
+        )
 
     return match
 
@@ -255,12 +288,25 @@ def _telecom_present(system: str | None):
 
 def _patient_match(value, modifier, ctx):
     if modifier == "identifier":
-        return token_condition(R.patient_identifier_system, R.patient_identifier_value, parse_token(value))
-    return reference_match(R.patient_type, R.patient_id, R.patient_reference, value, modifier, ctx, ("Patient",), str)
+        return token_condition(
+            R.patient_identifier_system, R.patient_identifier_value, parse_token(value)
+        )
+    return reference_match(
+        R.patient_type,
+        R.patient_id,
+        R.patient_reference,
+        value,
+        modifier,
+        ctx,
+        ("Patient",),
+        str,
+    )
 
 
 def _patient_present(ctx):
-    return or_(R.patient_reference.is_not(None), R.patient_identifier_value.is_not(None))
+    return or_(
+        R.patient_reference.is_not(None), R.patient_identifier_value.is_not(None)
+    )
 
 
 def _patient_chain(target, inner, ctx):
@@ -268,7 +314,9 @@ def _patient_chain(target, inner, ctx):
     parameter. The subquery doesn't correlate to the outer row — it ranges over
     the referenced resource."""
     model, id_col = _patient_model()
-    referenced = select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
+    referenced = (
+        select(id_col).where(model.tenant_id == ctx.tenant_id, inner).correlate(None)
+    )
     return and_(R.patient_type == "Patient", R.patient_id.in_(referenced))
 
 
@@ -277,11 +325,21 @@ def _patient_chain(target, inner, ctx):
 
 async def _include_patient(session, ctx, related_persons):
     """_include=RelatedPerson:patient — the patients these people relate to."""
-    ids = {r.patient_id for r in related_persons if r.patient_type == "Patient" and r.patient_id is not None}
+    ids = {
+        r.patient_id
+        for r in related_persons
+        if r.patient_type == "Patient" and r.patient_id is not None
+    }
     if not ids:
         return []
     model, id_col = _patient_model()
-    return list((await session.execute(select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids)))).scalars())
+    return list(
+        (
+            await session.execute(
+                select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(ids))
+            )
+        ).scalars()
+    )
 
 
 def revinclude_related_persons_via_patient(key):
@@ -290,7 +348,11 @@ def revinclude_related_persons_via_patient(key):
 
     async def fetch(session, ctx, rows):
         ids = {key(r) for r in rows}
-        stmt = select(R).where(R.tenant_id == ctx.tenant_id, R.patient_type == "Patient", R.patient_id.in_(ids))
+        stmt = select(R).where(
+            R.tenant_id == ctx.tenant_id,
+            R.patient_type == "Patient",
+            R.patient_id.in_(ids),
+        )
         return list((await session.execute(stmt)).scalars())
 
     return fetch
@@ -303,7 +365,9 @@ def _revinclude_patients_linking(session_key):
     async def fetch(session, ctx, rows):
         from app.repository.patient.search import revinclude_patients_via_reference
 
-        return await revinclude_patients_via_reference("link", "RelatedPerson", session_key)(session, ctx, rows)
+        return await revinclude_patients_via_reference(
+            "link", "RelatedPerson", session_key
+        )(session, ctx, rows)
 
     return fetch
 
@@ -313,7 +377,14 @@ def _register_kind() -> None:
     from app.fhir.mappers.related_person import to_fhir_related_person
     from app.fhir.search.execute import ResourceKind, register_kind
 
-    register_kind(ResourceKind("RelatedPerson", lambda r: r.related_person_id, to_fhir_related_person, "related-persons"))
+    register_kind(
+        ResourceKind(
+            "RelatedPerson",
+            lambda r: r.related_person_id,
+            to_fhir_related_person,
+            "related-persons",
+        )
+    )
 
 
 # ── registry ─────────────────────────────────────────────────────────────────
@@ -333,111 +404,216 @@ def related_person_search() -> SearchRegistry:
 
     params = [
         SearchParam(
-            "_id", "token", "Logical id of the resource (the public related person id)", "Resource.id",
-            _id_match, lambda ctx: true(), frozenset({"not", "missing"}),
-            sort=lambda: R.related_person_id, example="300001",
+            "_id",
+            "token",
+            "Logical id of the resource (the public related person id)",
+            "Resource.id",
+            _id_match,
+            lambda ctx: true(),
+            frozenset({"not", "missing"}),
+            sort=lambda: R.related_person_id,
+            example="300001",
         ),
         SearchParam(
-            "_lastUpdated", "date", "When the resource last changed (meta.lastUpdated)", "Resource.meta.lastUpdated",
-            lambda v, m, ctx: date_match(last_updated(), v), lambda ctx: true(),
-            sort=last_updated, example="ge2024-01-01",
+            "_lastUpdated",
+            "date",
+            "When the resource last changed (meta.lastUpdated)",
+            "Resource.meta.lastUpdated",
+            lambda v, m, ctx: date_match(last_updated(), v),
+            lambda ctx: true(),
+            sort=last_updated,
+            example="ge2024-01-01",
         ),
         SearchParam(
-            "active", "token", "Indicates if the related person record is active", "RelatedPerson.active",
-            _active_match, lambda ctx: R.active.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: R.active, example="true",
-            modifier_docs={"not": "`:not` — active is not this value, or is not recorded at all."},
+            "active",
+            "token",
+            "Indicates if the related person record is active",
+            "RelatedPerson.active",
+            _active_match,
+            lambda ctx: R.active.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: R.active,
+            example="true",
+            modifier_docs={
+                "not": "`:not` — active is not this value, or is not recorded at all."
+            },
         ),
         SearchParam(
-            "address", "string",
+            "address",
+            "string",
             "A server defined search that may match any of the string fields in the Address, including line, "
             "city, district, state, country, postalCode, and/or text",
-            "RelatedPerson.address", _address_match, lambda ctx: _exists(_A), _STRING, example="Main St",
+            "RelatedPerson.address",
+            _address_match,
+            lambda ctx: _exists(_A),
+            _STRING,
+            example="Main St",
         ),
         SearchParam(
-            "address-city", "string", "A city specified in an address", "RelatedPerson.address.city",
-            _city, _city_present, _STRING, sort=lambda: _child_sort(_A.city_norm, _A), example="Boston",
+            "address-city",
+            "string",
+            "A city specified in an address",
+            "RelatedPerson.address.city",
+            _city,
+            _city_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.city_norm, _A),
+            example="Boston",
         ),
         SearchParam(
-            "address-country", "string", "A country specified in an address", "RelatedPerson.address.country",
-            _country, _country_present, _STRING, sort=lambda: _child_sort(_A.country_norm, _A), example="US",
+            "address-country",
+            "string",
+            "A country specified in an address",
+            "RelatedPerson.address.country",
+            _country,
+            _country_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.country_norm, _A),
+            example="US",
         ),
         SearchParam(
-            "address-postalcode", "string", "A postal code specified in an address",
-            "RelatedPerson.address.postalCode", _postal, _postal_present, _STRING,
-            sort=lambda: _child_sort(_A.postal_code_norm, _A), example="02110",
+            "address-postalcode",
+            "string",
+            "A postal code specified in an address",
+            "RelatedPerson.address.postalCode",
+            _postal,
+            _postal_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.postal_code_norm, _A),
+            example="02110",
         ),
         SearchParam(
-            "address-state", "string", "A state specified in an address", "RelatedPerson.address.state",
-            _state, _state_present, _STRING, sort=lambda: _child_sort(_A.state_norm, _A), example="MA",
+            "address-state",
+            "string",
+            "A state specified in an address",
+            "RelatedPerson.address.state",
+            _state,
+            _state_present,
+            _STRING,
+            sort=lambda: _child_sort(_A.state_norm, _A),
+            example="MA",
         ),
         SearchParam(
-            "address-use", "token",
+            "address-use",
+            "token",
             f"A use code specified in an address (home | work | temp | old | billing; system {_ADDRESS_USE_SYSTEM})",
-            "RelatedPerson.address.use", _address_use_match, lambda ctx: _exists(_A, _A.use.is_not(None)),
-            frozenset({"not", "missing"}), example="home",
+            "RelatedPerson.address.use",
+            _address_use_match,
+            lambda ctx: _exists(_A, _A.use.is_not(None)),
+            frozenset({"not", "missing"}),
+            example="home",
         ),
         SearchParam(
-            "birthdate", "date",
+            "birthdate",
+            "date",
             "The Related Person's date of birth (a partial date such as 1990 or 1990-05 is matched as the range it covers)",
-            "RelatedPerson.birthDate", _birthdate_match, lambda ctx: R.birth_date_start.is_not(None),
-            sort=lambda: R.birth_date_start, example="ge1990-01-01",
+            "RelatedPerson.birthDate",
+            _birthdate_match,
+            lambda ctx: R.birth_date_start.is_not(None),
+            sort=lambda: R.birth_date_start,
+            example="ge1990-01-01",
         ),
         SearchParam(
-            "email", "token", "A value in an email contact (ContactPoint.value where system = email)",
-            "RelatedPerson.telecom.where(system='email')", _telecom_match("email"), _telecom_present("email"),
-            _TELECOM, example="peter@example.org",
+            "email",
+            "token",
+            "A value in an email contact (ContactPoint.value where system = email)",
+            "RelatedPerson.telecom.where(system='email')",
+            _telecom_match("email"),
+            _telecom_present("email"),
+            _TELECOM,
+            example="peter@example.org",
         ),
         SearchParam(
-            "gender", "token",
+            "gender",
+            "token",
             f"Gender of the related person (male | female | other | unknown; system {_GENDER_SYSTEM})",
-            "RelatedPerson.gender", _gender_match, lambda ctx: R.gender.is_not(None), frozenset({"not", "missing"}),
-            sort=lambda: R.gender, example="female",
+            "RelatedPerson.gender",
+            _gender_match,
+            lambda ctx: R.gender.is_not(None),
+            frozenset({"not", "missing"}),
+            sort=lambda: R.gender,
+            example="female",
         ),
         SearchParam(
-            "identifier", "token", "An Identifier of the RelatedPerson", "RelatedPerson.identifier",
-            _identifier_match, lambda ctx: _exists(_I), frozenset({"text", "not", "of-type", "missing"}),
-            sort=lambda: _child_sort(_I.value, _I), example="urn:related-persons|RP-1",
+            "identifier",
+            "token",
+            "An Identifier of the RelatedPerson",
+            "RelatedPerson.identifier",
+            _identifier_match,
+            lambda ctx: _exists(_I),
+            frozenset({"text", "not", "of-type", "missing"}),
+            sort=lambda: _child_sort(_I.value, _I),
+            example="urn:related-persons|RP-1",
             modifier_docs={
                 "text": "`:text` — string search (starts-with) on Identifier.type.text / type.coding.display."
             },
         ),
         SearchParam(
-            "name", "string",
+            "name",
+            "string",
             "A server defined search that may match any of the string fields in the HumanName, including "
             "family, given, prefix, suffix, and/or text",
-            "RelatedPerson.name", _name_match, lambda ctx: _exists(_N), _STRING,
-            sort=lambda: _child_sort(_N.family_norm, _N), example="Chalmers",
+            "RelatedPerson.name",
+            _name_match,
+            lambda ctx: _exists(_N),
+            _STRING,
+            sort=lambda: _child_sort(_N.family_norm, _N),
+            example="Chalmers",
         ),
         SearchParam(
-            "patient", "reference", "The patient this related person is related to", "RelatedPerson.patient",
-            _patient_match, _patient_present, frozenset({"identifier", "missing"}), targets=("Patient",),
-            chain=_patient_chain, chain_targets={"Patient": _patient_registry},
-            sort=lambda: R.patient_id, example="Patient/10001",
+            "patient",
+            "reference",
+            "The patient this related person is related to",
+            "RelatedPerson.patient",
+            _patient_match,
+            _patient_present,
+            frozenset({"identifier", "missing"}),
+            targets=("Patient",),
+            chain=_patient_chain,
+            chain_targets={"Patient": _patient_registry},
+            sort=lambda: R.patient_id,
+            example="Patient/10001",
         ),
         SearchParam(
-            "phone", "token", "A value in a phone contact (ContactPoint.value where system = phone)",
-            "RelatedPerson.telecom.where(system='phone')", _telecom_match("phone"), _telecom_present("phone"),
-            _TELECOM, example="555-9988",
+            "phone",
+            "token",
+            "A value in a phone contact (ContactPoint.value where system = phone)",
+            "RelatedPerson.telecom.where(system='phone')",
+            _telecom_match("phone"),
+            _telecom_present("phone"),
+            _TELECOM,
+            example="555-9988",
         ),
         SearchParam(
-            "phonetic", "string",
+            "phonetic",
+            "string",
             "A portion of name using some kind of phonetic matching algorithm "
             "(American Soundex, word by word; the first letter must match)",
-            "RelatedPerson.name", _phonetic_match, lambda ctx: _exists(_N, _N.phonetic.is_not(None)),
+            "RelatedPerson.name",
+            _phonetic_match,
+            lambda ctx: _exists(_N, _N.phonetic.is_not(None)),
             example="Chalmurs",
         ),
         SearchParam(
-            "relationship", "token", "The relationship between the patient and the relatedperson",
-            "RelatedPerson.relationship", _relationship_match, lambda ctx: _exists(_Rel),
+            "relationship",
+            "token",
+            "The relationship between the patient and the relatedperson",
+            "RelatedPerson.relationship",
+            _relationship_match,
+            lambda ctx: _exists(_Rel),
             frozenset({"text", "not", "in", "not-in", "above", "below", "missing"}),
             sort=lambda: _child_sort(_Rel.code, _Rel),
             example="http://terminology.hl7.org/CodeSystem/v3-RoleCode|MTH",
         ),
         SearchParam(
-            "telecom", "token",
+            "telecom",
+            "token",
             "The value in any kind of contact (ContactPoint.value; `use|value` also matches the use)",
-            "RelatedPerson.telecom", _telecom_match(None), _telecom_present(None), _TELECOM, example="555-9988",
+            "RelatedPerson.telecom",
+            _telecom_match(None),
+            _telecom_present(None),
+            _TELECOM,
+            example="555-9988",
         ),
     ]
 
@@ -445,22 +621,50 @@ def related_person_search() -> SearchRegistry:
         resource_type="RelatedPerson",
         params={p.name: p for p in params},
         # Σ elements in the R4 RelatedPerson definition (beyond id/meta/implicitRules).
-        summary_elements=frozenset({"identifier", "active", "patient", "relationship", "name", "telecom", "gender",
-                                    "birthDate", "address"}),
+        summary_elements=frozenset(
+            {
+                "identifier",
+                "active",
+                "patient",
+                "relationship",
+                "name",
+                "telecom",
+                "gender",
+                "birthDate",
+                "address",
+            }
+        ),
         mandatory_elements=frozenset({"patient"}),
-        includes=(IncludeTarget("RelatedPerson", "patient", "Patient", _include_patient),),
+        includes=(
+            IncludeTarget("RelatedPerson", "patient", "Patient", _include_patient),
+        ),
         # What points at a RelatedPerson: Appointment / AppointmentResponse actors, Encounter
         # participants and Patient.link.
         revincludes=(
-            *participant_revincludes("RelatedPerson", lambda r: r.related_person_id, ("actor",)),
-            *reference_observation_revincludes("performer", "RelatedPerson", lambda r: r.related_person_id),
-            *actor_response_revincludes("RelatedPerson", lambda r: r.related_person_id, ("actor",)),
-            *participant_encounter_revincludes("RelatedPerson", lambda r: r.related_person_id, ("participant",)),
+            *participant_revincludes(
+                "RelatedPerson", lambda r: r.related_person_id, ("actor",)
+            ),
+            *reference_observation_revincludes(
+                "performer", "RelatedPerson", lambda r: r.related_person_id
+            ),
+            *actor_response_revincludes(
+                "RelatedPerson", lambda r: r.related_person_id, ("actor",)
+            ),
+            *participant_encounter_revincludes(
+                "RelatedPerson", lambda r: r.related_person_id, ("participant",)
+            ),
             *actor_allergy_revincludes("RelatedPerson", lambda r: r.related_person_id),
-            *asserter_condition_revincludes('RelatedPerson', lambda r: r.related_person_id),
-            *performer_procedure_revincludes('RelatedPerson', lambda r: r.related_person_id),
+            *asserter_condition_revincludes(
+                "RelatedPerson", lambda r: r.related_person_id
+            ),
+            *performer_procedure_revincludes(
+                "RelatedPerson", lambda r: r.related_person_id
+            ),
             IncludeTarget(
-                "Patient", "link", "RelatedPerson", _revinclude_patients_linking(lambda r: r.related_person_id),
+                "Patient",
+                "link",
+                "RelatedPerson",
+                _revinclude_patients_linking(lambda r: r.related_person_id),
                 reverse=True,
             ),
         ),

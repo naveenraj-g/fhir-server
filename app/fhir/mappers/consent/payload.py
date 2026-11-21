@@ -104,16 +104,34 @@ def _reference_from_payload(obj: Any, prefix: str) -> dict | None:
         entry["display"] = display
 
     id_use = _get(f"{prefix}_identifier_use") or _get("identifier_use")
-    id_type_system = _get(f"{prefix}_identifier_type_system") or _get("identifier_type_system")
-    id_type_version = _get(f"{prefix}_identifier_type_version") or _get("identifier_type_version")
-    id_type_code = _get(f"{prefix}_identifier_type_code") or _get("identifier_type_code")
-    id_type_display = _get(f"{prefix}_identifier_type_display") or _get("identifier_type_display")
-    id_type_text = _get(f"{prefix}_identifier_type_text") or _get("identifier_type_text")
-    id_type_user_selected = _get(f"{prefix}_identifier_type_user_selected") if _get(f"{prefix}_identifier_type_user_selected") is not None else _get("identifier_type_user_selected")
+    id_type_system = _get(f"{prefix}_identifier_type_system") or _get(
+        "identifier_type_system"
+    )
+    id_type_version = _get(f"{prefix}_identifier_type_version") or _get(
+        "identifier_type_version"
+    )
+    id_type_code = _get(f"{prefix}_identifier_type_code") or _get(
+        "identifier_type_code"
+    )
+    id_type_display = _get(f"{prefix}_identifier_type_display") or _get(
+        "identifier_type_display"
+    )
+    id_type_text = _get(f"{prefix}_identifier_type_text") or _get(
+        "identifier_type_text"
+    )
+    id_type_user_selected = (
+        _get(f"{prefix}_identifier_type_user_selected")
+        if _get(f"{prefix}_identifier_type_user_selected") is not None
+        else _get("identifier_type_user_selected")
+    )
     id_system = _get(f"{prefix}_identifier_system") or _get("identifier_system")
     id_value = _get(f"{prefix}_identifier_value") or _get("identifier_value")
-    id_period_start = _get(f"{prefix}_identifier_period_start") or _get("identifier_period_start")
-    id_period_end = _get(f"{prefix}_identifier_period_end") or _get("identifier_period_end")
+    id_period_start = _get(f"{prefix}_identifier_period_start") or _get(
+        "identifier_period_start"
+    )
+    id_period_end = _get(f"{prefix}_identifier_period_end") or _get(
+        "identifier_period_end"
+    )
 
     if (
         id_use
@@ -493,9 +511,7 @@ def patch_fragment_to_fhir_consent(
         if payload.category is not None:
             fragment["category"] = [
                 c
-                for c in [
-                    _codeable_concept_from_payload(x) for x in payload.category
-                ]
+                for c in [_codeable_concept_from_payload(x) for x in payload.category]
                 if c
             ]
 
@@ -514,18 +530,14 @@ def patch_fragment_to_fhir_consent(
         touched.add("performer")
         if payload.performer is not None:
             fragment["performer"] = [
-                p
-                for p in [_ref_from_payload(x) for x in payload.performer]
-                if p
+                p for p in [_ref_from_payload(x) for x in payload.performer] if p
             ]
 
     if "organization" in fields_set:
         touched.add("organization")
         if payload.organization is not None:
             fragment["organization"] = [
-                o
-                for o in [_ref_from_payload(x) for x in payload.organization]
-                if o
+                o for o in [_ref_from_payload(x) for x in payload.organization] if o
             ]
 
     if "source_attachment" in fields_set:
@@ -543,26 +555,20 @@ def patch_fragment_to_fhir_consent(
         touched.add("policy")
         if payload.policy is not None:
             fragment["policy"] = [
-                p
-                for p in [_policy_from_payload(x) for x in payload.policy]
-                if p
+                p for p in [_policy_from_payload(x) for x in payload.policy] if p
             ]
 
     if "policy_rule" in fields_set:
         touched.add("policyRule")
         if payload.policy_rule is not None:
-            fragment["policyRule"] = _codeable_concept_from_payload(
-                payload.policy_rule
-            )
+            fragment["policyRule"] = _codeable_concept_from_payload(payload.policy_rule)
 
     if "verification" in fields_set:
         touched.add("verification")
         if payload.verification is not None:
             fragment["verification"] = [
                 v
-                for v in [
-                    _verification_from_payload(x) for x in payload.verification
-                ]
+                for v in [_verification_from_payload(x) for x in payload.verification]
                 if v
             ]
 

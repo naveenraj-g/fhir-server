@@ -12,11 +12,16 @@ class ActivityDefinitionTopic(TenantAuditMixin, Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     activity_definition_pk = Column(
-        BigInteger, ForeignKey("activity_definition.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("activity_definition.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     text = Column(String, nullable=True)
 
-    activity_definition = relationship("ActivityDefinitionModel", back_populates="topics")
+    activity_definition = relationship(
+        "ActivityDefinitionModel", back_populates="topics"
+    )
     codings = relationship(
         "ActivityDefinitionTopicCoding",
         back_populates="topic",

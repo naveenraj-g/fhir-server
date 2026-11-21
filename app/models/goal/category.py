@@ -11,9 +11,7 @@ class GoalCategory(TenantAuditMixin, Base):
     __tablename__ = "goal_category"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    goal_pk = Column(
-        BigInteger, ForeignKey("goal.id"), nullable=False, index=True
-    )
+    goal_pk = Column(BigInteger, ForeignKey("goal.id"), nullable=False, index=True)
 
     text = Column(String, nullable=True)
 
