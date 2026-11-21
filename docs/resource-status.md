@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after ImmunizationEvaluation (`d0b2cca`)._
+_Last updated: 2026-11-21, after FamilyMemberHistory (commit hash below)._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (20)
+## 1. Rebuilt on the current architecture (21)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -29,6 +29,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
+| 21 | FamilyMemberHistory | `/family-member-histories` | 9 | 490000 | `t7e2a9c5d381` | pending | `code` reads every condition; `instantiates-canonical`/`-uri` as on Procedure; many choice types (born/age/deceased/onset) live only in `content`; a revinclude source on Patient |
 | 20 | ImmunizationEvaluation | `/immunization-evaluations` | 7 | 610000 | `s6d1f8b4c270` | `d0b2cca` | smallest of the family; old reference-type enums held member names (`PATIENT`); now an existence-checked, chainable and includable `support` target of ImmunizationRecommendation, and a revinclude source on Patient and Immunization |
 | 19 | ImmunizationRecommendation | `/immunization-recommendations` | 8 | 510000 | `r5c0e7a3b169` | `d8effae` | tokens read inside the `recommendation` backbone (any entry matches); `information` is Reference(Any); now a revinclude source on Patient and Immunization |
 | 18 | Immunization | `/immunizations` | 16 | 330000 | `q4b9d6f2a058` | `96f929b` | `reaction`+`reaction-date` share one row; `occurrence[x]` indexed only as a dateTime; `performer` and `reason-reference` multi-target; now a revinclude source on Patient, Location, Practitioner, PractitionerRole, Condition and DiagnosticReport |
@@ -37,7 +38,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 15 | Condition | `/conditions` | 21 | 120000 | `n1e6a3c9d725` | `fbd1eb8` | Quantity search over an Age or a Range (`quantity_range_match`); `subject`/`asserter`/`evidence-detail` multi-target; now an existence-checked target of Encounter and Appointment |
 | 14 | AllergyIntolerance | `/allergy-intolerances` | 16 | 260000 | `m0d5f2b8c614` | `7d36dfc` | `recorder`/`asserter` multi-target over four rebuilt types; one shared token table for seven parameters; `onset` reads `reaction.onset` |
 
-All 20 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
+All 21 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
 
 ### What each resource existence-checks on write (relative `Type/<id>` → 422 if missing in the caller's org)
 
@@ -56,6 +57,7 @@ All 20 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | AppointmentResponse | `appointment`, `actor` (same types as Appointment), `identifier.assigner` | Device actors |
 | Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `diagnosis.condition` and `reasonReference` (Condition, Procedure), `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest, Observation targets |
 | RelatedPerson | `patient`, `identifier.assigner` | absolute URLs, logical references |
+| FamilyMemberHistory | `patient`, `reasonReference` (Condition, AllergyIntolerance, DiagnosticReport), `note.authorReference` (both the resource's and each condition's: Practitioner, PractitionerRole, Patient, RelatedPerson, Organization), `identifier.assigner` | Observation / QuestionnaireResponse / DocumentReference reasons, absolute URLs, logical references |
 | ImmunizationEvaluation | `patient`, `immunizationEvent` (Immunization), `authority` (Organization), `identifier.assigner` | absolute URLs, logical references |
 | ImmunizationRecommendation | `patient`, `authority`, `supportingImmunization` (Immunization, ImmunizationEvaluation), `supportingPatientInformation` (Patient, Practitioner, PractitionerRole, RelatedPerson, Organization, Location, Encounter, Appointment, Condition, Procedure, DiagnosticReport, AllergyIntolerance, Immunization), `identifier.assigner` | Observation targets, absolute URLs, logical references |
 | Immunization | `patient`, `encounter`, `location`, `manufacturer`, `performer.actor` (Practitioner, PractitionerRole, Organization), `reasonReference` (Condition, DiagnosticReport), `protocolApplied.authority`, `note` `authorReference`, `identifier.assigner` | Observation reason / reaction detail, absolute URLs, logical references |
@@ -66,13 +68,13 @@ All 20 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 
 ---
 
-## 2. Not yet rebuilt (29)
+## 2. Not yet rebuilt (28)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
-| Clinical records | Observation, FamilyMemberHistory, RiskAssessment, ClinicalImpression, DetectedIssue |
+| Clinical records | Observation, RiskAssessment, ClinicalImpression, DetectedIssue |
 | Orders and medication | ServiceRequest, MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
 | Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Consent, Group |
 | Communication | Communication, CommunicationRequest |
@@ -82,7 +84,7 @@ Still on the old fully-normalized model and **not mounted** (commented out in `r
 
 Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
-Suggested next: **Observation** (needs composite-search support in the engine first) or a smaller one such as FamilyMemberHistory or RiskAssessment.
+Suggested next: **Observation** (needs composite-search support in the engine first) or a smaller one such as RiskAssessment or ClinicalImpression.
 
 ---
 

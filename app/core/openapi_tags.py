@@ -118,6 +118,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "FamilyMemberHistories",
+        "description": (
+            "FHIR R4 FamilyMemberHistory resources — significant health conditions of a person related "
+            "to the patient (relationship, sex, age / birth / death, and the conditions they had)."
+        ),
+    },
+    {
         "name": "Specimens",
         "description": (
             "FHIR R4 Specimen resources — biological material collected from a patient for "

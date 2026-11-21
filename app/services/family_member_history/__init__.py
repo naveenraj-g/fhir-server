@@ -7,4 +7,5 @@ __all__ = ["FamilyMemberHistoryService"]
 
 @trace_methods
 class FamilyMemberHistoryService(_CoreMixin):
-    """Orchestrates FamilyMemberHistory CRUD operations and data transformations."""
+    """All FamilyMemberHistory business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

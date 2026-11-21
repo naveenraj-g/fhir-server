@@ -11,6 +11,7 @@ from app.repository.encounter.search import encounter_search
 from app.repository.allergy_intolerance.search import allergy_intolerance_search
 from app.repository.condition.search import condition_search
 from app.repository.diagnostic_report.search import diagnostic_report_search
+from app.repository.family_member_history.search import family_member_history_search
 from app.repository.immunization.search import immunization_search
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
 from app.repository.immunization_recommendation.search import immunization_recommendation_search
@@ -63,6 +64,7 @@ async def test_search_params_match_registries(client):
         "allergy_intolerance": ("AllergyIntolerance", allergy_intolerance_search()),
         "condition": ("Condition", condition_search()),
         "diagnostic_report": ("DiagnosticReport", diagnostic_report_search()),
+        "family_member_history": ("FamilyMemberHistory", family_member_history_search()),
         "immunization": ("Immunization", immunization_search()),
         "immunization_evaluation": ("ImmunizationEvaluation", immunization_evaluation_search()),
         "immunization_recommendation": ("ImmunizationRecommendation", immunization_recommendation_search()),
