@@ -45,6 +45,7 @@ from app.repository._condition_revinclude import asserter_condition_revincludes
 from app.repository._procedure_revinclude import performer_procedure_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import participant_encounter_revincludes
+from app.repository._observation_revinclude import reference_observation_revincludes
 from app.schemas.enums import AddressUse, AdministrativeGender
 
 R = RelatedPersonModel
@@ -452,6 +453,7 @@ def related_person_search() -> SearchRegistry:
         # participants and Patient.link.
         revincludes=(
             *participant_revincludes("RelatedPerson", lambda r: r.related_person_id, ("actor",)),
+            *reference_observation_revincludes("performer", "RelatedPerson", lambda r: r.related_person_id),
             *actor_response_revincludes("RelatedPerson", lambda r: r.related_person_id, ("actor",)),
             *participant_encounter_revincludes("RelatedPerson", lambda r: r.related_person_id, ("participant",)),
             *actor_allergy_revincludes("RelatedPerson", lambda r: r.related_person_id),

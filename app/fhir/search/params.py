@@ -15,14 +15,19 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-ParamType = Literal["string", "token", "reference", "date", "number", "quantity", "uri", "special"]
+# FHIR R4 Search Parameters Types (reference: https://hl7.org/fhir/R4/search.html#ptypes)
+ParamType = Literal[
+    "string", "token", "reference", "date", "number", "quantity", "uri", "special", "composite"
+]
 
 # Modifiers each parameter type can carry in R4 (search.html §2.21.1.4).
 # `missing` applies to every type. A parameter lists the subset it really
 # supports; anything else is rejected (400), as R4 requires.
 MODIFIERS_BY_TYPE: dict[str, frozenset[str]] = {
     "string": frozenset({"exact", "contains", "missing"}),
-    "token": frozenset({"text", "not", "above", "below", "in", "not-in", "of-type", "missing"}),
+    "token": frozenset(
+        {"text", "not", "above", "below", "in", "not-in", "of-type", "missing"}
+    ),
     "reference": frozenset({"identifier", "above", "below", "missing"}),  # + :[type]
     "date": frozenset({"missing"}),
     "number": frozenset({"missing"}),
@@ -31,6 +36,9 @@ MODIFIERS_BY_TYPE: dict[str, frozenset[str]] = {
     # `special` parameters (Location `near`) define their own syntax and
     # take no modifiers.
     "special": frozenset(),
+    # `composite` parameters (Observation `code-value-quantity`, ...) take `part$part` values and,
+    # per R4, no modifiers (not even :missing); see app.fhir.search.composite.
+    "composite": frozenset(),
 }
 
 # Modifiers that invert the match: the resource matches when *no* value

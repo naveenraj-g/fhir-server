@@ -206,7 +206,10 @@ def parse_reference_value(value: str, fhir_base: str | None) -> ReferenceValue:
         return ReferenceValue(url=v)
     m = _LOCAL.match(v)
     if not m:
-        raise SearchError(value, f"Invalid reference '{value}': expected [type/]id or an absolute URL.")
+        raise SearchError(
+            value,
+            f"Invalid reference '{value}': expected [type/]id or an absolute URL.",
+        )
     return ReferenceValue(m["type"], m["id"])
 
 
@@ -216,5 +219,5 @@ def _resource_type(segment: str) -> str:
     FHIR type name."""
     if segment[:1].isupper():
         return segment
-    singular = segment[:-1] if segment.endswith("s") else segment
+    singular = segment.removesuffix("s")
     return "".join(part.capitalize() for part in singular.split("-"))

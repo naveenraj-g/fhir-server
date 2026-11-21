@@ -27,6 +27,23 @@ _TYPE_DOCS = {
         "eb (ends before), ap (approximately, ±10%). Repeat the parameter for a range: "
         "`ge2024-01-01&...=lt2025-01-01`."
     ),
+    "number": (
+        "FHIR `number` search: `[prefix]number`, matched at the precision written (`5` = [4.5, 5.5)); the "
+        "prefixes eq (default), ne, gt, lt, ge, le, sa, eb and ap (±10%) follow the R4 range rules. A number "
+        "takes no unit."
+    ),
+    "quantity": (
+        "FHIR `quantity` search: `[prefix]number[|system|code]`, the number matched at the precision written; "
+        "with a system and/or code both must match, with only `||code` the code or the human-readable unit may. "
+        "Units are compared as written (no UCUM conversion)."
+    ),
+    "uri": "FHIR `uri` search: an exact, case-sensitive match; `:below` / `:above` match by prefix.",
+    "special": "FHIR `special` search: this parameter defines its own syntax (see its description).",
+    "composite": (
+        "FHIR `composite` search: `[part]$[part]` — the parts are each a value of the component parameter "
+        "(e.g. `code$value`), and BOTH must hold on the same element of the resource. A malformed value "
+        "(wrong number of parts) is a 400. Takes no modifiers and cannot be chained or sorted."
+    ),
 }
 
 _COMBINING = (
@@ -57,7 +74,9 @@ def _param(
     example: str | None = None,
     enum: list[str] | None = None,
 ) -> dict:
-    schema: dict = {"type": "array", "items": {"type": "string"}} if array else {"type": "string"}
+    schema: dict = (
+        {"type": "array", "items": {"type": "string"}} if array else {"type": "string"}
+    )
     if enum:
         schema["enum"] = enum
     p: dict = {
@@ -76,13 +95,19 @@ def _param(
 
 
 def _search_params(param: SearchParam) -> list[dict]:
-    head = f"{param.description} (R4 expression: `{param.expression}`). " + _TYPE_DOCS.get(param.type, "") + _COMBINING
+    head = (
+        f"{param.description} (R4 expression: `{param.expression}`). "
+        + _TYPE_DOCS.get(param.type, "")
+        + _COMBINING
+    )
     mods = sorted(m for m in param.modifiers if m != "missing")
     if "missing" in param.modifiers:
         mods.append("missing")
     extra = []
     if param.type == "reference" and param.targets:
-        extra.append(f"`:{param.targets[0]}` — restrict to that target type (value is the bare id).")
+        extra.append(
+            f"`:{param.targets[0]}` — restrict to that target type (value is the bare id)."
+        )
     if param.chain_targets:
         targets = ", ".join(param.chain_targets)
         extra.append(
@@ -95,16 +120,30 @@ def _search_params(param: SearchParam) -> list[dict]:
     for m in mods:
         desc = param.modifier_docs.get(m) or _MODIFIER_DOCS[m]
         if m == "missing":
-            out.append(_param(f"{param.name}:missing", f"{param.name} with {desc}", array=False, enum=["true", "false"]))
+            out.append(
+                _param(
+                    f"{param.name}:missing",
+                    f"{param.name} with {desc}",
+                    array=False,
+                    enum=["true", "false"],
+                )
+            )
         else:
             out.append(_param(f"{param.name}:{m}", f"{param.name} with {desc}"))
     if param.type == "reference":
         for t in param.targets:
-            out.append(_param(f"{param.name}:{t}", f"{param.name} restricted to {t} references; value is the {t} id."))
+            out.append(
+                _param(
+                    f"{param.name}:{t}",
+                    f"{param.name} restricted to {t} references; value is the {t} id.",
+                )
+            )
     return out
 
 
-def search_parameters(registry: SearchRegistry, max_count: int, default_count: int) -> list[dict]:
+def search_parameters(
+    registry: SearchRegistry, max_count: int, default_count: int
+) -> list[dict]:
     """Every query parameter the search endpoint accepts, for
     `openapi_extra={"parameters": ...}`."""
     params: list[dict] = []
@@ -113,7 +152,9 @@ def search_parameters(registry: SearchRegistry, max_count: int, default_count: i
 
     sortable = ", ".join(n for n, p in registry.params.items() if p.sort)
     includes = ", ".join(f"{i.source}:{i.param}" for i in registry.includes) or "none"
-    revincludes = ", ".join(f"{i.source}:{i.param}" for i in registry.revincludes) or "none"
+    revincludes = (
+        ", ".join(f"{i.source}:{i.param}" for i in registry.revincludes) or "none"
+    )
     params += [
         _param(
             "_count",
@@ -121,7 +162,12 @@ def search_parameters(registry: SearchRegistry, max_count: int, default_count: i
             array=False,
             example=str(default_count),
         ),
-        _param("_offset", "Number of matches to skip (paging; the Bundle's next/previous links carry it).", array=False, example="0"),
+        _param(
+            "_offset",
+            "Number of matches to skip (paging; the Bundle's next/previous links carry it).",
+            array=False,
+            example="0",
+        ),
         _param(
             "_sort",
             f"Comma-separated sort parameters, `-` prefix for descending. Sortable: {sortable}. "
@@ -137,7 +183,9 @@ def search_parameters(registry: SearchRegistry, max_count: int, default_count: i
         ),
         _param(
             "_summary",
-            "`true` — summary elements only (" + ", ".join(sorted(registry.summary_elements)) + "); "
+            "`true` — summary elements only ("
+            + ", ".join(sorted(registry.summary_elements))
+            + "); "
             "`text` — id, meta, narrative; `data` — everything but the narrative; `count` — total only, no entries; "
             "`false` (default) — the full resource. Subsetted resources carry the SUBSETTED meta tag.",
             array=False,
@@ -152,14 +200,30 @@ def search_parameters(registry: SearchRegistry, max_count: int, default_count: i
             "_include",
             f"Also return resources the matches reference: {includes}, or `*`. `_include:iterate` repeats it on included resources.",
         ),
-        _param("_include:iterate", f"Iterative _include: {includes} applied again to each included resource."),
+        _param(
+            "_include:iterate",
+            f"Iterative _include: {includes} applied again to each included resource.",
+        ),
         _param(
             "_revinclude",
             f"Also return resources that reference the matches: {revincludes}, or `*`. `_revinclude:iterate` repeats it.",
         ),
-        _param("_revinclude:iterate", f"Iterative _revinclude: {revincludes} applied again to each included resource."),
-        _param("_contained", "Only `false` (default) is supported.", array=False, enum=["false"]),
-        _param("_containedType", "Only `container` (default) is supported.", array=False, enum=["container"]),
+        _param(
+            "_revinclude:iterate",
+            f"Iterative _revinclude: {revincludes} applied again to each included resource.",
+        ),
+        _param(
+            "_contained",
+            "Only `false` (default) is supported.",
+            array=False,
+            enum=["false"],
+        ),
+        _param(
+            "_containedType",
+            "Only `container` (default) is supported.",
+            array=False,
+            enum=["container"],
+        ),
         _param(
             "_format",
             "Only JSON is supported; anything else (e.g. `xml`) is 406 Not Acceptable.",
@@ -174,7 +238,10 @@ def search_parameters(registry: SearchRegistry, max_count: int, default_count: i
                 "`handling=strict` rejects unknown search parameters with 400; by default (`handling=lenient`) they "
                 "are ignored and reported in an OperationOutcome entry (search.mode=outcome)."
             ),
-            "schema": {"type": "string", "enum": ["handling=lenient", "handling=strict"]},
+            "schema": {
+                "type": "string",
+                "enum": ["handling=lenient", "handling=strict"],
+            },
         },
     ]
     return params

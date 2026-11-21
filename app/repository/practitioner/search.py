@@ -18,6 +18,7 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.repository._clinical_impression_revinclude import column_impression_revincludes
 from app.repository._detected_issue_revinclude import column_issue_revincludes
+from app.repository._observation_revinclude import reference_observation_revincludes
 from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._immunization_revinclude import performer_immunization_revincludes
 from app.repository._appointment_revinclude import participant_revincludes
@@ -545,6 +546,7 @@ def practitioner_search() -> SearchRegistry:
             *column_risk_revincludes(('performer',), 'performer', 'Practitioner', lambda p: p.practitioner_id),
             *column_impression_revincludes(('assessor',), 'assessor', 'Practitioner', lambda p: p.practitioner_id),
             *column_issue_revincludes(('author',), 'author', 'Practitioner', lambda p: p.practitioner_id),
+            *reference_observation_revincludes('performer', 'Practitioner', lambda p: p.practitioner_id),
             IncludeTarget(
                 "PractitionerRole", "practitioner", "Practitioner", _revinclude_practitioner_role, reverse=True
             ),

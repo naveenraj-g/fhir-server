@@ -35,6 +35,7 @@ from app.fhir.search.sql import (
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
 from app.repository._appointment_revinclude import reason_appointment_revincludes
 from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._observation_revinclude import reference_observation_revincludes
 from app.models.procedure import (
     PERFORMER_TYPES,
     REFERENCE_TYPES,
@@ -530,6 +531,7 @@ def procedure_search() -> SearchRegistry:
         # and a Procedure that is part of, or justified by, another one points back at it.
         revincludes=(
             *reference_encounter_revincludes("Procedure", lambda p: p.procedure_id),
+            *reference_observation_revincludes("part-of", "Procedure", lambda p: p.procedure_id),
             *reason_appointment_revincludes("Procedure", lambda p: p.procedure_id),
             IncludeTarget(
                 "Procedure", "part-of", "Procedure",

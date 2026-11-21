@@ -32,6 +32,7 @@ from app.fhir.search.sql import (
 from app.fhir.search.values import parse_of_type, parse_token
 from app.repository._immunization_evaluation_revinclude import column_evaluation_revincludes
 from app.repository._immunization_recommendation_revinclude import support_recommendation_revincludes
+from app.repository._observation_revinclude import reference_observation_revincludes
 from app.models.immunization import (
     PERFORMER_TYPES,
     REASON_TYPES,
@@ -457,6 +458,7 @@ def immunization_search() -> SearchRegistry:
         ),
         revincludes=(
             *support_recommendation_revincludes('Immunization', lambda r: r.immunization_id),
+            *reference_observation_revincludes('part-of', 'Immunization', lambda r: r.immunization_id),
             *column_evaluation_revincludes(
                 'immunization-event', 'immunization_event', 'Immunization', lambda r: r.immunization_id
             ),

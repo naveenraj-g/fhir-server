@@ -1,40 +1,37 @@
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.errors.auth import PermissionDeniedError
 from app.errors.domain import NotFoundError
 from app.errors.validation import FhirValidationError
-from app.fhir.mappers.observation import (
-    merge_patch_fragment,
-    patch_fragment_to_fhir_observation,
-    payload_to_fhir_observation,
-    to_fhir_observation,
-    to_plain_observation,
-)
+from app.fhir.datatypes import merge_patch_fragment
+from app.fhir.input_payload import fhir_create_document, fhir_patch_fragment
+from app.fhir.mappers.observation import to_fhir_observation
+from app.fhir.search import SearchContext, SearchRequest, parse_search
 from app.fhir.validation import validate_resource
-from app.models.observation import ObservationModel, ObservationStatus as ObservationStatusModel
+from app.models.observation import ObservationModel
 from app.repository.observation import ObservationRepository
-from app.schemas.enums import ObservationStatus
+from app.repository.observation.search import observation_search
 from app.schemas.observation import ObservationCreateSchema, ObservationPatchSchema
 
 logger = get_logger(__name__)
 
 
 class _CoreMixin:
-    """All Observation business logic. Auth matches Questionnaire/
-    QuestionnaireResponse/ServiceRequest/MedicationRequest: tenant
-    scoping comes from the verified JWT's activeOrganizationId claim
-    (actor.org_id), never a client-suppliable field, and there's no
-    org-less/super-admin bypass — every operation requires an
-    org-scoped actor. `user_id` is a plain, gateway-forwarded
-    field."""
+    """All Observation business logic. Like Organization, create/patch take
+    a FHIR R4 Observation as the request body and store it whole — see
+    ObservationCreateSchema's docstring. Auth is identical: org_id comes
+    from the verified JWT's activeOrganizationId claim (actor.org_id), never
+    a client-suppliable field, and there's no org-less/super-admin bypass."""
 
     def __init__(self, repository: ObservationRepository):
         self.repository = repository
 
+    # ── Formatters ────────────────────────────────────────────────────────
+
     def _to_fhir(self, observation: ObservationModel) -> dict:
         return to_fhir_observation(observation)
 
-    def _to_plain(self, observation: ObservationModel) -> dict:
-        return to_plain_observation(observation)
+    # ── Read ──────────────────────────────────────────────────────────────
 
     async def get_observation_scoped(
         self, observation_id: int, org_id: str | None
@@ -44,54 +41,79 @@ class _CoreMixin:
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError("Observation operation requires an org-scoped token")
-        observation = await self.repository.get_by_observation_id_in_org(observation_id, org_id)
+            raise PermissionDeniedError(
+                "Observation operation requires an org-scoped token"
+            )
+        observation = await self.repository.get_by_observation_id_in_org(
+            observation_id, org_id
+        )
         if not observation:
             raise NotFoundError("Observation not found")
         return observation
 
-    async def list_observations(
+    async def search_observations(
         self,
-        org_id: str | None = None,
-        status: ObservationStatus | None = None,
-        subject: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ObservationModel], int | None]:
-        """Raises PermissionDeniedError (403) for an org-less token — same
-        invariant as get_observation_scoped()."""
+        query: list[tuple[str, str]],
+        org_id: str | None,
+        *,
+        strict: bool = False,
+        fhir_base: str | None = None,
+    ) -> tuple[
+        SearchRequest, list[ObservationModel], int | None, list[ObservationModel]
+    ]:
+        """FHIR R4 search. `query` is the raw (key, value) parameter list
+        — parsed and validated here against the Observation search
+        registry (SearchError -> 400 OperationOutcome). `strict` is
+        `Prefer: handling=strict`. Raises PermissionDeniedError (403) for an
+        org-less token — same invariant as get_observation_scoped().
+
+        Returns (parsed request, matches, total, included (type, row))."""
         if not org_id:
-            raise PermissionDeniedError("Observation operation requires an org-scoped token")
-        return await self.repository.list(
-            org_id=org_id,
-            status=ObservationStatusModel[status.name] if status else None,
-            subject=subject,
-            identifier=identifier,
-            limit=limit,
-            offset=offset,
-            sort=sort,
-            total_mode=total_mode,
+            raise PermissionDeniedError(
+                "Observation operation requires an org-scoped token"
+            )
+        request = parse_search(
+            query,
+            observation_search(),
+            strict=strict,
+            default_count=settings.pagination.default_limit,
+            max_count=settings.pagination.max_limit,
         )
+        ctx = SearchContext(tenant_id=org_id, fhir_base=fhir_base)
+        rows, total, included = await self.repository.search(request, ctx)
+        return request, rows, total, included
+
+    # ── Write ─────────────────────────────────────────────────────────────
 
     async def create_observation(
         self,
         payload: ObservationCreateSchema,
         org_id: str | None,
         created_by: str | None,
+        body: dict | None = None,
     ) -> ObservationModel:
         """org_id comes from the verified JWT's actor.org_id, not a client-
         supplied field — there is no bypass, so an org-less/platform token
-        cannot create an Observation at all."""
+        cannot create an Observation at all.
+
+        `body` is the raw request JSON, which is what base R4 validation
+        checks (see app.fhir.input_payload); falls back to the parsed
+        payload for internal callers that have no raw body."""
         if not org_id:
-            raise PermissionDeniedError("Observation creation requires an org-scoped token")
-        await self._validate_base_r4(payload_to_fhir_observation(payload), org_id)
-        observation = await self.repository.create_full(payload, org_id, created_by)
+            raise PermissionDeniedError(
+                "Observation creation requires an org-scoped token"
+            )
+        # The body is already a FHIR Observation — validate it as sent,
+        # then store exactly that document.
+        document = fhir_create_document(self._raw(payload, body), "Observation")
+        await self._validate_base_r4(document, org_id)
+        observation = await self.repository.create_full(document, org_id, created_by)
         logger.info(
             "Observation created",
-            extra={"event": "observation.created", "observation_id": observation.observation_id},
+            extra={
+                "event": "observation.created",
+                "observation_id": observation.observation_id,
+            },
         )
         return observation
 
@@ -101,23 +123,34 @@ class _CoreMixin:
         payload: ObservationPatchSchema,
         updated_by: str | None = None,
         org_id: str | None = None,
+        body: dict | None = None,
     ) -> ObservationModel:
         """org_id comes from the verified JWT's actor.org_id — no bypass: a
-        missing org_id or a resource belonging to a different org both
-        raise NotFoundError (404), never 403, so existence isn't leaked."""
+        missing org_id or a observation belonging to a different org both
+        raise NotFoundError (404), never 403, so existence isn't leaked.
+
+        The current row is fetched (rather than a lightweight existence
+        check) because base R4 validation needs it: a PATCH payload is
+        partial by nature, so it's merged onto the resource's current full
+        FHIR representation before validating — see
+        app.fhir.input_payload.fhir_patch_fragment()."""
         if not org_id:
             self._log_org_scope_miss("patch", observation_id, org_id)
             raise NotFoundError("Observation not found")
-        existing = await self.repository.get_by_observation_id_in_org(observation_id, org_id)
+        existing = await self.repository.get_by_observation_id_in_org(
+            observation_id, org_id
+        )
         if not existing:
             self._log_org_scope_miss("patch", observation_id, org_id)
             raise NotFoundError("Observation not found")
 
-        fragment, touched = patch_fragment_to_fhir_observation(payload)
+        fragment, touched = fhir_patch_fragment(self._raw(payload, body))
         merged = merge_patch_fragment(to_fhir_observation(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
-        updated = await self.repository.patch_full(observation_id, payload, updated_by)
+        # `merged` — the resource as it will look after this patch — is what
+        # was just validated, and exactly what gets stored.
+        updated = await self.repository.patch_full(observation_id, merged, updated_by)
         if not updated:
             raise NotFoundError("Observation not found")
         logger.info(
@@ -125,14 +158,18 @@ class _CoreMixin:
             extra={
                 "event": "observation.updated",
                 "observation_id": observation_id,
-                "fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+                "fields": sorted(touched),
             },
         )
         return updated
 
-    async def delete_observation(self, observation_id: int, org_id: str | None = None) -> None:
+    async def delete_observation(
+        self, observation_id: int, org_id: str | None = None
+    ) -> None:
         """Same org_id ownership gate as patch_observation."""
-        if not org_id or not await self.repository.observation_belongs_to_org(observation_id, org_id):
+        if not org_id or not await self.repository.observation_belongs_to_org(
+            observation_id, org_id
+        ):
             self._log_org_scope_miss("delete", observation_id, org_id)
             raise NotFoundError("Observation not found")
         deleted = await self.repository.delete(observation_id)
@@ -140,11 +177,32 @@ class _CoreMixin:
             raise NotFoundError("Observation not found")
         logger.info(
             "Observation deleted",
-            extra={"event": "observation.deleted", "observation_id": observation_id},
+            extra={
+                "event": "observation.deleted",
+                "observation_id": observation_id,
+            },
         )
+
+    # ── Validation helpers ────────────────────────────────────────────────
+
+    @staticmethod
+    def _raw(payload, body: dict | None) -> dict:
+        """The client's request JSON as sent; when there isn't one (an
+        internal caller), the parsed payload's supplied fields instead."""
+        if body is not None:
+            return body
+        return payload.model_dump(mode="json", exclude_unset=True, by_alias=True)
 
     @staticmethod
     async def _validate_base_r4(fhir_resource: dict, org_id: str | None = None) -> None:
+        """Raises FhirValidationError (422) if `fhir_resource` fails
+        validation against the most specific applicable layer of the
+        base -> country -> organization profile chain (see
+        docs/architecture/fhir-profiling-and-extensibility-strategy.md).
+        Delegates to validate_resource(), which picks the actual backend
+        (this project's own structural-only check, or the HL7 Java validator
+        sidecar) per settings.fhir_validation.backend — see
+        OrganizationService._validate_base_r4 for the full note."""
         errors = await validate_resource("Observation", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
@@ -153,11 +211,17 @@ class _CoreMixin:
             )
             raise FhirValidationError(errors)
 
+    # ── Logging helpers ───────────────────────────────────────────────────
+
     @staticmethod
-    def _log_org_scope_miss(operation: str, observation_id: int, org_id: str | None) -> None:
+    def _log_org_scope_miss(
+        operation: str, observation_id: int, org_id: str | None
+    ) -> None:
         """The tenant gate rejected a write. The caller gets a plain 404 —
-        deliberately indistinguishable from "no such resource" — so this
-        log line is the only place the distinction is recorded."""
+        deliberately indistinguishable from "no such observation" — so this
+        log line is the only place the distinction is recorded. Worth WARNING
+        because a repeated cross-org miss is a very different signal from a
+        typo'd id."""
         logger.warning(
             "Observation write rejected by org scope",
             extra={

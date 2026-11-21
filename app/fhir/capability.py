@@ -33,6 +33,7 @@ from app.repository.immunization.search import immunization_search
 from app.repository.risk_assessment.search import risk_assessment_search
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
 from app.repository.immunization_recommendation.search import immunization_recommendation_search
+from app.repository.observation.search import observation_search
 from app.repository.procedure.search import procedure_search
 from app.repository.related_person.search import related_person_search
 from app.repository.healthcare_service.search import healthcare_service_search
@@ -69,6 +70,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "risk_assessment": risk_assessment_search,
     "immunization_evaluation": immunization_evaluation_search,
     "immunization_recommendation": immunization_recommendation_search,
+    "observation": observation_search,
     "procedure": procedure_search,
 }
 

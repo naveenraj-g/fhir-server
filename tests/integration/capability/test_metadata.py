@@ -18,6 +18,7 @@ from app.repository.immunization.search import immunization_search
 from app.repository.risk_assessment.search import risk_assessment_search
 from app.repository.immunization_evaluation.search import immunization_evaluation_search
 from app.repository.immunization_recommendation.search import immunization_recommendation_search
+from app.repository.observation.search import observation_search
 from app.repository.procedure.search import procedure_search
 from app.repository.related_person.search import related_person_search
 from app.repository.location.search import location_search
@@ -74,6 +75,7 @@ async def test_search_params_match_registries(client):
         "risk_assessment": ("RiskAssessment", risk_assessment_search()),
         "immunization_evaluation": ("ImmunizationEvaluation", immunization_evaluation_search()),
         "immunization_recommendation": ("ImmunizationRecommendation", immunization_recommendation_search()),
+        "observation": ("Observation", observation_search()),
         "procedure": ("Procedure", procedure_search()),
     }
     enabled = {k: v for k, v in expected.items() if k in settings.routes.enabled}

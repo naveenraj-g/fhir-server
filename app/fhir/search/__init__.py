@@ -11,6 +11,7 @@ app/repository/organization/search.py.
 
 from .build import clause_condition, order_by, where_conditions
 from .bundle import searchset_bundle
+from .composite import split_composite
 from .errors import SearchError, UnsupportedSearchError
 from .params import (
     Clause,
@@ -42,5 +43,6 @@ __all__ = [
     "parse_prefer_strict",
     "parse_search",
     "searchset_bundle",
+    "split_composite",
     "where_conditions",
 ]

@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after DetectedIssue (`90ad106`)._
+_Last updated: 2026-11-21, after Observation (commit hash below)._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (24)
+## 1. Rebuilt on the current architecture (25)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -29,6 +29,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
+| 25 | Observation | `/observations` | 38 | 160000 | `x1c6e3a9b705` | pending | **the engine's first `composite` searches** (8, via a `slot` on the token and value tables) and the `combo-*` union parameters; `value-quantity` / `value-string` / `value-date` in one value table; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, RelatedPerson, Procedure, Immunization and itself |
 | 24 | DetectedIssue | `/detected-issues` | 6 | 540000 | `w0b5d2f8a614` | `90ad106` | **no `status` / `severity` search (R4 defines none)**; `identified` reads a dateTime or a Period; `implicated` is Reference(Any) in a shared reference table; a revinclude source on Patient, Practitioner and PractitionerRole |
 | 23 | ClinicalImpression | `/clinical-impressions` | 13 | 530000 | `v9a4c1e7f503` | `afaa8b1` | four repeating references (`problem`, `investigation`, `finding-ref`, `supporting-info` [Reference(Any)]) share one reference table; `finding-code` reads every finding; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, Condition, AllergyIntolerance, DiagnosticReport, RiskAssessment, FamilyMemberHistory and itself (`previous`); Condition `stage.assessment` now checks it |
 | 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | `ddbfe2e` | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
@@ -41,7 +42,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 15 | Condition | `/conditions` | 21 | 120000 | `n1e6a3c9d725` | `fbd1eb8` | Quantity search over an Age or a Range (`quantity_range_match`); `subject`/`asserter`/`evidence-detail` multi-target; now an existence-checked target of Encounter and Appointment |
 | 14 | AllergyIntolerance | `/allergy-intolerances` | 16 | 260000 | `m0d5f2b8c614` | `7d36dfc` | `recorder`/`asserter` multi-target over four rebuilt types; one shared token table for seven parameters; `onset` reads `reaction.onset` |
 
-All 24 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
+All 25 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
 
 ### What each resource existence-checks on write (relative `Type/<id>` → 422 if missing in the caller's org)
 
@@ -60,6 +61,7 @@ All 24 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | AppointmentResponse | `appointment`, `actor` (same types as Appointment), `identifier.assigner` | Device actors |
 | Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `diagnosis.condition` and `reasonReference` (Condition, Procedure), `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest, Observation targets |
 | RelatedPerson | `patient`, `identifier.assigner` | absolute URLs, logical references |
+| Observation | `subject` (Patient, Location), `encounter`, `basedOn` (ImmunizationRecommendation), `partOf` (Procedure, Immunization), `performer` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `hasMember` and `derivedFrom` (Observation), `note.authorReference`, `identifier.assigner` | Group / Device subject, Specimen, Device, `focus` (Reference(Any)), MedicationRequest / ServiceRequest / CarePlan basedOn, CareTeam, QuestionnaireResponse / Media / ImagingStudy / DocumentReference targets, absolute URLs, logical references |
 | DetectedIssue | `patient`, `author` (Practitioner, PractitionerRole), `mitigation.author` (Practitioner, PractitionerRole), `implicated` and `evidence.detail` (any rebuilt resource), `identifier.assigner` | Device author, MedicationRequest / MedicationDispense / Observation and other not-rebuilt `implicated` / `evidence.detail` targets, absolute URLs, logical references |
 | ClinicalImpression | `subject` (Patient), `encounter`, `assessor` (Practitioner, PractitionerRole), `previous`, `problem` (Condition, AllergyIntolerance), `investigation.item` (RiskAssessment, FamilyMemberHistory, DiagnosticReport), `finding.itemReference` (Condition), `prognosisReference` (RiskAssessment), `supportingInfo` (any rebuilt resource), `note.authorReference`, `identifier.assigner` | Group subject, Observation / Media / ImagingStudy / QuestionnaireResponse investigations, Observation / Media findings, absolute URLs, logical references |
 | RiskAssessment | `subject` (Patient), `encounter`, `condition`, `performer` (Practitioner, PractitionerRole), `reasonReference` (Condition, DiagnosticReport), `note.authorReference`, `identifier.assigner` | Group subject, Device performer, `basedOn` / `parent` / `basis` (Reference(Any)), Observation / DocumentReference reasons, absolute URLs, logical references |
@@ -74,13 +76,12 @@ All 24 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 
 ---
 
-## 2. Not yet rebuilt (25)
+## 2. Not yet rebuilt (24)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
-| Clinical records | Observation |
 | Orders and medication | ServiceRequest, MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
 | Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Consent, Group |
 | Communication | Communication, CommunicationRequest |
@@ -90,7 +91,7 @@ Still on the old fully-normalized model and **not mounted** (commented out in `r
 
 Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
-Suggested next: **Observation** (needs composite-search support in the engine first) or any of the smaller ones in the list above.
+Suggested next: any of the resources in the list above; **ServiceRequest** and **MedicationRequest** are the ones Observation can point at (`basedOn`).
 
 ---
 
@@ -106,7 +107,8 @@ Suggested next: **Observation** (needs composite-search support in the engine fi
 | Common search parameters | `_tag`, `_profile`, `_security`, `_source`, `_text`, `_content`, `_list`, `_has`, `_type`, `_filter` are ignored (reported in an `outcome` entry) | `docs/search-architecture/pending-search-capabilities.md` |
 | ClinicalImpression references | No `:supporting-info` / `:finding-ref` revinclude; Condition `evidence-detail` does not chain to or include a ClinicalImpression (its modeled-type list is narrower than the rebuilt set) | ClinicalImpression, Condition |
 | DetectedIssue references | No `:implicated` revinclude (a DetectedIssue cannot be found from the resources it implicates); Condition `evidence-detail` does not chain to or include a DetectedIssue | DetectedIssue |
-| Search types missing from the engine | composite | `app/fhir/search/` |
+| Observation as a target | Nothing else points at Observation yet: `DiagnosticReport.result`, `Immunization.reaction` / `reasonReference`, `ClinicalImpression.investigation` / `finding`, the `reasonReference` of RiskAssessment / FamilyMemberHistory / Procedure / Encounter / Appointment, `Condition.stage.assessment` and Reference(Any) elements store an Observation reference as sent: no existence check, no chaining, no `_include` / `_revinclude`. Doing it means flipping the "made-up Observation id" fixtures in about ten partner test files | DiagnosticReport, Immunization, ClinicalImpression, RiskAssessment, FamilyMemberHistory, Procedure, Encounter, Appointment, Condition |
+| Observation search | `SampledData` is not indexed for `value-quantity`; `value-string` has no `:exact`; `Observation:performer` is not declared on Organization (uncommitted edits in its registry file); a Timing `effective[x]` is indexed as the range from its earliest event to its latest | Observation |
 | Cardinality minimums | R4 required elements (e.g. `status`, `participant`) are enforced only by the `java_validator` backend, not the native one | all resources |
 | Test-suite collection | `pytest tests` as a whole fails at collection (pre-existing); run per directory | tests |
 
@@ -125,6 +127,7 @@ Suggested next: **Observation** (needs composite-search support in the engine fi
 | Quantity search over an Age or a Range (`quantity_range_match`) | Condition | `app/fhir/search/quantity.py` |
 | `uri` search (`uri_match`: exact, `:below`, `:above`) | Procedure | `app/fhir/search/sql.py` |
 | `number` search over a decimal or a Range (`number_range_match`) | RiskAssessment | `app/fhir/search/quantity.py` |
+| `composite` search (`split_composite`; a resource-side `$` builder pairing a code row and a value row of the same element, `slot`) and the `combo-*` union parameters | Observation | `app/fhir/search/composite.py` |
 
 ---
 

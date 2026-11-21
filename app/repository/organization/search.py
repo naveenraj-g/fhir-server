@@ -17,7 +17,6 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._encounter_revinclude import service_provider_encounter_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -48,6 +47,7 @@ from app.models.organization import (
     OrganizationType,
 )
 from app.models.organization.enums import OrganizationEndpointReferenceType
+from app.repository._encounter_revinclude import service_provider_encounter_revincludes
 from app.schemas.enums import AddressUse
 
 Org = OrganizationModel
@@ -379,7 +379,10 @@ async def _include_endpoint(session, ctx, orgs):
         OrganizationEndpoint.organization_pk.in_({o.id for o in orgs}),
         OrganizationEndpoint.reference_id.is_not(None),
     )
-    return await _fetch(session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.endpoint_id.in_(ids)),
+    )
 
 
 async def _revinclude_endpoint_organization(session, ctx, orgs):
@@ -389,7 +392,10 @@ async def _revinclude_endpoint_organization(session, ctx, orgs):
 
     ids = {o.organization_id for o in orgs}
     return await _fetch(
-        session, select(Ep).where(Ep.tenant_id == ctx.tenant_id, Ep.managing_organization_id.in_(ids))
+        session,
+        select(Ep).where(
+            Ep.tenant_id == ctx.tenant_id, Ep.managing_organization_id.in_(ids)
+        ),
     )
 
 
@@ -399,7 +405,10 @@ async def _revinclude_practitioner_role_organization(session, ctx, orgs):
     from app.models.practitioner_role import PractitionerRoleModel as PR
 
     ids = {o.organization_id for o in orgs}
-    return await _fetch(session, select(PR).where(PR.tenant_id == ctx.tenant_id, PR.organization_id.in_(ids)))
+    return await _fetch(
+        session,
+        select(PR).where(PR.tenant_id == ctx.tenant_id, PR.organization_id.in_(ids)),
+    )
 
 
 async def _revinclude_patient_general_practitioner(session, ctx, orgs):

@@ -21,6 +21,8 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.repository._clinical_impression_revinclude import column_impression_revincludes
 from app.repository._detected_issue_revinclude import column_issue_revincludes
+from app.repository._observation_revinclude import column_observation_revincludes
+from app.repository._observation_revinclude import reference_observation_revincludes
 from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes, patient_allergy_revincludes
@@ -668,6 +670,8 @@ def patient_search() -> SearchRegistry:
             *column_risk_revincludes(('subject', 'patient'), 'subject', 'Patient', lambda p: p.patient_id),
             *column_impression_revincludes(('subject', 'patient'), 'subject', 'Patient', lambda p: p.patient_id),
             *column_issue_revincludes(('patient',), 'patient', 'Patient', lambda p: p.patient_id),
+            *column_observation_revincludes(('subject', 'patient'), 'subject', 'Patient', lambda p: p.patient_id),
+            *reference_observation_revincludes('performer', 'Patient', lambda p: p.patient_id),
             *column_evaluation_revincludes('patient', 'patient', 'Patient', lambda p: p.patient_id),
             *performer_procedure_revincludes('Patient', lambda p: p.patient_id),
             *actor_allergy_revincludes('Patient', lambda p: p.patient_id),
