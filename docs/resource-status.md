@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after wiring Observation as a target (commit hash below)._
+_Last updated: 2026-11-21, after wiring Observation as a target (`fb0845e`)._
 
 ## Architecture in one line
 
