@@ -1,186 +1,85 @@
-from datetime import date, datetime
-
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import (
-    apply_child_exists_filter,
-    apply_date_range_filter,
-    apply_token_filter,
-    parse_reference,
-)
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.immunization_recommendation import (
-    ImmunizationRecommendationIdentifierModel,
-    ImmunizationRecommendationModel,
-    ImmunizationRecommendationPatientReferenceType,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.immunization_recommendation import ImmunizationRecommendationModel
 
-from ._shared import (
-    _SORTABLE_FIELDS,
-    _with_relationships,
-)
+from .search import immunization_recommendation_search
 
 logger = get_logger(__name__)
 
+_M = ImmunizationRecommendationModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for ImmunizationRecommendation."""
+    """Reads, search and delete. Every read loads only the immunization_recommendation
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_immunization_recommendation_id(
-        self, immunization_recommendation_id: int
-    ) -> ImmunizationRecommendationModel | None:
+    async def get_by_immunization_recommendation_id(self, immunization_recommendation_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationRecommendationModel).where(
-                    ImmunizationRecommendationModel.immunization_recommendation_id
-                    == immunization_recommendation_id
-                )
-            )
+            stmt = select(_M).where(_M.immunization_recommendation_id == immunization_recommendation_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_immunization_recommendation_id_in_org(
-        self, immunization_recommendation_id: int, org_id: str
-    ) -> ImmunizationRecommendationModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    async def get_by_immunization_recommendation_id_in_org(self, immunization_recommendation_id: int, org_id: str) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the immunization_recommendation
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationRecommendationModel).where(
-                    ImmunizationRecommendationModel.immunization_recommendation_id
-                    == immunization_recommendation_id,
-                    ImmunizationRecommendationModel.tenant_id == org_id,
-                )
-            )
+            stmt = select(_M).where(_M.immunization_recommendation_id == immunization_recommendation_id, _M.tenant_id == org_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def immunization_recommendation_belongs_to_org(
-        self, immunization_recommendation_id: int, org_id: str
-    ) -> bool:
-        """Cheap existence/ownership check (no joins, no sub-resources)."""
+    async def immunization_recommendation_belongs_to_org(self, immunization_recommendation_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the immunization_recommendation exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(func.count(ImmunizationRecommendationModel.id)).where(
-                ImmunizationRecommendationModel.immunization_recommendation_id
-                == immunization_recommendation_id,
-                ImmunizationRecommendationModel.tenant_id == org_id,
-            )
-            count = (await session.execute(stmt)).scalar() or 0
-            return count > 0
+            stmt = select(_M.id).where(_M.immunization_recommendation_id == immunization_recommendation_id, _M.tenant_id == org_id)
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str | None = None,
-        patient: str | None = None,
-        date_val: date | datetime | None = None,
-        date_from: date | datetime | None = None,
-        date_to: date | datetime | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(ImmunizationRecommendationModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if patient:
-            if patient.isdigit():
-                stmt = stmt.where(ImmunizationRecommendationModel.patient_id == int(patient))
-            else:
-                p_type, p_id = parse_reference(patient, ImmunizationRecommendationPatientReferenceType)
-                if p_id:
-                    stmt = stmt.where(ImmunizationRecommendationModel.patient_id == p_id)
-                else:
-                    stmt = stmt.where(ImmunizationRecommendationModel.patient_reference == patient)
-
-        if date_val is not None or date_from is not None or date_to is not None:
-            stmt = apply_date_range_filter(
-                stmt,
-                ImmunizationRecommendationModel.date,
-                date_val,
-                date_from,
-                date_to,
-            )
-
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                ImmunizationRecommendationIdentifierModel,
-                ImmunizationRecommendationIdentifierModel.immunization_recommendation_pk
-                == ImmunizationRecommendationModel.id,
-                lambda s: apply_token_filter(
-                    s,
-                    ImmunizationRecommendationIdentifierModel.system,
-                    ImmunizationRecommendationIdentifierModel.value,
-                    identifier,
-                ),
-            )
-
-        return stmt
-
-    async def list(
-        self,
-        *,
-        org_id: str | None = None,
-        patient: str | None = None,
-        date_val: date | datetime | None = None,
-        date_from: date | datetime | None = None,
-        date_to: date | datetime | None = None,
-        identifier: str | None = None,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ImmunizationRecommendationModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            count_stmt = select(func.count(ImmunizationRecommendationModel.id))
-            count_stmt = self._apply_list_filters(
-                count_stmt,
-                org_id=org_id,
-                patient=patient,
-                date_val=date_val,
-                date_from=date_from,
-                date_to=date_to,
-                identifier=identifier,
-            )
-            total = (await session.execute(count_stmt)).scalar() if total_mode == "accurate" else None
-
-            stmt = select(ImmunizationRecommendationModel)
-            stmt = self._apply_list_filters(
-                stmt,
-                org_id=org_id,
-                patient=patient,
-                date_val=date_val,
-                date_from=date_from,
-                date_to=date_to,
-                identifier=identifier,
-            )
-            stmt = _with_relationships(stmt)
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                ImmunizationRecommendationModel.immunization_recommendation_id,
-                default_desc=False,
-            )
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                stmt,
-                count_stmt,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=immunization_recommendation_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.immunization_recommendation_id,
             )
-            return list(rows), total
+        logger.debug(
+            "ImmunizationRecommendations searched",
+            extra={
+                "event": "immunization_recommendation.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-    async def delete(self, immunization_recommendation_id: int, org_id: str) -> bool:
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
+
+    async def delete(self, immunization_recommendation_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(ImmunizationRecommendationModel).where(
-                ImmunizationRecommendationModel.immunization_recommendation_id == immunization_recommendation_id,
-                ImmunizationRecommendationModel.tenant_id == org_id,
-            )
-            row = (await session.execute(stmt)).scalars().first()
-            if not row:
+            stmt = select(_M).where(_M.immunization_recommendation_id == immunization_recommendation_id)
+            immunization_recommendation = (await session.execute(stmt)).scalars().first()
+            if not immunization_recommendation:
                 return False
-            await session.delete(row)
-            await session.commit()
-            return True
+            try:
+                await session.delete(immunization_recommendation)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

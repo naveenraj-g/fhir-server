@@ -1,599 +1,92 @@
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.core.logging import get_logger
-from app.models.enums import IdentifierUse as IdentifierUseModel, OrganizationReferenceType
-from app.models.immunization_recommendation import (
-    ImmunizationRecommendationAuthorityReferenceType,
-    ImmunizationRecommendationContraindicatedCodeCodingModel,
-    ImmunizationRecommendationContraindicatedCodeModel,
-    ImmunizationRecommendationDateCriterionCodeCodingModel,
-    ImmunizationRecommendationDateCriterionModel,
-    ImmunizationRecommendationForecastReasonCodingModel,
-    ImmunizationRecommendationForecastReasonModel,
-    ImmunizationRecommendationForecastStatusCodingModel,
-    ImmunizationRecommendationIdentifierModel,
-    ImmunizationRecommendationIdentifierTypeCodingModel,
-    ImmunizationRecommendationModel,
-    ImmunizationRecommendationPatientReferenceType,
-    ImmunizationRecommendationRecommendationModel,
-    ImmunizationRecommendationSupportingImmunizationModel,
-    ImmunizationRecommendationSupportingImmunizationReferenceType,
-    ImmunizationRecommendationSupportingPatientInformationModel,
-    ImmunizationRecommendationSupportingPatientInformationReferenceType,
-    ImmunizationRecommendationTargetDiseaseCodingModel,
-    ImmunizationRecommendationVaccineCodeCodingModel,
-    ImmunizationRecommendationVaccineCodeModel,
-)
-from app.schemas.immunization_recommendation import (
-    ImmunizationRecommendationCreateSchema,
-    ImmunizationRecommendationPatchSchema,
-)
+from app.models.immunization_recommendation import ImmunizationRecommendationModel
 
-from ._shared import (
-    _list_reference_kwargs,
-    _ref_kwargs,
-    _single_reference_kwargs,
-    _validate_ref,
-)
+from ._indexer import index_columns, index_rows, local_references
+from ._shared import INDEX_RELATIONSHIPS, _validate_reference, _with_relationships
 
 logger = get_logger(__name__)
 
+# Never stored in `content` — stamped on at read time from the row.
+_SERVER_MANAGED = ("resourceType", "id", "meta")
+
+
+def _storable(document: dict) -> dict:
+    return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
+
+
+async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
+    """Existence-check every relative local reference in the document
+    (identifier.assigner, patient, encounter, location, manufacturer, performers, reason references, authority, note authors), scoped to the caller's org — 422 if one does not resolve."""
+    for label, resource_type, ref in local_references(document):
+        await _validate_reference(session, tenant_id, resource_type, int(ref.split("/")[1]), label)
+
 
 class _FullMixin:
-    """Full-model write operations (create, patch) for ImmunizationRecommendation."""
+    """Writes. Both take the full, already-validated FHIR ImmunizationRecommendation
+    document: it is stored verbatim in `content`, and the search index is
+    rebuilt from it (see _indexer.py)."""
 
-    async def create(
+    async def create_full(
         self,
-        payload: ImmunizationRecommendationCreateSchema,
+        document: dict,
         org_id: str,
-        actor_id: str,
+        created_by: str | None = None,
     ) -> ImmunizationRecommendationModel:
         async with self.session_factory() as session:
-            # 1. Validate root references
-            pat_kwargs = _single_reference_kwargs(
-                "patient", payload.patient, ImmunizationRecommendationPatientReferenceType
-            )
-            await _validate_ref(
-                session,
-                pat_kwargs["patient_type"],
-                pat_kwargs["patient_id"],
-                org_id,
-                "patient",
-            )
-
-            auth_kwargs = _single_reference_kwargs(
-                "authority", payload.authority, ImmunizationRecommendationAuthorityReferenceType
-            )
-            if payload.authority:
-                await _validate_ref(
-                    session,
-                    auth_kwargs["authority_type"],
-                    auth_kwargs["authority_id"],
-                    org_id,
-                    "authority",
-                )
-
-            # 2. Construct root model
-            model = ImmunizationRecommendationModel(
+            await _validate_local_references(session, org_id, document)
+            immunization_recommendation = ImmunizationRecommendationModel(
                 tenant_id=org_id,
-                created_by=actor_id,
-                updated_by=actor_id,
-                date=payload.date,
-                **pat_kwargs,
-                **auth_kwargs,
+                created_by=created_by,
+                content=_storable(document),
+                **index_columns(document),
+                **index_rows(document),
             )
-            session.add(model)
-            await session.flush()
+            session.add(immunization_recommendation)
+            try:
+                await session.commit()
+                await session.refresh(immunization_recommendation)
+            except Exception:
+                await session.rollback()
+                raise
+            return immunization_recommendation
 
-            # 3. Insert identifiers
-            await self._insert_identifiers(
-                session, model.id, payload.identifier, org_id, actor_id
-            )
-
-            # 4. Insert recommendations
-            await self._insert_recommendations(
-                session, model.id, payload.recommendation, org_id, actor_id
-            )
-
-            await session.commit()
-            return await self.get_by_immunization_recommendation_id_in_org(
-                model.immunization_recommendation_id, org_id
-            )
-
-    async def patch(
+    async def patch_full(
         self,
         immunization_recommendation_id: int,
-        patch: ImmunizationRecommendationPatchSchema,
-        org_id: str,
-        actor_id: str,
+        document: dict,
+        updated_by: str | None = None,
     ) -> ImmunizationRecommendationModel | None:
+        """`document` is the resource as it should look *after* the patch
+        (the service merges the patch onto the current content and validates
+        the result). The stored content is replaced and every index row
+        rebuilt."""
         async with self.session_factory() as session:
-            stmt = select(ImmunizationRecommendationModel).where(
-                ImmunizationRecommendationModel.immunization_recommendation_id
-                == immunization_recommendation_id,
-                ImmunizationRecommendationModel.tenant_id == org_id,
+            stmt = _with_relationships(
+                select(ImmunizationRecommendationModel).where(
+                    ImmunizationRecommendationModel.immunization_recommendation_id == immunization_recommendation_id
+                )
             )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            immunization_recommendation = (await session.execute(stmt)).scalars().first()
+            if not immunization_recommendation:
                 return None
 
-            data = patch.model_dump(exclude_unset=True)
-            imm_rec_pk = model.id
+            await _validate_local_references(session, immunization_recommendation.tenant_id, document)
 
-            if "patient" in data and patch.patient is not None:
-                pat_kwargs = _single_reference_kwargs(
-                    "patient", patch.patient, ImmunizationRecommendationPatientReferenceType
-                )
-                await _validate_ref(
-                    session,
-                    pat_kwargs["patient_type"],
-                    pat_kwargs["patient_id"],
-                    org_id,
-                    "patient",
-                )
-                for k, v in pat_kwargs.items():
-                    setattr(model, k, v)
+            immunization_recommendation.content = _storable(document)
+            for column, value in index_columns(document).items():
+                setattr(immunization_recommendation, column, value)
+            rows = index_rows(document)
+            for rel in INDEX_RELATIONSHIPS:
+                setattr(immunization_recommendation, rel, rows[rel])
+            if updated_by is not None:
+                immunization_recommendation.updated_by = updated_by
 
-            if "authority" in data:
-                if patch.authority is not None:
-                    auth_kwargs = _single_reference_kwargs(
-                        "authority", patch.authority, ImmunizationRecommendationAuthorityReferenceType
-                    )
-                    await _validate_ref(
-                        session,
-                        auth_kwargs["authority_type"],
-                        auth_kwargs["authority_id"],
-                        org_id,
-                        "authority",
-                    )
-                    for k, v in auth_kwargs.items():
-                        setattr(model, k, v)
-                else:
-                    empty_auth = _single_reference_kwargs(
-                        "authority", None, ImmunizationRecommendationAuthorityReferenceType
-                    )
-                    for k, v in empty_auth.items():
-                        setattr(model, k, v)
-
-            if "date" in data and patch.date is not None:
-                model.date = patch.date
-
-            if "identifier" in data:
-                ident_ids = (
-                    await session.execute(
-                        select(ImmunizationRecommendationIdentifierModel.id).where(
-                            ImmunizationRecommendationIdentifierModel.immunization_recommendation_pk
-                            == imm_rec_pk
-                        )
-                    )
-                ).scalars().all()
-                if ident_ids:
-                    await session.execute(
-                        delete(ImmunizationRecommendationIdentifierTypeCodingModel).where(
-                            ImmunizationRecommendationIdentifierTypeCodingModel.identifier_id.in_(ident_ids)
-                        )
-                    )
-                await session.execute(
-                    delete(ImmunizationRecommendationIdentifierModel).where(
-                        ImmunizationRecommendationIdentifierModel.immunization_recommendation_pk
-                        == imm_rec_pk
-                    )
-                )
-                await self._insert_identifiers(session, imm_rec_pk, patch.identifier, org_id, actor_id)
-
-            if "recommendation" in data and patch.recommendation is not None:
-                await self._delete_existing_recommendations(session, imm_rec_pk)
-                await self._insert_recommendations(
-                    session, imm_rec_pk, patch.recommendation, org_id, actor_id
-                )
-
-            model.updated_by = actor_id
-            await session.commit()
-            return await self.get_by_immunization_recommendation_id_in_org(
-                immunization_recommendation_id, org_id
-            )
-
-    create_full = create
-    patch_full = patch
-
-    async def _delete_existing_recommendations(self, session, imm_rec_pk: int):
-        rec_ids = (
-            await session.execute(
-                select(ImmunizationRecommendationRecommendationModel.id).where(
-                    ImmunizationRecommendationRecommendationModel.immunization_recommendation_pk
-                    == imm_rec_pk
-                )
-            )
-        ).scalars().all()
-        if not rec_ids:
-            return
-
-        # 1. vaccine codes
-        vc_ids = (
-            await session.execute(
-                select(ImmunizationRecommendationVaccineCodeModel.id).where(
-                    ImmunizationRecommendationVaccineCodeModel.recommendation_id.in_(rec_ids)
-                )
-            )
-        ).scalars().all()
-        if vc_ids:
-            await session.execute(
-                delete(ImmunizationRecommendationVaccineCodeCodingModel).where(
-                    ImmunizationRecommendationVaccineCodeCodingModel.vaccine_code_id.in_(vc_ids)
-                )
-            )
-            await session.execute(
-                delete(ImmunizationRecommendationVaccineCodeModel).where(
-                    ImmunizationRecommendationVaccineCodeModel.id.in_(vc_ids)
-                )
-            )
-
-        # 2. target disease
-        await session.execute(
-            delete(ImmunizationRecommendationTargetDiseaseCodingModel).where(
-                ImmunizationRecommendationTargetDiseaseCodingModel.recommendation_id.in_(rec_ids)
-            )
-        )
-
-        # 3. contraindicated vaccine codes
-        cvc_ids = (
-            await session.execute(
-                select(ImmunizationRecommendationContraindicatedCodeModel.id).where(
-                    ImmunizationRecommendationContraindicatedCodeModel.recommendation_id.in_(rec_ids)
-                )
-            )
-        ).scalars().all()
-        if cvc_ids:
-            await session.execute(
-                delete(ImmunizationRecommendationContraindicatedCodeCodingModel).where(
-                    ImmunizationRecommendationContraindicatedCodeCodingModel.contraindicated_code_id.in_(cvc_ids)
-                )
-            )
-            await session.execute(
-                delete(ImmunizationRecommendationContraindicatedCodeModel).where(
-                    ImmunizationRecommendationContraindicatedCodeModel.id.in_(cvc_ids)
-                )
-            )
-
-        # 4. forecast status
-        await session.execute(
-            delete(ImmunizationRecommendationForecastStatusCodingModel).where(
-                ImmunizationRecommendationForecastStatusCodingModel.recommendation_id.in_(rec_ids)
-            )
-        )
-
-        # 5. forecast reason
-        fr_ids = (
-            await session.execute(
-                select(ImmunizationRecommendationForecastReasonModel.id).where(
-                    ImmunizationRecommendationForecastReasonModel.recommendation_id.in_(rec_ids)
-                )
-            )
-        ).scalars().all()
-        if fr_ids:
-            await session.execute(
-                delete(ImmunizationRecommendationForecastReasonCodingModel).where(
-                    ImmunizationRecommendationForecastReasonCodingModel.forecast_reason_id.in_(fr_ids)
-                )
-            )
-            await session.execute(
-                delete(ImmunizationRecommendationForecastReasonModel).where(
-                    ImmunizationRecommendationForecastReasonModel.id.in_(fr_ids)
-                )
-            )
-
-        # 6. date criteria
-        dc_ids = (
-            await session.execute(
-                select(ImmunizationRecommendationDateCriterionModel.id).where(
-                    ImmunizationRecommendationDateCriterionModel.recommendation_id.in_(rec_ids)
-                )
-            )
-        ).scalars().all()
-        if dc_ids:
-            await session.execute(
-                delete(ImmunizationRecommendationDateCriterionCodeCodingModel).where(
-                    ImmunizationRecommendationDateCriterionCodeCodingModel.date_criterion_id.in_(dc_ids)
-                )
-            )
-            await session.execute(
-                delete(ImmunizationRecommendationDateCriterionModel).where(
-                    ImmunizationRecommendationDateCriterionModel.id.in_(dc_ids)
-                )
-            )
-
-        # 7. supporting immunizations
-        await session.execute(
-            delete(ImmunizationRecommendationSupportingImmunizationModel).where(
-                ImmunizationRecommendationSupportingImmunizationModel.recommendation_id.in_(rec_ids)
-            )
-        )
-
-        # 8. supporting patient info
-        await session.execute(
-            delete(ImmunizationRecommendationSupportingPatientInformationModel).where(
-                ImmunizationRecommendationSupportingPatientInformationModel.recommendation_id.in_(rec_ids)
-            )
-        )
-
-        # 9. recommendations root
-        await session.execute(
-            delete(ImmunizationRecommendationRecommendationModel).where(
-                ImmunizationRecommendationRecommendationModel.id.in_(rec_ids)
-            )
-        )
-
-    async def _insert_identifiers(
-        self, session, imm_rec_pk: int, identifiers, org_id: str, actor: str
-    ):
-        if not identifiers:
-            return
-        for i in identifiers:
-            assigner_type = None
-            assigner_id = None
-            if i.assigner:
-                assigner_type, assigner_id = _ref_kwargs(
-                    "assigner", i.assigner, i.assigner_display, OrganizationReferenceType
-                )["assigner_type"], _ref_kwargs(
-                    "assigner", i.assigner, i.assigner_display, OrganizationReferenceType
-                )["assigner_id"]
-                await _validate_ref(session, assigner_type, assigner_id, org_id, "identifier.assigner")
-
-            row = ImmunizationRecommendationIdentifierModel(
-                immunization_recommendation_pk=imm_rec_pk,
-                tenant_id=org_id,
-                created_by=actor,
-                use=IdentifierUseModel[i.use.name] if i.use else None,
-                type_text=i.type.text if i.type else None,
-                system=i.system,
-                value=i.value,
-                period_start=i.period_start,
-                period_end=i.period_end,
-                assigner_reference=i.assigner,
-                assigner_type=assigner_type,
-                assigner_id=assigner_id,
-                assigner_display=i.assigner_display,
-                assigner_identifier_use=(
-                    IdentifierUseModel[i.assigner_identifier_use.name]
-                    if i.assigner_identifier_use
-                    else None
-                ),
-                assigner_identifier_type_system=i.assigner_identifier_type_system,
-                assigner_identifier_type_version=i.assigner_identifier_type_version,
-                assigner_identifier_type_code=i.assigner_identifier_type_code,
-                assigner_identifier_type_display=i.assigner_identifier_type_display,
-                assigner_identifier_type_user_selected=i.assigner_identifier_type_user_selected,
-                assigner_identifier_type_text=i.assigner_identifier_type_text,
-                assigner_identifier_system=i.assigner_identifier_system,
-                assigner_identifier_value=i.assigner_identifier_value,
-                assigner_identifier_period_start=i.assigner_identifier_period_start,
-                assigner_identifier_period_end=i.assigner_identifier_period_end,
-            )
-            session.add(row)
-            await session.flush()
-
-            if i.type and i.type.coding:
-                for c in i.type.coding:
-                    session.add(
-                        ImmunizationRecommendationIdentifierTypeCodingModel(
-                            identifier_id=row.id,
-                            tenant_id=org_id,
-                            created_by=actor,
-                            system=getattr(c, "system", None),
-                            version=getattr(c, "version", None),
-                            code=getattr(c, "code", None),
-                            display=getattr(c, "display", None),
-                            user_selected=getattr(c, "user_selected", None),
-                        )
-                    )
-
-    async def _insert_recommendations(
-        self, session, imm_rec_pk: int, recommendations, org_id: str, actor: str
-    ):
-        if not recommendations:
-            return
-        for r in recommendations:
-            td_text = r.target_disease.text if r.target_disease else None
-            fs_text = r.forecast_status.text if r.forecast_status else None
-
-            rec_row = ImmunizationRecommendationRecommendationModel(
-                immunization_recommendation_pk=imm_rec_pk,
-                tenant_id=org_id,
-                created_by=actor,
-                target_disease_text=td_text,
-                forecast_status_text=fs_text,
-                description=r.description,
-                series=r.series,
-                dose_number_positive_int=r.dose_number_positive_int,
-                dose_number_string=r.dose_number_string,
-                series_doses_positive_int=r.series_doses_positive_int,
-                series_doses_string=r.series_doses_string,
-            )
-            session.add(rec_row)
-            await session.flush()
-            rec_id = rec_row.id
-
-            # 1. vaccine_code
-            if r.vaccine_code:
-                for vc in r.vaccine_code:
-                    vc_row = ImmunizationRecommendationVaccineCodeModel(
-                        recommendation_id=rec_id,
-                        tenant_id=org_id,
-                        created_by=actor,
-                        text=vc.text,
-                    )
-                    session.add(vc_row)
-                    await session.flush()
-
-                    if vc.coding:
-                        for c in vc.coding:
-                            session.add(
-                                ImmunizationRecommendationVaccineCodeCodingModel(
-                                    vaccine_code_id=vc_row.id,
-                                    tenant_id=org_id,
-                                    created_by=actor,
-                                    system=getattr(c, "system", None),
-                                    version=getattr(c, "version", None),
-                                    code=getattr(c, "code", None),
-                                    display=getattr(c, "display", None),
-                                    user_selected=getattr(c, "user_selected", None),
-                                )
-                            )
-
-            # 2. target_disease
-            if r.target_disease and r.target_disease.coding:
-                for c in r.target_disease.coding:
-                    session.add(
-                        ImmunizationRecommendationTargetDiseaseCodingModel(
-                            recommendation_id=rec_id,
-                            tenant_id=org_id,
-                            created_by=actor,
-                            system=getattr(c, "system", None),
-                            version=getattr(c, "version", None),
-                            code=getattr(c, "code", None),
-                            display=getattr(c, "display", None),
-                            user_selected=getattr(c, "user_selected", None),
-                        )
-                    )
-
-            # 3. contraindicated_vaccine_code
-            if r.contraindicated_vaccine_code:
-                for cvc in r.contraindicated_vaccine_code:
-                    cvc_row = ImmunizationRecommendationContraindicatedCodeModel(
-                        recommendation_id=rec_id,
-                        tenant_id=org_id,
-                        created_by=actor,
-                        text=cvc.text,
-                    )
-                    session.add(cvc_row)
-                    await session.flush()
-
-                    if cvc.coding:
-                        for c in cvc.coding:
-                            session.add(
-                                ImmunizationRecommendationContraindicatedCodeCodingModel(
-                                    contraindicated_code_id=cvc_row.id,
-                                    tenant_id=org_id,
-                                    created_by=actor,
-                                    system=getattr(c, "system", None),
-                                    version=getattr(c, "version", None),
-                                    code=getattr(c, "code", None),
-                                    display=getattr(c, "display", None),
-                                    user_selected=getattr(c, "user_selected", None),
-                                )
-                            )
-
-            # 4. forecast_status
-            if r.forecast_status and r.forecast_status.coding:
-                for c in r.forecast_status.coding:
-                    session.add(
-                        ImmunizationRecommendationForecastStatusCodingModel(
-                            recommendation_id=rec_id,
-                            tenant_id=org_id,
-                            created_by=actor,
-                            system=getattr(c, "system", None),
-                            version=getattr(c, "version", None),
-                            code=getattr(c, "code", None),
-                            display=getattr(c, "display", None),
-                            user_selected=getattr(c, "user_selected", None),
-                        )
-                    )
-
-            # 5. forecast_reason
-            if r.forecast_reason:
-                for fr in r.forecast_reason:
-                    fr_row = ImmunizationRecommendationForecastReasonModel(
-                        recommendation_id=rec_id,
-                        tenant_id=org_id,
-                        created_by=actor,
-                        text=fr.text,
-                    )
-                    session.add(fr_row)
-                    await session.flush()
-
-                    if fr.coding:
-                        for c in fr.coding:
-                            session.add(
-                                ImmunizationRecommendationForecastReasonCodingModel(
-                                    forecast_reason_id=fr_row.id,
-                                    tenant_id=org_id,
-                                    created_by=actor,
-                                    system=getattr(c, "system", None),
-                                    version=getattr(c, "version", None),
-                                    code=getattr(c, "code", None),
-                                    display=getattr(c, "display", None),
-                                    user_selected=getattr(c, "user_selected", None),
-                                )
-                            )
-
-            # 6. date_criterion
-            if r.date_criterion:
-                for dc in r.date_criterion:
-                    dc_row = ImmunizationRecommendationDateCriterionModel(
-                        recommendation_id=rec_id,
-                        tenant_id=org_id,
-                        created_by=actor,
-                        code_text=dc.code.text if dc.code else None,
-                        value=dc.value,
-                    )
-                    session.add(dc_row)
-                    await session.flush()
-
-                    if dc.code and dc.code.coding:
-                        for c in dc.code.coding:
-                            session.add(
-                                ImmunizationRecommendationDateCriterionCodeCodingModel(
-                                    date_criterion_id=dc_row.id,
-                                    tenant_id=org_id,
-                                    created_by=actor,
-                                    system=getattr(c, "system", None),
-                                    version=getattr(c, "version", None),
-                                    code=getattr(c, "code", None),
-                                    display=getattr(c, "display", None),
-                                    user_selected=getattr(c, "user_selected", None),
-                                )
-                            )
-
-            # 7. supporting_immunization
-            if r.supporting_immunization:
-                for si in r.supporting_immunization:
-                    si_kwargs = _list_reference_kwargs(
-                        si, ImmunizationRecommendationSupportingImmunizationReferenceType
-                    )
-                    await _validate_ref(
-                        session,
-                        si_kwargs["reference_type"],
-                        si_kwargs["reference_id"],
-                        org_id,
-                        "recommendation.supporting_immunization",
-                    )
-                    session.add(
-                        ImmunizationRecommendationSupportingImmunizationModel(
-                            recommendation_id=rec_id,
-                            tenant_id=org_id,
-                            created_by=actor,
-                            **si_kwargs,
-                        )
-                    )
-
-            # 8. supporting_patient_information
-            if r.supporting_patient_information:
-                for spi in r.supporting_patient_information:
-                    spi_kwargs = _list_reference_kwargs(
-                        spi, ImmunizationRecommendationSupportingPatientInformationReferenceType
-                    )
-                    await _validate_ref(
-                        session,
-                        spi_kwargs["reference_type"],
-                        spi_kwargs["reference_id"],
-                        org_id,
-                        "recommendation.supporting_patient_information",
-                    )
-                    session.add(
-                        ImmunizationRecommendationSupportingPatientInformationModel(
-                            recommendation_id=rec_id,
-                            tenant_id=org_id,
-                            created_by=actor,
-                            **spi_kwargs,
-                        )
-                    )
+            try:
+                await session.commit()
+                await session.refresh(immunization_recommendation)
+            except Exception:
+                await session.rollback()
+                raise
+            return immunization_recommendation

@@ -111,6 +111,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "ImmunizationRecommendations",
+        "description": (
+            "FHIR R4 ImmunizationRecommendation resources — guidance on which vaccines are due, "
+            "recommended or contraindicated for a patient, with the dates and series that govern them."
+        ),
+    },
+    {
         "name": "Specimens",
         "description": (
             "FHIR R4 Specimen resources — biological material collected from a patient for "

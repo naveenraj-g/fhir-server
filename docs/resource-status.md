@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-20, after Immunization (`96f929b`)._
+_Last updated: 2026-11-21, after ImmunizationRecommendation (commit hash below)._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (18)
+## 1. Rebuilt on the current architecture (19)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -29,13 +29,14 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
+| 19 | ImmunizationRecommendation | `/immunization-recommendations` | 8 | 510000 | `r5c0e7a3b169` | pending | tokens read inside the `recommendation` backbone (any entry matches); `information` is Reference(Any); now a revinclude source on Patient and Immunization |
 | 18 | Immunization | `/immunizations` | 16 | 330000 | `q4b9d6f2a058` | `96f929b` | `reaction`+`reaction-date` share one row; `occurrence[x]` indexed only as a dateTime; `performer` and `reason-reference` multi-target; now a revinclude source on Patient, Location, Practitioner, PractitionerRole, Condition and DiagnosticReport |
 | 17 | DiagnosticReport | `/diagnostic-reports` | 16 | 110000 | `p3a8c5e1f947` | `c9c66ba` | `performer`/`results-interpreter` share one table; `issued` instant; `subject` over Patient/Group/Device/Location; now an existence-checked target of Procedure and Condition |
 | 16 | Procedure | `/procedures` | 16 | 100000 | `o2f7b4d0e836` | `7ed4def` | First `uri` search (`instantiates-uri`); `instantiates-canonical` over canonical URLs; `subject`/`performer`/`part-of`/`reason-reference` multi-target; now an existence-checked target of Encounter and Appointment |
 | 15 | Condition | `/conditions` | 21 | 120000 | `n1e6a3c9d725` | `fbd1eb8` | Quantity search over an Age or a Range (`quantity_range_match`); `subject`/`asserter`/`evidence-detail` multi-target; now an existence-checked target of Encounter and Appointment |
 | 14 | AllergyIntolerance | `/allergy-intolerances` | 16 | 260000 | `m0d5f2b8c614` | `7d36dfc` | `recorder`/`asserter` multi-target over four rebuilt types; one shared token table for seven parameters; `onset` reads `reaction.onset` |
 
-All 18 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
+All 19 are mounted (`configs/config.yaml` → `routes.enabled`), have tests under `tests/integration/<resource>/` and a conformance file (`tests/conformance/test_<resource>_fhir.py`), appear in `GET /metadata`, and have a migration with no downgrade.
 
 ### What each resource existence-checks on write (relative `Type/<id>` → 422 if missing in the caller's org)
 
@@ -54,6 +55,7 @@ All 18 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | AppointmentResponse | `appointment`, `actor` (same types as Appointment), `identifier.assigner` | Device actors |
 | Encounter | `subject` (Patient), `partOf`, `serviceProvider`, `appointment`, `participant.individual` (Practitioner, PractitionerRole, RelatedPerson), `location.location`, `hospitalization.origin/destination`, `diagnosis.condition` and `reasonReference` (Condition, Procedure), `identifier.assigner` | Group subjects, Account, EpisodeOfCare, ServiceRequest, Observation targets |
 | RelatedPerson | `patient`, `identifier.assigner` | absolute URLs, logical references |
+| ImmunizationRecommendation | `patient`, `authority`, `supportingImmunization` (Immunization), `supportingPatientInformation` (Patient, Practitioner, PractitionerRole, RelatedPerson, Organization, Location, Encounter, Appointment, Condition, Procedure, DiagnosticReport, AllergyIntolerance, Immunization), `identifier.assigner` | ImmunizationEvaluation and Observation targets, absolute URLs, logical references |
 | Immunization | `patient`, `encounter`, `location`, `manufacturer`, `performer.actor` (Practitioner, PractitionerRole, Organization), `reasonReference` (Condition, DiagnosticReport), `protocolApplied.authority`, `note` `authorReference`, `identifier.assigner` | Observation reason / reaction detail, absolute URLs, logical references |
 | DiagnosticReport | `subject` (Patient or Location), `encounter`, `performer` and `resultsInterpreter` (Practitioner, PractitionerRole, Organization), `identifier.assigner` | Group/Device subject, CareTeam, `basedOn`, `specimen`, `result`, `imagingStudy`, `media.link`, absolute URLs, logical references |
 | Procedure | `subject` (Patient), `encounter`, `location`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `performer.actor` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `performer.onBehalfOf`, `partOf` (Procedure), `reasonReference` (Condition, Procedure, DiagnosticReport), `report` (DiagnosticReport), `complicationDetail` (Condition), `note` `authorReference`, `identifier.assigner` | Group subject, Device performer, `basedOn`, `usedReference`, Observation/DocumentReference targets, absolute URLs, logical references |
@@ -62,13 +64,13 @@ All 18 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 
 ---
 
-## 2. Not yet rebuilt (31)
+## 2. Not yet rebuilt (30)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
-| Clinical records | Observation, FamilyMemberHistory, ImmunizationRecommendation, ImmunizationEvaluation, RiskAssessment, ClinicalImpression, DetectedIssue |
+| Clinical records | Observation, FamilyMemberHistory, ImmunizationEvaluation, RiskAssessment, ClinicalImpression, DetectedIssue |
 | Orders and medication | ServiceRequest, MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
 | Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Consent, Group |
 | Communication | Communication, CommunicationRequest |
@@ -78,7 +80,7 @@ Still on the old fully-normalized model and **not mounted** (commented out in `r
 
 Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
-Suggested next: **Observation** (needs composite-search support in the engine first) or a smaller one such as ImmunizationRecommendation or ImmunizationEvaluation.
+Suggested next: **Observation** (needs composite-search support in the engine first) or a smaller one such as ImmunizationEvaluation.
 
 ---
 

@@ -1,97 +1,73 @@
-from datetime import datetime
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
+    FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRReference,
 )
-from app.schemas.immunization_recommendation.response.identifier import (
-    PlainImmunizationRecommendationIdentifier,
-)
-from app.schemas.immunization_recommendation.response.recommendation import (
-    FHIRImmunizationRecommendationRecommendation,
-    PlainImmunizationRecommendationRecommendation,
-)
-from app.schemas.immunization_recommendation.response.reference import (
-    PlainImmunizationRecommendationReference,
-)
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+
+
+class FHIRImmunizationRecommendationDateCriterion(BaseModel):
+    code: FHIRCodeableConcept | None = Field(None, description="Type of date.")
+    value: str | None = Field(None, description="Recommended date.")
+
+
+class FHIRImmunizationRecommendationRecommendation(BaseModel):
+    vaccineCode: list[FHIRCodeableConcept] | None = Field(None, description="Vaccine or vaccine group the recommendation applies to.")
+    targetDisease: FHIRCodeableConcept | None = Field(None, description="Disease to be immunized against.")
+    contraindicatedVaccineCode: list[FHIRCodeableConcept] | None = Field(None, description="Vaccine which is contraindicated to fulfill the recommendation.")
+    forecastStatus: FHIRCodeableConcept | None = Field(None, description="Vaccine recommendation status.")
+    forecastReason: list[FHIRCodeableConcept] | None = Field(None, description="Vaccine administration status reason.")
+    dateCriterion: list[FHIRImmunizationRecommendationDateCriterion] | None = Field(None, description="Dates governing the proposed immunization.")
+    description: str | None = Field(None, description="Protocol details.")
+    series: str | None = Field(None, description="Name of the vaccination series.")
+    doseNumberPositiveInt: int | None = Field(None, description="Recommended dose number within the series.")
+    doseNumberString: str | None = Field(None, description="Recommended dose number within the series (string).")
+    seriesDosesPositiveInt: int | None = Field(None, description="Recommended number of doses for immunity.")
+    seriesDosesString: str | None = Field(None, description="Recommended number of doses for immunity (string).")
+    supportingImmunization: list[FHIRReference] | None = Field(None, description="Past immunizations supporting the recommendation.")
+    supportingPatientInformation: list[FHIRReference] | None = Field(None, description="Patient observations supporting the recommendation.")
 
 
 class FHIRImmunizationRecommendationSchema(BaseModel):
-    """FHIR R4 ImmunizationRecommendation resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["ImmunizationRecommendation"] = "ImmunizationRecommendation"
-    id: str = Field(..., description="Logical id of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    extension: list[dict] | None = Field(None, description="Additional content defined by implementations.")
+    resourceType: str = Field("ImmunizationRecommendation", description="Always 'ImmunizationRecommendation'.")
+    id: str = Field(..., description="Public immunization_recommendation_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None, description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries."
+    )
     identifier: list[FHIRIdentifier] | None = Field(None, description="Business identifier.")
-    patient: FHIRReference = Field(..., description="Who this profile is for.")
-    date: str = Field(..., description="Date the recommendation(s) were generated.")
-    authority: FHIRReference | None = Field(None, description="Who is responsible for protocol.")
-    recommendation: list[FHIRImmunizationRecommendationRecommendation] = Field(
-        ..., description="Vaccine administration recommendations."
+    patient: FHIRReference | None = Field(None, description="Who this profile is for.")
+    date: str | None = Field(None, description="Date recommendation(s) created.")
+    authority: FHIRReference | None = Field(None, description="Who is responsible for the protocol.")
+    recommendation: list[FHIRImmunizationRecommendationRecommendation] | None = Field(
+        None, description="Vaccine administration recommendations."
     )
-
-
-class PlainImmunizationRecommendationResponse(BaseModel):
-    """Plain snake_case ImmunizationRecommendation response."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: int = Field(..., description="Public numeric ID (starts at 510000).")
-    identifier: list[PlainImmunizationRecommendationIdentifier] | None = Field(
-        None, description="Business identifier."
-    )
-    patient: PlainImmunizationRecommendationReference = Field(
-        ..., description="Who this profile is for."
-    )
-    date: datetime = Field(..., description="Date the recommendation(s) were generated.")
-    authority: PlainImmunizationRecommendationReference | None = Field(
-        None, description="Who is responsible for protocol."
-    )
-    recommendation: list[PlainImmunizationRecommendationRecommendation] = Field(
-        ..., description="Vaccine administration recommendations."
-    )
-
-    # Audit fields
-    tenant_id: str | None = Field(None, description="Tenant organization ID.")
-    created_by: str | None = Field(None, description="User who created the record.")
-    updated_by: str | None = Field(None, description="User who last updated the record.")
-    created_at: datetime | None = Field(None, description="Record creation timestamp.")
-    updated_at: datetime | None = Field(None, description="Record update timestamp.")
 
 
 class FHIRImmunizationRecommendationBundleEntry(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    fullUrl: str = Field(..., description="Full URL of the resource.")
-    resource: FHIRImmunizationRecommendationSchema = Field(
-        ..., description="The ImmunizationRecommendation resource."
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
     )
-
-
-class FHIRImmunizationRecommendationBundle(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: str = "searchset"
-    total: int = Field(..., description="Total number of matches.")
-    entry: list[FHIRImmunizationRecommendationBundleEntry] = Field(
-        default_factory=list, description="Entry in the bundle."
+    resource: FHIRImmunizationRecommendationSchema | dict = Field(
+        ...,
+        description="An ImmunizationRecommendation (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Immunization / Condition / ... (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
+    search: FHIRBundleEntrySearch
 
 
-class PaginatedImmunizationRecommendationResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    total: int = Field(..., description="Total number of records matching the query.")
-    limit: int = Field(..., description="Maximum number of records returned.")
-    offset: int = Field(..., description="Offset of the first record returned.")
-    data: list[PlainImmunizationRecommendationResponse] = Field(
-        ..., description="List of immunization recommendation records."
+class FHIRImmunizationRecommendationBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
     )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRImmunizationRecommendationBundleEntry] | None = None

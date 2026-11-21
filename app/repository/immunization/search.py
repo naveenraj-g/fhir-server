@@ -30,6 +30,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._immunization_recommendation_revinclude import support_recommendation_revincludes
 from app.models.immunization import (
     PERFORMER_TYPES,
     REASON_TYPES,
@@ -453,6 +454,6 @@ def immunization_search() -> SearchRegistry:
             *performer_includes,
             *reason_includes,
         ),
-        revincludes=(),
+        revincludes=(*support_recommendation_revincludes(lambda r: r.immunization_id),),
         default_sort=lambda: [M.immunization_id.desc()],
     )

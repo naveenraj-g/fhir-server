@@ -236,7 +236,7 @@ routes:
     # - group
     - immunization
     # - immunization_evaluation
-    # - immunization_recommendation
+    - immunization_recommendation
     - organization
     - location
     # - measure

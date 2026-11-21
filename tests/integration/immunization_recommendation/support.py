@@ -1,223 +1,100 @@
-"""Shared helpers and payloads for ImmunizationRecommendation integration tests."""
+"""Shared helpers and payloads for immunization_recommendation integration tests.
+
+Request bodies are genuine FHIR R4 ImmunizationRecommendation JSON (camelCase, nested
+datatypes), and every response is FHIR R4 too."""
+
+# The resources an ImmunizationRecommendation points at (and that point back at it) are
+# created through their own routers.
+from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
+from tests.integration.immunization.support import create_immunization, immunization_body  # noqa: F401
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import create_organization  # noqa: F401
 
 BASE = "/api/fhir/v1/immunization-recommendations"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+RECOMMENDATION_IDS = "https://fhir-server.dev/fhir/identifier-system/immunization-recommendation-id"
+CVX = "http://hl7.org/fhir/sid/cvx"
+SCT = "http://snomed.info/sct"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+STATUS = "http://terminology.hl7.org/CodeSystem/immunization-recommendation-status"
+
+DATE = "2023-01-15T09:30:00Z"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
+def status(code: str = "due", **extra) -> dict:
+    return {"coding": [{"system": STATUS, "code": code, **extra}]}
+
+
+def vaccine(code: str = "140", display: str | None = None) -> dict:
+    return {"coding": [{"system": CVX, "code": code, **({"display": display} if display else {})}]}
+
+
+def entry(**extra) -> dict:
+    """A valid recommendation entry: R4 requires `forecastStatus`, and `vaccineCode` or
+    `targetDisease` (rule imr-1)."""
+    return {"vaccineCode": [vaccine()], "forecastStatus": status(), **extra}
+
+
+def recommendation_body(patient_id: int | None = None, **extra) -> dict:
+    """A valid minimal ImmunizationRecommendation: R4 requires `patient`, `date` and a
+    `recommendation`. With no patient the reference is an absolute URL (not existence-checked)."""
+    patient = {"reference": f"Patient/{patient_id}" if patient_id else "https://other.example.org/fhir/Patient/1"}
+    return {"patient": patient, "date": DATE, "recommendation": [entry()], **extra}
+
+
+def full_body(patient_id: int, organization_id: int, immunization_id: int, condition_id: int) -> dict:
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return recommendation_body(
+        patient_id,
+        resourceType="ImmunizationRecommendation",
+        identifier=[
+            {
+                "system": RECOMMENDATION_IDS,
+                "value": "IR-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "FILL"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
+            }
+        ],
+        authority={"reference": f"Organization/{organization_id}"},
+        recommendation=[
+            {
+                "vaccineCode": [vaccine("140", "Influenza vaccine")],
+                "targetDisease": {"coding": [{"system": SCT, "code": "6142004", "display": "Influenza"}]},
+                "contraindicatedVaccineCode": [vaccine("99")],
+                "forecastStatus": status("due", display="Due"),
+                "forecastReason": [{"text": "Seasonal"}],
+                "dateCriterion": [
+                    {
+                        "code": {"coding": [{"system": "http://loinc.org", "code": "30980-7", "display": "Date vaccine due"}]},
+                        "value": "2023-06-01T00:00:00Z",
+                    }
+                ],
+                "description": "Seasonal flu shot",
+                "series": "Seasonal",
+                "doseNumberPositiveInt": 1,
+                "seriesDosesPositiveInt": 1,
+                "supportingImmunization": [
+                    {"reference": f"Immunization/{immunization_id}"},
+                    {"reference": "ImmunizationEvaluation/610001"},
+                ],
+                "supportingPatientInformation": [
+                    {"reference": f"Condition/{condition_id}"},
+                    {"reference": "Observation/160001"},
+                ],
+            },
+            {
+                "vaccineCode": [vaccine("03", "MMR vaccine")],
+                "forecastStatus": status("contraindicated"),
+                "doseNumberString": "booster",
+                "seriesDosesString": "many",
+            },
+        ],
     )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
 
 
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"name": "Health Department", "active": True},
-    )
+async def create_recommendation(client, body: dict) -> int:
+    """Create an immunization recommendation and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
     return int(resp.json()["id"])
-
-
-async def create_test_immunization(client, patient_id: int) -> int:
-    """Create a minimal immunization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/immunizations/",
-        json={
-            "status": "completed",
-            "vaccine_code": {
-                "coding": [
-                    {
-                        "system": "http://hl7.org/fhir/sid/cvx",
-                        "code": "197",
-                        "display": "influenza",
-                    }
-                ],
-                "text": "Flu vaccine",
-            },
-            "patient": {"reference": f"Patient/{patient_id}"},
-            "occurrence_date_time": "2025-10-01T10:00:00Z",
-            "primary_source": True,
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_condition(client, patient_id: int) -> int:
-    """Create a minimal condition and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/conditions/",
-        json={
-            "clinical_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
-                        "code": "active",
-                    }
-                ]
-            },
-            "verification_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
-                        "code": "confirmed",
-                    }
-                ]
-            },
-            "subject": {"reference": f"Patient/{patient_id}"},
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_immunization_recommendation(patient_id: int) -> dict:
-    return {
-        "patient": {"reference": f"Patient/{patient_id}"},
-        "date": "2026-02-01T10:00:00Z",
-        "recommendation": [
-            {
-                "forecast_status": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/immunization-recommendation-status",
-                            "code": "due",
-                            "display": "Due",
-                        }
-                    ],
-                    "text": "Due",
-                }
-            }
-        ],
-    }
-
-
-def full_immunization_recommendation(
-    patient_id: int,
-    org_id: int | None = None,
-    immunization_id: int | None = None,
-    condition_id: int | None = None,
-) -> dict:
-    rec: dict = {
-        "vaccine_code": [
-            {
-                "coding": [
-                    {
-                        "system": "http://hl7.org/fhir/sid/cvx",
-                        "code": "197",
-                        "display": "influenza, high-dose, quadrivalent",
-                    }
-                ],
-                "text": "Fluzone High-Dose Quadrivalent",
-            }
-        ],
-        "target_disease": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "6142004",
-                    "display": "Influenza",
-                }
-            ],
-            "text": "Influenza",
-        },
-        "contraindicated_vaccine_code": [
-            {
-                "coding": [
-                    {
-                        "system": "http://hl7.org/fhir/sid/cvx",
-                        "code": "111",
-                        "display": "influenza, live, intranasal",
-                    }
-                ],
-                "text": "Live Attenuated Influenza",
-            }
-        ],
-        "forecast_status": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/immunization-recommendation-status",
-                    "code": "due",
-                    "display": "Due",
-                }
-            ],
-            "text": "Due",
-        },
-        "forecast_reason": [
-            {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "428191000124101",
-                        "display": "Documentation of reason",
-                    }
-                ],
-                "text": "Age 65+",
-            }
-        ],
-        "date_criterion": [
-            {
-                "code": {
-                    "coding": [
-                        {
-                            "system": "http://loinc.org",
-                            "code": "30980-7",
-                            "display": "Date vaccine due",
-                        }
-                    ],
-                    "text": "Date vaccine due",
-                },
-                "value": "2026-02-15T00:00:00Z",
-            }
-        ],
-        "description": "Annual influenza vaccination recommended for older adults",
-        "series": "Annual",
-        "dose_number_positive_int": 1,
-        "series_doses_positive_int": 1,
-    }
-
-    if immunization_id:
-        rec["supporting_immunization"] = [
-            {"reference": f"Immunization/{immunization_id}", "reference_display": "Prior vaccination"}
-        ]
-    if condition_id:
-        rec["supporting_patient_information"] = [
-            {"reference": f"Condition/{condition_id}", "reference_display": "Patient condition"}
-        ]
-
-    payload: dict = {
-        "patient": {"reference": f"Patient/{patient_id}", "reference_display": "Jane Doe"},
-        "date": "2026-02-01T10:00:00Z",
-        "recommendation": [rec],
-    }
-
-    if org_id:
-        payload["authority"] = {
-            "reference": f"Organization/{org_id}",
-            "reference_display": "National Health Authority",
-        }
-        payload["identifier"] = [
-            {
-                "use": "official",
-                "system": "http://example.org/recommendations",
-                "value": "REC-998877",
-                "assigner": f"Organization/{org_id}",
-            }
-        ]
-
-    return payload
-
-
-async def create_immunization_recommendation(client, patient_id: int) -> int:
-    """Create a minimal ImmunizationRecommendation and return its public ID."""
-    resp = await client.post(
-        BASE + "/", json=minimal_immunization_recommendation(patient_id)
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]

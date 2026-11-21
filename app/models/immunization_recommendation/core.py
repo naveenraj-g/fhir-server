@@ -1,121 +1,97 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Sequence,
-    String,
-    text,
-)
+from sqlalchemy import BigInteger, Column, DateTime, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse
-from app.models.immunization_recommendation.enums import (
-    ImmunizationRecommendationAuthorityReferenceType,
-    ImmunizationRecommendationPatientReferenceType,
-)
 from app.models.shared import TenantAuditMixin
 
-_seq = Sequence(
-    "immunization_recommendation_pub_seq",
-    start=510000,
-    increment=1,
-    metadata=Base.metadata,
+immunization_recommendation_id_seq = Sequence(
+    "immunization_recommendation_pub_seq", start=510000, increment=1, metadata=Base.metadata
 )
 
 
 class ImmunizationRecommendationModel(TenantAuditMixin, Base):
-    """FHIR R4 ImmunizationRecommendation resource.
+    """FHIR R4 ImmunizationRecommendation — Medplum-style storage, same as Patient,
+    Encounter, Condition, Procedure, DiagnosticReport, Immunization and the other
+    content-based resources.
 
-    A patient's point-in-time set of recommendations (i.e. forecasting)
-    according to a published schedule with optional supporting documentation.
-    """
+    `content` (JSONB) holds the whole resource exactly as validated on write; it
+    is the single source of truth, and GET serves it back as-is (`id`/`meta` are
+    stamped on at read time from this row's own columns — see
+    app.fhir.mappers.immunization_recommendation). Nothing else in this table or
+    its child tables is a second copy of the resource: every other column exists
+    only because a FHIR R4 ImmunizationRecommendation search parameter filters on
+    it (https://www.hl7.org/fhir/R4/immunizationrecommendation.html#search), and is
+    derived from `content` on every write by
+    app.repository.immunization_recommendation._indexer.
+
+    Search parameter -> storage:
+      date             -> date_start/_end (the 1..1 dateTime, as the half-open range
+                          it covers at its written precision; columns)
+      patient          -> patient_reference/_type/_id + patient_identifier_*
+                          (1..1 Reference(Patient), columns)
+      identifier       -> ImmunizationRecommendationIdentifier (0..*)
+      status, target-disease, vaccine-type
+                       -> ImmunizationRecommendationToken (one shared table, one row
+                          per coding of each concept; `status` reads
+                          recommendation.forecastStatus, `target-disease` reads
+                          recommendation.targetDisease, `vaccine-type` reads
+                          recommendation.vaccineCode)
+      support, information
+                       -> ImmunizationRecommendationReference (one shared table, one
+                          row per Reference; `support` reads
+                          recommendation.supportingImmunization,
+                          `information` reads recommendation.supportingPatientInformation)
+      _id              -> immunization_recommendation_id;  _lastUpdated -> updated_at/created_at
+
+    `authority`, `recommendation.contraindicatedVaccineCode`, `.forecastReason`,
+    `.dateCriterion`, `.description`, `.series`, `.doseNumber[x]`, `.seriesDoses[x]`
+    and `extension` have no search parameter and live only in `content`.
+
+    `support` (Immunization | ImmunizationEvaluation) and `information` (Reference(Any))
+    can point at several resource types, so `reference_type` records which one a
+    relative `Type/<id>` names (a plain string, not a Postgres enum): a search by bare
+    id is ambiguous (`support=Type/id` or `support:Type=id`).
+
+    All index columns are nullable: R4 makes `patient`, `date` and `recommendation`
+    mandatory, but that is the validator's rule (enforced by the `java_validator`
+    backend), not the database's. No `user_id`: an ImmunizationRecommendation is a
+    shared tenant-level entity. No DB-level CHECK constraints."""
 
     __tablename__ = "immunization_recommendation"
+    __table_args__ = (Index("ix_immunization_recommendation_date", "date_start", "date_end"),)
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     immunization_recommendation_id = Column(
         BigInteger,
-        _seq,
-        server_default=_seq.next_value(),
+        immunization_recommendation_id_seq,
+        server_default=immunization_recommendation_id_seq.next_value(),
         unique=True,
         index=True,
         nullable=False,
     )
 
-    # Resource-level extension (0..* Extension)
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
+
+    # ── Search index (derived from `content`) ─────────────────────────────
+    # date: the half-open [start, end) range of instants the dateTime covers.
+    date_start = Column(DateTime(timezone=True), nullable=True)
+    date_end = Column(DateTime(timezone=True), nullable=True)
 
     # patient (1..1 Reference(Patient))
-    patient_reference = Column(String, nullable=False)
-    patient_type = Column(
-        Enum(
-            ImmunizationRecommendationPatientReferenceType,
-            name="immunization_recommendation_patient_reference_type",
-        ),
-        nullable=False,
-    )
+    patient_reference = Column(String, nullable=True)
+    patient_type = Column(String, nullable=True)
     patient_id = Column(BigInteger, nullable=True, index=True)
-    patient_display = Column(String, nullable=True)
-
-    # patient.identifier fallback (11 columns)
-    patient_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    patient_identifier_type_system = Column(String, nullable=True)
-    patient_identifier_type_version = Column(String, nullable=True)
-    patient_identifier_type_code = Column(String, nullable=True)
-    patient_identifier_type_display = Column(String, nullable=True)
-    patient_identifier_type_user_selected = Column(Boolean, nullable=True)
-    patient_identifier_type_text = Column(String, nullable=True)
     patient_identifier_system = Column(String, nullable=True)
     patient_identifier_value = Column(String, nullable=True)
-    patient_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    patient_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # date (1..1 dateTime)
-    date = Column(DateTime(timezone=True), nullable=False)
-
-    # authority (0..1 Reference(Organization))
-    authority_reference = Column(String, nullable=True)
-    authority_type = Column(
-        Enum(
-            ImmunizationRecommendationAuthorityReferenceType,
-            name="immunization_recommendation_authority_reference_type",
-        ),
-        nullable=True,
-    )
-    authority_id = Column(BigInteger, nullable=True, index=True)
-    authority_display = Column(String, nullable=True)
-
-    # authority.identifier fallback (11 columns)
-    authority_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    authority_identifier_type_system = Column(String, nullable=True)
-    authority_identifier_type_version = Column(String, nullable=True)
-    authority_identifier_type_code = Column(String, nullable=True)
-    authority_identifier_type_display = Column(String, nullable=True)
-    authority_identifier_type_user_selected = Column(Boolean, nullable=True)
-    authority_identifier_type_text = Column(String, nullable=True)
-    authority_identifier_system = Column(String, nullable=True)
-    authority_identifier_value = Column(String, nullable=True)
-    authority_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    authority_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # Child relationships
     identifiers = relationship(
-        "ImmunizationRecommendationIdentifierModel",
-        back_populates="immunization_recommendation",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+        "ImmunizationRecommendationIdentifier", back_populates="immunization_recommendation", cascade="all, delete-orphan"
     )
-    recommendations = relationship(
-        "ImmunizationRecommendationRecommendationModel",
-        back_populates="immunization_recommendation",
-        cascade="all, delete-orphan",
-        lazy="selectin",
+    tokens = relationship(
+        "ImmunizationRecommendationToken", back_populates="immunization_recommendation", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "ImmunizationRecommendationReference", back_populates="immunization_recommendation", cascade="all, delete-orphan"
     )

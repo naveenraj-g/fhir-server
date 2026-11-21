@@ -24,6 +24,7 @@ from app.repository._allergy_intolerance_revinclude import actor_allergy_revincl
 from app.repository._condition_revinclude import asserter_condition_revincludes, subject_condition_revincludes
 from app.repository._procedure_revinclude import performer_procedure_revincludes, subject_procedure_revincludes
 from app.repository._diagnostic_report_revinclude import subject_report_revincludes
+from app.repository._immunization_recommendation_revinclude import patient_recommendation_revincludes
 from app.repository._immunization_revinclude import column_immunization_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import subject_encounter_revincludes
@@ -657,6 +658,7 @@ def patient_search() -> SearchRegistry:
             *subject_procedure_revincludes(lambda p: p.patient_id),
             *subject_report_revincludes('Patient', lambda p: p.patient_id, ('subject', 'patient')),
             *column_immunization_revincludes('patient', 'patient', 'Patient', lambda p: p.patient_id),
+            *patient_recommendation_revincludes(lambda p: p.patient_id),
             *performer_procedure_revincludes('Patient', lambda p: p.patient_id),
             *actor_allergy_revincludes('Patient', lambda p: p.patient_id),
             IncludeTarget("RelatedPerson", "patient", "Patient", _revinclude_related_persons, reverse=True),

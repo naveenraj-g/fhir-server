@@ -1,8 +1,11 @@
+from app.core.logging import trace_methods
+
 from .core import _CoreMixin
 
-
-class ImmunizationRecommendationService(_CoreMixin):
-    """Business-logic service for FHIR R4 ImmunizationRecommendation."""
-
-
 __all__ = ["ImmunizationRecommendationService"]
+
+
+@trace_methods
+class ImmunizationRecommendationService(_CoreMixin):
+    """All ImmunizationRecommendation business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""
