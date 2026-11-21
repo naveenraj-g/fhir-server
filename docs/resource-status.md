@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after ImmunizationEvaluation (commit hash below)._
+_Last updated: 2026-11-21, after ImmunizationEvaluation (`d0b2cca`)._
 
 ## Architecture in one line
 
@@ -29,7 +29,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
-| 20 | ImmunizationEvaluation | `/immunization-evaluations` | 7 | 610000 | `s6d1f8b4c270` | pending | smallest of the family; old reference-type enums held member names (`PATIENT`); now an existence-checked, chainable and includable `support` target of ImmunizationRecommendation, and a revinclude source on Patient and Immunization |
+| 20 | ImmunizationEvaluation | `/immunization-evaluations` | 7 | 610000 | `s6d1f8b4c270` | `d0b2cca` | smallest of the family; old reference-type enums held member names (`PATIENT`); now an existence-checked, chainable and includable `support` target of ImmunizationRecommendation, and a revinclude source on Patient and Immunization |
 | 19 | ImmunizationRecommendation | `/immunization-recommendations` | 8 | 510000 | `r5c0e7a3b169` | `d8effae` | tokens read inside the `recommendation` backbone (any entry matches); `information` is Reference(Any); now a revinclude source on Patient and Immunization |
 | 18 | Immunization | `/immunizations` | 16 | 330000 | `q4b9d6f2a058` | `96f929b` | `reaction`+`reaction-date` share one row; `occurrence[x]` indexed only as a dateTime; `performer` and `reason-reference` multi-target; now a revinclude source on Patient, Location, Practitioner, PractitionerRole, Condition and DiagnosticReport |
 | 17 | DiagnosticReport | `/diagnostic-reports` | 16 | 110000 | `p3a8c5e1f947` | `c9c66ba` | `performer`/`results-interpreter` share one table; `issued` instant; `subject` over Patient/Group/Device/Location; now an existence-checked target of Procedure and Condition |
