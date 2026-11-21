@@ -22,6 +22,7 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.quantity import quantity_range_match
+from app.repository._clinical_impression_revinclude import reference_impression_revincludes
 from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._immunization_revinclude import reason_immunization_revincludes
 from app.repository._appointment_revinclude import reason_appointment_revincludes
@@ -479,6 +480,7 @@ def condition_search() -> SearchRegistry:
             *reason_procedure_revincludes("Condition", lambda c: c.condition_id),
             *reason_immunization_revincludes("Condition", lambda c: c.condition_id),
             *column_risk_revincludes(('condition',), 'condition', 'Condition', lambda c: c.condition_id),
+            *reference_impression_revincludes('problem', 'Condition', lambda c: c.condition_id),
         ),
         default_sort=lambda: [C.condition_id.desc()],
     )

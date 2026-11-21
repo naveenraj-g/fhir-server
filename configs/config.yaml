@@ -223,7 +223,7 @@ routes:
     - appointment_response
     # - care_plan
     # - care_team
-    # - clinical_impression
+    - clinical_impression
     - condition
     # - consent
     # - detected_issue

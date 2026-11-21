@@ -30,6 +30,7 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
+from app.repository._clinical_impression_revinclude import reference_impression_revincludes
 from app.models.family_member_history import (
     REFERENCE_TYPES,
     FamilyMemberHistoryIdentifier,
@@ -346,6 +347,7 @@ def family_member_history_search() -> SearchRegistry:
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"status", "patient", "relationship"}),
         includes=(IncludeTarget("FamilyMemberHistory", "patient", "Patient", _include_patient()),),
-        revincludes=(),
+        # ClinicalImpression.investigation points here.
+        revincludes=(*reference_impression_revincludes('investigation', 'FamilyMemberHistory', lambda r: r.family_member_history_id),),
         default_sort=lambda: [M.family_member_history_id.desc()],
     )

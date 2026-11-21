@@ -236,6 +236,18 @@ async def test_create_stage_assessment_diagnostic_report_must_exist(client, pati
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
 
 
+async def test_create_stage_assessment_clinical_impression_must_exist(client, patient):
+    missing = condition_body(patient, stage=[{"assessment": [{"reference": "ClinicalImpression/999999"}]}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+    resp = await client.post(
+        f"{API}/clinical-impressions/",
+        json={"status": "completed", "subject": {"reference": f"Patient/{patient}"}},
+    )
+    assert resp.status_code == 201, resp.text
+    ok = condition_body(patient, stage=[{"assessment": [{"reference": f"ClinicalImpression/{resp.json()['id']}"}]}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+
+
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     """A stage.assessment that is not a DiagnosticReport, and evidence.detail (Reference(Any)),
     point at resources this server does not check: stored as sent."""

@@ -24,6 +24,7 @@ from app.repository.appointment.search import appointment_search
 from app.repository.appointment_response.search import appointment_response_search
 from app.repository.encounter.search import encounter_search
 from app.repository.allergy_intolerance.search import allergy_intolerance_search
+from app.repository.clinical_impression.search import clinical_impression_search
 from app.repository.condition.search import condition_search
 from app.repository.diagnostic_report.search import diagnostic_report_search
 from app.repository.family_member_history.search import family_member_history_search
@@ -58,6 +59,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "encounter": encounter_search,
     "related_person": related_person_search,
     "allergy_intolerance": allergy_intolerance_search,
+    "clinical_impression": clinical_impression_search,
     "condition": condition_search,
     "diagnostic_report": diagnostic_report_search,
     "family_member_history": family_member_history_search,

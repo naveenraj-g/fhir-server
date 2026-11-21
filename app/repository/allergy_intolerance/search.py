@@ -30,6 +30,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._clinical_impression_revinclude import reference_impression_revincludes
 from app.models.allergy_intolerance import (
     ACTOR_TYPES,
     CRITICALITY_SYSTEM,
@@ -395,6 +396,9 @@ def allergy_intolerance_search() -> SearchRegistry:
             *actor_includes,
         ),
         # Nothing that references an AllergyIntolerance is on the engine.
-        revincludes=(),
+        # ClinicalImpression.problem points here.
+        revincludes=(
+            *reference_impression_revincludes('problem', 'AllergyIntolerance', lambda a: a.allergy_intolerance_id),
+        ),
         default_sort=lambda: [A.allergy_intolerance_id.desc()],
     )

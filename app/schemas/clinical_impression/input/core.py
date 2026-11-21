@@ -1,216 +1,153 @@
-from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.models.clinical_impression.enums import ClinicalImpressionStatus
-from app.schemas.clinical_impression.input.codeable_concept import (
-    ClinicalImpressionCodeableConceptInput,
-)
-from app.schemas.clinical_impression.input.finding import (
-    ClinicalImpressionFindingInput,
-)
-from app.schemas.clinical_impression.input.identifier import (
-    ClinicalImpressionIdentifierInput,
-)
-from app.schemas.clinical_impression.input.investigation import (
-    ClinicalImpressionInvestigationInput,
-)
-from app.schemas.clinical_impression.input.note import ClinicalImpressionNoteInput
-from app.schemas.clinical_impression.input.reference import (
-    ClinicalImpressionAssessorInput,
-    ClinicalImpressionEncounterInput,
-    ClinicalImpressionPreviousInput,
-    ClinicalImpressionProblemInput,
-    ClinicalImpressionPrognosisReferenceInput,
-    ClinicalImpressionSubjectInput,
-    ClinicalImpressionSupportingInfoInput,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
-_CREATE_EXAMPLE: dict[str, Any] = {
+# ClinicalImpressionStatus (the required binding of ClinicalImpression.status).
+StatusCode = Literal["in-progress", "completed", "entered-in-error"]
+
+_EXAMPLE = {
+    "resourceType": "ClinicalImpression",
+    "identifier": [
+        {"system": "https://fhir-server.dev/fhir/identifier-system/clinical-impression-id", "value": "CI-1001"}
+    ],
     "status": "completed",
-    "description": "Initial clinical evaluation for acute chest pain.",
-    "subject": {
-        "reference": "Patient/10001",
-        "reference_display": "Jane Doe",
-    },
-    "encounter": {
-        "reference": "Encounter/20001",
-        "reference_display": "Emergency encounter",
-    },
-    "effective_date_time": "2026-02-01T10:00:00Z",
-    "date": "2026-02-01T11:00:00Z",
-    "assessor": {
-        "reference": "Practitioner/30001",
-        "reference_display": "Dr. Alice Smith",
-    },
-    "summary": "Patient presented with acute non-cardiac chest pain, stable vitals.",
+    "code": {"text": "Initial assessment"},
+    "description": "Assessment of the patient's chest pain.",
+    "subject": {"reference": "Patient/10001"},
+    "encounter": {"reference": "Encounter/20001"},
+    "effectiveDateTime": "2023-01-15T09:30:00Z",
+    "date": "2023-01-15T10:00:00Z",
+    "assessor": {"reference": "Practitioner/30001"},
+    "problem": [{"reference": "Condition/120001"}],
     "investigation": [
         {
-            "code": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "271336007",
-                        "display": "Examination / signs",
-                    }
-                ],
-                "text": "Initial physical exam and ECG",
-            },
-            "item": [
-                {
-                    "reference": "Observation/160001",
-                    "reference_display": "12-lead ECG",
-                }
-            ],
+            "code": {"text": "Initial examination"},
+            "item": [{"reference": "DiagnosticReport/110001"}],
         }
     ],
-    "problem": [
-        {
-            "reference": "Condition/120001",
-            "reference_display": "Chest pain",
-        }
-    ],
+    "summary": "Stable angina suspected; stress test arranged.",
     "finding": [
         {
-            "item_codeable_concept": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "29857009",
-                        "display": "Chest pain, unspecified",
-                    }
-                ],
-                "text": "Musculoskeletal chest pain",
+            "itemCodeableConcept": {
+                "coding": [{"system": "http://snomed.info/sct", "code": "194828000", "display": "Angina"}]
             },
-            "basis": "Normal ECG and cardiac biomarkers",
+            "basis": "Exercise ECG and history.",
         }
     ],
-    "prognosis_codeable_concept": [
-        {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "170968001",
-                    "display": "Good prognosis",
-                }
-            ],
-            "text": "Good prognosis with outpatient follow-up",
-        }
-    ],
+    "prognosisCodeableConcept": [{"text": "Good"}],
+    "note": [{"text": "Review in 2 weeks."}],
 }
 
 
-class ClinicalImpressionCreateSchema(BaseModel):
-    """Schema for creating a new ClinicalImpression resource.
-    Multi-tenancy: org_id and created_by are extracted from the verified JWT.
-    """
+class ClinicalImpressionAnnotationInput(FhirInputModel):
+    """Annotation — a note with an author (a Reference or plain text) and a time."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _CREATE_EXAMPLE},
+    authorReference: FhirReferenceInput | None = Field(
+        None,
+        description="Individual responsible for the annotation — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    authorString: str | None = Field(None, description="Individual responsible for the annotation, as plain text.")
+    time: str | None = Field(None, description="When the annotation was made (a FHIR dateTime).")
+    text: str | None = Field(None, description="The annotation text, as markdown (required by R4).")
+
+
+class ClinicalImpressionInvestigationInput(FhirInputModel):
+    """ClinicalImpression.investigation — one set of investigations that were part of the assessment."""
+
+    code: FhirCodeableConceptInput | None = Field(None, description="A name/code for the set (required by R4).")
+    item: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Record of a specific investigation — Reference(Observation | QuestionnaireResponse | FamilyMemberHistory | DiagnosticReport | RiskAssessment | ImagingStudy | Media). A relative RiskAssessment, FamilyMemberHistory or DiagnosticReport must exist in the caller's org (422 otherwise). Searched by `investigation`.",
     )
 
+
+class ClinicalImpressionFindingInput(FhirInputModel):
+    """ClinicalImpression.finding — a possible diagnosis or other finding."""
+
+    itemCodeableConcept: FhirCodeableConceptInput | None = Field(None, description="What was found. Searched by `finding-code`.")
+    itemReference: FhirReferenceInput | None = Field(
+        None,
+        description="What was found — Reference(Condition | Observation | Media). A relative Condition must exist in the caller's org (422 otherwise). Searched by `finding-ref`.",
+    )
+    basis: str | None = Field(None, description="Which investigations support the finding.")
+
+
+class _ClinicalImpressionFields(FhirInputModel):
+    """Every writable ClinicalImpression element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/clinicalimpression.html). Create and patch accept exactly the
+    same fields. R4 requires `status` and `subject` (and `investigation.code`); that is enforced
+    by base R4 validation of the stored document (the `java_validator` backend — the native
+    structural check has no cardinality minimums or invariants), not by this model. A PATCH may
+    omit them: it is merged onto the current resource before validating.
+
+    The validated body is stored whole (ClinicalImpressionModel.content), so any valid R4 element
+    is kept — including ones this model does not declare. Server-managed elements are ignored
+    if sent: `id` (assigned from the clinical_impression_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["ClinicalImpression"] | None = Field(None, description="Optional; if supplied it must be 'ClinicalImpression'.")
     extension: list[dict] | None = Field(
-        None, description="Optional DomainResource extensions."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-    identifier: list[ClinicalImpressionIdentifierInput] | None = Field(
-        None, description="Business identifier for impression."
+    identifier: list[FhirIdentifierInput] | None = Field(None, description="Business identifier.")
+    status: StatusCode | None = Field(None, description="in-progress | completed | entered-in-error (required by R4).")
+    statusReason: FhirCodeableConceptInput | None = Field(None, description="Reason for current status.")
+    code: FhirCodeableConceptInput | None = Field(None, description="Kind of assessment performed.")
+    description: str | None = Field(None, description="Why/how the assessment was performed.")
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="Patient or group assessed — Reference(Patient | Group) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
     )
-    status: ClinicalImpressionStatus = Field(
-        ...,
-        description="in-progress | completed | entered-in-error",
+    encounter: FhirReferenceInput | None = Field(None, description="Encounter created as part of — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).")
+    effectiveDateTime: str | None = Field(None, description="Time of assessment (a FHIR dateTime). One of the effective[x] choices.")
+    effectivePeriod: FhirPeriodInput | None = Field(None, description="Time of assessment (a Period). One of the effective[x] choices.")
+    date: str | None = Field(None, description="When the assessment was documented (a FHIR dateTime). Searched by `date`.")
+    assessor: FhirReferenceInput | None = Field(
+        None,
+        description="The clinician performing the assessment — Reference(Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    status_reason: ClinicalImpressionCodeableConceptInput | None = Field(
-        None, description="Reason for current status."
+    previous: FhirReferenceInput | None = Field(None, description="Reference to last assessment — Reference(ClinicalImpression). A relative reference must exist in the caller's org (422 otherwise).")
+    problem: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Relevant impressions of patient state — Reference(Condition | AllergyIntolerance). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    code: ClinicalImpressionCodeableConceptInput | None = Field(
-        None, description="Kind of impression performed."
-    )
-    description: str | None = Field(
-        None, description="Why/how the assessment was performed."
-    )
-    subject: ClinicalImpressionSubjectInput = Field(
-        ..., description="Patient or group impression is about (1..1 Reference(Patient | Group))."
-    )
-    encounter: ClinicalImpressionEncounterInput | None = Field(
-        None, description="Encounter created as part of."
-    )
-    effective_date_time: datetime | None = Field(
-        None, description="Time of assessment (dateTime)."
-    )
-    effective_period_start: datetime | None = Field(
-        None, description="Time of assessment period (start)."
-    )
-    effective_period_end: datetime | None = Field(
-        None, description="Time of assessment period (end)."
-    )
-    date: datetime | None = Field(
-        None, description="When the assessment was documented."
-    )
-    assessor: ClinicalImpressionAssessorInput | None = Field(
-        None, description="The clinician performing the assessment."
-    )
-    previous: ClinicalImpressionPreviousInput | None = Field(
-        None, description="Reference to last assessment."
-    )
-    problem: list[ClinicalImpressionProblemInput] | None = Field(
-        None, description="Relevant impressions of patient state."
-    )
-    investigation: list[ClinicalImpressionInvestigationInput] | None = Field(
-        None, description="One or more sets of investigations (examinations, tests, reports)."
-    )
-    protocol: list[str] | None = Field(
-        None, description="Clinical Protocol followed (URI)."
-    )
-    summary: str | None = Field(
-        None, description="Summary of the assessment."
-    )
-    finding: list[ClinicalImpressionFindingInput] | None = Field(
-        None, description="Possible or likely findings and diagnoses."
-    )
-    prognosis_codeable_concept: list[ClinicalImpressionCodeableConceptInput] | None = Field(
-        None, description="Estimate of likely outcome (CodeableConcept)."
-    )
-    prognosis_reference: list[ClinicalImpressionPrognosisReferenceInput] | None = Field(
-        None, description="RiskAssessment expressing likely outcome."
-    )
-    supporting_info: list[ClinicalImpressionSupportingInfoInput] | None = Field(
-        None, description="Information supporting the clinical impression."
-    )
-    note: list[ClinicalImpressionNoteInput] | None = Field(
-        None, description="Comments made about the ClinicalImpression."
-    )
+    investigation: list[ClinicalImpressionInvestigationInput] | None = Field(None, description="One or more sets of investigations (signs, symptoms, etc.).")
+    protocol: list[str] | None = Field(None, description="Clinical Protocol followed (URIs).")
+    summary: str | None = Field(None, description="Summary of the assessment.")
+    finding: list[ClinicalImpressionFindingInput] | None = Field(None, description="Possible or likely findings and diagnoses.")
+    prognosisCodeableConcept: list[FhirCodeableConceptInput] | None = Field(None, description="Estimate of likely outcome.")
+    prognosisReference: list[FhirReferenceInput] | None = Field(None, description="RiskAssessment expressing likely outcome — Reference(RiskAssessment). A relative reference must exist in the caller's org (422 otherwise).")
+    supportingInfo: list[FhirReferenceInput] | None = Field(None, description="Information supporting the clinical impression — Reference(Any). A relative reference to a resource this server holds must exist in the caller's org (422 otherwise).")
+    note: list[ClinicalImpressionAnnotationInput] | None = Field(None, description="Comments made about the ClinicalImpression.")
 
 
-class ClinicalImpressionPatchSchema(BaseModel):
-    """Schema for partially updating a ClinicalImpression resource."""
+class ClinicalImpressionCreateSchema(_ClinicalImpressionFields):
+    """POST body — a FHIR R4 ClinicalImpression resource."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": {"status": "completed", "summary": "Updated assessment summary"}},
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    extension: list[dict] | None = None
-    identifier: list[ClinicalImpressionIdentifierInput] | None = None
-    status: ClinicalImpressionStatus | None = None
-    status_reason: ClinicalImpressionCodeableConceptInput | None = None
-    code: ClinicalImpressionCodeableConceptInput | None = None
-    description: str | None = None
-    subject: ClinicalImpressionSubjectInput | None = None
-    encounter: ClinicalImpressionEncounterInput | None = None
-    effective_date_time: datetime | None = None
-    effective_period_start: datetime | None = None
-    effective_period_end: datetime | None = None
-    date: datetime | None = None
-    assessor: ClinicalImpressionAssessorInput | None = None
-    previous: ClinicalImpressionPreviousInput | None = None
-    problem: list[ClinicalImpressionProblemInput] | None = None
-    investigation: list[ClinicalImpressionInvestigationInput] | None = None
-    protocol: list[str] | None = None
-    summary: str | None = None
-    finding: list[ClinicalImpressionFindingInput] | None = None
-    prognosis_codeable_concept: list[ClinicalImpressionCodeableConceptInput] | None = None
-    prognosis_reference: list[ClinicalImpressionPrognosisReferenceInput] | None = None
-    supporting_info: list[ClinicalImpressionSupportingInfoInput] | None = None
-    note: list[ClinicalImpressionNoteInput] | None = None
+
+class ClinicalImpressionPatchSchema(_ClinicalImpressionFields):
+    """PATCH body — a partial FHIR R4 ClinicalImpression (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale — a list (even `[]`) replaces every existing
+    entry, an object such as `subject` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "completed",
+                "summary": "Stable angina confirmed after stress test.",
+            }
+        }
+    }

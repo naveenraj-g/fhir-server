@@ -1,274 +1,85 @@
-from datetime import date, datetime
-
-from sqlalchemy import delete, func
 from sqlalchemy.future import select
 
-from app.core.filters import (
-    apply_child_exists_filter,
-    apply_date_range_filter,
-    apply_token_filter,
-    parse_reference,
-)
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.enums import SubjectReferenceType
-from app.models.clinical_impression import (
-    ClinicalImpressionAssessorReferenceType,
-    ClinicalImpressionFindingItemCodingModel,
-    ClinicalImpressionFindingModel,
-    ClinicalImpressionIdentifierModel,
-    ClinicalImpressionIdentifierTypeCodingModel,
-    ClinicalImpressionInvestigationCodeCodingModel,
-    ClinicalImpressionInvestigationItemModel,
-    ClinicalImpressionInvestigationModel,
-    ClinicalImpressionModel,
-    ClinicalImpressionNoteModel,
-    ClinicalImpressionProblemModel,
-    ClinicalImpressionPrognosisCodeableConceptModel,
-    ClinicalImpressionPrognosisCodingModel,
-    ClinicalImpressionPrognosisReferenceModel,
-    ClinicalImpressionProtocolModel,
-    ClinicalImpressionSupportingInfoModel,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.clinical_impression import ClinicalImpressionModel
 
-from ._shared import (
-    _SORTABLE_FIELDS,
-    _with_relationships,
-)
+from .search import clinical_impression_search
 
 logger = get_logger(__name__)
 
+_M = ClinicalImpressionModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for ClinicalImpression."""
+    """Reads, search and delete. Every read loads only the clinical_impression
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_clinical_impression_id(
-        self, clinical_impression_id: int
-    ) -> ClinicalImpressionModel | None:
+    async def get_by_clinical_impression_id(self, clinical_impression_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ClinicalImpressionModel).where(
-                    ClinicalImpressionModel.clinical_impression_id == clinical_impression_id
-                )
-            )
+            stmt = select(_M).where(_M.clinical_impression_id == clinical_impression_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_clinical_impression_id_in_org(
-        self, clinical_impression_id: int, org_id: str
-    ) -> ClinicalImpressionModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    async def get_by_clinical_impression_id_in_org(self, clinical_impression_id: int, org_id: str) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the clinical_impression
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ClinicalImpressionModel).where(
-                    ClinicalImpressionModel.clinical_impression_id == clinical_impression_id,
-                    ClinicalImpressionModel.tenant_id == org_id,
-                )
-            )
+            stmt = select(_M).where(_M.clinical_impression_id == clinical_impression_id, _M.tenant_id == org_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def clinical_impression_belongs_to_org(
-        self, clinical_impression_id: int, org_id: str
-    ) -> bool:
-        """Cheap existence/ownership check (no joins, no sub-resources)."""
+    async def clinical_impression_belongs_to_org(self, clinical_impression_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the clinical_impression exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(func.count(ClinicalImpressionModel.id)).where(
-                ClinicalImpressionModel.clinical_impression_id == clinical_impression_id,
-                ClinicalImpressionModel.tenant_id == org_id,
-            )
-            count = (await session.execute(stmt)).scalar() or 0
-            return count > 0
+            stmt = select(_M.id).where(_M.clinical_impression_id == clinical_impression_id, _M.tenant_id == org_id)
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str,
-        status: str | None = None,
-        subject: str | None = None,
-        encounter: str | None = None,
-        assessor: str | None = None,
-        date_val: date | datetime | str | None = None,
-        identifier: str | None = None,
-    ):
-        stmt = stmt.where(ClinicalImpressionModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if status:
-            stmt = apply_token_filter(stmt, ClinicalImpressionModel.status, status)
-
-        if subject:
-            subj_type, subj_id = parse_reference(subject, SubjectReferenceType)
-            if subj_type:
-                stmt = stmt.where(ClinicalImpressionModel.subject_type == subj_type)
-            if subj_id:
-                stmt = stmt.where(ClinicalImpressionModel.subject_id == subj_id)
-
-        if encounter:
-            parts = encounter.split("/")
-            if len(parts) == 2 and parts[1].isdigit():
-                stmt = stmt.where(ClinicalImpressionModel.encounter_id == int(parts[1]))
-            elif encounter.isdigit():
-                stmt = stmt.where(ClinicalImpressionModel.encounter_id == int(encounter))
-
-        if assessor:
-            ass_type, ass_id = parse_reference(assessor, ClinicalImpressionAssessorReferenceType)
-            if ass_type:
-                stmt = stmt.where(ClinicalImpressionModel.assessor_type == ass_type)
-            if ass_id:
-                stmt = stmt.where(ClinicalImpressionModel.assessor_id == ass_id)
-            elif "/" in assessor:
-                parts = assessor.split("/")
-                if len(parts) == 2 and parts[1].isdigit():
-                    stmt = stmt.where(ClinicalImpressionModel.assessor_id == int(parts[1]))
-            elif assessor.isdigit():
-                stmt = stmt.where(ClinicalImpressionModel.assessor_id == int(assessor))
-
-        if date_val:
-            stmt = apply_date_range_filter(stmt, ClinicalImpressionModel.date, date_val)
-
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                ClinicalImpressionIdentifierModel,
-                ClinicalImpressionIdentifierModel.clinical_impression_pk == ClinicalImpressionModel.id,
-                ClinicalImpressionIdentifierModel.system,
-                ClinicalImpressionIdentifierModel.value,
-                identifier,
-            )
-
-        return stmt
-
-    async def list(
-        self,
-        org_id: str,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-        status: str | None = None,
-        subject: str | None = None,
-        encounter: str | None = None,
-        assessor: str | None = None,
-        date_val: date | datetime | str | None = None,
-        identifier: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ClinicalImpressionModel], int]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            count_stmt = select(func.count(ClinicalImpressionModel.id))
-            count_stmt = self._apply_list_filters(
-                count_stmt,
-                org_id=org_id,
-                status=status,
-                subject=subject,
-                encounter=encounter,
-                assessor=assessor,
-                date_val=date_val,
-                identifier=identifier,
-            )
-
-            data_stmt = select(ClinicalImpressionModel)
-            data_stmt = self._apply_list_filters(
-                data_stmt,
-                org_id=org_id,
-                status=status,
-                subject=subject,
-                encounter=encounter,
-                assessor=assessor,
-                date_val=date_val,
-                identifier=identifier,
-            )
-            data_stmt = _with_relationships(data_stmt)
-
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                ClinicalImpressionModel.clinical_impression_id,
-                default_desc=True,
-            )
-
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                data_stmt,
-                count_stmt,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=clinical_impression_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.clinical_impression_id,
             )
-            return list(rows), total or 0
+        logger.debug(
+            "ClinicalImpressions searched",
+            extra={
+                "event": "clinical_impression.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-    async def delete(self, clinical_impression_id: int, org_id: str) -> bool:
-        """Deletes a ClinicalImpression resource if it belongs to org_id."""
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
+
+    async def delete(self, clinical_impression_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(ClinicalImpressionModel).where(
-                ClinicalImpressionModel.clinical_impression_id == clinical_impression_id,
-                ClinicalImpressionModel.tenant_id == org_id,
-            )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            stmt = select(_M).where(_M.clinical_impression_id == clinical_impression_id)
+            clinical_impression = (await session.execute(stmt)).scalars().first()
+            if not clinical_impression:
                 return False
-
-            # Delete grandchildren
-            inv_ids = (
-                await session.execute(
-                    select(ClinicalImpressionInvestigationModel.id).where(
-                        ClinicalImpressionInvestigationModel.clinical_impression_pk == model.id
-                    )
-                )
-            ).scalars().all()
-            if inv_ids:
-                await session.execute(
-                    delete(ClinicalImpressionInvestigationCodeCodingModel).where(
-                        ClinicalImpressionInvestigationCodeCodingModel.clinical_impression_investigation_id.in_(inv_ids)
-                    )
-                )
-                await session.execute(
-                    delete(ClinicalImpressionInvestigationItemModel).where(
-                        ClinicalImpressionInvestigationItemModel.clinical_impression_investigation_id.in_(inv_ids)
-                    )
-                )
-
-            find_ids = (
-                await session.execute(
-                    select(ClinicalImpressionFindingModel.id).where(
-                        ClinicalImpressionFindingModel.clinical_impression_pk == model.id
-                    )
-                )
-            ).scalars().all()
-            if find_ids:
-                await session.execute(
-                    delete(ClinicalImpressionFindingItemCodingModel).where(
-                        ClinicalImpressionFindingItemCodingModel.clinical_impression_finding_id.in_(find_ids)
-                    )
-                )
-
-            id_ids = (
-                await session.execute(
-                    select(ClinicalImpressionIdentifierModel.id).where(
-                        ClinicalImpressionIdentifierModel.clinical_impression_pk == model.id
-                    )
-                )
-            ).scalars().all()
-            if id_ids:
-                await session.execute(
-                    delete(ClinicalImpressionIdentifierTypeCodingModel).where(
-                        ClinicalImpressionIdentifierTypeCodingModel.clinical_impression_identifier_id.in_(id_ids)
-                    )
-                )
-
-            prog_cc_ids = (
-                await session.execute(
-                    select(ClinicalImpressionPrognosisCodeableConceptModel.id).where(
-                        ClinicalImpressionPrognosisCodeableConceptModel.clinical_impression_pk == model.id
-                    )
-                )
-            ).scalars().all()
-            if prog_cc_ids:
-                await session.execute(
-                    delete(ClinicalImpressionPrognosisCodingModel).where(
-                        ClinicalImpressionPrognosisCodingModel.clinical_impression_prognosis_id.in_(prog_cc_ids)
-                    )
-                )
-
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(clinical_impression)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

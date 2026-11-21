@@ -9,6 +9,8 @@ from tests.conftest import make_test_user
 CONDITION_PERMS = [
     "diagnostic_report:create",
     "diagnostic_report:read",
+    "clinical_impression:create",
+    "clinical_impression:read",
     "condition:create",
     "condition:read",
     "condition:update",

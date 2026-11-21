@@ -29,6 +29,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._clinical_impression_revinclude import reference_impression_revincludes
 from app.repository._immunization_revinclude import reason_immunization_revincludes
 from app.repository._procedure_revinclude import reason_procedure_revincludes
 from app.models.diagnostic_report import (
@@ -489,6 +490,7 @@ def diagnostic_report_search() -> SearchRegistry:
         revincludes=(
             *reason_procedure_revincludes("DiagnosticReport", lambda r: r.diagnostic_report_id),
             *reason_immunization_revincludes("DiagnosticReport", lambda r: r.diagnostic_report_id),
+            *reference_impression_revincludes('investigation', 'DiagnosticReport', lambda r: r.diagnostic_report_id),
         ),
         default_sort=lambda: [D.diagnostic_report_id.desc()],
     )

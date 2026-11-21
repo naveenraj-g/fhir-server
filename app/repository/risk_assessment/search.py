@@ -30,6 +30,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._clinical_impression_revinclude import reference_impression_revincludes
 from app.models.risk_assessment import (
     PERFORMER_TYPES,
     SUBJECT_TYPES,
@@ -329,6 +330,7 @@ def risk_assessment_search() -> SearchRegistry:
             IncludeTarget("RiskAssessment", "condition", "Condition", _include_column("condition", "Condition")),
             *performer_includes,
         ),
-        revincludes=(),
+        # ClinicalImpression.investigation points here.
+        revincludes=(*reference_impression_revincludes('investigation', 'RiskAssessment', lambda r: r.risk_assessment_id),),
         default_sort=lambda: [M.risk_assessment_id.desc()],
     )

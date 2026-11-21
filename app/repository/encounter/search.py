@@ -20,6 +20,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
+from app.repository._clinical_impression_revinclude import column_impression_revincludes
 from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._condition_revinclude import encounter_condition_revincludes
 from app.repository._procedure_revinclude import encounter_procedure_revincludes
@@ -616,6 +617,7 @@ def encounter_search() -> SearchRegistry:
             *encounter_procedure_revincludes(lambda e: e.encounter_id),
             *encounter_report_revincludes(lambda e: e.encounter_id),
             *column_risk_revincludes(('encounter',), 'encounter', 'Encounter', lambda e: e.encounter_id),
+            *column_impression_revincludes(('encounter',), 'encounter', 'Encounter', lambda e: e.encounter_id),
         ),
         default_sort=lambda: [E.encounter_id.desc()],
     )

@@ -125,6 +125,13 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "ClinicalImpressions",
+        "description": (
+            "FHIR R4 ClinicalImpression resources — a clinician's assessment of a patient's condition: the "
+            "problems considered, the investigations done, the findings and the prognosis."
+        ),
+    },
+    {
         "name": "RiskAssessments",
         "description": (
             "FHIR R4 RiskAssessment resources — an assessment of the likely outcome(s) for a patient or "

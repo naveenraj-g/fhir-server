@@ -9,6 +9,7 @@ from app.repository.appointment.search import appointment_search
 from app.repository.appointment_response.search import appointment_response_search
 from app.repository.encounter.search import encounter_search
 from app.repository.allergy_intolerance.search import allergy_intolerance_search
+from app.repository.clinical_impression.search import clinical_impression_search
 from app.repository.condition.search import condition_search
 from app.repository.diagnostic_report.search import diagnostic_report_search
 from app.repository.family_member_history.search import family_member_history_search
@@ -63,6 +64,7 @@ async def test_search_params_match_registries(client):
         "encounter": ("Encounter", encounter_search()),
         "related_person": ("RelatedPerson", related_person_search()),
         "allergy_intolerance": ("AllergyIntolerance", allergy_intolerance_search()),
+        "clinical_impression": ("ClinicalImpression", clinical_impression_search()),
         "condition": ("Condition", condition_search()),
         "diagnostic_report": ("DiagnosticReport", diagnostic_report_search()),
         "family_member_history": ("FamilyMemberHistory", family_member_history_search()),

@@ -1,10 +1,18 @@
+from app.core.logging import trace_methods
 from app.repository.base import BaseRepository
-from app.repository.clinical_impression.core import _CoreMixin
-from app.repository.clinical_impression.full import _FullMixin
 
-
-class ClinicalImpressionRepository(BaseRepository, _CoreMixin, _FullMixin):
-    """Repository managing ClinicalImpression persistence and queries."""
-
+from .core import _CoreMixin
+from .full import _FullMixin
 
 __all__ = ["ClinicalImpressionRepository"]
+
+
+@trace_methods
+class ClinicalImpressionRepository(_CoreMixin, _FullMixin, BaseRepository):
+    """All ClinicalImpression DB I/O. Like Schedule/Slot/Appointment,
+    ClinicalImpression has no standalone sub-resource endpoints
+    (create/patch always operate on the whole nested payload — see
+    full.py), so there are no per-sub-resource mixins beyond
+    _CoreMixin/_FullMixin. session_factory/__init__ and the generic
+    paginated-list execution (`_execute_paginated`) are inherited from
+    BaseRepository — see that class."""
