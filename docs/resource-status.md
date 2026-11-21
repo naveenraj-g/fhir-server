@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after DetectedIssue (commit hash below)._
+_Last updated: 2026-11-21, after DetectedIssue (`90ad106`)._
 
 ## Architecture in one line
 
@@ -29,7 +29,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 11 | AppointmentResponse | `/appointment-responses` | 7 | 370000 | `j7a2c9e5f381` | `365a394` | |
 | 12 | Encounter | `/encounters` | 23 | 20000 | `k8b3d0f6a492` | `39149b0` | First quantity search (`length`); bare-Coding `class` |
 | 13 | RelatedPerson | `/related-persons` | 17 | 300000 | `l9c4e1a7b503` | `c28a146` | Route was `/related_persons`; now an existence-checked target everywhere |
-| 24 | DetectedIssue | `/detected-issues` | 6 | 540000 | `w0b5d2f8a614` | pending | **no `status` / `severity` search (R4 defines none)**; `identified` reads a dateTime or a Period; `implicated` is Reference(Any) in a shared reference table; a revinclude source on Patient, Practitioner and PractitionerRole |
+| 24 | DetectedIssue | `/detected-issues` | 6 | 540000 | `w0b5d2f8a614` | `90ad106` | **no `status` / `severity` search (R4 defines none)**; `identified` reads a dateTime or a Period; `implicated` is Reference(Any) in a shared reference table; a revinclude source on Patient, Practitioner and PractitionerRole |
 | 23 | ClinicalImpression | `/clinical-impressions` | 13 | 530000 | `v9a4c1e7f503` | `afaa8b1` | four repeating references (`problem`, `investigation`, `finding-ref`, `supporting-info` [Reference(Any)]) share one reference table; `finding-code` reads every finding; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, Condition, AllergyIntolerance, DiagnosticReport, RiskAssessment, FamilyMemberHistory and itself (`previous`); Condition `stage.assessment` now checks it |
 | 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | `ddbfe2e` | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
 | 21 | FamilyMemberHistory | `/family-member-histories` | 9 | 490000 | `t7e2a9c5d381` | `a39d710` | `code` reads every condition; `instantiates-canonical`/`-uri` as on Procedure; many choice types (born/age/deceased/onset) live only in `content`; a revinclude source on Patient |
