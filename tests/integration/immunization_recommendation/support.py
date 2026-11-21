@@ -7,6 +7,7 @@ datatypes), and every response is FHIR R4 too."""
 # created through their own routers.
 from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
 from tests.integration.immunization.support import create_immunization, immunization_body  # noqa: F401
+from tests.integration.immunization_evaluation.support import create_evaluation, evaluation_body  # noqa: F401
 from tests.integration.patient.support import create_patient  # noqa: F401
 from tests.integration.practitioner_role.support import create_organization  # noqa: F401
 
@@ -43,7 +44,9 @@ def recommendation_body(patient_id: int | None = None, **extra) -> dict:
     return {"patient": patient, "date": DATE, "recommendation": [entry()], **extra}
 
 
-def full_body(patient_id: int, organization_id: int, immunization_id: int, condition_id: int) -> dict:
+def full_body(
+    patient_id: int, organization_id: int, immunization_id: int, condition_id: int, evaluation_id: int
+) -> dict:
     """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
     return recommendation_body(
         patient_id,
@@ -76,7 +79,7 @@ def full_body(patient_id: int, organization_id: int, immunization_id: int, condi
                 "seriesDosesPositiveInt": 1,
                 "supportingImmunization": [
                     {"reference": f"Immunization/{immunization_id}"},
-                    {"reference": "ImmunizationEvaluation/610001"},
+                    {"reference": f"ImmunizationEvaluation/{evaluation_id}"},
                 ],
                 "supportingPatientInformation": [
                     {"reference": f"Condition/{condition_id}"},

@@ -1,40 +1,13 @@
-from app.models.immunization_evaluation.core import ImmunizationEvaluationModel
-from app.models.immunization_evaluation.dose_status import (
-    ImmunizationEvaluationDoseStatusCodingModel,
-)
-from app.models.immunization_evaluation.dose_status_reason import (
-    ImmunizationEvaluationDoseStatusReasonCodingModel,
-    ImmunizationEvaluationDoseStatusReasonModel,
-)
-from app.models.immunization_evaluation.enums import (
-    ImmunizationEvaluationAuthorityReferenceType,
-    ImmunizationEvaluationImmunizationEventReferenceType,
-    ImmunizationEvaluationPatientReferenceType,
-    ImmunizationEvaluationStatus,
-)
-from app.models.immunization_evaluation.identifier import (
-    ImmunizationEvaluationIdentifierModel,
-    ImmunizationEvaluationIdentifierTypeCodingModel,
-)
-from app.models.immunization_evaluation.target_disease import (
-    ImmunizationEvaluationTargetDiseaseCodingModel,
-)
-
-ImmunizationEvaluationIdentifierCodingModel = (
-    ImmunizationEvaluationIdentifierTypeCodingModel
-)
+from .core import ImmunizationEvaluationModel, immunization_evaluation_id_seq
+from .enums import ImmunizationEvaluationStatus
+from .identifier import ImmunizationEvaluationIdentifier
+from .token import TOKEN_PARAMS, ImmunizationEvaluationToken
 
 __all__ = [
-    "ImmunizationEvaluationAuthorityReferenceType",
-    "ImmunizationEvaluationDoseStatusCodingModel",
-    "ImmunizationEvaluationDoseStatusReasonCodingModel",
-    "ImmunizationEvaluationDoseStatusReasonModel",
-    "ImmunizationEvaluationIdentifierCodingModel",
-    "ImmunizationEvaluationIdentifierModel",
-    "ImmunizationEvaluationIdentifierTypeCodingModel",
-    "ImmunizationEvaluationImmunizationEventReferenceType",
+    "TOKEN_PARAMS",
+    "ImmunizationEvaluationIdentifier",
     "ImmunizationEvaluationModel",
-    "ImmunizationEvaluationPatientReferenceType",
     "ImmunizationEvaluationStatus",
-    "ImmunizationEvaluationTargetDiseaseCodingModel",
+    "ImmunizationEvaluationToken",
+    "immunization_evaluation_id_seq",
 ]

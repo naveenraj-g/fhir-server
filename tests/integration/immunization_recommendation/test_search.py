@@ -20,10 +20,12 @@ from tests.integration.immunization_recommendation.support import (
     V2_0203,
     condition_body,
     create_condition,
+    create_evaluation,
     create_immunization,
     create_patient,
     create_recommendation,
     entry,
+    evaluation_body,
     immunization_body,
     recommendation_body,
     status,
@@ -55,6 +57,7 @@ async def world(client):
     w["p2"] = await create_patient(client, {"active": True, "name": [{"family": "Fairfax", "given": ["Ben"]}]})
     w["imm"] = await create_immunization(client, immunization_body(w["p1"], vaccineCode=vaccine("140")))
     w["cond"] = await create_condition(client, condition_body(w["p1"]))
+    w["ev"] = await create_evaluation(client, evaluation_body(w["p1"], w["imm"]))
     w["a"] = await create_recommendation(
         client,
         recommendation_body(
@@ -74,7 +77,7 @@ async def world(client):
                     forecastStatus=status("due"),
                     supportingImmunization=[
                         {"reference": f"Immunization/{w['imm']}"},
-                        {"reference": "ImmunizationEvaluation/610001"},
+                        {"reference": f"ImmunizationEvaluation/{w['ev']}"},
                     ],
                     supportingPatientInformation=[
                         {"reference": f"Condition/{w['cond']}"},
@@ -255,8 +258,8 @@ async def test_support_is_multi_target(client, world):
     assert await _status(client, support=str(world["imm"])) == 400  # a bare id is ambiguous
     assert await _keys(client, world, support=f"Immunization/{world['imm']}") == {"a"}
     assert await _keys(client, world, **{"support:Immunization": str(world["imm"])}) == {"a"}
-    assert await _keys(client, world, support="ImmunizationEvaluation/610001") == {"a"}
-    assert await _keys(client, world, support=f"Immunization/610001") == set()  # the type is part of the match
+    assert await _keys(client, world, support=f"ImmunizationEvaluation/{world['ev']}") == {"a"}
+    assert await _keys(client, world, support=f"Immunization/{world['ev']}") == set()  # the type is part of the match
     assert await _keys(client, world, **{"support:identifier": "urn:imm|I-9"}) == {"c"}
     assert await _keys(client, world, **{"support:missing": "true"}) == {"b", "d", "e"}
 
@@ -280,13 +283,15 @@ async def test_chains(client, world):
     assert await _keys(client, world, **{"support:Immunization.status": "completed"}) == {"a"}
     assert await _keys(client, world, **{"support:Immunization.vaccine-code": "140"}) == {"a"}
     assert await _keys(client, world, **{"support:Immunization.status": "not-done"}) == set()
+    assert await _keys(client, world, **{"support:ImmunizationEvaluation.status": "completed"}) == {"a"}
+    assert await _keys(client, world, **{"support:ImmunizationEvaluation.status": "entered-in-error"}) == set()
+    assert await _keys(client, world, **{"support:ImmunizationEvaluation.patient": str(world["p1"])}) == {"a"}
     assert await _keys(client, world, **{"information:Condition.patient": str(world["p1"])}) == {"a"}
 
 
 async def test_bad_chains_are_400(client, world):
     assert await _status(client, **{"patient.nonsense": "x"}) == 400
     assert await _status(client, **{"support.status": "x"}) == 400  # an untyped multi-target cannot be chained
-    assert await _status(client, **{"support:ImmunizationEvaluation.status": "x"}) == 400  # not a resource here
     assert await _status(client, **{"information:Observation.code": "x"}) == 400  # likewise
     assert await _status(client, **{"status.x": "y"}) == 400  # a token cannot be chained through
 
@@ -343,7 +348,8 @@ async def test_include_patient(client, world):
 async def test_include_support_and_information(client, world):
     ids = f"{world['a']},{world['c']}"
     bundle = await _search(client, _id=ids, _include="ImmunizationRecommendation:support")
-    assert _of_type(bundle, "Immunization", "include") == {str(world["imm"])}  # an evaluation / logical one adds nothing
+    assert _of_type(bundle, "Immunization", "include") == {str(world["imm"])}  # a logical one adds nothing
+    assert _of_type(bundle, "ImmunizationEvaluation", "include") == {str(world["ev"])}
     bundle = await _search(client, _id=ids, _include="ImmunizationRecommendation:information")
     assert _of_type(bundle, "Condition", "include") == {str(world["cond"])}  # an Observation adds nothing
     bundle = await _search(client, _id=ids, _include="ImmunizationRecommendation:information:Patient")
@@ -357,6 +363,10 @@ async def test_revinclude_recommendations_on_the_resources_they_point_at(client,
     assert _of_type(bundle, "ImmunizationRecommendation", "include") == {str(world["b"]), str(world["d"])}
     bundle = await _other(
         client, "immunizations", _id=str(world["imm"]), _revinclude="ImmunizationRecommendation:support"
+    )
+    assert _of_type(bundle, "ImmunizationRecommendation", "include") == {str(world["a"])}
+    bundle = await _other(
+        client, "immunization-evaluations", _id=str(world["ev"]), _revinclude="ImmunizationRecommendation:support"
     )
     assert _of_type(bundle, "ImmunizationRecommendation", "include") == {str(world["a"])}
 

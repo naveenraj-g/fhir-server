@@ -1,497 +1,92 @@
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
-from app.core.filters import parse_reference
 from app.core.logging import get_logger
-from app.models.enums import (
-    IdentifierUse as IdentifierUseModel,
-    OrganizationReferenceType,
-)
-from app.models.immunization_evaluation import (
-    ImmunizationEvaluationAuthorityReferenceType,
-    ImmunizationEvaluationDoseStatusCodingModel,
-    ImmunizationEvaluationDoseStatusReasonCodingModel,
-    ImmunizationEvaluationDoseStatusReasonModel,
-    ImmunizationEvaluationIdentifierModel,
-    ImmunizationEvaluationIdentifierTypeCodingModel,
-    ImmunizationEvaluationImmunizationEventReferenceType,
-    ImmunizationEvaluationModel,
-    ImmunizationEvaluationPatientReferenceType,
-    ImmunizationEvaluationTargetDiseaseCodingModel,
-)
-from app.schemas.immunization_evaluation import (
-    ImmunizationEvaluationCreateSchema,
-    ImmunizationEvaluationPatchSchema,
-)
+from app.models.immunization_evaluation import ImmunizationEvaluationModel
 
-from ._shared import (
-    _single_reference_kwargs,
-    _validate_ref,
-    _with_relationships,
-)
+from ._indexer import index_columns, index_rows, local_references
+from ._shared import INDEX_RELATIONSHIPS, _validate_reference, _with_relationships
 
 logger = get_logger(__name__)
 
+# Never stored in `content` — stamped on at read time from the row.
+_SERVER_MANAGED = ("resourceType", "id", "meta")
+
+
+def _storable(document: dict) -> dict:
+    return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
+
+
+async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
+    """Existence-check every relative local reference in the document
+    (identifier.assigner, patient, encounter, location, manufacturer, performers, reason references, authority, note authors), scoped to the caller's org — 422 if one does not resolve."""
+    for label, resource_type, ref in local_references(document):
+        await _validate_reference(session, tenant_id, resource_type, int(ref.split("/")[1]), label)
+
 
 class _FullMixin:
-    """Atomic full Create & Patch operations for ImmunizationEvaluation."""
+    """Writes. Both take the full, already-validated FHIR ImmunizationEvaluation
+    document: it is stored verbatim in `content`, and the search index is
+    rebuilt from it (see _indexer.py)."""
 
-    async def create(
+    async def create_full(
         self,
-        payload: ImmunizationEvaluationCreateSchema,
+        document: dict,
         org_id: str,
-        actor_id: str,
+        created_by: str | None = None,
     ) -> ImmunizationEvaluationModel:
         async with self.session_factory() as session:
-            # 1. References validation
-            patient_kwargs = _single_reference_kwargs(
-                "patient", payload.patient, ImmunizationEvaluationPatientReferenceType
-            )
-            if payload.patient:
-                await _validate_ref(
-                    session,
-                    patient_kwargs["patient_type"],
-                    patient_kwargs["patient_id"],
-                    org_id,
-                    "patient",
-                )
-
-            authority_kwargs = _single_reference_kwargs(
-                "authority", payload.authority, ImmunizationEvaluationAuthorityReferenceType
-            )
-            if payload.authority:
-                await _validate_ref(
-                    session,
-                    authority_kwargs["authority_type"],
-                    authority_kwargs["authority_id"],
-                    org_id,
-                    "authority",
-                )
-
-            ie_kwargs = _single_reference_kwargs(
-                "immunization_event",
-                payload.immunization_event,
-                ImmunizationEvaluationImmunizationEventReferenceType,
-            )
-            if payload.immunization_event:
-                await _validate_ref(
-                    session,
-                    ie_kwargs["immunization_event_type"],
-                    ie_kwargs["immunization_event_id"],
-                    org_id,
-                    "immunization_event",
-                )
-
-            if payload.identifier:
-                for ident in payload.identifier:
-                    assigner_kwargs = _single_reference_kwargs(
-                        "assigner", ident, OrganizationReferenceType
-                    )
-                    if assigner_kwargs.get("assigner_type") and assigner_kwargs.get("assigner_id"):
-                        await _validate_ref(
-                            session,
-                            assigner_kwargs["assigner_type"],
-                            assigner_kwargs["assigner_id"],
-                            org_id,
-                            "assigner",
-                        )
-
-            # 2. Main record
-            model = ImmunizationEvaluationModel(
+            await _validate_local_references(session, org_id, document)
+            immunization_evaluation = ImmunizationEvaluationModel(
                 tenant_id=org_id,
-                created_by=actor_id,
-                updated_by=actor_id,
-                status=payload.status,
-                **patient_kwargs,
-                date=payload.date,
-                **authority_kwargs,
-                target_disease_text=(
-                    payload.target_disease.text if payload.target_disease else None
-                ),
-                **ie_kwargs,
-                dose_status_text=(
-                    payload.dose_status.text if payload.dose_status else None
-                ),
-                description=payload.description,
-                series=payload.series,
-                dose_number_positive_int=payload.dose_number_positive_int,
-                dose_number_string=payload.dose_number_string,
-                series_doses_positive_int=payload.series_doses_positive_int,
-                series_doses_string=payload.series_doses_string,
-                extension=payload.extension or [],
+                created_by=created_by,
+                content=_storable(document),
+                **index_columns(document),
+                **index_rows(document),
             )
-            session.add(model)
-            await session.flush()
+            session.add(immunization_evaluation)
+            try:
+                await session.commit()
+                await session.refresh(immunization_evaluation)
+            except Exception:
+                await session.rollback()
+                raise
+            return immunization_evaluation
 
-            # 3. Target disease codings
-            if payload.target_disease and payload.target_disease.coding:
-                for c in payload.target_disease.coding:
-                    session.add(
-                        ImmunizationEvaluationTargetDiseaseCodingModel(
-                            immunization_evaluation_pk=model.id,
-                            system=c.system,
-                            version=c.version,
-                            code=c.code,
-                            display=c.display,
-                            user_selected=c.user_selected,
-                            tenant_id=org_id,
-                            created_by=actor_id,
-                        )
-                    )
-
-            # 4. Dose status codings
-            if payload.dose_status and payload.dose_status.coding:
-                for c in payload.dose_status.coding:
-                    session.add(
-                        ImmunizationEvaluationDoseStatusCodingModel(
-                            immunization_evaluation_pk=model.id,
-                            system=c.system,
-                            version=c.version,
-                            code=c.code,
-                            display=c.display,
-                            user_selected=c.user_selected,
-                            tenant_id=org_id,
-                            created_by=actor_id,
-                        )
-                    )
-
-            # 5. Dose status reasons
-            if payload.dose_status_reason:
-                for r in payload.dose_status_reason:
-                    reason_row = ImmunizationEvaluationDoseStatusReasonModel(
-                        immunization_evaluation_pk=model.id,
-                        text=r.text,
-                        tenant_id=org_id,
-                        created_by=actor_id,
-                    )
-                    session.add(reason_row)
-                    await session.flush()
-                    if r.coding:
-                        for c in r.coding:
-                            session.add(
-                                ImmunizationEvaluationDoseStatusReasonCodingModel(
-                                    dose_status_reason_id=reason_row.id,
-                                    system=c.system,
-                                    version=c.version,
-                                    code=c.code,
-                                    display=c.display,
-                                    user_selected=c.user_selected,
-                                    tenant_id=org_id,
-                                    created_by=actor_id,
-                                )
-                            )
-
-            # 6. Identifiers
-            if payload.identifier:
-                for ident in payload.identifier:
-                    assigner_kwargs = _single_reference_kwargs(
-                        "assigner", ident, OrganizationReferenceType
-                    )
-                    use_val = ident.use
-                    if use_val is not None and hasattr(use_val, "name"):
-                        use_val = IdentifierUseModel[use_val.name]
-
-                    ident_row = ImmunizationEvaluationIdentifierModel(
-                        immunization_evaluation_pk=model.id,
-                        use=use_val,
-                        type_text=ident.type.text if ident.type else None,
-                        system=ident.system,
-                        value=ident.value,
-                        period_start=ident.period_start,
-                        period_end=ident.period_end,
-                        **assigner_kwargs,
-                        tenant_id=org_id,
-                        created_by=actor_id,
-                    )
-                    session.add(ident_row)
-                    await session.flush()
-
-                    if ident.type and ident.type.coding:
-                        for c in ident.type.coding:
-                            session.add(
-                                ImmunizationEvaluationIdentifierTypeCodingModel(
-                                    identifier_id=ident_row.id,
-                                    system=c.system,
-                                    version=c.version,
-                                    code=c.code,
-                                    display=c.display,
-                                    user_selected=c.user_selected,
-                                    tenant_id=org_id,
-                                    created_by=actor_id,
-                                )
-                            )
-
-            await session.commit()
-            eval_id = model.immunization_evaluation_id
-
-        # Reload in fresh session with all relationships
-        async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationEvaluationModel).where(
-                    ImmunizationEvaluationModel.immunization_evaluation_id == eval_id,
-                    ImmunizationEvaluationModel.tenant_id == org_id,
-                )
-            )
-            return (await session.execute(stmt)).scalars().first()
-
-    async def patch(
+    async def patch_full(
         self,
         immunization_evaluation_id: int,
-        payload: ImmunizationEvaluationPatchSchema,
-        org_id: str,
-        actor_id: str,
+        document: dict,
+        updated_by: str | None = None,
     ) -> ImmunizationEvaluationModel | None:
+        """`document` is the resource as it should look *after* the patch
+        (the service merges the patch onto the current content and validates
+        the result). The stored content is replaced and every index row
+        rebuilt."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(ImmunizationEvaluationModel).where(
-                    ImmunizationEvaluationModel.immunization_evaluation_id
-                    == immunization_evaluation_id,
-                    ImmunizationEvaluationModel.tenant_id == org_id,
+                    ImmunizationEvaluationModel.immunization_evaluation_id == immunization_evaluation_id
                 )
             )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            immunization_evaluation = (await session.execute(stmt)).scalars().first()
+            if not immunization_evaluation:
                 return None
 
-            data = payload.model_dump(exclude_unset=True)
+            await _validate_local_references(session, immunization_evaluation.tenant_id, document)
 
-            if "patient" in data:
-                patient_kwargs = _single_reference_kwargs(
-                    "patient", payload.patient, ImmunizationEvaluationPatientReferenceType
-                )
-                if payload.patient:
-                    await _validate_ref(
-                        session,
-                        patient_kwargs["patient_type"],
-                        patient_kwargs["patient_id"],
-                        org_id,
-                        "patient",
-                    )
-                for k, v in patient_kwargs.items():
-                    setattr(model, k, v)
+            immunization_evaluation.content = _storable(document)
+            for column, value in index_columns(document).items():
+                setattr(immunization_evaluation, column, value)
+            rows = index_rows(document)
+            for rel in INDEX_RELATIONSHIPS:
+                setattr(immunization_evaluation, rel, rows[rel])
+            if updated_by is not None:
+                immunization_evaluation.updated_by = updated_by
 
-            if "authority" in data:
-                authority_kwargs = _single_reference_kwargs(
-                    "authority", payload.authority, ImmunizationEvaluationAuthorityReferenceType
-                )
-                if payload.authority:
-                    await _validate_ref(
-                        session,
-                        authority_kwargs["authority_type"],
-                        authority_kwargs["authority_id"],
-                        org_id,
-                        "authority",
-                    )
-                for k, v in authority_kwargs.items():
-                    setattr(model, k, v)
-
-            if "immunization_event" in data:
-                ie_kwargs = _single_reference_kwargs(
-                    "immunization_event",
-                    payload.immunization_event,
-                    ImmunizationEvaluationImmunizationEventReferenceType,
-                )
-                if payload.immunization_event:
-                    await _validate_ref(
-                        session,
-                        ie_kwargs["immunization_event_type"],
-                        ie_kwargs["immunization_event_id"],
-                        org_id,
-                        "immunization_event",
-                    )
-                for k, v in ie_kwargs.items():
-                    setattr(model, k, v)
-
-            if "status" in data:
-                model.status = payload.status
-
-            if "date" in data:
-                model.date = payload.date
-
-            if "target_disease" in data:
-                model.target_disease_text = (
-                    payload.target_disease.text if payload.target_disease else None
-                )
-                await session.execute(
-                    delete(ImmunizationEvaluationTargetDiseaseCodingModel).where(
-                        ImmunizationEvaluationTargetDiseaseCodingModel.immunization_evaluation_pk
-                        == model.id
-                    )
-                )
-                if payload.target_disease and payload.target_disease.coding:
-                    for c in payload.target_disease.coding:
-                        session.add(
-                            ImmunizationEvaluationTargetDiseaseCodingModel(
-                                immunization_evaluation_pk=model.id,
-                                system=c.system,
-                                version=c.version,
-                                code=c.code,
-                                display=c.display,
-                                user_selected=c.user_selected,
-                                tenant_id=org_id,
-                                created_by=actor_id,
-                            )
-                        )
-
-            if "dose_status" in data:
-                model.dose_status_text = (
-                    payload.dose_status.text if payload.dose_status else None
-                )
-                await session.execute(
-                    delete(ImmunizationEvaluationDoseStatusCodingModel).where(
-                        ImmunizationEvaluationDoseStatusCodingModel.immunization_evaluation_pk
-                        == model.id
-                    )
-                )
-                if payload.dose_status and payload.dose_status.coding:
-                    for c in payload.dose_status.coding:
-                        session.add(
-                            ImmunizationEvaluationDoseStatusCodingModel(
-                                immunization_evaluation_pk=model.id,
-                                system=c.system,
-                                version=c.version,
-                                code=c.code,
-                                display=c.display,
-                                user_selected=c.user_selected,
-                                tenant_id=org_id,
-                                created_by=actor_id,
-                            )
-                        )
-
-            if "dose_status_reason" in data:
-                existing_reasons = (
-                    await session.execute(
-                        select(ImmunizationEvaluationDoseStatusReasonModel).where(
-                            ImmunizationEvaluationDoseStatusReasonModel.immunization_evaluation_pk
-                            == model.id
-                        )
-                    )
-                ).scalars().all()
-                for r in existing_reasons:
-                    await session.execute(
-                        delete(ImmunizationEvaluationDoseStatusReasonCodingModel).where(
-                            ImmunizationEvaluationDoseStatusReasonCodingModel.dose_status_reason_id
-                            == r.id
-                        )
-                    )
-                    await session.delete(r)
-
-                if payload.dose_status_reason:
-                    for r in payload.dose_status_reason:
-                        reason_row = ImmunizationEvaluationDoseStatusReasonModel(
-                            immunization_evaluation_pk=model.id,
-                            text=r.text,
-                            tenant_id=org_id,
-                            created_by=actor_id,
-                        )
-                        session.add(reason_row)
-                        await session.flush()
-                        if r.coding:
-                            for c in r.coding:
-                                session.add(
-                                    ImmunizationEvaluationDoseStatusReasonCodingModel(
-                                        dose_status_reason_id=reason_row.id,
-                                        system=c.system,
-                                        version=c.version,
-                                        code=c.code,
-                                        display=c.display,
-                                        user_selected=c.user_selected,
-                                        tenant_id=org_id,
-                                        created_by=actor_id,
-                                    )
-                                )
-
-            if "identifier" in data:
-                existing_idents = (
-                    await session.execute(
-                        select(ImmunizationEvaluationIdentifierModel).where(
-                            ImmunizationEvaluationIdentifierModel.immunization_evaluation_pk
-                            == model.id
-                        )
-                    )
-                ).scalars().all()
-                for i in existing_idents:
-                    await session.execute(
-                        delete(ImmunizationEvaluationIdentifierTypeCodingModel).where(
-                            ImmunizationEvaluationIdentifierTypeCodingModel.identifier_id
-                            == i.id
-                        )
-                    )
-                    await session.delete(i)
-
-                if payload.identifier:
-                    for ident in payload.identifier:
-                        assigner_kwargs = _single_reference_kwargs(
-                            "assigner", ident, OrganizationReferenceType
-                        )
-                        if assigner_kwargs.get("assigner_type") and assigner_kwargs.get("assigner_id"):
-                            await _validate_ref(
-                                session,
-                                assigner_kwargs["assigner_type"],
-                                assigner_kwargs["assigner_id"],
-                                org_id,
-                                "assigner",
-                            )
-
-                        use_val = ident.use
-                        if use_val is not None and hasattr(use_val, "name"):
-                            use_val = IdentifierUseModel[use_val.name]
-
-                        ident_row = ImmunizationEvaluationIdentifierModel(
-                            immunization_evaluation_pk=model.id,
-                            use=use_val,
-                            type_text=ident.type.text if ident.type else None,
-                            system=ident.system,
-                            value=ident.value,
-                            period_start=ident.period_start,
-                            period_end=ident.period_end,
-                            **assigner_kwargs,
-                            tenant_id=org_id,
-                            created_by=actor_id,
-                        )
-                        session.add(ident_row)
-                        await session.flush()
-
-                        if ident.type and ident.type.coding:
-                            for c in ident.type.coding:
-                                session.add(
-                                    ImmunizationEvaluationIdentifierTypeCodingModel(
-                                        identifier_id=ident_row.id,
-                                        system=c.system,
-                                        version=c.version,
-                                        code=c.code,
-                                        display=c.display,
-                                        user_selected=c.user_selected,
-                                        tenant_id=org_id,
-                                        created_by=actor_id,
-                                    )
-                                )
-
-            for field in [
-                "description",
-                "series",
-                "dose_number_positive_int",
-                "dose_number_string",
-                "series_doses_positive_int",
-                "series_doses_string",
-                "extension",
-            ]:
-                if field in data:
-                    setattr(model, field, data[field])
-
-            model.updated_by = actor_id
-            await session.commit()
-
-        # Reload fresh
-        async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationEvaluationModel).where(
-                    ImmunizationEvaluationModel.immunization_evaluation_id
-                    == immunization_evaluation_id,
-                    ImmunizationEvaluationModel.tenant_id == org_id,
-                )
-            )
-            return (await session.execute(stmt)).scalars().first()
-
-    create_full = create
-    patch_full = patch
-
+            try:
+                await session.commit()
+                await session.refresh(immunization_evaluation)
+            except Exception:
+                await session.rollback()
+                raise
+            return immunization_evaluation

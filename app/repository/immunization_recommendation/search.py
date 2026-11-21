@@ -60,6 +60,9 @@ _MODELED = {
                            "app.repository.allergy_intolerance.search", "allergy_intolerance_search"),
     "Immunization": ("app.models.immunization", "ImmunizationModel", "immunization_id",
                      "app.repository.immunization.search", "immunization_search"),
+    "ImmunizationEvaluation": ("app.models.immunization_evaluation", "ImmunizationEvaluationModel",
+                               "immunization_evaluation_id", "app.repository.immunization_evaluation.search",
+                               "immunization_evaluation_search"),
 }
 
 

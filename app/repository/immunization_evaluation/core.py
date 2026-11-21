@@ -1,272 +1,85 @@
-from datetime import date, datetime
-
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import (
-    apply_child_exists_filter,
-    apply_date_range_filter,
-    apply_token_filter,
-    parse_reference,
-)
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.immunization_evaluation import (
-    ImmunizationEvaluationAuthorityReferenceType,
-    ImmunizationEvaluationDoseStatusCodingModel,
-    ImmunizationEvaluationIdentifierModel,
-    ImmunizationEvaluationImmunizationEventReferenceType,
-    ImmunizationEvaluationModel,
-    ImmunizationEvaluationPatientReferenceType,
-    ImmunizationEvaluationTargetDiseaseCodingModel,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.immunization_evaluation import ImmunizationEvaluationModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import immunization_evaluation_search
 
 logger = get_logger(__name__)
 
+_M = ImmunizationEvaluationModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for ImmunizationEvaluation."""
+    """Reads, search and delete. Every read loads only the immunization_evaluation
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_immunization_evaluation_id(
-        self, immunization_evaluation_id: int
-    ) -> ImmunizationEvaluationModel | None:
+    async def get_by_immunization_evaluation_id(self, immunization_evaluation_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationEvaluationModel).where(
-                    ImmunizationEvaluationModel.immunization_evaluation_id
-                    == immunization_evaluation_id
-                )
-            )
+            stmt = select(_M).where(_M.immunization_evaluation_id == immunization_evaluation_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_immunization_evaluation_id_in_org(
-        self, immunization_evaluation_id: int, org_id: str
-    ) -> ImmunizationEvaluationModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    async def get_by_immunization_evaluation_id_in_org(self, immunization_evaluation_id: int, org_id: str) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the immunization_evaluation
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationEvaluationModel).where(
-                    ImmunizationEvaluationModel.immunization_evaluation_id
-                    == immunization_evaluation_id,
-                    ImmunizationEvaluationModel.tenant_id == org_id,
-                )
-            )
+            stmt = select(_M).where(_M.immunization_evaluation_id == immunization_evaluation_id, _M.tenant_id == org_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def immunization_evaluation_belongs_to_org(
-        self, immunization_evaluation_id: int, org_id: str
-    ) -> bool:
-        """Cheap existence/ownership check (no joins, no sub-resources)."""
+    async def immunization_evaluation_belongs_to_org(self, immunization_evaluation_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the immunization_evaluation exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(func.count(ImmunizationEvaluationModel.id)).where(
-                ImmunizationEvaluationModel.immunization_evaluation_id
-                == immunization_evaluation_id,
-                ImmunizationEvaluationModel.tenant_id == org_id,
-            )
-            count = (await session.execute(stmt)).scalar() or 0
-            return count > 0
+            stmt = select(_M.id).where(_M.immunization_evaluation_id == immunization_evaluation_id, _M.tenant_id == org_id)
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str,
-        status: str | None = None,
-        patient: str | None = None,
-        date_val: date | datetime | str | None = None,
-        authority: str | None = None,
-        immunization_event: str | None = None,
-        identifier: str | None = None,
-        target_disease: str | None = None,
-        dose_status: str | None = None,
-    ):
-        stmt = stmt.where(ImmunizationEvaluationModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if status:
-            stmt = apply_token_filter(stmt, ImmunizationEvaluationModel.status, status)
-
-        if patient:
-            p_type, p_id = parse_reference(
-                patient, ImmunizationEvaluationPatientReferenceType
-            )
-            if p_type:
-                stmt = stmt.where(ImmunizationEvaluationModel.patient_type == p_type)
-            if p_id:
-                stmt = stmt.where(ImmunizationEvaluationModel.patient_id == p_id)
-            elif "/" in patient:
-                parts = patient.split("/")
-                if len(parts) == 2 and parts[1].isdigit():
-                    stmt = stmt.where(
-                        ImmunizationEvaluationModel.patient_id == int(parts[1])
-                    )
-            elif patient.isdigit():
-                stmt = stmt.where(ImmunizationEvaluationModel.patient_id == int(patient))
-
-        if date_val:
-            stmt = apply_date_range_filter(
-                stmt, ImmunizationEvaluationModel.date, date_val
-            )
-
-        if authority:
-            a_type, a_id = parse_reference(
-                authority, ImmunizationEvaluationAuthorityReferenceType
-            )
-            if a_type:
-                stmt = stmt.where(ImmunizationEvaluationModel.authority_type == a_type)
-            if a_id:
-                stmt = stmt.where(ImmunizationEvaluationModel.authority_id == a_id)
-            elif "/" in authority:
-                parts = authority.split("/")
-                if len(parts) == 2 and parts[1].isdigit():
-                    stmt = stmt.where(
-                        ImmunizationEvaluationModel.authority_id == int(parts[1])
-                    )
-            elif authority.isdigit():
-                stmt = stmt.where(
-                    ImmunizationEvaluationModel.authority_id == int(authority)
-                )
-
-        if immunization_event:
-            ie_type, ie_id = parse_reference(
-                immunization_event, ImmunizationEvaluationImmunizationEventReferenceType
-            )
-            if ie_type:
-                stmt = stmt.where(
-                    ImmunizationEvaluationModel.immunization_event_type == ie_type
-                )
-            if ie_id:
-                stmt = stmt.where(
-                    ImmunizationEvaluationModel.immunization_event_id == ie_id
-                )
-            elif "/" in immunization_event:
-                parts = immunization_event.split("/")
-                if len(parts) == 2 and parts[1].isdigit():
-                    stmt = stmt.where(
-                        ImmunizationEvaluationModel.immunization_event_id
-                        == int(parts[1])
-                    )
-            elif immunization_event.isdigit():
-                stmt = stmt.where(
-                    ImmunizationEvaluationModel.immunization_event_id
-                    == int(immunization_event)
-                )
-
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                ImmunizationEvaluationIdentifierModel,
-                ImmunizationEvaluationIdentifierModel.immunization_evaluation_pk
-                == ImmunizationEvaluationModel.id,
-                ImmunizationEvaluationIdentifierModel.system,
-                ImmunizationEvaluationIdentifierModel.value,
-                identifier,
-            )
-
-        if target_disease:
-            stmt = apply_child_exists_filter(
-                stmt,
-                ImmunizationEvaluationTargetDiseaseCodingModel,
-                ImmunizationEvaluationTargetDiseaseCodingModel.immunization_evaluation_pk
-                == ImmunizationEvaluationModel.id,
-                ImmunizationEvaluationTargetDiseaseCodingModel.system,
-                ImmunizationEvaluationTargetDiseaseCodingModel.code,
-                target_disease,
-            )
-
-        if dose_status:
-            stmt = apply_child_exists_filter(
-                stmt,
-                ImmunizationEvaluationDoseStatusCodingModel,
-                ImmunizationEvaluationDoseStatusCodingModel.immunization_evaluation_pk
-                == ImmunizationEvaluationModel.id,
-                ImmunizationEvaluationDoseStatusCodingModel.system,
-                ImmunizationEvaluationDoseStatusCodingModel.code,
-                dose_status,
-            )
-
-        return stmt
-
-    async def list(
-        self,
-        org_id: str,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-        status: str | None = None,
-        patient: str | None = None,
-        date_val: date | datetime | str | None = None,
-        authority: str | None = None,
-        immunization_event: str | None = None,
-        identifier: str | None = None,
-        target_disease: str | None = None,
-        dose_status: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ImmunizationEvaluationModel], int]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            count_stmt = select(func.count(ImmunizationEvaluationModel.id))
-            count_stmt = self._apply_list_filters(
-                count_stmt,
-                org_id=org_id,
-                status=status,
-                patient=patient,
-                date_val=date_val,
-                authority=authority,
-                immunization_event=immunization_event,
-                identifier=identifier,
-                target_disease=target_disease,
-                dose_status=dose_status,
-            )
-
-            data_stmt = select(ImmunizationEvaluationModel)
-            data_stmt = self._apply_list_filters(
-                data_stmt,
-                org_id=org_id,
-                status=status,
-                patient=patient,
-                date_val=date_val,
-                authority=authority,
-                immunization_event=immunization_event,
-                identifier=identifier,
-                target_disease=target_disease,
-                dose_status=dose_status,
-            )
-            data_stmt = _with_relationships(data_stmt)
-
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                ImmunizationEvaluationModel.immunization_evaluation_id,
-                default_desc=True,
-            )
-
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                data_stmt,
-                count_stmt,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=immunization_evaluation_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.immunization_evaluation_id,
             )
-            return list(rows), total or 0
+        logger.debug(
+            "ImmunizationEvaluations searched",
+            extra={
+                "event": "immunization_evaluation.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-    async def delete(self, immunization_evaluation_id: int, org_id: str) -> bool:
-        """Deletes an ImmunizationEvaluation resource if it belongs to org_id."""
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
+
+    async def delete(self, immunization_evaluation_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(ImmunizationEvaluationModel).where(
-                    ImmunizationEvaluationModel.immunization_evaluation_id
-                    == immunization_evaluation_id,
-                    ImmunizationEvaluationModel.tenant_id == org_id,
-                )
-            )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            stmt = select(_M).where(_M.immunization_evaluation_id == immunization_evaluation_id)
+            immunization_evaluation = (await session.execute(stmt)).scalars().first()
+            if not immunization_evaluation:
                 return False
-
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(immunization_evaluation)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

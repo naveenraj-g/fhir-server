@@ -28,9 +28,8 @@ from app.repository._content_index import identifier_rows, period_bounds, relati
 
 from ._shared import any_typed, typed
 
-# Of the two `support` targets only Immunization is a resource here (ImmunizationEvaluation
-# is not rebuilt yet).
-_MODELED_SUPPORT = ("Immunization",)
+# Both `support` targets (Immunization, ImmunizationEvaluation) are resources here.
+_MODELED_SUPPORT = ("Immunization", "ImmunizationEvaluation")
 # Reference(Any) `supportingPatientInformation` targets that are existence-checked on write:
 # the resources already rebuilt that a piece of patient information can be.
 _MODELED_INFORMATION = (

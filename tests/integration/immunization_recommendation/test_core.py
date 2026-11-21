@@ -30,11 +30,13 @@ from tests.integration.immunization_recommendation.support import (
     BASE,
     condition_body,
     create_condition,
+    create_evaluation,
     create_immunization,
     create_organization,
     create_patient,
     create_recommendation,
     entry,
+    evaluation_body,
     full_body,
     immunization_body,
     recommendation_body,
@@ -68,7 +70,8 @@ async def _full(client, patient) -> tuple[int, dict]:
     organization = await create_organization(client)
     immunization = await create_immunization(client, immunization_body(patient))
     condition = await create_condition(client, condition_body(patient))
-    body = full_body(patient, organization, immunization, condition)
+    evaluation = await create_evaluation(client, evaluation_body(patient, immunization))
+    body = full_body(patient, organization, immunization, condition, evaluation)
     return await create_recommendation(client, body), body
 
 
@@ -176,16 +179,18 @@ async def test_create_authority_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
 
 
-async def test_create_supporting_immunization_is_checked_but_an_evaluation_is_not(client, patient):
+async def test_create_supporting_immunization_and_evaluation_are_both_checked(client, patient):
     immunization = await create_immunization(client, immunization_body(patient))
+    evaluation = await create_evaluation(client, evaluation_body(patient, immunization))
     ok = recommendation_body(
         patient,
         recommendation=[entry(supportingImmunization=[{"reference": f"Immunization/{immunization}"},
-                                                      {"reference": "ImmunizationEvaluation/999999"}])],
+                                                      {"reference": f"ImmunizationEvaluation/{evaluation}"}])],
     )
-    assert (await client.post(BASE + "/", json=ok)).status_code == 201  # an evaluation is stored as sent
-    missing = recommendation_body(patient, recommendation=[entry(supportingImmunization=[{"reference": "Immunization/999999"}])])
-    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    for missing in ("Immunization/999999", "ImmunizationEvaluation/999999"):
+        body = recommendation_body(patient, recommendation=[entry(supportingImmunization=[{"reference": missing}])])
+        assert (await client.post(BASE + "/", json=body)).status_code == 422, missing
 
 
 async def test_create_supporting_patient_information_is_checked_for_resources_here(client, patient):

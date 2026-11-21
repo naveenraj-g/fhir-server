@@ -11,6 +11,8 @@ RECOMMENDATION_PERMS = [
     "immunization_recommendation:read",
     "immunization_recommendation:update",
     "immunization_recommendation:delete",
+    "immunization_evaluation:create",
+    "immunization_evaluation:read",
     "immunization:create",
     "immunization:read",
     "patient:create",
