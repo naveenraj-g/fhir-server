@@ -38,8 +38,8 @@ from app.repository._content_index import (
 
 from ._shared import typed
 
-# Of the three reasonReference targets, these are resources here (Observation is not yet).
-_MODELED_REASONS = ("Condition", "DiagnosticReport")
+# All three reasonReference targets are resources here.
+_MODELED_REASONS = ("Condition", "Observation", "DiagnosticReport")
 _MODELED_PERFORMERS = ("Practitioner", "PractitionerRole", "Organization")
 
 
@@ -47,10 +47,10 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     """(element label, resource type, relative reference) for every local
     reference that must exist in the caller's org on write: identifier.assigner,
     `patient`, `encounter`, `location`, `manufacturer`, every `performer.actor`,
-    `reasonReference` that is a Condition or DiagnosticReport and
-    `protocolApplied.authority`. Absolute URLs, logical (identifier-only)
-    references and targets that are not resources on this server (an Observation
-    reason or reaction detail) point elsewhere and are not checked."""
+    every `reasonReference` (a Condition, Observation or DiagnosticReport), every
+    `reaction.detail` (an Observation) and `protocolApplied.authority`. Absolute
+    URLs and logical (identifier-only) references point elsewhere and are not
+    checked."""
     refs = []
 
     def add(label, reference, resource_type):
@@ -82,6 +82,12 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         parsed = typed((ref or {}).get("reference"), _MODELED_REASONS)
         if parsed:
             refs.append(("reasonReference", parsed[0], ref["reference"]))
+    for reaction in document.get("reaction") or []:
+        add(
+            "reaction.detail",
+            ((reaction or {}).get("detail") or {}).get("reference"),
+            "Observation",
+        )
     for protocol in document.get("protocolApplied") or []:
         add(
             "protocolApplied.authority",

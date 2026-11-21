@@ -347,11 +347,10 @@ async def test_create_stage_assessment_clinical_impression_must_exist(client, pa
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """A stage.assessment that is not a DiagnosticReport, and evidence.detail (Reference(Any)),
-    point at resources this server does not check: stored as sent."""
+    """evidence.detail (Reference(Any)) points at resources this server does not check: stored as
+    sent."""
     body = condition_body(
         patient,
-        stage=[{"assessment": [{"reference": "Observation/999999"}]}],
         evidence=[{"detail": [{"reference": "DiagnosticReport/999999"}]}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
@@ -419,7 +418,7 @@ async def test_references_to_a_missing_condition_are_rejected(client, patient):
     enc = {
         "status": "finished",
         "class": {"code": "AMB"},
-        "reasonReference": [{"reference": "Observation/999999"}],
+        "reasonReference": [{"reference": "ImmunizationRecommendation/999999"}],
     }
     assert (await client.post(f"{API}/encounters/", json=enc)).status_code == 201
 
@@ -687,3 +686,14 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_stage_assessment_observation_must_exist(client, patient):
+    ok = condition_body(
+        patient, stage=[{"assessment": [{"reference": "Observation/160005"}]}]
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = condition_body(
+        patient, stage=[{"assessment": [{"reference": "Observation/999999"}]}]
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

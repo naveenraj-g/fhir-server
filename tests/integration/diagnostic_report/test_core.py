@@ -300,13 +300,12 @@ async def test_create_identifier_assigner_must_exist(client, patient):
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """basedOn, specimen, result, imagingStudy and media.link point at resources this server does
+    """basedOn, specimen, imagingStudy and media.link point at resources this server does
     not rebuild: stored as sent."""
     body = report_body(
         patient,
         basedOn=[{"reference": "ServiceRequest/999999"}],
         specimen=[{"reference": "Specimen/999999"}],
-        result=[{"reference": "Observation/999999"}],
         imagingStudy=[{"reference": "ImagingStudy/999999"}],
         media=[{"link": {"reference": "Media/999999"}}],
     )
@@ -643,3 +642,10 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_result_observation_must_exist(client, patient):
+    ok = report_body(patient, result=[{"reference": "Observation/160005"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = report_body(patient, result=[{"reference": "Observation/999999"}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

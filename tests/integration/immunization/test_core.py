@@ -342,17 +342,28 @@ async def test_create_identifier_assigner_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
 
-async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """An Observation reason or reaction detail points at a resource this server does not rebuild:
-    stored as sent."""
-    body = immunization_body(
+async def test_create_observation_reason_and_reaction_detail_must_exist(
+    client, patient
+):
+    ok = immunization_body(
         patient,
-        reasonReference=[{"reference": "Observation/999999"}],
+        reasonReference=[{"reference": "Observation/160005"}],
+        reaction=[
+            {"date": "2023-01-16", "detail": {"reference": "Observation/160006"}}
+        ],
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing_reason = immunization_body(
+        patient, reasonReference=[{"reference": "Observation/999999"}]
+    )
+    assert (await client.post(BASE + "/", json=missing_reason)).status_code == 422
+    missing_reaction = immunization_body(
+        patient,
         reaction=[
             {"date": "2023-01-16", "detail": {"reference": "Observation/999999"}}
         ],
     )
-    assert (await client.post(BASE + "/", json=body)).status_code == 201
+    assert (await client.post(BASE + "/", json=missing_reaction)).status_code == 422
 
 
 async def test_create_absolute_and_logical_references_not_resolved(client):

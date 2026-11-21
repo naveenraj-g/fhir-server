@@ -34,9 +34,14 @@ from app.repository._content_index import (
 
 from ._shared import typed
 
-# Of the six `reasonReference` targets, these are resources here (Observation,
-# QuestionnaireResponse and DocumentReference are not rebuilt yet).
-_MODELED_REASONS = ("Condition", "AllergyIntolerance", "DiagnosticReport")
+# Of the six `reasonReference` targets, these are resources here (QuestionnaireResponse and
+# DocumentReference are not rebuilt yet).
+_MODELED_REASONS = (
+    "Condition",
+    "AllergyIntolerance",
+    "Observation",
+    "DiagnosticReport",
+)
 _AUTHOR_TYPES = (
     "Practitioner",
     "PractitionerRole",
@@ -59,7 +64,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     reference that must exist in the caller's org on write: identifier.assigner,
     `patient`, `reasonReference` that is a Condition, AllergyIntolerance or DiagnosticReport,
     and every note's `authorReference`. Absolute URLs, logical (identifier-only) references
-    and targets that are not resources on this server (an Observation reason) point
+    and targets that are not resources on this server (a QuestionnaireResponse / DocumentReference reason) point
     elsewhere and are not checked."""
     refs = []
 

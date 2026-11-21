@@ -2,11 +2,14 @@ import pytest
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
+from tests.helpers.observations import seed_observations
 
 # The recommendation's own scopes, plus the scopes the tests need to create the
 # resources around it (its patient, authority, supporting immunizations and patient
 # information) and the ones to look at what points back at it.
 RECOMMENDATION_PERMS = [
+    "observation:create",
+    "observation:read",
     "immunization_recommendation:create",
     "immunization_recommendation:read",
     "immunization_recommendation:update",
@@ -53,3 +56,9 @@ def _set_permissions(client):
     )
     yield
     app.dependency_overrides[get_current_user] = make_test_user()
+
+
+@pytest.fixture(autouse=True)
+async def _seeded_observations(_set_permissions, client):
+    """The Observation ids these tests refer to (`Observation/160001`, ...) must exist."""
+    await seed_observations(client)

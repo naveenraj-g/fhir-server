@@ -97,11 +97,12 @@ def service_provider_encounter_revincludes(key) -> tuple[IncludeTarget, ...]:
 
 
 def reference_encounter_revincludes(
-    resource_type: str, key
+    resource_type: str, key, params: tuple[str, ...] = ("diagnosis", "reason-reference")
 ) -> tuple[IncludeTarget, ...]:
     """Encounter:diagnosis and :reason-reference — encounters whose diagnosis /
     reason points at one of the matched rows of `resource_type` (Condition or
-    Procedure)."""
+    Procedure; an Observation can only be a reason, so it passes
+    `params=("reason-reference",)`)."""
 
     def make(param: str):
         async def fetch(session, ctx, rows):
@@ -117,5 +118,5 @@ def reference_encounter_revincludes(
 
     return tuple(
         IncludeTarget("Encounter", param, resource_type, make(param), reverse=True)
-        for param in ("diagnosis", "reason-reference")
+        for param in params
     )

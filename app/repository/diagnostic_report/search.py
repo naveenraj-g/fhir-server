@@ -99,6 +99,13 @@ _MODELED = {
         "app.repository.location.search",
         "location_search",
     ),
+    "Observation": (
+        "app.models.observation",
+        "ObservationModel",
+        "observation_id",
+        "app.repository.observation.search",
+        "observation_search",
+    ),
 }
 
 
@@ -431,6 +438,44 @@ def revinclude_reports_via_column(prefix: str, resource_type: str, key):
     return fetch
 
 
+def _include_reference(param: str, resource_type: str):
+    """_include of a reference-table parameter (`result`): the rows of `resource_type`."""
+
+    async def fetch(session, ctx, reports):
+        ids = select(_R.reference_id).where(
+            _R.diagnostic_report_pk.in_({r.id for r in reports}),
+            _R.param == param,
+            _R.reference_type == resource_type,
+            _R.reference_id.is_not(None),
+        )
+        return await _load(
+            session,
+            ctx,
+            resource_type,
+            set((await session.execute(ids)).scalars().all()),
+        )
+
+    return fetch
+
+
+def revinclude_reports_via_reference(param: str, resource_type: str, key):
+    """_revinclude=DiagnosticReport:result — reports with a row in the reference table
+    pointing at one of these rows."""
+
+    async def fetch(session, ctx, rows):
+        ids = {key(r) for r in rows}
+        pks = select(_R.diagnostic_report_pk).where(
+            _R.param == param,
+            _R.reference_type == resource_type,
+            _R.reference_id.in_(ids),
+        )
+        return await _fetch(
+            session, select(D).where(D.tenant_id == ctx.tenant_id, D.id.in_(pks))
+        )
+
+    return fetch
+
+
 def revinclude_reports_via_performer(param: str, resource_type: str, key):
     """_revinclude=DiagnosticReport:performer / :results-interpreter — reports with a
     row in the performer table pointing at one of these rows."""
@@ -516,6 +561,16 @@ def diagnostic_report_search() -> SearchRegistry:
         # The R4 search-parameter name is also the `param` value in the reference table.
         targets = REFERENCE_TYPES[name]
         match, present, sort = _reference_param(name, targets)
+        modeled = [t for t in targets if t in _MODELED]
+
+        def chain(target, inner, ctx):
+            return _exists(
+                _R,
+                _R.param == name,
+                _R.reference_type == target,
+                _R.reference_id.in_(_referenced(target, inner, ctx)),
+            )
+
         return SearchParam(
             name,
             "reference",
@@ -525,6 +580,8 @@ def diagnostic_report_search() -> SearchRegistry:
             present,
             _REFERENCE,
             targets=targets,
+            chain=chain if modeled else None,
+            chain_targets={t: _registry_of(t) for t in modeled},
             sort=sort,
             example=example,
             modifier_docs=_IDENTIFIER_DOC,
@@ -759,6 +816,12 @@ def diagnostic_report_search() -> SearchRegistry:
                 _include_column("encounter", "Encounter"),
             ),
             *performer_includes,
+            IncludeTarget(
+                "DiagnosticReport",
+                "result",
+                "Observation",
+                _include_reference("result", "Observation"),
+            ),
         ),
         # Procedure.reasonReference points here.
         revincludes=(

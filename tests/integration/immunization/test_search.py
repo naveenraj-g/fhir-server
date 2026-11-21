@@ -579,9 +579,8 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"performer.family": "x"}) == 400
     )  # an untyped multi-target cannot be chained
     assert (
-        await _status(client, **{"reason-reference:Observation.code": "x"}) == 400
-    )  # Observation is not a resource here
-    assert await _status(client, **{"reaction.code": "x"}) == 400  # likewise
+        await _status(client, **{"reason-reference:DocumentReference.x": "x"}) == 400
+    )  # not a target of reasonReference
     assert (
         await _status(client, **{"vaccine-code.x": "y"}) == 400
     )  # a token cannot be chained through

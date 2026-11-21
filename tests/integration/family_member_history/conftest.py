@@ -2,10 +2,13 @@ import pytest
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
+from tests.helpers.observations import seed_observations
 
 # The history's own scopes, plus the scopes the tests need to create the resources around
 # it (its patient, reasons and note authors) and the ones to look at what points back at it.
 HISTORY_PERMS = [
+    "observation:create",
+    "observation:read",
     "family_member_history:create",
     "family_member_history:read",
     "family_member_history:update",
@@ -50,3 +53,9 @@ def _set_permissions(client):
     )
     yield
     app.dependency_overrides[get_current_user] = make_test_user()
+
+
+@pytest.fixture(autouse=True)
+async def _seeded_observations(_set_permissions, client):
+    """The Observation ids these tests refer to (`Observation/160001`, ...) must exist."""
+    await seed_observations(client)

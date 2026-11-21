@@ -320,7 +320,7 @@ async def test_create_unrebuilt_reference_targets_are_not_checked(client, patien
     body = appointment_body(
         patient,
         basedOn=[{"reference": "ServiceRequest/999999"}],
-        reasonReference=[{"reference": "Observation/999999"}],
+        reasonReference=[{"reference": "ImmunizationRecommendation/999999"}],
         supportingInformation=[{"reference": "DocumentReference/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
@@ -674,3 +674,14 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0 and "entry" not in bundle
     finally:
         _as_user()
+
+
+async def test_create_reason_reference_observation_must_exist(client, patient):
+    ok = appointment_body(
+        patient, reasonReference=[{"reference": "Observation/160005"}]
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = appointment_body(
+        patient, reasonReference=[{"reference": "Observation/999999"}]
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

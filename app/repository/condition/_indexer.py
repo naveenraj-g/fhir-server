@@ -45,7 +45,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     `subject` (when a Patient), `encounter`, `recorder`, `asserter` and the
     author of every note, and a `stage.assessment` that is a DiagnosticReport or ClinicalImpression. Absolute URLs,
     logical (identifier-only) references and targets that are not resources on this server
-    (a Group subject, an Observation assessment, evidence.detail) point
+    (a Group subject, evidence.detail) point
     elsewhere and are not checked."""
     refs = []
 
@@ -78,7 +78,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             add_typed(
                 "stage.assessment",
                 assessment.get("reference"),
-                ("DiagnosticReport", "ClinicalImpression"),
+                ("DiagnosticReport", "ClinicalImpression", "Observation"),
             )
     for note in document.get("note") or []:
         add_typed(

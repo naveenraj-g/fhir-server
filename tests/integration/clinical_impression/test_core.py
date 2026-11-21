@@ -322,8 +322,8 @@ async def test_create_investigation_items_are_checked_for_resources_here(
                     {"reference": f"DiagnosticReport/{report}"},
                     {"reference": f"RiskAssessment/{risk}"},
                     {"reference": f"FamilyMemberHistory/{history}"},
-                    {"reference": "Observation/999999"},  # not rebuilt: stored as sent
-                    {"reference": "Media/999999"},
+                    {"reference": "Observation/160005"},
+                    {"reference": "Media/999999"},  # not rebuilt: stored as sent
                 ],
             }
         ],
@@ -349,7 +349,7 @@ async def test_create_finding_item_reference_is_checked_for_a_condition(
         patient,
         finding=[
             {"itemReference": {"reference": f"Condition/{condition}"}},
-            {"itemReference": {"reference": "Observation/999999"}},
+            {"itemReference": {"reference": "Observation/160005"}},
         ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
@@ -385,7 +385,7 @@ async def test_create_supporting_info_is_checked_for_resources_here(client, pati
         supportingInfo=[
             {"reference": f"Condition/{condition}"},
             {"reference": f"Patient/{patient}"},
-            {"reference": "Observation/999999"},
+            {"reference": "Observation/160005"},
             {"reference": "Questionnaire/999999"},
         ],
     )
@@ -697,3 +697,15 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_observation_references_must_exist(client, patient):
+    missing = {"reference": "Observation/999999"}
+    for body in (
+        impression_body(
+            patient, investigation=[{"code": {"text": "Labs"}, "item": [missing]}]
+        ),
+        impression_body(patient, finding=[{"itemReference": missing}]),
+        impression_body(patient, supportingInfo=[missing]),
+    ):
+        assert (await client.post(BASE + "/", json=body)).status_code == 422

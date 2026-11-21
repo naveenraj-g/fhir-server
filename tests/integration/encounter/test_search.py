@@ -131,7 +131,7 @@ async def world(client):
                     ]
                 },
                 "diagnosis": [{"condition": {"reference": f"Condition/{w['cond']}"}}],
-                "reasonReference": [{"reference": "Observation/5"}],
+                "reasonReference": [{"reference": "Observation/160005"}],
                 "basedOn": [{"reference": "ServiceRequest/80001"}],
                 "episodeOfCare": [{"reference": "EpisodeOfCare/350001"}],
                 "account": [{"reference": "Account/7"}],
@@ -563,12 +563,14 @@ async def test_diagnosis_and_reason_reference(client, world):
     assert (
         await _keys(client, world, diagnosis=f"Procedure/{cond}") == set()
     )  # the type is part of the match
-    assert await _keys(client, world, **{"reason-reference": "Observation/5"}) == {"a"}
+    assert await _keys(client, world, **{"reason-reference": "Observation/160005"}) == {
+        "a"
+    }
     assert await _keys(client, world, **{"reason-reference": f"Condition/{cond}"}) == {
         "b"
     }
     assert await _keys(
-        client, world, **{"reason-reference": f"Observation/5,Condition/{cond}"}
+        client, world, **{"reason-reference": f"Observation/160005,Condition/{cond}"}
     ) == {"a", "b"}
 
 

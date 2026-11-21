@@ -36,9 +36,9 @@ from ._shared import typed
 
 # Of the three performer targets, these are resources here (Device is not).
 _MODELED_PERFORMERS = ("Practitioner", "PractitionerRole")
-# Of the four reasonReference targets, these are resources here (Observation and
-# DocumentReference are not rebuilt yet).
-_MODELED_REASONS = ("Condition", "DiagnosticReport")
+# Of the four reasonReference targets, these are resources here (DocumentReference is not
+# rebuilt yet).
+_MODELED_REASONS = ("Condition", "Observation", "DiagnosticReport")
 _AUTHOR_TYPES = (
     "Practitioner",
     "PractitionerRole",
@@ -55,7 +55,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     `reasonReference` that is a Condition or DiagnosticReport and every note's
     `authorReference`. Absolute URLs, logical (identifier-only) references and targets that
     are not resources on this server (a Group subject, a Device performer, basedOn, parent,
-    basis, an Observation reason) point elsewhere and are not checked."""
+    basis, a DocumentReference reason) point elsewhere and are not checked."""
     refs = []
 
     def add(label, reference, resource_type):

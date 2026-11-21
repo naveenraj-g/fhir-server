@@ -1,6 +1,6 @@
 """`_revinclude=Immunization:...` declarations for the registries of the
 resources an Immunization points at (Patient, Location, Practitioner,
-PractitionerRole, Condition, DiagnosticReport).
+PractitionerRole, Condition, Observation, DiagnosticReport).
 
 Kept in one neutral module that imports the Immunization registry lazily, so
 the registries don't import each other at load (same arrangement as
@@ -70,4 +70,20 @@ def reason_immunization_revincludes(
         IncludeTarget(
             "Immunization", "reason-reference", resource_type, fetch, reverse=True
         ),
+    )
+
+
+def reaction_immunization_revincludes(key) -> tuple[IncludeTarget, ...]:
+    """Immunization:reaction — immunizations with a reaction whose detail is one of the
+    matched Observations."""
+
+    async def fetch(session, ctx, rows):
+        from app.repository.immunization.search import (
+            revinclude_immunizations_via_reaction,
+        )
+
+        return await revinclude_immunizations_via_reaction(key)(session, ctx, rows)
+
+    return (
+        IncludeTarget("Immunization", "reaction", "Observation", fetch, reverse=True),
     )

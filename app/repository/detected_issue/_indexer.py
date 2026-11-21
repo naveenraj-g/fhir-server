@@ -37,6 +37,7 @@ _MODELED_AUTHORS = ("Practitioner", "PractitionerRole")
 # Reference(Any) targets (`implicated`, `evidence.detail`) that are existence-checked on write:
 # the resources already rebuilt that an issue can involve.
 _MODELED_ANY = (
+    "Observation",
     "Patient",
     "Practitioner",
     "PractitionerRole",
@@ -62,7 +63,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     `author` (a Practitioner or PractitionerRole), every `implicated` and `evidence.detail`
     that is a rebuilt resource and every `mitigation.author`. Absolute URLs, logical
     (identifier-only) references and targets that are not resources on this server (a Device
-    author, a MedicationRequest, an Observation) point elsewhere and are not checked."""
+    author, a MedicationRequest) point elsewhere and are not checked."""
     refs = []
 
     def add(label, reference, resource_type):

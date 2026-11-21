@@ -70,6 +70,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/event-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "Observation": (
+        "app.models.observation",
+        "ObservationModel",
+        "observation_id",
+        "app.repository.observation.search",
+        "observation_search",
+    ),
     "Patient": (
         "app.models.patient",
         "PatientModel",
@@ -353,6 +360,41 @@ def _include_child(model, resource_type: str):
             ctx,
             resource_type,
             set((await session.execute(ids)).scalars().all()),
+        )
+
+    return fetch
+
+
+def _include_reaction(resource_type: str):
+    """_include=Immunization:reaction — the Observations the reactions point at."""
+
+    async def fetch(session, ctx, immunizations):
+        ids = select(_Rc.detail_id).where(
+            _Rc.immunization_pk.in_({r.id for r in immunizations}),
+            _Rc.detail_type == resource_type,
+            _Rc.detail_id.is_not(None),
+        )
+        return await _load(
+            session,
+            ctx,
+            resource_type,
+            set((await session.execute(ids)).scalars().all()),
+        )
+
+    return fetch
+
+
+def revinclude_immunizations_via_reaction(key):
+    """_revinclude=Immunization:reaction — immunizations with a reaction whose detail is
+    one of these Observations."""
+
+    async def fetch(session, ctx, rows):
+        ids = {key(r) for r in rows}
+        pks = select(_Rc.immunization_pk).where(
+            _Rc.detail_type == "Observation", _Rc.detail_id.in_(ids)
+        )
+        return await _fetch(
+            session, select(M).where(M.tenant_id == ctx.tenant_id, M.id.in_(pks))
         )
 
     return fetch
@@ -701,6 +743,12 @@ def immunization_search() -> SearchRegistry:
             ),
             *performer_includes,
             *reason_includes,
+            IncludeTarget(
+                "Immunization",
+                "reaction",
+                "Observation",
+                _include_reaction("Observation"),
+            ),
         ),
         revincludes=(
             *support_recommendation_revincludes(

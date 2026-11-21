@@ -103,7 +103,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
                 resource_type,
             )
     for reason in document.get("reasonReference") or []:
-        for resource_type in ("Condition", "Procedure"):
+        for resource_type in ("Condition", "Procedure", "Observation"):
             add("reasonReference", reason.get("reference"), resource_type)
     hospitalization = document.get("hospitalization") or {}
     for element in ("origin", "destination"):

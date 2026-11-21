@@ -2,11 +2,14 @@ import pytest
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
+from tests.helpers.observations import seed_observations
 
 # The impression's own scopes, plus the scopes the tests need to create the resources around it
 # (its subject, encounter, assessor, problems, investigations, findings and note authors) and the ones to look
 # at what points back at it.
 IMPRESSION_PERMS = [
+    "observation:create",
+    "observation:read",
     "clinical_impression:create",
     "clinical_impression:read",
     "clinical_impression:update",
@@ -55,3 +58,9 @@ def _set_permissions(client):
     )
     yield
     app.dependency_overrides[get_current_user] = make_test_user()
+
+
+@pytest.fixture(autouse=True)
+async def _seeded_observations(_set_permissions, client):
+    """The Observation ids these tests refer to (`Observation/160001`, ...) must exist."""
+    await seed_observations(client)

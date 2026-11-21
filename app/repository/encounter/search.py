@@ -132,6 +132,13 @@ _MODELED = {
         "app.repository.procedure.search",
         "procedure_search",
     ),
+    "Observation": (
+        "app.models.observation",
+        "ObservationModel",
+        "observation_id",
+        "app.repository.observation.search",
+        "observation_search",
+    ),
 }
 
 
@@ -845,7 +852,7 @@ def encounter_search() -> SearchRegistry:
             "Reason the encounter takes place (reference)",
             "Encounter.reasonReference",
             "Condition/120001",
-            chain_types=("Condition", "Procedure"),
+            chain_types=("Condition", "Procedure", "Observation"),
         ),
         column_ref(
             "service-provider",
@@ -965,6 +972,12 @@ def encounter_search() -> SearchRegistry:
                 "reason-reference",
                 "Procedure",
                 _include_child(_R, "Procedure", _R.param == "reason-reference"),
+            ),
+            IncludeTarget(
+                "Encounter",
+                "reason-reference",
+                "Observation",
+                _include_child(_R, "Observation", _R.param == "reason-reference"),
             ),
             IncludeTarget(
                 "Encounter",

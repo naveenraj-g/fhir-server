@@ -38,6 +38,7 @@ _MODELED_SUPPORT = ("Immunization", "ImmunizationEvaluation")
 # Reference(Any) `supportingPatientInformation` targets that are existence-checked on write:
 # the resources already rebuilt that a piece of patient information can be.
 _MODELED_INFORMATION = (
+    "Observation",
     "Patient",
     "Practitioner",
     "PractitionerRole",
@@ -60,7 +61,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     `patient`, `authority`, every `supportingImmunization` that is an Immunization
     and every `supportingPatientInformation` that is a rebuilt resource. Absolute
     URLs, logical (identifier-only) references and targets that are not resources on
-    this server (an ImmunizationEvaluation, an Observation) point elsewhere and are not
+    this server (an ImmunizationEvaluation) point elsewhere and are not
     checked."""
     refs = []
 

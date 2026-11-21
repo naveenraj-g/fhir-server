@@ -74,3 +74,21 @@ def encounter_report_revincludes(key) -> tuple[IncludeTarget, ...]:
             "DiagnosticReport", "encounter", "Encounter", fetch, reverse=True
         ),
     )
+
+
+def result_report_revincludes(key) -> tuple[IncludeTarget, ...]:
+    """DiagnosticReport:result — reports whose `result` includes one of the matched
+    Observations."""
+
+    async def fetch(session, ctx, rows):
+        from app.repository.diagnostic_report.search import (
+            revinclude_reports_via_reference,
+        )
+
+        return await revinclude_reports_via_reference("result", "Observation", key)(
+            session, ctx, rows
+        )
+
+    return (
+        IncludeTarget("DiagnosticReport", "result", "Observation", fetch, reverse=True),
+    )

@@ -37,14 +37,20 @@ from app.repository._content_index import (
 
 from ._shared import any_typed, typed
 
-# Of the investigation targets, these are resources here (Observation, Media, ImagingStudy and
+# Of the investigation targets, these are resources here (Media, ImagingStudy and
 # QuestionnaireResponse are not rebuilt yet).
-_MODELED_INVESTIGATIONS = ("RiskAssessment", "FamilyMemberHistory", "DiagnosticReport")
-# Of the finding.itemReference targets, only Condition is a resource here.
-_MODELED_FINDINGS = ("Condition",)
+_MODELED_INVESTIGATIONS = (
+    "Observation",
+    "RiskAssessment",
+    "FamilyMemberHistory",
+    "DiagnosticReport",
+)
+# Of the finding.itemReference targets (Condition, Observation, Media), these are resources here.
+_MODELED_FINDINGS = ("Condition", "Observation")
 # Reference(Any) `supportingInfo` targets that are existence-checked on write: the resources
 # already rebuilt that supporting information can be.
 _MODELED_INFORMATION = (
+    "Observation",
     "Patient",
     "Practitioner",
     "PractitionerRole",
@@ -80,8 +86,8 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     every `finding.itemReference` that is a Condition, every `prognosisReference`, every
     `supportingInfo` that is a rebuilt resource and every note's `authorReference`. Absolute
     URLs, logical (identifier-only) references and targets that are not resources on this
-    server (a Group subject, an Observation / Media / ImagingStudy / QuestionnaireResponse
-    investigation, an Observation / Media finding) point elsewhere and are not checked."""
+    server (a Group subject, a Media / ImagingStudy / QuestionnaireResponse investigation,
+    a Media finding) point elsewhere and are not checked."""
     refs = []
 
     def add(label, reference, resource_type):

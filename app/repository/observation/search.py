@@ -41,6 +41,17 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._diagnostic_report_revinclude import result_report_revincludes
+from app.repository._appointment_revinclude import reason_appointment_revincludes
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
+from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._procedure_revinclude import reason_procedure_revincludes
+from app.repository._immunization_revinclude import (
+    reaction_immunization_revincludes,
+    reason_immunization_revincludes,
+)
 from app.models.observation import (
     DEVICE_TYPES,
     REFERENCE_TYPES,
@@ -1126,6 +1137,16 @@ def observation_search() -> SearchRegistry:
         ),
         # Observation:has-member / :derived-from — the observations that group / derive from these.
         revincludes=(
+            *result_report_revincludes(key),
+            *reference_impression_revincludes("investigation", "Observation", key),
+            *reference_impression_revincludes("finding-ref", "Observation", key),
+            *reason_procedure_revincludes("Observation", key),
+            *reason_appointment_revincludes("Observation", key),
+            *reference_encounter_revincludes(
+                "Observation", key, params=("reason-reference",)
+            ),
+            *reaction_immunization_revincludes(key),
+            *reason_immunization_revincludes("Observation", key),
             IncludeTarget(
                 "Observation",
                 "has-member",

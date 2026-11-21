@@ -271,14 +271,15 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
 
 
 async def test_create_unmodeled_targets_are_not_checked(client):
-    """Group, Account, EpisodeOfCare, ServiceRequest, Observation ... are not resources on
+    """Group, Account, EpisodeOfCare, ServiceRequest, ImmunizationRecommendation ... are not
+    resources on
     this server: stored as sent."""
     body = encounter_body(
         subject={"reference": "Group/5"},
         episodeOfCare=[{"reference": "EpisodeOfCare/5"}],
         basedOn=[{"reference": "ServiceRequest/5"}],
         account=[{"reference": "Account/5"}],
-        reasonReference=[{"reference": "Observation/5"}],
+        reasonReference=[{"reference": "ImmunizationRecommendation/5"}],
         diagnosis=[
             {"condition": {"reference": "https://other.example.org/fhir/Procedure/5"}}
         ],
@@ -618,3 +619,10 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_reason_reference_observation_must_exist(client):
+    ok = encounter_body(reasonReference=[{"reference": "Observation/160005"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = encounter_body(reasonReference=[{"reference": "Observation/999999"}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

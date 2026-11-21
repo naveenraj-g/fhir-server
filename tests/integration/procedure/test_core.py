@@ -441,7 +441,7 @@ async def test_create_identifier_assigner_must_exist(client, patient):
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     """basedOn, a report that is not a DiagnosticReport, usedReference, focalDevice.manipulated and the
-    reasonReference types that are not rebuilt (Observation, DocumentReference) are stored as sent."""
+    reasonReference type that is not rebuilt (DocumentReference) is stored as sent."""
     body = procedure_body(
         patient,
         basedOn=[{"reference": "ServiceRequest/999999"}],
@@ -450,10 +450,7 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
             {"reference": "Composition/999999"},
         ],
         usedReference=[{"reference": "Device/999999"}],
-        reasonReference=[
-            {"reference": "Observation/999999"},
-            {"reference": "DocumentReference/999999"},
-        ],
+        reasonReference=[{"reference": "DocumentReference/999999"}],
         partOf=[{"reference": "Observation/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
@@ -773,3 +770,12 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_reason_reference_observation_must_exist(client, patient):
+    ok = procedure_body(patient, reasonReference=[{"reference": "Observation/160005"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = procedure_body(
+        patient, reasonReference=[{"reference": "Observation/999999"}]
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

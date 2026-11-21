@@ -532,8 +532,8 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"subject:Group.name": "x"}) == 400
     )  # Group is not searchable here
     assert (
-        await _status(client, **{"investigation:Observation.code": "x"}) == 400
-    )  # Observation is not built yet
+        await _status(client, **{"investigation:Media.type": "x"}) == 400
+    )  # Media is not built yet
     assert (
         await _status(client, **{"status.x": "y"}) == 400
     )  # a token cannot be chained through

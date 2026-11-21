@@ -300,7 +300,7 @@ async def test_create_reason_reference_is_checked_for_resources_here(client, pat
             {"reference": f"Condition/{condition}"},
             {"reference": f"AllergyIntolerance/{allergy}"},
             {"reference": f"DiagnosticReport/{report}"},
-            {"reference": "Observation/999999"},
+            {"reference": "Observation/160005"},
             {"reference": "QuestionnaireResponse/999999"},
             {"reference": "DocumentReference/999999"},  # not rebuilt: stored as sent
         ],
@@ -635,3 +635,10 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_reason_reference_observation_must_exist(client, patient):
+    missing = history_body(
+        patient, reasonReference=[{"reference": "Observation/999999"}]
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

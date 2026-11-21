@@ -149,6 +149,13 @@ _MODELED = {
         "app.repository.procedure.search",
         "procedure_search",
     ),
+    "Observation": (
+        "app.models.observation",
+        "ObservationModel",
+        "observation_id",
+        "app.repository.observation.search",
+        "observation_search",
+    ),
 }
 
 
@@ -713,7 +720,7 @@ def appointment_search() -> SearchRegistry:
             "Reason the appointment is to take place (resource)",
             "Appointment.reasonReference",
             "Condition/120001",
-            chain_types=("Condition", "Procedure"),
+            chain_types=("Condition", "Procedure", "Observation"),
         ),
         token(
             "service-category",
@@ -763,7 +770,7 @@ def appointment_search() -> SearchRegistry:
     actor_includes = tuple(
         IncludeTarget("Appointment", "actor", t, _include_participants(t))
         for t in _MODELED
-        if t not in ("Slot", "Condition", "Procedure")
+        if t not in ("Slot", "Condition", "Procedure", "Observation")
     )
     narrowed_includes = tuple(
         IncludeTarget("Appointment", name, t, _include_participants(t))
@@ -813,6 +820,12 @@ def appointment_search() -> SearchRegistry:
                 "reason-reference",
                 "Procedure",
                 _include_reason("Procedure"),
+            ),
+            IncludeTarget(
+                "Appointment",
+                "reason-reference",
+                "Observation",
+                _include_reason("Observation"),
             ),
         ),
         # AppointmentResponse.appointment points here (Encounter, ... add theirs when rebuilt).

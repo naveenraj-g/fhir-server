@@ -48,6 +48,10 @@ OBSERVATION_PERMS = [
     "schedule:read",
     "slot:create",
     "slot:read",
+    "detected_issue:create",
+    "detected_issue:read",
+    "immunization_recommendation:create",
+    "immunization_recommendation:read",
 ]
 
 

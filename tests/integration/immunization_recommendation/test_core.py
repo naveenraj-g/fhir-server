@@ -262,14 +262,14 @@ async def test_create_supporting_patient_information_is_checked_for_resources_he
             entry(
                 supportingPatientInformation=[
                     {"reference": f"Condition/{condition}"},
-                    {"reference": "Observation/999999"},
+                    {"reference": "Observation/160005"},
                 ]
             )
         ],
     )
     assert (
         await client.post(BASE + "/", json=ok)
-    ).status_code == 201  # an Observation is stored as sent
+    ).status_code == 201  # an existing Observation is accepted
     missing = recommendation_body(
         patient,
         recommendation=[
@@ -557,3 +557,15 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_supporting_patient_information_observation_must_exist(
+    client, patient
+):
+    missing = recommendation_body(
+        patient,
+        recommendation=[
+            entry(supportingPatientInformation=[{"reference": "Observation/999999"}])
+        ],
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
