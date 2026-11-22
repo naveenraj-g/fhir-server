@@ -186,7 +186,7 @@ async def world(client):
     w["d"] = await create_condition(
         client,
         {
-            "subject": {"reference": "Group/5"},
+            "subject": {"reference": "Group/430001"},
             "onsetString": "Childhood",
             "abatementString": "Resolved spontaneously",
             "asserter": {"identifier": {"system": "urn:who", "value": "W-1"}},
@@ -537,11 +537,11 @@ async def test_subject_is_multi_target(client, world):
         await _status(client, subject=str(world["p1"])) == 400
     )  # a bare id with two targets is ambiguous
     assert await _keys(client, world, subject=f"Patient/{world['p1']}") == {"a", "c"}
-    assert await _keys(client, world, subject="Group/5") == {
+    assert await _keys(client, world, subject="Group/430001") == {
         "d"
     }  # Group is a target, not a resource here
     assert await _keys(client, world, **{"subject:Patient": str(world["p2"])}) == {"b"}
-    assert await _keys(client, world, **{"subject:Group": "5"}) == {"d"}
+    assert await _keys(client, world, **{"subject:Group": "430001"}) == {"d"}
     assert (
         await _keys(client, world, subject=f"Group/{world['p1']}") == set()
     )  # the type is part of the match

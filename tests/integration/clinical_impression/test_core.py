@@ -243,11 +243,13 @@ async def test_create_subject_in_another_org_is_rejected(client, other_client):
     ).status_code == 422
 
 
-async def test_create_group_subject_is_not_checked(client):
-    body = {"status": "completed", "subject": {"reference": "Group/999999"}}
+async def test_create_group_subject_must_exist(client):
+    body = {"status": "completed", "subject": {"reference": "Group/430001"}}
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    assert resp.json()["subject"] == {"reference": "Group/999999"}
+    assert resp.json()["subject"] == {"reference": "Group/430001"}
+    missing = {"status": "completed", "subject": {"reference": "Group/999999"}}
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
 
 
 async def test_create_encounter_must_exist(client, patient):

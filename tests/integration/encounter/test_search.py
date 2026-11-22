@@ -165,7 +165,7 @@ async def world(client):
         encounter_body(
             "planned",
             "EMER",
-            subject={"reference": "Group/9"},
+            subject={"reference": "Group/430001"},
             period={"start": "2026-07-01T00:00:00Z"},
             length={"value": 90, "unit": "min", "system": UCUM, "code": "min"},
         ),
@@ -409,9 +409,11 @@ async def test_subject_needs_a_type(client, world):
 async def test_subject_by_type_and_id(client, world):
     assert await _keys(client, world, subject=f"Patient/{world['p1']}") == {"a"}
     assert await _keys(client, world, **{"subject:Patient": str(world["p2"])}) == {"b"}
-    assert await _keys(client, world, subject="Group/9") == {"c"}
-    assert await _keys(client, world, **{"subject:Group": "9"}) == {"c"}
-    assert await _keys(client, world, subject=f"Patient/{world['p1']},Group/9") == {
+    assert await _keys(client, world, subject="Group/430001") == {"c"}
+    assert await _keys(client, world, **{"subject:Group": "430001"}) == {"c"}
+    assert await _keys(
+        client, world, subject=f"Patient/{world['p1']},Group/430001"
+    ) == {
         "a",
         "c",
     }
@@ -438,7 +440,9 @@ async def test_patient_is_subject_narrowed_to_patients(client, world):
         "a"
     }  # a bare id works: one target
     assert await _keys(client, world, patient=f"Patient/{world['p2']}") == {"b"}
-    assert await _keys(client, world, patient="9") == set()  # Group/9 is not a Patient
+    assert (
+        await _keys(client, world, patient="9") == set()
+    )  # Group/430001 is not a Patient
     assert await _keys(client, world, **{"patient:missing": "true"}) == {"c", "d", "e"}
 
 

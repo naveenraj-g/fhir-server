@@ -315,15 +315,21 @@ async def _related_person(client) -> int:
 
 
 async def test_create_unrebuilt_reference_targets_are_not_checked(client, patient):
-    """basedOn / supportingInformation, and a reasonReference that is not a Condition,
-    point at resources this server does not rebuild: stored as sent."""
+    """supportingInformation is a Reference(Any): a type this server does not have (a
+    DocumentReference) is stored as sent. Every other target here is a rebuilt resource, so a
+    dangling one is rejected."""
     body = appointment_body(
         patient,
-        basedOn=[{"reference": "CarePlan/999999"}],
-        reasonReference=[{"reference": "ImmunizationRecommendation/999999"}],
         supportingInformation=[{"reference": "DocumentReference/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
+    for element, ref in (
+        ("basedOn", "CarePlan/999999"),
+        ("reasonReference", "ImmunizationRecommendation/999999"),
+        ("supportingInformation", "Procedure/999999"),
+    ):
+        dangling = appointment_body(patient, **{element: [{"reference": ref}]})
+        assert (await client.post(BASE + "/", json=dangling)).status_code == 422, ref
 
 
 async def test_create_reason_reference_condition_must_exist(client, patient):

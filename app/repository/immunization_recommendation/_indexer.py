@@ -27,77 +27,10 @@ from app.models.immunization_recommendation import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import any_typed, typed
-
-# Both `support` targets (Immunization, ImmunizationEvaluation) are resources here.
-_MODELED_SUPPORT = ("Immunization", "ImmunizationEvaluation")
-# Reference(Any) `supportingPatientInformation` targets that are existence-checked on write:
-# the resources already rebuilt that a piece of patient information can be.
-_MODELED_INFORMATION = (
-    "Observation",
-    "Specimen",
-    "ServiceRequest",
-    "Medication",
-    "MedicationRequest",
-    "Group",
-    "CareTeam",
-    "CarePlan",
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Procedure",
-    "DiagnosticReport",
-    "AllergyIntolerance",
-    "Immunization",
-)
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `patient`, `authority`, every `supportingImmunization` that is an Immunization
-    and every `supportingPatientInformation` that is a rebuilt resource. Absolute
-    URLs, logical (identifier-only) references and targets that are not resources on
-    this server (an ImmunizationEvaluation) point elsewhere and are not
-    checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("patient", (document.get("patient") or {}).get("reference"), "Patient")
-    add("authority", (document.get("authority") or {}).get("reference"), "Organization")
-    for recommendation in document.get("recommendation") or []:
-        recommendation = recommendation or {}
-        for ref in recommendation.get("supportingImmunization") or []:
-            parsed = typed((ref or {}).get("reference"), _MODELED_SUPPORT)
-            if parsed:
-                refs.append(("supportingImmunization", parsed[0], ref["reference"]))
-        for ref in recommendation.get("supportingPatientInformation") or []:
-            parsed = typed((ref or {}).get("reference"), _MODELED_INFORMATION)
-            if parsed:
-                refs.append(
-                    ("supportingPatientInformation", parsed[0], ref["reference"])
-                )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

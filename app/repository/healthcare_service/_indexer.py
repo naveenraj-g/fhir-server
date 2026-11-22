@@ -39,48 +39,6 @@ from ._shared import _parse_org_ref
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references")
 
 
-def organization_references(document: dict) -> list[tuple[str, str]]:
-    """(element label, relative Organization reference) for every local
-    Reference(Organization): providedBy and identifier.assigner."""
-    refs = []
-    provided_by = relative(
-        (document.get("providedBy") or {}).get("reference"), "Organization"
-    )
-    if provided_by:
-        refs.append(("providedBy", provided_by))
-    for identifier in document.get("identifier") or []:
-        ref = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if ref:
-            refs.append(("identifier.assigner", ref))
-    return refs
-
-
-def location_references(document: dict) -> list[tuple[str, str]]:
-    """(element label, relative Location reference) for every local
-    Reference(Location): location[] and coverageArea[]."""
-    refs = []
-    for element in ("location", "coverageArea"):
-        for ref in document.get(element) or []:
-            local = relative(ref.get("reference"), "Location")
-            if local:
-                refs.append((element, local))
-    return refs
-
-
-def endpoint_references(document: dict) -> list[str]:
-    """Relative `Endpoint/<id>` references in `endpoint[]` — the only shape
-    that can resolve to a local Endpoint (an absolute URL, or an endpoint
-    given only by identifier/display, is stored as sent and not checked)."""
-    refs = []
-    for ref in document.get("endpoint") or []:
-        local = relative(ref.get("reference"), "Endpoint")
-        if local:
-            refs.append(local)
-    return refs
-
-
 def index_columns(document: dict) -> dict:
     """Search columns on the healthcare_service row itself."""
     return {

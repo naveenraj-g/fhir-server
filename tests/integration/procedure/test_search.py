@@ -180,7 +180,7 @@ async def world(client):
         ),
     )
     w["d"] = await create_procedure(
-        client, {"status": "preparation", "subject": {"reference": "Group/5"}}
+        client, {"status": "preparation", "subject": {"reference": "Group/430001"}}
     )
     w["e"] = await create_procedure(
         client,
@@ -356,7 +356,7 @@ async def test_subject_is_multi_target(client, world):
         await _status(client, subject=str(world["p1"])) == 400
     )  # a bare id with two targets is ambiguous
     assert await _keys(client, world, subject=f"Patient/{world['p1']}") == {"a", "c"}
-    assert await _keys(client, world, subject="Group/5") == {"d"}
+    assert await _keys(client, world, subject="Group/430001") == {"d"}
     assert await _keys(client, world, **{"subject:Patient": str(world["p2"])}) == {"b"}
     assert (
         await _keys(client, world, subject=f"Group/{world['p1']}") == set()

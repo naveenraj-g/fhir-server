@@ -2,12 +2,15 @@ import pytest
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
+from tests.helpers.encounters import seed_encounters
 from tests.helpers.service_requests import seed_service_requests
 from tests.helpers.observations import seed_observations
 
 # The appointment's own scopes, plus the scopes the tests need to create the
 # resources an Appointment points at (patient, practitioner, location, ...).
 APPOINTMENT_PERMS = [
+    "encounter:create",
+    "encounter:read",
     "service_request:create",
     "service_request:read",
     "observation:create",
@@ -58,3 +61,9 @@ async def _seeded_observations(_set_permissions, client):
 async def _seeded_service_requests(_set_permissions, client):
     """The ServiceRequest ids these tests refer to (`ServiceRequest/80001`, ...) must exist."""
     await seed_service_requests(client)
+
+
+@pytest.fixture(autouse=True)
+async def _seeded_encounters(_set_permissions, client):
+    """The Encounter id these tests refer to (`Encounter/20001`) must exist."""
+    await seed_encounters(client)

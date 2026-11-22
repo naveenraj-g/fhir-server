@@ -229,7 +229,14 @@ async def test_create_location_subject_is_checked_but_group_and_device_are_not(c
         "subject": {"reference": "Location/999999"},
     }
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
-    for stored_as_sent in ("Group/5", "Device/5"):
+    # a Group is checked (Group/430001 is seeded); a Device is not rebuilt: stored as sent
+    group_missing = {
+        "status": "final",
+        "code": {"text": "x"},
+        "subject": {"reference": "Group/999999"},
+    }
+    assert (await client.post(BASE + "/", json=group_missing)).status_code == 422
+    for stored_as_sent in ("Group/430001", "Device/5"):
         body = {
             "status": "final",
             "code": {"text": "x"},

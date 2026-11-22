@@ -30,62 +30,10 @@ from app.models.allergy_intolerance import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import typed
-
-# Annotation.author[x] reference targets in R4.
-_NOTE_AUTHOR_TYPES = ("Practitioner", "Patient", "RelatedPerson", "Organization")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `patient`, `encounter`, `recorder`, `asserter`, and the author of every note
-    (top level and per reaction). Absolute URLs and logical (identifier-only)
-    references point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, reference, allowed):
-        parsed = typed(reference, allowed)
-        if parsed:
-            refs.append((label, parsed[0], reference))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("patient", (document.get("patient") or {}).get("reference"), "Patient")
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add_typed(
-        "recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES
-    )
-    add_typed(
-        "asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES
-    )
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference",
-            (note.get("authorReference") or {}).get("reference"),
-            _NOTE_AUTHOR_TYPES,
-        )
-    for reaction in document.get("reaction") or []:
-        for note in reaction.get("note") or []:
-            add_typed(
-                "reaction.note.authorReference",
-                (note.get("authorReference") or {}).get("reference"),
-                _NOTE_AUTHOR_TYPES,
-            )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

@@ -3,19 +3,13 @@ from sqlalchemy import select
 from app.core.logging import get_logger
 from app.models.healthcare_service import HealthcareServiceModel
 
+from app.repository._reference_check import validate_local_references
 from ._indexer import (
     INDEX_RELATIONSHIPS,
     index_columns,
-    endpoint_references,
     index_rows,
-    location_references,
-    organization_references,
 )
 from ._shared import (
-    _parse_endpoint_ref,
-    _parse_location_ref,
-    _parse_org_ref,
-    _validate_reference,
     _with_relationships,
 )
 
@@ -27,22 +21,6 @@ _SERVER_MANAGED = ("resourceType", "id", "meta")
 
 def _storable(document: dict) -> dict:
     return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
-
-
-async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
-    """Existence-check every relative local reference in the document —
-    Reference(Organization) in providedBy / identifier.assigner and
-    Reference(Location) in location[] / coverageArea[] and Reference(Endpoint)
-    in endpoint[] — scoped to the caller's org; 422 if one doesn't resolve."""
-    for label, ref in organization_references(document):
-        ref_type, ref_id = _parse_org_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, label)
-    for label, ref in location_references(document):
-        ref_type, ref_id = _parse_location_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, label)
-    for ref in endpoint_references(document):
-        ref_type, ref_id = _parse_endpoint_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, "endpoint")
 
 
 class _FullMixin:
@@ -57,7 +35,7 @@ class _FullMixin:
         created_by: str | None = None,
     ) -> HealthcareServiceModel:
         async with self.session_factory() as session:
-            await _validate_local_references(session, org_id, document)
+            await validate_local_references(session, org_id, document)
             healthcare_service = HealthcareServiceModel(
                 tenant_id=org_id,
                 created_by=created_by,
@@ -95,7 +73,7 @@ class _FullMixin:
             if not healthcare_service:
                 return None
 
-            await _validate_local_references(
+            await validate_local_references(
                 session, healthcare_service.tenant_id, document
             )
 

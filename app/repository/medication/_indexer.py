@@ -25,46 +25,12 @@ from app.models.medication import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import ref_type_and_id, typed
 
 _STATUSES = {m.value for m in MedicationStatus}
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local reference that must
-    exist in the caller's org on write: `identifier.assigner`, `manufacturer` (an
-    Organization) and every `ingredient.itemReference` that is a Medication. Absolute URLs,
-    logical (identifier-only) references and targets that are not resources on this server (a
-    Substance ingredient) point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add(
-        "manufacturer",
-        (document.get("manufacturer") or {}).get("reference"),
-        "Organization",
-    )
-    for ingredient in document.get("ingredient") or []:
-        add(
-            "ingredient.itemReference",
-            ((ingredient or {}).get("itemReference") or {}).get("reference"),
-            "Medication",
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

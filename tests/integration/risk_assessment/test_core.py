@@ -112,7 +112,7 @@ async def test_create_keeps_elements_nothing_searches_on(client, patient):
     assert data["status"] == "final"
     assert data["basedOn"] == {"reference": "ServiceRequest/80001"} and data[
         "parent"
-    ] == {"reference": "Procedure/100001"}
+    ] == {"reference": "MedicationAdministration/580001"}
     assert data["code"]["coding"][0]["code"] == "709510001"
     assert data["reasonCode"] == [{"text": "Family history of heart disease"}]
     assert data["basis"] == [{"reference": "Observation/160002"}]
@@ -266,11 +266,13 @@ async def test_create_subject_in_another_org_is_rejected(client, other_client):
     ).status_code == 422
 
 
-async def test_create_group_subject_is_not_checked(client):
-    body = {"status": "final", "subject": {"reference": "Group/999999"}}
+async def test_create_group_subject_must_exist(client):
+    body = {"status": "final", "subject": {"reference": "Group/430001"}}
     resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    assert resp.json()["subject"] == {"reference": "Group/999999"}
+    assert resp.json()["subject"] == {"reference": "Group/430001"}
+    missing = {"status": "final", "subject": {"reference": "Group/999999"}}
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
 
 
 async def test_create_encounter_and_condition_must_exist(client, patient):
@@ -342,15 +344,25 @@ async def test_create_reason_reference_is_checked_for_resources_here(client, pat
         assert resp.status_code == 422, (missing, resp.text)
 
 
-async def test_create_reference_any_elements_are_not_checked(client, patient):
-    """basedOn, parent and basis are Reference(Any): stored as sent."""
-    body = assessment_body(
+async def test_create_reference_any_elements_are_checked_for_rebuilt_types(
+    client, patient
+):
+    """basedOn, parent and basis are Reference(Any): a rebuilt type must exist, a type this
+    server does not have (a Task, a MedicationAdministration) is stored as sent."""
+    stored = assessment_body(
         patient,
-        basedOn={"reference": "ServiceRequest/999999"},
-        parent={"reference": "Procedure/999999"},
-        basis=[{"reference": "Observation/999999"}],
+        basedOn={"reference": "Task/999999"},
+        parent={"reference": "MedicationAdministration/999999"},
+        basis=[{"reference": "Task/999998"}],
     )
-    assert (await client.post(BASE + "/", json=body)).status_code == 201
+    assert (await client.post(BASE + "/", json=stored)).status_code == 201
+    for element, ref in (
+        ("basedOn", {"reference": "ServiceRequest/999999"}),
+        ("parent", {"reference": "Procedure/999999"}),
+        ("basis", [{"reference": "Observation/999999"}]),
+    ):
+        body = assessment_body(patient, **{element: ref})
+        assert (await client.post(BASE + "/", json=body)).status_code == 422, element
 
 
 async def test_create_note_author_is_checked(client, patient):

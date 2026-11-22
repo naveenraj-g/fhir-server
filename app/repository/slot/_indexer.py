@@ -23,7 +23,6 @@ from app.models.slot import TOKEN_PARAMS, SlotIdentifier, SlotStatus, SlotToken
 from app.repository._content_index import (
     identifier_rows,
     reference_columns,
-    relative,
     type_rows,
 )
 
@@ -31,24 +30,6 @@ from ._shared import _parse_schedule_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: the Schedule and
-    identifier.assigner. An absolute URL or a logical (identifier-only)
-    reference points elsewhere and isn't checked."""
-    refs = []
-    local = relative((document.get("schedule") or {}).get("reference"), "Schedule")
-    if local:
-        refs.append(("schedule", "Schedule", local))
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    return refs
 
 
 def _instant(value) -> datetime | None:

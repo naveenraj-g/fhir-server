@@ -70,7 +70,7 @@ def full_body(
             }
         ],
         basedOn={"reference": "ServiceRequest/80001"},
-        parent={"reference": "Procedure/100001"},
+        parent={"reference": "MedicationAdministration/580001"},
         method={
             "coding": [
                 {"system": SCT, "code": "225338004", "display": "Risk assessment"}

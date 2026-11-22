@@ -23,74 +23,11 @@ from app.models.group import (
     GroupToken,
     GroupType,
 )
-from app.repository._content_index import identifier_rows, relative, type_rows
+from app.repository._content_index import identifier_rows, type_rows
 
 from ._shared import typed
 
 _TYPES = {m.value for m in GroupType}
-# Of the seven member.entity targets, these are resources here (Device and Substance are not).
-_MODELED_MEMBERS = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "Medication",
-    "Group",
-)
-# characteristic.valueReference is a Reference(Any): these rebuilt resources are existence-checked.
-_MODELED_ANY = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Medication",
-    "MedicationRequest",
-    "Group",
-    "CareTeam",
-    "CarePlan",
-    "Encounter",
-    "Condition",
-    "Observation",
-)
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local reference that must
-    exist in the caller's org on write: `identifier.assigner`, `managingEntity`, every
-    `member.entity` that is a Patient, Practitioner, PractitionerRole, Medication or Group, and
-    every `characteristic.valueReference` that is a rebuilt resource. Absolute URLs, logical
-    (identifier-only) references and targets that are not resources on this server (a Device or
-    Substance member) point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, ref, allowed):
-        parsed = typed((ref or {}).get("reference"), allowed)
-        if parsed:
-            refs.append((label, parsed[0], ref["reference"]))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add_typed("managingEntity", document.get("managingEntity"), MANAGING_ENTITY_TYPES)
-    for member in document.get("member") or []:
-        add_typed("member.entity", (member or {}).get("entity"), _MODELED_MEMBERS)
-    for characteristic in document.get("characteristic") or []:
-        add_typed(
-            "characteristic.valueReference",
-            (characteristic or {}).get("valueReference"),
-            _MODELED_ANY,
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

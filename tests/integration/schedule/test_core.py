@@ -26,7 +26,13 @@ from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.assertions import assert_operation_outcome
 from tests.integration.schedule.conftest import SCHEDULE_PERMS
+from tests.integration.patient.support import create_patient
+from tests.integration.related_person.support import (
+    create_related_person,
+    related_person_body,
+)
 from tests.integration.schedule.support import (
+    EXTERNAL_PATIENT,
     BASE,
     FULL,
     MINIMAL,
@@ -74,6 +80,8 @@ async def test_create_minimal(client):
 
 
 async def test_create_full_round_trip_with_every_kind_of_actor(client):
+    patient = await create_patient(client)
+    related = await create_related_person(client, related_person_body(patient))
     body = {
         **FULL,
         "actor": [
@@ -83,8 +91,8 @@ async def test_create_full_round_trip_with_every_kind_of_actor(client):
                 "reference": f"HealthcareService/{await create_healthcare_service(client)}"
             },
             {"reference": f"Location/{await create_location(client)}"},
-            {"reference": "Patient/77"},
-            {"reference": "RelatedPerson/9"},
+            {"reference": f"Patient/{patient}"},
+            {"reference": f"RelatedPerson/{related}"},
             {"reference": "Device/5"},
         ],
     }
@@ -169,14 +177,23 @@ async def test_create_identifier_assigner_must_exist(client):
     assert (await client.post(BASE + "/", json=body)).status_code == 422
 
 
-async def test_create_actor_of_an_unmodeled_type_is_not_checked(client):
-    """Patient / RelatedPerson / Device aren't resources on this server, so
-    there is nothing to resolve: the reference is stored as sent."""
-    for ref in ("Patient/999999", "RelatedPerson/999999", "Device/999999"):
+async def test_create_patient_and_related_person_actors_must_exist_a_device_is_not_checked(
+    client,
+):
+    """A Patient / RelatedPerson actor is a resource here, so it must exist; a Device is not a
+    resource on this server, so there is nothing to resolve: stored as sent."""
+    patient = await create_patient(client)
+    related = await create_related_person(client, related_person_body(patient))
+    for ref in (f"Patient/{patient}", f"RelatedPerson/{related}", "Device/999999"):
         resp = await client.post(
             BASE + "/", json={**MINIMAL, "actor": [{"reference": ref}]}
         )
         assert resp.status_code == 201, (ref, resp.text)
+    for missing in ("Patient/999999", "RelatedPerson/999999"):
+        resp = await client.post(
+            BASE + "/", json={**MINIMAL, "actor": [{"reference": missing}]}
+        )
+        assert resp.status_code == 422, (missing, resp.text)
 
 
 async def test_create_absolute_and_logical_actors_not_resolved(client):
@@ -294,18 +311,19 @@ async def test_patch_planning_horizon_reindexes_the_date_search(client):
 
 async def test_patch_actor_list_replaced_and_reindexed(client):
     prac = await create_practitioner(client)
+    patient = await create_patient(client)
     sched = await create_schedule(
-        client, {**MINIMAL, "actor": [{"reference": "Patient/77"}]}
+        client, {**MINIMAL, "actor": [{"reference": f"Patient/{patient}"}]}
     )
     assert sched in _ids(
-        (await client.get(BASE + "/", params={"actor": "Patient/77"})).json()
+        (await client.get(BASE + "/", params={"actor": f"Patient/{patient}"})).json()
     )
     resp = await client.patch(
         f"{BASE}/{sched}", json={"actor": [{"reference": f"Practitioner/{prac}"}]}
     )
     assert resp.json()["actor"] == [{"reference": f"Practitioner/{prac}"}]
     assert sched not in _ids(
-        (await client.get(BASE + "/", params={"actor": "Patient/77"})).json()
+        (await client.get(BASE + "/", params={"actor": f"Patient/{patient}"})).json()
     )
     assert sched in _ids(
         (await client.get(BASE + "/", params={"actor": f"Practitioner/{prac}"})).json()
@@ -362,7 +380,7 @@ async def test_delete(client):
         (await client.get(BASE + "/", params={"identifier": "S-1001"})).json()
     )
     assert sched not in _ids(
-        (await client.get(BASE + "/", params={"actor": "Patient/77"})).json()
+        (await client.get(BASE + "/", params={"actor": EXTERNAL_PATIENT})).json()
     )
 
 

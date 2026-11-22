@@ -3,15 +3,13 @@ from sqlalchemy import select
 from app.core.logging import get_logger
 from app.models.endpoint import EndpointModel
 
+from app.repository._reference_check import validate_local_references
 from ._indexer import (
     INDEX_RELATIONSHIPS,
     index_columns,
     index_rows,
-    organization_references,
 )
 from ._shared import (
-    _parse_org_ref,
-    _validate_reference,
     _with_relationships,
 )
 
@@ -23,15 +21,6 @@ _SERVER_MANAGED = ("resourceType", "id", "meta")
 
 def _storable(document: dict) -> dict:
     return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
-
-
-async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
-    """Existence-check every relative Reference(Organization) in the
-    document (managingOrganization, identifier.assigner), scoped to the
-    caller's org; 422 if one doesn't resolve."""
-    for label, ref in organization_references(document):
-        ref_type, ref_id = _parse_org_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, label)
 
 
 class _FullMixin:
@@ -46,7 +35,7 @@ class _FullMixin:
         created_by: str | None = None,
     ) -> EndpointModel:
         async with self.session_factory() as session:
-            await _validate_local_references(session, org_id, document)
+            await validate_local_references(session, org_id, document)
             endpoint = EndpointModel(
                 tenant_id=org_id,
                 created_by=created_by,
@@ -81,7 +70,7 @@ class _FullMixin:
             if not endpoint:
                 return None
 
-            await _validate_local_references(session, endpoint.tenant_id, document)
+            await validate_local_references(session, endpoint.tenant_id, document)
 
             endpoint.content = _storable(document)
             for column, value in index_columns(document).items():

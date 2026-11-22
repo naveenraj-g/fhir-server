@@ -27,63 +27,12 @@ from app.models.care_team import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import typed
 
 _STATUSES = {m.value for m in CareTeamStatus}
-# Annotation.author[x] reference targets in R4.
-_NOTE_AUTHOR_TYPES = ("Practitioner", "Patient", "RelatedPerson", "Organization")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local reference that must
-    exist in the caller's org on write: `identifier.assigner`, `subject` (a Patient or Group),
-    `encounter`, every `participant.member` (Practitioner, PractitionerRole, RelatedPerson,
-    Patient, Organization or CareTeam) and `participant.onBehalfOf`, `reasonReference`
-    (Condition), every `managingOrganization` and every note's `authorReference`. Absolute
-    URLs and logical (identifier-only) references point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, ref, allowed):
-        parsed = typed((ref or {}).get("reference"), allowed)
-        if parsed:
-            refs.append((label, parsed[0], ref["reference"]))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add_typed("subject", document.get("subject"), SUBJECT_TYPES)
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    for participant in document.get("participant") or []:
-        participant = participant or {}
-        add_typed("participant.member", participant.get("member"), PARTICIPANT_TYPES)
-        add(
-            "participant.onBehalfOf",
-            (participant.get("onBehalfOf") or {}).get("reference"),
-            "Organization",
-        )
-    for ref in document.get("reasonReference") or []:
-        add("reasonReference", (ref or {}).get("reference"), "Condition")
-    for ref in document.get("managingOrganization") or []:
-        add("managingOrganization", (ref or {}).get("reference"), "Organization")
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference",
-            (note or {}).get("authorReference"),
-            _NOTE_AUTHOR_TYPES,
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

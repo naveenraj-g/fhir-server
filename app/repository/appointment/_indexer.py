@@ -28,48 +28,12 @@ from app.models.appointment import (
     AppointmentStatus,
     AppointmentToken,
 )
-from app.repository._content_index import identifier_rows, relative, type_rows
+from app.repository._content_index import identifier_rows, type_rows
 
-from ._shared import MODELED_ACTOR_TYPES, actor_type_and_id, ref_type_and_id
+from ._shared import actor_type_and_id, ref_type_and_id
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references", "participants")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    every Slot in `slot`, and every participant actor of a type this server
-    models. Absolute URLs, logical (identifier-only) references and actors of
-    a type that isn't a resource here (RelatedPerson, Device) point elsewhere
-    and aren't checked; neither are basedOn / reasonReference /
-    supportingInformation, which target resources this server doesn't rebuild."""
-    refs = []
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    for based_on in document.get("basedOn") or []:
-        local = relative((based_on or {}).get("reference"), "ServiceRequest")
-        if local:
-            refs.append(("basedOn", "ServiceRequest", local))
-    for slot in document.get("slot") or []:
-        local = relative(slot.get("reference"), "Slot")
-        if local:
-            refs.append(("slot", "Slot", local))
-    for reason in document.get("reasonReference") or []:
-        for resource_type in ("Condition", "Procedure", "Observation"):
-            local = relative(reason.get("reference"), resource_type)
-            if local:
-                refs.append(("reasonReference", resource_type, local))
-    for participant in document.get("participant") or []:
-        actor = participant.get("actor") or {}
-        parsed = actor_type_and_id(actor.get("reference"))
-        if parsed and parsed[0] in MODELED_ACTOR_TYPES:
-            refs.append(("participant.actor", parsed[0], actor["reference"]))
-    return refs
 
 
 def _instant(value) -> datetime | None:

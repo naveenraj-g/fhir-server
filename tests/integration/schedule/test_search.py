@@ -11,6 +11,7 @@ and POST _search.
 
 import pytest
 
+from tests.integration.patient.support import create_patient
 from tests.integration.schedule.support import (
     BASE,
     CAT,
@@ -34,6 +35,7 @@ async def world(client):
     """Practitioner, role, service and location actors, and four schedules
     with distinct, searchable values. Returns {key: public id}."""
     w = {}
+    w["patient"] = await create_patient(client)
     w["prac"] = await create_practitioner(client, "Careful", "Adam")
     w["role"] = await create_practitioner_role(client)
     w["svc"] = await create_healthcare_service(client, "Cardiology Clinic")
@@ -120,7 +122,7 @@ async def world(client):
             "planningHorizon": {"start": "2026-03-01T00:00:00Z"},  # still going
             "serviceCategory": [{"text": "Locum cover"}],
             "actor": [
-                {"reference": "Patient/77"},
+                {"reference": f"Patient/{w['patient']}"},
                 {"reference": "https://other.example.org/fhir/Device/5"},
                 {"identifier": {"system": "urn:device", "value": "D-9"}},
             ],
@@ -364,9 +366,10 @@ async def test_actor_the_type_is_part_of_the_match(client, world):
 
 
 async def test_actor_of_types_that_are_not_resources_here_still_search(client, world):
-    assert await _found(client, world, actor="Patient/77") == {"cover"}
-    assert await _found(client, world, actor="Patient/78") == set()
-    assert await _found(client, world, **{"actor:Patient": "77"}) == {"cover"}
+    patient = world["patient"]
+    assert await _found(client, world, actor=f"Patient/{patient}") == {"cover"}
+    assert await _found(client, world, actor="Patient/999999") == set()
+    assert await _found(client, world, **{"actor:Patient": str(patient)}) == {"cover"}
     assert (
         await _found(client, world, actor="Device/5") == set()
     )  # only its absolute URL was stored
@@ -399,7 +402,9 @@ async def test_actor_missing_and_rejected_type_modifier(client, world):
         await client.get(BASE + "/", params={"actor:Organization": "1"})
     ).status_code == 400
     assert (
-        await client.get(BASE + "/", params={"actor:not": "Patient/77"})
+        await client.get(
+            BASE + "/", params={"actor:not": f"Patient/{world['patient']}"}
+        )
     ).status_code == 400
 
 
@@ -510,11 +515,11 @@ async def test_revinclude_schedules_from_every_actor_resource(client, world):
 
 
 async def test_revinclude_matches_the_actor_type_not_just_the_number(client, world):
-    """A Schedule whose *Patient* actor has number N must not be pulled in for
-    a Location that happens to have id N."""
+    """A Schedule whose *Device* actor (not a resource here, so stored as sent) has number N must
+    not be pulled in for a Location that happens to have id N."""
     loc = world["loc"]
     patient_schedule = await create_schedule(
-        client, {"actor": [{"reference": f"Patient/{loc}"}]}
+        client, {"actor": [{"reference": f"Device/{loc}"}]}
     )
     bundle = await _search(
         client,
@@ -525,7 +530,7 @@ async def test_revinclude_matches_the_actor_type_not_just_the_number(client, wor
         ("Schedule", str(world["clinic"]))
     }  # only the real Location actor
     assert str(patient_schedule) not in {i for _t, i in _included(bundle)}
-    assert patient_schedule in _ids(await _search(client, {"actor": f"Patient/{loc}"}))
+    assert patient_schedule in _ids(await _search(client, {"actor": f"Device/{loc}"}))
 
 
 # ── _sort / paging / totals ──────────────────────────────────────────────────
@@ -656,6 +661,6 @@ async def test_post_search_form_encoded_and_combined_with_query_string(client, w
     )
     assert _ids(resp.json()) == set()
     resp = await client.post(
-        BASE + "/_search", content="actor=Patient/77", headers=form
+        BASE + "/_search", content=f"actor=Patient/{world['patient']}", headers=form
     )
     assert _ids(resp.json()) == {world["cover"]}

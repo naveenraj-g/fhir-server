@@ -20,6 +20,10 @@ SCHEDULE_PERMS = [
     "healthcare_service:read",
     "location:create",
     "location:read",
+    "patient:create",
+    "patient:read",
+    "related_person:create",
+    "related_person:read",
 ]
 
 

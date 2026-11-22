@@ -18,7 +18,6 @@ from __future__ import annotations
 from functools import partial
 
 from app.models.procedure import (
-    ACTOR_TYPES,
     PERFORMER_TYPES,
     SUBJECT_TYPES,
     ProcedureIdentifier,
@@ -31,87 +30,10 @@ from app.models.procedure import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import ref_type_and_id, typed
-
-# Annotation.author[x] reference targets in R4.
-_NOTE_AUTHOR_TYPES = ("Practitioner", "Patient", "RelatedPerson", "Organization")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `subject` (when a Patient), `encounter`, `location`, `recorder`, `asserter`,
-    every performer's actor (of a type that is a resource here) and onBehalfOf,
-    `partOf` (Procedure), `reasonReference` (Condition / Procedure / DiagnosticReport / Observation), `report` (DiagnosticReport),
-    `complicationDetail` (Condition) and the author of every note. Absolute URLs,
-    logical (identifier-only) references and targets that are not resources on
-    this server (a Group subject, a Device, a CarePlan basedOn, report, usedReference, ...)
-    point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, reference, allowed):
-        parsed = typed(reference, allowed)
-        if parsed:
-            refs.append((label, parsed[0], reference))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("subject", (document.get("subject") or {}).get("reference"), "Patient")
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add("location", (document.get("location") or {}).get("reference"), "Location")
-    add_typed(
-        "recorder", (document.get("recorder") or {}).get("reference"), ACTOR_TYPES
-    )
-    add_typed(
-        "asserter", (document.get("asserter") or {}).get("reference"), ACTOR_TYPES
-    )
-    for performer in document.get("performer") or []:
-        add_typed(
-            "performer.actor",
-            (performer.get("actor") or {}).get("reference"),
-            tuple(t for t in PERFORMER_TYPES if t != "Device"),
-        )
-        add(
-            "performer.onBehalfOf",
-            (performer.get("onBehalfOf") or {}).get("reference"),
-            "Organization",
-        )
-    for based_on in document.get("basedOn") or []:
-        add_typed(
-            "basedOn", (based_on or {}).get("reference"), ("CarePlan", "ServiceRequest")
-        )
-    for part_of in document.get("partOf") or []:
-        add("partOf", part_of.get("reference"), "Procedure")
-    for reason in document.get("reasonReference") or []:
-        add_typed(
-            "reasonReference",
-            reason.get("reference"),
-            ("Condition", "Procedure", "DiagnosticReport", "Observation"),
-        )
-    for report in document.get("report") or []:
-        add("report", report.get("reference"), "DiagnosticReport")
-    for detail in document.get("complicationDetail") or []:
-        add("complicationDetail", detail.get("reference"), "Condition")
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference",
-            (note.get("authorReference") or {}).get("reference"),
-            _NOTE_AUTHOR_TYPES,
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

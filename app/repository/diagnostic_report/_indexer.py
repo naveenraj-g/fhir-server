@@ -30,59 +30,10 @@ from app.models.diagnostic_report import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import ref_type_and_id, typed
-
-# All four performer / resultsInterpreter targets are resources here.
-_MODELED_PERFORMERS = ("Practitioner", "PractitionerRole", "Organization", "CareTeam")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `subject` (a Patient or a Location), `encounter`, and every `performer` /
-    `resultsInterpreter` that is a Practitioner, PractitionerRole, Organization or CareTeam, and
-    every `result` (an Observation), `specimen` (a Specimen) and `basedOn` that is a ServiceRequest.
-    Absolute URLs, logical (identifier-only) references and targets that are not
-    resources on this server (a Group or Device subject, a NutritionOrder basedOn,
-    media, imagingStudy) point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    subject = (document.get("subject") or {}).get("reference")
-    add("subject", subject, "Patient")
-    add("subject", subject, "Location")
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    for element in ("performer", "resultsInterpreter"):
-        for ref in document.get(element) or []:
-            parsed = typed(ref.get("reference"), _MODELED_PERFORMERS)
-            if parsed:
-                refs.append((element, parsed[0], ref["reference"]))
-    for element, target in (
-        ("result", "Observation"),
-        ("specimen", "Specimen"),
-        ("basedOn", "ServiceRequest"),
-        ("basedOn", "MedicationRequest"),
-        ("basedOn", "CarePlan"),
-    ):
-        for ref in document.get(element) or []:
-            parsed = typed((ref or {}).get("reference"), (target,))
-            if parsed:
-                refs.append((element, parsed[0], ref["reference"]))
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

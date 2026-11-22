@@ -112,7 +112,7 @@ def full_body(
         partOf=[{"reference": f"Procedure/{procedure_id}"}],
         category=[concept(CATEGORY, "vital-signs", "Vital Signs")],
         code=loinc("85354-9", "Blood pressure panel"),
-        focus=[{"reference": "Condition/999999"}],
+        focus=[{"reference": "Task/999999"}],
         encounter={"reference": f"Encounter/{encounter_id}"},
         effectiveDateTime="2023-01-15T09:30:00Z",
         issued="2023-01-15T09:35:00Z",

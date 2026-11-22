@@ -33,11 +33,10 @@ from app.models.encounter import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
-from ._shared import MODELED_PARTICIPANT_TYPES, ref_type_and_id, typed
+from ._shared import ref_type_and_id, typed
 
 
 def _elements(document: dict, path: str) -> list:
@@ -51,74 +50,6 @@ def _elements(document: dict, path: str) -> list:
             nxt.extend(item if isinstance(item, list) else [item])
         values = nxt
     return [v for v in values if v is not None]
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    subject (when a Patient), partOf, serviceProvider, appointment[],
-    participant.individual (Practitioner / PractitionerRole), location.location,
-    and hospitalization.origin / destination / preAdmissionIdentifier.assigner.
-    Absolute URLs, logical (identifier-only) references and targets that are
-    not resources on this server (Group, RelatedPerson, Account, EpisodeOfCare,
-    Condition, ...) point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("subject", (document.get("subject") or {}).get("reference"), "Patient")
-    for based_on in document.get("basedOn") or []:
-        add("basedOn", (based_on or {}).get("reference"), "ServiceRequest")
-    add("partOf", (document.get("partOf") or {}).get("reference"), "Encounter")
-    add(
-        "serviceProvider",
-        (document.get("serviceProvider") or {}).get("reference"),
-        "Organization",
-    )
-    for appointment in document.get("appointment") or []:
-        add("appointment", appointment.get("reference"), "Appointment")
-    for participant in document.get("participant") or []:
-        reference = (participant.get("individual") or {}).get("reference")
-        parsed = typed(reference, PARTICIPANT_TYPES)
-        if parsed and parsed[0] in MODELED_PARTICIPANT_TYPES:
-            refs.append(("participant.individual", parsed[0], reference))
-    for location in document.get("location") or []:
-        add(
-            "location.location",
-            (location.get("location") or {}).get("reference"),
-            "Location",
-        )
-    for diagnosis in document.get("diagnosis") or []:
-        for resource_type in ("Condition", "Procedure"):
-            add(
-                "diagnosis.condition",
-                (diagnosis.get("condition") or {}).get("reference"),
-                resource_type,
-            )
-    for reason in document.get("reasonReference") or []:
-        for resource_type in ("Condition", "Procedure", "Observation"):
-            add("reasonReference", reason.get("reference"), resource_type)
-    hospitalization = document.get("hospitalization") or {}
-    for element in ("origin", "destination"):
-        reference = (hospitalization.get(element) or {}).get("reference")
-        for resource_type in ("Location", "Organization"):
-            add(f"hospitalization.{element}", reference, resource_type)
-    pre_admission = hospitalization.get("preAdmissionIdentifier") or {}
-    add(
-        "hospitalization.preAdmissionIdentifier.assigner",
-        (pre_admission.get("assigner") or {}).get("reference"),
-        "Organization",
-    )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

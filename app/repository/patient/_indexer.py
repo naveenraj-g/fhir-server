@@ -30,13 +30,12 @@ from app.repository._content_index import (
     norms,
     period_bounds,
     reference_columns,
-    relative,
     strings,
     type_rows,
 )
 from app.schemas.enums import AddressUse, AdministrativeGender
 
-from ._shared import MODELED_TYPES, _parse_org_ref, ref_type_and_id
+from ._shared import _parse_org_ref, ref_type_and_id
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = (
@@ -47,42 +46,6 @@ INDEX_RELATIONSHIPS = (
     "communications",
     "references",
 )
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    managingOrganization, contact.organization, every generalPractitioner and
-    every link.other of a type this server models. Absolute URLs, logical
-    (identifier-only) references and RelatedPerson links point elsewhere and
-    aren't checked."""
-    refs = []
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    local = relative(
-        (document.get("managingOrganization") or {}).get("reference"), "Organization"
-    )
-    if local:
-        refs.append(("managingOrganization", "Organization", local))
-    for contact in document.get("contact") or []:
-        local = relative(
-            (contact.get("organization") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("contact.organization", "Organization", local))
-    for gp in document.get("generalPractitioner") or []:
-        parsed = ref_type_and_id(gp.get("reference"), "general-practitioner")
-        if parsed and parsed[0] in MODELED_TYPES:
-            refs.append(("generalPractitioner", parsed[0], gp["reference"]))
-    for link in document.get("link") or []:
-        parsed = ref_type_and_id((link.get("other") or {}).get("reference"), "link")
-        if parsed and parsed[0] in MODELED_TYPES:
-            refs.append(("link.other", parsed[0], link["other"]["reference"]))
-    return refs
 
 
 def _deceased(document: dict) -> bool | None:

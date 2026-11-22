@@ -32,143 +32,14 @@ from app.models.medication_request import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import typed
 
-# Of the targets of each element, these are resources here (the rest are stored as sent until
-# they are rebuilt: a Group subject, a Device / CareTeam requester or performer, CarePlan
-# basedOn, insurance, eventHistory).
-_MODELED_SUBJECTS = ("Patient",)
-_MODELED_REQUESTERS = (
-    "Practitioner",
-    "PractitionerRole",
-    "Organization",
-    "Patient",
-    "RelatedPerson",
-)
-_MODELED_PERFORMERS = (*_MODELED_REQUESTERS, "CareTeam")
-_MODELED_REPORTERS = _MODELED_REQUESTERS  # reported[x]: Patient, Practitioner, PractitionerRole, RelatedPerson, Organization
-_MODELED_BASED_ON = (
-    "MedicationRequest",
-    "ServiceRequest",
-    "ImmunizationRecommendation",
-    "CarePlan",
-)
-_MODELED_REASONS = ("Condition", "Observation")
-# Reference(Any) `supportingInformation` targets that are existence-checked on write: the
-# resources already rebuilt that supporting information can be.
-_MODELED_INFORMATION = (
-    "MedicationRequest",
-    "Group",
-    "CareTeam",
-    "CarePlan",
-    "ServiceRequest",
-    "Medication",
-    "Specimen",
-    "Observation",
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Procedure",
-    "DiagnosticReport",
-    "AllergyIntolerance",
-    "Immunization",
-    "FamilyMemberHistory",
-    "RiskAssessment",
-    "ClinicalImpression",
-)
-# Annotation.author[x] reference targets in R4.
-_NOTE_AUTHOR_TYPES = ("Practitioner", "Patient", "RelatedPerson", "Organization")
-
 _STATUSES = {m.value for m in MedicationRequestStatus}
 _INTENTS = {m.value for m in MedicationRequestIntent}
 _PRIORITIES = {m.value for m in MedicationRequestPriority}
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local reference that must
-    exist in the caller's org on write: the identifiers' assigners (the resource's and the
-    group identifier's), `subject` (a Patient), `encounter`, `requester`, `performer`,
-    `recorder`, `reported[x]`, `medicationReference`, `dispenseRequest.performer`, `basedOn`,
-    `priorPrescription`, `reasonReference` (Condition, Observation), `detectedIssue`,
-    `supportingInformation` (any rebuilt resource) and every note's `authorReference`.
-    Absolute URLs, logical (identifier-only) references and targets that are not resources on
-    this server (a Group subject, a Device / CareTeam requester or performer, CarePlan
-    basedOn, insurance, eventHistory) point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, ref, allowed):
-        parsed = typed((ref or {}).get("reference"), allowed)
-        if parsed:
-            refs.append((label, parsed[0], ref["reference"]))
-
-    def assigner(label, identifier):
-        add(
-            label,
-            ((identifier or {}).get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-
-    for identifier in document.get("identifier") or []:
-        assigner("identifier.assigner", identifier)
-    assigner("groupIdentifier.assigner", document.get("groupIdentifier"))
-    add_typed("subject", document.get("subject"), _MODELED_SUBJECTS)
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add_typed("requester", document.get("requester"), _MODELED_REQUESTERS)
-    add_typed("performer", document.get("performer"), _MODELED_PERFORMERS)
-    add_typed(
-        "recorder", document.get("recorder"), ("Practitioner", "PractitionerRole")
-    )
-    add_typed(
-        "reportedReference", document.get("reportedReference"), _MODELED_REPORTERS
-    )
-    add(
-        "medicationReference",
-        (document.get("medicationReference") or {}).get("reference"),
-        "Medication",
-    )
-    add(
-        "dispenseRequest.performer",
-        ((document.get("dispenseRequest") or {}).get("performer") or {}).get(
-            "reference"
-        ),
-        "Organization",
-    )
-    for ref in document.get("basedOn") or []:
-        add_typed("basedOn", ref, _MODELED_BASED_ON)
-    add(
-        "priorPrescription",
-        (document.get("priorPrescription") or {}).get("reference"),
-        "MedicationRequest",
-    )
-    for ref in document.get("reasonReference") or []:
-        add_typed("reasonReference", ref, _MODELED_REASONS)
-    for ref in document.get("detectedIssue") or []:
-        add("detectedIssue", (ref or {}).get("reference"), "DetectedIssue")
-    for ref in document.get("supportingInformation") or []:
-        add_typed("supportingInformation", ref, _MODELED_INFORMATION)
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference",
-            (note or {}).get("authorReference"),
-            _NOTE_AUTHOR_TYPES,
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

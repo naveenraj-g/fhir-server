@@ -4,19 +4,16 @@ from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
 from app.models.organization import OrganizationModel
 
+from app.repository._reference_check import validate_local_references
 from ._indexer import (
     INDEX_RELATIONSHIPS,
-    assigner_references,
-    endpoint_references,
     index_columns,
     index_rows,
     partof_reference,
 )
 from ._shared import (
-    _parse_endpoint_ref,
     _parse_org_ref,
     _partof_chain_contains,
-    _validate_reference,
     _with_relationships,
 )
 
@@ -33,24 +30,12 @@ def _storable(document: dict) -> dict:
 async def _validate_local_references(
     session, tenant_id: str, document: dict
 ) -> int | None:
-    """Existence-check every relative local reference in the document —
-    Reference(Organization) in partOf / identifier.assigner and
-    Reference(Endpoint) in endpoint[] — scoped to the caller's org (422 if one
-    doesn't resolve). Returns partOf's resolved public id, if any."""
-    partof_id = None
-    partof = partof_reference(document)
-    if partof:
-        ref_type, partof_id = _parse_org_ref(partof)
-        await _validate_reference(session, tenant_id, ref_type, partof_id, "partOf")
-    for ref in assigner_references(document):
-        ref_type, ref_id = _parse_org_ref(ref)
-        await _validate_reference(
-            session, tenant_id, ref_type, ref_id, "identifier.assigner"
-        )
-    for ref in endpoint_references(document):
-        ref_type, ref_id = _parse_endpoint_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, "endpoint")
-    return partof_id
+    """Existence-check every relative reference in the document (see
+    app.repository._reference_check) and return partOf's public id, if any - the caller
+    then checks the hierarchy for a cycle."""
+    await validate_local_references(session, tenant_id, document)
+    part_of = partof_reference(document)
+    return _parse_org_ref(part_of)[1] if part_of else None
 
 
 class _FullMixin:

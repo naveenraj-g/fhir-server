@@ -3,8 +3,9 @@ from sqlalchemy import select
 from app.core.logging import get_logger
 from app.models.appointment_response import AppointmentResponseModel
 
-from ._indexer import INDEX_RELATIONSHIPS, index_columns, index_rows, local_references
-from ._shared import _validate_reference, _with_relationships
+from app.repository._reference_check import validate_local_references
+from ._indexer import INDEX_RELATIONSHIPS, index_columns, index_rows
+from ._shared import _with_relationships
 
 logger = get_logger(__name__)
 
@@ -14,16 +15,6 @@ _SERVER_MANAGED = ("resourceType", "id", "meta")
 
 def _storable(document: dict) -> dict:
     return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
-
-
-async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
-    """Existence-check every relative local reference in the document
-    (identifier.assigner, appointment, an actor of a modeled type), scoped to
-    the caller's org — 422 if one does not resolve."""
-    for label, resource_type, ref in local_references(document):
-        await _validate_reference(
-            session, tenant_id, resource_type, int(ref.split("/")[1]), label
-        )
 
 
 class _FullMixin:
@@ -38,7 +29,7 @@ class _FullMixin:
         created_by: str | None = None,
     ) -> AppointmentResponseModel:
         async with self.session_factory() as session:
-            await _validate_local_references(session, org_id, document)
+            await validate_local_references(session, org_id, document)
             appointment_response = AppointmentResponseModel(
                 tenant_id=org_id,
                 created_by=created_by,
@@ -76,7 +67,7 @@ class _FullMixin:
             if not appointment_response:
                 return None
 
-            await _validate_local_references(
+            await validate_local_references(
                 session, appointment_response.tenant_id, document
             )
 

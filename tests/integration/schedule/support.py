@@ -19,9 +19,10 @@ CAT = "http://terminology.hl7.org/CodeSystem/service-category"
 TYPE = "http://terminology.hl7.org/CodeSystem/service-type"
 SCT = "http://snomed.info/sct"
 
-# R4 requires at least one actor; a Patient actor isn't a resource on this
-# server, so it is accepted without an existence check.
-MINIMAL = {"active": True, "actor": [{"reference": "Patient/77"}]}
+# R4 requires at least one actor. The default one is a Patient on another system (an absolute URL
+# is not existence-checked), so a schedule can be created without creating a patient first.
+EXTERNAL_PATIENT = "https://other.example.org/fhir/Patient/77"
+MINIMAL = {"active": True, "actor": [{"reference": EXTERNAL_PATIENT}]}
 
 FULL = {
     "resourceType": "Schedule",
@@ -48,7 +49,7 @@ FULL = {
         {"coding": [{"system": SCT, "code": "394579002", "display": "Cardiology"}]}
     ],
     "actor": [
-        {"reference": "Patient/77", "display": "A patient"},
+        {"reference": EXTERNAL_PATIENT, "display": "A patient"},
         {"reference": "Device/5"},
     ],
     "planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"},

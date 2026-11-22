@@ -28,66 +28,12 @@ from app.models.specimen import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import any_typed, typed
 
 _STATUSES = {m.value for m in SpecimenStatus}
-# Of the five subject targets, these are resources here (Group, Device and Substance are not).
-_MODELED_SUBJECTS = ("Patient", "Location")
-_AUTHOR_TYPES = ("Practitioner", "PractitionerRole", "Patient", "RelatedPerson")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local reference that must
-    exist in the caller's org on write: the identifiers' assigners (the resource's, the
-    accession's and each container's), `subject` (a Patient or Location), `collection.collector`,
-    every `parent`, every `request` (a ServiceRequest) and every note's `authorReference`. Absolute URLs, logical (identifier-only)
-    references and targets that are not resources on this server (a Group, Device or Substance
-    subject, a `processing.additive`) point elsewhere and are not
-    checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, ref, allowed):
-        parsed = typed((ref or {}).get("reference"), allowed)
-        if parsed:
-            refs.append((label, parsed[0], ref["reference"]))
-
-    def assigner(label, identifier):
-        add(
-            label,
-            ((identifier or {}).get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-
-    for identifier in document.get("identifier") or []:
-        assigner("identifier.assigner", identifier)
-    assigner("accessionIdentifier.assigner", document.get("accessionIdentifier"))
-    add_typed("subject", document.get("subject"), _MODELED_SUBJECTS)
-    add_typed(
-        "collection.collector",
-        (document.get("collection") or {}).get("collector"),
-        COLLECTOR_TYPES,
-    )
-    for ref in document.get("parent") or []:
-        add("parent", (ref or {}).get("reference"), "Specimen")
-    for ref in document.get("request") or []:
-        add("request", (ref or {}).get("reference"), "ServiceRequest")
-    for container in document.get("container") or []:
-        for identifier in (container or {}).get("identifier") or []:
-            assigner("container.identifier.assigner", identifier)
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference", (note or {}).get("authorReference"), _AUTHOR_TYPES
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

@@ -28,75 +28,10 @@ from app.models.family_member_history import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import typed
-
-# Of the six `reasonReference` targets, these are resources here (QuestionnaireResponse and
-# DocumentReference are not rebuilt yet).
-_MODELED_REASONS = (
-    "Condition",
-    "AllergyIntolerance",
-    "Observation",
-    "DiagnosticReport",
-)
-_AUTHOR_TYPES = (
-    "Practitioner",
-    "PractitionerRole",
-    "Patient",
-    "RelatedPerson",
-    "Organization",
-)
-
-
-def _notes(document: dict) -> list[dict]:
-    """Every note: the resource's own and each condition's."""
-    notes = list(document.get("note") or [])
-    for condition in document.get("condition") or []:
-        notes += (condition or {}).get("note") or []
-    return notes
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `patient`, `reasonReference` that is a Condition, AllergyIntolerance or DiagnosticReport,
-    and every note's `authorReference`. Absolute URLs, logical (identifier-only) references
-    and targets that are not resources on this server (a QuestionnaireResponse / DocumentReference reason) point
-    elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("patient", (document.get("patient") or {}).get("reference"), "Patient")
-    for ref in document.get("reasonReference") or []:
-        parsed = typed((ref or {}).get("reference"), _MODELED_REASONS)
-        if parsed:
-            refs.append(("reasonReference", parsed[0], ref["reference"]))
-    for note in _notes(document):
-        parsed = typed(
-            ((note or {}).get("authorReference") or {}).get("reference"), _AUTHOR_TYPES
-        )
-        if parsed:
-            refs.append(
-                (
-                    "note.authorReference",
-                    parsed[0],
-                    note["authorReference"]["reference"],
-                )
-            )
-    return refs
 
 
 def index_columns(document: dict) -> dict:

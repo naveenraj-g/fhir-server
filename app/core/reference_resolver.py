@@ -21,6 +21,7 @@ from app.errors.domain import BusinessRuleViolationError
 from app.models.activity_definition import ActivityDefinitionModel
 from app.models.allergy_intolerance import AllergyIntoleranceModel
 from app.models.appointment import AppointmentModel
+from app.models.appointment_response import AppointmentResponseModel
 from app.models.care_plan import CarePlanModel
 from app.models.care_team import CareTeamModel
 from app.models.clinical_impression import ClinicalImpressionModel
@@ -105,6 +106,8 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     "Slot": (SlotModel, "slot_id"),
     # Registered so AppointmentResponse.appointment's existence check works.
     "Appointment": (AppointmentModel, "appointment_id"),
+    # Registered so a reference to an AppointmentResponse is existence-checked on write.
+    "AppointmentResponse": (AppointmentResponseModel, "appointment_response_id"),
     # Encounter.partOf is self-referential, so this entry is what makes
     # that existence check work at all — same reasoning as Location's own
     # self-referential partOf entry above. Also registered so

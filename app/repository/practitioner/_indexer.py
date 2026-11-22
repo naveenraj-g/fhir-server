@@ -27,7 +27,6 @@ from app.models.practitioner import (
 from app.repository._content_index import (
     identifier_rows,
     norms,
-    relative,
     strings,
     type_rows,
 )
@@ -41,26 +40,6 @@ INDEX_RELATIONSHIPS = (
     "addresses",
     "communications",
 )
-
-
-def organization_references(document: dict) -> list[tuple[str, str]]:
-    """(element label, relative Organization reference) for every local
-    Reference(Organization) in the document — identifier.assigner and
-    qualification.issuer — so each can be existence-checked on write."""
-    refs = []
-    for identifier in document.get("identifier") or []:
-        ref = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if ref:
-            refs.append(("identifier.assigner", ref))
-    for qualification in document.get("qualification") or []:
-        ref = relative(
-            (qualification.get("issuer") or {}).get("reference"), "Organization"
-        )
-        if ref:
-            refs.append(("qualification.issuer", ref))
-    return refs
 
 
 def index_columns(document: dict) -> dict:

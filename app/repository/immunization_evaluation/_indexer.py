@@ -25,39 +25,10 @@ from app.models.immunization_evaluation import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import typed
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `patient`, `authority` and `immunizationEvent`. Absolute URLs and logical
-    (identifier-only) references point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("patient", (document.get("patient") or {}).get("reference"), "Patient")
-    add("authority", (document.get("authority") or {}).get("reference"), "Organization")
-    add(
-        "immunizationEvent",
-        (document.get("immunizationEvent") or {}).get("reference"),
-        "Immunization",
-    )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

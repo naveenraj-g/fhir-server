@@ -3,12 +3,9 @@ from sqlalchemy import select
 from app.core.logging import get_logger
 from app.models.schedule import ScheduleModel
 
-from ._indexer import INDEX_RELATIONSHIPS, index_columns, index_rows, local_references
+from app.repository._reference_check import validate_local_references
+from ._indexer import INDEX_RELATIONSHIPS, index_columns, index_rows
 from ._shared import (
-    _parse_actor_ref,
-    _parse_org_ref,
-    _validate_actor_reference,
-    _validate_reference,
     _with_relationships,
 )
 
@@ -20,21 +17,6 @@ _SERVER_MANAGED = ("resourceType", "id", "meta")
 
 def _storable(document: dict) -> dict:
     return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
-
-
-async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
-    """Existence-check every relative local reference in the document —
-    identifier.assigner and the actors of a type this server models
-    (Practitioner, PractitionerRole, HealthcareService, Location) — scoped to
-    the caller's org; 422 if one doesn't resolve. Patient / RelatedPerson /
-    Device actors aren't resources here and aren't checked."""
-    for label, resource_type, ref in local_references(document):
-        if resource_type == "Organization":
-            ref_type, ref_id = _parse_org_ref(ref)
-            await _validate_reference(session, tenant_id, ref_type, ref_id, label)
-        else:
-            ref_type, ref_id = _parse_actor_ref(ref)
-            await _validate_actor_reference(session, tenant_id, ref_type, ref_id)
 
 
 class _FullMixin:
@@ -49,7 +31,7 @@ class _FullMixin:
         created_by: str | None = None,
     ) -> ScheduleModel:
         async with self.session_factory() as session:
-            await _validate_local_references(session, org_id, document)
+            await validate_local_references(session, org_id, document)
             schedule = ScheduleModel(
                 tenant_id=org_id,
                 created_by=created_by,
@@ -84,7 +66,7 @@ class _FullMixin:
             if not schedule:
                 return None
 
-            await _validate_local_references(session, schedule.tenant_id, document)
+            await validate_local_references(session, schedule.tenant_id, document)
 
             schedule.content = _storable(document)
             for column, value in index_columns(document).items():

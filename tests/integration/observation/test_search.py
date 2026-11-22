@@ -13,6 +13,7 @@ POST _search.
 
 import pytest
 
+from tests.integration.condition.support import condition_body, create_condition
 from tests.integration.observation.support import (
     API,
     BASE,
@@ -79,6 +80,7 @@ async def world(client):
     w["p2"] = await create_patient(
         client, {"active": True, "name": [{"family": "Fairfax", "given": ["Ben"]}]}
     )
+    w["cond"] = await create_condition(client, condition_body(w["p1"]))
     w["pr"] = await create_practitioner(client)  # family "Careful"
     w["role"] = await create_practitioner_role(client)
     w["enc"] = await create_encounter(client, encounter_body())
@@ -146,7 +148,7 @@ async def world(client):
                 "coding": [{"system": SCT, "code": "8517006", "display": "Ex-smoker"}],
                 "text": "Former smoker",
             },
-            focus=[{"reference": "Condition/120001"}],
+            focus=[{"reference": f"Condition/{w['cond']}"}],
             basedOn=[{"reference": "ServiceRequest/80001"}],
         ),
     )
@@ -695,10 +697,12 @@ async def test_reference_table_parameters(client, world):
     assert await _keys(
         client, world, **{"part-of": f"Immunization/{world['imm']}"}
     ) == {"d"}
-    assert await _keys(client, world, focus="Condition/120001") == {
+    assert await _keys(client, world, focus=f"Condition/{world['cond']}") == {
         "c"
     }  # Reference(Any)
-    assert await _keys(client, world, **{"focus:Condition": "120001"}) == {"c"}
+    assert await _keys(client, world, **{"focus:Condition": str(world["cond"])}) == {
+        "c"
+    }
     assert await _keys(
         client, world, **{"has-member": f"Observation/{world['a']}"}
     ) == {"d"}
@@ -891,9 +895,7 @@ async def test_include_has_member_derived_from_and_part_of(client, world):
     assert _of_type(bundle, "Procedure", "include") == {str(world["proc"])}
     assert _of_type(bundle, "Immunization", "include") == {str(world["imm"])}
     bundle = await _search(client, _id=str(world["c"]), _include="Observation:focus")
-    assert (
-        _of_type(bundle, "Condition", "include") == set()
-    )  # Condition/120001 does not exist here: nothing to add
+    assert _of_type(bundle, "Condition", "include") == {str(world["cond"])}
 
 
 async def test_revinclude_observations_on_the_resources_they_point_at(client, world):

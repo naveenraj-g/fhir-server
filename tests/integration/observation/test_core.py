@@ -332,7 +332,14 @@ async def test_create_subject_is_checked_for_a_patient_or_location_only(client):
         "subject": {"reference": "Location/999999"},
     }
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
-    for stored in ("Group/999999", "Device/999999"):  # not rebuilt: stored as sent
+    # a Group is checked (Group/430001 is seeded); a Device is not rebuilt: stored as sent
+    group_missing = {
+        "status": "final",
+        "code": {"text": "x"},
+        "subject": {"reference": "Group/999999"},
+    }
+    assert (await client.post(BASE + "/", json=group_missing)).status_code == 422
+    for stored in ("Group/430001", "Device/999999"):
         body = {
             "status": "final",
             "code": {"text": "x"},
@@ -435,7 +442,7 @@ async def test_create_based_on_focus_and_device_are_not_checked(client, patient)
     body = observation_body(
         patient,
         basedOn=[{"reference": "DeviceRequest/999999"}],
-        focus=[{"reference": "Condition/999999"}],
+        focus=[{"reference": "Task/999999"}],
         device={"reference": "Device/999999"},
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201

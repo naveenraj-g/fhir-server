@@ -4,21 +4,16 @@ from app.core.logging import get_logger
 from app.errors.domain import BusinessRuleViolationError
 from app.models.location import LocationModel
 
+from app.repository._reference_check import validate_local_references
 from ._indexer import (
     INDEX_RELATIONSHIPS,
-    assigner_references,
-    endpoint_references,
     index_columns,
     index_rows,
-    managing_organization_reference,
     part_of_reference,
 )
 from ._shared import (
-    _parse_endpoint_ref,
     _parse_location_ref,
-    _parse_org_ref,
     _partof_chain_contains,
-    _validate_reference,
     _with_relationships,
 )
 
@@ -35,30 +30,12 @@ def _storable(document: dict) -> dict:
 async def _validate_local_references(
     session, tenant_id: str, document: dict
 ) -> int | None:
-    """Existence-check every relative local Reference in the document —
-    managingOrganization, partOf, identifier.assigner and endpoint[] — scoped to the
-    caller's org (422 if one doesn't resolve). Returns partOf's resolved
-    public id, if any. Absolute URLs aren't checked: they point elsewhere."""
-    org_ref = managing_organization_reference(document)
-    if org_ref:
-        ref_type, ref_id = _parse_org_ref(org_ref)
-        await _validate_reference(
-            session, tenant_id, ref_type, ref_id, "managingOrganization"
-        )
-    part_of_id = None
+    """Existence-check every relative reference in the document (see
+    app.repository._reference_check) and return partOf's public id, if any - the caller
+    then checks the hierarchy for a cycle."""
+    await validate_local_references(session, tenant_id, document)
     part_of = part_of_reference(document)
-    if part_of:
-        ref_type, part_of_id = _parse_location_ref(part_of)
-        await _validate_reference(session, tenant_id, ref_type, part_of_id, "partOf")
-    for ref in assigner_references(document):
-        ref_type, ref_id = _parse_org_ref(ref)
-        await _validate_reference(
-            session, tenant_id, ref_type, ref_id, "identifier.assigner"
-        )
-    for ref in endpoint_references(document):
-        ref_type, ref_id = _parse_endpoint_ref(ref)
-        await _validate_reference(session, tenant_id, ref_type, ref_id, "endpoint")
-    return part_of_id
+    return _parse_location_ref(part_of)[1] if part_of else None
 
 
 class _FullMixin:

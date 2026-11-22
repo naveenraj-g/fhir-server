@@ -250,13 +250,18 @@ async def test_create_subject_in_another_org_is_rejected(client, other_client):
     ).status_code == 422
 
 
-async def test_create_group_subject_is_stored_as_sent(client):
-    """Group is not a resource on this server, so its reference is not checked."""
+async def test_create_group_subject_must_exist(client):
     resp = await client.post(
-        BASE + "/", json={"status": "completed", "subject": {"reference": "Group/5"}}
+        BASE + "/",
+        json={"status": "completed", "subject": {"reference": "Group/430001"}},
     )
     assert resp.status_code == 201, resp.text
-    assert resp.json()["subject"] == {"reference": "Group/5"}
+    assert resp.json()["subject"] == {"reference": "Group/430001"}
+    missing = await client.post(
+        BASE + "/",
+        json={"status": "completed", "subject": {"reference": "Group/999999"}},
+    )
+    assert missing.status_code == 422
 
 
 async def test_create_encounter_and_location_must_exist(client, patient):
@@ -440,8 +445,9 @@ async def test_create_identifier_assigner_must_exist(client, patient):
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """A report that is not a DiagnosticReport, usedReference, focalDevice.manipulated and the
-    reasonReference type that is not rebuilt (DocumentReference) is stored as sent."""
+    """A report that is not a DiagnosticReport, usedReference, focalDevice.manipulated, a
+    partOf that is not a Procedure and the reasonReference type that is not rebuilt
+    (DocumentReference) are stored as sent."""
     body = procedure_body(
         patient,
         report=[
@@ -450,7 +456,7 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
         ],
         usedReference=[{"reference": "Device/999999"}],
         reasonReference=[{"reference": "DocumentReference/999999"}],
-        partOf=[{"reference": "Observation/999999"}],
+        partOf=[{"reference": "MedicationAdministration/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 

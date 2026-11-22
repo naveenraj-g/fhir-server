@@ -40,34 +40,6 @@ from ._shared import _parse_org_ref, _parse_practitioner_ref
 INDEX_RELATIONSHIPS = ("identifiers", "telecoms", "tokens", "references")
 
 
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference in the document that must exist in the caller's org on write:
-    practitioner, organization, identifier.assigner, location[],
-    healthcareService[] and endpoint[]. Absolute URLs and logical (identifier-only)
-    references point elsewhere and aren't checked."""
-    refs = []
-    for label, element, resource_type in (
-        ("practitioner", "practitioner", "Practitioner"),
-        ("organization", "organization", "Organization"),
-    ):
-        local = relative((document.get(element) or {}).get("reference"), resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    for _param, (element, resource_type) in REFERENCE_PARAMS.items():
-        for ref in document.get(element) or []:
-            local = relative(ref.get("reference"), resource_type)
-            if local:
-                refs.append((element, resource_type, local))
-    return refs
-
-
 def index_columns(document: dict) -> dict:
     """Search columns on the practitioner_role row itself."""
     period_start, period_end = period_bounds(document.get("period"))

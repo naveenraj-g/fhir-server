@@ -271,15 +271,12 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
 
 
 async def test_create_unmodeled_targets_are_not_checked(client):
-    """Group, Account, EpisodeOfCare, ServiceRequest, ImmunizationRecommendation ... are not
-    resources on
-    this server: stored as sent."""
+    """EpisodeOfCare, Account ... are not resources on this server: stored as sent. (A Group
+    subject is checked: Group/430001 is seeded.)"""
     body = encounter_body(
-        subject={"reference": "Group/5"},
+        subject={"reference": "Group/430001"},
         episodeOfCare=[{"reference": "EpisodeOfCare/5"}],
-        basedOn=[{"reference": "CarePlan/5"}],
         account=[{"reference": "Account/5"}],
-        reasonReference=[{"reference": "ImmunizationRecommendation/5"}],
         diagnosis=[
             {"condition": {"reference": "https://other.example.org/fhir/Procedure/5"}}
         ],

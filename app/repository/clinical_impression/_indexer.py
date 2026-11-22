@@ -31,116 +31,12 @@ from app.models.clinical_impression import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import any_typed, typed
 
-# Of the investigation targets, these are resources here (Media, ImagingStudy and
-# QuestionnaireResponse are not rebuilt yet).
-_MODELED_INVESTIGATIONS = (
-    "Observation",
-    "RiskAssessment",
-    "FamilyMemberHistory",
-    "DiagnosticReport",
-)
-# Of the finding.itemReference targets (Condition, Observation, Media), these are resources here.
-_MODELED_FINDINGS = ("Condition", "Observation")
-# Reference(Any) `supportingInfo` targets that are existence-checked on write: the resources
-# already rebuilt that supporting information can be.
-_MODELED_INFORMATION = (
-    "Observation",
-    "Specimen",
-    "ServiceRequest",
-    "Medication",
-    "MedicationRequest",
-    "Group",
-    "CareTeam",
-    "CarePlan",
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Procedure",
-    "DiagnosticReport",
-    "AllergyIntolerance",
-    "Immunization",
-    "FamilyMemberHistory",
-    "RiskAssessment",
-    "ClinicalImpression",
-)
-_AUTHOR_TYPES = (
-    "Practitioner",
-    "PractitionerRole",
-    "Patient",
-    "RelatedPerson",
-    "Organization",
-)
 _STATUSES = {m.value for m in ClinicalImpressionStatus}
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner, `subject`
-    (a Patient), `encounter`, `assessor`, `previous`, every `problem`, every
-    `investigation.item` that is a RiskAssessment, FamilyMemberHistory or DiagnosticReport,
-    every `finding.itemReference` that is a Condition, every `prognosisReference`, every
-    `supportingInfo` that is a rebuilt resource and every note's `authorReference`. Absolute
-    URLs, logical (identifier-only) references and targets that are not resources on this
-    server (a Group subject, a Media / ImagingStudy / QuestionnaireResponse investigation,
-    a Media finding) point elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, ref, allowed):
-        parsed = typed((ref or {}).get("reference"), allowed)
-        if parsed:
-            refs.append((label, parsed[0], ref["reference"]))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("subject", (document.get("subject") or {}).get("reference"), "Patient")
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add_typed("assessor", document.get("assessor"), ASSESSOR_TYPES)
-    add(
-        "previous",
-        (document.get("previous") or {}).get("reference"),
-        "ClinicalImpression",
-    )
-    for ref in document.get("problem") or []:
-        add_typed("problem", ref, PROBLEM_TYPES)
-    for investigation in document.get("investigation") or []:
-        for ref in (investigation or {}).get("item") or []:
-            add_typed("investigation.item", ref, _MODELED_INVESTIGATIONS)
-    for finding in document.get("finding") or []:
-        add_typed(
-            "finding.itemReference",
-            (finding or {}).get("itemReference"),
-            _MODELED_FINDINGS,
-        )
-    for ref in document.get("prognosisReference") or []:
-        add("prognosisReference", (ref or {}).get("reference"), "RiskAssessment")
-    for ref in document.get("supportingInfo") or []:
-        add_typed("supportingInfo", ref, _MODELED_INFORMATION)
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference", (note or {}).get("authorReference"), _AUTHOR_TYPES
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

@@ -352,7 +352,10 @@ async def test_create_subject_is_checked_for_a_patient_or_location_only(client):
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = {**ok, "subject": {"reference": "Location/999999"}}
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
-    for stored in ("Group/999999", "Device/999999"):  # not rebuilt: stored as sent
+    # a Group is checked (Group/430001 is seeded); a Device is not rebuilt: stored as sent
+    group_missing = {**ok, "subject": {"reference": "Group/999999"}}
+    assert (await client.post(BASE + "/", json=group_missing)).status_code == 422
+    for stored in ("Group/430001", "Device/999999"):
         body = {**ok, "subject": {"reference": stored}}
         resp = await client.post(BASE + "/", json=body)
         assert resp.status_code == 201, (stored, resp.text)

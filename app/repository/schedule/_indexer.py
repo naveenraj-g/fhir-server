@@ -26,34 +26,13 @@ from app.models.schedule import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
-from ._shared import MODELED_ACTOR_TYPES, actor_type_and_id
+from ._shared import actor_type_and_id
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "actors")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner
-    and every actor of a type this server models. Absolute URLs, logical
-    (identifier-only) references and Patient/RelatedPerson/Device actors point
-    elsewhere and aren't checked."""
-    refs = []
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    for actor in document.get("actor") or []:
-        parsed = actor_type_and_id(actor.get("reference"))
-        if parsed and parsed[0] in MODELED_ACTOR_TYPES:
-            refs.append(("actor", parsed[0], actor["reference"]))
-    return refs
 
 
 def index_columns(document: dict) -> dict:

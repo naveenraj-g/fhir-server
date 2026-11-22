@@ -20,7 +20,6 @@ from app.models.endpoint import EndpointIdentifier, EndpointPayloadType, Endpoin
 from app.repository._content_index import (
     identifier_rows,
     reference_columns,
-    relative,
     type_rows,
 )
 
@@ -28,24 +27,6 @@ from ._shared import _parse_org_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "payload_types")
-
-
-def organization_references(document: dict) -> list[tuple[str, str]]:
-    """(element label, relative Organization reference) for every local
-    Reference(Organization): managingOrganization and identifier.assigner."""
-    refs = []
-    managing = relative(
-        (document.get("managingOrganization") or {}).get("reference"), "Organization"
-    )
-    if managing:
-        refs.append(("managingOrganization", managing))
-    for identifier in document.get("identifier") or []:
-        ref = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if ref:
-            refs.append(("identifier.assigner", ref))
-    return refs
 
 
 def index_columns(document: dict) -> dict:

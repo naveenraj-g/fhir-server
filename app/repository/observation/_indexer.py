@@ -23,12 +23,7 @@ from functools import partial
 
 from app.fhir.search.values import normalize
 from app.models.observation import (
-    BASED_ON_TYPES,
-    DERIVED_FROM_TYPES,
     DEVICE_TYPES,
-    HAS_MEMBER_TYPES,
-    PART_OF_TYPES,
-    PERFORMER_TYPES,
     SUBJECT_TYPES,
     ObservationIdentifier,
     ObservationReference,
@@ -39,101 +34,12 @@ from app.models.observation import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import any_typed, typed
 
 _STATUSES = {m.value for m in ObservationStatus}
-_AUTHOR_TYPES = (
-    "Practitioner",
-    "PractitionerRole",
-    "Patient",
-    "RelatedPerson",
-    "Organization",
-)
-
-
-# The resources already rebuilt on the engine — the only targets whose existence is checked on
-# write (the others are stored as sent until they are rebuilt).
-_REBUILT = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "Organization",
-    "Location",
-    "RelatedPerson",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Procedure",
-    "DiagnosticReport",
-    "AllergyIntolerance",
-    "Immunization",
-    "ImmunizationRecommendation",
-    "ImmunizationEvaluation",
-    "FamilyMemberHistory",
-    "RiskAssessment",
-    "ClinicalImpression",
-    "DetectedIssue",
-    "Observation",
-    "Specimen",
-    "ServiceRequest",
-    "MedicationRequest",
-    "CarePlan",
-    "CareTeam",
-)
-
-
-def _registered(types: tuple[str, ...]) -> tuple[str, ...]:
-    """The targets of an element that are rebuilt resources on this server."""
-    return tuple(t for t in types if t in _REBUILT)
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local reference that must
-    exist in the caller's org on write: identifier.assigner, `subject` (a Patient or Location),
-    `encounter`, `specimen`, every `basedOn`, `partOf`, `performer`, `hasMember`, `derivedFrom` and note
-    `authorReference` whose type is a rebuilt resource. Absolute URLs, logical (identifier-only)
-    references and targets that are not rebuilt resources (a Group, Device or Specimen, an
-    ImagingStudy, a Media, a MedicationRequest, a ServiceRequest, `focus` — Reference(Any)) point
-    elsewhere and are not checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    def add_typed(label, ref, allowed):
-        parsed = typed((ref or {}).get("reference"), _registered(allowed))
-        if parsed:
-            refs.append((label, parsed[0], ref["reference"]))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add_typed("subject", document.get("subject"), SUBJECT_TYPES)
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add_typed("specimen", document.get("specimen"), ("Specimen",))
-    for element, types in (
-        ("basedOn", BASED_ON_TYPES),
-        ("partOf", PART_OF_TYPES),
-        ("performer", PERFORMER_TYPES),
-        ("hasMember", HAS_MEMBER_TYPES),
-        ("derivedFrom", DERIVED_FROM_TYPES),
-    ):
-        for ref in document.get(element) or []:
-            add_typed(element, ref, types)
-    for note in document.get("note") or []:
-        add_typed(
-            "note.authorReference", (note or {}).get("authorReference"), _AUTHOR_TYPES
-        )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

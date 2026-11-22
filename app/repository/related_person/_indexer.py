@@ -28,31 +28,12 @@ from app.repository._content_index import (
     identifier_rows,
     norms,
     period_bounds,
-    relative,
     strings,
     type_rows,
 )
 from app.schemas.enums import AddressUse, AdministrativeGender
 
 from ._shared import typed
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner
-    and `patient`. Absolute URLs and logical (identifier-only) references point
-    elsewhere and are not checked."""
-    refs = []
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    local = relative((document.get("patient") or {}).get("reference"), "Patient")
-    if local:
-        refs.append(("patient", "Patient", local))
-    return refs
 
 
 def index_columns(document: dict) -> dict:

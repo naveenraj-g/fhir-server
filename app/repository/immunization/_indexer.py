@@ -32,82 +32,10 @@ from app.models.immunization import (
 from app.repository._content_index import (
     identifier_rows,
     period_bounds,
-    relative,
     type_rows,
 )
 
 from ._shared import typed
-
-# All three reasonReference targets are resources here.
-_MODELED_REASONS = ("Condition", "Observation", "DiagnosticReport")
-_MODELED_PERFORMERS = ("Practitioner", "PractitionerRole", "Organization")
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `patient`, `encounter`, `location`, `manufacturer`, every `performer.actor`,
-    every `reasonReference` (a Condition, Observation or DiagnosticReport), every
-    `reaction.detail` (an Observation) and `protocolApplied.authority`. Absolute
-    URLs and logical (identifier-only) references point elsewhere and are not
-    checked."""
-    refs = []
-
-    def add(label, reference, resource_type):
-        local = relative(reference, resource_type)
-        if local:
-            refs.append((label, resource_type, local))
-
-    for identifier in document.get("identifier") or []:
-        add(
-            "identifier.assigner",
-            (identifier.get("assigner") or {}).get("reference"),
-            "Organization",
-        )
-    add("patient", (document.get("patient") or {}).get("reference"), "Patient")
-    add("encounter", (document.get("encounter") or {}).get("reference"), "Encounter")
-    add("location", (document.get("location") or {}).get("reference"), "Location")
-    add(
-        "manufacturer",
-        (document.get("manufacturer") or {}).get("reference"),
-        "Organization",
-    )
-    for performer in document.get("performer") or []:
-        parsed = typed(
-            ((performer or {}).get("actor") or {}).get("reference"), _MODELED_PERFORMERS
-        )
-        if parsed:
-            refs.append(("performer.actor", parsed[0], performer["actor"]["reference"]))
-    for ref in document.get("reasonReference") or []:
-        parsed = typed((ref or {}).get("reference"), _MODELED_REASONS)
-        if parsed:
-            refs.append(("reasonReference", parsed[0], ref["reference"]))
-    for reaction in document.get("reaction") or []:
-        add(
-            "reaction.detail",
-            ((reaction or {}).get("detail") or {}).get("reference"),
-            "Observation",
-        )
-    for protocol in document.get("protocolApplied") or []:
-        add(
-            "protocolApplied.authority",
-            ((protocol or {}).get("authority") or {}).get("reference"),
-            "Organization",
-        )
-    for note in document.get("note") or []:
-        parsed = typed(
-            ((note or {}).get("authorReference") or {}).get("reference"),
-            ("Practitioner", "Patient", "RelatedPerson", "Organization"),
-        )
-        if parsed:
-            refs.append(
-                (
-                    "note.authorReference",
-                    parsed[0],
-                    note["authorReference"]["reference"],
-                )
-            )
-    return refs
 
 
 def _ref_columns(prefix: str, ref: dict | None, allowed: tuple[str, ...]) -> dict:

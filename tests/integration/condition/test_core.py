@@ -225,11 +225,16 @@ async def test_create_subject_in_another_org_is_rejected(client, other_client):
     ).status_code == 422
 
 
-async def test_create_group_subject_is_stored_as_sent(client):
-    """Group is not a resource on this server, so its reference is not checked."""
-    resp = await client.post(BASE + "/", json={"subject": {"reference": "Group/5"}})
+async def test_create_group_subject_must_exist(client):
+    resp = await client.post(
+        BASE + "/", json={"subject": {"reference": "Group/430001"}}
+    )
     assert resp.status_code == 201, resp.text
-    assert resp.json()["subject"] == {"reference": "Group/5"}
+    assert resp.json()["subject"] == {"reference": "Group/430001"}
+    missing = await client.post(
+        BASE + "/", json={"subject": {"reference": "Group/999999"}}
+    )
+    assert missing.status_code == 422
 
 
 async def test_create_encounter_must_exist(client, patient):
@@ -347,13 +352,18 @@ async def test_create_stage_assessment_clinical_impression_must_exist(client, pa
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """evidence.detail (Reference(Any)) points at resources this server does not check: stored as
-    sent."""
+    """evidence.detail (Reference(Any)) is checked like any other reference, but a type this
+    server does not have (a Task here) is stored as sent."""
     body = condition_body(
+        patient,
+        evidence=[{"detail": [{"reference": "Task/999999"}]}],
+    )
+    assert (await client.post(BASE + "/", json=body)).status_code == 201
+    dangling = condition_body(
         patient,
         evidence=[{"detail": [{"reference": "DiagnosticReport/999999"}]}],
     )
-    assert (await client.post(BASE + "/", json=body)).status_code == 201
+    assert (await client.post(BASE + "/", json=dangling)).status_code == 422
 
 
 async def test_create_absolute_and_logical_references_not_resolved(client):
@@ -414,11 +424,11 @@ async def test_references_to_a_missing_condition_are_rejected(client, patient):
     assert (
         await client.post(f"{API}/appointments/", json=appointment)
     ).status_code == 422
-    # A reference to another type in the same element is not checked: stored as sent.
+    # A type this server does not have (a Task) is not checked: stored as sent.
     enc = {
         "status": "finished",
         "class": {"code": "AMB"},
-        "reasonReference": [{"reference": "ImmunizationRecommendation/999999"}],
+        "reasonReference": [{"reference": "Task/999999"}],
     }
     assert (await client.post(f"{API}/encounters/", json=enc)).status_code == 201
 

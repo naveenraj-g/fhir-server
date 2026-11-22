@@ -2,6 +2,7 @@ import pytest
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
+from tests.helpers.groups import seed_groups
 from tests.helpers.service_requests import seed_service_requests
 from tests.helpers.observations import seed_observations
 
@@ -9,6 +10,8 @@ from tests.helpers.observations import seed_observations
 # resources around it (its subject, encounter, location, performers, reasons,
 # and the encounters / appointments that point back at it).
 PROCEDURE_PERMS = [
+    "group:create",
+    "group:read",
     "care_plan:create",
     "care_plan:read",
     "service_request:create",
@@ -67,3 +70,9 @@ async def _seeded_observations(_set_permissions, client):
 async def _seeded_service_requests(_set_permissions, client):
     """The ServiceRequest ids these tests refer to (`ServiceRequest/80001`, ...) must exist."""
     await seed_service_requests(client)
+
+
+@pytest.fixture(autouse=True)
+async def _seeded_groups(_set_permissions, client):
+    """The Group ids these tests refer to (`Group/430001`) must exist."""
+    await seed_groups(client)

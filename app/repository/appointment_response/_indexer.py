@@ -20,37 +20,12 @@ from app.models.appointment_response import (
     AppointmentResponseIdentifier,
     AppointmentResponseParticipantStatus,
 )
-from app.repository._content_index import identifier_rows, relative
+from app.repository._content_index import identifier_rows
 
-from ._shared import MODELED_ACTOR_TYPES, actor_type_and_id, appointment_id_of
+from ._shared import actor_type_and_id, appointment_id_of
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers",)
-
-
-def local_references(document: dict) -> list[tuple[str, str, str]]:
-    """(element label, resource type, relative reference) for every local
-    reference that must exist in the caller's org on write: identifier.assigner,
-    `appointment`, and an `actor` of a type this server models. Absolute URLs,
-    logical (identifier-only) references and an actor of a type that is not a
-    resource here (RelatedPerson, Device) point elsewhere and are not checked."""
-    refs = []
-    for identifier in document.get("identifier") or []:
-        local = relative(
-            (identifier.get("assigner") or {}).get("reference"), "Organization"
-        )
-        if local:
-            refs.append(("identifier.assigner", "Organization", local))
-    appointment = relative(
-        (document.get("appointment") or {}).get("reference"), "Appointment"
-    )
-    if appointment:
-        refs.append(("appointment", "Appointment", appointment))
-    actor = (document.get("actor") or {}).get("reference")
-    parsed = actor_type_and_id(actor)
-    if parsed and parsed[0] in MODELED_ACTOR_TYPES:
-        refs.append(("actor", parsed[0], actor))
-    return refs
 
 
 def _reference_columns(

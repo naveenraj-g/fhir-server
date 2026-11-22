@@ -3,8 +3,9 @@ from sqlalchemy import select
 from app.core.logging import get_logger
 from app.models.encounter import EncounterModel
 
-from ._indexer import index_columns, index_rows, local_references
-from ._shared import INDEX_RELATIONSHIPS, _validate_reference, _with_relationships
+from app.repository._reference_check import validate_local_references
+from ._indexer import index_columns, index_rows
+from ._shared import INDEX_RELATIONSHIPS, _with_relationships
 
 logger = get_logger(__name__)
 
@@ -14,17 +15,6 @@ _SERVER_MANAGED = ("resourceType", "id", "meta")
 
 def _storable(document: dict) -> dict:
     return {k: v for k, v in document.items() if k not in _SERVER_MANAGED}
-
-
-async def _validate_local_references(session, tenant_id: str, document: dict) -> None:
-    """Existence-check every relative local reference in the document
-    (identifier.assigner, subject, partOf, serviceProvider, appointment, participant
-    individuals and locations of a modeled type, hospitalization.origin/destination), scoped to
-    the caller's org — 422 if one does not resolve."""
-    for label, resource_type, ref in local_references(document):
-        await _validate_reference(
-            session, tenant_id, resource_type, int(ref.split("/")[1]), label
-        )
 
 
 class _FullMixin:
@@ -39,7 +29,7 @@ class _FullMixin:
         created_by: str | None = None,
     ) -> EncounterModel:
         async with self.session_factory() as session:
-            await _validate_local_references(session, org_id, document)
+            await validate_local_references(session, org_id, document)
             encounter = EncounterModel(
                 tenant_id=org_id,
                 created_by=created_by,
@@ -76,7 +66,7 @@ class _FullMixin:
             if not encounter:
                 return None
 
-            await _validate_local_references(session, encounter.tenant_id, document)
+            await validate_local_references(session, encounter.tenant_id, document)
 
             encounter.content = _storable(document)
             for column, value in index_columns(document).items():
