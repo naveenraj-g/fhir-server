@@ -1,107 +1,106 @@
-from datetime import datetime
-from typing import Any, Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
+    FHIRPeriod,
+    FHIRQuantity,
+    FHIRRange,
     FHIRReference,
 )
-from app.schemas.group.response.characteristic import (
-    FHIRGroupCharacteristic,
-    PlainGroupCharacteristic,
-)
-from app.schemas.group.response.codeable_concept import PlainGroupCodeableConcept
-from app.schemas.group.response.identifier import PlainGroupIdentifier
-from app.schemas.group.response.member import FHIRGroupMember, PlainGroupMember
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+
+
+class FHIRGroupCharacteristic(BaseModel):
+    code: FHIRCodeableConcept | None = Field(
+        None, description="Kind of characteristic."
+    )
+    valueCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="Value held by characteristic (CodeableConcept)."
+    )
+    valueBoolean: bool | None = Field(
+        None, description="Value held by characteristic (boolean)."
+    )
+    valueQuantity: FHIRQuantity | None = Field(
+        None, description="Value held by characteristic (Quantity)."
+    )
+    valueRange: FHIRRange | None = Field(
+        None, description="Value held by characteristic (Range)."
+    )
+    valueReference: FHIRReference | None = Field(
+        None, description="Value held by characteristic (Reference)."
+    )
+    exclude: bool | None = Field(None, description="Group includes or excludes.")
+    period: FHIRPeriod | None = Field(
+        None, description="Period over which characteristic is tested."
+    )
+
+
+class FHIRGroupMember(BaseModel):
+    entity: FHIRReference | None = Field(
+        None, description="Reference to the group member."
+    )
+    period: FHIRPeriod | None = Field(
+        None, description="Period member belonged to the group."
+    )
+    inactive: bool | None = Field(None, description="If member is no longer in group.")
 
 
 class FHIRGroupSchema(BaseModel):
-    """FHIR R4 Group resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Group"] = "Group"
-    id: str
-    meta: FHIRMeta | None = None
-    identifier: list[FHIRIdentifier] | None = None
-    active: bool | None = None
-    type: str
-    actual: bool
-    code: FHIRCodeableConcept | None = None
-    name: str | None = None
-    quantity: int | None = None
-    managingEntity: FHIRReference | None = None
-    characteristic: list[FHIRGroupCharacteristic] | None = None
-    member: list[FHIRGroupMember] | None = None
-    extension: list[dict[str, Any]] | None = None
-
-
-class PlainGroupResponse(BaseModel):
-    """Plain snake_case response schema for Group."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    id: int = Field(..., description="Public sequence Group ID.")
+    resourceType: str = Field("Group", description="Always 'Group'.")
+    id: str = Field(..., description="Public group_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
+    identifier: list[FHIRIdentifier] | None = Field(None, description="Unique id.")
     active: bool | None = Field(
         None, description="Whether this group's record is in active use."
     )
-    type: str = Field(
-        ...,
+    type: str | None = Field(
+        None,
         description="person | animal | practitioner | device | medication | substance.",
     )
-    actual: bool = Field(
-        ..., description="true for actual group, false for definitional."
+    actual: bool | None = Field(
+        None, description="Descriptive (false) or actual (true)."
     )
-    code: PlainGroupCodeableConcept | None = Field(
-        None, description="Kind of Group members."
-    )
+    code: FHIRCodeableConcept | None = Field(None, description="Kind of Group members.")
     name: str | None = Field(None, description="Label for Group.")
-    quantity: int | None = Field(None, description="Number of members in group.")
-    managing_entity: str | None = Field(
-        None, description="Entity that is custodian of Group."
+    quantity: int | None = Field(None, description="Number of members.")
+    managingEntity: FHIRReference | None = Field(
+        None, description="Entity that is the custodian of the Group's definition."
     )
-    managing_entity_display: str | None = Field(
-        None, description="Display text for managingEntity."
+    characteristic: list[FHIRGroupCharacteristic] | None = Field(
+        None, description="Include / Exclude group members by Trait."
     )
-    identifier: list[PlainGroupIdentifier] | None = Field(
-        None, description="External identifiers."
+    member: list[FHIRGroupMember] | None = Field(
+        None, description="Who or what is in group."
     )
-    characteristic: list[PlainGroupCharacteristic] | None = Field(
-        None, description="Characteristics."
-    )
-    member: list[PlainGroupMember] | None = Field(None, description="Group members.")
-    extension: list[dict[str, Any]] | None = Field(None, description="Extensions.")
-
-
-class PaginatedGroupResponse(BaseModel):
-    """Paginated response for plain Group listing."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    total: int
-    limit: int
-    offset: int
-    data: list[PlainGroupResponse]
 
 
 class FHIRGroupBundleEntry(BaseModel):
-    """Single entry in FHIR Group searchset bundle."""
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRGroupSchema | dict = Field(
+        ...,
+        description="A Group (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Organization / RelatedPerson / Practitioner / PractitionerRole / Patient / Medication / Group (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
-    model_config = ConfigDict(extra="allow")
 
-    fullUrl: str | None = None
-    resource: FHIRGroupSchema
-
-
-class FHIRGroupBundle(BaseModel):
-    """FHIR searchset Bundle for Group resources."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int
-    entry: list[FHIRGroupBundleEntry] = []
+class FHIRGroupBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRGroupBundleEntry] | None = None

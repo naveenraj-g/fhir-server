@@ -42,6 +42,7 @@ _MODELED_ANY = (
     "ServiceRequest",
     "Medication",
     "MedicationRequest",
+    "Group",
     "Patient",
     "Practitioner",
     "PractitionerRole",

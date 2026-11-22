@@ -19,6 +19,10 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._group_revinclude import (
+    managing_entity_group_revincludes,
+    member_group_revincludes,
+)
 from app.repository._medication_request_revinclude import (
     column_medication_request_revincludes,
 )
@@ -958,6 +962,7 @@ def patient_search() -> SearchRegistry:
         # general-practitioner / organization are declared on Practitioner,
         # PractitionerRole and Organization.
         revincludes=(
+            *member_group_revincludes("Patient", lambda p: p.patient_id),
             *column_medication_request_revincludes(
                 ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
             ),

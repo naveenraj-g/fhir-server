@@ -61,6 +61,7 @@ _MODELED_REASONS = ("Condition", "Observation")
 # resources already rebuilt that supporting information can be.
 _MODELED_INFORMATION = (
     "MedicationRequest",
+    "Group",
     "ServiceRequest",
     "Medication",
     "Specimen",

@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class GroupType(str, Enum):
-    """Types of resources that are members of group."""
+    """Group.type (group-type, required) - stored by value."""
 
     person = "person"
     animal = "animal"
@@ -10,24 +10,3 @@ class GroupType(str, Enum):
     device = "device"
     medication = "medication"
     substance = "substance"
-
-
-class GroupManagingEntityReferenceType(str, Enum):
-    """Allowed target types for Group.managingEntity."""
-
-    Organization = "Organization"
-    RelatedPerson = "RelatedPerson"
-    Practitioner = "Practitioner"
-    PractitionerRole = "PractitionerRole"
-
-
-class GroupMemberEntityReferenceType(str, Enum):
-    """Allowed target types for Group.member.entity."""
-
-    Patient = "Patient"
-    Practitioner = "Practitioner"
-    PractitionerRole = "PractitionerRole"
-    Device = "Device"
-    Medication = "Medication"
-    Substance = "Substance"
-    Group = "Group"

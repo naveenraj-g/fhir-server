@@ -55,6 +55,7 @@ _MODELED_INFORMATION = (
     "ServiceRequest",
     "Medication",
     "MedicationRequest",
+    "Group",
     "Patient",
     "Practitioner",
     "PractitionerRole",

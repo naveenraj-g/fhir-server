@@ -38,6 +38,10 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._group_revinclude import (
+    managing_entity_group_revincludes,
+    member_group_revincludes,
+)
 from app.repository._medication_request_revinclude import (
     column_medication_request_revincludes,
 )
@@ -668,6 +672,9 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *managing_entity_group_revincludes(
+                "Organization", lambda o: o.organization_id
+            ),
             *column_medication_request_revincludes(
                 ("requester",), "requester", "Organization", lambda o: o.organization_id
             ),

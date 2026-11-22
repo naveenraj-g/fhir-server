@@ -1,27 +1,51 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.config import settings
+from app.core.content_negotiation import (
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
+)
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.group import get_group_service
-from app.schemas.group import GroupCreateSchema, GroupPatchSchema
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.group.search import group_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
+from app.schemas.group import (
+    GroupCreateSchema,
+    GroupPatchSchema,
+)
 from app.services.group import GroupService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# Group always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -32,10 +56,20 @@ logger = get_logger(__name__)
     operation_id="create_group",
     summary="Create a new Group resource",
     description=(
-        "Represents a defined collection of entities (persons, animals, devices, etc.). "
-        "Accepts the full nested payload atomically in one DB transaction. `tenant_id`/"
-        "`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — an "
-        "org-less token is rejected outright (403). " + _CONTENT_NEG
+        "Records a defined collection of entities that may be discussed or acted upon collectively but "
+        "which are not expected to act collectively - a cohort of patients, a set of practitioners, a "
+        "herd, a kit of devices. The request body is a FHIR R4 Group resource (camelCase, nested "
+        "datatypes - https://www.hl7.org/fhir/R4/group.html); every supplied element (identifier, "
+        "active, type, actual, code, name, quantity, managingEntity, characteristic, member) is stored "
+        "as sent. R4 requires `type` and `actual`, and only an `actual` group may list members (rule "
+        "grp-1). The body is checked against base FHIR R4: any valid R4 element is accepted and stored "
+        "as sent (server-managed `id`/`meta` are ignored); a key that is not FHIR at all is rejected "
+        "with 422. A relative `managingEntity` (Organization, RelatedPerson, Practitioner, "
+        "PractitionerRole), a `member.entity` that is a Patient, Practitioner, PractitionerRole, "
+        "Medication or Group, a `characteristic.valueReference` to a rebuilt resource and every "
+        "identifier's `assigner` are rejected with 422 if they do not exist in the caller's org; a "
+        "Device or Substance member, an absolute URL or a logical reference is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -45,31 +79,144 @@ async def create_group(
     actor: AuthUser = Depends(require_permission("group", "create")),
     group_service: GroupService = Depends(get_group_service),
 ):
+    """org_id and created_by both come from the verified JWT (actor.org_id /
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new Group resource",
         extra={"event": "route.create_group"},
     )
     log_payload(logger, "group.create.payload", payload)
-    group = await group_service.create_group(payload, actor.org_id, actor.sub)
-    return format_response(
+    group = await group_service.create_group(
+        payload, actor.org_id, actor.sub, body=await request.json()
+    )
+    return fhir_response(
         group_service._to_fhir(group),
-        group_service._to_plain(group),
-        request,
         status_code=status.HTTP_201_CREATED,
     )
 
 
-# ── Get by ID ──────────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# Group search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = group_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    group_service: GroupService,
+):
+    search_url, fhir_base = search_urls(request, "search_groups")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await group_service.search_groups(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_groups",
+    summary="Search Group resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_groups(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("group", "read")),
+    group_service: GroupService = Depends(get_group_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search Group resources",
+        extra={"event": "route.search_groups"},
+    )
+    return await _search(request, get_query(request), actor, group_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_groups_post",
+    summary="Search Group resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_groups_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("group", "read")),
+    group_service: GroupService = Depends(get_group_service),
+):
+    logger.info(
+        "Search Group resources (POST _search)",
+        extra={"event": "route.search_groups_post"},
+    )
+    return await _search(request, await post_query(request), actor, group_service)
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{group_id}",
-    operation_id="get_group",
-    summary="Get a Group resource by ID",
+    operation_id="get_group_by_id",
+    summary="Retrieve a Group resource by public group_id",
     description=(
-        "Returns the full Group resource with all sub-resources populated. "
-        "Scoped to the caller's own org — returns 404 (never 403) if the resource belongs "
-        "to a different org, to avoid leaking existence. " + _CONTENT_NEG
+        "Scoped to the caller's own org — get_group_scoped() raises "
+        "PermissionDeniedError (403) outright for an org-less token, or NotFoundError "
+        "(404, never 403) if it belongs to a different org, so existence isn't leaked."
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
@@ -80,18 +227,17 @@ async def get_group(
     group_service: GroupService = Depends(get_group_service),
 ):
     logger.info(
-        "Get a Group resource by ID",
-        extra={"event": "route.get_group", "group_id": group_id},
+        "Retrieve a Group resource by public group_id",
+        extra={
+            "event": "route.get_group_by_id",
+            "group_id": group_id,
+        },
     )
     group = await group_service.get_group_scoped(group_id, actor.org_id)
-    return format_response(
-        group_service._to_fhir(group),
-        group_service._to_plain(group),
-        request,
-    )
+    return fhir_response(group_service._to_fhir(group))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -99,9 +245,12 @@ async def get_group(
     operation_id="patch_group",
     summary="Update a Group resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every "
-        "supplied sub-resource list atomically replaces corresponding rows. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if "
+        "The request body is a partial FHIR R4 Group (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. A supplied list "
+        "(identifier, characteristic, member — even `[]`) atomically replaces the stored entries, a "
+        "supplied `code`, `managingEntity` or `name` replaces the whole value, and `null` clears an element. "
+        "Scoped to the caller's own org — patch_group() raises NotFoundError (404, not "
+        "403 — avoids leaking that a group with this id exists in another org) if "
         "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
@@ -113,6 +262,8 @@ async def patch_group(
     actor: AuthUser = Depends(require_permission("group", "update")),
     group_service: GroupService = Depends(get_group_service),
 ):
+    """updated_by comes from the verified JWT (actor.sub); patch_group()
+    raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a Group resource",
         extra={
@@ -122,95 +273,16 @@ async def patch_group(
     )
     log_payload(logger, "group.patch.payload", payload)
     updated = await group_service.patch_group(
-        group_id, payload, actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        group_service._to_fhir(updated),
-        group_service._to_plain(updated),
-        request,
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_groups",
-    summary="List all Group resources",
-    description=(
-        "Returns a paginated list of Group resources. Filter by type, actual, "
-        "active, name, code, managing_entity, member, characteristic, identifier. "
-        "Always scoped to the caller's own org (from the verified token). "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_groups(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("group", "read")),
-    type: str | None = Query(
-        None,
-        description="person | animal | practitioner | device | medication | substance.",
-    ),
-    actual: bool | None = Query(
-        None, description="true for actual specific group, false for definitional."
-    ),
-    active: bool | None = Query(
-        None, description="Whether this group's record is in active use."
-    ),
-    name: str | None = Query(None, description="Label for Group."),
-    code: str | None = Query(
-        None, description="Kind of Group members (matches text or coding.code)."
-    ),
-    managing_entity: str | None = Query(
-        None, description="Managing entity reference (e.g. Organization/190001)."
-    ),
-    member: str | None = Query(
-        None, description="Member reference (e.g. Patient/10001)."
-    ),
-    characteristic: str | None = Query(None, description="Characteristic code."),
-    characteristic_value: str | None = Query(None, description="Characteristic value."),
-    exclude: bool | None = Query(
-        None, description="Group includes or excludes members with this characteristic."
-    ),
-    identifier: str | None = Query(None, description="Business identifier value."),
-    list_params: ListParams = Depends(),
-    group_service: GroupService = Depends(get_group_service),
-):
-    logger.info(
-        "List Group resources",
-        extra={"event": "route.list_groups", "org_id": actor.org_id},
-    )
-    groups, total = await group_service.list_groups(
+        group_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        type=type,
-        actual=actual,
-        active=active,
-        name=name,
-        code=code,
-        managing_entity=managing_entity,
-        member=member,
-        characteristic=characteristic,
-        characteristic_value=characteristic_value,
-        exclude=exclude,
-        identifier=identifier,
-        limit=list_params.limit,
-        offset=list_params.offset,
-        sort=list_params.sort,
-        total_mode=list_params.total_mode,
+        body=await request.json(),
     )
-    return format_paginated_response(
-        [group_service._to_fhir(g) for g in groups],
-        [group_service._to_plain(g) for g in groups],
-        total,
-        list_params.limit,
-        list_params.offset,
-        request,
-    )
+    return fhir_response(group_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -219,9 +291,9 @@ async def list_groups(
     operation_id="delete_group",
     summary="Delete a Group resource",
     description=(
-        "Permanently deletes the Group and all associated sub-resources. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the resource "
-        "exists but belongs to a different org. Returns 204 on success."
+        "Permanently deletes the Group and its search-index rows. "
+        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
+        "group exists but belongs to a different org. Returns 204 on success."
     ),
     responses={**_ERR_NOT_FOUND},
 )
@@ -230,6 +302,8 @@ async def delete_group(
     actor: AuthUser = Depends(require_permission("group", "delete")),
     group_service: GroupService = Depends(get_group_service),
 ):
+    """delete_group() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a Group resource",
         extra={

@@ -7,4 +7,5 @@ __all__ = ["GroupService"]
 
 @trace_methods
 class GroupService(_CoreMixin):
-    """Orchestrates Group CRUD operations and data transformations."""
+    """All Group business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

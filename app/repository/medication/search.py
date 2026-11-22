@@ -29,6 +29,10 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._group_revinclude import (
+    managing_entity_group_revincludes,
+    member_group_revincludes,
+)
 from app.repository._medication_request_revinclude import (
     column_medication_request_revincludes,
 )
@@ -554,6 +558,7 @@ def medication_search() -> SearchRegistry:
         ),
         # A Medication that has another one as an ingredient points back at it.
         revincludes=(
+            *member_group_revincludes("Medication", lambda m: m.medication_id),
             *column_medication_request_revincludes(
                 ("medication",), "medication", "Medication", lambda m: m.medication_id
             ),
