@@ -367,8 +367,7 @@ async def test_create_performer_is_checked_for_rebuilt_types(client, patient):
             {"reference": f"Organization/{organization}"},
             {"reference": f"Patient/{patient}"},
             {"reference": f"RelatedPerson/{related}"},
-            {"reference": "CareTeam/999999"},
-        ],  # not rebuilt
+        ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     for missing in (

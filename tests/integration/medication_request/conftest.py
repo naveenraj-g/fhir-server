@@ -7,6 +7,8 @@ from tests.conftest import make_test_user
 # around it (its subject, encounter, requester, performer, medication, reasons, issues) and the
 # ones to look at what points back at it.
 MEDICATION_REQUEST_PERMS = [
+    "care_team:create",
+    "care_team:read",
     "care_plan:create",
     "care_plan:read",
     "medication_request:create",

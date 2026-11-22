@@ -142,13 +142,16 @@ async def world(client):
             conclusionCode=[{"text": "Borderline"}],
         ),
     )
+    from tests.helpers.care_teams import create_minimal_care_team
+
+    w["team"] = await create_minimal_care_team(client)
     w["c"] = await create_report(
         client,
         report_body(
             w["p1"],
             "amended",
             code={"text": "Physio report"},
-            performer=[{"reference": "CareTeam/7"}],
+            performer=[{"reference": f"CareTeam/{w['team']}"}],
             specimen=[{"reference": "Specimen/310002"}],
         ),
     )
@@ -393,9 +396,7 @@ async def test_performer_and_results_interpreter_are_separate(client, world):
     assert await _keys(
         client, world, **{"performer:Practitioner": str(world["pr"])}
     ) == {"a", "b"}
-    assert await _keys(client, world, performer="CareTeam/7") == {
-        "c"
-    }  # not a resource here, still searchable
+    assert await _keys(client, world, performer=f"CareTeam/{world['team']}") == {"c"}
     assert await _keys(client, world, **{"performer:identifier": "urn:who|W-1"}) == {
         "e"
     }
@@ -478,7 +479,7 @@ async def test_bad_chains_are_400(client, world):
     assert (
         await _status(client, **{"subject:Group.name": "x"}) == 400
     )  # Group is not searchable here
-    assert await _status(client, **{"performer:CareTeam.name": "x"}) == 400
+    assert await _status(client, **{"performer:Device.name": "x"}) == 400
     assert (
         await _status(client, **{"based-on:NutritionOrder.status": "x"}) == 400
     )  # NutritionOrder is not a resource here
@@ -599,9 +600,7 @@ async def test_include_performer_brings_in_every_modeled_type(client, world):
     ids = f"{world['a']},{world['b']},{world['c']},{world['e']}"
     bundle = await _search(client, _id=ids, _include="DiagnosticReport:performer")
     assert _of_type(bundle, "Practitioner", "include") == {str(world["pr"])}
-    assert _of_type(bundle, "Organization", "include") == {
-        str(world["org"])
-    }  # a CareTeam adds nothing
+    assert _of_type(bundle, "Organization", "include") == {str(world["org"])}
     bundle = await _search(
         client, _id=ids, _include="DiagnosticReport:performer:Organization"
     )

@@ -82,6 +82,7 @@ _REBUILT = (
     "ServiceRequest",
     "MedicationRequest",
     "CarePlan",
+    "CareTeam",
 )
 
 

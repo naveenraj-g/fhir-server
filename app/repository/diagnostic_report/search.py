@@ -57,6 +57,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/diagnostic-report-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "CareTeam": (
+        "app.models.care_team",
+        "CareTeamModel",
+        "care_team_id",
+        "app.repository.care_team.search",
+        "care_team_search",
+    ),
     "CarePlan": (
         "app.models.care_plan",
         "CarePlanModel",

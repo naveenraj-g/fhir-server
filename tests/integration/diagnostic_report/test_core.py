@@ -255,9 +255,7 @@ async def test_create_encounter_must_exist(client, patient):
 
 
 @pytest.mark.parametrize("element", ["performer", "resultsInterpreter"])
-async def test_create_performer_and_interpreter_are_checked_except_a_care_team(
-    client, patient, element
-):
+async def test_create_performer_and_interpreter_are_checked(client, patient, element):
     practitioner = await create_practitioner(client)
     role = await create_practitioner_role(client)
     organization = await create_organization(client)
@@ -265,7 +263,6 @@ async def test_create_performer_and_interpreter_are_checked_except_a_care_team(
         f"Practitioner/{practitioner}",
         f"PractitionerRole/{role}",
         f"Organization/{organization}",
-        "CareTeam/999999",
     ):
         resp = await client.post(
             BASE + "/", json=report_body(patient, **{element: [{"reference": ref}]})
@@ -273,7 +270,7 @@ async def test_create_performer_and_interpreter_are_checked_except_a_care_team(
         assert resp.status_code == 201, (
             ref,
             resp.text,
-        )  # a CareTeam is not a resource here: stored as sent
+        )
     for missing in (
         "Practitioner/999999",
         "PractitionerRole/999999",

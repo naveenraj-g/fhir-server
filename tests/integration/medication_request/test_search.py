@@ -132,9 +132,12 @@ async def world(client):
         "medicationCodeableConcept": {"text": "Compounded cream"},
         "subject": {"reference": "Group/430001"},
         "requester": {"reference": f"Organization/{w['o1']}"},
-        "performer": {"reference": "CareTeam/999999"},
         "authoredOn": "2019",
     }
+    from tests.helpers.care_teams import create_minimal_care_team
+
+    w["team"] = await create_minimal_care_team(client)
+    c["performer"] = {"reference": f"CareTeam/{w['team']}"}
     w["c"] = await create_medication_request(client, c)
     d = {
         "status": "stopped",
@@ -430,9 +433,9 @@ async def test_intended_performer_is_multi_target(client, world):
     assert await _keys(
         client, world, **{"intended-performer:Organization": str(world["o1"])}
     ) == {"a"}
-    assert await _keys(client, world, **{"intended-performer": "CareTeam/999999"}) == {
-        "c"
-    }
+    assert await _keys(
+        client, world, **{"intended-performer": f"CareTeam/{world['team']}"}
+    ) == {"c"}
     assert await _keys(client, world, **{"intended-performer:missing": "true"}) == {
         "b",
         "d",
@@ -491,7 +494,7 @@ async def test_bad_chains_are_400(client, world):
     )  # Group is not searchable here
     assert await _status(client, **{"requester.family": "x"}) == 400
     assert await _status(client, **{"requester:Device.x": "x"}) == 400
-    assert await _status(client, **{"intended-performer:CareTeam.name": "x"}) == 400
+    assert await _status(client, **{"intended-performer:Device.name": "x"}) == 400
     assert (
         await _status(client, **{"code.x": "y"}) == 400
     )  # a token cannot be chained through
@@ -591,9 +594,7 @@ async def test_include_every_reference(client, world):
     bundle = await _search(
         client, _id=ids, _include="MedicationRequest:intended-performer"
     )
-    assert _of_type(bundle, "Organization", "include") == {
-        str(world["o1"])
-    }  # a CareTeam adds nothing
+    assert _of_type(bundle, "Organization", "include") == {str(world["o1"])}
     bundle = await _search(
         client, _id=ids, _include="MedicationRequest:intended-dispenser"
     )

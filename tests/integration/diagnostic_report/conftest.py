@@ -10,6 +10,8 @@ from tests.helpers.observations import seed_observations
 # around it (its subject, encounter, performers, and the procedures / encounters
 # that point back at it).
 REPORT_PERMS = [
+    "care_team:create",
+    "care_team:read",
     "care_plan:create",
     "care_plan:read",
     "medication_request:create",

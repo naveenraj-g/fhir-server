@@ -143,6 +143,9 @@ async def world(client):
     from tests.helpers.care_plans import create_minimal_care_plan
 
     w["cp"] = await create_minimal_care_plan(client)
+    from tests.helpers.care_teams import create_minimal_care_team
+
+    w["team"] = await create_minimal_care_team(client)
     w["c"] = await create_service_request(
         client,
         {
@@ -150,7 +153,7 @@ async def world(client):
             "intent": "original-order",
             "subject": {"reference": f"Location/{w['loc']}"},
             "requester": {"reference": f"Organization/{w['org']}"},
-            "performer": [{"reference": "CareTeam/999999"}],
+            "performer": [{"reference": f"CareTeam/{w['team']}"}],
             "specimen": [{"reference": f"Specimen/{w['s2']}"}],
             "basedOn": [{"reference": f"CarePlan/{w['cp']}"}],
             "occurrenceTiming": {
@@ -525,7 +528,7 @@ async def test_performer_is_multi_target(client, world):
     assert await _keys(
         client, world, **{"performer:HealthcareService": str(world["hs"])}
     ) == {"b"}
-    assert await _keys(client, world, performer="CareTeam/999999") == {"c"}
+    assert await _keys(client, world, performer=f"CareTeam/{world['team']}") == {"c"}
     assert (
         await _keys(client, world, performer=f"Organization/{world['role']}") == set()
     )
@@ -625,8 +628,8 @@ async def test_bad_chains_are_400(client, world):
     )  # Group is not searchable here
     assert await _status(client, **{"requester.family": "x"}) == 400
     assert (
-        await _status(client, **{"performer:CareTeam.name": "x"}) == 400
-    )  # CareTeam is not rebuilt
+        await _status(client, **{"performer:Device.name": "x"}) == 400
+    )  # Device is not rebuilt
     assert (
         await _status(client, **{"based-on:DeviceRequest.status": "x"}) == 400
     )  # DeviceRequest is not a target of ServiceRequest.basedOn
@@ -740,9 +743,7 @@ async def test_include_subject_encounter_requester_and_performer(client, world):
     bundle = await _search(client, _id=ids, _include="ServiceRequest:performer")
     assert _of_type(bundle, "Organization", "include") == {str(world["org"])}
     assert _of_type(bundle, "PractitionerRole", "include") == {str(world["role"])}
-    assert _of_type(bundle, "HealthcareService", "include") == {
-        str(world["hs"])
-    }  # a CareTeam adds nothing
+    assert _of_type(bundle, "HealthcareService", "include") == {str(world["hs"])}
 
 
 async def test_include_based_on_replaces_and_specimen(client, world):

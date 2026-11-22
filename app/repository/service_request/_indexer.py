@@ -57,6 +57,7 @@ _MODELED_PERFORMERS = (
     "HealthcareService",
     "Patient",
     "RelatedPerson",
+    "CareTeam",
 )
 _MODELED_REASONS = ("Condition", "Observation", "DiagnosticReport")
 # Reference(Any) `supportingInfo` targets that are existence-checked on write: the resources

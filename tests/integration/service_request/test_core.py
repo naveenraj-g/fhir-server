@@ -416,7 +416,6 @@ async def test_create_unmodeled_requesters_and_performers_not_checked(client, pa
         patient,
         requester={"reference": "Device/999999"},
         performer=[
-            {"reference": "CareTeam/999999"},
             {"reference": "Device/999999"},
         ],
     )

@@ -32,6 +32,14 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._diagnostic_report_revinclude import performer_report_revincludes
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
+from app.repository._observation_revinclude import reference_observation_revincludes
+from app.repository._service_request_revinclude import (
+    performer_service_request_revincludes,
+)
 from app.models.care_team import (
     ENCOUNTER_TYPES,
     PARTICIPANT_TYPES,
@@ -647,6 +655,19 @@ def care_team_search() -> SearchRegistry:
         ),
         # A care team can name another care team as a participant (CareTeam:participant).
         revincludes=(
+            *performer_report_revincludes("CareTeam", lambda x: x.care_team_id),
+            *reference_observation_revincludes(
+                "performer", "CareTeam", lambda x: x.care_team_id
+            ),
+            *performer_service_request_revincludes(
+                "CareTeam", lambda x: x.care_team_id
+            ),
+            *column_medication_request_revincludes(
+                ("intended-performer",),
+                "performer",
+                "CareTeam",
+                lambda x: x.care_team_id,
+            ),
             *reference_care_plan_revincludes(
                 "care-team", "CareTeam", lambda x: x.care_team_id
             ),

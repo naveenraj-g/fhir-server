@@ -61,6 +61,13 @@ def _modeled(module: str, cls: str, id_col: str, search_module: str, factory: st
 # chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "CareTeam": (
+        "app.models.care_team",
+        "CareTeamModel",
+        "care_team_id",
+        "app.repository.care_team.search",
+        "care_team_search",
+    ),
     "Medication": _modeled(
         "app.models.medication",
         "MedicationModel",

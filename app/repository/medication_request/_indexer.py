@@ -49,7 +49,7 @@ _MODELED_REQUESTERS = (
     "Patient",
     "RelatedPerson",
 )
-_MODELED_PERFORMERS = _MODELED_REQUESTERS
+_MODELED_PERFORMERS = (*_MODELED_REQUESTERS, "CareTeam")
 _MODELED_REPORTERS = _MODELED_REQUESTERS  # reported[x]: Patient, Practitioner, PractitionerRole, RelatedPerson, Organization
 _MODELED_BASED_ON = (
     "MedicationRequest",

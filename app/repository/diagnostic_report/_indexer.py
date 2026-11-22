@@ -36,18 +36,18 @@ from app.repository._content_index import (
 
 from ._shared import ref_type_and_id, typed
 
-# Of the four performer / resultsInterpreter targets, these are resources here.
-_MODELED_PERFORMERS = ("Practitioner", "PractitionerRole", "Organization")
+# All four performer / resultsInterpreter targets are resources here.
+_MODELED_PERFORMERS = ("Practitioner", "PractitionerRole", "Organization", "CareTeam")
 
 
 def local_references(document: dict) -> list[tuple[str, str, str]]:
     """(element label, resource type, relative reference) for every local
     reference that must exist in the caller's org on write: identifier.assigner,
     `subject` (a Patient or a Location), `encounter`, and every `performer` /
-    `resultsInterpreter` that is a Practitioner, PractitionerRole or Organization, and
+    `resultsInterpreter` that is a Practitioner, PractitionerRole, Organization or CareTeam, and
     every `result` (an Observation), `specimen` (a Specimen) and `basedOn` that is a ServiceRequest.
     Absolute URLs, logical (identifier-only) references and targets that are not
-    resources on this server (a Group or Device subject, a CareTeam, a CarePlan basedOn,
+    resources on this server (a Group or Device subject, a NutritionOrder basedOn,
     media, imagingStudy) point elsewhere and are not checked."""
     refs = []
 
