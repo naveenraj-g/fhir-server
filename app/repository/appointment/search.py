@@ -86,6 +86,13 @@ SUPPORTING_INFO_TYPES = (
 # model to join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "ServiceRequest": (
+        "app.models.service_request",
+        "ServiceRequestModel",
+        "service_request_id",
+        "app.repository.service_request.search",
+        "service_request_search",
+    ),
     "Patient": (
         "app.models.patient",
         "PatientModel",
@@ -440,6 +447,21 @@ def _include_participants(resource_type: str):
     return fetch
 
 
+async def _include_based_on(session, ctx, appointments):
+    """_include=Appointment:based-on - the service requests these appointments fulfil."""
+    model, id_col = _model("ServiceRequest")
+    referenced = select(_R.reference_id).where(
+        _R.appointment_pk.in_({a.id for a in appointments}),
+        _R.param == "based-on",
+        _R.reference_type == "ServiceRequest",
+        _R.reference_id.is_not(None),
+    )
+    return await _fetch(
+        session,
+        select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)),
+    )
+
+
 async def _include_slots(session, ctx, appointments):
     """_include=Appointment:slot — the slots these appointments fill."""
     model, id_col = _model("Slot")
@@ -652,6 +674,7 @@ def appointment_search() -> SearchRegistry:
             "The service request this appointment is allocated to assess",
             "Appointment.basedOn",
             "ServiceRequest/80001",
+            chain_types=("ServiceRequest",),
         ),
         SearchParam(
             "date",
@@ -809,6 +832,9 @@ def appointment_search() -> SearchRegistry:
             *actor_includes,
             *narrowed_includes,
             IncludeTarget("Appointment", "slot", "Slot", _include_slots),
+            IncludeTarget(
+                "Appointment", "based-on", "ServiceRequest", _include_based_on
+            ),
             IncludeTarget(
                 "Appointment",
                 "reason-reference",

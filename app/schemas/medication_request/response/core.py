@@ -8,7 +8,7 @@ from app.schemas.datatypes import (
     FHIRReference,
 )
 from app.schemas.questionnaire.response import FHIRQuantity
-from app.schemas.service_request.response.core import FHIRAnnotation
+from app.schemas.datatypes.annotation import FHIRAnnotation
 
 from .codeable_concept import (
     PlainMedicationRequestCode,

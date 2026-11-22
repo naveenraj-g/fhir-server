@@ -29,6 +29,11 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+    performer_service_request_revincludes,
+    specimen_service_request_revincludes,
+)
 from app.repository._diagnostic_report_revinclude import reference_report_revincludes
 from app.repository._observation_revinclude import column_observation_revincludes
 from app.models.specimen import (
@@ -664,6 +669,7 @@ def specimen_search() -> SearchRegistry:
         # Observation.specimen and DiagnosticReport.specimen point here, and a specimen derived
         # from another one points back at it (Specimen:parent).
         revincludes=(
+            *specimen_service_request_revincludes(lambda s: s.specimen_id),
             *column_observation_revincludes(
                 ("specimen",), "specimen", "Specimen", lambda r: r.specimen_id
             ),

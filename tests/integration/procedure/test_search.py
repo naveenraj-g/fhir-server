@@ -607,7 +607,7 @@ async def test_bad_chains_are_400(client, world):
     )  # Group is not searchable here
     assert await _status(client, **{"performer:Device.x": "x"}) == 400
     assert (
-        await _status(client, **{"based-on:ServiceRequest.code": "x"}) == 400
+        await _status(client, **{"based-on:CarePlan.code": "x"}) == 400
     )  # not a resource here
     assert (
         await _status(client, **{"code.x": "y"}) == 400

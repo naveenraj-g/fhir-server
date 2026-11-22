@@ -51,6 +51,10 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         )
         if local:
             refs.append(("identifier.assigner", "Organization", local))
+    for based_on in document.get("basedOn") or []:
+        local = relative((based_on or {}).get("reference"), "ServiceRequest")
+        if local:
+            refs.append(("basedOn", "ServiceRequest", local))
     for slot in document.get("slot") or []:
         local = relative(slot.get("reference"), "Slot")
         if local:

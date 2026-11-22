@@ -10,7 +10,7 @@ from app.schemas.datatypes import (
     PlainCodingRow,
 )
 from app.schemas.questionnaire.response import FHIRQuantity
-from app.schemas.service_request.response.core import FHIRAnnotation
+from app.schemas.datatypes.annotation import FHIRAnnotation
 
 
 class FHIRCarePlanActivityDetail(BaseModel):

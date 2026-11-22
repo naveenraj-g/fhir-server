@@ -79,6 +79,7 @@ _REBUILT = (
     "DetectedIssue",
     "Observation",
     "Specimen",
+    "ServiceRequest",
 )
 
 

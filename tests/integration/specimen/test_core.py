@@ -294,9 +294,8 @@ async def test_create_parent_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
 
 
-async def test_create_request_and_additive_are_not_checked(client):
+async def test_create_additive_is_not_checked(client):
     body = {
-        "request": [{"reference": "ServiceRequest/999999"}],
         "processing": [{"additive": [{"reference": "Substance/999999"}]}],
         "container": [{"additiveReference": {"reference": "Substance/999999"}}],
     }
@@ -606,3 +605,10 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_request_must_exist(client):
+    ok = {"request": [{"reference": "ServiceRequest/80001"}]}
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = {"request": [{"reference": "ServiceRequest/999999"}]}
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

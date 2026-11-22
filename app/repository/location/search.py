@@ -19,6 +19,11 @@ from functools import cache
 from sqlalchemy import Float, cast, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+    performer_service_request_revincludes,
+    specimen_service_request_revincludes,
+)
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.repository._encounter_revinclude import location_encounter_revincludes
@@ -867,6 +872,9 @@ def location_search() -> SearchRegistry:
             IncludeTarget("Location", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_service_request_revincludes(
+                ("subject",), "subject", "Location", lambda l: l.location_id
+            ),
             *column_specimen_revincludes(
                 ("subject",), "subject", "Location", lambda l: l.location_id
             ),

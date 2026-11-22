@@ -260,7 +260,7 @@ routes:
     - related_person
     - risk_assessment
     - schedule
-    # - service_request
+    - service_request
     - slot
     - specimen
     # - specimen_definition

@@ -444,7 +444,7 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     reasonReference type that is not rebuilt (DocumentReference) is stored as sent."""
     body = procedure_body(
         patient,
-        basedOn=[{"reference": "ServiceRequest/999999"}],
+        basedOn=[{"reference": "CarePlan/999999"}],
         report=[
             {"reference": "DocumentReference/999999"},
             {"reference": "Composition/999999"},
@@ -778,4 +778,11 @@ async def test_create_reason_reference_observation_must_exist(client, patient):
     missing = procedure_body(
         patient, reasonReference=[{"reference": "Observation/999999"}]
     )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_service_request_must_exist(client, patient):
+    ok = procedure_body(patient, basedOn=[{"reference": "ServiceRequest/80001"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = procedure_body(patient, basedOn=[{"reference": "ServiceRequest/999999"}])
     assert (await client.post(BASE + "/", json=missing)).status_code == 422

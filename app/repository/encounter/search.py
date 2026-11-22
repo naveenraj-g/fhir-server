@@ -20,6 +20,11 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+    performer_service_request_revincludes,
+    specimen_service_request_revincludes,
+)
 from app.repository._clinical_impression_revinclude import column_impression_revincludes
 from app.repository._risk_assessment_revinclude import column_risk_revincludes
 from app.repository._observation_revinclude import column_observation_revincludes
@@ -62,6 +67,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/encounter-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "ServiceRequest": (
+        "app.models.service_request",
+        "ServiceRequestModel",
+        "service_request_id",
+        "app.repository.service_request.search",
+        "service_request_search",
+    ),
     "Patient": (
         "app.models.patient",
         "PatientModel",
@@ -714,6 +726,7 @@ def encounter_search() -> SearchRegistry:
             "The ServiceRequest that initiated this encounter",
             "Encounter.basedOn",
             "ServiceRequest/80001",
+            chain_types=("ServiceRequest",),
         ),
         SearchParam(
             "class",
@@ -929,6 +942,12 @@ def encounter_search() -> SearchRegistry:
         includes=(
             IncludeTarget(
                 "Encounter",
+                "based-on",
+                "ServiceRequest",
+                _include_child(_R, "ServiceRequest", _R.param == "based-on"),
+            ),
+            IncludeTarget(
+                "Encounter",
                 "appointment",
                 "Appointment",
                 _include_child(_R, "Appointment", _R.param == "appointment"),
@@ -994,6 +1013,9 @@ def encounter_search() -> SearchRegistry:
         ),
         # An Encounter that is part of another one points back at it.
         revincludes=(
+            *column_service_request_revincludes(
+                ("encounter",), "encounter", "Encounter", lambda e: e.encounter_id
+            ),
             IncludeTarget(
                 "Encounter",
                 "part-of",

@@ -39,6 +39,7 @@ _MODELED_AUTHORS = ("Practitioner", "PractitionerRole")
 _MODELED_ANY = (
     "Observation",
     "Specimen",
+    "ServiceRequest",
     "Patient",
     "Practitioner",
     "PractitionerRole",

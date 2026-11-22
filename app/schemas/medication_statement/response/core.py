@@ -39,7 +39,7 @@ from app.schemas.medication_statement.response.reference import (
 from app.schemas.medication_statement.response.status_reason import (
     PlainMedicationStatementStatusReason,
 )
-from app.schemas.service_request.response.core import FHIRAnnotation
+from app.schemas.datatypes.annotation import FHIRAnnotation
 
 
 class FHIRMedicationStatementSchema(BaseModel):

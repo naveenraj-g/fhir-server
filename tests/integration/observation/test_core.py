@@ -436,7 +436,7 @@ async def test_create_based_on_focus_and_device_are_not_checked(client, patient)
     body = observation_body(
         patient,
         basedOn=[
-            {"reference": "ServiceRequest/999999"},
+            {"reference": "CarePlan/999999"},
             {"reference": "MedicationRequest/999999"},
         ],
         focus=[{"reference": "Condition/999999"}],
@@ -767,4 +767,13 @@ async def test_create_specimen_must_exist(client, patient):
     ok = observation_body(patient, specimen={"reference": "Specimen/310001"})
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = observation_body(patient, specimen={"reference": "Specimen/999999"})
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_service_request_must_exist(client, patient):
+    ok = observation_body(patient, basedOn=[{"reference": "ServiceRequest/80001"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = observation_body(
+        patient, basedOn=[{"reference": "ServiceRequest/999999"}]
+    )
     assert (await client.post(BASE + "/", json=missing)).status_code == 422

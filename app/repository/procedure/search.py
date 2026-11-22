@@ -62,6 +62,13 @@ _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "ServiceRequest": (
+        "app.models.service_request",
+        "ServiceRequestModel",
+        "service_request_id",
+        "app.repository.service_request.search",
+        "service_request_search",
+    ),
     "Observation": (
         "app.models.observation",
         "ObservationModel",
@@ -857,6 +864,12 @@ def procedure_search() -> SearchRegistry:
                 _include_column("location", "Location"),
             ),
             *performer_includes,
+            IncludeTarget(
+                "Procedure",
+                "based-on",
+                "ServiceRequest",
+                _include_child(_R, "ServiceRequest", _R.param == "based-on"),
+            ),
             IncludeTarget(
                 "Procedure",
                 "part-of",

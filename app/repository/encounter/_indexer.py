@@ -61,7 +61,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     and hospitalization.origin / destination / preAdmissionIdentifier.assigner.
     Absolute URLs, logical (identifier-only) references and targets that are
     not resources on this server (Group, RelatedPerson, Account, EpisodeOfCare,
-    ServiceRequest, Condition, ...) point elsewhere and are not checked."""
+    Condition, ...) point elsewhere and are not checked."""
     refs = []
 
     def add(label, reference, resource_type):
@@ -76,6 +76,8 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             "Organization",
         )
     add("subject", (document.get("subject") or {}).get("reference"), "Patient")
+    for based_on in document.get("basedOn") or []:
+        add("basedOn", (based_on or {}).get("reference"), "ServiceRequest")
     add("partOf", (document.get("partOf") or {}).get("reference"), "Encounter")
     add(
         "serviceProvider",

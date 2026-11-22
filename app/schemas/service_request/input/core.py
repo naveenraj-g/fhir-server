@@ -1,452 +1,319 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import (
-    ServiceRequestIntent,
-    ServiceRequestPriority,
-    ServiceRequestQuantityComparator,
-    ServiceRequestStatus,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
-from .codeable_concept import ServiceRequestCodeableConceptInput
-from .identifier import ServiceRequestIdentifierInput
-from .note import ServiceRequestNoteInput
-from .reference import (
-    ServiceRequestBasedOnInput,
-    ServiceRequestEncounterInput,
-    ServiceRequestInsuranceInput,
-    ServiceRequestLocationReferenceInput,
-    ServiceRequestPerformerInput,
-    ServiceRequestReasonReferenceInput,
-    ServiceRequestRelevantHistoryInput,
-    ServiceRequestReplacesInput,
-    ServiceRequestRequesterInput,
-    ServiceRequestSpecimenInput,
-    ServiceRequestSubjectInput,
-    ServiceRequestSupportingInfoInput,
-)
+# RequestStatus, RequestIntent and RequestPriority (the required bindings).
+StatusCode = Literal[
+    "draft",
+    "active",
+    "on-hold",
+    "revoked",
+    "completed",
+    "entered-in-error",
+    "unknown",
+]
+IntentCode = Literal[
+    "proposal",
+    "plan",
+    "directive",
+    "order",
+    "original-order",
+    "reflex-order",
+    "filler-order",
+    "instance-order",
+    "option",
+]
+PriorityCode = Literal["routine", "urgent", "asap", "stat"]
 
 _EXAMPLE = {
+    "resourceType": "ServiceRequest",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/service-request-id",
+            "value": "SR-1001",
+        }
+    ],
     "status": "active",
     "intent": "order",
+    "priority": "routine",
+    "category": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "108252007",
+                    "display": "Laboratory procedure",
+                }
+            ]
+        }
+    ],
+    "code": {
+        "coding": [
+            {
+                "system": "http://loinc.org",
+                "code": "58410-2",
+                "display": "CBC panel - Blood by Automated count",
+            }
+        ]
+    },
     "subject": {"reference": "Patient/10001"},
-    "code": {"text": "Chest X-ray"},
-    "authored_on": "2026-01-15T10:30:00Z",
+    "encounter": {"reference": "Encounter/20001"},
+    "occurrenceDateTime": "2023-01-16T09:00:00Z",
+    "authoredOn": "2023-01-15T09:30:00Z",
+    "requester": {"reference": "Practitioner/30001"},
+    "performer": [{"reference": "Organization/190001"}],
+    "reasonCode": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "271737000",
+                    "display": "Anemia",
+                }
+            ]
+        }
+    ],
+    "note": [{"text": "Fasting not required."}],
 }
 
 
-class ServiceRequestCreateSchema(BaseModel):
-    """Creates a ServiceRequest and any combination of its sub-resource
-    lists atomically in one request — same set-once-then-patch shape as
-    every other resource in this codebase.
+class ServiceRequestQuantityInput(FhirInputModel):
+    """Quantity — a measured amount with an optional comparator."""
 
-    JWT/RBAC auth-rollout pattern — same as every other resource now:
-    `org_id`/`created_by` come from the verified JWT (`actor.org_id`/
-    `actor.sub`), not the request body — an org-less token is rejected
-    outright (403). `user_id` is unaffected — still a plain, optional,
-    gateway-forwarded field.
+    value: float | int | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(
+        None, description="How the value should be understood: < | <= | >= | >."
+    )
+    unit: str | None = Field(None, description="Unit representation.")
+    system: str | None = Field(
+        None,
+        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
+    )
+    code: str | None = Field(None, description="Coded form of the unit.")
 
-    `quantity[x]`/`occurrence[x]`/`asNeeded[x]` choice-type fields are
-    all flattened directly onto this schema with a field-group-per-
-    variant shape (e.g. `quantity_quantity_*` vs `quantity_ratio_*` vs
-    `quantity_range_*`) — the service layer picks whichever group is
-    actually populated; supplying more than one variant group is not
-    rejected at the schema layer (same tolerance as every other
-    choice-type field in this codebase)."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
+class ServiceRequestRatioInput(FhirInputModel):
+    """Ratio — a relationship of two Quantity values."""
 
+    numerator: ServiceRequestQuantityInput | None = Field(
+        None, description="Numerator value."
+    )
+    denominator: ServiceRequestQuantityInput | None = Field(
+        None, description="Denominator value."
+    )
+
+
+class ServiceRequestRangeInput(FhirInputModel):
+    """Range — a set of values bounded by low and high."""
+
+    low: ServiceRequestQuantityInput | None = Field(None, description="Low limit.")
+    high: ServiceRequestQuantityInput | None = Field(None, description="High limit.")
+
+
+class ServiceRequestAnnotationInput(FhirInputModel):
+    """Annotation — a note with an author (a Reference or plain text) and a time."""
+
+    authorReference: FhirReferenceInput | None = Field(
+        None,
+        description="Individual responsible for the annotation — Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    authorString: str | None = Field(
+        None, description="Individual responsible for the annotation, as plain text."
+    )
+    time: str | None = Field(
+        None, description="When the annotation was made (a FHIR dateTime)."
+    )
+    text: str | None = Field(
+        None, description="The annotation text, as markdown (required by R4)."
+    )
+
+
+class _ServiceRequestFields(FhirInputModel):
+    """Every writable ServiceRequest element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/servicerequest.html). Create and patch accept exactly the
+    same fields. R4 requires `status`, `intent` and `subject` (and rule prr-1: `orderDetail`
+    only with a `code`), but those minimums are enforced by the base-R4 validator
+    (`java_validator` backend), not by this model — so a PATCH can send any subset.
+
+    The validated body is stored whole (ServiceRequestModel.content), so any valid R4 element
+    is kept — including ones this model does not declare. Server-managed elements are ignored
+    if sent: `id` (assigned from the service_request_id sequence) and `meta` (audit/tenant
+    data, stamped on at read time). org_id and created_by/updated_by come from the verified
+    JWT (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["ServiceRequest"] | None = Field(
+        None, description="Optional; if supplied it must be 'ServiceRequest'."
+    )
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
     )
-
-    identifier: list[ServiceRequestIdentifierInput] | None = Field(
-        None, description="Business identifiers for this request."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Identifiers assigned to this order."
     )
-    instantiates_canonical: list[str] | None = Field(
+    instantiatesCanonical: list[str] | None = Field(
         None,
-        description="Canonical references to instantiated ActivityDefinition/PlanDefinition.",
+        description="Instantiates FHIR protocol or definition — canonical URLs of an ActivityDefinition or PlanDefinition (`url` or `url|version`). Searched by `instantiates-canonical`.",
     )
-    instantiates_uri: list[str] | None = Field(
-        None, description="External protocol/definition URIs instantiated."
-    )
-    based_on: list[ServiceRequestBasedOnInput] | None = Field(
-        None, description="Plan/proposal/order fulfilled by this request."
-    )
-    replaces: list[ServiceRequestReplacesInput] | None = Field(
-        None, description="The request this one supersedes."
-    )
-    requisition: ServiceRequestIdentifierInput | None = Field(
+    instantiatesUri: list[str] | None = Field(
         None,
-        description="A shared identifier common to all service requests in a requisition.",
+        description="Instantiates external protocol or definition (URIs). Searched by `instantiates-uri`.",
     )
-
-    status: ServiceRequestStatus = Field(
-        ...,
-        description="draft | active | on-hold | revoked | completed | entered-in-error | unknown.",
+    basedOn: list[FhirReferenceInput] | None = Field(
+        None,
+        description="What request fulfills — Reference(CarePlan | ServiceRequest | MedicationRequest). A relative ServiceRequest must exist in the caller's org (422 otherwise); CarePlan and MedicationRequest are stored as sent.",
     )
-    intent: ServiceRequestIntent = Field(
-        ...,
-        description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option.",
+    replaces: list[FhirReferenceInput] | None = Field(
+        None,
+        description="What request replaces — Reference(ServiceRequest). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    category: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Classification of the service."
+    requisition: FhirIdentifierInput | None = Field(
+        None, description="Composite Request ID. Searched by `requisition`."
     )
-    priority: ServiceRequestPriority | None = Field(
+    status: StatusCode | None = Field(
+        None,
+        description="draft | active | on-hold | revoked | completed | entered-in-error | unknown (required by R4).",
+    )
+    intent: IntentCode | None = Field(
+        None,
+        description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option (required by R4).",
+    )
+    category: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Classification of service."
+    )
+    priority: PriorityCode | None = Field(
         None, description="routine | urgent | asap | stat."
     )
-    do_not_perform: bool | None = Field(
-        None, description="True if the service/procedure should NOT be performed."
+    doNotPerform: bool | None = Field(
+        None, description="True if the service should NOT be performed."
     )
-    code: ServiceRequestCodeableConceptInput | None = Field(
+    code: FhirCodeableConceptInput | None = Field(
         None, description="What is being requested/ordered."
     )
-    order_detail: list[ServiceRequestCodeableConceptInput] | None = Field(
+    orderDetail: list[FhirCodeableConceptInput] | None = Field(
         None,
-        description="Additional order details — SHALL only be present if `code` is present.",
+        description="Additional order information (only with a `code`, rule prr-1).",
     )
-
-    # quantity[x] — choice of Quantity | Ratio | Range
-    quantity_quantity_value: float | None = Field(
-        None, description="quantity[x]: Quantity — numeric value."
+    quantityQuantity: ServiceRequestQuantityInput | None = Field(
+        None, description="Service amount (a Quantity). One of the quantity[x] choices."
     )
-    quantity_quantity_comparator: ServiceRequestQuantityComparator | None = Field(
-        None, description="quantity[x]: Quantity — < | <= | >= | >."
+    quantityRatio: ServiceRequestRatioInput | None = Field(
+        None, description="Service amount (a Ratio). One of the quantity[x] choices."
     )
-    quantity_quantity_unit: str | None = Field(
-        None, description="quantity[x]: Quantity — unit representation."
+    quantityRange: ServiceRequestRangeInput | None = Field(
+        None, description="Service amount (a Range). One of the quantity[x] choices."
     )
-    quantity_quantity_system: str | None = Field(
-        None, description="quantity[x]: Quantity — unit system."
-    )
-    quantity_quantity_code: str | None = Field(
-        None, description="quantity[x]: Quantity — coded unit form."
-    )
-    quantity_ratio_numerator_value: float | None = Field(
-        None, description="quantity[x]: Ratio.numerator — numeric value."
-    )
-    quantity_ratio_numerator_comparator: ServiceRequestQuantityComparator | None = (
-        Field(None, description="quantity[x]: Ratio.numerator — comparator.")
-    )
-    quantity_ratio_numerator_unit: str | None = Field(
-        None, description="quantity[x]: Ratio.numerator — unit."
-    )
-    quantity_ratio_numerator_system: str | None = Field(
-        None, description="quantity[x]: Ratio.numerator — unit system."
-    )
-    quantity_ratio_numerator_code: str | None = Field(
-        None, description="quantity[x]: Ratio.numerator — coded unit form."
-    )
-    quantity_ratio_denominator_value: float | None = Field(
-        None, description="quantity[x]: Ratio.denominator — numeric value."
-    )
-    quantity_ratio_denominator_comparator: ServiceRequestQuantityComparator | None = (
-        Field(None, description="quantity[x]: Ratio.denominator — comparator.")
-    )
-    quantity_ratio_denominator_unit: str | None = Field(
-        None, description="quantity[x]: Ratio.denominator — unit."
-    )
-    quantity_ratio_denominator_system: str | None = Field(
-        None, description="quantity[x]: Ratio.denominator — unit system."
-    )
-    quantity_ratio_denominator_code: str | None = Field(
-        None, description="quantity[x]: Ratio.denominator — coded unit form."
-    )
-    quantity_range_low_value: float | None = Field(
-        None, description="quantity[x]: Range.low — numeric value."
-    )
-    quantity_range_low_unit: str | None = Field(
-        None, description="quantity[x]: Range.low — unit."
-    )
-    quantity_range_low_system: str | None = Field(
-        None, description="quantity[x]: Range.low — unit system."
-    )
-    quantity_range_low_code: str | None = Field(
-        None, description="quantity[x]: Range.low — coded unit form."
-    )
-    quantity_range_high_value: float | None = Field(
-        None, description="quantity[x]: Range.high — numeric value."
-    )
-    quantity_range_high_unit: str | None = Field(
-        None, description="quantity[x]: Range.high — unit."
-    )
-    quantity_range_high_system: str | None = Field(
-        None, description="quantity[x]: Range.high — unit system."
-    )
-    quantity_range_high_code: str | None = Field(
-        None, description="quantity[x]: Range.high — coded unit form."
-    )
-
-    subject: ServiceRequestSubjectInput = Field(
-        ..., description="Individual/entity the service is for (1..1, required)."
-    )
-    encounter: ServiceRequestEncounterInput | None = Field(
-        None, description="Encounter this request was created during."
-    )
-
-    # occurrence[x] — choice of dateTime | Period | Timing
-    occurrence_date_time: datetime | None = Field(
-        None, description="occurrence[x]: dateTime."
-    )
-    occurrence_period_start: datetime | None = Field(
-        None, description="occurrence[x]: Period — start."
-    )
-    occurrence_period_end: datetime | None = Field(
-        None, description="occurrence[x]: Period — end."
-    )
-    occurrence_timing: dict | None = Field(
+    subject: FhirReferenceInput | None = Field(
         None,
-        description="occurrence[x]: Timing, as a raw FHIR Timing BackboneElement dict — stored and round-tripped verbatim rather than flattened (see ServiceRequestModel's docstring for why).",
+        description="Individual or entity the service is ordered for — Reference(Patient | Group | Location | Device). A relative Patient or Location must exist in the caller's org (422 otherwise).",
     )
-
-    # asNeeded[x] — choice of boolean | CodeableConcept
-    as_needed_boolean: bool | None = Field(None, description="asNeeded[x]: boolean.")
-    as_needed_codeable_concept: ServiceRequestCodeableConceptInput | None = Field(
-        None, description="asNeeded[x]: CodeableConcept."
-    )
-
-    authored_on: datetime | None = Field(
-        None, description="Date/time the request was authored."
-    )
-    requester: ServiceRequestRequesterInput | None = Field(
-        None, description="Who/what is requesting the service."
-    )
-    performer_type: ServiceRequestCodeableConceptInput | None = Field(
-        None, description="Desired kind of performer for the service."
-    )
-    performer: list[ServiceRequestPerformerInput] | None = Field(
-        None, description="Desired performer(s)."
-    )
-    location_code: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Requested location, coded."
-    )
-    location_reference: list[ServiceRequestLocationReferenceInput] | None = Field(
-        None, description="Requested location, resolved."
-    )
-    reason_code: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Explanation/justification for the request, coded."
-    )
-    reason_reference: list[ServiceRequestReasonReferenceInput] | None = Field(
-        None, description="Explanation/justification for the request, resolved."
-    )
-    insurance: list[ServiceRequestInsuranceInput] | None = Field(
-        None, description="Associated insurance coverage."
-    )
-    supporting_info: list[ServiceRequestSupportingInfoInput] | None = Field(
-        None, description="Additional clinical information."
-    )
-    specimen: list[ServiceRequestSpecimenInput] | None = Field(
-        None, description="Procedure Samples."
-    )
-    body_site: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Coded body site(s)."
-    )
-    note: list[ServiceRequestNoteInput] | None = Field(None, description="Comments.")
-    patient_instruction: str | None = Field(
-        None, description="Patient/consumer-oriented instructions."
-    )
-    relevant_history: list[ServiceRequestRelevantHistoryInput] | None = Field(
-        None, description="Key events in the history of the request."
-    )
-
-
-class ServiceRequestPatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows
-    wholesale; omitted lists are left untouched. `org_id`/`created_by`/
-    `updated_by` all come from the verified JWT now — none are
-    request-body fields."""
-
-    model_config = ConfigDict(
-        extra="forbid", json_schema_extra={"example": {"status": "completed"}}
-    )
-
-    extension: list[dict] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    identifier: list[ServiceRequestIdentifierInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    instantiates_canonical: list[str] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    instantiates_uri: list[str] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    based_on: list[ServiceRequestBasedOnInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    replaces: list[ServiceRequestReplacesInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    requisition: ServiceRequestIdentifierInput | None = Field(
-        None, description="Set to null to clear."
-    )
-
-    status: ServiceRequestStatus | None = Field(
+    encounter: FhirReferenceInput | None = Field(
         None,
-        description="draft | active | on-hold | revoked | completed | entered-in-error | unknown.",
+        description="Encounter in which the request was created — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    intent: ServiceRequestIntent | None = Field(
+    occurrenceDateTime: str | None = Field(
         None,
-        description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option.",
+        description="When service should occur (a FHIR dateTime). One of the occurrence[x] choices; searched by `occurrence`.",
     )
-    category: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    priority: ServiceRequestPriority | None = Field(
-        None, description="routine | urgent | asap | stat."
-    )
-    do_not_perform: bool | None = Field(
-        None, description="True if the service/procedure should NOT be performed."
-    )
-    code: ServiceRequestCodeableConceptInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    order_detail: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-
-    quantity_quantity_value: float | None = Field(
-        None, description="quantity[x]: Quantity — numeric value."
-    )
-    quantity_quantity_comparator: ServiceRequestQuantityComparator | None = Field(
-        None, description="quantity[x]: Quantity — comparator."
-    )
-    quantity_quantity_unit: str | None = Field(
-        None, description="quantity[x]: Quantity — unit."
-    )
-    quantity_quantity_system: str | None = Field(
-        None, description="quantity[x]: Quantity — unit system."
-    )
-    quantity_quantity_code: str | None = Field(
-        None, description="quantity[x]: Quantity — coded unit form."
-    )
-    quantity_ratio_numerator_value: float | None = Field(
-        None, description="quantity[x]: Ratio.numerator — numeric value."
-    )
-    quantity_ratio_numerator_comparator: ServiceRequestQuantityComparator | None = (
-        Field(None, description="quantity[x]: Ratio.numerator — comparator.")
-    )
-    quantity_ratio_numerator_unit: str | None = Field(
-        None, description="quantity[x]: Ratio.numerator — unit."
-    )
-    quantity_ratio_numerator_system: str | None = Field(
-        None, description="quantity[x]: Ratio.numerator — unit system."
-    )
-    quantity_ratio_numerator_code: str | None = Field(
-        None, description="quantity[x]: Ratio.numerator — coded unit form."
-    )
-    quantity_ratio_denominator_value: float | None = Field(
-        None, description="quantity[x]: Ratio.denominator — numeric value."
-    )
-    quantity_ratio_denominator_comparator: ServiceRequestQuantityComparator | None = (
-        Field(None, description="quantity[x]: Ratio.denominator — comparator.")
-    )
-    quantity_ratio_denominator_unit: str | None = Field(
-        None, description="quantity[x]: Ratio.denominator — unit."
-    )
-    quantity_ratio_denominator_system: str | None = Field(
-        None, description="quantity[x]: Ratio.denominator — unit system."
-    )
-    quantity_ratio_denominator_code: str | None = Field(
-        None, description="quantity[x]: Ratio.denominator — coded unit form."
-    )
-    quantity_range_low_value: float | None = Field(
-        None, description="quantity[x]: Range.low — numeric value."
-    )
-    quantity_range_low_unit: str | None = Field(
-        None, description="quantity[x]: Range.low — unit."
-    )
-    quantity_range_low_system: str | None = Field(
-        None, description="quantity[x]: Range.low — unit system."
-    )
-    quantity_range_low_code: str | None = Field(
-        None, description="quantity[x]: Range.low — coded unit form."
-    )
-    quantity_range_high_value: float | None = Field(
-        None, description="quantity[x]: Range.high — numeric value."
-    )
-    quantity_range_high_unit: str | None = Field(
-        None, description="quantity[x]: Range.high — unit."
-    )
-    quantity_range_high_system: str | None = Field(
-        None, description="quantity[x]: Range.high — unit system."
-    )
-    quantity_range_high_code: str | None = Field(
-        None, description="quantity[x]: Range.high — coded unit form."
-    )
-
-    subject: ServiceRequestSubjectInput | None = Field(
+    occurrencePeriod: FhirPeriodInput | None = Field(
         None,
-        description="Set to null to clear (not recommended — subject is 1..1 in FHIR).",
+        description="When service should occur (a Period). One of the occurrence[x] choices; searched by `occurrence`.",
     )
-    encounter: ServiceRequestEncounterInput | None = Field(
-        None, description="Set to null to clear."
+    occurrenceTiming: dict | None = Field(
+        None,
+        description="When service should occur (a Timing, as raw FHIR JSON). One of the occurrence[x] choices; searched by `occurrence`.",
+    )
+    asNeededBoolean: bool | None = Field(
+        None,
+        description="Preconditions for service (a boolean). One of the asNeeded[x] choices.",
+    )
+    asNeededCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Preconditions for service (a CodeableConcept). One of the asNeeded[x] choices.",
+    )
+    authoredOn: str | None = Field(
+        None,
+        description="Date request signed (a FHIR dateTime). Searched by `authored`.",
+    )
+    requester: FhirReferenceInput | None = Field(
+        None,
+        description="Who/what is requesting service — Reference(Practitioner | PractitionerRole | Organization | Patient | RelatedPerson | Device). A relative reference of a rebuilt type must exist in the caller's org (422 otherwise).",
+    )
+    performerType: FhirCodeableConceptInput | None = Field(
+        None, description="Performer role. Searched by `performer-type`."
+    )
+    performer: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Requested performer — Reference(Practitioner | PractitionerRole | Organization | CareTeam | HealthcareService | Patient | Device | RelatedPerson). A relative reference of a rebuilt type must exist in the caller's org (422 otherwise).",
+    )
+    locationCode: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Requested location (coded)."
+    )
+    locationReference: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Requested location — Reference(Location). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    reasonCode: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Explanation/justification for procedure or service (coded)."
+    )
+    reasonReference: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Explanation/justification — Reference(Condition | Observation | DiagnosticReport | DocumentReference). A relative Condition, Observation or DiagnosticReport must exist in the caller's org (422 otherwise).",
+    )
+    insurance: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Associated insurance coverage — Reference(Coverage | ClaimResponse). Stored as sent.",
+    )
+    supportingInfo: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Additional clinical information — Reference(Any). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise).",
+    )
+    specimen: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Procedure samples — Reference(Specimen). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    bodySite: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Location on Body."
+    )
+    note: list[ServiceRequestAnnotationInput] | None = Field(
+        None, description="Comments."
+    )
+    patientInstruction: str | None = Field(
+        None, description="Patient or consumer-oriented instructions."
+    )
+    relevantHistory: list[FhirReferenceInput] | None = Field(
+        None, description="Request provenance — Reference(Provenance). Stored as sent."
     )
 
-    occurrence_date_time: datetime | None = Field(
-        None, description="occurrence[x]: dateTime."
-    )
-    occurrence_period_start: datetime | None = Field(
-        None, description="occurrence[x]: Period — start."
-    )
-    occurrence_period_end: datetime | None = Field(
-        None, description="occurrence[x]: Period — end."
-    )
-    occurrence_timing: dict | None = Field(
-        None, description="occurrence[x]: Timing, raw dict."
-    )
 
-    as_needed_boolean: bool | None = Field(None, description="asNeeded[x]: boolean.")
-    as_needed_codeable_concept: ServiceRequestCodeableConceptInput | None = Field(
-        None, description="asNeeded[x]: CodeableConcept."
-    )
+class ServiceRequestCreateSchema(_ServiceRequestFields):
+    """POST body — a FHIR R4 ServiceRequest resource."""
 
-    authored_on: datetime | None = Field(
-        None, description="Date/time the request was authored."
-    )
-    requester: ServiceRequestRequesterInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    performer_type: ServiceRequestCodeableConceptInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    performer: list[ServiceRequestPerformerInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    location_code: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    location_reference: list[ServiceRequestLocationReferenceInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    reason_code: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    reason_reference: list[ServiceRequestReasonReferenceInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    insurance: list[ServiceRequestInsuranceInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    supporting_info: list[ServiceRequestSupportingInfoInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    specimen: list[ServiceRequestSpecimenInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    body_site: list[ServiceRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    note: list[ServiceRequestNoteInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    patient_instruction: str | None = Field(
-        None, description="Patient/consumer-oriented instructions."
-    )
-    relevant_history: list[ServiceRequestRelevantHistoryInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class ServiceRequestPatchSchema(_ServiceRequestFields):
+    """PATCH body — a partial FHIR R4 ServiceRequest (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale — a list (even `[]`) replaces every existing
+    entry, an object replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "completed",
+                "priority": "urgent",
+                "note": [{"text": "Results called through."}],
+            }
+        }
+    }

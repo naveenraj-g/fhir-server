@@ -319,7 +319,7 @@ async def test_create_unrebuilt_reference_targets_are_not_checked(client, patien
     point at resources this server does not rebuild: stored as sent."""
     body = appointment_body(
         patient,
-        basedOn=[{"reference": "ServiceRequest/999999"}],
+        basedOn=[{"reference": "CarePlan/999999"}],
         reasonReference=[{"reference": "ImmunizationRecommendation/999999"}],
         supportingInformation=[{"reference": "DocumentReference/999999"}],
     )
@@ -683,5 +683,14 @@ async def test_create_reason_reference_observation_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = appointment_body(
         patient, reasonReference=[{"reference": "Observation/999999"}]
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_service_request_must_exist(client, patient):
+    ok = appointment_body(patient, basedOn=[{"reference": "ServiceRequest/80001"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = appointment_body(
+        patient, basedOn=[{"reference": "ServiceRequest/999999"}]
     )
     assert (await client.post(BASE + "/", json=missing)).status_code == 422

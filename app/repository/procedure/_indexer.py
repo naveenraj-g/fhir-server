@@ -49,7 +49,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     `partOf` (Procedure), `reasonReference` (Condition / Procedure / DiagnosticReport / Observation), `report` (DiagnosticReport),
     `complicationDetail` (Condition) and the author of every note. Absolute URLs,
     logical (identifier-only) references and targets that are not resources on
-    this server (a Group subject, a Device, basedOn, report, usedReference, ...)
+    this server (a Group subject, a Device, a CarePlan basedOn, report, usedReference, ...)
     point elsewhere and are not checked."""
     refs = []
 
@@ -89,6 +89,8 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             (performer.get("onBehalfOf") or {}).get("reference"),
             "Organization",
         )
+    for based_on in document.get("basedOn") or []:
+        add("basedOn", based_on.get("reference"), "ServiceRequest")
     for part_of in document.get("partOf") or []:
         add("partOf", part_of.get("reference"), "Procedure")
     for reason in document.get("reasonReference") or []:

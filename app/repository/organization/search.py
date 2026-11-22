@@ -38,6 +38,11 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+    performer_service_request_revincludes,
+    specimen_service_request_revincludes,
+)
 from app.models.enums import OrganizationReferenceType
 from app.models.organization import (
     OrganizationAddress,
@@ -659,6 +664,12 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_service_request_revincludes(
+                ("requester",), "requester", "Organization", lambda o: o.organization_id
+            ),
+            *performer_service_request_revincludes(
+                "Organization", lambda o: o.organization_id
+            ),
             *service_provider_encounter_revincludes(lambda o: o.organization_id),
             IncludeTarget(
                 "Organization",

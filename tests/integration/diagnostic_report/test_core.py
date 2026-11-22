@@ -304,7 +304,7 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     stored as sent."""
     body = report_body(
         patient,
-        basedOn=[{"reference": "ServiceRequest/999999"}],
+        basedOn=[{"reference": "CarePlan/999999"}],
         imagingStudy=[{"reference": "ImagingStudy/999999"}],
         media=[{"link": {"reference": "Media/999999"}}],
     )
@@ -654,4 +654,11 @@ async def test_create_specimen_must_exist(client, patient):
     ok = report_body(patient, specimen=[{"reference": "Specimen/310001"}])
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = report_body(patient, specimen=[{"reference": "Specimen/999999"}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_service_request_must_exist(client, patient):
+    ok = report_body(patient, basedOn=[{"reference": "ServiceRequest/80001"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = report_body(patient, basedOn=[{"reference": "ServiceRequest/999999"}])
     assert (await client.post(BASE + "/", json=missing)).status_code == 422

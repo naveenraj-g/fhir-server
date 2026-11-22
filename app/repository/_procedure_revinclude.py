@@ -94,3 +94,23 @@ def reason_procedure_revincludes(resource_type: str, key) -> tuple[IncludeTarget
             "Procedure", "reason-reference", resource_type, fetch, reverse=True
         ),
     )
+
+
+def based_on_procedure_revincludes(
+    resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
+    """Procedure:based-on - procedures whose `basedOn` is one of the matched rows of
+    `resource_type` (a ServiceRequest)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.procedure import ProcedureReference
+        from app.repository.procedure.search import revinclude_procedures_via_child
+
+        return await revinclude_procedures_via_child(
+            ProcedureReference,
+            resource_type,
+            key,
+            ProcedureReference.param == "based-on",
+        )(session, ctx, rows)
+
+    return (IncludeTarget("Procedure", "based-on", resource_type, fetch, reverse=True),)

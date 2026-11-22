@@ -52,6 +52,7 @@ _MODELED_FINDINGS = ("Condition", "Observation")
 _MODELED_INFORMATION = (
     "Observation",
     "Specimen",
+    "ServiceRequest",
     "Patient",
     "Practitioner",
     "PractitionerRole",

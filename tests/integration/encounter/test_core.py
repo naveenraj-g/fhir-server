@@ -277,7 +277,7 @@ async def test_create_unmodeled_targets_are_not_checked(client):
     body = encounter_body(
         subject={"reference": "Group/5"},
         episodeOfCare=[{"reference": "EpisodeOfCare/5"}],
-        basedOn=[{"reference": "ServiceRequest/5"}],
+        basedOn=[{"reference": "CarePlan/5"}],
         account=[{"reference": "Account/5"}],
         reasonReference=[{"reference": "ImmunizationRecommendation/5"}],
         diagnosis=[
@@ -625,4 +625,11 @@ async def test_create_reason_reference_observation_must_exist(client):
     ok = encounter_body(reasonReference=[{"reference": "Observation/160005"}])
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = encounter_body(reasonReference=[{"reference": "Observation/999999"}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_service_request_must_exist(client):
+    ok = encounter_body(basedOn=[{"reference": "ServiceRequest/80001"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = encounter_body(basedOn=[{"reference": "ServiceRequest/999999"}])
     assert (await client.post(BASE + "/", json=missing)).status_code == 422

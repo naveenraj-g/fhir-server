@@ -40,6 +40,7 @@ _MODELED_SUPPORT = ("Immunization", "ImmunizationEvaluation")
 _MODELED_INFORMATION = (
     "Observation",
     "Specimen",
+    "ServiceRequest",
     "Patient",
     "Practitioner",
     "PractitionerRole",

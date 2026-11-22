@@ -44,9 +44,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     """(element label, resource type, relative reference) for every local reference that must
     exist in the caller's org on write: the identifiers' assigners (the resource's, the
     accession's and each container's), `subject` (a Patient or Location), `collection.collector`,
-    every `parent` and every note's `authorReference`. Absolute URLs, logical (identifier-only)
+    every `parent`, every `request` (a ServiceRequest) and every note's `authorReference`. Absolute URLs, logical (identifier-only)
     references and targets that are not resources on this server (a Group, Device or Substance
-    subject, a ServiceRequest `request`, a `processing.additive`) point elsewhere and are not
+    subject, a `processing.additive`) point elsewhere and are not
     checked."""
     refs = []
 
@@ -78,6 +78,8 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     )
     for ref in document.get("parent") or []:
         add("parent", (ref or {}).get("reference"), "Specimen")
+    for ref in document.get("request") or []:
+        add("request", (ref or {}).get("reference"), "ServiceRequest")
     for container in document.get("container") or []:
         for identifier in (container or {}).get("identifier") or []:
             assigner("container.identifier.assigner", identifier)

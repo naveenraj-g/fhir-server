@@ -20,7 +20,7 @@ from app.schemas.datatypes import (
     FHIRReference,
     PlainCodingRow,
 )
-from app.schemas.service_request.response.core import FHIRAnnotation
+from app.schemas.datatypes.annotation import FHIRAnnotation
 
 
 class FHIRCarePlanSchema(BaseModel):
