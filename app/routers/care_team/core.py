@@ -1,11 +1,24 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.config import settings
+from app.core.content_negotiation import (
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
+)
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.care_team import get_care_team_service
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.care_team.search import care_team_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
 from app.schemas.care_team import (
     CareTeamCreateSchema,
     CareTeamPatchSchema,
@@ -14,17 +27,25 @@ from app.services.care_team import CareTeamService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# CareTeam always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -35,11 +56,19 @@ logger = get_logger(__name__)
     operation_id="create_care_team",
     summary="Create a new CareTeam resource",
     description=(
-        "The Care Team includes all the people and organizations who plan to participate "
-        "in the coordination and delivery of care for a patient. "
-        "Accepts the full nested payload atomically in one DB transaction. `tenant_id`/"
-        "`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — an "
-        "org-less token is rejected outright (403). " + _CONTENT_NEG
+        "Records the people and organizations who plan to participate in the coordination and delivery of "
+        "care for a patient or a group — a care team with its category, period, participants (each with roles) "
+        "and managing organizations. The request body is a FHIR R4 CareTeam resource (camelCase, nested "
+        "datatypes — https://www.hl7.org/fhir/R4/careteam.html); every supplied element (identifier, status, "
+        "category, name, subject, encounter, period, participant, reasonCode, reasonReference, "
+        "managingOrganization, telecom, note) is stored as sent. Every CareTeam element is optional in R4. "
+        "The body is checked against base FHIR R4: any valid R4 element is accepted and stored as sent "
+        "(server-managed `id`/`meta` are ignored); a key that is not FHIR at all is rejected with 422. A relative "
+        "`Patient/<id>` or `Group/<id>` subject, `encounter`, every `participant.member` (Practitioner, "
+        "PractitionerRole, RelatedPerson, Patient, Organization or CareTeam) and `participant.onBehalfOf`, "
+        "`reasonReference` (Condition), `managingOrganization`, a note author and every identifier's `assigner` "
+        "are rejected with 422 if they do not exist in the caller's org; an absolute URL or a logical reference "
+        "is stored as sent. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -49,31 +78,144 @@ async def create_care_team(
     actor: AuthUser = Depends(require_permission("care_team", "create")),
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
+    """org_id and created_by both come from the verified JWT (actor.org_id /
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new CareTeam resource",
         extra={"event": "route.create_care_team"},
     )
     log_payload(logger, "care_team.create.payload", payload)
-    ct = await care_team_service.create_care_team(payload, actor.org_id, actor.sub)
-    return format_response(
-        care_team_service._to_fhir(ct),
-        care_team_service._to_plain(ct),
-        request,
+    care_team = await care_team_service.create_care_team(
+        payload, actor.org_id, actor.sub, body=await request.json()
+    )
+    return fhir_response(
+        care_team_service._to_fhir(care_team),
         status_code=status.HTTP_201_CREATED,
     )
 
 
-# ── Get by ID ──────────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# CareTeam search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = care_team_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    care_team_service: CareTeamService,
+):
+    search_url, fhir_base = search_urls(request, "search_care_teams")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await care_team_service.search_care_teams(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_care_teams",
+    summary="Search CareTeam resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_care_teams(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("care_team", "read")),
+    care_team_service: CareTeamService = Depends(get_care_team_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search CareTeam resources",
+        extra={"event": "route.search_care_teams"},
+    )
+    return await _search(request, get_query(request), actor, care_team_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_care_teams_post",
+    summary="Search CareTeam resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_care_teams_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("care_team", "read")),
+    care_team_service: CareTeamService = Depends(get_care_team_service),
+):
+    logger.info(
+        "Search CareTeam resources (POST _search)",
+        extra={"event": "route.search_care_teams_post"},
+    )
+    return await _search(request, await post_query(request), actor, care_team_service)
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{care_team_id}",
-    operation_id="get_care_team",
-    summary="Get a CareTeam resource by ID",
+    operation_id="get_care_team_by_id",
+    summary="Retrieve a CareTeam resource by public care_team_id",
     description=(
-        "Returns the full CareTeam resource with all sub-resources populated. "
-        "Scoped to the caller's own org — returns 404 (never 403) if the resource belongs "
-        "to a different org, to avoid leaking existence. " + _CONTENT_NEG
+        "Scoped to the caller's own org — get_care_team_scoped() raises "
+        "PermissionDeniedError (403) outright for an org-less token, or NotFoundError "
+        "(404, never 403) if it belongs to a different org, so existence isn't leaked."
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
@@ -84,18 +226,17 @@ async def get_care_team(
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
     logger.info(
-        "Get a CareTeam resource by ID",
-        extra={"event": "route.get_care_team", "care_team_id": care_team_id},
+        "Retrieve a CareTeam resource by public care_team_id",
+        extra={
+            "event": "route.get_care_team_by_id",
+            "care_team_id": care_team_id,
+        },
     )
-    ct = await care_team_service.get_care_team_scoped(care_team_id, actor.org_id)
-    return format_response(
-        care_team_service._to_fhir(ct),
-        care_team_service._to_plain(ct),
-        request,
-    )
+    care_team = await care_team_service.get_care_team_scoped(care_team_id, actor.org_id)
+    return fhir_response(care_team_service._to_fhir(care_team))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -103,9 +244,12 @@ async def get_care_team(
     operation_id="patch_care_team",
     summary="Update a CareTeam resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every "
-        "supplied sub-resource list atomically replaces corresponding rows. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if "
+        "The request body is a partial FHIR R4 CareTeam (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. A supplied list "
+        "(identifier, category, participant, reasonCode, reasonReference, managingOrganization, telecom, note — even `[]`) atomically replaces the stored entries, a "
+        "supplied `subject`, `encounter` or `period` replaces the whole value, and `null` clears an element. "
+        "Scoped to the caller's own org — patch_care_team() raises NotFoundError (404, not "
+        "403 — avoids leaking that a CareTeam with this id exists in another org) if "
         "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
@@ -117,6 +261,8 @@ async def patch_care_team(
     actor: AuthUser = Depends(require_permission("care_team", "update")),
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
+    """updated_by comes from the verified JWT (actor.sub); patch_care_team()
+    raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a CareTeam resource",
         extra={
@@ -126,81 +272,16 @@ async def patch_care_team(
     )
     log_payload(logger, "care_team.patch.payload", payload)
     updated = await care_team_service.patch_care_team(
-        care_team_id, payload, actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        care_team_service._to_fhir(updated),
-        care_team_service._to_plain(updated),
-        request,
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_care_teams",
-    summary="List all CareTeam resources",
-    description=(
-        "Returns a paginated list of CareTeam resources. Filter by status, "
-        "name, category, subject, encounter, participant, identifier. "
-        "Always scoped to the caller's own org (from the verified token). "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_care_teams(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("care_team", "read")),
-    status: str | None = Query(
-        None,
-        description="Status code (e.g. proposed, active, suspended, inactive, entered-in-error).",
-    ),
-    name: str | None = Query(None, description="Care team name."),
-    category: str | None = Query(None, description="Category code."),
-    subject: str | None = Query(
-        None, description="Subject reference (e.g. Patient/10001 or Group/...)."
-    ),
-    encounter: str | None = Query(
-        None, description="Encounter reference (e.g. Encounter/20001)."
-    ),
-    participant: str | None = Query(
-        None, description="Participant member reference (e.g. Practitioner/30001)."
-    ),
-    identifier: str | None = Query(None, description="Business identifier value."),
-    list_params: ListParams = Depends(),
-    care_team_service: CareTeamService = Depends(get_care_team_service),
-):
-    logger.info(
-        "List CareTeam resources",
-        extra={"event": "route.list_care_teams", "org_id": actor.org_id},
-    )
-    care_teams, total = await care_team_service.list_care_teams(
+        care_team_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        status=status,
-        name=name,
-        category=category,
-        subject=subject,
-        encounter=encounter,
-        participant=participant,
-        identifier=identifier,
-        limit=list_params.limit,
-        offset=list_params.offset,
-        sort=list_params.sort,
-        total_mode=list_params.total_mode,
+        body=await request.json(),
     )
-    return format_paginated_response(
-        [care_team_service._to_fhir(ct) for ct in care_teams],
-        [care_team_service._to_plain(ct) for ct in care_teams],
-        total,
-        list_params.limit,
-        list_params.offset,
-        request,
-    )
+    return fhir_response(care_team_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -209,9 +290,9 @@ async def list_care_teams(
     operation_id="delete_care_team",
     summary="Delete a CareTeam resource",
     description=(
-        "Permanently deletes the CareTeam and all associated sub-resources. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the resource "
-        "exists but belongs to a different org. Returns 204 on success."
+        "Permanently deletes the CareTeam and its search-index rows. "
+        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
+        "care_team exists but belongs to a different org. Returns 204 on success."
     ),
     responses={**_ERR_NOT_FOUND},
 )
@@ -220,6 +301,8 @@ async def delete_care_team(
     actor: AuthUser = Depends(require_permission("care_team", "delete")),
     care_team_service: CareTeamService = Depends(get_care_team_service),
 ):
+    """delete_care_team() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a CareTeam resource",
         extra={

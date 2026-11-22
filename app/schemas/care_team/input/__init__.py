@@ -1,21 +1,3 @@
-from app.schemas.care_team.input.codeable_concept import (
-    CareTeamCodeableConceptInput,
-)
-from app.schemas.care_team.input.core import (
-    CareTeamCreateSchema,
-    CareTeamPatchSchema,
-)
-from app.schemas.care_team.input.identifier import CareTeamIdentifierInput
-from app.schemas.care_team.input.note import CareTeamNoteInput
-from app.schemas.care_team.input.participant import CareTeamParticipantInput
-from app.schemas.care_team.input.reference import CareTeamReferenceInput
+from .core import CareTeamCreateSchema, CareTeamPatchSchema
 
-__all__ = [
-    "CareTeamCodeableConceptInput",
-    "CareTeamIdentifierInput",
-    "CareTeamParticipantInput",
-    "CareTeamReferenceInput",
-    "CareTeamNoteInput",
-    "CareTeamCreateSchema",
-    "CareTeamPatchSchema",
-]
+__all__ = ["CareTeamCreateSchema", "CareTeamPatchSchema"]

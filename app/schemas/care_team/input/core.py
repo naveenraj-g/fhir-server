@@ -1,249 +1,184 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.care_team.input.codeable_concept import (
-    CareTeamCodeableConceptInput,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirContactPointInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
-from app.schemas.care_team.input.identifier import CareTeamIdentifierInput
-from app.schemas.care_team.input.note import CareTeamNoteInput
-from app.schemas.care_team.input.participant import CareTeamParticipantInput
-from app.schemas.care_team.input.reference import CareTeamReferenceInput
-from app.schemas.datatypes import ContactPointInput
-from app.schemas.enums import CareTeamStatus, IdentifierUse
+
+# CareTeamStatus (the required binding of CareTeam.status).
+StatusCode = Literal["proposed", "active", "suspended", "inactive", "entered-in-error"]
+
+_EXAMPLE = {
+    "resourceType": "CareTeam",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/care-team-id",
+            "value": "CT-1001",
+        }
+    ],
+    "status": "active",
+    "category": [
+        {
+            "coding": [
+                {
+                    "system": "http://loinc.org",
+                    "code": "LA27976-2",
+                    "display": "Encounter-focused care team",
+                }
+            ]
+        }
+    ],
+    "name": "Cardiology care team",
+    "subject": {"reference": "Patient/10001"},
+    "period": {"start": "2026-01-01"},
+    "participant": [
+        {
+            "role": [
+                {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "17561000",
+                            "display": "Cardiologist",
+                        }
+                    ]
+                }
+            ],
+            "member": {"reference": "Practitioner/30001"},
+        }
+    ],
+    "managingOrganization": [{"reference": "Organization/190001"}],
+    "telecom": [{"system": "phone", "value": "+1-555-0100"}],
+    "note": [{"text": "Weekly review."}],
+}
 
 
-class CareTeamCreateSchema(BaseModel):
-    """Request payload for POST /api/fhir/v1/care-teams/."""
+class CareTeamAnnotationInput(FhirInputModel):
+    """Annotation - a note with an author (a Reference or plain text) and a time."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "active",
-                "name": "Diabetes Care Coordination Team",
-                "subject": "Patient/10001",
-                "subject_display": "Jane Doe",
-                "period_start": "2026-01-01T00:00:00Z",
-                "period_end": "2026-12-31T23:59:59Z",
-                "category": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://loinc.org",
-                                "code": "LA27976-2",
-                                "display": "Longitudinal care-coordination",
-                            }
-                        ],
-                        "text": "Longitudinal care-coordination",
-                    }
-                ],
-                "participant": [
-                    {
-                        "role": [
-                            {
-                                "coding": [
-                                    {
-                                        "system": "http://snomed.info/sct",
-                                        "code": "407543004",
-                                        "display": "Primary care physician",
-                                    }
-                                ],
-                                "text": "Primary care physician",
-                            }
-                        ],
-                        "member": "Practitioner/30001",
-                        "member_display": "Dr. Adam Careful",
-                    }
-                ],
-                "reason_code": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "44054006",
-                                "display": "Diabetes mellitus type 2",
-                            }
-                        ],
-                        "text": "Diabetes mellitus type 2",
-                    }
-                ],
-                "reason_reference": ["Condition/120001"],
-                "managing_organization": ["Organization/190001"],
-                "telecom": [
-                    {
-                        "system": "phone",
-                        "value": "555-555-5555",
-                        "use": "work",
-                    }
-                ],
-                "note": [
-                    {
-                        "text": "Initial care team established following diagnosis.",
-                    }
-                ],
-            }
-        },
-    )
-
-    status: CareTeamStatus | None = Field(
-        None, description="proposed | active | suspended | inactive | entered-in-error."
-    )
-    category: list[CareTeamCodeableConceptInput] | None = Field(
-        None, description="Type of team."
-    )
-    name: str | None = Field(None, description="Human-friendly name for the care team.")
-    subject: str | None = Field(
+    authorReference: FhirReferenceInput | None = Field(
         None,
-        description="Who the care team is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001').",
+        description="Individual responsible for the annotation - Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    subject_display: str | None = Field(
-        None, description="Display name for subject reference."
+    authorString: str | None = Field(
+        None, description="Individual responsible for the annotation, as plain text."
     )
-    subject_identifier_use: IdentifierUse | None = Field(None)
-    subject_identifier_type_system: str | None = Field(None)
-    subject_identifier_type_version: str | None = Field(None)
-    subject_identifier_type_code: str | None = Field(None)
-    subject_identifier_type_display: str | None = Field(None)
-    subject_identifier_type_user_selected: bool | None = Field(None)
-    subject_identifier_type_text: str | None = Field(None)
-    subject_identifier_system: str | None = Field(None)
-    subject_identifier_value: str | None = Field(None)
-    subject_identifier_period_start: datetime | None = Field(None)
-    subject_identifier_period_end: datetime | None = Field(None)
+    time: str | None = Field(
+        None, description="When the annotation was made (a FHIR dateTime)."
+    )
+    text: str | None = Field(
+        None, description="The annotation text, as markdown (required by R4)."
+    )
 
-    encounter: str | None = Field(
-        None, description="Encounter created as part of (Reference(Encounter))."
-    )
-    encounter_display: str | None = Field(
-        None, description="Display name for encounter reference."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(None)
-    encounter_identifier_type_system: str | None = Field(None)
-    encounter_identifier_type_version: str | None = Field(None)
-    encounter_identifier_type_code: str | None = Field(None)
-    encounter_identifier_type_display: str | None = Field(None)
-    encounter_identifier_type_user_selected: bool | None = Field(None)
-    encounter_identifier_type_text: str | None = Field(None)
-    encounter_identifier_system: str | None = Field(None)
-    encounter_identifier_value: str | None = Field(None)
-    encounter_identifier_period_start: datetime | None = Field(None)
-    encounter_identifier_period_end: datetime | None = Field(None)
 
-    period_start: datetime | None = Field(
-        None, description="Time period team covers — start."
+class CareTeamParticipantInput(FhirInputModel):
+    """CareTeam.participant - members of the team."""
+
+    role: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Type of involvement."
     )
-    period_end: datetime | None = Field(
-        None, description="Time period team covers — end."
+    member: FhirReferenceInput | None = Field(
+        None,
+        description="Who is involved - Reference(Practitioner | PractitionerRole | RelatedPerson | Patient | Organization | CareTeam). A relative reference must exist in the caller's org (422 otherwise). Searched by `participant`.",
+    )
+    onBehalfOf: FhirReferenceInput | None = Field(
+        None,
+        description="Organization of the practitioner - Reference(Organization). R4 rule ctm-1: only when `member` is a Practitioner. A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    period: FhirPeriodInput | None = Field(
+        None, description="Time period of the participant."
+    )
+
+
+class _CareTeamFields(FhirInputModel):
+    """Every writable CareTeam element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/careteam.html). Create and patch accept exactly the same
+    fields. R4 requires nothing beyond the types (every CareTeam element is optional), so any
+    well-formed document is valid.
+
+    The validated body is stored whole (CareTeamModel.content), so any valid R4 element is kept -
+    including ones this model does not declare. Server-managed elements are ignored if sent:
+    `id` (assigned from the care_team_id sequence) and `meta` (audit/tenant data, stamped on at
+    read time). org_id and created_by/updated_by come from the verified JWT (actor.org_id /
+    actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["CareTeam"] | None = Field(
+        None, description="Optional; if supplied it must be 'CareTeam'."
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External Ids for this team. Searched by `identifier`."
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="proposed | active | suspended | inactive | entered-in-error. Searched by `status`.",
+    )
+    category: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Type of team. Searched by `category`."
+    )
+    name: str | None = Field(
+        None, description="Name of the team, such as crisis assessment team."
+    )
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="Who care team is for - Reference(Patient | Group). A relative reference must exist in the caller's org (422 otherwise). Searched by `subject` / `patient`.",
+    )
+    encounter: FhirReferenceInput | None = Field(
+        None,
+        description="Encounter created as part of - Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise). Searched by `encounter`.",
+    )
+    period: FhirPeriodInput | None = Field(
+        None, description="Time period team covers. Searched by `date`."
     )
     participant: list[CareTeamParticipantInput] | None = Field(
         None, description="Members of the team."
     )
-    reason_code: list[CareTeamCodeableConceptInput] | None = Field(
+    reasonCode: list[FhirCodeableConceptInput] | None = Field(
         None, description="Why the care team exists."
     )
-    reason_reference: list[CareTeamReferenceInput | str] | None = Field(
-        None, description="Why the care team exists (Reference(Condition))."
-    )
-    managing_organization: list[CareTeamReferenceInput | str] | None = Field(
+    reasonReference: list[FhirReferenceInput] | None = Field(
         None,
-        description="Organization responsible for the care team (Reference(Organization)).",
+        description="Why the care team exists - Reference(Condition). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    telecom: list[ContactPointInput] | None = Field(
+    managingOrganization: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Organization responsible for the care team - Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    telecom: list[FhirContactPointInput] | None = Field(
         None,
         description="A contact detail for the care team (that applies to all members).",
     )
-    note: list[CareTeamNoteInput] | None = Field(
-        None, description="Comments about the care team."
-    )
-    identifier: list[CareTeamIdentifierInput] | None = Field(
-        None, description="External Ids for this team."
+    note: list[CareTeamAnnotationInput] | None = Field(
+        None, description="Comments made about the CareTeam."
     )
 
 
-class CareTeamPatchSchema(BaseModel):
-    """Request payload for PATCH /api/fhir/v1/care-teams/{id}. All fields optional."""
+class CareTeamCreateSchema(_CareTeamFields):
+    """POST body - a FHIR R4 CareTeam resource."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class CareTeamPatchSchema(_CareTeamFields):
+    """PATCH body - a partial FHIR R4 CareTeam (merge-patch semantics on top-level elements).
+    Only supplied elements are written; omitted ones are left untouched. A supplied element
+    replaces the stored value wholesale - a list (even `[]`) replaces every existing entry, an
+    object such as `period` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "inactive",
-                "name": "Disbanded Diabetes Care Team",
+                "period": {"start": "2026-01-01", "end": "2026-06-30"},
             }
-        },
-    )
-
-    status: CareTeamStatus | None = Field(
-        None, description="proposed | active | suspended | inactive | entered-in-error."
-    )
-    category: list[CareTeamCodeableConceptInput] | None = Field(
-        None, description="Type of team."
-    )
-    name: str | None = Field(None, description="Human-friendly name for the care team.")
-    subject: str | None = Field(
-        None,
-        description="Who the care team is for (Patient | Group) as a FHIR reference string (e.g. 'Patient/10001').",
-    )
-    subject_display: str | None = Field(
-        None, description="Display name for subject reference."
-    )
-    subject_identifier_use: IdentifierUse | None = Field(None)
-    subject_identifier_type_system: str | None = Field(None)
-    subject_identifier_type_version: str | None = Field(None)
-    subject_identifier_type_code: str | None = Field(None)
-    subject_identifier_type_display: str | None = Field(None)
-    subject_identifier_type_user_selected: bool | None = Field(None)
-    subject_identifier_type_text: str | None = Field(None)
-    subject_identifier_system: str | None = Field(None)
-    subject_identifier_value: str | None = Field(None)
-    subject_identifier_period_start: datetime | None = Field(None)
-    subject_identifier_period_end: datetime | None = Field(None)
-
-    encounter: str | None = Field(
-        None, description="Encounter created as part of (Reference(Encounter))."
-    )
-    encounter_display: str | None = Field(
-        None, description="Display name for encounter reference."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(None)
-    encounter_identifier_type_system: str | None = Field(None)
-    encounter_identifier_type_version: str | None = Field(None)
-    encounter_identifier_type_code: str | None = Field(None)
-    encounter_identifier_type_display: str | None = Field(None)
-    encounter_identifier_type_user_selected: bool | None = Field(None)
-    encounter_identifier_type_text: str | None = Field(None)
-    encounter_identifier_system: str | None = Field(None)
-    encounter_identifier_value: str | None = Field(None)
-    encounter_identifier_period_start: datetime | None = Field(None)
-    encounter_identifier_period_end: datetime | None = Field(None)
-
-    period_start: datetime | None = Field(
-        None, description="Time period team covers — start."
-    )
-    period_end: datetime | None = Field(
-        None, description="Time period team covers — end."
-    )
-    participant: list[CareTeamParticipantInput] | None = Field(
-        None, description="Members of the team."
-    )
-    reason_code: list[CareTeamCodeableConceptInput] | None = Field(
-        None, description="Why the care team exists."
-    )
-    reason_reference: list[CareTeamReferenceInput | str] | None = Field(
-        None, description="Why the care team exists (Reference(Condition))."
-    )
-    managing_organization: list[CareTeamReferenceInput | str] | None = Field(
-        None,
-        description="Organization responsible for the care team (Reference(Organization)).",
-    )
-    telecom: list[ContactPointInput] | None = Field(
-        None,
-        description="A contact detail for the care team (that applies to all members).",
-    )
-    note: list[CareTeamNoteInput] | None = Field(
-        None, description="Comments about the care team."
-    )
-    identifier: list[CareTeamIdentifierInput] | None = Field(
-        None, description="External Ids for this team."
-    )
+        }
+    }

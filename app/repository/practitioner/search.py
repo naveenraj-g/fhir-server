@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._care_team_revinclude import participant_care_team_revincludes
 from app.repository._group_revinclude import (
     managing_entity_group_revincludes,
     member_group_revincludes,
@@ -589,6 +590,9 @@ def practitioner_search() -> SearchRegistry:
         includes=(),
         # PractitionerRole.practitioner points here.
         revincludes=(
+            *participant_care_team_revincludes(
+                "Practitioner", lambda p: p.practitioner_id
+            ),
             *member_group_revincludes("Practitioner", lambda p: p.practitioner_id),
             *managing_entity_group_revincludes(
                 "Practitioner", lambda p: p.practitioner_id

@@ -1,6 +1,13 @@
 """FHIR R4 conformance for `to_fhir_care_team()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+CareTeam is stored Medplum-style (like Patient, Appointment, Encounter, Condition, Procedure,
+Specimen, Group and the other content-based resources): the resource lives whole in
+CareTeamModel.content, and to_fhir_care_team() only stamps `id` and `meta` onto it. So what can
+go wrong on the read side is that stamping (e.g. a malformed meta extension) or a stored
+document the server returns that isn't valid R4 - each case below is a `content` document as the
+write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,319 +15,262 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.care_team import to_fhir_care_team
-from app.models.care_team import (
-    CareTeamAssignerReferenceType,
-    CareTeamCategory,
-    CareTeamCategoryCoding,
-    CareTeamEncounterReferenceType,
-    CareTeamIdentifier,
-    CareTeamIdentifierTypeCoding,
-    CareTeamManagingOrganization,
-    CareTeamManagingOrganizationReferenceType,
-    CareTeamModel,
-    CareTeamNote,
-    CareTeamNoteAuthorReferenceType,
-    CareTeamParticipant,
-    CareTeamParticipantMemberReferenceType,
-    CareTeamParticipantOnBehalfOfReferenceType,
-    CareTeamParticipantRole,
-    CareTeamParticipantRoleCoding,
-    CareTeamReasonCode,
-    CareTeamReasonCodeCoding,
-    CareTeamReasonReference,
-    CareTeamReasonReferenceType,
-    CareTeamStatus,
-    CareTeamSubjectReferenceType,
-    CareTeamTelecom,
-)
-from app.models.enums import IdentifierUse
-from app.schemas.enums import ContactPointSystem, ContactPointUse
+from app.models.care_team import CareTeamModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-care_team_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.care_team_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "categories",
-    "participants",
-    "reason_codes",
-    "reason_references",
-    "managing_organizations",
-    "telecoms",
-    "notes",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+SCT = "http://snomed.info/sct"
+LOINC = "http://loinc.org"
+CODE = {"coding": [{"system": SCT, "code": "17561000", "display": "Cardiologist"}]}
 
 
-def _care_team(**overrides) -> CareTeamModel:
+def _c(content: dict, **overrides) -> CareTeamModel:
     fields = {
-        "id": 1,
         "care_team_id": 390001,
         "tenant_id": "org-test",
-        "status": CareTeamStatus.active,
-        "name": "Cardiology Care Team",
-        "subject_reference": "Patient/10001",
-        "subject_type": CareTeamSubjectReferenceType.Patient,
-        "subject_id": 10001,
-        "subject_display": "Test Patient",
         "created_by": "u-test",
         "created_at": D,
-        "updated_at": D,
-        "extension": [],
+        "content": content,
     }
     fields.update(overrides)
-    ct = CareTeamModel(**fields)
-    for attr in _CHILD_ATTRS:
-        if getattr(ct, attr, None) is None:
-            setattr(ct, attr, [])
-    return ct
+    return CareTeamModel(**fields)
 
 
-def test_minimal_care_team_conforms():
-    ct = _care_team()
-    out = to_fhir_care_team(ct)
+CASES = {
+    "empty": _c({}),
+    "updated_by_and_updated_at": _c({}, updated_by="u-other", updated_at=D),
+    "identifier_with_type_and_assigner": _c(
+        {
+            "identifier": [
+                {
+                    "use": "official",
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "FILL",
+                            }
+                        ]
+                    },
+                    "system": "https://fhir-server.dev/fhir/identifier-system/care-team-id",
+                    "value": "CT-1",
+                    "period": {"start": "2020-01-01"},
+                    "assigner": {"reference": "Organization/190001"},
+                }
+            ]
+        }
+    ),
+    **{
+        f"status_{s}": _c({"status": s})
+        for s in ("proposed", "active", "suspended", "inactive", "entered-in-error")
+    },
+    "category_coded": _c(
+        {
+            "category": [
+                {
+                    "coding": [
+                        {
+                            "system": LOINC,
+                            "code": "LA27976-2",
+                            "display": "Encounter-focused care team",
+                        }
+                    ],
+                    "text": "Encounter-focused",
+                }
+            ]
+        }
+    ),
+    "category_text_only": _c({"category": [{"text": "Home care"}]}),
+    "category_several": _c(
+        {"category": [{"text": "Home care"}, {"text": "Palliative"}]}
+    ),
+    "name": _c({"name": "Cardiology care team"}),
+    "subject_patient": _c({"subject": {"reference": "Patient/10001"}}),
+    "subject_group": _c({"subject": {"reference": "Group/430001"}}),
+    "subject_logical": _c(
+        {"subject": {"identifier": {"system": "urn:s", "value": "S-9"}, "display": "X"}}
+    ),
+    "subject_absolute_url": _c(
+        {"subject": {"reference": "https://other.example.org/fhir/Patient/1"}}
+    ),
+    "encounter": _c({"encounter": {"reference": "Encounter/20001"}}),
+    "period_closed": _c({"period": {"start": "2026-01-01", "end": "2026-06-30"}}),
+    "period_open_ended": _c({"period": {"start": "2026-01-01T09:00:00Z"}}),
+    "period_end_only": _c({"period": {"end": "2026-06-30"}}),
+    "participant_member_only": _c(
+        {"participant": [{"member": {"reference": "Practitioner/30001"}}]}
+    ),
+    **{
+        f"participant_member_{t}": _c(
+            {"participant": [{"member": {"reference": f"{t}/1"}}]}
+        )
+        for t in (
+            "Practitioner",
+            "PractitionerRole",
+            "RelatedPerson",
+            "Patient",
+            "Organization",
+            "CareTeam",
+        )
+    },
+    "participant_role_period": _c(
+        {
+            "participant": [
+                {
+                    "role": [CODE, {"text": "Lead"}],
+                    "member": {"reference": "Practitioner/30001"},
+                    "onBehalfOf": {"reference": "Organization/190001"},
+                    "period": {"start": "2026-01-01", "end": "2026-06-30"},
+                }
+            ]
+        }
+    ),
+    "participant_several": _c(
+        {
+            "participant": [
+                {"member": {"reference": "Practitioner/30001"}},
+                {"member": {"reference": "Patient/10001"}},
+                {"role": [CODE]},
+            ]
+        }
+    ),
+    "participant_member_logical": _c(
+        {
+            "participant": [
+                {"member": {"identifier": {"system": "urn:p", "value": "P-9"}}}
+            ]
+        }
+    ),
+    "reason_code": _c({"reasonCode": [CODE, {"text": "Heart failure"}]}),
+    "reason_reference": _c({"reasonReference": [{"reference": "Condition/120001"}]}),
+    "managing_organization": _c(
+        {
+            "managingOrganization": [
+                {"reference": "Organization/190001"},
+                {"reference": "https://other.example.org/fhir/Organization/7"},
+            ]
+        }
+    ),
+    "telecom": _c(
+        {
+            "telecom": [
+                {"system": "phone", "value": "+1-555-0100", "use": "work", "rank": 1},
+                {"system": "email", "value": "team@example.org"},
+            ]
+        }
+    ),
+    "note_author_reference": _c(
+        {
+            "note": [
+                {
+                    "authorReference": {"reference": "Practitioner/30001"},
+                    "time": "2026-02-01T10:00:00Z",
+                    "text": "Weekly review.",
+                }
+            ]
+        }
+    ),
+    "note_author_string": _c({"note": [{"authorString": "Dr. A", "text": "x"}]}),
+    "extension": _c({"extension": [{"url": "https://x/ext", "valueString": "y"}]}),
+    "everything": _c(
+        {
+            "identifier": [{"system": "urn:ct", "value": "CT-1"}],
+            "status": "active",
+            "category": [{"text": "Home care"}],
+            "name": "Cardiology care team",
+            "subject": {"reference": "Patient/10001"},
+            "encounter": {"reference": "Encounter/20001"},
+            "period": {"start": "2026-01-01", "end": "2026-06-30"},
+            "participant": [
+                {
+                    "role": [CODE],
+                    "member": {"reference": "Practitioner/30001"},
+                    "onBehalfOf": {"reference": "Organization/190001"},
+                    "period": {"start": "2026-01-01"},
+                }
+            ],
+            "reasonCode": [CODE],
+            "reasonReference": [{"reference": "Condition/120001"}],
+            "managingOrganization": [{"reference": "Organization/190001"}],
+            "telecom": [{"system": "phone", "value": "+1-555-0100"}],
+            "note": [{"text": "Weekly review."}],
+        }
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_care_team_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.CareTeam, to_fhir_care_team(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = {"status": "active", "name": "Cardiology care team"}
+    out = to_fhir_care_team(_c(content))
     assert out["resourceType"] == "CareTeam"
     assert out["id"] == "390001"
-    assert out["status"] == "active"
-    assert out["name"] == "Cardiology Care Team"
-    assert out["subject"]["reference"] == "Patient/10001"
-    assert_valid(care_team_pb2.CareTeam, out)
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
-def test_care_team_all_statuses():
-    for status in CareTeamStatus:
-        ct = _care_team(status=status)
-        out = to_fhir_care_team(ct)
-        assert out["status"] == status.value
-        assert_valid(care_team_pb2.CareTeam, out)
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `subject` or `period` as a one-item list; the integration
+# tests cover what they can.)
 
 
-def test_care_team_identifiers_conforms():
-    ident = CareTeamIdentifier(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="CareTeam ID",
-        system="http://example.org/careteams",
-        value="CT-999",
-        period_start=D,
-        period_end=D,
-        assigner_reference="Organization/190001",
-        assigner_type=CareTeamAssignerReferenceType.Organization,
-        assigner_id=190001,
-        assigner_display="Acme Hospital",
-        created_by="u-test",
-    )
-    ident.type_codings = [
-        CareTeamIdentifierTypeCoding(
-            id=1,
-            identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="PLAC",
-            display="Placer Identifier",
-            created_by="u-test",
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "retired"}),
+        ("status as number", {"status": 1}),
+        ("name as number", {"name": 5}),
+        ("category as object not a list", {"category": {"text": "x"}}),
+        ("category entry as string", {"category": ["x"]}),
+        ("subject as string", {"subject": "Patient/1"}),
+        ("encounter as string", {"encounter": "Encounter/1"}),
+        ("period as string", {"period": "2026"}),
+        ("period start as number", {"period": {"start": 2026}}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+        ("participant as object not a list", {"participant": {"role": []}}),
+        ("participant member as string", {"participant": [{"member": "Patient/1"}]}),
+        ("participant role as object", {"participant": [{"role": {"text": "x"}}]}),
+        (
+            "participant onBehalfOf as string",
+            {"participant": [{"onBehalfOf": "Organization/1"}]},
+        ),
+        ("participant period as string", {"participant": [{"period": "2026"}]}),
+        ("reasonCode as object not a list", {"reasonCode": {"text": "x"}}),
+        (
+            "reasonReference as object",
+            {"reasonReference": {"reference": "Condition/1"}},
+        ),
+        (
+            "managingOrganization as object",
+            {"managingOrganization": {"reference": "Organization/1"}},
+        ),
+        ("telecom as object not a list", {"telecom": {"value": "x"}}),
+        ("telecom with an unknown system", {"telecom": [{"system": "pigeon"}]}),
+        ("note as object not a list", {"note": {"text": "x"}}),
+        ("note without text", {"note": [{"authorString": "x"}]}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {"resourceType": "CareTeam", "id": "390001", **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.CareTeam, validate=True
         )
-    ]
-    ct = _care_team(identifiers=[ident])
-    out = to_fhir_care_team(ct)
-    assert len(out["identifier"]) == 1
-    assert out["identifier"][0]["value"] == "CT-999"
-    assert out["identifier"][0]["use"] == "official"
-    assert out["identifier"][0]["assigner"]["reference"] == "Organization/190001"
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_categories_conforms():
-    cat = CareTeamCategory(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        text="Longitudinal care-coordination",
-        created_by="u-test",
-    )
-    cat.codings = [
-        CareTeamCategoryCoding(
-            id=1,
-            category_id=1,
-            tenant_id="org-test",
-            system="http://loinc.org",
-            code="LA27976-2",
-            display="Longitudinal care-coordination",
-            created_by="u-test",
-        )
-    ]
-    ct = _care_team(categories=[cat])
-    out = to_fhir_care_team(ct)
-    assert len(out["category"]) == 1
-    assert out["category"][0]["text"] == "Longitudinal care-coordination"
-    assert out["category"][0]["coding"][0]["code"] == "LA27976-2"
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_participants_conforms():
-    part = CareTeamParticipant(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        member_reference="Practitioner/30001",
-        member_type=CareTeamParticipantMemberReferenceType.Practitioner,
-        member_id=30001,
-        member_display="Dr. Test",
-        on_behalf_of_reference="Organization/190001",
-        on_behalf_of_type=CareTeamParticipantOnBehalfOfReferenceType.Organization,
-        on_behalf_of_id=190001,
-        on_behalf_of_display="Acme Hospital",
-        period_start=D,
-        period_end=D,
-        created_by="u-test",
-    )
-    role = CareTeamParticipantRole(
-        id=1,
-        participant_id=1,
-        tenant_id="org-test",
-        text="Lead Physician",
-        created_by="u-test",
-    )
-    role.codings = [
-        CareTeamParticipantRoleCoding(
-            id=1,
-            role_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="407542009",
-            display="Cardiologist",
-            created_by="u-test",
-        )
-    ]
-    part.roles = [role]
-    ct = _care_team(participants=[part])
-    out = to_fhir_care_team(ct)
-    assert len(out["participant"]) == 1
-    p = out["participant"][0]
-    assert p["member"]["reference"] == "Practitioner/30001"
-    assert p["onBehalfOf"]["reference"] == "Organization/190001"
-    assert len(p["role"]) == 1
-    assert p["role"][0]["text"] == "Lead Physician"
-    assert p["role"][0]["coding"][0]["code"] == "407542009"
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_reason_code_and_reference_conforms():
-    rc = CareTeamReasonCode(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        text="Heart Failure Management",
-        created_by="u-test",
-    )
-    rc.codings = [
-        CareTeamReasonCodeCoding(
-            id=1,
-            reason_code_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="84114007",
-            display="Heart failure",
-            created_by="u-test",
-        )
-    ]
-    rr = CareTeamReasonReference(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        reference_reference="Condition/120001",
-        reference_type=CareTeamReasonReferenceType.Condition,
-        reference_id=120001,
-        reference_display="Chronic Congestive Heart Failure",
-        created_by="u-test",
-    )
-    ct = _care_team(reason_codes=[rc], reason_references=[rr])
-    out = to_fhir_care_team(ct)
-    assert len(out["reasonCode"]) == 1
-    assert out["reasonCode"][0]["coding"][0]["code"] == "84114007"
-    assert len(out["reasonReference"]) == 1
-    assert out["reasonReference"][0]["reference"] == "Condition/120001"
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_managing_organization_conforms():
-    mo = CareTeamManagingOrganization(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        reference_reference="Organization/190001",
-        reference_type=CareTeamManagingOrganizationReferenceType.Organization,
-        reference_id=190001,
-        reference_display="Acme Clinic",
-        created_by="u-test",
-    )
-    ct = _care_team(managing_organizations=[mo])
-    out = to_fhir_care_team(ct)
-    assert len(out["managingOrganization"]) == 1
-    assert out["managingOrganization"][0]["reference"] == "Organization/190001"
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_telecom_conforms():
-    tel = CareTeamTelecom(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        system=ContactPointSystem.phone,
-        value="+1-555-555-5555",
-        use=ContactPointUse.work,
-        rank=1,
-        created_by="u-test",
-    )
-    ct = _care_team(telecoms=[tel])
-    out = to_fhir_care_team(ct)
-    assert len(out["telecom"]) == 1
-    assert out["telecom"][0]["system"] == "phone"
-    assert out["telecom"][0]["value"] == "+1-555-555-5555"
-    assert out["telecom"][0]["use"] == "work"
-    assert out["telecom"][0]["rank"] == 1
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_notes_conforms():
-    note = CareTeamNote(
-        id=1,
-        care_team_pk=1,
-        tenant_id="org-test",
-        author_reference_reference="Practitioner/30001",
-        author_reference_type=CareTeamNoteAuthorReferenceType.Practitioner,
-        author_reference_id=30001,
-        author_reference_display="Dr. Test",
-        time=D,
-        text="Care plan review scheduled for next week.",
-        created_by="u-test",
-    )
-    ct = _care_team(notes=[note])
-    out = to_fhir_care_team(ct)
-    assert len(out["note"]) == 1
-    assert out["note"][0]["text"] == "Care plan review scheduled for next week."
-    assert out["note"][0]["authorReference"]["reference"] == "Practitioner/30001"
-    assert_valid(care_team_pb2.CareTeam, out)
-
-
-def test_care_team_encounter_and_period_conforms():
-    ct = _care_team(
-        encounter_reference="Encounter/20001",
-        encounter_type=CareTeamEncounterReferenceType.Encounter,
-        encounter_id=20001,
-        encounter_display="Initial Consultation",
-        period_start=D,
-        period_end=D,
-    )
-    out = to_fhir_care_team(ct)
-    assert out["encounter"]["reference"] == "Encounter/20001"
-    assert out["period"]["start"] == D.isoformat()
-    assert out["period"]["end"] == D.isoformat()
-    assert_valid(care_team_pb2.CareTeam, out)

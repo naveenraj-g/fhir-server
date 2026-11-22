@@ -37,6 +37,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._care_team_revinclude import participant_care_team_revincludes
 from app.repository._group_revinclude import (
     managing_entity_group_revincludes,
     member_group_revincludes,
@@ -653,6 +654,9 @@ def related_person_search() -> SearchRegistry:
         # What points at a RelatedPerson: Appointment / AppointmentResponse actors, Encounter
         # participants and Patient.link.
         revincludes=(
+            *participant_care_team_revincludes(
+                "RelatedPerson", lambda p: p.related_person_id
+            ),
             *managing_entity_group_revincludes(
                 "RelatedPerson", lambda r: r.related_person_id
             ),

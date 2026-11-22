@@ -1,192 +1,91 @@
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.care_team import (
-    CareTeamCategory,
-    CareTeamCategoryCoding,
-    CareTeamIdentifier,
-    CareTeamModel,
-    CareTeamParticipant,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.care_team import CareTeamModel
 
-from ._shared import (
-    _SORTABLE_FIELDS,
-    _parse_encounter_ref,
-    _parse_member_ref,
-    _parse_subject_ref,
-    _with_relationships,
-)
+from .search import care_team_search
 
 logger = get_logger(__name__)
 
+_M = CareTeamModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for CareTeam."""
+    """Reads, search and delete. Every read loads only the care_team
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_care_team_id(self, care_team_id: int) -> CareTeamModel | None:
+    async def get_by_care_team_id(self, care_team_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(CareTeamModel).where(CareTeamModel.care_team_id == care_team_id)
-            )
+            stmt = select(_M).where(_M.care_team_id == care_team_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_care_team_id_in_org(
         self, care_team_id: int, org_id: str
-    ) -> CareTeamModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the care_team
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(CareTeamModel).where(
-                    CareTeamModel.care_team_id == care_team_id,
-                    CareTeamModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.care_team_id == care_team_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalars().first()
 
     async def care_team_belongs_to_org(self, care_team_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the care_team exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(CareTeamModel.id).where(
-                CareTeamModel.care_team_id == care_team_id,
-                CareTeamModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.care_team_id == care_team_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str | None = None,
-        status: str | None = None,
-        name: str | None = None,
-        category: str | None = None,
-        subject: str | None = None,
-        encounter: str | None = None,
-        participant: str | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(CareTeamModel.tenant_id == org_id)
-        if status:
-            stmt = stmt.where(CareTeamModel.status == status)
-        if name:
-            stmt = stmt.where(CareTeamModel.name.ilike(f"%{name}%"))
-        if category:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(CareTeamCategoryCoding.id)
-                .join(
-                    CareTeamCategory,
-                    CareTeamCategoryCoding.category_id == CareTeamCategory.id,
-                )
-                .where(
-                    CareTeamCategory.care_team_pk == CareTeamModel.id,
-                    CareTeamCategoryCoding.code == category,
-                ),
-            )
-        if subject:
-            s_type, s_id = _parse_subject_ref(subject)
-            if s_id:
-                stmt = stmt.where(CareTeamModel.subject_id == s_id)
-                if s_type:
-                    stmt = stmt.where(CareTeamModel.subject_type == s_type)
-            else:
-                stmt = stmt.where(CareTeamModel.subject_reference == subject)
-        if encounter:
-            e_type, e_id = _parse_encounter_ref(encounter)
-            if e_id:
-                stmt = stmt.where(CareTeamModel.encounter_id == e_id)
-            else:
-                stmt = stmt.where(CareTeamModel.encounter_reference == encounter)
-        if participant:
-            m_type, m_id = _parse_member_ref(participant)
-            if m_id:
-                stmt = apply_child_exists_filter(
-                    stmt,
-                    select(CareTeamParticipant.id).where(
-                        CareTeamParticipant.care_team_pk == CareTeamModel.id,
-                        CareTeamParticipant.member_id == m_id,
-                    ),
-                )
-            else:
-                stmt = apply_child_exists_filter(
-                    stmt,
-                    select(CareTeamParticipant.id).where(
-                        CareTeamParticipant.care_team_pk == CareTeamModel.id,
-                        CareTeamParticipant.member_reference == participant,
-                    ),
-                )
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(CareTeamIdentifier.id).where(
-                    CareTeamIdentifier.care_team_pk == CareTeamModel.id,
-                    CareTeamIdentifier.value == identifier,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str,
-        status: str | None = None,
-        name: str | None = None,
-        category: str | None = None,
-        subject: str | None = None,
-        encounter: str | None = None,
-        participant: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[CareTeamModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "status": status,
-                "name": name,
-                "category": category,
-                "subject": subject,
-                "encounter": encounter,
-                "participant": participant,
-                "identifier": identifier,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(CareTeamModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(CareTeamModel), **filter_kwargs
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=CareTeamModel.care_team_id,
-                default_desc=True,
-            )
-
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=care_team_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.care_team_id,
             )
-            return list(rows), total
+        logger.debug(
+            "CareTeams searched",
+            extra={
+                "event": "care_team.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
+
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, care_team_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(CareTeamModel).where(
-                CareTeamModel.care_team_id == care_team_id
-            )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            stmt = select(_M).where(_M.care_team_id == care_team_id)
+            care_team = (await session.execute(stmt)).scalars().first()
+            if not care_team:
                 return False
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(care_team)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

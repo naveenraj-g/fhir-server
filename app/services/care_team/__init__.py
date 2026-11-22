@@ -7,4 +7,5 @@ __all__ = ["CareTeamService"]
 
 @trace_methods
 class CareTeamService(_CoreMixin):
-    """Orchestrates CareTeam CRUD operations and data transformations."""
+    """All CareTeam business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

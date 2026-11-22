@@ -18,6 +18,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._care_team_revinclude import column_care_team_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.composite import split_composite
 from app.fhir.search.sql import (
@@ -606,6 +607,9 @@ def group_search() -> SearchRegistry:
         ),
         # A Group that has another one as a member points back at it.
         revincludes=(
+            *column_care_team_revincludes(
+                ("subject",), "subject", "Group", lambda g: g.group_id
+            ),
             IncludeTarget(
                 "Group",
                 "member",

@@ -66,6 +66,7 @@ _MODELED_INFORMATION = (
     "Medication",
     "MedicationRequest",
     "Group",
+    "CareTeam",
     "Specimen",
     "Observation",
     "Patient",

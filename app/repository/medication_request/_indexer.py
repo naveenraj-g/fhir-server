@@ -62,6 +62,7 @@ _MODELED_REASONS = ("Condition", "Observation")
 _MODELED_INFORMATION = (
     "MedicationRequest",
     "Group",
+    "CareTeam",
     "ServiceRequest",
     "Medication",
     "Specimen",
