@@ -135,7 +135,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     for ref in document.get("performer") or []:
         add_typed("performer", ref, _MODELED_PERFORMERS)
     for ref in document.get("basedOn") or []:
-        add_typed("basedOn", ref, ("ServiceRequest", "MedicationRequest"))
+        add_typed("basedOn", ref, ("CarePlan", "ServiceRequest", "MedicationRequest"))
     for ref in document.get("replaces") or []:
         add("replaces", (ref or {}).get("reference"), "ServiceRequest")
     for ref in document.get("specimen") or []:

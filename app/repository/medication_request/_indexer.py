@@ -55,6 +55,7 @@ _MODELED_BASED_ON = (
     "MedicationRequest",
     "ServiceRequest",
     "ImmunizationRecommendation",
+    "CarePlan",
 )
 _MODELED_REASONS = ("Condition", "Observation")
 # Reference(Any) `supportingInformation` targets that are existence-checked on write: the

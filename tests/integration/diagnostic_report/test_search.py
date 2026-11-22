@@ -480,8 +480,8 @@ async def test_bad_chains_are_400(client, world):
     )  # Group is not searchable here
     assert await _status(client, **{"performer:CareTeam.name": "x"}) == 400
     assert (
-        await _status(client, **{"based-on:CarePlan.status": "x"}) == 400
-    )  # CarePlan is not a resource here
+        await _status(client, **{"based-on:NutritionOrder.status": "x"}) == 400
+    )  # NutritionOrder is not a resource here
     assert (
         await _status(client, **{"code.x": "y"}) == 400
     )  # a token cannot be chained through

@@ -8,6 +8,8 @@ from tests.helpers.specimens import seed_specimens
 # The observation's own scopes, plus the scopes the tests need to create the resources around it
 # (its subject, encounter, performers, members) and the ones to look at what points back at it.
 OBSERVATION_PERMS = [
+    "care_plan:create",
+    "care_plan:read",
     "medication_request:create",
     "medication_request:read",
     "service_request:create",

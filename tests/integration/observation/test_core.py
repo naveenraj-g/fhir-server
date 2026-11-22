@@ -435,7 +435,7 @@ async def test_create_part_of_is_checked_for_a_procedure_or_immunization(
 async def test_create_based_on_focus_and_device_are_not_checked(client, patient):
     body = observation_body(
         patient,
-        basedOn=[{"reference": "CarePlan/999999"}],
+        basedOn=[{"reference": "DeviceRequest/999999"}],
         focus=[{"reference": "Condition/999999"}],
         device={"reference": "Device/999999"},
     )

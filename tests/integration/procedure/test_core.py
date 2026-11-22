@@ -440,11 +440,10 @@ async def test_create_identifier_assigner_must_exist(client, patient):
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """basedOn, a report that is not a DiagnosticReport, usedReference, focalDevice.manipulated and the
+    """A report that is not a DiagnosticReport, usedReference, focalDevice.manipulated and the
     reasonReference type that is not rebuilt (DocumentReference) is stored as sent."""
     body = procedure_body(
         patient,
-        basedOn=[{"reference": "CarePlan/999999"}],
         report=[
             {"reference": "DocumentReference/999999"},
             {"reference": "Composition/999999"},

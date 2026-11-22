@@ -9,6 +9,8 @@ from tests.helpers.observations import seed_observations
 # resources around it (its subject, encounter, location, performers, reasons,
 # and the encounters / appointments that point back at it).
 PROCEDURE_PERMS = [
+    "care_plan:create",
+    "care_plan:read",
     "service_request:create",
     "service_request:read",
     "observation:create",

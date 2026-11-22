@@ -748,7 +748,7 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"device:Device.model": "x"}) == 400
     )  # likewise Device
     assert (
-        await _status(client, **{"based-on:CarePlan.status": "x"}) == 400
+        await _status(client, **{"based-on:DeviceRequest.status": "x"}) == 400
     )  # not built yet
     assert (
         await _status(client, **{"code.x": "y"}) == 400

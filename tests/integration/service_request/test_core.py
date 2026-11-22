@@ -438,12 +438,14 @@ async def test_create_based_on_and_replaces_must_exist(client, patient):
         assert (await client.post(BASE + "/", json=body)).status_code == 422, element
 
 
-async def test_create_based_on_care_plan_is_not_checked(client, patient):
-    body = service_request_body(
-        patient,
-        basedOn=[{"reference": "CarePlan/999999"}],
-    )
-    assert (await client.post(BASE + "/", json=body)).status_code == 201
+async def test_create_based_on_care_plan_must_exist(client, patient):
+    from tests.helpers.care_plans import create_minimal_care_plan
+
+    plan = await create_minimal_care_plan(client)
+    ok = service_request_body(patient, basedOn=[{"reference": f"CarePlan/{plan}"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    bad = service_request_body(patient, basedOn=[{"reference": "CarePlan/999999"}])
+    assert (await client.post(BASE + "/", json=bad)).status_code == 422
 
 
 async def test_create_specimen_must_exist(client, patient):

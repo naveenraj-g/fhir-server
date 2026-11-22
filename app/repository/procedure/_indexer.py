@@ -90,7 +90,9 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
             "Organization",
         )
     for based_on in document.get("basedOn") or []:
-        add("basedOn", based_on.get("reference"), "ServiceRequest")
+        add_typed(
+            "basedOn", (based_on or {}).get("reference"), ("CarePlan", "ServiceRequest")
+        )
     for part_of in document.get("partOf") or []:
         add("partOf", part_of.get("reference"), "Procedure")
     for reason in document.get("reasonReference") or []:

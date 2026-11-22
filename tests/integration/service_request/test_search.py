@@ -140,6 +140,9 @@ async def world(client):
             occurrencePeriod={"start": "2024-01-01", "end": "2024-03-01"},
         ),
     )
+    from tests.helpers.care_plans import create_minimal_care_plan
+
+    w["cp"] = await create_minimal_care_plan(client)
     w["c"] = await create_service_request(
         client,
         {
@@ -149,7 +152,7 @@ async def world(client):
             "requester": {"reference": f"Organization/{w['org']}"},
             "performer": [{"reference": "CareTeam/999999"}],
             "specimen": [{"reference": f"Specimen/{w['s2']}"}],
-            "basedOn": [{"reference": "CarePlan/999999"}],
+            "basedOn": [{"reference": f"CarePlan/{w['cp']}"}],
             "occurrenceTiming": {
                 "event": ["2022-06-01T08:00:00Z", "2022-08-01T08:00:00Z"]
             },
@@ -542,8 +545,13 @@ async def test_based_on_is_multi_target(client, world):
     assert await _keys(
         client, world, **{"based-on:ServiceRequest": str(world["b"])}
     ) == {"e"}
-    assert await _keys(client, world, **{"based-on": "CarePlan/999999"}) == {"c"}
-    assert await _keys(client, world, **{"based-on:CarePlan": "999999"}) == {"c"}
+    assert await _keys(client, world, **{"based-on": f"CarePlan/{world['cp']}"}) == {
+        "c"
+    }
+    assert await _keys(client, world, **{"based-on:CarePlan": str(world["cp"])}) == {
+        "c"
+    }
+    assert await _keys(client, world, **{"based-on:CarePlan.status": "active"}) == {"c"}
     assert await _keys(client, world, **{"based-on:missing": "true"}) == {"a", "d"}
 
 
@@ -620,8 +628,8 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"performer:CareTeam.name": "x"}) == 400
     )  # CareTeam is not rebuilt
     assert (
-        await _status(client, **{"based-on:CarePlan.status": "x"}) == 400
-    )  # CarePlan is not rebuilt
+        await _status(client, **{"based-on:DeviceRequest.status": "x"}) == 400
+    )  # DeviceRequest is not a target of ServiceRequest.basedOn
     assert (
         await _status(client, **{"code.x": "y"}) == 400
     )  # a token cannot be chained through

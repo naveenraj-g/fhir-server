@@ -304,7 +304,7 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     stored as sent."""
     body = report_body(
         patient,
-        basedOn=[{"reference": "CarePlan/999999"}],
+        basedOn=[{"reference": "NutritionOrder/999999"}],
         imagingStudy=[{"reference": "ImagingStudy/999999"}],
         media=[{"link": {"reference": "Media/999999"}}],
     )

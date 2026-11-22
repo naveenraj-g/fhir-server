@@ -607,8 +607,8 @@ async def test_bad_chains_are_400(client, world):
     )  # Group is not searchable here
     assert await _status(client, **{"performer:Device.x": "x"}) == 400
     assert (
-        await _status(client, **{"based-on:CarePlan.code": "x"}) == 400
-    )  # not a resource here
+        await _status(client, **{"based-on:Appointment.x": "x"}) == 400
+    )  # not a valid target of Procedure.basedOn
     assert (
         await _status(client, **{"code.x": "y"}) == 400
     )  # a token cannot be chained through

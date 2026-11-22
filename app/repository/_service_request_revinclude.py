@@ -75,3 +75,27 @@ def specimen_service_request_revincludes(key) -> tuple[IncludeTarget, ...]:
     return (
         IncludeTarget("ServiceRequest", "specimen", "Specimen", fetch, reverse=True),
     )
+
+
+def based_on_service_request_revincludes(
+    resource_type: str, key
+) -> tuple[IncludeTarget, ...]:
+    """ServiceRequest:based-on - service requests whose `basedOn` is one of the matched rows of
+    `resource_type` (a CarePlan)."""
+
+    async def fetch(session, ctx, rows):
+        from app.models.service_request import ServiceRequestReference
+        from app.repository.service_request.search import (
+            revinclude_service_requests_via_child,
+        )
+
+        return await revinclude_service_requests_via_child(
+            ServiceRequestReference,
+            resource_type,
+            key,
+            ServiceRequestReference.param == "based-on",
+        )(session, ctx, rows)
+
+    return (
+        IncludeTarget("ServiceRequest", "based-on", resource_type, fetch, reverse=True),
+    )
