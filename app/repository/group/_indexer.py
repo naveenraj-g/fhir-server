@@ -49,6 +49,7 @@ _MODELED_ANY = (
     "MedicationRequest",
     "Group",
     "CareTeam",
+    "CarePlan",
     "Encounter",
     "Condition",
     "Observation",

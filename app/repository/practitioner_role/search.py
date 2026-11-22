@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._care_plan_revinclude import performer_care_plan_revincludes
 from app.repository._care_team_revinclude import participant_care_team_revincludes
 from app.repository._group_revinclude import (
     managing_entity_group_revincludes,
@@ -728,6 +729,9 @@ def practitioner_role_search() -> SearchRegistry:
         ),
         # Schedule.actor points here (Appointment, ... will add theirs when rebuilt).
         revincludes=(
+            *performer_care_plan_revincludes(
+                "PractitionerRole", lambda x: x.practitioner_role_id
+            ),
             *participant_care_team_revincludes(
                 "PractitionerRole", lambda p: p.practitioner_role_id
             ),

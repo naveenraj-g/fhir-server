@@ -62,6 +62,13 @@ _MODELED = {
         "app.repository.care_team.search",
         "care_team_search",
     ),
+    "CarePlan": (
+        "app.models.care_plan",
+        "CarePlanModel",
+        "care_plan_id",
+        "app.repository.care_plan.search",
+        "care_plan_search",
+    ),
     "MedicationRequest": (
         "app.models.medication_request",
         "MedicationRequestModel",

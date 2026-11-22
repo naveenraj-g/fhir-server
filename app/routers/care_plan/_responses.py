@@ -1,27 +1,37 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.care_plan import (
-    FHIRCarePlanBundle,
-    FHIRCarePlanSchema,
-    PaginatedCarePlanResponse,
-    PlainCarePlanResponse,
+from app.schemas.care_plan import FHIRCarePlanBundle, FHIRCarePlanSchema
+
+# CarePlan is stored Medplum-style (whole resource in `content`) and
+# always responds with FHIR R4 JSON — there is no plain representation.
+_CONTENT_NEG = (
+    "Always responds with FHIR R4 JSON (`application/fhir+json`), whatever the Accept header "
+    "says; only a client that accepts no JSON at all (e.g. `Accept: application/fhir+xml`, "
+    "`_format=xml`) gets 406 Not Acceptable."
 )
 
-_CONTENT_NEG = (
-    "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "
-    "omit or use `Accept: application/json` for the simplified plain-JSON form."
-)
+_ERR_NOT_ACCEPTABLE = {
+    406: {
+        "description": "Not Acceptable — the Accept header or `_format` rules out JSON (e.g. XML only); FHIR JSON is the only format served. Body is an OperationOutcome."
+    }
+}
 
 _ERR_NOT_FOUND = {404: {"description": "CarePlan not found"}}
 _ERR_VALIDATION = {
     422: {"description": "Validation error — request body failed schema validation"}
 }
 
+_ERR_SEARCH = {
+    400: {
+        "description": (
+            "Search rejected — a malformed value, an unsupported modifier, or (with "
+            "`Prefer: handling=strict`) an unknown parameter. Body is an OperationOutcome."
+        )
+    }
+}
+
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {
-                "schema": inline_schema(PlainCarePlanResponse.model_json_schema())
-            },
             "application/fhir+json": {
                 "schema": inline_schema(FHIRCarePlanSchema.model_json_schema())
             },
@@ -31,11 +41,8 @@ _SINGLE_200 = {
 _SINGLE_201 = {201: _SINGLE_200[200]}
 _LIST_200 = {
     200: {
-        "description": "Paginated list of care plans",
+        "description": "FHIR searchset Bundle: matches (search.mode=match) and any ignored-parameter warning (outcome)",
         "content": {
-            "application/json": {
-                "schema": inline_schema(PaginatedCarePlanResponse.model_json_schema())
-            },
             "application/fhir+json": {
                 "schema": inline_schema(FHIRCarePlanBundle.model_json_schema())
             },

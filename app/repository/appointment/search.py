@@ -28,6 +28,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._care_plan_revinclude import activity_care_plan_revincludes
 from app.repository._appointment_response_revinclude import (
     appointment_response_revincludes,
 )
@@ -856,6 +857,7 @@ def appointment_search() -> SearchRegistry:
         ),
         # AppointmentResponse.appointment points here (Encounter, ... add theirs when rebuilt).
         revincludes=(
+            *activity_care_plan_revincludes("Appointment", lambda x: x.appointment_id),
             *appointment_response_revincludes(lambda a: a.appointment_id),
             *appointment_encounter_revincludes(lambda a: a.appointment_id),
         ),

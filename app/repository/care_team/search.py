@@ -17,6 +17,10 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._care_plan_revinclude import (
+    performer_care_plan_revincludes,
+    reference_care_plan_revincludes,
+)
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -643,6 +647,10 @@ def care_team_search() -> SearchRegistry:
         ),
         # A care team can name another care team as a participant (CareTeam:participant).
         revincludes=(
+            *reference_care_plan_revincludes(
+                "care-team", "CareTeam", lambda x: x.care_team_id
+            ),
+            *performer_care_plan_revincludes("CareTeam", lambda x: x.care_team_id),
             IncludeTarget(
                 "CareTeam",
                 "participant",

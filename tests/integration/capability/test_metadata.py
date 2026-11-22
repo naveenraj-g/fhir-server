@@ -28,6 +28,7 @@ from app.repository.organization.search import organization_search
 from app.repository.patient.search import patient_search
 from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.schedule.search import schedule_search
+from app.repository.care_plan.search import care_plan_search
 from app.repository.care_team.search import care_team_search
 from app.repository.group.search import group_search
 from app.repository.medication.search import medication_search
@@ -67,6 +68,7 @@ async def test_search_params_match_registries(client):
         "endpoint": ("Endpoint", endpoint_search()),
         "practitioner_role": ("PractitionerRole", practitioner_role_search()),
         "schedule": ("Schedule", schedule_search()),
+        "care_plan": ("CarePlan", care_plan_search()),
         "care_team": ("CareTeam", care_team_search()),
         "group": ("Group", group_search()),
         "medication": ("Medication", medication_search()),

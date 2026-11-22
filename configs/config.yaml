@@ -221,7 +221,7 @@ routes:
     - allergy_intolerance
     - appointment
     - appointment_response
-    # - care_plan
+    - care_plan
     - care_team
     - clinical_impression
     - condition

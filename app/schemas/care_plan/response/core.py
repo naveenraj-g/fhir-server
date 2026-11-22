@@ -1,39 +1,102 @@
-from datetime import datetime
-from typing import Literal
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.schemas.care_plan.response.activity import (
-    FHIRCarePlanActivity,
-    PlainCarePlanActivity,
-)
-from app.schemas.care_plan.response.identifier import PlainCarePlanIdentifier
-from app.schemas.care_plan.response.note import PlainCarePlanNote
 from app.schemas.datatypes import (
-    AuditFields,
     FHIRBundle,
-    FHIRBundleEntry,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
+    FHIRQuantity,
     FHIRReference,
-    PlainCodingRow,
 )
 from app.schemas.datatypes.annotation import FHIRAnnotation
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+
+
+class FHIRCarePlanActivityDetail(BaseModel):
+    kind: str | None = Field(None, description="Kind of resource the activity is.")
+    instantiatesCanonical: list[str] | None = Field(
+        None, description="Instantiates FHIR protocol or definition."
+    )
+    instantiatesUri: list[str] | None = Field(
+        None, description="Instantiates external protocol or definition."
+    )
+    code: FHIRCodeableConcept | None = Field(
+        None, description="Detail type of activity."
+    )
+    reasonCode: list[FHIRCodeableConcept] | None = Field(
+        None, description="Why activity should be done or why activity was prohibited."
+    )
+    reasonReference: list[FHIRReference] | None = Field(
+        None, description="Why activity is needed."
+    )
+    goal: list[FHIRReference] | None = Field(
+        None, description="Goals this activity relates to."
+    )
+    status: str | None = Field(None, description="Current state of the activity.")
+    statusReason: FHIRCodeableConcept | None = Field(
+        None, description="Reason for current status."
+    )
+    doNotPerform: bool | None = Field(
+        None, description="If true, activity is prohibiting action."
+    )
+    scheduledTiming: dict | None = Field(
+        None, description="When activity is to occur (Timing)."
+    )
+    scheduledPeriod: FHIRPeriod | None = Field(
+        None, description="When activity is to occur (Period)."
+    )
+    scheduledString: str | None = Field(
+        None, description="When activity is to occur (string)."
+    )
+    location: FHIRReference | None = Field(None, description="Where it should happen.")
+    performer: list[FHIRReference] | None = Field(
+        None, description="Who will be responsible?"
+    )
+    productCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="What is to be administered/supplied (CodeableConcept)."
+    )
+    productReference: FHIRReference | None = Field(
+        None, description="What is to be administered/supplied (Reference)."
+    )
+    dailyAmount: FHIRQuantity | None = Field(None, description="How to consume/day?")
+    quantity: FHIRQuantity | None = Field(
+        None, description="How much to administer/supply/consume."
+    )
+    description: str | None = Field(
+        None, description="Extra info describing activity to perform."
+    )
+
+
+class FHIRCarePlanActivity(BaseModel):
+    outcomeCodeableConcept: list[FHIRCodeableConcept] | None = Field(
+        None, description="Results of the activity."
+    )
+    outcomeReference: list[FHIRReference] | None = Field(
+        None, description="Appointment, Encounter, Procedure, etc."
+    )
+    progress: list[FHIRAnnotation] | None = Field(
+        None, description="Comments about the activity status/progress."
+    )
+    reference: FHIRReference | None = Field(
+        None, description="Activity details defined in specific resource."
+    )
+    detail: FHIRCarePlanActivityDetail | None = Field(
+        None, description="In-line definition of activity."
+    )
 
 
 class FHIRCarePlanSchema(BaseModel):
-    """FHIR R4 CarePlan resource representation."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    resourceType: Literal["CarePlan"] = Field(
-        "CarePlan", description="Always 'CarePlan'."
-    )
+    resourceType: str = Field("CarePlan", description="Always 'CarePlan'.")
     id: str = Field(..., description="Public care_plan_id as a string.")
-    meta: FHIRMeta | None = Field(None, description="Resource metadata.")
-    extension: list[dict] | None = Field(None, description="Resource extensions.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="External Ids for this plan."
     )
@@ -43,20 +106,18 @@ class FHIRCarePlanSchema(BaseModel):
     instantiatesUri: list[str] | None = Field(
         None, description="Instantiates external protocol or definition."
     )
-    basedOn: list[FHIRReference] | None = Field(
-        None, description="Fulfills CarePlan, ServiceRequest, or NutritionOrder."
-    )
+    basedOn: list[FHIRReference] | None = Field(None, description="Fulfills CarePlan.")
     replaces: list[FHIRReference] | None = Field(
         None, description="CarePlan replaced by this CarePlan."
     )
     partOf: list[FHIRReference] | None = Field(
         None, description="Part of referenced CarePlan."
     )
-    status: str = Field(
-        ...,
+    status: str | None = Field(
+        None,
         description="draft | active | on-hold | revoked | completed | entered-in-error | unknown.",
     )
-    intent: str = Field(..., description="proposal | plan | order | option.")
+    intent: str | None = Field(None, description="proposal | plan | order | option.")
     category: list[FHIRCodeableConcept] | None = Field(
         None, description="Type of plan."
     )
@@ -64,11 +125,9 @@ class FHIRCarePlanSchema(BaseModel):
         None, description="Human-friendly name for the care plan."
     )
     description: str | None = Field(None, description="Summary of nature of plan.")
-    subject: FHIRReference = Field(
-        ..., description="Who the care plan is for (Patient | Group)."
-    )
+    subject: FHIRReference | None = Field(None, description="Who the care plan is for.")
     encounter: FHIRReference | None = Field(
-        None, description="Encounter created as part of."
+        None, description="The Encounter during which this CarePlan was created."
     )
     period: FHIRPeriod | None = Field(None, description="Time period plan covers.")
     created: str | None = Field(None, description="Date record was first recorded.")
@@ -79,10 +138,13 @@ class FHIRCarePlanSchema(BaseModel):
         None, description="Who provided the content of the care plan."
     )
     careTeam: list[FHIRReference] | None = Field(
-        None, description="Who's involved in plan."
+        None, description="Who's involved in plan?"
     )
     addresses: list[FHIRReference] | None = Field(
         None, description="Health issues this plan addresses."
+    )
+    supportingInfo: list[FHIRReference] | None = Field(
+        None, description="Information considered as part of plan."
     )
     goal: list[FHIRReference] | None = Field(
         None, description="Desired outcome of plan."
@@ -95,127 +157,23 @@ class FHIRCarePlanSchema(BaseModel):
     )
 
 
-class PlainCarePlanCategory(BaseModel):
-    """Plain response shape for CarePlan.category."""
-
-    model_config = ConfigDict(extra="allow")
-    id: int | None = None
-    text: str | None = None
-    codings: list[PlainCodingRow] | None = None
-
-
-class PlainCarePlanReference(BaseModel):
-    """Plain response shape for a Reference child row."""
-
-    model_config = ConfigDict(extra="allow")
-    id: int | None = None
-    reference: str | None = None
-    type: str | None = None
-    reference_id: int | None = None
-    display: str | None = None
-    identifier_use: str | None = None
-    identifier_type_system: str | None = None
-    identifier_type_version: str | None = None
-    identifier_type_code: str | None = None
-    identifier_type_display: str | None = None
-    identifier_type_user_selected: bool | None = None
-    identifier_type_text: str | None = None
-    identifier_system: str | None = None
-    identifier_value: str | None = None
-    identifier_period_start: str | None = None
-    identifier_period_end: str | None = None
-
-
-class PlainCarePlanResponse(AuditFields):
-    """Plain snake_case response for CarePlan."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Public care_plan_id.")
-    instantiates_canonical: list[str] | None = None
-    instantiates_uri: list[str] | None = None
-    status: str
-    intent: str
-    title: str | None = None
-    description: str | None = None
-
-    subject: str | None = None
-    subject_id: int | None = None
-    subject_type: str | None = None
-    subject_display: str | None = None
-    subject_identifier_use: str | None = None
-    subject_identifier_type_system: str | None = None
-    subject_identifier_type_version: str | None = None
-    subject_identifier_type_code: str | None = None
-    subject_identifier_type_display: str | None = None
-    subject_identifier_type_user_selected: bool | None = None
-    subject_identifier_type_text: str | None = None
-    subject_identifier_system: str | None = None
-    subject_identifier_value: str | None = None
-    subject_identifier_period_start: str | None = None
-    subject_identifier_period_end: str | None = None
-
-    encounter: str | None = None
-    encounter_id: int | None = None
-    encounter_type: str | None = None
-    encounter_display: str | None = None
-    encounter_identifier_use: str | None = None
-    encounter_identifier_type_system: str | None = None
-    encounter_identifier_type_version: str | None = None
-    encounter_identifier_type_code: str | None = None
-    encounter_identifier_type_display: str | None = None
-    encounter_identifier_type_user_selected: bool | None = None
-    encounter_identifier_type_text: str | None = None
-    encounter_identifier_system: str | None = None
-    encounter_identifier_value: str | None = None
-    encounter_identifier_period_start: str | None = None
-    encounter_identifier_period_end: str | None = None
-
-    period_start: datetime | None = None
-    period_end: datetime | None = None
-    created: datetime | None = None
-
-    author: str | None = None
-    author_id: int | None = None
-    author_type: str | None = None
-    author_display: str | None = None
-    author_identifier_use: str | None = None
-    author_identifier_type_system: str | None = None
-    author_identifier_type_version: str | None = None
-    author_identifier_type_code: str | None = None
-    author_identifier_type_display: str | None = None
-    author_identifier_type_user_selected: bool | None = None
-    author_identifier_type_text: str | None = None
-    author_identifier_system: str | None = None
-    author_identifier_value: str | None = None
-    author_identifier_period_start: str | None = None
-    author_identifier_period_end: str | None = None
-
-    identifiers: list[PlainCarePlanIdentifier] | None = None
-    categories: list[PlainCarePlanCategory] | None = None
-    based_on: list[PlainCarePlanReference] | None = None
-    replaces: list[PlainCarePlanReference] | None = None
-    part_of: list[PlainCarePlanReference] | None = None
-    contributors: list[PlainCarePlanReference] | None = None
-    care_teams: list[PlainCarePlanReference] | None = None
-    addresses: list[PlainCarePlanReference] | None = None
-    goals: list[PlainCarePlanReference] | None = None
-    activities: list[PlainCarePlanActivity] | None = None
-    notes: list[PlainCarePlanNote] | None = None
-
-
-class PaginatedCarePlanResponse(BaseModel):
-    """Paginated plain snake_case response."""
-
-    total: int | None = None
-    limit: int
-    offset: int
-    data: list[PlainCarePlanResponse]
-
-
-class FHIRCarePlanBundleEntry(FHIRBundleEntry):
-    resource: FHIRCarePlanSchema | None = None
+class FHIRCarePlanBundleEntry(BaseModel):
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRCarePlanSchema | dict = Field(
+        ...,
+        description="A CarePlan (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Group / Encounter / CareTeam / Condition / Practitioner / PractitionerRole / RelatedPerson / Organization / HealthcareService / Appointment / MedicationRequest / ServiceRequest / CarePlan (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
 class FHIRCarePlanBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
     entry: list[FHIRCarePlanBundleEntry] | None = None

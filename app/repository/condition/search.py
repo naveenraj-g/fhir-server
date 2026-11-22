@@ -22,6 +22,7 @@ from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.quantity import quantity_range_match
+from app.repository._care_plan_revinclude import reference_care_plan_revincludes
 from app.repository._clinical_impression_revinclude import (
     reference_impression_revincludes,
 )
@@ -772,6 +773,9 @@ def condition_search() -> SearchRegistry:
         ),
         # Encounter.diagnosis / .reasonReference and Appointment.reasonReference point here.
         revincludes=(
+            *reference_care_plan_revincludes(
+                "condition", "Condition", lambda x: x.condition_id
+            ),
             *reference_encounter_revincludes("Condition", lambda c: c.condition_id),
             *reason_appointment_revincludes("Condition", lambda c: c.condition_id),
             *reason_procedure_revincludes("Condition", lambda c: c.condition_id),
