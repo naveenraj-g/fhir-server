@@ -10,7 +10,7 @@ from app.schemas.datatypes import (
     FHIRPeriod,
     FHIRReference,
 )
-from app.schemas.medication_request.response.core import FHIRDosage
+from app.schemas.datatypes.dosage import FHIRDosage
 from app.schemas.medication_statement.response.codeable_concept import (
     PlainMedicationStatementCodeableConcept,
 )

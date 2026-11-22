@@ -57,6 +57,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/diagnostic-report-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "MedicationRequest": (
+        "app.models.medication_request",
+        "MedicationRequestModel",
+        "medication_request_id",
+        "app.repository.medication_request.search",
+        "medication_request_search",
+    ),
     "ServiceRequest": (
         "app.models.service_request",
         "ServiceRequestModel",
@@ -841,6 +848,12 @@ def diagnostic_report_search() -> SearchRegistry:
                 "based-on",
                 "ServiceRequest",
                 _include_reference("based-on", "ServiceRequest"),
+            ),
+            IncludeTarget(
+                "DiagnosticReport",
+                "based-on",
+                "MedicationRequest",
+                _include_reference("based-on", "MedicationRequest"),
             ),
             IncludeTarget(
                 "DiagnosticReport",

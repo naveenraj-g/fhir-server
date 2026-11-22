@@ -80,6 +80,7 @@ _REBUILT = (
     "Observation",
     "Specimen",
     "ServiceRequest",
+    "MedicationRequest",
 )
 
 

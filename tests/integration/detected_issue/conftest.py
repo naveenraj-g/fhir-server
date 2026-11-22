@@ -2,12 +2,15 @@ import pytest
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
+from tests.helpers.medication_requests import seed_medication_requests
 from tests.helpers.observations import seed_observations
 
 # The issue's own scopes, plus the scopes the tests need to create the resources around it
 # (its patient, author, implicated resources, evidence and mitigation authors) and the ones to look
 # at what points back at it.
 ISSUE_PERMS = [
+    "medication_request:create",
+    "medication_request:read",
     "observation:create",
     "observation:read",
     "detected_issue:create",
@@ -64,3 +67,9 @@ def _set_permissions(client):
 async def _seeded_observations(_set_permissions, client):
     """The Observation ids these tests refer to (`Observation/160001`, ...) must exist."""
     await seed_observations(client)
+
+
+@pytest.fixture(autouse=True)
+async def _seeded_medication_requests(_set_permissions, client):
+    """The MedicationRequest ids these tests refer to (`MedicationRequest/90001`, ...) must exist."""
+    await seed_medication_requests(client)

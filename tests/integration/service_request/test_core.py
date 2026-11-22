@@ -438,15 +438,10 @@ async def test_create_based_on_and_replaces_must_exist(client, patient):
         assert (await client.post(BASE + "/", json=body)).status_code == 422, element
 
 
-async def test_create_based_on_care_plan_and_medication_request_not_checked(
-    client, patient
-):
+async def test_create_based_on_care_plan_is_not_checked(client, patient):
     body = service_request_body(
         patient,
-        basedOn=[
-            {"reference": "CarePlan/999999"},
-            {"reference": "MedicationRequest/999999"},
-        ],
+        basedOn=[{"reference": "CarePlan/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 
@@ -500,7 +495,7 @@ async def test_create_supporting_info_is_checked_for_rebuilt_types(client, patie
     )
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
     stored = service_request_body(
-        patient, supportingInfo=[{"reference": "MedicationRequest/999999"}]
+        patient, supportingInfo=[{"reference": "DocumentReference/999999"}]
     )
     assert (await client.post(BASE + "/", json=stored)).status_code == 201
 
@@ -850,3 +845,19 @@ async def test_search_cross_tenant_isolation(client, other_client):
         assert bundle["total"] == 0
     finally:
         _as_user()
+
+
+async def test_create_based_on_and_supporting_info_medication_request_must_exist(
+    client, patient
+):
+    from tests.helpers.medication_requests import create_minimal_medication_request
+
+    existing = await create_minimal_medication_request(client)
+    ref = {"reference": f"MedicationRequest/{existing}"}
+    for element in ("basedOn", "supportingInfo"):
+        ok = service_request_body(patient, **{element: [ref]})
+        assert (await client.post(BASE + "/", json=ok)).status_code == 201, element
+        missing = service_request_body(
+            patient, **{element: [{"reference": "MedicationRequest/999999"}]}
+        )
+        assert (await client.post(BASE + "/", json=missing)).status_code == 422, element

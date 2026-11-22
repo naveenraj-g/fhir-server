@@ -64,6 +64,7 @@ _MODELED_REASONS = ("Condition", "Observation", "DiagnosticReport")
 _MODELED_INFORMATION = (
     "ServiceRequest",
     "Medication",
+    "MedicationRequest",
     "Specimen",
     "Observation",
     "Patient",
@@ -96,7 +97,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     """(element label, resource type, relative reference) for every local reference that
     must exist in the caller's org on write: the identifiers' assigners (the resource's and
     the requisition's), `subject` (a Patient or Location), `encounter`, `requester`, every
-    `performer`, `basedOn` / `replaces` (ServiceRequest), `specimen`, `locationReference`,
+    `performer`, `basedOn` (ServiceRequest, MedicationRequest) / `replaces` (ServiceRequest), `specimen`, `locationReference`,
     `reasonReference` (Condition, Observation, DiagnosticReport), `supportingInfo` (any
     rebuilt resource) and every note's `authorReference`. Absolute URLs, logical
     (identifier-only) references and targets that are not resources on this server (a
@@ -131,7 +132,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
     for ref in document.get("performer") or []:
         add_typed("performer", ref, _MODELED_PERFORMERS)
     for ref in document.get("basedOn") or []:
-        add("basedOn", (ref or {}).get("reference"), "ServiceRequest")
+        add_typed("basedOn", ref, ("ServiceRequest", "MedicationRequest"))
     for ref in document.get("replaces") or []:
         add("replaces", (ref or {}).get("reference"), "ServiceRequest")
     for ref in document.get("specimen") or []:

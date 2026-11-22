@@ -269,18 +269,17 @@ async def test_create_implicated_is_checked_for_resources_here(client, patient):
             {"reference": f"Condition/{condition}"},
             {"reference": f"ClinicalImpression/{impression}"},
             {"reference": f"Patient/{patient}"},
-            {"reference": "MedicationRequest/999999"},
+            {"reference": "MedicationRequest/90001"},
             {"reference": "Observation/160005"},
         ],
     )
-    assert (
-        await client.post(BASE + "/", json=ok)
-    ).status_code == 201  # not rebuilt: stored as sent
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
     for missing in (
         "Condition/999999",
         "ClinicalImpression/999999",
         "Patient/999999",
         "Observation/999999",
+        "MedicationRequest/999999",
     ):
         resp = await client.post(
             BASE + "/", json=issue_body(patient, implicated=[{"reference": missing}])

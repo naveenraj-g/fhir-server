@@ -1,446 +1,372 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import (
-    MedicationRequestIntent,
-    MedicationRequestPriority,
-    MedicationRequestQuantityComparator,
-    MedicationRequestStatus,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
-from .codeable_concept import MedicationRequestCodeableConceptInput
-from .dosage_instruction import MedicationRequestDosageInstructionInput
-from .identifier import MedicationRequestIdentifierInput
-from .note import MedicationRequestNoteInput
-from .reference import (
-    MedicationRequestBasedOnInput,
-    MedicationRequestDetectedIssueInput,
-    MedicationRequestDispenseRequestPerformerInput,
-    MedicationRequestEncounterInput,
-    MedicationRequestEventHistoryInput,
-    MedicationRequestInsuranceInput,
-    MedicationRequestMedicationReferenceInput,
-    MedicationRequestPerformerInput,
-    MedicationRequestPriorPrescriptionInput,
-    MedicationRequestReasonReferenceInput,
-    MedicationRequestRecorderInput,
-    MedicationRequestReportedReferenceInput,
-    MedicationRequestRequesterInput,
-    MedicationRequestSubjectInput,
-    MedicationRequestSupportingInformationInput,
-)
+# medicationrequest-status, medicationrequest-intent and request-priority (the required bindings).
+StatusCode = Literal[
+    "active",
+    "on-hold",
+    "cancelled",
+    "completed",
+    "entered-in-error",
+    "stopped",
+    "draft",
+    "unknown",
+]
+IntentCode = Literal[
+    "proposal",
+    "plan",
+    "order",
+    "original-order",
+    "reflex-order",
+    "filler-order",
+    "instance-order",
+    "option",
+]
+PriorityCode = Literal["routine", "urgent", "asap", "stat"]
 
 _EXAMPLE = {
+    "resourceType": "MedicationRequest",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/prescription-id",
+            "value": "RX-1001",
+        }
+    ],
     "status": "active",
     "intent": "order",
+    "category": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                    "code": "outpatient",
+                    "display": "Outpatient",
+                }
+            ]
+        }
+    ],
+    "priority": "routine",
+    "medicationCodeableConcept": {
+        "coding": [
+            {
+                "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+                "code": "1049502",
+                "display": "12 HR Oxycodone Hydrochloride 10 MG Extended Release Oral Tablet",
+            }
+        ]
+    },
     "subject": {"reference": "Patient/10001"},
-    "medication_codeable_concept": {"text": "Amoxicillin 500mg capsule"},
-    "authored_on": "2026-01-15T10:30:00Z",
+    "encounter": {"reference": "Encounter/20001"},
+    "authoredOn": "2023-01-15T09:30:00Z",
+    "requester": {"reference": "Practitioner/30001"},
+    "reasonCode": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "22253000",
+                    "display": "Pain",
+                }
+            ]
+        }
+    ],
+    "note": [{"text": "Take with food."}],
+    "dosageInstruction": [
+        {
+            "sequence": 1,
+            "text": "1 tablet every 12 hours",
+            "timing": {"repeat": {"frequency": 1, "period": 12, "periodUnit": "h"}},
+            "route": {
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": "26643006",
+                        "display": "Oral route",
+                    }
+                ]
+            },
+            "doseAndRate": [{"doseQuantity": {"value": 1, "unit": "tablet"}}],
+        }
+    ],
+    "dispenseRequest": {
+        "validityPeriod": {"start": "2023-01-15", "end": "2023-07-15"},
+        "numberOfRepeatsAllowed": 1,
+        "quantity": {"value": 60, "unit": "tablet"},
+        "expectedSupplyDuration": {
+            "value": 30,
+            "unit": "days",
+            "system": "http://unitsofmeasure.org",
+            "code": "d",
+        },
+    },
+    "substitution": {"allowedBoolean": True},
 }
 
 
-class MedicationRequestCreateSchema(BaseModel):
-    """Creates a MedicationRequest and any combination of its sub-resource
-    lists atomically in one request. JWT/RBAC auth-rollout pattern — same
-    as every other resource now: `org_id`/`created_by` come from the
-    verified JWT (`actor.org_id`/`actor.sub`), not the request body — an
-    org-less token is rejected outright (403)."""
+class MedicationRequestQuantityInput(FhirInputModel):
+    """Quantity - a measured amount with an optional comparator."""
 
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": _EXAMPLE})
+    value: float | int | None = Field(
+        None, description="Numerical value (with implicit precision)."
+    )
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(
+        None, description="How the value should be understood: < | <= | >= | >."
+    )
+    unit: str | None = Field(None, description="Unit representation.")
+    system: str | None = Field(
+        None,
+        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
+    )
+    code: str | None = Field(None, description="Coded form of the unit.")
 
+
+class MedicationRequestAnnotationInput(FhirInputModel):
+    """Annotation - a note with an author (a Reference or plain text) and a time."""
+
+    authorReference: FhirReferenceInput | None = Field(
+        None,
+        description="Individual responsible for the annotation - Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    authorString: str | None = Field(
+        None, description="Individual responsible for the annotation, as plain text."
+    )
+    time: str | None = Field(
+        None, description="When the annotation was made (a FHIR dateTime)."
+    )
+    text: str | None = Field(
+        None, description="The annotation text, as markdown (required by R4)."
+    )
+
+
+class MedicationRequestInitialFillInput(FhirInputModel):
+    """MedicationRequest.dispenseRequest.initialFill - first fill details (a quantity or a
+    duration is required by R4)."""
+
+    quantity: MedicationRequestQuantityInput | None = Field(
+        None, description="First fill quantity."
+    )
+    duration: MedicationRequestQuantityInput | None = Field(
+        None, description="First fill duration (a Duration)."
+    )
+
+
+class MedicationRequestDispenseRequestInput(FhirInputModel):
+    """MedicationRequest.dispenseRequest - medication supply authorization."""
+
+    initialFill: MedicationRequestInitialFillInput | None = Field(
+        None, description="First fill details."
+    )
+    dispenseInterval: MedicationRequestQuantityInput | None = Field(
+        None, description="Minimum period of time between dispenses (a Duration)."
+    )
+    validityPeriod: FhirPeriodInput | None = Field(
+        None, description="Time period supply is authorized for."
+    )
+    numberOfRepeatsAllowed: int | None = Field(
+        None, ge=0, description="Number of refills authorized."
+    )
+    quantity: MedicationRequestQuantityInput | None = Field(
+        None, description="Amount of medication to supply per dispense."
+    )
+    expectedSupplyDuration: MedicationRequestQuantityInput | None = Field(
+        None, description="Number of days supply per dispense (a Duration)."
+    )
+    performer: FhirReferenceInput | None = Field(
+        None,
+        description="Intended dispenser - Reference(Organization). A relative reference must exist in the caller's org (422 otherwise). Searched by `intended-dispenser`.",
+    )
+
+
+class MedicationRequestSubstitutionInput(FhirInputModel):
+    """MedicationRequest.substitution - any restrictions on medication substitution."""
+
+    allowedBoolean: bool | None = Field(
+        None,
+        description="Whether substitution is allowed or not (a boolean). One of the allowed[x] choices (required by R4).",
+    )
+    allowedCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="What type of substitution is allowed (a CodeableConcept). One of the allowed[x] choices.",
+    )
+    reason: FhirCodeableConceptInput | None = Field(
+        None, description="Why should (not) substitution be made."
+    )
+
+
+class _MedicationRequestFields(FhirInputModel):
+    """Every writable MedicationRequest element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/medicationrequest.html). Create and patch accept exactly the
+    same fields. R4 requires `status`, `intent`, `medication[x]` and `subject`, but those
+    minimums are enforced by the base-R4 validator (`java_validator` backend), not by this
+    model - so a PATCH can send any subset.
+
+    The validated body is stored whole (MedicationRequestModel.content), so any valid R4
+    element is kept - including ones this model does not declare. Server-managed elements are
+    ignored if sent: `id` (assigned from the medication_request_id sequence) and `meta`
+    (audit/tenant data, stamped on at read time). org_id and created_by/updated_by come from
+    the verified JWT (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["MedicationRequest"] | None = Field(
+        None, description="Optional; if supplied it must be 'MedicationRequest'."
+    )
     extension: list[dict] | None = Field(
-        None, description="Resource-level FHIR extensions."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
-
-    identifier: list[MedicationRequestIdentifierInput] | None = Field(
-        None, description="Business identifiers."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External ids for this request."
     )
-    status: MedicationRequestStatus = Field(
-        ...,
-        description="active | on-hold | cancelled | completed | entered-in-error | stopped | draft | unknown.",
+    status: StatusCode | None = Field(
+        None,
+        description="active | on-hold | cancelled | completed | entered-in-error | stopped | draft | unknown (required by R4).",
     )
-    status_reason: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="Reason for the current status."
+    statusReason: FhirCodeableConceptInput | None = Field(
+        None, description="Reason for current status."
     )
-    intent: MedicationRequestIntent = Field(
-        ...,
-        description="proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option.",
+    intent: IntentCode | None = Field(
+        None,
+        description="proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option (required by R4).",
     )
-    category: list[MedicationRequestCodeableConceptInput] | None = Field(
-        None, description="Grouping/classification of the request."
+    category: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Type of medication usage."
     )
-    priority: MedicationRequestPriority | None = Field(
+    priority: PriorityCode | None = Field(
         None, description="routine | urgent | asap | stat."
     )
-    do_not_perform: bool | None = Field(
-        None, description="True if the medication should NOT be given."
+    doNotPerform: bool | None = Field(
+        None, description="True if request is prohibiting action."
     )
-
-    # reported[x]
-    reported_boolean: bool | None = Field(None, description="reported[x]: boolean.")
-    reported_reference: MedicationRequestReportedReferenceInput | None = Field(
-        None, description="reported[x]: Reference."
+    reportedBoolean: bool | None = Field(
+        None,
+        description="Reported rather than primary record (a boolean). One of the reported[x] choices.",
     )
-
-    # medication[x] (1..1 required)
-    medication_codeable_concept: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="medication[x]: CodeableConcept."
+    reportedReference: FhirReferenceInput | None = Field(
+        None,
+        description="Reported rather than primary record - Reference(Patient | Practitioner | PractitionerRole | RelatedPerson | Organization). One of the reported[x] choices.",
     )
-    medication_reference: MedicationRequestMedicationReferenceInput | None = Field(
-        None, description="medication[x]: Reference(Medication)."
+    medicationCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Medication to be taken (a CodeableConcept). One of the medication[x] choices (required by R4); searched by `code`.",
     )
-
-    subject: MedicationRequestSubjectInput = Field(
-        ..., description="Individual/entity the medication is for (1..1, required)."
+    medicationReference: FhirReferenceInput | None = Field(
+        None,
+        description="Medication to be taken - Reference(Medication). One of the medication[x] choices (required by R4); searched by `medication`. A relative reference must exist in the caller's org (422 otherwise).",
     )
-    encounter: MedicationRequestEncounterInput | None = Field(
-        None, description="Encounter this request was created during."
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="Who or group medication request is for - Reference(Patient | Group). A relative Patient must exist in the caller's org (422 otherwise).",
     )
-    supporting_information: list[MedicationRequestSupportingInformationInput] | None = (
-        Field(None, description="Additional clinical information.")
+    encounter: FhirReferenceInput | None = Field(
+        None,
+        description="Encounter created as part of encounter/admission/stay - Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    authored_on: datetime | None = Field(
-        None, description="Date/time the request was initially authored."
+    supportingInformation: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Information to support ordering of the medication - Reference(Any). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise).",
     )
-    requester: MedicationRequestRequesterInput | None = Field(
-        None, description="Who/what is requesting the medication."
+    authoredOn: str | None = Field(
+        None,
+        description="When request was initially authored (a FHIR dateTime). Searched by `authoredon`.",
     )
-    performer: MedicationRequestPerformerInput | None = Field(
-        None, description="Intended performer of administration."
+    requester: FhirReferenceInput | None = Field(
+        None,
+        description="Who/What requested the Request - Reference(Practitioner | PractitionerRole | Organization | Patient | RelatedPerson | Device). A relative reference of a rebuilt type must exist in the caller's org (422 otherwise).",
     )
-    performer_type: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="Desired kind of performer."
+    performer: FhirReferenceInput | None = Field(
+        None,
+        description="Intended performer of administration - Reference(Practitioner | PractitionerRole | Organization | Patient | Device | RelatedPerson | CareTeam). Searched by `intended-performer`. A relative reference of a rebuilt type must exist in the caller's org (422 otherwise).",
     )
-    recorder: MedicationRequestRecorderInput | None = Field(
-        None, description="Person who entered the request."
+    performerType: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Desired kind of performer of the medication administration. Searched by `intended-performertype`.",
     )
-    reason_code: list[MedicationRequestCodeableConceptInput] | None = Field(
-        None, description="Reason/indication for the request, coded."
+    recorder: FhirReferenceInput | None = Field(
+        None,
+        description="Person who entered the request - Reference(Practitioner | PractitionerRole).",
     )
-    reason_reference: list[MedicationRequestReasonReferenceInput] | None = Field(
-        None, description="Reason/indication for the request, resolved."
+    reasonCode: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="Reason or indication for ordering or not ordering the medication.",
     )
-    instantiates_canonical: list[str] | None = Field(
-        None, description="Canonical references instantiated."
+    reasonReference: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Condition or observation that supports why the prescription is being written - Reference(Condition | Observation). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    instantiates_uri: list[str] | None = Field(
-        None, description="External protocol/definition URIs instantiated."
+    instantiatesCanonical: list[str] | None = Field(
+        None, description="Instantiates FHIR protocol or definition (canonical URLs)."
     )
-    based_on: list[MedicationRequestBasedOnInput] | None = Field(
-        None, description="Plan/proposal/order fulfilled by this request."
+    instantiatesUri: list[str] | None = Field(
+        None, description="Instantiates external protocol or definition."
     )
-    group_identifier: MedicationRequestIdentifierInput | None = Field(
+    basedOn: list[FhirReferenceInput] | None = Field(
+        None,
+        description="What request fulfills - Reference(CarePlan | MedicationRequest | ServiceRequest | ImmunizationRecommendation). A relative MedicationRequest, ServiceRequest or ImmunizationRecommendation must exist in the caller's org (422 otherwise).",
+    )
+    groupIdentifier: FhirIdentifierInput | None = Field(
         None, description="Composite request this is part of."
     )
-    course_of_therapy_type: MedicationRequestCodeableConceptInput | None = Field(
+    courseOfTherapyType: FhirCodeableConceptInput | None = Field(
         None, description="Overall pattern of medication administration."
     )
-    insurance: list[MedicationRequestInsuranceInput] | None = Field(
-        None, description="Associated insurance coverage."
-    )
-    note: list[MedicationRequestNoteInput] | None = Field(None, description="Comments.")
-    dosage_instruction: list[MedicationRequestDosageInstructionInput] | None = Field(
-        None, description="How the medication should be taken."
-    )
-
-    # dispenseRequest (0..1, flattened)
-    dispense_request_initial_fill_quantity_value: float | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — numeric value."
-    )
-    dispense_request_initial_fill_quantity_comparator: (
-        MedicationRequestQuantityComparator | None
-    ) = Field(None, description="dispenseRequest.initialFill.quantity — comparator.")
-    dispense_request_initial_fill_quantity_unit: str | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — unit."
-    )
-    dispense_request_initial_fill_quantity_system: str | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — unit system."
-    )
-    dispense_request_initial_fill_quantity_code: str | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — coded unit form."
-    )
-    dispense_request_initial_fill_duration_value: float | None = Field(
-        None, description="dispenseRequest.initialFill.duration — numeric value."
-    )
-    dispense_request_initial_fill_duration_unit: str | None = Field(
-        None, description="dispenseRequest.initialFill.duration — unit."
-    )
-    dispense_request_initial_fill_duration_system: str | None = Field(
-        None, description="dispenseRequest.initialFill.duration — unit system."
-    )
-    dispense_request_initial_fill_duration_code: str | None = Field(
-        None, description="dispenseRequest.initialFill.duration — coded unit form."
-    )
-    dispense_request_dispense_interval_value: float | None = Field(
-        None, description="dispenseRequest.dispenseInterval — numeric value."
-    )
-    dispense_request_dispense_interval_unit: str | None = Field(
-        None, description="dispenseRequest.dispenseInterval — unit."
-    )
-    dispense_request_dispense_interval_system: str | None = Field(
-        None, description="dispenseRequest.dispenseInterval — unit system."
-    )
-    dispense_request_dispense_interval_code: str | None = Field(
-        None, description="dispenseRequest.dispenseInterval — coded unit form."
-    )
-    dispense_request_validity_period_start: datetime | None = Field(
-        None, description="dispenseRequest.validityPeriod — start."
-    )
-    dispense_request_validity_period_end: datetime | None = Field(
-        None, description="dispenseRequest.validityPeriod — end."
-    )
-    dispense_request_number_of_repeats_allowed: int | None = Field(
-        None, description="dispenseRequest.numberOfRepeatsAllowed."
-    )
-    dispense_request_quantity_value: float | None = Field(
-        None, description="dispenseRequest.quantity — numeric value."
-    )
-    dispense_request_quantity_unit: str | None = Field(
-        None, description="dispenseRequest.quantity — unit."
-    )
-    dispense_request_quantity_system: str | None = Field(
-        None, description="dispenseRequest.quantity — unit system."
-    )
-    dispense_request_quantity_code: str | None = Field(
-        None, description="dispenseRequest.quantity — coded unit form."
-    )
-    dispense_request_expected_supply_duration_value: float | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — numeric value."
-    )
-    dispense_request_expected_supply_duration_unit: str | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — unit."
-    )
-    dispense_request_expected_supply_duration_system: str | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — unit system."
-    )
-    dispense_request_expected_supply_duration_code: str | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — coded unit form."
-    )
-    dispense_request_performer: (
-        MedicationRequestDispenseRequestPerformerInput | None
-    ) = Field(None, description="dispenseRequest.performer — Reference(Organization).")
-
-    # substitution (0..1, flattened)
-    substitution_allowed_boolean: bool | None = Field(
-        None, description="substitution.allowed[x]: boolean."
-    )
-    substitution_allowed_codeable_concept: (
-        MedicationRequestCodeableConceptInput | None
-    ) = Field(None, description="substitution.allowed[x]: CodeableConcept.")
-    substitution_reason: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="substitution.reason."
-    )
-
-    prior_prescription: MedicationRequestPriorPrescriptionInput | None = Field(
-        None, description="The ultimate source of the prescription."
-    )
-    detected_issue: list[MedicationRequestDetectedIssueInput] | None = Field(
-        None, description="Clinical issues notified about."
-    )
-    event_history: list[MedicationRequestEventHistoryInput] | None = Field(
-        None, description="Key events in the history of the request."
-    )
-
-
-class MedicationRequestPatchSchema(BaseModel):
-    """Partial update — only supplied fields are written. Every supplied
-    sub-resource list (even `[]`) replaces the corresponding rows
-    wholesale; omitted lists are left untouched. `org_id`/`created_by`/
-    `updated_by` all come from the verified JWT now — none are
-    request-body fields."""
-
-    model_config = ConfigDict(
-        extra="forbid", json_schema_extra={"example": {"status": "completed"}}
-    )
-
-    extension: list[dict] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    identifier: list[MedicationRequestIdentifierInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    status: MedicationRequestStatus | None = Field(
+    insurance: list[FhirReferenceInput] | None = Field(
         None,
-        description="active | on-hold | cancelled | completed | entered-in-error | stopped | draft | unknown.",
+        description="Associated insurance coverage - Reference(Coverage | ClaimResponse). Stored as sent.",
     )
-    status_reason: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="Set to null to clear."
+    note: list[MedicationRequestAnnotationInput] | None = Field(
+        None, description="Information about the prescription."
     )
-    intent: MedicationRequestIntent | None = Field(
+    dosageInstruction: list[dict] | None = Field(
         None,
-        description="proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option.",
+        description="How the medication should be taken - a list of FHIR R4 Dosage elements (sequence, text, additionalInstruction, patientInstruction, timing, asNeeded[x], site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime), validated as R4 JSON. `timing.event` dateTimes are searched by `date`.",
     )
-    category: list[MedicationRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
+    dispenseRequest: MedicationRequestDispenseRequestInput | None = Field(
+        None, description="Medication supply authorization."
     )
-    priority: MedicationRequestPriority | None = Field(
-        None, description="routine | urgent | asap | stat."
+    substitution: MedicationRequestSubstitutionInput | None = Field(
+        None, description="Any restrictions on medication substitution."
     )
-    do_not_perform: bool | None = Field(
-        None, description="True if the medication should NOT be given."
-    )
-
-    reported_boolean: bool | None = Field(None, description="reported[x]: boolean.")
-    reported_reference: MedicationRequestReportedReferenceInput | None = Field(
-        None, description="reported[x]: Reference."
-    )
-
-    medication_codeable_concept: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="medication[x]: CodeableConcept."
-    )
-    medication_reference: MedicationRequestMedicationReferenceInput | None = Field(
-        None, description="medication[x]: Reference(Medication)."
-    )
-
-    subject: MedicationRequestSubjectInput | None = Field(
+    priorPrescription: FhirReferenceInput | None = Field(
         None,
-        description="Set to null to clear (not recommended — subject is 1..1 in FHIR).",
+        description="An order/prescription that is being replaced - Reference(MedicationRequest). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    encounter: MedicationRequestEncounterInput | None = Field(
-        None, description="Set to null to clear."
+    detectedIssue: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Clinical Issue with action - Reference(DetectedIssue). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    supporting_information: list[MedicationRequestSupportingInformationInput] | None = (
-        Field(None, description="Replaces the full list if supplied.")
-    )
-    authored_on: datetime | None = Field(
-        None, description="Date/time the request was initially authored."
-    )
-    requester: MedicationRequestRequesterInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    performer: MedicationRequestPerformerInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    performer_type: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    recorder: MedicationRequestRecorderInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    reason_code: list[MedicationRequestCodeableConceptInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    reason_reference: list[MedicationRequestReasonReferenceInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    instantiates_canonical: list[str] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    instantiates_uri: list[str] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    based_on: list[MedicationRequestBasedOnInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    group_identifier: MedicationRequestIdentifierInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    course_of_therapy_type: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    insurance: list[MedicationRequestInsuranceInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    note: list[MedicationRequestNoteInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    dosage_instruction: list[MedicationRequestDosageInstructionInput] | None = Field(
-        None, description="Replaces the full list if supplied."
+    eventHistory: list[FhirReferenceInput] | None = Field(
+        None,
+        description="A list of events of interest in the lifecycle - Reference(Provenance). Stored as sent.",
     )
 
-    dispense_request_initial_fill_quantity_value: float | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — numeric value."
-    )
-    dispense_request_initial_fill_quantity_comparator: (
-        MedicationRequestQuantityComparator | None
-    ) = Field(None, description="dispenseRequest.initialFill.quantity — comparator.")
-    dispense_request_initial_fill_quantity_unit: str | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — unit."
-    )
-    dispense_request_initial_fill_quantity_system: str | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — unit system."
-    )
-    dispense_request_initial_fill_quantity_code: str | None = Field(
-        None, description="dispenseRequest.initialFill.quantity — coded unit form."
-    )
-    dispense_request_initial_fill_duration_value: float | None = Field(
-        None, description="dispenseRequest.initialFill.duration — numeric value."
-    )
-    dispense_request_initial_fill_duration_unit: str | None = Field(
-        None, description="dispenseRequest.initialFill.duration — unit."
-    )
-    dispense_request_initial_fill_duration_system: str | None = Field(
-        None, description="dispenseRequest.initialFill.duration — unit system."
-    )
-    dispense_request_initial_fill_duration_code: str | None = Field(
-        None, description="dispenseRequest.initialFill.duration — coded unit form."
-    )
-    dispense_request_dispense_interval_value: float | None = Field(
-        None, description="dispenseRequest.dispenseInterval — numeric value."
-    )
-    dispense_request_dispense_interval_unit: str | None = Field(
-        None, description="dispenseRequest.dispenseInterval — unit."
-    )
-    dispense_request_dispense_interval_system: str | None = Field(
-        None, description="dispenseRequest.dispenseInterval — unit system."
-    )
-    dispense_request_dispense_interval_code: str | None = Field(
-        None, description="dispenseRequest.dispenseInterval — coded unit form."
-    )
-    dispense_request_validity_period_start: datetime | None = Field(
-        None, description="dispenseRequest.validityPeriod — start."
-    )
-    dispense_request_validity_period_end: datetime | None = Field(
-        None, description="dispenseRequest.validityPeriod — end."
-    )
-    dispense_request_number_of_repeats_allowed: int | None = Field(
-        None, description="dispenseRequest.numberOfRepeatsAllowed."
-    )
-    dispense_request_quantity_value: float | None = Field(
-        None, description="dispenseRequest.quantity — numeric value."
-    )
-    dispense_request_quantity_unit: str | None = Field(
-        None, description="dispenseRequest.quantity — unit."
-    )
-    dispense_request_quantity_system: str | None = Field(
-        None, description="dispenseRequest.quantity — unit system."
-    )
-    dispense_request_quantity_code: str | None = Field(
-        None, description="dispenseRequest.quantity — coded unit form."
-    )
-    dispense_request_expected_supply_duration_value: float | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — numeric value."
-    )
-    dispense_request_expected_supply_duration_unit: str | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — unit."
-    )
-    dispense_request_expected_supply_duration_system: str | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — unit system."
-    )
-    dispense_request_expected_supply_duration_code: str | None = Field(
-        None, description="dispenseRequest.expectedSupplyDuration — coded unit form."
-    )
-    dispense_request_performer: (
-        MedicationRequestDispenseRequestPerformerInput | None
-    ) = Field(None, description="Set to null to clear.")
 
-    substitution_allowed_boolean: bool | None = Field(
-        None, description="substitution.allowed[x]: boolean."
-    )
-    substitution_allowed_codeable_concept: (
-        MedicationRequestCodeableConceptInput | None
-    ) = Field(None, description="substitution.allowed[x]: CodeableConcept.")
-    substitution_reason: MedicationRequestCodeableConceptInput | None = Field(
-        None, description="substitution.reason."
-    )
+class MedicationRequestCreateSchema(_MedicationRequestFields):
+    """POST body - a FHIR R4 MedicationRequest resource."""
 
-    prior_prescription: MedicationRequestPriorPrescriptionInput | None = Field(
-        None, description="Set to null to clear."
-    )
-    detected_issue: list[MedicationRequestDetectedIssueInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
-    event_history: list[MedicationRequestEventHistoryInput] | None = Field(
-        None, description="Replaces the full list if supplied."
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class MedicationRequestPatchSchema(_MedicationRequestFields):
+    """PATCH body - a partial FHIR R4 MedicationRequest (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object such as `dispenseRequest` replaces the whole value, and `null` clears
+    it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "completed",
+                "priority": "urgent",
+                "note": [{"text": "Dispensed."}],
+            }
+        }
+    }

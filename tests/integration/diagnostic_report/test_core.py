@@ -662,3 +662,13 @@ async def test_create_based_on_service_request_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = report_body(patient, basedOn=[{"reference": "ServiceRequest/999999"}])
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_medication_request_must_exist(client, patient):
+    from tests.helpers.medication_requests import create_minimal_medication_request
+
+    existing = await create_minimal_medication_request(client)
+    ok = report_body(patient, basedOn=[{"reference": f"MedicationRequest/{existing}"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = report_body(patient, basedOn=[{"reference": "MedicationRequest/999999"}])
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422

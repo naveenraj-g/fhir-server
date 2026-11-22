@@ -358,7 +358,7 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"author:Device.model": "x"}) == 400
     )  # Device is not searchable here
     assert (
-        await _status(client, **{"implicated:MedicationRequest.status": "x"}) == 400
+        await _status(client, **{"implicated:MedicationDispense.status": "x"}) == 400
     )  # not built yet
     assert (
         await _status(client, **{"code.x": "y"}) == 400
@@ -457,9 +457,8 @@ async def test_include_patient_and_author(client, world):
 async def test_include_implicated(client, world):
     ids = f"{world['a']},{world['b']},{world['c']}"
     bundle = await _search(client, _id=ids, _include="DetectedIssue:implicated")
-    assert _of_type(bundle, "Condition", "include") == {
-        str(world["cond"])
-    }  # a MedicationRequest adds nothing
+    assert _of_type(bundle, "Condition", "include") == {str(world["cond"])}
+    assert _of_type(bundle, "MedicationRequest", "include") == {"90001"}
     assert _of_type(bundle, "AllergyIntolerance", "include") == {str(world["allergy"])}
     assert _of_type(bundle, "ClinicalImpression", "include") == {str(world["imp"])}
     assert _of_type(bundle, "Patient", "include") == {str(world["p2"])}

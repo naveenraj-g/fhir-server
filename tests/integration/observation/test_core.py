@@ -435,10 +435,7 @@ async def test_create_part_of_is_checked_for_a_procedure_or_immunization(
 async def test_create_based_on_focus_and_device_are_not_checked(client, patient):
     body = observation_body(
         patient,
-        basedOn=[
-            {"reference": "CarePlan/999999"},
-            {"reference": "MedicationRequest/999999"},
-        ],
+        basedOn=[{"reference": "CarePlan/999999"}],
         focus=[{"reference": "Condition/999999"}],
         device={"reference": "Device/999999"},
     )
@@ -775,5 +772,19 @@ async def test_create_based_on_service_request_must_exist(client, patient):
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
     missing = observation_body(
         patient, basedOn=[{"reference": "ServiceRequest/999999"}]
+    )
+    assert (await client.post(BASE + "/", json=missing)).status_code == 422
+
+
+async def test_create_based_on_medication_request_must_exist(client, patient):
+    from tests.helpers.medication_requests import create_minimal_medication_request
+
+    existing = await create_minimal_medication_request(client)
+    ok = observation_body(
+        patient, basedOn=[{"reference": f"MedicationRequest/{existing}"}]
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = observation_body(
+        patient, basedOn=[{"reference": "MedicationRequest/999999"}]
     )
     assert (await client.post(BASE + "/", json=missing)).status_code == 422

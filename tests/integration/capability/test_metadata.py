@@ -29,6 +29,7 @@ from app.repository.patient.search import patient_search
 from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.schedule.search import schedule_search
 from app.repository.medication.search import medication_search
+from app.repository.medication_request.search import medication_request_search
 from app.repository.service_request.search import service_request_search
 from app.repository.slot.search import slot_search
 from app.repository.specimen.search import specimen_search
@@ -65,6 +66,7 @@ async def test_search_params_match_registries(client):
         "practitioner_role": ("PractitionerRole", practitioner_role_search()),
         "schedule": ("Schedule", schedule_search()),
         "medication": ("Medication", medication_search()),
+        "medication_request": ("MedicationRequest", medication_request_search()),
         "service_request": ("ServiceRequest", service_request_search()),
         "slot": ("Slot", slot_search()),
         "specimen": ("Specimen", specimen_search()),

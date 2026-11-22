@@ -245,7 +245,7 @@ routes:
     # - medication_administration
     # - medication_dispense
     # - medication_knowledge
-    # - medication_request
+    - medication_request
     # - medication_statement
     - observation
     # - observation_definition

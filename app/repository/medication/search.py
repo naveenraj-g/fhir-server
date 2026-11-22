@@ -29,6 +29,9 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
 from app.models.medication import (
     MANUFACTURER_TYPES,
     REFERENCE_TYPES,
@@ -551,6 +554,9 @@ def medication_search() -> SearchRegistry:
         ),
         # A Medication that has another one as an ingredient points back at it.
         revincludes=(
+            *column_medication_request_revincludes(
+                ("medication",), "medication", "Medication", lambda m: m.medication_id
+            ),
             IncludeTarget(
                 "Medication",
                 "ingredient",

@@ -73,6 +73,13 @@ def _modeled(module: str, cls: str, id_col: str, search_module: str, factory: st
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "MedicationRequest": (
+        "app.models.medication_request",
+        "MedicationRequestModel",
+        "medication_request_id",
+        "app.repository.medication_request.search",
+        "medication_request_search",
+    ),
     "ServiceRequest": _modeled(
         "app.models.service_request",
         "ServiceRequestModel",
@@ -872,13 +879,14 @@ def service_request_search() -> SearchRegistry:
         IncludeTarget("ServiceRequest", "performer", t, _include_child(_Pf, t))
         for t in modeled_performers
     )
-    based_on_includes = (
+    based_on_includes = tuple(
         IncludeTarget(
             "ServiceRequest",
             "based-on",
-            "ServiceRequest",
-            _include_child(_R, "ServiceRequest", _R.param == "based-on"),
-        ),
+            t,
+            _include_child(_R, t, _R.param == "based-on"),
+        )
+        for t in ("ServiceRequest", "MedicationRequest")
     )
     replaces_includes = (
         IncludeTarget(

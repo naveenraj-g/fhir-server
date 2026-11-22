@@ -75,6 +75,7 @@ def local_references(document: dict) -> list[tuple[str, str, str]]:
         ("result", "Observation"),
         ("specimen", "Specimen"),
         ("basedOn", "ServiceRequest"),
+        ("basedOn", "MedicationRequest"),
     ):
         for ref in document.get(element) or []:
             parsed = typed((ref or {}).get("reference"), (target,))

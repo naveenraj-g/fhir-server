@@ -7,6 +7,8 @@ from tests.conftest import make_test_user
 # around it (its subject, encounter, requester, performers, specimens, reasons) and the ones to
 # look at what points back at it.
 SERVICE_REQUEST_PERMS = [
+    "medication_request:create",
+    "medication_request:read",
     "service_request:create",
     "service_request:read",
     "service_request:update",
