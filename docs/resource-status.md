@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-21, after rebuilding ServiceRequest._
+_Last updated: 2026-11-22, after rebuilding Medication._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (27)
+## 1. Rebuilt on the current architecture (28)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -32,6 +32,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 25 | Observation | `/observations` | 38 | 160000 | `x1c6e3a9b705` | `0aaa272` | **the engine's first `composite` searches** (8, via a `slot` on the token and value tables) and the `combo-*` union parameters; `value-quantity` / `value-string` / `value-date` in one value table; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, RelatedPerson, Procedure, Immunization and itself |
 | 26 | Specimen | `/specimens` | 12 | 310000 | `y2d7f4b0c816` | `1a463d5` | `collected` reads a dateTime or a Period; `container-id` and `container` read every container; `parent` is a self-reference (`Specimen:parent` chains and includes); `subject` / `collector` are multi-target; a revinclude source on Patient, Location, Practitioner, PractitionerRole, Observation (`:specimen`) and DiagnosticReport (`:specimen`); **the target of `Observation.specimen` and `DiagnosticReport.specimen`** |
 | 27 | ServiceRequest | `/service-requests` | 21 | 80000 | `z3e8a5c1d927` | `f4434ce` | `status`, `intent` and `priority` are Enum columns holding the real FHIR codes (`original-order`, `on-hold`); `occurrence` reads a dateTime, a Period or a **Timing**; `performer`, `requester`, `subject` and `based-on` are multi-target; `requisition` is a token on columns; a revinclude source on Patient, Location, Practitioner, PractitionerRole, RelatedPerson, Organization, HealthcareService, Encounter and Specimen; **the target of `basedOn` on Observation, DiagnosticReport, Procedure, Encounter and Appointment, and of `Specimen.request`** |
+| 28 | Medication | `/medications` | 9 | 250000 | `a4f9b6d2e038` | _pending_ | `expiration-date` reads `batch.expirationDate` as the range the dateTime covers; `lot-number` is a token over a string (code only, no system); `ingredient-code` reads the `itemCodeableConcept` of *every* ingredient; `ingredient` is a Substance | Medication reference table (`Medication:ingredient` chains, includes and reverse-includes on itself); `manufacturer` is a column reference with a `Medication:manufacturer` revinclude on Organization; the `medication_status` enum already held the real codes, so it stays; **a Medication in a Reference(Any) is now existence-checked** (ClinicalImpression, DetectedIssue, ImmunizationRecommendation, ServiceRequest) |
 | 24 | DetectedIssue | `/detected-issues` | 6 | 540000 | `w0b5d2f8a614` | `90ad106` | **no `status` / `severity` search (R4 defines none)**; `identified` reads a dateTime or a Period; `implicated` is Reference(Any) in a shared reference table; a revinclude source on Patient, Practitioner and PractitionerRole |
 | 23 | ClinicalImpression | `/clinical-impressions` | 13 | 530000 | `v9a4c1e7f503` | `afaa8b1` | four repeating references (`problem`, `investigation`, `finding-ref`, `supporting-info` [Reference(Any)]) share one reference table; `finding-code` reads every finding; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, Condition, AllergyIntolerance, DiagnosticReport, RiskAssessment, FamilyMemberHistory and itself (`previous`); Condition `stage.assessment` now checks it |
 | 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | `ddbfe2e` | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
@@ -74,19 +75,20 @@ All 25 are mounted (`configs/config.yaml` → `routes.enabled`), have tests unde
 | DiagnosticReport | `subject` (Patient or Location), `encounter`, `performer` and `resultsInterpreter` (Practitioner, PractitionerRole, Organization), `result` (Observation), `specimen` (Specimen), `basedOn` (ServiceRequest), `identifier.assigner` | Group/Device subject, CareTeam, CarePlan / MedicationRequest `basedOn`, `imagingStudy`, `media.link`, absolute URLs, logical references |
 | Specimen | `subject` (Patient or Location), `collection.collector` (Practitioner, PractitionerRole), `parent` (Specimen), `request` (ServiceRequest), `note.authorReference` (Practitioner, PractitionerRole, Patient, RelatedPerson), every `identifier` / `accessionIdentifier` / `container.identifier` `assigner` | Group / Device / Substance subject, `processing.additive`, `container.additiveReference`, absolute URLs, logical references |
 | ServiceRequest | `subject` (Patient, Location), `encounter`, `requester` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `performer` (Practitioner, PractitionerRole, Organization, HealthcareService, Patient, RelatedPerson), `basedOn` and `replaces` (ServiceRequest), `specimen`, `locationReference`, `reasonReference` (Condition, Observation, DiagnosticReport), `supportingInfo` (any rebuilt resource), `note.authorReference`, every `identifier` / `requisition` `assigner` | Group / Device subject, Device requester, CareTeam / Device performer, CarePlan / MedicationRequest `basedOn`, DocumentReference reasons, `insurance`, `relevantHistory`, absolute URLs, logical references |
+| Medication | `manufacturer` (Organization), `ingredient.itemReference` (a Medication), every `identifier` `assigner` | Substance ingredients, absolute URLs, logical references |
 | Procedure | `subject` (Patient), `basedOn` (ServiceRequest), `encounter`, `location`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `performer.actor` (Practitioner, PractitionerRole, Organization, Patient, RelatedPerson), `performer.onBehalfOf`, `partOf` (Procedure), `reasonReference` (Condition, Procedure, DiagnosticReport, Observation), `report` (DiagnosticReport), `complicationDetail` (Condition), `note` `authorReference`, `identifier.assigner` | Group subject, Device performer, CarePlan `basedOn`, `usedReference`, DocumentReference targets, absolute URLs, logical references |
 | Condition | `subject` (Patient), `encounter`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `note` `authorReference` (Practitioner, Patient, RelatedPerson, Organization), `stage.assessment` (DiagnosticReport, ClinicalImpression, Observation), `identifier.assigner` | Group subject, `evidence.detail`, absolute URLs, logical references |
 | AllergyIntolerance | `patient`, `encounter`, `recorder` and `asserter` (Practitioner, PractitionerRole, Patient, RelatedPerson), `note` / `reaction.note` `authorReference` (Practitioner, Patient, RelatedPerson, Organization), `identifier.assigner` | absolute URLs, logical references |
 
 ---
 
-## 2. Not yet rebuilt (25)
+## 2. Not yet rebuilt (24)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
-| Orders and medication | MedicationRequest, Medication, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
+| Orders and medication | MedicationRequest, MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
 | Care planning | CarePlan, CareTeam, EpisodeOfCare, Goal, Task, Flag, Consent, Group |
 | Communication | Communication, CommunicationRequest |
 | Documents and specimens | DocumentReference, SpecimenDefinition |
@@ -95,7 +97,7 @@ Still on the old fully-normalized model and **not mounted** (commented out in `r
 
 Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
-Suggested next: any of the resources in the list above; **MedicationRequest** and **CarePlan** are the ones ServiceRequest, Observation, DiagnosticReport and Procedure can still point at (`basedOn`).
+Suggested next: any of the resources in the list above; **MedicationRequest**, **MedicationStatement**, **MedicationAdministration** and **MedicationDispense** can now point at a rebuilt Medication (`medication[x]`); **MedicationRequest** and **CarePlan** are the ones ServiceRequest, Observation, DiagnosticReport and Procedure can still point at (`basedOn`).
 
 ---
 
@@ -115,6 +117,7 @@ Suggested next: any of the resources in the list above; **MedicationRequest** an
 | Observation search | `SampledData` is not indexed for `value-quantity`; `value-string` has no `:exact`; `Observation:performer` is not declared on Organization (uncommitted edits in its registry file); a Timing `effective[x]` is indexed as the range from its earliest event to its latest | Observation |
 | Specimen references | `processing.additive` and `container.additiveReference` (Substance) are stored as sent; there is no `:request` search parameter on Specimen; `Specimen:subject` does not include a Group / Device / Substance (not resources here) | Specimen |
 | ServiceRequest references | CarePlan / MedicationRequest `basedOn`, CareTeam / Device performers, DocumentReference reasons, `insurance` (Coverage / ClaimResponse) and `relevantHistory` (Provenance) are stored as sent until those resources are rebuilt; no `Appointment:based-on` revinclude on ServiceRequest (an appointment cannot be found from the request it fulfils), and no `:supporting-info` revinclude; rule prr-1 (`orderDetail` only with a `code`) is only enforced by the `java_validator` backend; `RiskAssessment.basedOn` (Reference(Any)) still stores a ServiceRequest as sent | ServiceRequest |
+| Medication references | A Substance ingredient is stored as sent (Substance is not rebuilt); nothing rebuilt references a Medication yet apart from the Reference(Any) lists, so there is no `medication` chain or revinclude from MedicationRequest / MedicationStatement / MedicationAdministration / MedicationDispense until those are rebuilt | Medication |
 | Cardinality minimums | R4 required elements (e.g. `status`, `participant`) are enforced only by the `java_validator` backend, not the native one | all resources |
 | Test-suite collection | `pytest tests` as a whole fails at collection (pre-existing); run per directory | tests |
 

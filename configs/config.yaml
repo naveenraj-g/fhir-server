@@ -241,7 +241,7 @@ routes:
     - location
     # - measure
     # - measure_report
-    # - medication
+    - medication
     # - medication_administration
     # - medication_dispense
     # - medication_knowledge

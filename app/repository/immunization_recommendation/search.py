@@ -46,6 +46,13 @@ _R = ImmunizationRecommendationReference
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "Medication": (
+        "app.models.medication",
+        "MedicationModel",
+        "medication_id",
+        "app.repository.medication.search",
+        "medication_search",
+    ),
     "ServiceRequest": (
         "app.models.service_request",
         "ServiceRequestModel",

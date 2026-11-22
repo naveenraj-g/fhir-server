@@ -1,273 +1,91 @@
-from datetime import date, datetime
-
-from sqlalchemy import func, or_
 from sqlalchemy.future import select
 
-from app.core.filters import (
-    apply_child_exists_filter,
-    apply_date_range_filter,
-    apply_token_filter,
-    parse_reference,
-)
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.medication import (
-    MedicationCodeCoding,
-    MedicationFormCoding,
-    MedicationIdentifier,
-    MedicationIngredient,
-    MedicationIngredientItemCoding,
-    MedicationIngredientItemReferenceType,
-    MedicationManufacturerReferenceType,
-    MedicationModel,
-    MedicationStatus,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.medication import MedicationModel
 
-from ._shared import (
-    _SORTABLE_FIELDS,
-    _with_relationships,
-)
+from .search import medication_search
 
 logger = get_logger(__name__)
 
+_M = MedicationModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for Medication."""
+    """Reads, search and delete. Every read loads only the medication
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_medication_id(self, medication_id: int) -> MedicationModel | None:
+    async def get_by_medication_id(self, medication_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(MedicationModel).where(
-                    MedicationModel.medication_id == medication_id
-                )
-            )
-            res = await session.execute(stmt)
-            return res.scalar_one_or_none()
+            stmt = select(_M).where(_M.medication_id == medication_id)
+            return (await session.execute(stmt)).scalars().first()
 
     async def get_by_medication_id_in_org(
         self, medication_id: int, org_id: str
-    ) -> MedicationModel | None:
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the medication
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(MedicationModel).where(
-                    MedicationModel.medication_id == medication_id,
-                    MedicationModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.medication_id == medication_id, _M.tenant_id == org_id
             )
-            res = await session.execute(stmt)
-            return res.scalar_one_or_none()
+            return (await session.execute(stmt)).scalars().first()
 
     async def medication_belongs_to_org(self, medication_id: int, org_id: str) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the medication exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = (
-                select(func.count())
-                .select_from(MedicationModel)
-                .where(
-                    MedicationModel.medication_id == medication_id,
-                    MedicationModel.tenant_id == org_id,
-                )
+            stmt = select(_M.id).where(
+                _M.medication_id == medication_id, _M.tenant_id == org_id
             )
-            res = await session.execute(stmt)
-            count = res.scalar() or 0
-            return count > 0
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str | None = None,
-        code: str | None = None,
-        status: str | MedicationStatus | None = None,
-        manufacturer: str | None = None,
-        form: str | None = None,
-        ingredient: str | None = None,
-        ingredient_code: str | None = None,
-        lot_number: str | None = None,
-        expiration_date: date | datetime | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(MedicationModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if status:
-            stmt = apply_token_filter(stmt, MedicationModel.status, status)
-
-        if code:
-            stmt = stmt.where(
-                or_(
-                    MedicationModel.code_text.ilike(f"%{code}%"),
-                    MedicationModel.id.in_(
-                        select(MedicationCodeCoding.medication_pk).where(
-                            or_(
-                                MedicationCodeCoding.code == code,
-                                MedicationCodeCoding.display.ilike(f"%{code}%"),
-                            )
-                        )
-                    ),
-                )
-            )
-
-        if manufacturer:
-            ref_type, ref_id = parse_reference(
-                manufacturer, MedicationManufacturerReferenceType
-            )
-            if ref_id:
-                stmt = stmt.where(MedicationModel.manufacturer_id == ref_id)
-            else:
-                stmt = stmt.where(
-                    MedicationModel.manufacturer_reference == manufacturer
-                )
-
-        if form:
-            stmt = stmt.where(
-                or_(
-                    MedicationModel.form_text.ilike(f"%{form}%"),
-                    MedicationModel.id.in_(
-                        select(MedicationFormCoding.medication_pk).where(
-                            or_(
-                                MedicationFormCoding.code == form,
-                                MedicationFormCoding.display.ilike(f"%{form}%"),
-                            )
-                        )
-                    ),
-                )
-            )
-
-        if ingredient:
-            ref_type, ref_id = parse_reference(
-                ingredient, MedicationIngredientItemReferenceType
-            )
-            if ref_id:
-                stmt = stmt.where(
-                    MedicationModel.ingredients.any(
-                        MedicationIngredient.item_id == ref_id
-                    )
-                )
-            else:
-                stmt = stmt.where(
-                    MedicationModel.ingredients.any(
-                        MedicationIngredient.item_reference == ingredient
-                    )
-                )
-
-        if ingredient_code:
-            stmt = stmt.where(
-                MedicationModel.ingredients.any(
-                    or_(
-                        MedicationIngredient.item_codeable_concept_text.ilike(
-                            f"%{ingredient_code}%"
-                        ),
-                        MedicationIngredient.id.in_(
-                            select(
-                                MedicationIngredientItemCoding.medication_ingredient_id
-                            ).where(
-                                or_(
-                                    MedicationIngredientItemCoding.code
-                                    == ingredient_code,
-                                    MedicationIngredientItemCoding.display.ilike(
-                                        f"%{ingredient_code}%"
-                                    ),
-                                )
-                            )
-                        ),
-                    )
-                )
-            )
-
-        if lot_number:
-            stmt = stmt.where(MedicationModel.batch_lot_number == lot_number)
-
-        if expiration_date:
-            stmt = apply_date_range_filter(
-                stmt,
-                MedicationModel.batch_expiration_date,
-                date_from=expiration_date,
-                date_to=expiration_date,
-            )
-
-        if identifier:
-            parts = identifier.split("|", 1)
-            if len(parts) == 2:
-                sys, val = parts
-                stmt = apply_child_exists_filter(
-                    stmt,
-                    select(MedicationIdentifier.id).where(
-                        MedicationIdentifier.medication_pk == MedicationModel.id,
-                        MedicationIdentifier.system == sys,
-                        MedicationIdentifier.value == val,
-                    ),
-                )
-            else:
-                stmt = apply_child_exists_filter(
-                    stmt,
-                    select(MedicationIdentifier.id).where(
-                        MedicationIdentifier.medication_pk == MedicationModel.id,
-                        MedicationIdentifier.value == identifier,
-                    ),
-                )
-
-        return stmt
-
-    async def list(
-        self,
-        org_id: str | None = None,
-        code: str | None = None,
-        status: str | MedicationStatus | None = None,
-        manufacturer: str | None = None,
-        form: str | None = None,
-        ingredient: str | None = None,
-        ingredient_code: str | None = None,
-        lot_number: str | None = None,
-        expiration_date: date | datetime | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-    ) -> tuple[list[MedicationModel], int]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            base_stmt = select(MedicationModel)
-            filtered_stmt = self._apply_list_filters(
-                base_stmt,
-                org_id=org_id,
-                code=code,
-                status=status,
-                manufacturer=manufacturer,
-                form=form,
-                ingredient=ingredient,
-                ingredient_code=ingredient_code,
-                lot_number=lot_number,
-                expiration_date=expiration_date,
-                identifier=identifier,
+            rows, total, included = await execute_search(
+                session,
+                model=_M,
+                registry=medication_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.medication_id,
             )
+        logger.debug(
+            "Medications searched",
+            extra={
+                "event": "medication.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-            count_stmt = select(func.count()).select_from(
-                filtered_stmt.order_by(None).subquery()
-            )
-            count_res = await session.execute(count_stmt)
-            total = count_res.scalar() or 0
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
-            data_stmt = _with_relationships(filtered_stmt)
-            sort_col, is_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                MedicationModel.medication_id,
-            )
-            order_expr = sort_col.desc() if is_desc else sort_col.asc()
-            data_stmt = data_stmt.order_by(order_expr).limit(limit).offset(offset)
-
-            res = await session.execute(data_stmt)
-            models = list(res.scalars().all())
-            return models, total
-
-    async def delete(self, medication_id: int, org_id: str) -> bool:
+    async def delete(self, medication_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(MedicationModel).where(
-                MedicationModel.medication_id == medication_id,
-                MedicationModel.tenant_id == org_id,
-            )
-            res = await session.execute(stmt)
-            model = res.scalar_one_or_none()
-            if not model:
+            stmt = select(_M).where(_M.medication_id == medication_id)
+            medication = (await session.execute(stmt)).scalars().first()
+            if not medication:
                 return False
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(medication)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

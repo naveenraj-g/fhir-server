@@ -63,6 +63,7 @@ _MODELED_REASONS = ("Condition", "Observation", "DiagnosticReport")
 # already rebuilt that supporting information can be.
 _MODELED_INFORMATION = (
     "ServiceRequest",
+    "Medication",
     "Specimen",
     "Observation",
     "Patient",

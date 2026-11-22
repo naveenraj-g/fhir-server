@@ -1,148 +1,113 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Numeric,
-    Sequence,
-    String,
-    text,
-)
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse
-from app.models.medication.enums import (
-    MedicationManufacturerReferenceType,
-    MedicationQuantityComparator,
-    MedicationStatus,
-)
 from app.models.shared import TenantAuditMixin
 
+from .enums import MedicationStatus
 
-class MedicationModel(Base, TenantAuditMixin):
-    """Medication resource ORM model (FHIR R4).
-    https://www.hl7.org/fhir/R4/medication.html
-    """
+medication_id_seq = Sequence(
+    "medication_pub_seq", start=250000, increment=1, metadata=Base.metadata
+)
+
+# R4 target of Medication.manufacturer.
+MANUFACTURER_TYPES = ("Organization",)
+
+
+class MedicationModel(TenantAuditMixin, Base):
+    """FHIR R4 Medication - Medplum-style storage, same as Patient, Encounter, Condition,
+    Procedure, ServiceRequest and the other content-based resources.
+
+    `content` (JSONB) holds the whole resource exactly as validated on write; it is the
+    single source of truth, and GET serves it back as-is (`id`/`meta` are stamped on at
+    read time from this row's own columns - see app.fhir.mappers.medication). Nothing else
+    in this table or its child tables is a second copy of the resource: every other column
+    exists only because a FHIR R4 Medication search parameter filters on it
+    (https://www.hl7.org/fhir/R4/medication.html#search), and is derived from `content` on
+    every write by app.repository.medication._indexer.
+
+    Search parameter -> storage:
+      status           -> status (0..1 code, Enum column, stored by value so
+                          `entered-in-error` is the real FHIR code)
+      expiration-date  -> expiration_start/_end (batch.expirationDate, the range the dateTime
+                          covers, columns)
+      lot-number       -> lot_number (batch.lotNumber, 0..1 string searched as a token, column)
+      manufacturer     -> manufacturer_reference/_type/_id + manufacturer_identifier_*
+                          (0..1 Reference(Organization), columns)
+      identifier       -> MedicationIdentifier (0..*)
+      code, form, ingredient-code
+                       -> MedicationToken (one shared table; `ingredient-code` reads
+                          ingredient.itemCodeableConcept of *every* ingredient)
+      ingredient       -> MedicationReference (one row per ingredient.itemReference, a
+                          Reference(Substance | Medication))
+      _id              -> medication_id;  _lastUpdated -> updated_at/created_at
+
+    `amount`, `ingredient.isActive`, `ingredient.strength` and `extension` have no search
+    parameter and live only in `content`.
+
+    `ingredient` can point at two resource types, so `reference_type` records which one a
+    relative `Type/<id>` names (a plain string, not a Postgres enum): a search by bare id is
+    ambiguous (`ingredient=Type/id` or `ingredient:Type=id`; `manufacturer` has one target so
+    a bare id works).
+
+    All index columns are nullable (every Medication element is optional in R4). No
+    `user_id`: a Medication is a shared tenant-level entity. No DB-level CHECK constraints."""
 
     __tablename__ = "medication"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    medication_id = Column(
-        BigInteger,
-        Sequence(
-            "medication_pub_seq",
-            start=250000,
-            increment=1,
-            metadata=Base.metadata,
-        ),
-        nullable=False,
-        unique=True,
-        index=True,
+    __table_args__ = (
+        Index("ix_medication_expiration", "expiration_start", "expiration_end"),
     )
 
-    # Resource-level extension (0..* Extension)
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+    medication_id = Column(
+        BigInteger,
+        medication_id_seq,
+        server_default=medication_id_seq.next_value(),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
 
-    # code (0..1 CodeableConcept) — text flattened, codings in child table
-    code_text = Column(String, nullable=True)
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
-    # status (0..1 code)
+    # -- Search index (derived from `content`) --
     status = Column(
         Enum(
             MedicationStatus,
             name="medication_status",
+            # Store `entered-in-error`, not the Python member name.
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
         ),
         nullable=True,
     )
 
-    # manufacturer (0..1 Reference(Organization)) with identifier fallback (15 columns)
-    manufacturer_reference = Column(String, nullable=True)
-    manufacturer_type = Column(
-        Enum(
-            MedicationManufacturerReferenceType,
-            name="medication_manufacturer_reference_type",
-        ),
-        nullable=True,
-    )
-    manufacturer_id = Column(BigInteger, nullable=True, index=True)
-    manufacturer_display = Column(String, nullable=True)
+    # batch.expirationDate: the half-open [start, end) range of instants the dateTime covers
+    # (NULL = absent), matched with period_match.
+    expiration_start = Column(DateTime(timezone=True), nullable=True)
+    expiration_end = Column(DateTime(timezone=True), nullable=True)
 
-    manufacturer_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    manufacturer_identifier_type_system = Column(String, nullable=True)
-    manufacturer_identifier_type_version = Column(String, nullable=True)
-    manufacturer_identifier_type_code = Column(String, nullable=True)
-    manufacturer_identifier_type_display = Column(String, nullable=True)
-    manufacturer_identifier_type_user_selected = Column(Boolean, nullable=True)
-    manufacturer_identifier_type_text = Column(String, nullable=True)
+    # batch.lotNumber (0..1 string, searched as a token)
+    lot_number = Column(String, nullable=True, index=True)
+
+    # manufacturer (0..1 Reference(Organization))
+    manufacturer_reference = Column(String, nullable=True)
+    manufacturer_type = Column(String, nullable=True)
+    manufacturer_id = Column(BigInteger, nullable=True, index=True)
     manufacturer_identifier_system = Column(String, nullable=True)
     manufacturer_identifier_value = Column(String, nullable=True)
-    manufacturer_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    manufacturer_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # form (0..1 CodeableConcept) — text flattened, codings in child table
-    form_text = Column(String, nullable=True)
-
-    # amount (0..1 Ratio: numerator Quantity, denominator Quantity)
-    amount_numerator_value = Column(Numeric, nullable=True)
-    amount_numerator_comparator = Column(
-        Enum(
-            MedicationQuantityComparator,
-            name="medication_quantity_comparator",
-        ),
-        nullable=True,
-    )
-    amount_numerator_unit = Column(String, nullable=True)
-    amount_numerator_system = Column(String, nullable=True)
-    amount_numerator_code = Column(String, nullable=True)
-
-    amount_denominator_value = Column(Numeric, nullable=True)
-    amount_denominator_comparator = Column(
-        Enum(
-            MedicationQuantityComparator,
-            name="medication_quantity_comparator",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    amount_denominator_unit = Column(String, nullable=True)
-    amount_denominator_system = Column(String, nullable=True)
-    amount_denominator_code = Column(String, nullable=True)
-
-    # batch (0..1 BackboneElement) — lotNumber, expirationDate
-    batch_lot_number = Column(String, nullable=True)
-    batch_expiration_date = Column(DateTime(timezone=True), nullable=True)
-
-    # 0..* child collections
     identifiers = relationship(
         "MedicationIdentifier",
         back_populates="medication",
         cascade="all, delete-orphan",
-        lazy="selectin",
     )
-    code_codings = relationship(
-        "MedicationCodeCoding",
+    tokens = relationship(
+        "MedicationToken", back_populates="medication", cascade="all, delete-orphan"
+    )
+    references = relationship(
+        "MedicationReference",
         back_populates="medication",
         cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-    form_codings = relationship(
-        "MedicationFormCoding",
-        back_populates="medication",
-        cascade="all, delete-orphan",
-        lazy="selectin",
-    )
-    ingredients = relationship(
-        "MedicationIngredient",
-        back_populates="medication",
-        cascade="all, delete-orphan",
-        lazy="selectin",
     )

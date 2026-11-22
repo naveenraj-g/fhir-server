@@ -53,6 +53,7 @@ _MODELED_INFORMATION = (
     "Observation",
     "Specimen",
     "ServiceRequest",
+    "Medication",
     "Patient",
     "Practitioner",
     "PractitionerRole",

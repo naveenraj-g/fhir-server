@@ -1,192 +1,162 @@
-from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import IdentifierUse, MedicationStatus
-from app.schemas.medication.input.batch import MedicationBatchInput
-from app.schemas.medication.input.codeable_concept import (
-    MedicationCodeableConceptInput,
-)
-from app.schemas.medication.input.identifier import (
-    MedicationIdentifierInput,
-)
-from app.schemas.medication.input.ingredient import (
-    MedicationIngredientInput,
-)
-from app.schemas.medication.input.quantity import (
-    MedicationRatioInput,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirReferenceInput,
 )
 
-_CREATE_EXAMPLE: dict[str, Any] = {
-    "status": "active",
+# MedicationStatusCodes (the required binding of Medication.status).
+StatusCode = Literal["active", "inactive", "entered-in-error"]
+
+_EXAMPLE = {
+    "resourceType": "Medication",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/medication-id",
+            "value": "MED-1001",
+        }
+    ],
     "code": {
-        "text": "Amoxicillin 500mg capsule",
         "coding": [
             {
                 "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
-                "code": "308182",
-                "display": "Amoxicillin 500 MG Oral Capsule",
+                "code": "1049502",
+                "display": "12 HR Oxycodone Hydrochloride 10 MG Extended Release Oral Tablet",
             }
-        ],
+        ]
     },
+    "status": "active",
+    "manufacturer": {"reference": "Organization/190001"},
     "form": {
-        "text": "Oral Capsule",
         "coding": [
             {
                 "system": "http://snomed.info/sct",
-                "code": "385055001",
-                "display": "Oral Capsule",
+                "code": "385057009",
+                "display": "Film-coated tablet",
             }
-        ],
+        ]
     },
     "amount": {
-        "numerator": {
-            "value": 500.0,
-            "unit": "mg",
-            "system": "http://unitsofmeasure.org",
-            "code": "mg",
-        },
-        "denominator": {
-            "value": 1.0,
-            "unit": "TAB",
-            "system": "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm",
-            "code": "TAB",
-        },
+        "numerator": {"value": 30, "unit": "tablet"},
+        "denominator": {"value": 1, "unit": "package"},
     },
+    "ingredient": [
+        {
+            "itemCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+                        "code": "7804",
+                        "display": "Oxycodone",
+                    }
+                ]
+            },
+            "isActive": True,
+            "strength": {
+                "numerator": {"value": 10, "unit": "mg"},
+                "denominator": {"value": 1, "unit": "tablet"},
+            },
+        }
+    ],
+    "batch": {"lotNumber": "LOT-2026-1", "expirationDate": "2027-06-30"},
 }
 
 
-class MedicationCreateSchema(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _CREATE_EXAMPLE},
-    )
+class MedicationQuantityInput(FhirInputModel):
+    """Quantity - a measured amount with an optional comparator."""
 
-    identifier: list[MedicationIdentifierInput] | None = Field(
-        None, description="Business identifier for this medication."
+    value: float | int | None = Field(
+        None, description="Numerical value (with implicit precision)."
     )
-    code: MedicationCodeableConceptInput | None = Field(
-        None, description="Codes that identify this medication."
+    comparator: Literal["<", "<=", ">=", ">"] | None = Field(
+        None, description="How the value should be understood: < | <= | >= | >."
     )
-    status: MedicationStatus | None = Field(
-        None, description="active | inactive | entered-in-error."
-    )
-
-    # manufacturer Reference(Organization) with identifier fallback (15 columns)
-    manufacturer: str | None = Field(
+    unit: str | None = Field(None, description="Unit representation.")
+    system: str | None = Field(
         None,
-        description="Manufacturer of the item. Reference(Organization), e.g. 'Organization/190001'.",
+        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
     )
-    manufacturer_display: str | None = Field(
-        None, description="Display text for manufacturer reference."
+    code: str | None = Field(None, description="Coded form of the unit.")
+
+
+class MedicationRatioInput(FhirInputModel):
+    """Ratio - a relationship of two Quantity values."""
+
+    numerator: MedicationQuantityInput | None = Field(
+        None, description="Numerator value."
     )
-    manufacturer_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    manufacturer_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    manufacturer_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    manufacturer_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    manufacturer_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    manufacturer_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    manufacturer_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    manufacturer_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    manufacturer_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    manufacturer_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    manufacturer_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
+    denominator: MedicationQuantityInput | None = Field(
+        None, description="Denominator value."
     )
 
-    form: MedicationCodeableConceptInput | None = Field(
-        None, description="powder | tablets | capsule +"
+
+class MedicationIngredientInput(FhirInputModel):
+    """Medication.ingredient - active or inactive ingredient."""
+
+    itemCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="The actual ingredient (a CodeableConcept). One of the item[x] choices (required by R4); searched by `ingredient-code`.",
     )
-    amount: MedicationRatioInput | None = Field(
-        None, description="Amount of drug in package."
+    itemReference: FhirReferenceInput | None = Field(
+        None,
+        description="The actual ingredient - Reference(Substance | Medication). One of the item[x] choices (required by R4); searched by `ingredient`. A relative Medication must exist in the caller's org (422 otherwise); a Substance is stored as sent.",
     )
-    ingredient: list[MedicationIngredientInput] | None = Field(
-        None, description="Active or inactive ingredient."
+    isActive: bool | None = Field(None, description="Active ingredient indicator.")
+    strength: MedicationRatioInput | None = Field(
+        None, description="Quantity of ingredient present."
     )
-    batch: MedicationBatchInput | None = Field(
-        None, description="Details about packaged medications."
+
+
+class MedicationBatchInput(FhirInputModel):
+    """Medication.batch - details about packaged medications."""
+
+    lotNumber: str | None = Field(
+        None, description="Identifier assigned to batch. Searched by `lot-number`."
+    )
+    expirationDate: str | None = Field(
+        None,
+        description="When batch will expire (a FHIR dateTime). Searched by `expiration-date`.",
+    )
+
+
+class _MedicationFields(FhirInputModel):
+    """Every writable Medication element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/medication.html). Create and patch accept exactly the same
+    fields. R4 requires nothing beyond the types (every Medication element is optional; an
+    ingredient needs its `item[x]`), so any well-formed document is valid.
+
+    The validated body is stored whole (MedicationModel.content), so any valid R4 element is
+    kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the medication_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["Medication"] | None = Field(
+        None, description="Optional; if supplied it must be 'Medication'."
     )
     extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
-
-
-class MedicationPatchSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    identifier: list[MedicationIdentifierInput] | None = Field(
+    identifier: list[FhirIdentifierInput] | None = Field(
         None, description="Business identifier for this medication."
     )
-    code: MedicationCodeableConceptInput | None = Field(
-        None, description="Codes that identify this medication."
+    code: FhirCodeableConceptInput | None = Field(
+        None, description="Codes that identify this medication. Searched by `code`."
     )
-    status: MedicationStatus | None = Field(
+    status: StatusCode | None = Field(
         None, description="active | inactive | entered-in-error."
     )
-
-    manufacturer: str | None = Field(
-        None, description="Manufacturer of the item. Reference(Organization)."
+    manufacturer: FhirReferenceInput | None = Field(
+        None,
+        description="Manufacturer of the item - Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    manufacturer_display: str | None = Field(
-        None, description="Display text for manufacturer reference."
-    )
-    manufacturer_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    manufacturer_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    manufacturer_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    manufacturer_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    manufacturer_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    manufacturer_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    manufacturer_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    manufacturer_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    manufacturer_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    manufacturer_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    manufacturer_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    form: MedicationCodeableConceptInput | None = Field(
-        None, description="powder | tablets | capsule +"
+    form: FhirCodeableConceptInput | None = Field(
+        None, description="powder | tablets | capsule ... Searched by `form`."
     )
     amount: MedicationRatioInput | None = Field(
         None, description="Amount of drug in package."
@@ -197,6 +167,25 @@ class MedicationPatchSchema(BaseModel):
     batch: MedicationBatchInput | None = Field(
         None, description="Details about packaged medications."
     )
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+
+
+class MedicationCreateSchema(_MedicationFields):
+    """POST body - a FHIR R4 Medication resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class MedicationPatchSchema(_MedicationFields):
+    """PATCH body - a partial FHIR R4 Medication (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object such as `batch` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "inactive",
+                "batch": {"lotNumber": "LOT-2026-2", "expirationDate": "2027-12-31"},
+            }
+        }
+    }
