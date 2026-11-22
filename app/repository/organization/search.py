@@ -42,7 +42,6 @@ from app.repository._care_plan_revinclude import performer_care_plan_revincludes
 from app.repository._care_team_revinclude import participant_care_team_revincludes
 from app.repository._group_revinclude import (
     managing_entity_group_revincludes,
-    member_group_revincludes,
 )
 from app.repository._medication_request_revinclude import (
     column_medication_request_revincludes,
@@ -51,9 +50,7 @@ from app.repository._medication_revinclude import column_medication_revincludes
 from app.repository._service_request_revinclude import (
     column_service_request_revincludes,
     performer_service_request_revincludes,
-    specimen_service_request_revincludes,
 )
-from app.models.enums import OrganizationReferenceType
 from app.models.organization import (
     OrganizationAddress,
     OrganizationEndpoint,
@@ -61,7 +58,6 @@ from app.models.organization import (
     OrganizationModel,
     OrganizationType,
 )
-from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.repository._encounter_revinclude import service_provider_encounter_revincludes
 from app.schemas.enums import AddressUse
 
@@ -248,7 +244,7 @@ def _partof_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Organization",),
-        OrganizationReferenceType,
+        str,
     )
 
 
@@ -337,7 +333,7 @@ def _endpoint_match(value, modifier, ctx):
             modifier,
             ctx,
             ("Endpoint",),
-            OrganizationEndpointReferenceType,
+            str,
         ),
     )
 

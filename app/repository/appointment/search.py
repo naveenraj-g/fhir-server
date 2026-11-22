@@ -34,6 +34,7 @@ from app.repository._appointment_response_revinclude import (
 )
 from app.repository._encounter_revinclude import appointment_encounter_revincludes
 from app.models.appointment import (
+    AppointmentParticipantStatus,
     ACTOR_TYPES,
     REFERENCE_TYPES,
     AppointmentIdentifier,
@@ -51,7 +52,6 @@ _P = AppointmentParticipant
 _R = AppointmentReference
 _STATUS_SYSTEM = "http://hl7.org/fhir/appointmentstatus"
 _PARTICIPATION_STATUS_SYSTEM = "http://hl7.org/fhir/participationstatus"
-_PARTICIPATION_STATUSES = ("accepted", "declined", "tentative", "needs-action")
 
 # Reference(Any): `supporting-info` can name any type, but the parser only
 # accepts `:Type` for a declared target, so list the types a supporting
@@ -351,9 +351,10 @@ def _part_status_match(value, modifier, ctx):
         return false()
     if token.code is None:
         return _exists(_P, _P.status.is_not(None))
-    if token.code not in _PARTICIPATION_STATUSES:
+    try:
+        return _exists(_P, _P.status == AppointmentParticipantStatus(token.code))
+    except ValueError:
         return false()
-    return _exists(_P, _P.status == token.code)
 
 
 # ── based-on / reason-reference / slot / supporting-info ─────────────────────

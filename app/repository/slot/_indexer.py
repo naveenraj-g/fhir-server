@@ -26,7 +26,6 @@ from app.repository._content_index import (
     type_rows,
 )
 
-from ._shared import _parse_schedule_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens")
@@ -53,9 +52,7 @@ def index_columns(document: dict) -> dict:
     return {
         "status": status,
         "start": _instant(document.get("start")),
-        **reference_columns(
-            "schedule", document.get("schedule"), "Schedule", _parse_schedule_ref
-        ),
+        **reference_columns("schedule", document.get("schedule"), "Schedule"),
     }
 
 

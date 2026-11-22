@@ -3,7 +3,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import ScheduleReferenceType
 from app.models.shared import TenantAuditMixin
 
 from .enums import SlotStatus
@@ -82,10 +81,7 @@ class SlotModel(TenantAuditMixin, Base):
     # flattened-reference convention); `schedule_identifier_*` is
     # Reference.identifier, for `schedule:identifier`.
     schedule_reference = Column(String, nullable=True)
-    schedule_type = Column(
-        Enum(ScheduleReferenceType, name="schedule_reference_type", create_type=False),
-        nullable=True,
-    )
+    schedule_type = Column(String, nullable=True)
     schedule_id = Column(BigInteger, nullable=True)
     schedule_identifier_system = Column(String, nullable=True)
     schedule_identifier_value = Column(String, nullable=True)

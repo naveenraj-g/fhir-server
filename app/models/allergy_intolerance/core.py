@@ -1,11 +1,15 @@
 from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 from app.models.shared import TenantAuditMixin
 
-from .enums import AllergyIntoleranceCriticality, AllergyIntoleranceType
+from .enums import (
+    AllergyIntoleranceCategory,
+    AllergyIntoleranceCriticality,
+    AllergyIntoleranceType,
+)
 
 allergy_intolerance_id_seq = Sequence(
     "allergy_intolerance_pub_seq", start=260000, increment=1, metadata=Base.metadata
@@ -30,6 +34,7 @@ class AllergyIntoleranceModel(TenantAuditMixin, Base):
 
     Search parameter -> storage:
       type             -> type (0..1 code, Enum column, stored by value)
+      category         -> category (0..* code, ARRAY of an Enum, stored by value)
       criticality      -> criticality (0..1 code, Enum column, stored by value so
                           `unable-to-assess` is the real FHIR code)
       date             -> recorded_date_start/_end (0..1 dateTime, columns; the
@@ -98,6 +103,17 @@ class AllergyIntoleranceModel(TenantAuditMixin, Base):
             AllergyIntoleranceType,
             name="allergy_intolerance_type",
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=True,
+    )
+    # category (0..* code, required binding): an array of the Enum, stored by value.
+    category = Column(
+        ARRAY(
+            Enum(
+                AllergyIntoleranceCategory,
+                name="allergy_intolerance_category",
+                values_callable=lambda enum_cls: [m.value for m in enum_cls],
+            )
         ),
         nullable=True,
     )

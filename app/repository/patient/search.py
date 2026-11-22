@@ -28,7 +28,6 @@ from app.repository._care_team_revinclude import (
     participant_care_team_revincludes,
 )
 from app.repository._group_revinclude import (
-    managing_entity_group_revincludes,
     member_group_revincludes,
 )
 from app.repository._medication_request_revinclude import (
@@ -37,7 +36,6 @@ from app.repository._medication_request_revinclude import (
 from app.repository._service_request_revinclude import (
     column_service_request_revincludes,
     performer_service_request_revincludes,
-    specimen_service_request_revincludes,
 )
 from app.repository._clinical_impression_revinclude import column_impression_revincludes
 from app.repository._detected_issue_revinclude import column_issue_revincludes
@@ -88,7 +86,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.models.enums import OrganizationReferenceType
 from app.models.patient import (
     GENERAL_PRACTITIONER_TYPES,
     LINK_TYPES,
@@ -413,7 +410,7 @@ def _organization_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Organization",),
-        OrganizationReferenceType,
+        str,
     )
 
 

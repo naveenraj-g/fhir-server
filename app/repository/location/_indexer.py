@@ -31,7 +31,6 @@ from app.repository._content_index import (
 )
 from app.schemas.enums import AddressUse
 
-from ._shared import _parse_endpoint_ref, _parse_location_ref, _parse_org_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "types", "endpoints")
@@ -89,11 +88,8 @@ def index_columns(document: dict) -> dict:
             "managing_organization",
             document.get("managingOrganization"),
             "Organization",
-            _parse_org_ref,
         ),
-        **reference_columns(
-            "part_of", document.get("partOf"), "Location", _parse_location_ref
-        ),
+        **reference_columns("part_of", document.get("partOf"), "Location"),
         "position_latitude": _decimal(position.get("latitude")),
         "position_longitude": _decimal(position.get("longitude")),
     }
@@ -113,6 +109,6 @@ def index_rows(document: dict) -> dict[str, list]:
         "endpoints": [
             r
             for e in document.get("endpoint") or []
-            if (r := endpoint_row(LocationEndpoint, e, _parse_endpoint_ref))
+            if (r := endpoint_row(LocationEndpoint, e))
         ],
     }

@@ -26,7 +26,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.models.enums import ScheduleReferenceType
 from app.models.slot import SlotIdentifier, SlotModel, SlotStatus, SlotToken
 
 S = SlotModel
@@ -149,7 +148,7 @@ def _schedule_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Schedule",),
-        ScheduleReferenceType,
+        str,
     )
 
 

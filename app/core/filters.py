@@ -38,6 +38,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import TypeVar
 
+import sqlalchemy as sa
 from fastapi import HTTPException, status
 from sqlalchemy import bindparam, exists
 from sqlalchemy.ext.compiler import compiles
@@ -229,6 +230,9 @@ def _array_contains_default(element, compiler, **kw):
     """Postgres (and the default for any other real dialect)."""
     col_sql = compiler.process(element.column, **kw)
     val_sql = compiler.process(bindparam(None, element.value), **kw)
+    item_type = getattr(element.column.type, "item_type", None)
+    if isinstance(item_type, sa.Enum):  # an enum[] column: compare as text
+        col_sql = f"CAST({col_sql} AS text[])"
     return f"{val_sql} = ANY({col_sql})"
 
 

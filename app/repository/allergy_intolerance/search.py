@@ -19,8 +19,10 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.core.filters import array_contains
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
+    ArrayAggregate,
     coded_token_match,
     date_match,
     period_match,
@@ -30,19 +32,22 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._clinical_impression_revinclude import (
-    reference_impression_revincludes,
-)
 from app.models.allergy_intolerance import (
     ACTOR_TYPES,
+    CODE_SYSTEMS,
     CRITICALITY_SYSTEM,
     TYPE_SYSTEM,
+    AllergyIntoleranceCategory,
     AllergyIntoleranceCriticality,
     AllergyIntoleranceIdentifier,
     AllergyIntoleranceModel,
     AllergyIntoleranceReaction,
+    AllergyIntoleranceReactionSeverity,
     AllergyIntoleranceToken,
     AllergyIntoleranceType,
+)
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
 )
 
 A = AllergyIntoleranceModel
@@ -161,6 +166,53 @@ def _code_column(column, enum_cls, system: str):
             return false()
 
     return match, lambda ctx: column.is_not(None)
+
+
+# ── category (an Enum array) / severity (an Enum column on the reaction row) ──
+
+
+def _category_match(value, modifier, ctx):
+    """`category` is a 0..* `code` bound to the allergy-intolerance-category system: any category
+    is the code; another system or an unknown code matches nothing."""
+    token = parse_token(value)
+    if token.system is not None and token.system != CODE_SYSTEMS["category"]:
+        return false()
+    if token.code is None:
+        return _category_present(None)
+    if token.code not in {m.value for m in AllergyIntoleranceCategory}:
+        return false()
+    return array_contains(A.category, token.code)
+
+
+def _category_present(ctx):
+    return A.category.is_not(None)  # stored NULL, never an empty array
+
+
+def _category_sort():
+    """Smallest category ascending, largest descending."""
+    return MultiValueSort(
+        ascending=ArrayAggregate(A.category, "min"),
+        descending=ArrayAggregate(A.category, "max"),
+    )
+
+
+def _severity_match(value, modifier, ctx):
+    """`severity` is the `code` of any reaction, bound to the reaction-event-severity system."""
+    token = parse_token(value)
+    if token.system is not None and token.system != CODE_SYSTEMS["severity"]:
+        return false()
+    if token.code is None:
+        return _severity_present(None)
+    try:
+        return _exists(
+            _Rx, _Rx.severity == AllergyIntoleranceReactionSeverity(token.code)
+        )
+    except ValueError:
+        return false()
+
+
+def _severity_present(ctx):
+    return _exists(_Rx, _Rx.severity.is_not(None))
 
 
 # ── dates: date / last-date / onset (a dateTime held as the range it covers) ──
@@ -394,12 +446,16 @@ def allergy_intolerance_search() -> SearchRegistry:
             ACTOR_TYPES,
             "Practitioner/30001",
         ),
-        token(
+        SearchParam(
             "category",
+            "token",
             "food | medication | environment | biologic",
             "AllergyIntolerance.category",
-            "http://hl7.org/fhir/allergy-intolerance-category|food",
-            modifiers=_CODE,
+            _category_match,
+            _category_present,
+            _CODE,
+            sort=_category_sort,
+            example="http://hl7.org/fhir/allergy-intolerance-category|food",
         ),
         token(
             "clinical-status",
@@ -503,12 +559,16 @@ def allergy_intolerance_search() -> SearchRegistry:
             "AllergyIntolerance.reaction.exposureRoute",
             "http://snomed.info/sct|26643006",
         ),
-        token(
+        SearchParam(
             "severity",
+            "token",
             "mild | moderate | severe (of event as a whole)",
             "AllergyIntolerance.reaction.severity",
-            "http://hl7.org/fhir/reaction-event-severity|severe",
-            modifiers=_CODE,
+            _severity_match,
+            _severity_present,
+            _CODE,
+            sort=lambda: _child_sort(_Rx.severity, _Rx),
+            example="http://hl7.org/fhir/reaction-event-severity|severe",
         ),
         SearchParam(
             "type",

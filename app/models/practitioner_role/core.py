@@ -3,7 +3,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum,
     Index,
     Sequence,
     String,
@@ -12,7 +11,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType, PractitionerReferenceType
 from app.models.shared import TenantAuditMixin
 
 practitioner_role_id_seq = Sequence(
@@ -93,27 +91,13 @@ class PractitionerRoleModel(TenantAuditMixin, Base):
     # flattened-reference convention); `*_identifier_*` is Reference.identifier,
     # for `<param>:identifier`.
     practitioner_reference = Column(String, nullable=True)
-    practitioner_type = Column(
-        Enum(
-            PractitionerReferenceType,
-            name="practitioner_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
+    practitioner_type = Column(String, nullable=True)
     practitioner_id = Column(BigInteger, nullable=True, index=True)
     practitioner_identifier_system = Column(String, nullable=True)
     practitioner_identifier_value = Column(String, nullable=True)
 
     organization_reference = Column(String, nullable=True)
-    organization_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
+    organization_type = Column(String, nullable=True)
     organization_id = Column(BigInteger, nullable=True, index=True)
     organization_identifier_system = Column(String, nullable=True)
     organization_identifier_value = Column(String, nullable=True)

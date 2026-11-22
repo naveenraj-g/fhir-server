@@ -21,8 +21,6 @@ from sqlalchemy.orm import aliased
 
 from app.repository._service_request_revinclude import (
     column_service_request_revincludes,
-    performer_service_request_revincludes,
-    specimen_service_request_revincludes,
 )
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
@@ -52,16 +50,13 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token, split_escaped, unescape
-from app.models.enums import OrganizationReferenceType
 from app.models.location import (
     LocationEndpoint,
     LocationIdentifier,
     LocationModel,
-    LocationPartOfReferenceType,
     LocationStatus,
     LocationType,
 )
-from app.models.location.enums import LocationEndpointReferenceType
 from app.schemas.enums import AddressUse
 
 Loc = LocationModel
@@ -244,7 +239,7 @@ def _organization_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Organization",),
-        OrganizationReferenceType,
+        str,
     )
 
 
@@ -283,7 +278,7 @@ def _partof_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Location",),
-        LocationPartOfReferenceType,
+        str,
     )
 
 
@@ -371,7 +366,7 @@ def _endpoint_match(value, modifier, ctx):
             modifier,
             ctx,
             ("Endpoint",),
-            LocationEndpointReferenceType,
+            str,
         ),
     )
 

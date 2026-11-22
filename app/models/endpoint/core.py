@@ -3,7 +3,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 
 from .enums import EndpointStatus
@@ -100,14 +99,7 @@ class EndpointModel(TenantAuditMixin, Base):
     # — see CLAUDE.md's flattened-reference convention); `_identifier_*` is
     # Reference.identifier, for `organization:identifier`.
     managing_organization_reference = Column(String, nullable=True)
-    managing_organization_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
+    managing_organization_type = Column(String, nullable=True)
     managing_organization_id = Column(BigInteger, nullable=True, index=True)
     managing_organization_identifier_system = Column(String, nullable=True)
     managing_organization_identifier_value = Column(String, nullable=True)

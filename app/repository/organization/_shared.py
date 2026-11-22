@@ -1,9 +1,7 @@
 from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
 from app.models.organization import OrganizationModel
-from app.models.organization.enums import OrganizationEndpointReferenceType
 from app.repository._reference_shared import (
     _IDENTIFIER_FALLBACK_SUFFIXES,
     _org_ref_kwargs,
@@ -15,7 +13,6 @@ from app.repository._reference_shared import (
 __all__ = [
     "_IDENTIFIER_FALLBACK_SUFFIXES",
     "_org_ref_kwargs",
-    "_parse_endpoint_ref",
     "_parse_org_ref",
     "_partof_chain_contains",
     "_reference_kwargs",
@@ -34,15 +31,6 @@ def _with_relationships(stmt):
             for rel in ("identifiers", "types", "addresses", "endpoints")
         )
     )
-
-
-def _parse_endpoint_ref(ref: str) -> tuple:
-    """Parse 'Endpoint/1' → (OrganizationEndpointReferenceType.Endpoint, 1).
-    Endpoint is a resource on this server (RESOURCE_REGISTRY, see
-    app/core/reference_resolver.py), so a relative Endpoint/<id> is
-    existence-checked on write like every other local reference; an endpoint
-    given only by identifier/display simply has no index row."""
-    return parse_reference(ref, OrganizationEndpointReferenceType)
 
 
 async def _partof_chain_contains(

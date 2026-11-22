@@ -20,6 +20,7 @@ from functools import partial
 
 from app.fhir.search.values import parse_date
 from app.models.appointment import (
+    AppointmentParticipantStatus,
     REFERENCE_PARAMS,
     TOKEN_PARAMS,
     AppointmentIdentifier,
@@ -84,6 +85,15 @@ def _reference_row(param: str, ref: dict | None) -> AppointmentReference | None:
     )
 
 
+_PARTICIPANT_STATUSES = {m.value for m in AppointmentParticipantStatus}
+
+
+def _participant_status(code):
+    """The participation status as its enum member; None for an absent or unknown code (the
+    validator rejects a bad code before we get here)."""
+    return AppointmentParticipantStatus(code) if code in _PARTICIPANT_STATUSES else None
+
+
 def _participant_row(participant: dict) -> AppointmentParticipant:
     """One row per participant, even one with no actor (for `part-status`)."""
     actor = participant.get("actor") or {}
@@ -96,7 +106,7 @@ def _participant_row(participant: dict) -> AppointmentParticipant:
         reference_id=parsed[1] if parsed else None,
         reference_identifier_system=identifier.get("system"),
         reference_identifier_value=identifier.get("value"),
-        status=participant.get("status"),
+        status=_participant_status(participant.get("status")),
     )
 
 

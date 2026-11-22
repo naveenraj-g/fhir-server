@@ -23,7 +23,6 @@ from app.repository._content_index import (
     type_rows,
 )
 
-from ._shared import _parse_org_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "payload_types")
@@ -48,7 +47,6 @@ def index_columns(document: dict) -> dict:
             "managing_organization",
             document.get("managingOrganization"),
             "Organization",
-            _parse_org_ref,
         ),
     }
 

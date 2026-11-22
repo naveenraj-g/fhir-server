@@ -3,19 +3,16 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
 
-# Search parameters held in AllergyIntoleranceToken. The five CodeableConcept
-# ones read: `clinical-status` -> clinicalStatus, `verification-status` ->
-# verificationStatus, `code` -> code and reaction.substance, `manifestation`
-# -> reaction.manifestation, `route` -> reaction.exposureRoute. The two `code`
-# ones read: `category` -> category (0..*) and `severity` ->
-# reaction.severity; their rows carry the code's FHIR system and no text.
+# Search parameters held in AllergyIntoleranceToken: the five CodeableConcept ones. `clinical-status`
+# -> clinicalStatus, `verification-status` -> verificationStatus, `code` -> code and
+# reaction.substance, `manifestation` -> reaction.manifestation, `route` -> reaction.exposureRoute.
+# (`category` and `severity` are plain `code` elements with a required binding, so they are Enum
+# columns: category on the main row, severity on the reaction row.)
 TOKEN_PARAMS = (
-    "category",
     "clinical-status",
     "code",
     "manifestation",
     "route",
-    "severity",
     "verification-status",
 )
 
@@ -29,9 +26,9 @@ CRITICALITY_SYSTEM = "http://hl7.org/fhir/allergy-intolerance-criticality"
 
 
 class AllergyIntoleranceToken(Base):
-    """Search index for the seven token parameters held in one shared table
-    (`category`, `clinical-status`, `code`, `manifestation`, `route`,
-    `severity`, `verification-status`): one row per coding of each concept — a
+    """Search index for the five CodeableConcept token parameters held in one shared table
+    (`clinical-status`, `code`, `manifestation`, `route`,
+    `verification-status`): one row per coding of each concept — a
     token search matches any coding of any entry — plus one code-less row for a
     concept with only `text`, so `:text` still finds it. `param` says which
     search parameter the row belongs to. Derived from
@@ -39,10 +36,7 @@ class AllergyIntoleranceToken(Base):
 
       <param>              -> system, code
       <param>:text         -> text_norm (CodeableConcept.text) / display_norm
-      <param>:in/:below/.. -> system, code, resolved through the terminology service
-
-    `category` and `severity` are plain `code` elements, so their rows hold the
-    code and its fixed FHIR system and nothing else."""
+      <param>:in/:below/.. -> system, code, resolved through the terminology service"""
 
     __tablename__ = "allergy_intolerance_token"
     __table_args__ = (

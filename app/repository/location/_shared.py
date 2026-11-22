@@ -1,17 +1,10 @@
 from sqlalchemy import exists, literal, select
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
 from app.models.location import LocationModel
-from app.models.location.enums import (
-    LocationEndpointReferenceType,
-    LocationPartOfReferenceType,
-)
 from app.repository._reference_shared import _parse_org_ref, _validate_reference
 
 __all__ = [
-    "_parse_endpoint_ref",
-    "_parse_location_ref",
     "_parse_org_ref",
     "_partof_chain_contains",
     "_validate_reference",
@@ -29,21 +22,6 @@ def _with_relationships(stmt):
             for rel in ("identifiers", "types", "endpoints")
         )
     )
-
-
-def _parse_location_ref(ref: str) -> tuple:
-    """Parse 'Location/230001' → (LocationPartOfReferenceType.Location, 230001).
-    Used for Location.partOf, the self-referential containment link."""
-    return parse_reference(ref, LocationPartOfReferenceType)
-
-
-def _parse_endpoint_ref(ref: str) -> tuple:
-    """Parse 'Endpoint/1' → (LocationEndpointReferenceType.Endpoint, 1).
-    Endpoint is a resource on this server (RESOURCE_REGISTRY, see
-    app/core/reference_resolver.py), so a relative Endpoint/<id> is
-    existence-checked on write like every other local reference; an endpoint
-    given only by identifier, or by an absolute URL, has no local row to check."""
-    return parse_reference(ref, LocationEndpointReferenceType)
 
 
 async def _partof_chain_contains(

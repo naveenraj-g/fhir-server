@@ -1,9 +1,8 @@
-from sqlalchemy import BigInteger, Boolean, Column, Enum, Index, Sequence, String
+from sqlalchemy import BigInteger, Boolean, Column, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 
 organization_id_seq = Sequence(
@@ -90,14 +89,7 @@ class OrganizationModel(TenantAuditMixin, Base):
     # CLAUDE.md's flattened-reference convention); partof_identifier_* is
     # Reference.identifier, for `partof:identifier`.
     partof_reference = Column(String, nullable=True)
-    partof_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
+    partof_type = Column(String, nullable=True)
     partof_id = Column(BigInteger, nullable=True, index=True)
     partof_identifier_system = Column(String, nullable=True)
     partof_identifier_value = Column(String, nullable=True)

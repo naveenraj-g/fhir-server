@@ -12,7 +12,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 from app.schemas.enums import AdministrativeGender
 
@@ -114,14 +113,7 @@ class PatientModel(TenantAuditMixin, Base):
 
     # managingOrganization (0..1 Reference(Organization)) -> `organization`.
     managing_organization_reference = Column(String, nullable=True)
-    managing_organization_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
+    managing_organization_type = Column(String, nullable=True)
     managing_organization_id = Column(BigInteger, nullable=True, index=True)
     managing_organization_identifier_system = Column(String, nullable=True)
     managing_organization_identifier_value = Column(String, nullable=True)

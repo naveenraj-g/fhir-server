@@ -145,12 +145,17 @@ Same three lines as Organization.
 - `docs/search-architecture/pending-search-capabilities.md` — scope + parameter tables.
 - **`docs/resource-status.md` — mandatory, same commit.** Move the resource from "Not yet rebuilt" to the rebuilt table (route, parameter count from the registry, sequence, migration revision, commit hash once known), fill its row in the existence-check table, edit the rows of every resource you wired to it, add any new engine capability to its table, close or add open gaps, and bump "Last updated". The file's last section lists the exact triggers.
 
+### I2. Required-binding codes and HL7 alignment
+Run the audit in `/fhir-db-model` Step 7: every token parameter that reads a `code` element with a **required** binding is an enum column (array for 0..*, a column on the child row when nested). Register each in `REQUIRED_CODE_STORAGE` in `tests/unit/test_hl7_alignment.py`; that file also checks the registry serves exactly the parameters (and types) HL7 lists for the resource. Reference `*_type` columns stay plain strings; relative references are existence-checked by the shared check (registry entry + `cases.py` row), no per-resource code.
+
 ### J. Tests — `tests/` (see `/add-resource-tests`)
 `tests/integration/<resource>/{__init__,conftest,support,test_core,test_search}.py`, `tests/conformance/test_<resource>_fhir.py`. `assert_fhir_<resource>` in `tests/helpers/assertions.py` only if the integration tests call it (newer suites assert directly). Plus `tests/unit/` tests for any new engine matcher (e.g. `test_quantity_match.py`).
 
 ---
 
 ## Phase 3 — Verify
+
+- `uv run python scripts/audit_hl7_live.py` exits 0 (live hl7.org check), and `uv run pytest tests/unit/test_hl7_alignment.py` passes for the new resource (search parameters equal HL7's list; required-binding codes are enum columns).
 
 ```bash
 uv run python -c "import app.main"                       # imports + DI wiring

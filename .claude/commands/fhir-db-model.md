@@ -29,6 +29,8 @@ Every searched string is stored twice: **as written** (answers `:exact`, which i
 | `_id` | none (public `<resource>_id` column) |
 | `_lastUpdated` | none (`coalesce(updated_at, created_at)`) |
 | 0..1 boolean or code → token (`active`, `gender`, `status`) | one nullable column on the main table. `Enum(...)` when the code has a **`required`** binding (a closed list HL7 defines fully); otherwise `String` |
+| 0..* `code` with a **required** binding (`AllergyIntolerance.category`) | `ARRAY(Enum(...))` on the main table, one enum type per resource+field, stored by value (`values_callable`); NULL when empty. **Not** rows in a shared token table |
+| `code` with a required binding **inside a repeating backbone element or datatype** (`AllergyIntolerance.reaction.severity`, `Appointment.participant.status`, `Address.use`) | an `Enum` column on that element's index-table row (create the row when the element has *any* indexed value, not only the first one) |
 | 0..1 string (`name`) | `x`, `x_norm`; add `Index(..., postgresql_ops={"x_norm": "text_pattern_ops"})` for a hot prefix search |
 | 0..* list of plain strings (`alias`) | `x ARRAY(String)`, `x_norm ARRAY(String)`; store **NULL, not `[]`**, when empty so `:missing` is `IS NULL`. Never comma-joined text. |
 | 0..* HumanName / Address | child table, one row per entry, only the searched parts, raw + `_norm` of each. `family`, `text`, `city`... scalar; `given`/`prefix`/`suffix`/`line` as `ARRAY(String)` so each is matched on its own |
@@ -63,7 +65,7 @@ Chained parameters (`partof.name`) and hierarchy (`:above`/`:below`) need **no e
 - **All index columns nullable.** Only `content` is `NOT NULL`. Nullability never claims a stricter rule than the spec.
 - **Cascade:** `relationship(..., cascade="all, delete-orphan")` on the main model; patch replaces every index relationship wholesale. All `id`s and FKs are `BigInteger`.
 - **Index only what a parameter filters on.** If a parameter, modifier or sort you support isn't backed by a column here, it isn't supported.
-- A PG enum type shared across resources (`address_use`, `organization_reference_type`, `identifier_use`) is referenced with `create_type=False`. In a migration the **same** `postgresql.ENUM(..., create_type=False)` object must be used by every `op.create_table` that uses the type.
+- A PG enum type shared across resources (`address_use`, `identifier_use`; a reference's `{p}_type` is never an enum) is referenced with `create_type=False`. In a migration the **same** `postgresql.ENUM(..., create_type=False)` object must be used by every `op.create_table` that uses the type.
 
 ## Step 5 — The main table
 
@@ -87,9 +89,20 @@ class <Resource>Model(TenantAuditMixin, Base):      # tenant_id, created_by (NOT
 - **Converting a normalized resource:** model the migration on `a7d3f19c2b64` — add `content`, build it per row with a **frozen** copy of the old mapper (never import app code), drop the old child tables and columns, create the index tables, rebuild the index from `content`, set `content` `NOT NULL`. Keep any non-FHIR state (e.g. `user_id`) as a column — never in `content` — and carry it over unchanged.
 - If the old model's public id used a Python-side `Sequence` with no server default, the migration sets `DEFAULT nextval('<resource>_pub_seq')` (the new model uses `server_default`).
 - A per-field Postgres enum for a reference type is replaced by a plain string column; drop the enum in the migration (but never a shared one such as `organization_reference_type`).
+- Converting a column to an enum or backfilling one: use a safe cast (`CASE WHEN col IN (...) THEN col::enum END`) so a stray value becomes NULL instead of failing the migration; rebuild child index rows from `content` with a frozen copy of the indexer logic.
 - **Verify on a scratch database, never the dev DB (and never print the `.env` password):** create DB → `alembic upgrade` to the previous head **in steps** (`+10` repeatedly, then a named revision — one go exceeds `max_locks_per_transaction`) → insert old-shape rows (explicit public id if the old schema had no server default; real `datetime` objects for asyncpg) → upgrade to the new head → inspect `content` (absolute URLs, logical references and partial dates preserved) and index rows → `alembic check` and look for drift on your tables → drop DB.
 
-## Step 7 — Reminders
+## Step 7 — Required-binding codes: audit every search parameter (mandatory)
+
+Do not decide from the parameter name or from memory. For **every** token search parameter of the resource:
+
+1. Find the element(s) its FHIRPath expression reads (HL7 `SearchParameter-<resource>-<code>.json`, or the resource page).
+2. Look at the element's **type and binding strength** in the StructureDefinition (follow into the datatype for `address.use`, `name.use`, ...). Binding strengths: required / extensible / preferred / example.
+3. Type `code` + **required** binding → enum column (see the Step 3 table), including when it is 0..*, nested, or reached through a datatype. Anything else (CodeableConcept, Coding, `code` with extensible/preferred/example, string, boolean) → no enum.
+4. Run `uv run python scripts/audit_hl7_live.py` - it downloads the live R4 definitions from hl7.org (cached in `.cache/hl7-r4/`, `--refresh` to re-download) and checks every rebuilt resource: parameter names, types, reference targets, required-code enums and their values. Exit 1 on any problem.
+5. Add the parameter to `REQUIRED_CODE_STORAGE` in `tests/unit/test_hl7_alignment.py`. That test reads HL7's own R4 package and **fails** if a required-binding `code` parameter is not listed or is not an enum column, and if the registry serves a parameter R4 does not list (or misses one it does). It was added because `AllergyIntolerance.category`/`reaction.severity` and `Appointment.participant.status` were once missed by a name-based check.
+
+## Step 8 — Reminders
 
 - A `:missing=true` on a parameter backed by a *type-narrowed* multi-target reference must also require `type IS NOT NULL` in the "present" condition, or rows that hold only a logical `identifier` reference are wrongly reported as missing.
 - Enum columns for status-like codes store the **true FHIR code** (`in-progress`), not the Python member name; an unknown code in a search matches nothing rather than failing the enum cast.

@@ -1,5 +1,10 @@
 from .core import ACTOR_TYPES, AllergyIntoleranceModel, allergy_intolerance_id_seq
-from .enums import AllergyIntoleranceCriticality, AllergyIntoleranceType
+from .enums import (
+    AllergyIntoleranceCategory,
+    AllergyIntoleranceCriticality,
+    AllergyIntoleranceReactionSeverity,
+    AllergyIntoleranceType,
+)
 from .identifier import AllergyIntoleranceIdentifier
 from .reaction import AllergyIntoleranceReaction
 from .token import (
@@ -16,10 +21,12 @@ __all__ = [
     "CRITICALITY_SYSTEM",
     "TOKEN_PARAMS",
     "TYPE_SYSTEM",
+    "AllergyIntoleranceCategory",
     "AllergyIntoleranceCriticality",
     "AllergyIntoleranceIdentifier",
     "AllergyIntoleranceModel",
     "AllergyIntoleranceReaction",
+    "AllergyIntoleranceReactionSeverity",
     "AllergyIntoleranceToken",
     "AllergyIntoleranceType",
     "allergy_intolerance_id_seq",

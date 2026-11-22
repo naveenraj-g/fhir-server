@@ -1,9 +1,6 @@
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
 from app.models.healthcare_service import (
-    HealthcareServiceEndpointReferenceType,
-    HealthcareServiceLocationReferenceType,
     HealthcareServiceModel,
 )
 from app.repository._reference_shared import (
@@ -17,8 +14,6 @@ from app.repository._reference_shared import (
 __all__ = [
     "_IDENTIFIER_FALLBACK_SUFFIXES",
     "_org_ref_kwargs",
-    "_parse_endpoint_ref",
-    "_parse_location_ref",
     "_parse_org_ref",
     "_reference_kwargs",
     "_validate_reference",
@@ -36,15 +31,3 @@ def _with_relationships(stmt):
             for rel in ("identifiers", "tokens", "references")
         )
     )
-
-
-def _parse_location_ref(ref: str) -> tuple:
-    """Parse 'Location/230001' → (HealthcareServiceLocationReferenceType.Location, 230001)."""
-    return parse_reference(ref, HealthcareServiceLocationReferenceType)
-
-
-def _parse_endpoint_ref(ref: str) -> tuple:
-    """Parse 'Endpoint/1'. Endpoint is a resource on this server
-    (RESOURCE_REGISTRY), so a relative Endpoint/<id> is existence-checked on
-    write; an endpoint given only by identifier/display simply has no index row."""
-    return parse_reference(ref, HealthcareServiceEndpointReferenceType)

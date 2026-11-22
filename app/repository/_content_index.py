@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from fastapi import HTTPException, status
+
 from app.fhir.search import normalize
 from app.fhir.search.values import parse_date
 
@@ -57,14 +59,27 @@ def norms(values: list[str] | None) -> list[str] | None:
     return [normalize(v) for v in values] if values else None
 
 
-def reference_columns(prefix: str, ref: dict | None, resource_type: str, parse) -> dict:
+def parse_relative(reference: str, resource_type: str) -> tuple[str, int]:
+    """`Type/123` -> ("Type", 123): the type as a plain string and the target's public id.
+    A reference whose id is not a number is a 422 (it can never resolve)."""
+    _type, _, raw_id = reference.partition("/")
+    try:
+        return resource_type, int(raw_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference id in: '{reference}'. Id must be an integer.",
+        )
+
+
+def reference_columns(prefix: str, ref: dict | None, resource_type: str) -> dict:
     """The index columns of one 0..1 Reference: `{prefix}_reference` (the
-    raw string), `{prefix}_type`/`{prefix}_id` (resolved, relative
-    references only — `parse` turns `Type/123` into (enum, id)), and
+    raw string), `{prefix}_type`/`{prefix}_id` (the type as a plain string and
+    the public id - relative references only), and
     `{prefix}_identifier_system`/`_value` (Reference.identifier)."""
     ref = ref or {}
     local = relative(ref.get("reference"), resource_type)
-    ref_type, ref_id = parse(local) if local else (None, None)
+    ref_type, ref_id = parse_relative(local, resource_type) if local else (None, None)
     identifier = ref.get("identifier") or {}
     return {
         f"{prefix}_reference": ref.get("reference"),
@@ -114,7 +129,7 @@ def type_rows(model, concept: dict) -> list:
     return rows
 
 
-def endpoint_row(model, endpoint: dict, parse):
+def endpoint_row(model, endpoint: dict):
     """One index row for a Reference(Endpoint) with a `reference` or an
     `identifier` (display-only can't be matched by a reference search)."""
     reference = endpoint.get("reference")
@@ -122,7 +137,7 @@ def endpoint_row(model, endpoint: dict, parse):
     if not (reference or identifier.get("value")):
         return None
     local = relative(reference, "Endpoint")
-    ref_type, ref_id = parse(local) if local else (None, None)
+    ref_type, ref_id = parse_relative(local, "Endpoint") if local else (None, None)
     return model(
         reference_reference=reference,
         reference_type=ref_type,

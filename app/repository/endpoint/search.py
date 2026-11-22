@@ -33,7 +33,6 @@ from app.models.endpoint import (
     EndpointPayloadType,
     EndpointStatus,
 )
-from app.models.enums import OrganizationReferenceType
 
 E = EndpointModel
 _I = EndpointIdentifier
@@ -148,7 +147,7 @@ def _organization_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Organization",),
-        OrganizationReferenceType,
+        str,
     )
 
 

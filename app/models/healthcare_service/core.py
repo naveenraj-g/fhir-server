@@ -1,9 +1,8 @@
-from sqlalchemy import BigInteger, Boolean, Column, Enum, Index, Sequence, String
+from sqlalchemy import BigInteger, Boolean, Column, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
 
 healthcare_service_id_seq = Sequence(
@@ -93,14 +92,7 @@ class HealthcareServiceModel(TenantAuditMixin, Base):
     # flattened-reference convention); provided_by_identifier_* is
     # Reference.identifier, for `organization:identifier`.
     provided_by_reference = Column(String, nullable=True)
-    provided_by_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
+    provided_by_type = Column(String, nullable=True)
     provided_by_id = Column(BigInteger, nullable=True, index=True)
     provided_by_identifier_system = Column(String, nullable=True)
     provided_by_identifier_value = Column(String, nullable=True)

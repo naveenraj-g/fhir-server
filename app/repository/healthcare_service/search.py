@@ -18,9 +18,7 @@ from sqlalchemy import exists, false, func, literal, or_, select, true
 
 from app.repository._care_plan_revinclude import performer_care_plan_revincludes
 from app.repository._service_request_revinclude import (
-    column_service_request_revincludes,
     performer_service_request_revincludes,
-    specimen_service_request_revincludes,
 )
 from app.repository._appointment_revinclude import participant_revincludes
 from app.repository._appointment_response_revinclude import actor_response_revincludes
@@ -41,7 +39,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.models.enums import OrganizationReferenceType
 from app.models.healthcare_service import (
     HealthcareServiceIdentifier,
     HealthcareServiceModel,
@@ -165,7 +162,7 @@ def _organization_match(value, modifier, ctx):
         modifier,
         ctx,
         ("Organization",),
-        OrganizationReferenceType,
+        str,
     )
 
 

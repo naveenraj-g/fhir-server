@@ -1,6 +1,19 @@
 from enum import Enum
 
 
+class AppointmentParticipantStatus(str, Enum):
+    """FHIR R4 Appointment.participant.status (1..1, required binding) -
+    https://www.hl7.org/fhir/R4/valueset-participationstatus.html
+
+    Stored by VALUE, so the real hyphenated code (`needs-action`) is what the database holds.
+    """
+
+    accepted = "accepted"
+    declined = "declined"
+    tentative = "tentative"
+    needs_action = "needs-action"
+
+
 class AppointmentStatus(str, Enum):
     """FHIR R4 Appointment.status (1..1, required binding) —
     https://www.hl7.org/fhir/R4/valueset-appointmentstatus.html

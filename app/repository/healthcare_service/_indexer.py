@@ -33,7 +33,6 @@ from app.repository._content_index import (
     type_rows,
 )
 
-from ._shared import _parse_org_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references")
@@ -45,9 +44,7 @@ def index_columns(document: dict) -> dict:
         "active": document.get("active"),
         "name": document.get("name"),
         "name_norm": normalize(document.get("name")),
-        **reference_columns(
-            "provided_by", document.get("providedBy"), "Organization", _parse_org_ref
-        ),
+        **reference_columns("provided_by", document.get("providedBy"), "Organization"),
     }
 
 

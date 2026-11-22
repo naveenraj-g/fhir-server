@@ -20,10 +20,11 @@ from functools import partial
 
 from app.models.allergy_intolerance import (
     ACTOR_TYPES,
-    CODE_SYSTEMS,
+    AllergyIntoleranceCategory,
     AllergyIntoleranceCriticality,
     AllergyIntoleranceIdentifier,
     AllergyIntoleranceReaction,
+    AllergyIntoleranceReactionSeverity,
     AllergyIntoleranceToken,
     AllergyIntoleranceType,
 )
@@ -72,6 +73,7 @@ def index_columns(document: dict) -> dict:
     occurrence_start, occurrence_end = _instant_bounds(document.get("lastOccurrence"))
     return {
         "type": _enum(AllergyIntoleranceType, document.get("type")),
+        "category": _categories(document),
         "criticality": _enum(
             AllergyIntoleranceCriticality, document.get("criticality")
         ),
@@ -93,14 +95,18 @@ def _concept_rows(param: str, concept: dict | None) -> list:
     )
 
 
-def _code_row(param: str, code: str | None) -> list:
-    """A row for a plain `code` element (category, severity): the code with its
-    fixed FHIR system."""
-    return (
-        [AllergyIntoleranceToken(param=param, system=CODE_SYSTEMS[param], code=code)]
-        if code
-        else []
-    )
+_CATEGORIES = {m.value for m in AllergyIntoleranceCategory}
+
+
+def _categories(document: dict):
+    """AllergyIntolerance.category (0..*) as enum members; None when there is none (a code outside
+    the value set is dropped: the validator rejects it before we get here)."""
+    values = [
+        AllergyIntoleranceCategory(c)
+        for c in document.get("category") or []
+        if c in _CATEGORIES
+    ]
+    return values or None
 
 
 def _token_rows(document: dict) -> list:
@@ -108,14 +114,11 @@ def _token_rows(document: dict) -> list:
     rows += _concept_rows("clinical-status", document.get("clinicalStatus"))
     rows += _concept_rows("verification-status", document.get("verificationStatus"))
     rows += _concept_rows("code", document.get("code"))
-    for category in document.get("category") or []:
-        rows += _code_row("category", category)
     for reaction in document.get("reaction") or []:
         rows += _concept_rows("code", reaction.get("substance"))
         for manifestation in reaction.get("manifestation") or []:
             rows += _concept_rows("manifestation", manifestation)
         rows += _concept_rows("route", reaction.get("exposureRoute"))
-        rows += _code_row("severity", reaction.get("severity"))
     return rows
 
 
@@ -123,8 +126,13 @@ def _reaction_rows(document: dict) -> list:
     rows = []
     for reaction in document.get("reaction") or []:
         start, end = _instant_bounds(reaction.get("onset"))
-        if start or end:
-            rows.append(AllergyIntoleranceReaction(onset_start=start, onset_end=end))
+        severity = _enum(AllergyIntoleranceReactionSeverity, reaction.get("severity"))
+        if start or end or severity:
+            rows.append(
+                AllergyIntoleranceReaction(
+                    onset_start=start, onset_end=end, severity=severity
+                )
+            )
     return rows
 
 

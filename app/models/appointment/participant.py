@@ -1,7 +1,9 @@
-from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
+from sqlalchemy import BigInteger, Column, Enum, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
+
+from .enums import AppointmentParticipantStatus
 
 # The seven R4 targets of Appointment.participant.actor.
 ACTOR_TYPES = (
@@ -49,6 +51,15 @@ class AppointmentParticipant(Base):
     reference_id = Column(BigInteger, nullable=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)
-    status = Column(String, nullable=True)
+    # participant.status (1..1 code, required binding `participationstatus`): an Enum stored by
+    # value, so `needs-action` is the real FHIR code. NULL when the code is not one of the four.
+    status = Column(
+        Enum(
+            AppointmentParticipantStatus,
+            name="appointment_participant_status",
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=True,
+    )
 
     appointment = relationship("AppointmentModel", back_populates="participants")

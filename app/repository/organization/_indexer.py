@@ -34,7 +34,6 @@ from app.repository._content_index import (
 )
 from app.schemas.enums import AddressUse
 
-from ._shared import _parse_endpoint_ref, _parse_org_ref
 
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "types", "addresses", "endpoints")
@@ -54,9 +53,7 @@ def index_columns(document: dict) -> dict:
         "alias": aliases,
         "alias_norm": norms(aliases),
         "name_phonetic": phonetic_key(document.get("name")),
-        **reference_columns(
-            "partof", document.get("partOf"), "Organization", _parse_org_ref
-        ),
+        **reference_columns("partof", document.get("partOf"), "Organization"),
     }
 
 
@@ -98,6 +95,6 @@ def index_rows(document: dict) -> dict[str, list]:
         "endpoints": [
             r
             for e in document.get("endpoint") or []
-            if (r := endpoint_row(OrganizationEndpoint, e, _parse_endpoint_ref))
+            if (r := endpoint_row(OrganizationEndpoint, e))
         ],
     }

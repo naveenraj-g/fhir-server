@@ -1,8 +1,7 @@
-from sqlalchemy import BigInteger, Column, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.organization.enums import OrganizationEndpointReferenceType
 
 
 class OrganizationEndpoint(Base):
@@ -25,10 +24,7 @@ class OrganizationEndpoint(Base):
         BigInteger, ForeignKey("organization.id"), nullable=False, index=True
     )
     reference_reference = Column(String, nullable=True)
-    reference_type = Column(
-        Enum(OrganizationEndpointReferenceType, name="organization_endpoint_ref_type"),
-        nullable=True,
-    )
+    reference_type = Column(String, nullable=True)
     reference_id = Column(BigInteger, nullable=True, index=True)
     reference_identifier_system = Column(String, nullable=True)
     reference_identifier_value = Column(String, nullable=True)

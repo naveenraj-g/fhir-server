@@ -28,7 +28,6 @@ from app.repository._medication_request_revinclude import (
 from app.repository._service_request_revinclude import (
     column_service_request_revincludes,
     performer_service_request_revincludes,
-    specimen_service_request_revincludes,
 )
 from app.repository._clinical_impression_revinclude import column_impression_revincludes
 from app.repository._detected_issue_revinclude import column_issue_revincludes
@@ -60,7 +59,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.models.enums import OrganizationReferenceType, PractitionerReferenceType
 from app.models.practitioner_role import (
     PractitionerRoleIdentifier,
     PractitionerRoleModel,
@@ -605,7 +603,7 @@ def practitioner_role_search() -> SearchRegistry:
             "Organization/190001",
             "organization",
             "Organization",
-            OrganizationReferenceType,
+            str,
             _ORGANIZATION,
             _search_of("app.repository.organization.search", "organization_search"),
         ),
@@ -626,7 +624,7 @@ def practitioner_role_search() -> SearchRegistry:
             "Practitioner/30001",
             "practitioner",
             "Practitioner",
-            PractitionerReferenceType,
+            str,
             _PRACTITIONER,
             _search_of("app.repository.practitioner.search", "practitioner_search"),
         ),
