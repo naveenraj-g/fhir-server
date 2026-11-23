@@ -2,9 +2,10 @@ from enum import Enum
 
 
 class MedicationStatementStatus(str, Enum):
-    """FHIR MedicationStatement.status value set (code, required) --
+    """FHIR R4 MedicationStatement.status (1..1, required binding) -
     https://www.hl7.org/fhir/R4/valueset-medication-statement-status.html
-    """
+
+    Stored by value, so `entered-in-error`, `on-hold` and `not-taken` are the real FHIR codes."""
 
     active = "active"
     completed = "completed"
@@ -14,52 +15,3 @@ class MedicationStatementStatus(str, Enum):
     on_hold = "on-hold"
     unknown = "unknown"
     not_taken = "not-taken"
-
-
-class MedicationStatementSubjectReferenceType(str, Enum):
-    Patient = "Patient"
-    Group = "Group"
-
-
-class MedicationStatementMedicationReferenceType(str, Enum):
-    Medication = "Medication"
-
-
-class MedicationStatementBasedOnReferenceType(str, Enum):
-    MedicationRequest = "MedicationRequest"
-    CarePlan = "CarePlan"
-    ServiceRequest = "ServiceRequest"
-
-
-class MedicationStatementPartOfReferenceType(str, Enum):
-    MedicationAdministration = "MedicationAdministration"
-    MedicationDispense = "MedicationDispense"
-    MedicationStatement = "MedicationStatement"
-    Procedure = "Procedure"
-    Observation = "Observation"
-
-
-class MedicationStatementContextReferenceType(str, Enum):
-    Encounter = "Encounter"
-    EpisodeOfCare = "EpisodeOfCare"
-
-
-class MedicationStatementInformationSourceReferenceType(str, Enum):
-    Patient = "Patient"
-    Practitioner = "Practitioner"
-    PractitionerRole = "PractitionerRole"
-    RelatedPerson = "RelatedPerson"
-    Organization = "Organization"
-
-
-class MedicationStatementReasonReferenceType(str, Enum):
-    Condition = "Condition"
-    Observation = "Observation"
-    DiagnosticReport = "DiagnosticReport"
-
-
-class MedicationStatementNoteAuthorReferenceType(str, Enum):
-    Practitioner = "Practitioner"
-    Patient = "Patient"
-    RelatedPerson = "RelatedPerson"
-    Organization = "Organization"

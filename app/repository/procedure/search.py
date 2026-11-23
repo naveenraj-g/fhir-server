@@ -33,6 +33,7 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
+from app.repository._medication_statement_revinclude import reference_medication_statement_revincludes
 from app.repository._questionnaire_response_revinclude import (
     reference_questionnaire_response_revincludes,
 )
@@ -897,6 +898,9 @@ def procedure_search() -> SearchRegistry:
         # Encounter.diagnosis / .reasonReference and Appointment.reasonReference point here,
         # and a Procedure that is part of, or justified by, another one points back at it.
         revincludes=(
+            *reference_medication_statement_revincludes(
+                'part-of', 'Procedure', lambda x: x.procedure_id
+            ),
             *reference_questionnaire_response_revincludes(
                 "part-of", "Procedure", lambda x: x.procedure_id
             ),

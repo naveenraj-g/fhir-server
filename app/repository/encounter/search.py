@@ -20,6 +20,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
+from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -1038,6 +1039,9 @@ def encounter_search() -> SearchRegistry:
         ),
         # An Encounter that is part of another one points back at it.
         revincludes=(
+            *column_medication_statement_revincludes(
+                ('context',), 'context', 'Encounter', lambda x: x.encounter_id
+            ),
             *column_questionnaire_response_revincludes(
                 ("encounter",), "encounter", "Encounter", lambda x: x.encounter_id
             ),

@@ -75,6 +75,7 @@ SUPPORTING_INFO_TYPES = (
     "DocumentReference",
     "ServiceRequest",
     "MedicationRequest",
+    "MedicationStatement",
     "CarePlan",
     "AllergyIntolerance",
     "Immunization",
@@ -87,6 +88,13 @@ SUPPORTING_INFO_TYPES = (
 # model to join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "MedicationStatement": (
+        "app.models.medication_statement",
+        "MedicationStatementModel",
+        "medication_statement_id",
+        "app.repository.medication_statement.search",
+        "medication_statement_search",
+    ),
     "Questionnaire": (
         "app.models.questionnaire",
         "QuestionnaireModel",

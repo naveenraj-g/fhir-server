@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -734,6 +735,9 @@ def practitioner_role_search() -> SearchRegistry:
         ),
         # Schedule.actor points here (Appointment, ... will add theirs when rebuilt).
         revincludes=(
+            *column_medication_statement_revincludes(
+                ('source',), 'source', 'PractitionerRole', lambda x: x.practitioner_role_id
+            ),
             *column_questionnaire_response_revincludes(
                 ("author",),
                 "author",

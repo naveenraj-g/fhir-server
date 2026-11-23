@@ -68,6 +68,7 @@ REQUIRED_CODE_STORAGE = {
     ("MedicationRequest", "intent"): ("medication_request", "intent"),
     ("MedicationRequest", "priority"): ("medication_request", "priority"),
     ("MedicationRequest", "status"): ("medication_request", "status"),
+    ("MedicationStatement", "status"): ("medication_statement", "status"),
     ("Observation", "status"): ("observation", "status"),
     ("Organization", "address-use"): ("organization_address", "use"),
     ("Patient", "address-use"): ("patient_address", "use"),

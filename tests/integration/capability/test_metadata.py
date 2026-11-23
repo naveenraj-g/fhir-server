@@ -32,6 +32,7 @@ from app.repository.care_plan.search import care_plan_search
 from app.repository.care_team.search import care_team_search
 from app.repository.document_reference.search import document_reference_search
 from app.repository.episode_of_care.search import episode_of_care_search
+from app.repository.medication_statement.search import medication_statement_search
 from app.repository.questionnaire.search import questionnaire_search
 from app.repository.questionnaire_response.search import questionnaire_response_search
 from app.repository.group.search import group_search
@@ -76,6 +77,7 @@ async def test_search_params_match_registries(client):
         "care_team": ("CareTeam", care_team_search()),
         "document_reference": ("DocumentReference", document_reference_search()),
         "episode_of_care": ("EpisodeOfCare", episode_of_care_search()),
+        "medication_statement": ("MedicationStatement", medication_statement_search()),
         "questionnaire": ("Questionnaire", questionnaire_search()),
         "questionnaire_response": (
             "QuestionnaireResponse",

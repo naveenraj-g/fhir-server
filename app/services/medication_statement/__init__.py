@@ -1,8 +1,11 @@
+from app.core.logging import trace_methods
+
 from .core import _CoreMixin
 
-
-class MedicationStatementService(_CoreMixin):
-    """Business-logic service for FHIR R4 MedicationStatement."""
-
-
 __all__ = ["MedicationStatementService"]
+
+
+@trace_methods
+class MedicationStatementService(_CoreMixin):
+    """All MedicationStatement business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

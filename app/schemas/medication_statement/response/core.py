@@ -1,57 +1,32 @@
-from datetime import datetime
-from typing import Literal
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
     FHIRReference,
 )
-from app.schemas.datatypes.dosage import FHIRDosage
-from app.schemas.medication_statement.response.codeable_concept import (
-    PlainMedicationStatementCodeableConcept,
-)
-from app.schemas.medication_statement.response.dosage import (
-    PlainMedicationStatementDosage,
-)
-from app.schemas.medication_statement.response.identifier import (
-    PlainMedicationStatementIdentifier,
-)
-from app.schemas.medication_statement.response.note import (
-    PlainMedicationStatementNote,
-)
-from app.schemas.medication_statement.response.reason_code import (
-    PlainMedicationStatementReasonCode,
-)
-from app.schemas.medication_statement.response.reference import (
-    PlainMedicationStatementBasedOn,
-    PlainMedicationStatementContext,
-    PlainMedicationStatementDerivedFrom,
-    PlainMedicationStatementInformationSource,
-    PlainMedicationStatementMedicationReference,
-    PlainMedicationStatementPartOf,
-    PlainMedicationStatementReasonReference,
-    PlainMedicationStatementSubject,
-)
-from app.schemas.medication_statement.response.status_reason import (
-    PlainMedicationStatementStatusReason,
-)
 from app.schemas.datatypes.annotation import FHIRAnnotation
+from app.schemas.datatypes.dosage import FHIRDosage
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
 class FHIRMedicationStatementSchema(BaseModel):
-    """FHIR R4 MedicationStatement resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["MedicationStatement"] = "MedicationStatement"
-    id: str = Field(..., description="Logical id of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
+    resourceType: str = Field(
+        "MedicationStatement", description="Always 'MedicationStatement'."
+    )
+    id: str = Field(..., description="Public medication_statement_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
     extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="External identifier."
@@ -62,115 +37,74 @@ class FHIRMedicationStatementSchema(BaseModel):
     partOf: list[FHIRReference] | None = Field(
         None, description="Part of referenced event."
     )
-    status: str = Field(
-        ...,
+    status: str | None = Field(
+        None,
         description="active | completed | entered-in-error | intended | stopped | on-hold | unknown | not-taken.",
     )
     statusReason: list[FHIRCodeableConcept] | None = Field(
         None, description="Reason for current status."
     )
     category: FHIRCodeableConcept | None = Field(
-        None, description="Type of medication statement."
+        None, description="Type of medication usage."
     )
     medicationCodeableConcept: FHIRCodeableConcept | None = Field(
-        None, description="What medication was taken."
+        None, description="What medication was taken (a CodeableConcept)."
     )
     medicationReference: FHIRReference | None = Field(
-        None, description="What medication was taken."
+        None, description="What medication was taken (a Reference(Medication))."
     )
-    subject: FHIRReference = Field(..., description="Who is/was taking the medication.")
+    subject: FHIRReference | None = Field(
+        None, description="Who is/was taking the medication."
+    )
     context: FHIRReference | None = Field(
         None, description="Encounter / Episode associated with MedicationStatement."
     )
     effectiveDateTime: str | None = Field(
-        None,
-        description="The date/time or interval when the medication is/was/will be taken.",
+        None, description="When the medication is/was/will be taken (a dateTime)."
     )
     effectivePeriod: FHIRPeriod | None = Field(
-        None,
-        description="The date/time or interval when the medication is/was/will be taken.",
+        None, description="The interval when the medication is/was/will be taken."
     )
     dateAsserted: str | None = Field(
-        None, description="When the statement was asserted/recorded."
+        None, description="When the statement was asserted."
     )
     informationSource: FHIRReference | None = Field(
-        None,
-        description="Person or organization that provided information about the medication.",
+        None, description="Person or organization that provided the information."
     )
     derivedFrom: list[FHIRReference] | None = Field(
         None, description="Additional supporting information."
     )
     reasonCode: list[FHIRCodeableConcept] | None = Field(
-        None, description="Reason for medication administration."
+        None, description="Reason for why the medication is being/was taken."
     )
     reasonReference: list[FHIRReference] | None = Field(
-        None,
-        description="Condition or observation that supports why the medication is being/was taken.",
+        None, description="Condition or observation that supports the use."
     )
     note: list[FHIRAnnotation] | None = Field(
         None, description="Further information about the statement."
     )
     dosage: list[FHIRDosage] | None = Field(
-        None, description="Details of how medication is/was taken or should be taken."
+        None, description="Details of how the medication is/was taken."
     )
-
-
-class PlainMedicationStatementResponse(BaseModel):
-    """Plain (snake_case) MedicationStatement response schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(
-        ..., description="Internal row ID (public medication_statement_id)."
-    )
-    extension: list[dict] | None = None
-    identifier: list[PlainMedicationStatementIdentifier] | None = None
-    based_on: list[PlainMedicationStatementBasedOn] | None = None
-    part_of: list[PlainMedicationStatementPartOf] | None = None
-    status: str
-    status_reason: list[PlainMedicationStatementStatusReason] | None = None
-    category: PlainMedicationStatementCodeableConcept | None = None
-    medication_codeable_concept: PlainMedicationStatementCodeableConcept | None = None
-    medication_reference: PlainMedicationStatementMedicationReference | None = None
-    subject: PlainMedicationStatementSubject
-    context: PlainMedicationStatementContext | None = None
-    effective_date_time: datetime | None = None
-    effective_period_start: datetime | None = None
-    effective_period_end: datetime | None = None
-    date_asserted: datetime | None = None
-    information_source: PlainMedicationStatementInformationSource | None = None
-    derived_from: list[PlainMedicationStatementDerivedFrom] | None = None
-    reason_code: list[PlainMedicationStatementReasonCode] | None = None
-    reason_reference: list[PlainMedicationStatementReasonReference] | None = None
-    note: list[PlainMedicationStatementNote] | None = None
-    dosage: list[PlainMedicationStatementDosage] | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-
-
-class PaginatedMedicationStatementResponse(BaseModel):
-    """Paginated plain (snake_case) response envelope."""
-
-    model_config = ConfigDict(extra="allow")
-
-    total: int
-    limit: int
-    offset: int
-    data: list[PlainMedicationStatementResponse]
 
 
 class FHIRMedicationStatementBundleEntry(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    resource: FHIRMedicationStatementSchema
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRMedicationStatementSchema | dict = Field(
+        ...,
+        description="A MedicationStatement (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Group / Encounter / EpisodeOfCare / Practitioner / PractitionerRole / RelatedPerson / Organization / Medication / Observation / Procedure / MedicationStatement (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
-class FHIRMedicationStatementBundle(BaseModel):
-    """FHIR R4 Bundle searchset response envelope."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: str = "Bundle"
-    type: str = "searchset"
-    total: int
-    link: list[dict] | None = None
+class FHIRMedicationStatementBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
     entry: list[FHIRMedicationStatementBundleEntry] | None = None

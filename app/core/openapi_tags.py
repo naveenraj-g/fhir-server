@@ -372,6 +372,14 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "MedicationStatements",
+        "description": (
+            "FHIR R4 MedicationStatement resources - records of a medication that is being consumed, has been "
+            "consumed, or may be taken by a patient. Searchable by status, medication code, subject, context, "
+            "effective date and more."
+        ),
+    },
+    {
         "name": "MedicationAdministrations",
         "description": (
             "FHIR R4 MedicationAdministration resources — event of a patient consuming or being administered a medication."

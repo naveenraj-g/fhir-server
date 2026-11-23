@@ -41,6 +41,7 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._medication_statement_revinclude import reference_medication_statement_revincludes
 from app.repository._questionnaire_response_revinclude import (
     reference_questionnaire_response_revincludes,
 )
@@ -1181,6 +1182,9 @@ def observation_search() -> SearchRegistry:
         ),
         # Observation:has-member / :derived-from — the observations that group / derive from these.
         revincludes=(
+            *reference_medication_statement_revincludes(
+                'part-of', 'Observation', lambda x: x.observation_id
+            ),
             *reference_questionnaire_response_revincludes(
                 "part-of", "Observation", lambda x: x.observation_id
             ),
