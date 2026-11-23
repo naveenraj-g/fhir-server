@@ -46,6 +46,7 @@ INFORMATION_TYPES = (
     "AllergyIntolerance",
     "Immunization",
     "FamilyMemberHistory",
+    "Questionnaire",
     "QuestionnaireResponse",
     "RiskAssessment",
     "ClinicalImpression",

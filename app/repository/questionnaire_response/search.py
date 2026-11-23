@@ -53,6 +53,13 @@ _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "Questionnaire": (
+        "app.models.questionnaire",
+        "QuestionnaireModel",
+        "questionnaire_id",
+        "app.repository.questionnaire.search",
+        "questionnaire_search",
+    ),
     "DocumentReference": (
         "app.models.document_reference",
         "DocumentReferenceModel",
@@ -430,6 +437,42 @@ def _reference_param(param: str):
     return match, present, chain, sort
 
 
+def _canonical_matches(row_model, ref):
+    """Condition: the questionnaire reference `ref` (a reference-table row) resolves to the
+    Questionnaire row `row_model` - by a relative `Questionnaire/<id>`, by an equal canonical URL
+    or by `url|version` (the stored canonical starts with the Questionnaire's own url + `|`)."""
+    return or_(
+        and_(
+            ref.reference_type == "Questionnaire",
+            ref.reference_id == row_model.questionnaire_id,
+        ),
+        and_(row_model.url.is_not(None), ref.reference_reference == row_model.url),
+        and_(
+            row_model.url.is_not(None),
+            func.substr(ref.reference_reference, 1, func.length(row_model.url) + 1)
+            == row_model.url.concat("|"),
+        ),
+    )
+
+
+def _questionnaire_chain(target, inner, ctx):
+    """`questionnaire.title=...`: a response whose canonical resolves to a Questionnaire in the
+    same tenant that matches `inner`. The canonical string is resolved against the Questionnaire's
+    own `url` (an unversioned or versioned canonical) or its public id."""
+    model, _id = _model("Questionnaire")
+    return _exists(
+        _R,
+        _R.param == "questionnaire",
+        exists(
+            select(literal(1))
+            .where(
+                model.tenant_id == ctx.tenant_id, _canonical_matches(model, _R), inner
+            )
+            .correlate(_R)
+        ),
+    )
+
+
 def _questionnaire_param():
     """`questionnaire` searches the canonical URL of the Questionnaire (optionally versioned,
     `url|1.0`). A search value matches a stored canonical equal to it; an unversioned absolute URL
@@ -514,6 +557,68 @@ def _include_reference(param: str, resource_type: str):
             ctx,
             resource_type,
             set((await session.execute(ids)).scalars().all()),
+        )
+
+    return fetch
+
+
+async def _include_questionnaire(session, ctx, responses):
+    """_include=QuestionnaireResponse:questionnaire - the Questionnaires these responses' canonical
+    URLs (or relative `Questionnaire/<id>` references) resolve to. An unversioned canonical brings
+    in every stored version of that url."""
+    model, _id = _model("Questionnaire")
+    rows = (
+        await session.execute(
+            select(_R.reference_reference, _R.reference_type, _R.reference_id).where(
+                _R.questionnaire_response_pk.in_({r.id for r in responses}),
+                _R.param == "questionnaire",
+            )
+        )
+    ).all()
+    urls, ids = set(), set()
+    for reference, rtype, rid in rows:
+        if rtype == "Questionnaire" and rid:
+            ids.add(rid)
+        elif reference:
+            urls.add(reference.split("|", 1)[0])
+    conditions = []
+    if ids:
+        conditions.append(model.questionnaire_id.in_(ids))
+    if urls:
+        conditions.append(model.url.in_(urls))
+    if not conditions:
+        return []
+    return await _fetch(
+        session, select(model).where(model.tenant_id == ctx.tenant_id, or_(*conditions))
+    )
+
+
+def revinclude_responses_via_questionnaire(key_url, key_id):
+    """_revinclude=QuestionnaireResponse:questionnaire - the responses whose canonical resolves to
+    one of these Questionnaires (matched on url / `url|version` / the public id). Declared on the
+    Questionnaire registry."""
+
+    async def fetch(session, ctx, rows):
+        conditions = []
+        for row in rows:
+            url = key_url(row)
+            conditions.append(
+                and_(
+                    _R.reference_type == "Questionnaire", _R.reference_id == key_id(row)
+                )
+            )
+            if url:
+                conditions.append(_R.reference_reference == url)
+                conditions.append(
+                    _R.reference_reference.like(like_escape(url) + "|%", escape="\\")
+                )
+        if not conditions:
+            return []
+        pks = select(_R.questionnaire_response_pk).where(
+            _R.param == "questionnaire", or_(*conditions)
+        )
+        return await _fetch(
+            session, select(M).where(M.tenant_id == ctx.tenant_id, M.id.in_(pks))
         )
 
     return fetch
@@ -722,6 +827,8 @@ def questionnaire_response_search() -> SearchRegistry:
             questionnaire_present,
             frozenset({"missing"}),
             targets=REFERENCE_TYPES["questionnaire"],
+            chain=_questionnaire_chain,
+            chain_targets={"Questionnaire": _registry_of("Questionnaire")},
             sort=questionnaire_sort,
             example="https://fhir-server.dev/fhir/Questionnaire/phq-9",
             modifier_docs={
@@ -807,6 +914,12 @@ def questionnaire_response_search() -> SearchRegistry:
             *column_includes("encounter", "encounter", ENCOUNTER_TYPES),
             *column_includes("author", "author", AUTHOR_TYPES),
             *column_includes("source", "source", SOURCE_TYPES),
+            IncludeTarget(
+                "QuestionnaireResponse",
+                "questionnaire",
+                "Questionnaire",
+                _include_questionnaire,
+            ),
             *table_includes("based-on"),
             *table_includes("part-of"),
         ),

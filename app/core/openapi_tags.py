@@ -343,6 +343,14 @@ OPENAPI_TAGS: list[dict] = [
     },
     # ── Forms ─────────────────────────────────────────────────────────────────
     {
+        "name": "Questionnaires",
+        "description": (
+            "FHIR R4 Questionnaire resources - structured sets of questions that guide the collection of "
+            "answers. The whole resource, including the nested item tree, is stored as sent; searchable by "
+            "url, name, title, status, version, date, effective period, jurisdiction, use context and more."
+        ),
+    },
+    {
         "name": "QuestionnaireResponses",
         "description": (
             "FHIR R4 QuestionnaireResponse resources — structured sets of answers to a Questionnaire. "

@@ -255,7 +255,7 @@ routes:
     - practitioner
     - practitioner_role
     - procedure
-    # - questionnaire
+    - questionnaire
     - questionnaire_response
     - related_person
     - risk_assessment

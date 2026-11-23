@@ -36,6 +36,7 @@ INFORMATION_TYPES = (
     "AllergyIntolerance",
     "Immunization",
     "FamilyMemberHistory",
+    "Questionnaire",
     "QuestionnaireResponse",
 )
 REFERENCE_TYPES = {"support": SUPPORT_TYPES, "information": INFORMATION_TYPES}

@@ -409,9 +409,9 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"status.x": "y"}) == 400
     )  # a token cannot be chained
     assert await _status(client, **{"authored.x": "y"}) == 400
-    assert (
-        await _status(client, **{"questionnaire.title": "x"}) == 400
-    )  # not a resource here
+    # `questionnaire` chains into Questionnaire (now a resource here), but not into another type
+    assert await _status(client, **{"questionnaire.title": "x"}) == 200
+    assert await _status(client, **{"questionnaire:Patient.family": "x"}) == 400
 
 
 # -- _sort / _count / _offset / _total ------------------------------------------------------

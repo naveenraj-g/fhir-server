@@ -75,6 +75,8 @@ REQUIRED_CODE_STORAGE = {
     ("Practitioner", "address-use"): ("practitioner_address", "use"),
     ("Practitioner", "gender"): ("practitioner", "gender"),
     ("Procedure", "status"): ("procedure", "status"),
+    ("Questionnaire", "status"): ("questionnaire", "status"),
+    ("Questionnaire", "subject-type"): ("questionnaire", "subject_type"),
     ("QuestionnaireResponse", "status"): ("questionnaire_response", "status"),
     ("RelatedPerson", "address-use"): ("related_person_address", "use"),
     ("RelatedPerson", "gender"): ("related_person", "gender"),

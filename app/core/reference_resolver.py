@@ -62,6 +62,7 @@ from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
 from app.models.diagnostic_report import DiagnosticReportModel
 from app.models.procedure import ProcedureModel
+from app.models.questionnaire import QuestionnaireModel
 from app.models.questionnaire_response import QuestionnaireResponseModel
 from app.models.related_person import RelatedPersonModel
 from app.models.risk_assessment import RiskAssessmentModel
@@ -125,6 +126,8 @@ RESOURCE_REGISTRY: dict[str, tuple[type, str]] = {
     # Registered so Observation.hasMember/.derivedFrom's QuestionnaireResponse
     # subset works.
     "QuestionnaireResponse": (QuestionnaireResponseModel, "questionnaire_response_id"),
+    # A relative Questionnaire/<id> in any Reference (Reference(Any) elements) is existence-checked.
+    "Questionnaire": (QuestionnaireModel, "questionnaire_id"),
     # Observation.hasMember/.derivedFrom are self-referential — this entry is
     # what makes that existence check work at all.
     "Observation": (ObservationModel, "observation_id"),

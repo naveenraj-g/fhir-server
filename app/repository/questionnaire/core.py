@@ -1,215 +1,91 @@
-from sqlalchemy import delete as sa_delete, func
 from sqlalchemy.future import select
 
-from app.core.filters import (
-    apply_child_exists_filter,
-    apply_string_filter,
-    apply_token_filter,
-)
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.questionnaire import (
-    QuestionnaireIdentifier,
-    QuestionnaireItem,
-    QuestionnaireItemAnswerOption,
-    QuestionnaireItemCoding,
-    QuestionnaireItemEnableWhen,
-    QuestionnaireItemInitial,
-    QuestionnaireModel,
-    QuestionnaireStatus,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.questionnaire import QuestionnaireModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import questionnaire_search
 
 logger = get_logger(__name__)
 
+_M = QuestionnaireModel
+
 
 class _CoreMixin:
-    """Core CRUD for the Questionnaire parent row (no sub-resources)."""
+    """Reads, search and delete. Every read loads only the questionnaire
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_questionnaire_id(
-        self, questionnaire_id: int
-    ) -> QuestionnaireModel | None:
+    async def get_by_questionnaire_id(self, questionnaire_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(QuestionnaireModel).where(
-                    QuestionnaireModel.questionnaire_id == questionnaire_id
-                )
-            )
+            stmt = select(_M).where(_M.questionnaire_id == questionnaire_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_questionnaire_id_in_org(
         self, questionnaire_id: int, org_id: str
-    ) -> QuestionnaireModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the questionnaire exists AND belongs to org_id."""
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the questionnaire
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(QuestionnaireModel).where(
-                    QuestionnaireModel.questionnaire_id == questionnaire_id,
-                    QuestionnaireModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.questionnaire_id == questionnaire_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalars().first()
 
     async def questionnaire_belongs_to_org(
         self, questionnaire_id: int, org_id: str
     ) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the questionnaire exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(QuestionnaireModel.id).where(
-                QuestionnaireModel.questionnaire_id == questionnaire_id,
-                QuestionnaireModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.questionnaire_id == questionnaire_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id=None,
-        status: QuestionnaireStatus | None = None,
-        url: str | None = None,
-        name: str | None = None,
-        title: str | None = None,
-        publisher: str | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(QuestionnaireModel.tenant_id == org_id)
-        stmt = apply_token_filter(stmt, QuestionnaireModel.status, status)
-        stmt = apply_string_filter(stmt, QuestionnaireModel.url, url, exact=True)
-        stmt = apply_string_filter(stmt, QuestionnaireModel.name, name)
-        stmt = apply_string_filter(stmt, QuestionnaireModel.title, title)
-        stmt = apply_string_filter(stmt, QuestionnaireModel.publisher, publisher)
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(QuestionnaireIdentifier.id).where(
-                    QuestionnaireIdentifier.questionnaire_pk == QuestionnaireModel.id,
-                    QuestionnaireIdentifier.value == identifier,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str | None = None,
-        status: QuestionnaireStatus | None = None,
-        url: str | None = None,
-        name: str | None = None,
-        title: str | None = None,
-        publisher: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[QuestionnaireModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "status": status,
-                "url": url,
-                "name": name,
-                "title": title,
-                "publisher": publisher,
-                "identifier": identifier,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(QuestionnaireModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(QuestionnaireModel), **filter_kwargs
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=QuestionnaireModel.questionnaire_id,
-                default_desc=True,
-            )
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=questionnaire_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.questionnaire_id,
             )
         logger.debug(
-            "Questionnaires listed",
+            "Questionnaires searched",
             extra={
-                "event": "questionnaire.listed",
+                "event": "questionnaire.searched",
                 "returned": len(rows),
+                "included": len(included),
                 "total": total,
-                "limit": limit,
-                "offset": offset,
-                "filters": sorted(k for k, v in filter_kwargs.items() if v is not None),
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
             },
         )
-        return rows, total
+        return rows, total, included
+
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, questionnaire_id: int) -> bool:
-        """`item` is self-referential (parent_item_id, see QuestionnaireModel's
-        docstring) with deliberately NO ORM-level parent/children
-        `relationship()` declared for it — which means SQLAlchemy's unit-of-
-        work has no row-level dependency information for that table and
-        cannot order a cascade delete-orphan's per-row DELETEs correctly
-        within it, raising `ForeignKeyViolationError` the moment a parent
-        item is deleted before a child item that still points at it
-        (confirmed live: `session.delete(q)` alone 500s for any
-        questionnaire with a nested item tree more than one level deep).
-        Pre-delete the whole item/grandchild subtree via the same Core-level
-        bulk statements patch_full() uses (one `DELETE ... WHERE
-        questionnaire_pk = :id` per table — no self-referential ordering
-        concern at all, since every row in `questionnaire_item` already
-        carries `questionnaire_pk` denormalized straight to this row) before
-        letting the ORM cascade handle every other (non-recursive, two-level
-        child/grandchild) sub-resource normally."""
         async with self.session_factory() as session:
-            stmt = select(QuestionnaireModel).where(
-                QuestionnaireModel.questionnaire_id == questionnaire_id
-            )
-            q = (await session.execute(stmt)).scalars().first()
-            if not q:
+            stmt = select(_M).where(_M.questionnaire_id == questionnaire_id)
+            questionnaire = (await session.execute(stmt)).scalars().first()
+            if not questionnaire:
                 return False
             try:
-                item_ids_subq = select(QuestionnaireItem.id).where(
-                    QuestionnaireItem.questionnaire_pk == q.id
-                )
-                await session.execute(
-                    sa_delete(QuestionnaireItemCoding).where(
-                        QuestionnaireItemCoding.questionnaire_item_id.in_(item_ids_subq)
-                    )
-                )
-                await session.execute(
-                    sa_delete(QuestionnaireItemEnableWhen).where(
-                        QuestionnaireItemEnableWhen.questionnaire_item_id.in_(
-                            item_ids_subq
-                        )
-                    )
-                )
-                await session.execute(
-                    sa_delete(QuestionnaireItemAnswerOption).where(
-                        QuestionnaireItemAnswerOption.questionnaire_item_id.in_(
-                            item_ids_subq
-                        )
-                    )
-                )
-                await session.execute(
-                    sa_delete(QuestionnaireItemInitial).where(
-                        QuestionnaireItemInitial.questionnaire_item_id.in_(
-                            item_ids_subq
-                        )
-                    )
-                )
-                await session.execute(
-                    sa_delete(QuestionnaireItem).where(
-                        QuestionnaireItem.questionnaire_pk == q.id
-                    )
-                )
-
-                await session.delete(q)
+                await session.delete(questionnaire)
                 await session.commit()
                 return True
             except Exception:

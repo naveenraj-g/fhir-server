@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.datatypes import FHIRCodeableConcept, PlainCodingRow
-from app.schemas.questionnaire.response import FHIRRange
+from app.schemas.datatypes import FHIRRange
 
 
 class FHIRQualifiedInterval(BaseModel):

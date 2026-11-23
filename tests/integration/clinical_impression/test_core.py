@@ -388,13 +388,13 @@ async def test_create_supporting_info_is_checked_for_resources_here(client, pati
             {"reference": f"Condition/{condition}"},
             {"reference": f"Patient/{patient}"},
             {"reference": "Observation/160005"},
-            {"reference": "Questionnaire/999999"},
+            {"reference": "Goal/999999"},
         ],
     )
     assert (
         await client.post(BASE + "/", json=ok)
     ).status_code == 201  # not rebuilt: stored as sent
-    for missing in ("Condition/999999", "Patient/999999"):
+    for missing in ("Condition/999999", "Patient/999999", "Questionnaire/999999"):
         resp = await client.post(
             BASE + "/",
             json=impression_body(patient, supportingInfo=[{"reference": missing}]),

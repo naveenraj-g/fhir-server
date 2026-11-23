@@ -1,81 +1,73 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    Date,
-    DateTime,
-    Enum,
-    Sequence,
-    String,
-    Text,
-    text,
-)
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.questionnaire.enums import QuestionnaireStatus
 from app.models.shared import TenantAuditMixin
+
+from .enums import QuestionnaireStatus, QuestionnaireSubjectType
 
 questionnaire_id_seq = Sequence(
     "questionnaire_pub_seq", start=380000, increment=1, metadata=Base.metadata
 )
 
 
-# ---------------------------------------------------------------------------
-# Main table
-# ---------------------------------------------------------------------------
-
-
 class QuestionnaireModel(TenantAuditMixin, Base):
-    """FHIR R4 Questionnaire — https://www.hl7.org/fhir/R4/questionnaire.html
+    """FHIR R4 Questionnaire - stored whole in `content`, like QuestionnaireResponse, CareTeam,
+    CarePlan and the other content-based resources.
 
-    A structured set of questions intended to guide the collection of
-    answers from end-users. Questionnaire is a *canonical*/metadata
-    resource (the first one built in this codebase) — it carries the
-    common `url`/`version`/`name`/`title`/`status`/`contact`/`useContext`/
-    `jurisdiction`/`purpose`/`copyright`/`approvalDate`/`lastReviewDate`
-    fields shared by every HL7 "definitional" resource (ValueSet,
-    StructureDefinition, PlanDefinition, ...), none of which existed in
-    this codebase before.
+    `content` (JSONB) holds the whole resource exactly as validated on write; it is the single
+    source of truth, and GET serves it back as-is (`id`/`meta` are stamped on at read time from
+    this row's own columns - see app.fhir.mappers.questionnaire). Nothing else in this table or
+    its child tables is a second copy of the resource: every other column exists only because a
+    FHIR R4 Questionnaire search parameter filters on it
+    (https://www.hl7.org/fhir/R4/questionnaire.html#search), and is derived from `content` on
+    every write by app.repository.questionnaire._indexer.
 
-    Modeled to the same conventions as every other reworked resource:
-    BigInteger internal PK + public sequence ID, TenantAuditMixin
-    (tenant_id, not a hand-declared org_id), every CodeableConcept's
-    coding[] as a real 0..* child/grandchild table.
+    Search parameter -> storage:
+      url                   -> url (0..1 uri, column; exact, `:below` / `:above`)
+      version               -> version (0..1 string read as a token: the code only, exact)
+      name, title,
+      description,
+      publisher             -> name/name_norm, title/title_norm, description/description_norm,
+                               publisher/publisher_norm (0..1 strings, columns; each stored as
+                               written and normalized)
+      status                -> status (Enum column, required binding)
+      subject-type          -> subject_type (0..* code, required binding: an array of the Enum
+                               `questionnaire_subject_type`, stored by value)
+      date                  -> date_start/_end (0..1 dateTime, the half-open range it covers at
+                               its written precision)
+      effective             -> effective_start/_end (0..1 Period, half-open range; NULL = open)
+      identifier            -> QuestionnaireIdentifier (one row per identifier x type coding)
+      jurisdiction, code,
+      context-type, context -> QuestionnaireToken (one row per coding, told apart by `param`;
+                               `code` reads item.code at every depth; `context-type` / `context`
+                               carry the useContext's slot)
+      definition            -> QuestionnaireDefinition (one row per item.definition at every
+                               depth)
+      context-quantity      -> QuestionnaireContextQuantity (one row per useContext whose value
+                               is a Quantity or a Range)
+      context-type-value,
+      context-type-quantity -> composites over the useContext rows above (same slot)
+      _id                   -> questionnaire_id;  _lastUpdated -> updated_at/created_at
 
-    Questionnaire now gets the JWT-auth-rollout treatment (see CLAUDE.md's
-    Multi-Tenancy & Ownership section and `/resource-auth-rollout`):
-    `tenant_id`/`created_by`/`updated_by` are derived from the verified
-    JWT (`actor.org_id`/`actor.sub`), never request-body fields, and there
-    is no org-less/super-admin bypass. Like Practitioner (and unlike
-    Organization/Location/HealthcareService/PractitionerRole/Schedule/
-    Slot/Appointment/AppointmentResponse/Encounter), Questionnaire keeps a
-    plain `user_id` column — a questionnaire definition isn't inherently a
-    shared tenant-level-only entity the way those nine are.
+    The item tree (`item`, `enableWhen`, `answerOption`, `initial`, ...) is not indexed except for
+    `item.code` and `item.definition`; `contact`, `derivedFrom`, `purpose`, `copyright`,
+    `approvalDate`, `lastReviewDate`, `experimental`, `extension` live only in `content`.
 
-    `item` (0..*, recursive — a question/group can itself contain nested
-    items to unbounded depth) is NOT modeled as a chain of selectinload()
-    hops (impossible — the nesting depth isn't known ahead of time).
-    Instead every QuestionnaireItem row, at every depth, carries BOTH a
-    `parent_item_id` self-referential FK (NULL for a top-level item) AND a
-    denormalized `questionnaire_pk` FK straight back to this table. One
-    eager-loaded, flat `items` relationship (below) therefore fetches every
-    item in the whole tree in a single query; the mapper reconstructs the
-    nested FHIR `item[]` shape in Python by grouping the flat list on
-    `parent_item_id`. The denormalized `questionnaire_pk` also makes
-    patch_full()'s list-replace a single `DELETE ... WHERE questionnaire_pk
-    = :id` regardless of how deep the old tree was — see
-    app/repository/questionnaire/full.py.
-    """
+    All index columns are nullable. No `user_id`: a Questionnaire is a shared tenant-level entity.
+    No DB-level CHECK constraints (R4 rules - e.g. que-1..que-13 - are the validator's)."""
 
     __tablename__ = "questionnaire"
+    __table_args__ = (
+        Index("ix_questionnaire_date", "date_start", "date_end"),
+        Index("ix_questionnaire_effective", "effective_start", "effective_end"),
+        Index("ix_questionnaire_name_norm", "name_norm"),
+        Index("ix_questionnaire_title_norm", "title_norm"),
+        Index("ix_questionnaire_url", "url"),
+    )
 
-    # Internal PK — never exposed. BigInteger so every child table's FK shares
-    # the type.
     id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
-
-    # Public ID — used in all API responses and FHIR output
     questionnaire_id = Column(
         BigInteger,
         questionnaire_id_seq,
@@ -85,107 +77,64 @@ class QuestionnaireModel(TenantAuditMixin, Base):
         nullable=False,
     )
 
-    # Plain, gateway-forwarded user_id — unlike tenant_id/created_by/
-    # updated_by (TenantAuditMixin), this one is NOT derived from the JWT.
-    # Same shape as Practitioner's own user_id.
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
-    # ── url (0..1 uri) ─────────────────────────────────────────────────────
-    url = Column(String, nullable=True)
-
-    # ── version (0..1 string) ─────────────────────────────────────────────
-    version = Column(String, nullable=True)
-
-    # ── name (0..1 string) ────────────────────────────────────────────────
-    name = Column(String, nullable=True)
-
-    # ── title (0..1 string) ───────────────────────────────────────────────
-    title = Column(String, nullable=True)
-
-    # ── derivedFrom (0..* canonical(Questionnaire)) ───────────────────────
-    # Plain canonical-URI strings, not a flattened Reference — a canonical
-    # reference is just a uri/version string, never resolved to a public
-    # id the way a Reference(ResourceType) is. Real Postgres ARRAY(String),
-    # not comma-text — see CLAUDE.md's FHIR DB Model Design Step 2.
-    derived_from = Column(ARRAY(String), nullable=True)
-
-    # ── status (1..1 code) — required ─────────────────────────────────────
+    # -- Search index (derived from `content`) --
     status = Column(
-        Enum(QuestionnaireStatus, name="questionnaire_status"), nullable=False
+        Enum(
+            QuestionnaireStatus,
+            name="questionnaire_status",
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=True,
+        index=True,
     )
-
-    # ── experimental (0..1 boolean) ───────────────────────────────────────
-    experimental = Column(Boolean, nullable=True)
-
-    # ── subjectType (0..* code) ───────────────────────────────────────────
-    # Bound to the (huge, ever-growing) ResourceType value set — ARRAY(String)
-    # rather than an Enum with hundreds of members, same reasoning as
-    # Location.type staying open-coded where the bound value set is large.
-    subject_type = Column(ARRAY(String), nullable=True)
-
-    # ── date (0..1 dateTime) ──────────────────────────────────────────────
-    date = Column(DateTime(timezone=True), nullable=True)
-
-    # ── publisher (0..1 string) ───────────────────────────────────────────
-    publisher = Column(String, nullable=True)
-
-    # ── description (0..1 markdown) ───────────────────────────────────────
+    # subjectType (0..* code, required binding to the R4 resource types): an array of the Enum.
+    subject_type = Column(
+        ARRAY(
+            Enum(
+                QuestionnaireSubjectType,
+                name="questionnaire_subject_type",
+                values_callable=lambda enum_cls: [m.value for m in enum_cls],
+            )
+        ),
+        nullable=True,
+    )
+    url = Column(String, nullable=True)
+    version = Column(String, nullable=True)
+    name = Column(String, nullable=True)
+    name_norm = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+    title_norm = Column(String, nullable=True)
     description = Column(Text, nullable=True)
+    description_norm = Column(Text, nullable=True)
+    publisher = Column(String, nullable=True)
+    publisher_norm = Column(String, nullable=True)
 
-    # ── purpose (0..1 markdown) ───────────────────────────────────────────
-    purpose = Column(Text, nullable=True)
-
-    # ── copyright (0..1 markdown) ─────────────────────────────────────────
-    copyright = Column(Text, nullable=True)
-
-    # ── approvalDate (0..1 date) ──────────────────────────────────────────
-    approval_date = Column(Date, nullable=True)
-
-    # ── lastReviewDate (0..1 date) ────────────────────────────────────────
-    last_review_date = Column(Date, nullable=True)
-
-    # ── effectivePeriod (0..1 Period) ─────────────────────────────────────
-    effective_period_start = Column(DateTime(timezone=True), nullable=True)
-    effective_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # Resource-level extension support (0..* Extension, inherited from the
-    # base DomainResource type — not Questionnaire-specific). Same shape as
-    # every other resource's extension column.
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Audit columns (tenant_id/created_by/updated_by/created_at/updated_at)
-    # come from TenantAuditMixin above.
-
-    # ── Relationships ─────────────────────────────────────────────────────
+    # date (0..1 dateTime) and effectivePeriod: half-open [start, end) ranges.
+    date_start = Column(DateTime(timezone=True), nullable=True)
+    date_end = Column(DateTime(timezone=True), nullable=True)
+    effective_start = Column(DateTime(timezone=True), nullable=True)
+    effective_end = Column(DateTime(timezone=True), nullable=True)
 
     identifiers = relationship(
         "QuestionnaireIdentifier",
         back_populates="questionnaire",
         cascade="all, delete-orphan",
     )
-    contacts = relationship(
-        "QuestionnaireContact",
+    tokens = relationship(
+        "QuestionnaireToken",
         back_populates="questionnaire",
         cascade="all, delete-orphan",
     )
-    use_contexts = relationship(
-        "QuestionnaireUseContext",
+    definitions = relationship(
+        "QuestionnaireDefinition",
         back_populates="questionnaire",
         cascade="all, delete-orphan",
     )
-    jurisdictions = relationship(
-        "QuestionnaireJurisdiction",
-        back_populates="questionnaire",
-        cascade="all, delete-orphan",
-    )
-    codings = relationship(
-        "QuestionnaireCoding",
-        back_populates="questionnaire",
-        cascade="all, delete-orphan",
-    )
-    # Flat collection of EVERY item row for this questionnaire, at every
-    # nesting depth (see class docstring) — not just top-level items.
-    items = relationship(
-        "QuestionnaireItem",
+    context_quantities = relationship(
+        "QuestionnaireContextQuantity",
         back_populates="questionnaire",
         cascade="all, delete-orphan",
     )

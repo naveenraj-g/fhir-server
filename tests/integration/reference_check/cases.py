@@ -100,6 +100,7 @@ CASES = {
     "Practitioner": (f"{API}/practitioners", _fixed(PRACTITIONER)),
     "PractitionerRole": (f"{API}/practitioner-roles", _fixed(PRACTITIONER_ROLE)),
     "Procedure": (f"{API}/procedures", _fixed(procedure_body)),
+    "Questionnaire": (f"{API}/questionnaires", _fixed({"status": "draft"})),
     "QuestionnaireResponse": (
         f"{API}/questionnaire-responses",
         _fixed(questionnaire_response_body),

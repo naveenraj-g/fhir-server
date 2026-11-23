@@ -1,12 +1,24 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response
+from app.core.config import settings
+from app.core.content_negotiation import (
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
+)
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.questionnaire import get_questionnaire_service
-from app.schemas.enums import QuestionnaireStatus
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.questionnaire.search import questionnaire_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
 from app.schemas.questionnaire import (
     QuestionnaireCreateSchema,
     QuestionnairePatchSchema,
@@ -15,17 +27,25 @@ from app.services.questionnaire import QuestionnaireService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# Questionnaire always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -36,11 +56,18 @@ logger = get_logger(__name__)
     operation_id="create_questionnaire",
     summary="Create a new Questionnaire resource",
     description=(
-        "A structured set of questions intended to guide the collection of answers. "
-        "Accepts the full nested payload — identifier, contact, useContext, jurisdiction, "
-        "code, and the recursive item tree — atomically in one DB transaction. "
-        "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) "
-        "— an org-less token is rejected outright (403). " + _CONTENT_NEG
+        "Records a structured set of questions intended to guide the collection of answers from end-users. "
+        "The request body is a FHIR R4 Questionnaire resource (camelCase, nested datatypes - "
+        "https://www.hl7.org/fhir/R4/questionnaire.html); every supplied element (url, identifier, version, name, "
+        "title, derivedFrom, status, experimental, subjectType, date, publisher, contact, description, useContext, "
+        "jurisdiction, purpose, copyright, approvalDate, lastReviewDate, effectivePeriod, code and the nested item "
+        "tree) is stored as sent. R4 requires `status`, and each item its `linkId` and `type`, which only the "
+        "java_validator backend enforces. The body is checked against base FHIR R4: any valid R4 element is "
+        "accepted and stored as sent (server-managed `id`/`meta` are ignored); a key that is not FHIR at all is "
+        "rejected with 422. A relative reference in `identifier.assigner` or a `useContext.valueReference` that "
+        "names a resource this server has is rejected with 422 if it does not exist in the caller's org; an "
+        "absolute URL, a logical reference or a resource type this server does not have is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -51,26 +78,135 @@ async def create_questionnaire(
     questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
-    actor.sub) — org_id is no longer a request body field at all, and an
-    org-less token is rejected outright (403). `user_id`, like Practitioner's,
-    is still a plain request body field."""
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new Questionnaire resource",
         extra={"event": "route.create_questionnaire"},
     )
     log_payload(logger, "questionnaire.create.payload", payload)
     questionnaire = await questionnaire_service.create_questionnaire(
-        payload, actor.org_id, actor.sub
+        payload, actor.org_id, actor.sub, body=await request.json()
     )
-    return format_response(
+    return fhir_response(
         questionnaire_service._to_fhir(questionnaire),
-        questionnaire_service._to_plain(questionnaire),
-        request,
         status_code=status.HTTP_201_CREATED,
     )
 
 
-# ── Read ───────────────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# Questionnaire search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = questionnaire_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    questionnaire_service: QuestionnaireService,
+):
+    search_url, fhir_base = search_urls(request, "search_questionnaires")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await questionnaire_service.search_questionnaires(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_questionnaires",
+    summary="Search Questionnaire resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_questionnaires(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("questionnaire", "read")),
+    questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search Questionnaire resources",
+        extra={"event": "route.search_questionnaires"},
+    )
+    return await _search(request, get_query(request), actor, questionnaire_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_questionnaires_post",
+    summary="Search Questionnaire resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_questionnaires_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("questionnaire", "read")),
+    questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
+):
+    logger.info(
+        "Search Questionnaire resources (POST _search)",
+        extra={"event": "route.search_questionnaires_post"},
+    )
+    return await _search(
+        request, await post_query(request), actor, questionnaire_service
+    )
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -80,8 +216,7 @@ async def create_questionnaire(
     description=(
         "Scoped to the caller's own org — get_questionnaire_scoped() raises "
         "PermissionDeniedError (403) outright for an org-less token, or NotFoundError "
-        "(404, never 403) if it belongs to a different org, so existence isn't leaked. "
-        + _CONTENT_NEG
+        "(404, never 403) if it belongs to a different org, so existence isn't leaked."
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
@@ -103,14 +238,10 @@ async def get_questionnaire(
     questionnaire = await questionnaire_service.get_questionnaire_scoped(
         questionnaire_id, actor.org_id
     )
-    return format_response(
-        questionnaire_service._to_fhir(questionnaire),
-        questionnaire_service._to_plain(questionnaire),
-        request,
-    )
+    return fhir_response(questionnaire_service._to_fhir(questionnaire))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -118,12 +249,13 @@ async def get_questionnaire(
     operation_id="patch_questionnaire",
     summary="Update a Questionnaire resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every "
-        "supplied sub-resource list (identifier, contact, useContext, jurisdiction, code, "
-        "item — even `[]`) atomically replaces the corresponding rows; omitted lists are "
-        "left untouched. Scoped to the caller's own org — patch_questionnaire() raises "
-        "NotFoundError (404, not 403 — avoids leaking that a questionnaire with this id "
-        "exists in another org) if actor.org_id doesn't match. " + _CONTENT_NEG
+        "The request body is a partial FHIR R4 Questionnaire (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. A supplied list "
+        "(identifier, subjectType, contact, useContext, jurisdiction, code, item - even `[]`) atomically replaces "
+        "the stored entries, a supplied `effectivePeriod` replaces the whole value, and `null` clears an element. "
+        "Scoped to the caller's own org — patch_questionnaire() raises NotFoundError (404, not "
+        "403 — avoids leaking that a Questionnaire with this id exists in another org) if "
+        "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
@@ -147,80 +279,16 @@ async def patch_questionnaire(
     )
     log_payload(logger, "questionnaire.patch.payload", payload)
     updated = await questionnaire_service.patch_questionnaire(
-        questionnaire_id, payload, actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        questionnaire_service._to_fhir(updated),
-        questionnaire_service._to_plain(updated),
-        request,
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_questionnaires",
-    summary="List all Questionnaire resources",
-    description=(
-        "Returns a paginated list of Questionnaire resources, matching the search "
-        "parameter set documented at https://www.hl7.org/fhir/R4/questionnaire.html#search. "
-        "Filter by `status`, `url` (exact), `name`/`title`/`publisher` (substring), "
-        "`identifier` (exact business-identifier value). Always scoped to the caller's own "
-        "org (from the verified token) — `org_id` is not a client-suppliable filter. "
-        "Sort with `sort` (e.g. `-created_at`); set `total_mode=none` to skip the "
-        "COUNT(*) on large result sets. " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_questionnaires(
-    request: Request,
-    actor: AuthUser = Depends(require_permission("questionnaire", "read")),
-    questionnaire_status: QuestionnaireStatus | None = Query(
-        None, alias="status", description="draft | active | retired | unknown."
-    ),
-    url: str | None = Query(None, description="Exact match on the canonical url."),
-    name: str | None = Query(None, description="Substring match on name."),
-    title: str | None = Query(None, description="Substring match on title."),
-    publisher: str | None = Query(None, description="Substring match on publisher."),
-    identifier: str | None = Query(
-        None, description="Exact match on a business identifier value."
-    ),
-    params: ListParams = Depends(),
-    questionnaire_service: QuestionnaireService = Depends(get_questionnaire_service),
-):
-    """org_id is always the caller's own (actor.org_id), never
-    client-suppliable; list_questionnaires() raises PermissionDeniedError
-    (403) outright for an org-less token."""
-    logger.info(
-        "List all Questionnaire resources",
-        extra={"event": "route.list_questionnaires"},
-    )
-    items, total = await questionnaire_service.list_questionnaires(
+        questionnaire_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        status=questionnaire_status,
-        url=url,
-        name=name,
-        title=title,
-        publisher=publisher,
-        identifier=identifier,
-        limit=params.limit,
-        offset=params.offset,
-        sort=params.sort,
-        total_mode=params.total_mode,
+        body=await request.json(),
     )
-    return format_paginated_response(
-        [questionnaire_service._to_fhir(q) for q in items],
-        [questionnaire_service._to_plain(q) for q in items],
-        total,
-        params.limit,
-        params.offset,
-        request,
-    )
+    return fhir_response(questionnaire_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -229,10 +297,9 @@ async def list_questionnaires(
     operation_id="delete_questionnaire",
     summary="Delete a Questionnaire resource",
     description=(
-        "Permanently deletes the Questionnaire and all associated sub-resources, "
-        "including the entire item tree. Scoped to the caller's own org — raises "
-        "NotFoundError (404, not 403) if the questionnaire exists but belongs to a "
-        "different org. Returns 204 on success."
+        "Permanently deletes the Questionnaire and its search-index rows. "
+        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
+        "questionnaire exists but belongs to a different org. Returns 204 on success."
     ),
     responses={**_ERR_NOT_FOUND},
 )
