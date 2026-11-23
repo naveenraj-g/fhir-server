@@ -31,6 +31,9 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
+from app.repository._questionnaire_response_revinclude import (
+    reference_questionnaire_response_revincludes,
+)
 from app.repository._episode_of_care_revinclude import (
     reference_episode_of_care_revincludes,
 )
@@ -1005,6 +1008,9 @@ def service_request_search() -> SearchRegistry:
         # Other resources that point at a ServiceRequest, and a ServiceRequest that is
         # based on / replaces another one pointing back at it.
         revincludes=(
+            *reference_questionnaire_response_revincludes(
+                "based-on", "ServiceRequest", lambda x: x.service_request_id
+            ),
             *reference_episode_of_care_revincludes(
                 "incoming-referral", "ServiceRequest", lambda x: x.service_request_id
             ),

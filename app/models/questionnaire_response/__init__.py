@@ -1,30 +1,29 @@
-from .answer import QuestionnaireResponseAnswer
-from .based_on import QuestionnaireResponseBasedOn
-from .core import QuestionnaireResponseModel, questionnaire_response_id_seq
-from .enums import (
-    QuestionnaireResponseAuthorReferenceType,
-    QuestionnaireResponseBasedOnReferenceType,
-    QuestionnaireResponsePartOfReferenceType,
-    QuestionnaireResponseQuantityComparator,
-    QuestionnaireResponseSourceReferenceType,
-    QuestionnaireResponseStatus,
+from .core import (
+    QuestionnaireResponseModel,
+    questionnaire_response_id_seq,
 )
-from .identifier_type_coding import QuestionnaireResponseIdentifierTypeCoding
-from .item import QuestionnaireResponseItem
-from .part_of import QuestionnaireResponsePartOf
+from .enums import QuestionnaireResponseStatus
+from .identifier import QuestionnaireResponseIdentifier
+from .reference import (
+    AUTHOR_TYPES,
+    ENCOUNTER_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    SOURCE_TYPES,
+    SUBJECT_TYPES,
+    QuestionnaireResponseReference,
+)
 
 __all__ = [
-    "QuestionnaireResponseAnswer",
-    "QuestionnaireResponseAuthorReferenceType",
-    "QuestionnaireResponseBasedOn",
-    "QuestionnaireResponseBasedOnReferenceType",
-    "QuestionnaireResponseIdentifierTypeCoding",
-    "QuestionnaireResponseItem",
+    "AUTHOR_TYPES",
+    "ENCOUNTER_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "SOURCE_TYPES",
+    "SUBJECT_TYPES",
+    "QuestionnaireResponseIdentifier",
     "QuestionnaireResponseModel",
-    "QuestionnaireResponsePartOf",
-    "QuestionnaireResponsePartOfReferenceType",
-    "QuestionnaireResponseQuantityComparator",
-    "QuestionnaireResponseSourceReferenceType",
+    "QuestionnaireResponseReference",
     "QuestionnaireResponseStatus",
     "questionnaire_response_id_seq",
 ]

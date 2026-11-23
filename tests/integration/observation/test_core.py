@@ -397,7 +397,7 @@ async def test_create_has_member_and_derived_from_check_observations(client, pat
         patient,
         hasMember=[
             {"reference": f"Observation/{member}"},
-            {"reference": "QuestionnaireResponse/999999"},
+            {"reference": "MolecularSequence/999999"},
         ],
         derivedFrom=[
             {"reference": f"Observation/{member}"},
@@ -408,13 +408,13 @@ async def test_create_has_member_and_derived_from_check_observations(client, pat
         await client.post(BASE + "/", json=ok)
     ).status_code == 201  # not rebuilt: stored as sent
     for element in ("hasMember", "derivedFrom"):
-        resp = await client.post(
-            BASE + "/",
-            json=observation_body(
-                patient, **{element: [{"reference": "Observation/999999"}]}
-            ),
-        )
-        assert resp.status_code == 422, (element, resp.text)
+        # Observation and QuestionnaireResponse are rebuilt resources: a dangling one is a 422
+        for missing in ("Observation/999999", "QuestionnaireResponse/999999"):
+            resp = await client.post(
+                BASE + "/",
+                json=observation_body(patient, **{element: [{"reference": missing}]}),
+            )
+            assert resp.status_code == 422, (element, missing, resp.text)
 
 
 async def test_create_part_of_is_checked_for_a_procedure_or_immunization(

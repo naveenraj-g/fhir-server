@@ -1,25 +1,69 @@
-from pydantic import BaseModel, ConfigDict, Field
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
     FHIRBundle,
+    FHIRCoding,
     FHIRIdentifier,
     FHIRMeta,
+    FHIRQuantity,
     FHIRReference,
-    PlainIdentifier,
 )
+from app.schemas.datatypes.attachment import FHIRAttachment
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
-from .identifier import PlainQuestionnaireResponseIdentifier
-from .item import FHIRQuestionnaireResponseItem, PlainQuestionnaireResponseItem
-from .reference import (
-    PlainQuestionnaireResponseAuthor,
-    PlainQuestionnaireResponseBasedOn,
-    PlainQuestionnaireResponseEncounter,
-    PlainQuestionnaireResponsePartOf,
-    PlainQuestionnaireResponseSource,
-    PlainQuestionnaireResponseSubject,
-)
 
-# ── FHIR (camelCase) ────────────────────────────────────────────────────────
+class FHIRQuestionnaireResponseAnswer(BaseModel):
+    valueBoolean: bool | None = Field(
+        None, description="Single-valued answer: boolean."
+    )
+    valueDecimal: float | None = Field(
+        None, description="Single-valued answer: decimal."
+    )
+    valueInteger: int | None = Field(None, description="Single-valued answer: integer.")
+    valueDate: str | None = Field(None, description="Single-valued answer: date.")
+    valueDateTime: str | None = Field(
+        None, description="Single-valued answer: dateTime."
+    )
+    valueTime: str | None = Field(None, description="Single-valued answer: time.")
+    valueString: str | None = Field(None, description="Single-valued answer: string.")
+    valueUri: str | None = Field(None, description="Single-valued answer: uri.")
+    valueAttachment: FHIRAttachment | None = Field(
+        None, description="Single-valued answer: Attachment."
+    )
+    valueCoding: FHIRCoding | None = Field(
+        None, description="Single-valued answer: Coding."
+    )
+    valueQuantity: FHIRQuantity | None = Field(
+        None, description="Single-valued answer: Quantity."
+    )
+    valueReference: FHIRReference | None = Field(
+        None, description="Single-valued answer: Reference(Any)."
+    )
+    item: list[FHIRQuestionnaireResponseItem] | None = Field(
+        None, description="Nested groups and questions beneath this answer."
+    )
+
+
+class FHIRQuestionnaireResponseItem(BaseModel):
+    linkId: str | None = Field(
+        None, description="The linkId of the Questionnaire item this answers."
+    )
+    definition: str | None = Field(
+        None, description="ElementDefinition this item corresponds to."
+    )
+    text: str | None = Field(None, description="Name for group or question text.")
+    answer: list[FHIRQuestionnaireResponseAnswer] | None = Field(
+        None, description="The response(s) to the question."
+    )
+    item: list[FHIRQuestionnaireResponseItem] | None = Field(
+        None, description="Nested questionnaire response items."
+    )
+
+
+FHIRQuestionnaireResponseAnswer.model_rebuild()
+FHIRQuestionnaireResponseItem.model_rebuild()
 
 
 class FHIRQuestionnaireResponseSchema(BaseModel):
@@ -29,122 +73,61 @@ class FHIRQuestionnaireResponseSchema(BaseModel):
     id: str = Field(..., description="Public questionnaire_response_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
     extension: list[dict] | None = Field(
         None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries. Not yet validated against registered extension definitions.",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
     identifier: FHIRIdentifier | None = Field(
-        None, description="A business identifier for this set of answers."
+        None, description="Unique id for this set of answers."
     )
     basedOn: list[FHIRReference] | None = Field(
-        None,
-        description="A plan, proposal, or order fulfilled in whole or in part by this QuestionnaireResponse.",
+        None, description="Request fulfilled by this QuestionnaireResponse."
     )
-    partOf: list[FHIRReference] | None = Field(
-        None,
-        description="A procedure or observation this QuestionnaireResponse was performed as part of.",
-    )
+    partOf: list[FHIRReference] | None = Field(None, description="Part of this action.")
     questionnaire: str | None = Field(
-        None, description="Canonical reference to the Questionnaire this is for."
-    )
-    status: str = Field(
-        ...,
-        description="in-progress | completed | amended | entered-in-error | stopped.",
-    )
-    subject: FHIRReference | None = Field(
-        None, description="Who/what the answers apply to."
-    )
-    encounter: FHIRReference | None = Field(
-        None, description="The Encounter this was created during/for."
-    )
-    authored: str | None = Field(
-        None, description="Date the answers were gathered or last changed."
-    )
-    author: FHIRReference | None = Field(
-        None, description="Person who received and recorded the answers."
-    )
-    source: FHIRReference | None = Field(
-        None, description="The person who answered the questions about the subject."
-    )
-    item: list[FHIRQuestionnaireResponseItem] | None = Field(
-        None, description="Groups and questions, with their answers."
-    )
-
-
-class FHIRQuestionnaireResponseBundleEntry(BaseModel):
-    resource: FHIRQuestionnaireResponseSchema
-
-
-class FHIRQuestionnaireResponseBundle(FHIRBundle):
-    entry: list[FHIRQuestionnaireResponseBundleEntry] | None = None
-
-
-# ── Plain (snake_case) ───────────────────────────────────────────────────────
-
-
-class PlainQuestionnaireResponseResponse(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    id: int = Field(..., description="Public questionnaire_response_id.")
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, valueType, value}, ...] entries.",
-    )
-    identifier: PlainQuestionnaireResponseIdentifier | None = Field(
-        None, description="A business identifier for this set of answers."
-    )
-    based_on: list[PlainQuestionnaireResponseBasedOn] | None = Field(
-        None,
-        description="A plan, proposal, or order fulfilled in whole or in part by this QuestionnaireResponse.",
-    )
-    part_of: list[PlainQuestionnaireResponsePartOf] | None = Field(
-        None,
-        description="A procedure or observation this QuestionnaireResponse was performed as part of.",
-    )
-    questionnaire: str | None = Field(
-        None, description="Canonical reference to the Questionnaire this is for."
+        None, description="Form being answered (a canonical URL)."
     )
     status: str | None = Field(
         None,
         description="in-progress | completed | amended | entered-in-error | stopped.",
     )
-    subject: PlainQuestionnaireResponseSubject | None = Field(
-        None, description="Who/what the answers apply to."
+    subject: FHIRReference | None = Field(
+        None, description="The subject of the questions."
     )
-    encounter: PlainQuestionnaireResponseEncounter | None = Field(
-        None, description="The Encounter this was created during/for."
+    encounter: FHIRReference | None = Field(
+        None, description="Encounter created as part of."
     )
-    authored: str | None = Field(
-        None, description="Date the answers were gathered or last changed."
-    )
-    author: PlainQuestionnaireResponseAuthor | None = Field(
+    authored: str | None = Field(None, description="Date the answers were gathered.")
+    author: FHIRReference | None = Field(
         None, description="Person who received and recorded the answers."
     )
-    source: PlainQuestionnaireResponseSource | None = Field(
-        None, description="The person who answered the questions about the subject."
+    source: FHIRReference | None = Field(
+        None, description="The person who answered the questions."
     )
-    item: list[PlainQuestionnaireResponseItem] | None = Field(
-        None, description="Groups and questions, with their answers."
-    )
-    org_id: str | None = Field(
-        None,
-        description="Gateway-forwarded ID of the tenant/account this record is scoped to (multi-tenancy) — not a FHIR concept. Internally this column is named tenant_id (see app/models/shared/tenant_audit.py) to avoid ambiguity with the Organization entity itself.",
-    )
-    created_at: str | None = Field(None, description="When this row was created.")
-    updated_at: str | None = Field(None, description="When this row was last updated.")
-    created_by: str | None = Field(
-        None, description="Acting user who created this record."
-    )
-    updated_by: str | None = Field(
-        None, description="Acting user who last updated this record."
+    item: list[FHIRQuestionnaireResponseItem] | None = Field(
+        None, description="Groups and questions with their answers."
     )
 
 
-class PaginatedQuestionnaireResponseResponse(BaseModel):
+class FHIRQuestionnaireResponseBundleEntry(BaseModel):
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRQuestionnaireResponseSchema | dict = Field(
+        ...,
+        description="A QuestionnaireResponse (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Practitioner / PractitionerRole / RelatedPerson / Organization / Encounter / CarePlan / ServiceRequest / Observation / Procedure (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
+
+
+class FHIRQuestionnaireResponseBundle(FHIRBundle):
     total: int | None = Field(
-        None, description="Total matching rows (null when total_mode=none)."
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
     )
-    limit: int = Field(..., description="Page size used for this response.")
-    offset: int = Field(..., description="Number of rows skipped before this page.")
-    data: list[PlainQuestionnaireResponseResponse]
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRQuestionnaireResponseBundleEntry] | None = None

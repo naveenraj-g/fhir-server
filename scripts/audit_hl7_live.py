@@ -144,7 +144,7 @@ def main() -> int:
             for c, s in live.get(rt, {}).items()
             if not c.startswith("_")
             and s.get("expression")
-            and "extension(" not in s["expression"]
+            and "xtension(" not in s["expression"]
         }
         ours = {n: p for n, p in reg.params.items() if not n.startswith("_")}
         if set(theirs) - set(ours):

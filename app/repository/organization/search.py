@@ -38,6 +38,9 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._questionnaire_response_revinclude import (
+    column_questionnaire_response_revincludes,
+)
 from app.repository._document_reference_revinclude import (
     column_document_reference_revincludes,
     reference_document_reference_revincludes,
@@ -677,6 +680,9 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_questionnaire_response_revincludes(
+                ("author",), "author", "Organization", lambda x: x.organization_id
+            ),
             *column_document_reference_revincludes(
                 ("authenticator",),
                 "authenticator",

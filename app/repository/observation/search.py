@@ -41,6 +41,9 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._questionnaire_response_revinclude import (
+    reference_questionnaire_response_revincludes,
+)
 from app.repository._diagnostic_report_revinclude import result_report_revincludes
 from app.repository._appointment_revinclude import reason_appointment_revincludes
 from app.repository._clinical_impression_revinclude import (
@@ -1178,6 +1181,9 @@ def observation_search() -> SearchRegistry:
         ),
         # Observation:has-member / :derived-from — the observations that group / derive from these.
         revincludes=(
+            *reference_questionnaire_response_revincludes(
+                "part-of", "Observation", lambda x: x.observation_id
+            ),
             *result_report_revincludes(key),
             *reference_impression_revincludes("investigation", "Observation", key),
             *reference_impression_revincludes("finding-ref", "Observation", key),

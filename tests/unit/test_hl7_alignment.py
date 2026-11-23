@@ -75,6 +75,7 @@ REQUIRED_CODE_STORAGE = {
     ("Practitioner", "address-use"): ("practitioner_address", "use"),
     ("Practitioner", "gender"): ("practitioner", "gender"),
     ("Procedure", "status"): ("procedure", "status"),
+    ("QuestionnaireResponse", "status"): ("questionnaire_response", "status"),
     ("RelatedPerson", "address-use"): ("related_person_address", "use"),
     ("RelatedPerson", "gender"): ("related_person", "gender"),
     ("ServiceRequest", "intent"): ("service_request", "intent"),
@@ -174,7 +175,7 @@ def _required_code_parameters(resource_type: str) -> set[str]:
     for code, (stype, expression) in (
         _hl7_search_parameters().get(resource_type, {}).items()
     ):
-        if code.startswith("_") or stype != "token" or "extension(" in expression:
+        if code.startswith("_") or stype != "token" or "xtension(" in expression:
             continue
         for element_id in _element_ids(expression, resource_type):
             element = _element(resource_type, element_id)
@@ -202,7 +203,7 @@ def test_search_parameters_match_the_hl7_resource_page(resource_type):
         for code, (_type, expression) in _hl7_search_parameters()
         .get(resource_type, {})
         .items()
-        if not code.startswith("_") and expression and "extension(" not in expression
+        if not code.startswith("_") and expression and "xtension(" not in expression
     }
     assert ours == theirs, (
         f"{resource_type}: missing {sorted(theirs - ours)}, not in R4 {sorted(ours - theirs)}"

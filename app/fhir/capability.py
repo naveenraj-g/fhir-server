@@ -49,6 +49,7 @@ from app.repository.care_plan.search import care_plan_search
 from app.repository.care_team.search import care_team_search
 from app.repository.document_reference.search import document_reference_search
 from app.repository.episode_of_care.search import episode_of_care_search
+from app.repository.questionnaire_response.search import questionnaire_response_search
 from app.repository.group.search import group_search
 from app.repository.medication.search import medication_search
 from app.repository.medication_request.search import medication_request_search
@@ -69,6 +70,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "care_team": care_team_search,
     "document_reference": document_reference_search,
     "episode_of_care": episode_of_care_search,
+    "questionnaire_response": questionnaire_response_search,
     "group": group_search,
     "medication": medication_search,
     "medication_request": medication_request_search,

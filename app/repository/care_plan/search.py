@@ -30,6 +30,9 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
+from app.repository._questionnaire_response_revinclude import (
+    reference_questionnaire_response_revincludes,
+)
 from app.repository._diagnostic_report_revinclude import reference_report_revincludes
 from app.repository._observation_revinclude import reference_observation_revincludes
 from app.repository._procedure_revinclude import based_on_procedure_revincludes
@@ -1021,6 +1024,9 @@ def care_plan_search() -> SearchRegistry:
         # Other resources that point at a CarePlan are not rebuilt/wired yet; a CarePlan that is
         # based on / replaces / part of another one points back at it.
         revincludes=(
+            *reference_questionnaire_response_revincludes(
+                "based-on", "CarePlan", lambda x: x.care_plan_id
+            ),
             *reference_observation_revincludes(
                 "based-on", "CarePlan", lambda x: x.care_plan_id
             ),

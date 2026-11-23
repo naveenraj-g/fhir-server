@@ -256,7 +256,7 @@ routes:
     - practitioner_role
     - procedure
     # - questionnaire
-    # - questionnaire_response
+    - questionnaire_response
     - related_person
     - risk_assessment
     - schedule

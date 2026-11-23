@@ -16,6 +16,9 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._questionnaire_response_revinclude import (
+    column_questionnaire_response_revincludes,
+)
 from app.repository._document_reference_revinclude import (
     column_document_reference_revincludes,
     reference_document_reference_revincludes,
@@ -598,6 +601,12 @@ def practitioner_search() -> SearchRegistry:
         includes=(),
         # PractitionerRole.practitioner points here.
         revincludes=(
+            *column_questionnaire_response_revincludes(
+                ("author",), "author", "Practitioner", lambda x: x.practitioner_id
+            ),
+            *column_questionnaire_response_revincludes(
+                ("source",), "source", "Practitioner", lambda x: x.practitioner_id
+            ),
             *column_document_reference_revincludes(
                 ("subject",), "subject", "Practitioner", lambda x: x.practitioner_id
             ),
