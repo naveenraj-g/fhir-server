@@ -270,12 +270,22 @@ async def test_create_reference_in_another_org_is_rejected(client, other_client)
     assert resp.status_code == 422
 
 
+async def test_create_episode_of_care_must_exist(client):
+    """EpisodeOfCare is a rebuilt resource: a relative reference to one must exist
+    (EpisodeOfCare/350001 is seeded)."""
+    ok = encounter_body(episodeOfCare=[{"reference": "EpisodeOfCare/350001"}])
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    missing = encounter_body(episodeOfCare=[{"reference": "EpisodeOfCare/999999"}])
+    resp = await client.post(BASE + "/", json=missing)
+    assert resp.status_code == 422 and "episodeOfCare[0]" in resp.text
+
+
 async def test_create_unmodeled_targets_are_not_checked(client):
-    """EpisodeOfCare, Account ... are not resources on this server: stored as sent. (A Group
-    subject is checked: Group/430001 is seeded.)"""
+    """Account ... is not a resource on this server: stored as sent. (A Group subject and an
+    EpisodeOfCare are checked: Group/430001 and EpisodeOfCare/350001 are seeded.)"""
     body = encounter_body(
         subject={"reference": "Group/430001"},
-        episodeOfCare=[{"reference": "EpisodeOfCare/5"}],
+        episodeOfCare=[{"reference": "EpisodeOfCare/350001"}],
         account=[{"reference": "Account/5"}],
         diagnosis=[
             {"condition": {"reference": "https://other.example.org/fhir/Procedure/5"}}

@@ -1,52 +1,14 @@
 from enum import Enum
 
-from app.schemas.enums import EpisodeOfCareStatus
 
+class EpisodeOfCareStatus(str, Enum):
+    """EpisodeOfCare.status (episode-of-care-status, required) - stored by value, so the
+    real FHIR code `entered-in-error` is what the database holds."""
 
-class EpisodeOfCarePatientReferenceType(str, Enum):
-    """EpisodeOfCare.patient Reference(Patient)."""
-
-    Patient = "Patient"
-
-
-class EpisodeOfCareManagingOrganizationReferenceType(str, Enum):
-    """EpisodeOfCare.managingOrganization Reference(Organization)."""
-
-    Organization = "Organization"
-
-
-class EpisodeOfCareCareManagerReferenceType(str, Enum):
-    """EpisodeOfCare.careManager Reference(Practitioner | PractitionerRole)."""
-
-    Practitioner = "Practitioner"
-    PractitionerRole = "PractitionerRole"
-
-
-class EpisodeOfCareReferralRequestReferenceType(str, Enum):
-    """EpisodeOfCare.referralRequest Reference(ServiceRequest)."""
-
-    ServiceRequest = "ServiceRequest"
-
-
-class EpisodeOfCareTeamReferenceType(str, Enum):
-    """EpisodeOfCare.team Reference(CareTeam)."""
-
-    CareTeam = "CareTeam"
-
-
-class EpisodeOfCareAccountReferenceType(str, Enum):
-    """EpisodeOfCare.account Reference(Account)."""
-
-    Account = "Account"
-
-
-class EpisodeOfCareDiagnosisConditionReferenceType(str, Enum):
-    """EpisodeOfCare.diagnosis.condition Reference(Condition)."""
-
-    Condition = "Condition"
-
-
-class EpisodeOfCareAssignerReferenceType(str, Enum):
-    """EpisodeOfCare.identifier.assigner Reference(Organization)."""
-
-    Organization = "Organization"
+    planned = "planned"
+    waitlist = "waitlist"
+    active = "active"
+    onhold = "onhold"
+    finished = "finished"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"

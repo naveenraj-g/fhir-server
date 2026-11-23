@@ -72,6 +72,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/encounter-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "EpisodeOfCare": (
+        "app.models.episode_of_care",
+        "EpisodeOfCareModel",
+        "episode_of_care_id",
+        "app.repository.episode_of_care.search",
+        "episode_of_care_search",
+    ),
     "ServiceRequest": (
         "app.models.service_request",
         "ServiceRequestModel",
@@ -769,6 +776,7 @@ def encounter_search() -> SearchRegistry:
             "Episode(s) of care that this encounter should be recorded against",
             "Encounter.episodeOfCare",
             "EpisodeOfCare/350001",
+            chain_types=("EpisodeOfCare",),
         ),
         SearchParam(
             "identifier",
@@ -942,8 +950,8 @@ def encounter_search() -> SearchRegistry:
         ),
         # Elements with min cardinality 1 in R4 — kept by _summary=text / _elements.
         mandatory_elements=frozenset({"status", "class"}),
-        # One include per target type that is a resource here (Group, RelatedPerson, Account,
-        # EpisodeOfCare, ServiceRequest, Condition, ... are not rebuilt resources).
+        # One include per target type that is a resource here (Group, Account, ... are not rebuilt
+        # resources).
         includes=(
             IncludeTarget(
                 "Encounter",
@@ -956,6 +964,12 @@ def encounter_search() -> SearchRegistry:
                 "appointment",
                 "Appointment",
                 _include_child(_R, "Appointment", _R.param == "appointment"),
+            ),
+            IncludeTarget(
+                "Encounter",
+                "episode-of-care",
+                "EpisodeOfCare",
+                _include_child(_R, "EpisodeOfCare", _R.param == "episode-of-care"),
             ),
             IncludeTarget(
                 "Encounter", "location", "Location", _include_child(_L, "Location")

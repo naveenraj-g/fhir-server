@@ -1,187 +1,104 @@
-from datetime import datetime
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
-    AuditFields,
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
     FHIRReference,
-    PlainCodingRow,
 )
-from app.schemas.episode_of_care.response.diagnosis import (
-    FHIRDiagnosis,
-    PlainEpisodeOfCareDiagnosis,
-)
-from app.schemas.episode_of_care.response.identifier import (
-    PlainEpisodeOfCareIdentifier,
-)
-from app.schemas.episode_of_care.response.status_history import (
-    FHIRStatusHistory,
-    PlainEpisodeOfCareStatusHistory,
-)
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
-class PlainEpisodeOfCareType(AuditFields, BaseModel):
-    """Plain response representation of EpisodeOfCare.type."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: int
-    text: str | None = None
-    codings: list[PlainCodingRow] = []
-
-
-class PlainEpisodeOfCareReference(AuditFields, BaseModel):
-    """Plain response representation of a 0..* reference."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: int
-    reference: str | None = None
-    reference_type: str | None = None
-    reference_id: int | None = None
-    display: str | None = None
-    identifier_use: str | None = None
-    identifier_type_system: str | None = None
-    identifier_type_version: str | None = None
-    identifier_type_code: str | None = None
-    identifier_type_display: str | None = None
-    identifier_type_user_selected: bool | None = None
-    identifier_type_text: str | None = None
-    identifier_system: str | None = None
-    identifier_value: str | None = None
-    identifier_period_start: datetime | None = None
-    identifier_period_end: datetime | None = None
+class FHIREpisodeOfCareStatusHistory(BaseModel):
+    status: str | None = Field(
+        None,
+        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error.",
+    )
+    period: FHIRPeriod | None = Field(
+        None, description="Duration the EpisodeOfCare was in the specified status."
+    )
 
 
-# ── FHIR Schema ───────────────────────────────────────────────────────────────
+class FHIREpisodeOfCareDiagnosis(BaseModel):
+    condition: FHIRReference | None = Field(
+        None, description="Conditions/problems/diagnoses this episode of care is for."
+    )
+    role: FHIRCodeableConcept | None = Field(
+        None, description="Role that this diagnosis has within the episode of care."
+    )
+    rank: int | None = Field(None, description="Ranking of the diagnosis.")
 
 
 class FHIREpisodeOfCareSchema(BaseModel):
-    """Full FHIR R4 EpisodeOfCare representation."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    resourceType: Literal["EpisodeOfCare"] = "EpisodeOfCare"
-    id: str
-    meta: FHIRMeta | None = None
-    identifier: list[FHIRIdentifier] | None = None
-    status: str
-    statusHistory: list[FHIRStatusHistory] | None = None
-    type: list[FHIRCodeableConcept] | None = None
-    diagnosis: list[FHIRDiagnosis] | None = None
-    patient: FHIRReference
-    managingOrganization: FHIRReference | None = None
-    period: FHIRPeriod | None = None
-    referralRequest: list[FHIRReference] | None = None
-    careManager: FHIRReference | None = None
-    team: list[FHIRReference] | None = None
-    account: list[FHIRReference] | None = None
-
-
-# ── Plain Response ─────────────────────────────────────────────────────────────
-
-
-class PlainEpisodeOfCareResponse(AuditFields, BaseModel):
-    """Simplified snake_case representation of EpisodeOfCare."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: int
-    status: str
-    patient: str | None = None
-    patient_id: int | None = None
-    patient_type: str | None = None
-    patient_display: str | None = None
-    patient_identifier_use: str | None = None
-    patient_identifier_type_system: str | None = None
-    patient_identifier_type_version: str | None = None
-    patient_identifier_type_code: str | None = None
-    patient_identifier_type_display: str | None = None
-    patient_identifier_type_user_selected: bool | None = None
-    patient_identifier_type_text: str | None = None
-    patient_identifier_system: str | None = None
-    patient_identifier_value: str | None = None
-    patient_identifier_period_start: datetime | None = None
-    patient_identifier_period_end: datetime | None = None
-
-    managing_organization: str | None = None
-    managing_organization_id: int | None = None
-    managing_organization_type: str | None = None
-    managing_organization_display: str | None = None
-    managing_organization_identifier_use: str | None = None
-    managing_organization_identifier_type_system: str | None = None
-    managing_organization_identifier_type_version: str | None = None
-    managing_organization_identifier_type_code: str | None = None
-    managing_organization_identifier_type_display: str | None = None
-    managing_organization_identifier_type_user_selected: bool | None = None
-    managing_organization_identifier_type_text: str | None = None
-    managing_organization_identifier_system: str | None = None
-    managing_organization_identifier_value: str | None = None
-    managing_organization_identifier_period_start: datetime | None = None
-    managing_organization_identifier_period_end: datetime | None = None
-
-    period_start: datetime | None = None
-    period_end: datetime | None = None
-
-    care_manager: str | None = None
-    care_manager_id: int | None = None
-    care_manager_type: str | None = None
-    care_manager_display: str | None = None
-    care_manager_identifier_use: str | None = None
-    care_manager_identifier_type_system: str | None = None
-    care_manager_identifier_type_version: str | None = None
-    care_manager_identifier_type_code: str | None = None
-    care_manager_identifier_type_display: str | None = None
-    care_manager_identifier_type_user_selected: bool | None = None
-    care_manager_identifier_type_text: str | None = None
-    care_manager_identifier_system: str | None = None
-    care_manager_identifier_value: str | None = None
-    care_manager_identifier_period_start: datetime | None = None
-    care_manager_identifier_period_end: datetime | None = None
-
-    identifiers: list[PlainEpisodeOfCareIdentifier] = []
-    status_history: list[PlainEpisodeOfCareStatusHistory] = []
-    types: list[PlainEpisodeOfCareType] = []
-    diagnoses: list[PlainEpisodeOfCareDiagnosis] = []
-    referral_requests: list[PlainEpisodeOfCareReference] = []
-    teams: list[PlainEpisodeOfCareReference] = []
-    accounts: list[PlainEpisodeOfCareReference] = []
-
-
-# ── Paginated / Bundle ─────────────────────────────────────────────────────────
-
-
-class PaginatedEpisodeOfCareResponse(BaseModel):
-    """Paginated plain responses."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    total: int | None = None
-    limit: int
-    offset: int
-    data: list[PlainEpisodeOfCareResponse]
+    resourceType: str = Field("EpisodeOfCare", description="Always 'EpisodeOfCare'.")
+    id: str = Field(..., description="Public episode_of_care_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="Business Identifier(s) relevant for this EpisodeOfCare."
+    )
+    status: str | None = Field(
+        None,
+        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error.",
+    )
+    statusHistory: list[FHIREpisodeOfCareStatusHistory] | None = Field(
+        None, description="Past list of status codes."
+    )
+    type: list[FHIRCodeableConcept] | None = Field(
+        None, description="Type/class - e.g. specialist referral, disease management."
+    )
+    diagnosis: list[FHIREpisodeOfCareDiagnosis] | None = Field(
+        None, description="The list of diagnosis relevant to this episode of care."
+    )
+    patient: FHIRReference | None = Field(
+        None, description="The patient who is the focus of this episode of care."
+    )
+    managingOrganization: FHIRReference | None = Field(
+        None, description="Organization that assumes care."
+    )
+    period: FHIRPeriod | None = Field(
+        None, description="Interval during responsibility is assumed."
+    )
+    referralRequest: list[FHIRReference] | None = Field(
+        None, description="Originating Referral Request(s)."
+    )
+    careManager: FHIRReference | None = Field(
+        None, description="Care manager/care coordinator for the patient."
+    )
+    team: list[FHIRReference] | None = Field(
+        None, description="Other practitioners facilitating this episode of care."
+    )
+    account: list[FHIRReference] | None = Field(
+        None,
+        description="The set of accounts that may be used for billing for this EpisodeOfCare.",
+    )
 
 
 class FHIREpisodeOfCareBundleEntry(BaseModel):
-    """One entry in a FHIR EpisodeOfCare bundle."""
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIREpisodeOfCareSchema | dict = Field(
+        ...,
+        description="An EpisodeOfCare (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Organization / Practitioner / Condition / ServiceRequest / Encounter (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
-    model_config = ConfigDict(extra="forbid")
 
-    fullUrl: str | None = None
-    resource: FHIREpisodeOfCareSchema
-
-
-class FHIREpisodeOfCareBundle(BaseModel):
-    """FHIR R4 Bundle of EpisodeOfCare resources."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int | None = None
-    entry: list[FHIREpisodeOfCareBundleEntry] = Field(default_factory=list)
+class FHIREpisodeOfCareBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIREpisodeOfCareBundleEntry] | None = None

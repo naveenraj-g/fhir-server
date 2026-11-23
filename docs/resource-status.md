@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-22, after introducing the shared reference check._
+_Last updated: 2026-11-23, after rebuilding EpisodeOfCare._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (32)
+## 1. Rebuilt on the current architecture (33)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -37,6 +37,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 | 30 | Group | `/groups` | 10 | 430000 | `c6b1d8f4a250` | `a4be7b5` | **the `characteristic-value` composite** (a characteristic code and a value of the *same* characteristic, paired on the token table's `slot`, like Observation's); `actual` is a boolean column, `exclude` and the boolean `value` are `true` / `false` token rows; `value` reads a CodeableConcept or a boolean only; `member` (7 types, one row per member) and `managing-entity` (4 types) are multi-target; the `group_type` enum already held the real codes; a revinclude source on Patient, Practitioner, PractitionerRole, Medication, Organization, RelatedPerson and itself; **a Group in a Reference(Any) is now existence-checked** (ClinicalImpression, DetectedIssue, ImmunizationRecommendation, ServiceRequest, MedicationRequest) |
 | 31 | CareTeam | `/care-teams` | 8 | 390000 | `d7c2e9a5b361` | `0cdb111` | `date` is a Period search over `period` (`period_match`); `status` enum recreated with the real FHIR codes (`entered-in-error`); `category` in a shared token table; `participant` (6 types incl. CareTeam itself) held one row per `participant.member` in its own table; `subject` (Patient | Group) is multi-target and `patient` is `subject` narrowed to Patients; **the first resource to follow a Group `subject`**, and **a CareTeam `performer` is now existence-checked, chained, `_include`d and `_revinclude`d in DiagnosticReport (`performer`, `resultsInterpreter`), Observation, ServiceRequest and MedicationRequest (`intended-performer`)** — (existence-checked, `subject:Group.` chains, `_include=CareTeam:subject:Group`, `Group?_revinclude=CareTeam:subject`); revinclude sources on Patient, Group, Encounter, Practitioner, PractitionerRole, RelatedPerson, Organization and itself; **a CareTeam in a Reference(Any) is now existence-checked** (ClinicalImpression, DetectedIssue, ImmunizationRecommendation, ServiceRequest, MedicationRequest, Group `characteristic.valueReference`) |
 | 32 | CarePlan | `/care-plans` | 20 | 290000 | `e8d3f0b6c472` | `ab9d1f3` | the largest rebuild so far: `status` / `intent` enums recreated with the real FHIR codes; `date` is a Period search over `period`; **`activity-date` reads `activity.detail.scheduled[x]` of every activity** (a Period, or a Timing from its earliest to its latest event, in an activity table with `activity-reference`); `activity-code` and `category` in a shared token table; `based-on` / `replaces` / `part-of` / `care-team` / `condition` / `goal` / `instantiates-canonical` in a shared reference table (single targets, so a bare id works); `instantiates-uri` a `uri` search; `performer` (8 types, `activity.detail.performer` of every activity) and `activity-reference` (9 types) are multi-target; `subject` (Patient | Group) multi-target with `patient` narrowed to Patients and **a Group subject followed, like CareTeam**; revinclude sources on Patient, Group, Encounter, CareTeam, Condition, Practitioner, PractitionerRole, Organization, RelatedPerson, HealthcareService, Appointment, MedicationRequest, ServiceRequest and itself; **a CarePlan in a Reference(Any) is now existence-checked** (ClinicalImpression, DetectedIssue, ImmunizationRecommendation, ServiceRequest, MedicationRequest, Group, and CarePlan's own `supportingInfo`), **and in `basedOn` of Observation, DiagnosticReport, Procedure, ServiceRequest and MedicationRequest** (chained as `based-on:CarePlan.`, `_include`d and `_revinclude`d for the first four; MedicationRequest has no `based-on` parameter; `Encounter.basedOn` and `Appointment.basedOn` are ServiceRequest-only in R4) |
+| 33 | EpisodeOfCare | `/episodes-of-care` | 9 | 350000 | `c4a8d1e6f092` | _pending_ | `status` enum (the real FHIR codes already); `date` a Period search over `period`; `patient`, `organization` (`managingOrganization`) and `care-manager` (`careManager` resolved to a **Practitioner**: a PractitionerRole care manager is stored but not matched, per R4) held as columns; `condition` (every `diagnosis.condition`) and `incoming-referral` (`referralRequest`) in a shared reference table; `type` in the shared token table; `statusHistory`, `diagnosis.role`/`rank`, `team` and `account` live only in `content`. **Encounter `episodeOfCare` is now existence-checked, chained (`episode-of-care.status=`), `_include`d and `_revinclude`d**; revinclude sources on Patient, Organization, Practitioner, Condition and ServiceRequest. A relative `EpisodeOfCare/<id>` anywhere (Reference(Any) elements included) is now existence-checked. Route prefix is `/episodes-of-care` (unchanged); the route was off before |
 | 24 | DetectedIssue | `/detected-issues` | 6 | 540000 | `w0b5d2f8a614` | `90ad106` | **no `status` / `severity` search (R4 defines none)**; `identified` reads a dateTime or a Period; `implicated` is Reference(Any) in a shared reference table; a revinclude source on Patient, Practitioner and PractitionerRole |
 | 23 | ClinicalImpression | `/clinical-impressions` | 13 | 530000 | `v9a4c1e7f503` | `afaa8b1` | four repeating references (`problem`, `investigation`, `finding-ref`, `supporting-info` [Reference(Any)]) share one reference table; `finding-code` reads every finding; a revinclude source on Patient, Encounter, Practitioner, PractitionerRole, Condition, AllergyIntolerance, DiagnosticReport, RiskAssessment, FamilyMemberHistory and itself (`previous`); Condition `stage.assessment` now checks it |
 | 22 | RiskAssessment | `/risk-assessments` | 10 | 520000 | `u8f3b0d6e492` | `ddbfe2e` | **no `status` search (R4 defines none)**; `probability` is the engine's first `number` search; `risk` reads every prediction; a revinclude source on Patient, Condition, Encounter, Practitioner and PractitionerRole |
@@ -73,14 +74,14 @@ Covered by `tests/unit/test_reference_check.py` and `tests/integration/reference
 
 ---
 
-## 2. Not yet rebuilt (20)
+## 2. Not yet rebuilt (19)
 
 Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
 
 | Group | Resources |
 |---|---|
 | Orders and medication | MedicationStatement, MedicationAdministration, MedicationDispense, MedicationKnowledge |
-| Care planning | EpisodeOfCare, Goal, Task, Flag, Consent |
+| Care planning | Goal, Task, Flag, Consent |
 | Communication | Communication, CommunicationRequest |
 | Documents and specimens | DocumentReference, SpecimenDefinition |
 | Definitions and measures | ActivityDefinition, PlanDefinition, ObservationDefinition, Measure, MeasureReport |
@@ -97,7 +98,7 @@ Suggested next: any of the resources in the list above; **MedicationStatement**,
 | Item | Detail | Where |
 |---|---|---|
 | Schedule `actor` | A Patient or RelatedPerson actor is now existence-checked (the shared check), but Schedule does not model them for chaining, `_include` or `_revinclude` (`actor:Patient.` is a 400) | Schedule |
-| Encounter references | Account, EpisodeOfCare and other targets that are not rebuilt are stored as sent; a Group subject is existence-checked but does not chain | Encounter, Appointment |
+| Encounter references | Account and other targets that are not rebuilt are stored as sent; a Group subject is existence-checked but does not chain | Encounter, Appointment |
 | Organization revinclude | `_revinclude=Procedure:performer`, `DiagnosticReport:performer|results-interpreter` and `Immunization:manufacturer|performer` are not declared on Organization yet (the Organization registry file has uncommitted unrelated edits) | Organization |
 | Appointment operations | `$find` / `$book` not built; to be decided after reading the Medplum scheduling docs | Appointment |
 | fhir-gql | The GraphQL half (types, translators for **both** connectors, queries and mutations) is deferred until every fhir-server resource is done | `D:\code\work\projects\fhir-gql` |

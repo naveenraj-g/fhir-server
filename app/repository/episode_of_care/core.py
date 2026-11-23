@@ -1,192 +1,93 @@
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.episode_of_care import (
-    EpisodeOfCareIdentifier,
-    EpisodeOfCareModel,
-    EpisodeOfCareType,
-    EpisodeOfCareTypeCoding,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.episode_of_care import EpisodeOfCareModel
 
-from ._shared import (
-    _SORTABLE_FIELDS,
-    _parse_care_manager_ref,
-    _parse_managing_org_ref,
-    _parse_patient_ref,
-    _with_relationships,
-)
+from .search import episode_of_care_search
 
 logger = get_logger(__name__)
 
+_M = EpisodeOfCareModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for EpisodeOfCare."""
+    """Reads, search and delete. Every read loads only the episode_of_care
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_episode_of_care_id(
-        self, episode_of_care_id: int
-    ) -> EpisodeOfCareModel | None:
+    async def get_by_episode_of_care_id(self, episode_of_care_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(EpisodeOfCareModel).where(
-                    EpisodeOfCareModel.episode_of_care_id == episode_of_care_id
-                )
-            )
+            stmt = select(_M).where(_M.episode_of_care_id == episode_of_care_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_episode_of_care_id_in_org(
         self, episode_of_care_id: int, org_id: str
-    ) -> EpisodeOfCareModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the episode_of_care
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(EpisodeOfCareModel).where(
-                    EpisodeOfCareModel.episode_of_care_id == episode_of_care_id,
-                    EpisodeOfCareModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.episode_of_care_id == episode_of_care_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalars().first()
 
     async def episode_of_care_belongs_to_org(
         self, episode_of_care_id: int, org_id: str
     ) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the episode_of_care exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(EpisodeOfCareModel.id).where(
-                EpisodeOfCareModel.episode_of_care_id == episode_of_care_id,
-                EpisodeOfCareModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.episode_of_care_id == episode_of_care_id, _M.tenant_id == org_id
             )
             return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str | None = None,
-        status: str | None = None,
-        patient: str | None = None,
-        type: str | None = None,
-        care_manager: str | None = None,
-        organization: str | None = None,
-        identifier: str | None = None,
-    ):
-        if org_id:
-            stmt = stmt.where(EpisodeOfCareModel.tenant_id == org_id)
-        if status:
-            stmt = stmt.where(EpisodeOfCareModel.status == status)
-        if patient:
-            p_type, p_id = _parse_patient_ref(patient)
-            if p_id:
-                stmt = stmt.where(EpisodeOfCareModel.patient_id == p_id)
-                if p_type:
-                    stmt = stmt.where(EpisodeOfCareModel.patient_type == p_type)
-            else:
-                stmt = stmt.where(EpisodeOfCareModel.patient_reference == patient)
-        if type:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(EpisodeOfCareTypeCoding.id)
-                .join(
-                    EpisodeOfCareType,
-                    EpisodeOfCareTypeCoding.type_id == EpisodeOfCareType.id,
-                )
-                .where(
-                    EpisodeOfCareType.episode_of_care_pk == EpisodeOfCareModel.id,
-                    EpisodeOfCareTypeCoding.code == type,
-                ),
-            )
-        if care_manager:
-            cm_type, cm_id = _parse_care_manager_ref(care_manager)
-            if cm_id:
-                stmt = stmt.where(EpisodeOfCareModel.care_manager_id == cm_id)
-                if cm_type:
-                    stmt = stmt.where(EpisodeOfCareModel.care_manager_type == cm_type)
-            else:
-                stmt = stmt.where(
-                    EpisodeOfCareModel.care_manager_reference == care_manager
-                )
-        if organization:
-            org_type, org_id_val = _parse_managing_org_ref(organization)
-            if org_id_val:
-                stmt = stmt.where(
-                    EpisodeOfCareModel.managing_organization_id == org_id_val
-                )
-                if org_type:
-                    stmt = stmt.where(
-                        EpisodeOfCareModel.managing_organization_type == org_type
-                    )
-            else:
-                stmt = stmt.where(
-                    EpisodeOfCareModel.managing_organization_reference == organization
-                )
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(EpisodeOfCareIdentifier.id).where(
-                    EpisodeOfCareIdentifier.episode_of_care_pk == EpisodeOfCareModel.id,
-                    EpisodeOfCareIdentifier.value == identifier,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str,
-        status: str | None = None,
-        patient: str | None = None,
-        type: str | None = None,
-        care_manager: str | None = None,
-        organization: str | None = None,
-        identifier: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[EpisodeOfCareModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "status": status,
-                "patient": patient,
-                "type": type,
-                "care_manager": care_manager,
-                "organization": organization,
-                "identifier": identifier,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(EpisodeOfCareModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(EpisodeOfCareModel), **filter_kwargs
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=EpisodeOfCareModel.episode_of_care_id,
-                default_desc=True,
-            )
-
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=episode_of_care_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.episode_of_care_id,
             )
-            return list(rows), total
+        logger.debug(
+            "EpisodeOfCares searched",
+            extra={
+                "event": "episode_of_care.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
+
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, episode_of_care_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(EpisodeOfCareModel).where(
-                EpisodeOfCareModel.episode_of_care_id == episode_of_care_id
-            )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            stmt = select(_M).where(_M.episode_of_care_id == episode_of_care_id)
+            episode_of_care = (await session.execute(stmt)).scalars().first()
+            if not episode_of_care:
                 return False
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(episode_of_care)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

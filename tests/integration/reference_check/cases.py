@@ -21,6 +21,7 @@ from tests.integration.condition.support import condition_body
 from tests.integration.detected_issue.support import issue_body
 from tests.integration.diagnostic_report.support import report_body
 from tests.integration.encounter.support import encounter_body
+from tests.integration.episode_of_care.support import episode_body
 from tests.integration.endpoint.support import MINIMAL as ENDPOINT
 from tests.integration.family_member_history.support import history_body
 from tests.integration.group.support import group_body
@@ -71,6 +72,7 @@ CASES = {
     "DiagnosticReport": (f"{API}/diagnostic-reports", _fixed(report_body)),
     "Encounter": (f"{API}/encounters", _fixed(encounter_body)),
     "Endpoint": (f"{API}/endpoints", _fixed(ENDPOINT)),
+    "EpisodeOfCare": (f"{API}/episodes-of-care", _fixed(episode_body)),
     "FamilyMemberHistory": (f"{API}/family-member-histories", _fixed(history_body)),
     "Group": (f"{API}/groups", _fixed(group_body)),
     "HealthcareService": (f"{API}/healthcare-services", _fixed(HEALTHCARE_SERVICE)),

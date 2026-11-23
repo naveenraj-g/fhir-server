@@ -1,381 +1,177 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import EpisodeOfCareStatus, IdentifierUse
-from app.schemas.episode_of_care.input.codeable_concept import (
-    EpisodeOfCareCodeableConceptInput,
-)
-from app.schemas.episode_of_care.input.diagnosis import EpisodeOfCareDiagnosisInput
-from app.schemas.episode_of_care.input.identifier import EpisodeOfCareIdentifierInput
-from app.schemas.episode_of_care.input.reference import EpisodeOfCareReferenceInput
-from app.schemas.episode_of_care.input.status_history import (
-    EpisodeOfCareStatusHistoryInput,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
+# episode-of-care-status (the required binding of EpisodeOfCare.status and statusHistory.status).
+StatusCode = Literal[
+    "planned",
+    "waitlist",
+    "active",
+    "onhold",
+    "finished",
+    "cancelled",
+    "entered-in-error",
+]
 
-class EpisodeOfCareCreateSchema(BaseModel):
-    """Request payload for POST /api/fhir/v1/episodes-of-care/."""
+_EXAMPLE = {
+    "resourceType": "EpisodeOfCare",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/episode-of-care-id",
+            "value": "EOC-1001",
+        }
+    ],
+    "status": "active",
+    "statusHistory": [
+        {"status": "planned", "period": {"start": "2025-12-01", "end": "2025-12-31"}},
+        {"status": "active", "period": {"start": "2026-01-01"}},
+    ],
+    "type": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/episodeofcare-type",
+                    "code": "cacp",
+                    "display": "Community-based aged care",
+                }
+            ]
+        }
+    ],
+    "diagnosis": [
+        {
+            "condition": {"reference": "Condition/120001"},
+            "rank": 1,
+        }
+    ],
+    "patient": {"reference": "Patient/10001"},
+    "managingOrganization": {"reference": "Organization/190001"},
+    "period": {"start": "2026-01-01"},
+    "careManager": {"reference": "Practitioner/30001"},
+}
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "active",
-                "patient": "Patient/10001",
-                "patient_display": "Jane Doe",
-                "managing_organization": "Organization/190001",
-                "managing_organization_display": "Acme Health System",
-                "period_start": "2026-01-01T00:00:00Z",
-                "period_end": "2026-12-31T23:59:59Z",
-                "care_manager": "Practitioner/30001",
-                "care_manager_display": "Dr. Adam Careful",
-                "type": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/episodeofcare-type",
-                                "code": "hacc",
-                                "display": "Home and Community Care",
-                            }
-                        ],
-                        "text": "Home and Community Care",
-                    }
-                ],
-                "diagnosis": [
-                    {
-                        "condition": "Condition/120001",
-                        "condition_display": "Chronic Heart Failure",
-                        "rank": 1,
-                    }
-                ],
-                "team": ["CareTeam/390001"],
-            }
-        },
-    )
 
-    status: EpisodeOfCareStatus = Field(
-        EpisodeOfCareStatus.active,
-        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error",
-    )
-    status_history: list[EpisodeOfCareStatusHistoryInput] | None = Field(
+class EpisodeOfCareStatusHistoryInput(FhirInputModel):
+    """EpisodeOfCare.statusHistory - past statuses of the episode."""
+
+    status: StatusCode | None = Field(
         None,
-        description="Past list of status codes (and reasons) for the status of the episode.",
+        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error (required by R4).",
     )
-    type: list[EpisodeOfCareCodeableConceptInput] | None = Field(
-        None, description="Type/flavor - e.g. specialist referral, disease management."
+    period: FhirPeriodInput | None = Field(
+        None,
+        description="Duration the EpisodeOfCare was in the specified status (required by R4).",
+    )
+
+
+class EpisodeOfCareDiagnosisInput(FhirInputModel):
+    """EpisodeOfCare.diagnosis - the list of diagnosis relevant to this episode of care."""
+
+    condition: FhirReferenceInput | None = Field(
+        None,
+        description="Conditions/problems/diagnoses this episode of care is for - Reference(Condition), required by R4. A relative reference must exist in the caller's org (422 otherwise). Searched by `condition`.",
+    )
+    role: FhirCodeableConceptInput | None = Field(
+        None, description="Role that this diagnosis has within the episode of care."
+    )
+    rank: int | None = Field(
+        None, description="Ranking of the diagnosis (for each role type)."
+    )
+
+
+class _EpisodeOfCareFields(FhirInputModel):
+    """Every writable EpisodeOfCare element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/episodeofcare.html). Create and patch accept exactly the same
+    fields. R4 requires `status` and `patient`, but only the java_validator backend enforces
+    cardinality minimums.
+
+    The validated body is stored whole (EpisodeOfCareModel.content), so any valid R4 element is
+    kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the episode_of_care_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["EpisodeOfCare"] | None = Field(
+        None, description="Optional; if supplied it must be 'EpisodeOfCare'."
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None,
+        description="Business Identifier(s) relevant for this EpisodeOfCare. Searched by `identifier`.",
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error (required by R4). Searched by `status`.",
+    )
+    statusHistory: list[EpisodeOfCareStatusHistoryInput] | None = Field(
+        None,
+        description="Past list of status codes (the current status may be included to cover the start date of the status).",
+    )
+    type: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="Type/class - e.g. specialist referral, disease management. Searched by `type`.",
     )
     diagnosis: list[EpisodeOfCareDiagnosisInput] | None = Field(
-        None, description="The list of diagnosis relevant to this episode of care."
-    )
-    patient: str | None = Field(
         None,
-        description="The patient who is the focus of this episode of care (Reference(Patient)).",
+        description="The list of diagnosis relevant to this episode of care. `diagnosis.condition` is searched by `condition`.",
     )
-    patient_display: str | None = Field(None, description="Display name for patient.")
-    patient_identifier_use: IdentifierUse | None = Field(
-        None, description="Patient identifier use."
-    )
-    patient_identifier_type_system: str | None = Field(
-        None, description="Patient identifier type system."
-    )
-    patient_identifier_type_version: str | None = Field(
-        None, description="Patient identifier type version."
-    )
-    patient_identifier_type_code: str | None = Field(
-        None, description="Patient identifier type code."
-    )
-    patient_identifier_type_display: str | None = Field(
-        None, description="Patient identifier type display."
-    )
-    patient_identifier_type_user_selected: bool | None = Field(
-        None, description="Patient identifier type user selected."
-    )
-    patient_identifier_type_text: str | None = Field(
-        None, description="Patient identifier type text."
-    )
-    patient_identifier_system: str | None = Field(
-        None, description="Patient identifier system."
-    )
-    patient_identifier_value: str | None = Field(
-        None, description="Patient identifier value."
-    )
-    patient_identifier_period_start: datetime | None = Field(
-        None, description="Patient identifier period start."
-    )
-    patient_identifier_period_end: datetime | None = Field(
-        None, description="Patient identifier period end."
-    )
-
-    managing_organization: str | None = Field(
+    patient: FhirReferenceInput | None = Field(
         None,
-        description="Organization that assumes responsibility for care (Reference(Organization)).",
+        description="The patient who is the focus of this episode of care - Reference(Patient), required by R4. A relative reference must exist in the caller's org (422 otherwise). Searched by `patient`.",
     )
-    managing_organization_display: str | None = Field(
-        None, description="Display name for managing organization."
-    )
-    managing_organization_identifier_use: IdentifierUse | None = Field(
-        None, description="Managing organization identifier use."
-    )
-    managing_organization_identifier_type_system: str | None = Field(
-        None, description="Managing organization identifier type system."
-    )
-    managing_organization_identifier_type_version: str | None = Field(
-        None, description="Managing organization identifier type version."
-    )
-    managing_organization_identifier_type_code: str | None = Field(
-        None, description="Managing organization identifier type code."
-    )
-    managing_organization_identifier_type_display: str | None = Field(
-        None, description="Managing organization identifier type display."
-    )
-    managing_organization_identifier_type_user_selected: bool | None = Field(
-        None, description="Managing organization identifier type user selected."
-    )
-    managing_organization_identifier_type_text: str | None = Field(
-        None, description="Managing organization identifier type text."
-    )
-    managing_organization_identifier_system: str | None = Field(
-        None, description="Managing organization identifier system."
-    )
-    managing_organization_identifier_value: str | None = Field(
-        None, description="Managing organization identifier value."
-    )
-    managing_organization_identifier_period_start: datetime | None = Field(
-        None, description="Managing organization identifier period start."
-    )
-    managing_organization_identifier_period_end: datetime | None = Field(
-        None, description="Managing organization identifier period end."
-    )
-
-    period_start: datetime | None = Field(
-        None, description="Interval during responsibility is assumed."
-    )
-    period_end: datetime | None = Field(
-        None, description="Interval during responsibility is assumed."
-    )
-    referral_request: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None, description="Originating Referral Request(s) (Reference(ServiceRequest))."
-    )
-    care_manager: str | None = Field(
+    managingOrganization: FhirReferenceInput | None = Field(
         None,
-        description="Care manager/care coordinator for the patient (Reference(Practitioner | PractitionerRole)).",
+        description="Organization that assumes care - Reference(Organization). A relative reference must exist in the caller's org (422 otherwise). Searched by `organization`.",
     )
-    care_manager_display: str | None = Field(
-        None, description="Display name for care manager."
-    )
-    care_manager_identifier_use: IdentifierUse | None = Field(
-        None, description="Care manager identifier use."
-    )
-    care_manager_identifier_type_system: str | None = Field(
-        None, description="Care manager identifier type system."
-    )
-    care_manager_identifier_type_version: str | None = Field(
-        None, description="Care manager identifier type version."
-    )
-    care_manager_identifier_type_code: str | None = Field(
-        None, description="Care manager identifier type code."
-    )
-    care_manager_identifier_type_display: str | None = Field(
-        None, description="Care manager identifier type display."
-    )
-    care_manager_identifier_type_user_selected: bool | None = Field(
-        None, description="Care manager identifier type user selected."
-    )
-    care_manager_identifier_type_text: str | None = Field(
-        None, description="Care manager identifier type text."
-    )
-    care_manager_identifier_system: str | None = Field(
-        None, description="Care manager identifier system."
-    )
-    care_manager_identifier_value: str | None = Field(
-        None, description="Care manager identifier value."
-    )
-    care_manager_identifier_period_start: datetime | None = Field(
-        None, description="Care manager identifier period start."
-    )
-    care_manager_identifier_period_end: datetime | None = Field(
-        None, description="Care manager identifier period end."
-    )
-
-    team: list[EpisodeOfCareReferenceInput | str] | None = Field(
+    period: FhirPeriodInput | None = Field(
         None,
-        description="Other practitioners facilitating this episode of care (Reference(CareTeam)).",
+        description="Interval during responsibility is assumed. Searched by `date`.",
     )
-    account: list[EpisodeOfCareReferenceInput | str] | None = Field(
+    referralRequest: list[FhirReferenceInput] | None = Field(
         None,
-        description="The set of accounts that may be used for billing for this EpisodeOfCare (Reference(Account)).",
+        description="Originating Referral Request(s) - Reference(ServiceRequest). A relative reference must exist in the caller's org (422 otherwise). Searched by `incoming-referral`.",
     )
-    identifier: list[EpisodeOfCareIdentifierInput] | None = Field(
-        None, description="Business Identifier(s) relevant for this EpisodeOfCare."
+    careManager: FhirReferenceInput | None = Field(
+        None,
+        description="Care manager/care coordinator for the patient - Reference(Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise). Searched by `care-manager` (a Practitioner).",
+    )
+    team: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Other practitioners facilitating this episode of care - Reference(CareTeam). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    account: list[FhirReferenceInput] | None = Field(
+        None,
+        description="The set of accounts that may be used for billing for this EpisodeOfCare - Reference(Account), stored as sent.",
     )
 
 
-class EpisodeOfCarePatchSchema(BaseModel):
-    """Request payload for PATCH /api/fhir/v1/episodes-of-care/{episode_of_care_id}."""
+class EpisodeOfCareCreateSchema(_EpisodeOfCareFields):
+    """POST body - a FHIR R4 EpisodeOfCare resource."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class EpisodeOfCarePatchSchema(_EpisodeOfCareFields):
+    """PATCH body - a partial FHIR R4 EpisodeOfCare (merge-patch semantics on top-level elements).
+    Only supplied elements are written; omitted ones are left untouched. A supplied element
+    replaces the stored value wholesale - a list (even `[]`) replaces every existing entry, an
+    object such as `period` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "finished",
-                "period_end": "2026-12-31T23:59:59Z",
+                "period": {"start": "2026-01-01", "end": "2026-06-30"},
             }
-        },
-    )
-
-    status: EpisodeOfCareStatus | None = Field(
-        None,
-        description="planned | waitlist | active | onhold | finished | cancelled | entered-in-error",
-    )
-    status_history: list[EpisodeOfCareStatusHistoryInput] | None = Field(
-        None,
-        description="Past list of status codes (and reasons) for the status of the episode.",
-    )
-    type: list[EpisodeOfCareCodeableConceptInput] | None = Field(
-        None, description="Type/flavor - e.g. specialist referral, disease management."
-    )
-    diagnosis: list[EpisodeOfCareDiagnosisInput] | None = Field(
-        None, description="The list of diagnosis relevant to this episode of care."
-    )
-    patient: str | None = Field(
-        None,
-        description="The patient who is the focus of this episode of care (Reference(Patient)).",
-    )
-    patient_display: str | None = Field(None, description="Display name for patient.")
-    patient_identifier_use: IdentifierUse | None = Field(
-        None, description="Patient identifier use."
-    )
-    patient_identifier_type_system: str | None = Field(
-        None, description="Patient identifier type system."
-    )
-    patient_identifier_type_version: str | None = Field(
-        None, description="Patient identifier type version."
-    )
-    patient_identifier_type_code: str | None = Field(
-        None, description="Patient identifier type code."
-    )
-    patient_identifier_type_display: str | None = Field(
-        None, description="Patient identifier type display."
-    )
-    patient_identifier_type_user_selected: bool | None = Field(
-        None, description="Patient identifier type user selected."
-    )
-    patient_identifier_type_text: str | None = Field(
-        None, description="Patient identifier type text."
-    )
-    patient_identifier_system: str | None = Field(
-        None, description="Patient identifier system."
-    )
-    patient_identifier_value: str | None = Field(
-        None, description="Patient identifier value."
-    )
-    patient_identifier_period_start: datetime | None = Field(
-        None, description="Patient identifier period start."
-    )
-    patient_identifier_period_end: datetime | None = Field(
-        None, description="Patient identifier period end."
-    )
-
-    managing_organization: str | None = Field(
-        None,
-        description="Organization that assumes responsibility for care (Reference(Organization)).",
-    )
-    managing_organization_display: str | None = Field(
-        None, description="Display name for managing organization."
-    )
-    managing_organization_identifier_use: IdentifierUse | None = Field(
-        None, description="Managing organization identifier use."
-    )
-    managing_organization_identifier_type_system: str | None = Field(
-        None, description="Managing organization identifier type system."
-    )
-    managing_organization_identifier_type_version: str | None = Field(
-        None, description="Managing organization identifier type version."
-    )
-    managing_organization_identifier_type_code: str | None = Field(
-        None, description="Managing organization identifier type code."
-    )
-    managing_organization_identifier_type_display: str | None = Field(
-        None, description="Managing organization identifier type display."
-    )
-    managing_organization_identifier_type_user_selected: bool | None = Field(
-        None, description="Managing organization identifier type user selected."
-    )
-    managing_organization_identifier_type_text: str | None = Field(
-        None, description="Managing organization identifier type text."
-    )
-    managing_organization_identifier_system: str | None = Field(
-        None, description="Managing organization identifier system."
-    )
-    managing_organization_identifier_value: str | None = Field(
-        None, description="Managing organization identifier value."
-    )
-    managing_organization_identifier_period_start: datetime | None = Field(
-        None, description="Managing organization identifier period start."
-    )
-    managing_organization_identifier_period_end: datetime | None = Field(
-        None, description="Managing organization identifier period end."
-    )
-
-    period_start: datetime | None = Field(
-        None, description="Interval during responsibility is assumed."
-    )
-    period_end: datetime | None = Field(
-        None, description="Interval during responsibility is assumed."
-    )
-    referral_request: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None, description="Originating Referral Request(s) (Reference(ServiceRequest))."
-    )
-    care_manager: str | None = Field(
-        None,
-        description="Care manager/care coordinator for the patient (Reference(Practitioner | PractitionerRole)).",
-    )
-    care_manager_display: str | None = Field(
-        None, description="Display name for care manager."
-    )
-    care_manager_identifier_use: IdentifierUse | None = Field(
-        None, description="Care manager identifier use."
-    )
-    care_manager_identifier_type_system: str | None = Field(
-        None, description="Care manager identifier type system."
-    )
-    care_manager_identifier_type_version: str | None = Field(
-        None, description="Care manager identifier type version."
-    )
-    care_manager_identifier_type_code: str | None = Field(
-        None, description="Care manager identifier type code."
-    )
-    care_manager_identifier_type_display: str | None = Field(
-        None, description="Care manager identifier type display."
-    )
-    care_manager_identifier_type_user_selected: bool | None = Field(
-        None, description="Care manager identifier type user selected."
-    )
-    care_manager_identifier_type_text: str | None = Field(
-        None, description="Care manager identifier type text."
-    )
-    care_manager_identifier_system: str | None = Field(
-        None, description="Care manager identifier system."
-    )
-    care_manager_identifier_value: str | None = Field(
-        None, description="Care manager identifier value."
-    )
-    care_manager_identifier_period_start: datetime | None = Field(
-        None, description="Care manager identifier period start."
-    )
-    care_manager_identifier_period_end: datetime | None = Field(
-        None, description="Care manager identifier period end."
-    )
-
-    team: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None,
-        description="Other practitioners facilitating this episode of care (Reference(CareTeam)).",
-    )
-    account: list[EpisodeOfCareReferenceInput | str] | None = Field(
-        None,
-        description="The set of accounts that may be used for billing for this EpisodeOfCare (Reference(Account)).",
-    )
-    identifier: list[EpisodeOfCareIdentifierInput] | None = Field(
-        None, description="Business Identifier(s) relevant for this EpisodeOfCare."
-    )
+        }
+    }

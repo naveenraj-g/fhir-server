@@ -47,6 +47,7 @@ from app.repository.practitioner_role.search import practitioner_role_search
 from app.repository.schedule.search import schedule_search
 from app.repository.care_plan.search import care_plan_search
 from app.repository.care_team.search import care_team_search
+from app.repository.episode_of_care.search import episode_of_care_search
 from app.repository.group.search import group_search
 from app.repository.medication.search import medication_search
 from app.repository.medication_request.search import medication_request_search
@@ -65,6 +66,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "schedule": schedule_search,
     "care_plan": care_plan_search,
     "care_team": care_team_search,
+    "episode_of_care": episode_of_care_search,
     "group": group_search,
     "medication": medication_search,
     "medication_request": medication_request_search,

@@ -231,7 +231,7 @@ routes:
     # - document_reference
     - encounter
     - endpoint
-    # - episode_of_care
+    - episode_of_care
     # - flag
     - group
     - immunization

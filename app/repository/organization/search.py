@@ -38,6 +38,9 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
+from app.repository._episode_of_care_revinclude import (
+    column_episode_of_care_revincludes,
+)
 from app.repository._care_plan_revinclude import performer_care_plan_revincludes
 from app.repository._care_team_revinclude import participant_care_team_revincludes
 from app.repository._group_revinclude import (
@@ -670,6 +673,12 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_episode_of_care_revincludes(
+                "organization",
+                "managing_organization",
+                "Organization",
+                lambda x: x.organization_id,
+            ),
             *performer_care_plan_revincludes(
                 "Organization", lambda x: x.organization_id
             ),
