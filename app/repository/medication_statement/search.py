@@ -79,6 +79,7 @@ _MODELED = {
         ("Observation", "observation"),
         ("Procedure", "procedure"),
         ("MedicationStatement", "medication_statement"),
+        ("MedicationAdministration", "medication_administration"),
     )
 }
 

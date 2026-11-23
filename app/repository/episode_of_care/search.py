@@ -38,6 +38,7 @@ from app.models.episode_of_care import (
     EpisodeOfCareStatus,
     EpisodeOfCareToken,
 )
+from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
 from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
 from app.repository._document_reference_revinclude import (
     reference_document_reference_revincludes,
@@ -654,6 +655,9 @@ def episode_of_care_search() -> SearchRegistry:
         ),
         # Encounters that name one of these episodes in `episodeOfCare`.
         revincludes=(
+            *column_medication_administration_revincludes(
+                ('context',), 'context', 'EpisodeOfCare', lambda x: x.episode_of_care_id
+            ),
             *column_medication_statement_revincludes(
                 ('context',), 'context', 'EpisodeOfCare', lambda x: x.episode_of_care_id
             ),

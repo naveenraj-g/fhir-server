@@ -1,170 +1,176 @@
-"""Shared helpers and payloads for MedicationAdministration integration tests."""
+"""Shared helpers and payloads for medication administration integration tests.
+
+Request bodies are genuine FHIR R4 MedicationAdministration JSON (camelCase, nested datatypes),
+and every response is FHIR R4 too."""
+
+# The resources a MedicationAdministration points at (and that point back at it) are created
+# through their own routers.
+from tests.integration.condition.support import (  # noqa: F401
+    condition_body,
+    create_condition,
+)
+from tests.integration.encounter.support import (  # noqa: F401
+    create_encounter,
+    encounter_body,
+)
+from tests.integration.episode_of_care.support import (  # noqa: F401
+    create_episode,
+    episode_body,
+)
+from tests.integration.group.support import create_group, group_body  # noqa: F401
+from tests.integration.medication.support import (  # noqa: F401
+    create_medication,
+    medication_body,
+)
+from tests.integration.medication_request.support import (  # noqa: F401
+    create_medication_request,
+    medication_request_body,
+)
+from tests.integration.observation.support import (  # noqa: F401
+    create_observation,
+    observation_body,
+)
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
+from tests.integration.procedure.support import (  # noqa: F401
+    create_procedure,
+    procedure_body,
+)
+from tests.integration.related_person.support import (  # noqa: F401
+    create_related_person,
+    related_person_body,
+)
 
 BASE = "/api/fhir/v1/medication-administrations"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+ADMIN_IDS = (
+    "https://fhir-server.dev/fhir/identifier-system/medication-administration-id"
+)
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+RXNORM = "http://www.nlm.nih.gov/research/umls/rxnorm"
+SCT = "http://snomed.info/sct"
+UCUM = "http://unitsofmeasure.org"
+CATEGORY = "http://terminology.hl7.org/CodeSystem/medication-admin-category"
+STATUS_SYSTEM = "http://hl7.org/fhir/CodeSystem/medication-admin-status"
+EXTERNAL_PATIENT = {"reference": "https://other.example.org/fhir/Patient/1"}
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_condition(client, patient_id: int) -> int:
-    """Create a minimal condition and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/conditions/",
-        json={
-            "clinical_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
-                        "code": "active",
-                    }
-                ]
-            },
-            "verification_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
-                        "code": "confirmed",
-                    }
-                ]
-            },
-            "subject": {"reference": f"Patient/{patient_id}"},
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_medication_administration(patient_id: int) -> dict:
+def concept(system: str, code: str, display: str | None = None) -> dict:
     return {
-        "status": "completed",
-        "subject": f"Patient/{patient_id}",
-        "subject_display": "Jane Doe",
-        "effective_date_time": "2026-01-15T10:00:00Z",
-        "medication_codeable_concept": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "372687004",
-                    "display": "Amoxicillin 500mg capsule",
-                }
-            ],
-            "text": "Amoxicillin 500mg capsule",
-        },
-    }
-
-
-def full_medication_administration(
-    patient_id: int,
-    practitioner_id: int | None = None,
-    condition_id: int | None = None,
-) -> dict:
-    payload = {
-        "status": "completed",
-        "subject": f"Patient/{patient_id}",
-        "subject_display": "Jane Doe",
-        "effective_date_time": "2026-01-15T10:00:00Z",
-        "category": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/med-admin-category",
-                    "code": "inpatient",
-                    "display": "Inpatient",
-                }
-            ],
-            "text": "Inpatient",
-        },
-        "medication_codeable_concept": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "372687004",
-                    "display": "Amoxicillin 500mg capsule",
-                }
-            ],
-            "text": "Amoxicillin 500mg capsule",
-        },
-        "reason_code": [
+        "coding": [
             {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "87628006",
-                        "display": "Bacterial infectious disease",
-                    }
-                ],
-                "text": "Bacterial infection",
-            }
-        ],
-        "note": [
-            {
-                "text": "Patient tolerated infusion without complications.",
-                "time": "2026-01-15T10:30:00Z",
-                "author_string": "Nurse Alice",
-            }
-        ],
-        "dosage": {
-            "text": "500mg oral capsule by mouth with water",
-            "route": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "260548002",
-                        "display": "Oral",
-                    }
-                ],
-                "text": "Oral",
-            },
-            "dose": {
-                "value": 500.0,
-                "unit": "mg",
-                "system": "http://unitsofmeasure.org",
-                "code": "mg",
-            },
-        },
-    }
-    if practitioner_id:
-        payload["performer"] = [
-            {
-                "actor": f"Practitioner/{practitioner_id}",
-                "actor_display": "Dr. Bob Jones",
-                "function": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/med-admin-perform-function",
-                            "code": "performer",
-                            "display": "Performer",
-                        }
-                    ],
-                    "text": "Performer",
-                },
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
             }
         ]
-    if condition_id:
-        payload["reason_reference"] = [{"reference": f"Condition/{condition_id}"}]
-    return payload
+    }
 
 
-async def create_medication_administration(
-    client, payload: dict, headers: dict | None = None
+def medication_administration_body(
+    patient_id: int | None = None, status: str = "completed", **extra
 ) -> dict:
-    resp = await client.post(BASE + "/", json=payload, headers=headers)
+    """A valid minimal administration: R4 requires `status`, `medication[x]`, `subject` and
+    `effective[x]`. With no patient the subject is an absolute URL (not existence-checked)."""
+    subject = (
+        {"reference": f"Patient/{patient_id}"} if patient_id else dict(EXTERNAL_PATIENT)
+    )
+    body = {
+        "status": status,
+        "medicationCodeableConcept": {"text": "Aspirin"},
+        "subject": subject,
+        "effectiveDateTime": "2026-02-03T08:30:00Z",
+    }
+    body.update(extra)
+    return body
+
+
+def full_body(
+    organization_id: int,
+    patient_id: int,
+    practitioner_id: int,
+    encounter_id: int,
+    observation_id: int,
+    condition_id: int,
+    request_id: int,
+    medication_id: int | None = None,
+) -> dict:
+    """Every R4 element (the medication as a CodeableConcept unless a medication id is given,
+    then as a Reference): all of it must round-trip, indexed or not."""
+    body = medication_administration_body(
+        patient_id,
+        status="not-done",
+        resourceType="MedicationAdministration",
+        identifier=[
+            {
+                "system": ADMIN_IDS,
+                "value": "MA-1001",
+                "type": {
+                    "coding": [{"system": V2_0203, "code": "ADM"}],
+                    "text": "Admin number",
+                },
+                "assigner": {"reference": f"Organization/{organization_id}"},
+            }
+        ],
+        instantiates=["http://example.org/protocol/1"],
+        statusReason=[concept(SCT, "182856006", "Drug not available")],
+        category=concept(CATEGORY, "inpatient"),
+        context={"reference": f"Encounter/{encounter_id}"},
+        supportingInformation=[{"reference": f"Observation/{observation_id}"}],
+        effectivePeriod={"start": "2026-01-01", "end": "2026-01-02"},
+        performer=[
+            {
+                "function": concept(
+                    "http://terminology.hl7.org/CodeSystem/med-admin-perform-function",
+                    "performer",
+                ),
+                "actor": {"reference": f"Practitioner/{practitioner_id}"},
+            },
+            {"actor": {"reference": "https://other.example.org/fhir/Device/9"}},
+        ],
+        reasonCode=[concept(SCT, "38341003", "Hypertension")],
+        reasonReference=[{"reference": f"Condition/{condition_id}"}],
+        request={"reference": f"MedicationRequest/{request_id}"},
+        device=[{"reference": "Device/12"}],
+        note=[
+            {
+                "authorReference": {"reference": f"Practitioner/{practitioner_id}"},
+                "time": "2026-01-01T09:00:00Z",
+                "text": "Patient declined",
+            },
+            {"authorString": "the nurse", "text": "Plain author"},
+        ],
+        dosage={
+            "text": "5 mg orally",
+            "site": concept(SCT, "368208006", "Left arm"),
+            "route": concept(SCT, "26643006", "Oral"),
+            "method": {"text": "Swallow"},
+            "dose": {"value": 5, "unit": "mg", "system": UCUM, "code": "mg"},
+            "rateRatio": {
+                "numerator": {"value": 5, "unit": "mg", "system": UCUM, "code": "mg"},
+                "denominator": {"value": 1, "unit": "h", "system": UCUM, "code": "h"},
+            },
+        },
+        eventHistory=[{"reference": "https://other.example.org/fhir/Provenance/1"}],
+    )
+    del body["effectiveDateTime"]
+    if medication_id:
+        del body["medicationCodeableConcept"]
+        body["medicationReference"] = {"reference": f"Medication/{medication_id}"}
+    else:
+        body["medicationCodeableConcept"] = concept(
+            RXNORM, "197361", "Amlodipine 5 MG Oral Tablet"
+        )
+    return body
+
+
+async def create_medication_administration(client, body: dict) -> int:
+    """Create a medication administration and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return int(resp.json()["id"])

@@ -42,6 +42,7 @@ INFORMATION_TYPES = (
     "ServiceRequest",
     "MedicationRequest",
     "MedicationStatement",
+    "MedicationAdministration",
     "CarePlan",
     "AllergyIntolerance",
     "Immunization",

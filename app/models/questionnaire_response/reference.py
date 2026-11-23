@@ -52,6 +52,7 @@ SUBJECT_TYPES = (
     "ServiceRequest",
     "MedicationRequest",
     "MedicationStatement",
+    "MedicationAdministration",
     "CarePlan",
     "CareTeam",
     "Specimen",

@@ -427,11 +427,16 @@ async def test_create_part_of_is_checked_for_a_procedure_or_immunization(
         partOf=[
             {"reference": f"Procedure/{procedure}"},
             {"reference": f"Immunization/{immunization}"},
-            {"reference": "MedicationAdministration/999999"},
+            {"reference": "Task/999999"},
         ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
-    for missing in ("Procedure/999999", "Immunization/999999"):
+    for missing in (
+        "Procedure/999999",
+        "Immunization/999999",
+        "MedicationAdministration/999999",
+        "MedicationStatement/999999",
+    ):
         resp = await client.post(
             BASE + "/", json=observation_body(patient, partOf=[{"reference": missing}])
         )

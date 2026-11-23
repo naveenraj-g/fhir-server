@@ -1,324 +1,347 @@
 """FHIR R4 conformance for `to_fhir_medication_administration()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+MedicationAdministration is stored whole in `content` (like MedicationStatement, MedicationRequest
+and the other content-based resources): the resource lives in
+MedicationAdministrationModel.content, and to_fhir_medication_administration() only stamps `id`
+and `meta` onto it. So what can go wrong on the read side is that stamping (e.g. a malformed meta
+extension) or a stored document the server returns that isn't valid R4 - each case below is a
+`content` document as the write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
 
 import pytest
 
-from app.fhir.mappers.medication_administration import to_fhir_medication_administration
-from app.models.enums import IdentifierUse
-from app.models.medication_administration import (
-    MedicationAdministrationCategoryCoding,
-    MedicationAdministrationDevice,
-    MedicationAdministrationDeviceReferenceType,
-    MedicationAdministrationDosageMethodCoding,
-    MedicationAdministrationDosageRouteCoding,
-    MedicationAdministrationDosageSiteCoding,
-    MedicationAdministrationEventHistory,
-    MedicationAdministrationIdentifier,
-    MedicationAdministrationIdentifierTypeCoding,
-    MedicationAdministrationMedicationCoding,
-    MedicationAdministrationModel,
-    MedicationAdministrationNote,
-    MedicationAdministrationPartOf,
-    MedicationAdministrationPartOfReferenceType,
-    MedicationAdministrationPerformer,
-    MedicationAdministrationPerformerActorReferenceType,
-    MedicationAdministrationPerformerFunctionCoding,
-    MedicationAdministrationReasonCode,
-    MedicationAdministrationReasonCodeCoding,
-    MedicationAdministrationReasonReference,
-    MedicationAdministrationReasonReferenceType,
-    MedicationAdministrationStatus,
-    MedicationAdministrationStatusReason,
-    MedicationAdministrationStatusReasonCoding,
-    MedicationAdministrationSubjectReferenceType,
-    MedicationAdministrationSupportingInformation,
+from app.fhir.mappers.medication_administration import (
+    to_fhir_medication_administration,
 )
+from app.models.medication_administration import MedicationAdministrationModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-medication_administration_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.medication_administration_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "part_of",
-    "status_reasons",
-    "category_codings",
-    "medication_codings",
-    "supporting_informations",
-    "performers",
-    "reason_codes",
-    "reason_references",
-    "devices",
-    "notes",
-    "event_history",
-    "dosage_site_codings",
-    "dosage_route_codings",
-    "dosage_method_codings",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+SCT = "http://snomed.info/sct"
+RXNORM = "http://www.nlm.nih.gov/research/umls/rxnorm"
+UCUM = "http://unitsofmeasure.org"
 
 
-def _medication_administration(**overrides) -> MedicationAdministrationModel:
+def _c(content: dict, **overrides) -> MedicationAdministrationModel:
     fields = {
-        "id": 1,
         "medication_administration_id": 580001,
         "tenant_id": "org-test",
-        "status": MedicationAdministrationStatus.completed,
-        "medication_codeable_concept_text": "Amoxicillin 500mg capsule",
-        "subject_reference": "Patient/10001",
-        "subject_type": MedicationAdministrationSubjectReferenceType.Patient,
-        "subject_id": 10001,
-        "subject_display": "Jane Doe",
-        "effective_date_time": D,
         "created_by": "u-test",
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = MedicationAdministrationModel(**fields)
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
+    return MedicationAdministrationModel(**fields)
 
 
-def test_medication_administration_minimal_conformance():
-    m = _medication_administration()
-    m.medication_codings = [
-        MedicationAdministrationMedicationCoding(
-            medication_administration_pk=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="372687004",
-            display="Amoxicillin 500mg capsule",
-            created_by="u-test",
+def _base(**extra) -> dict:
+    return {
+        "status": "completed",
+        "medicationCodeableConcept": {"text": "Aspirin"},
+        "subject": {"reference": "Patient/10001"},
+        "effectiveDateTime": "2026-02-03T08:30:00Z",
+        **extra,
+    }
+
+
+CASES = {
+    "minimal": _c(_base()),
+    "updated_by_and_updated_at": _c(_base(), updated_by="u-other", updated_at=D),
+    **{
+        f"status_{s}": _c(_base(status=s))
+        for s in (
+            "in-progress",
+            "not-done",
+            "on-hold",
+            "completed",
+            "entered-in-error",
+            "stopped",
+            "unknown",
         )
-    ]
-    fhir = to_fhir_medication_administration(m)
-    assert_valid(medication_administration_pb2.MedicationAdministration, fhir)
-
-
-def test_medication_administration_full_conformance():
-    ident = MedicationAdministrationIdentifier(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="MRN",
-        system="http://hospital.example.org",
-        value="MA-001",
-        created_by="u-test",
-    )
-    ident.type_codings = [
-        MedicationAdministrationIdentifierTypeCoding(
-            medication_administration_identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="MR",
-            display="Medical Record Number",
-            created_by="u-test",
+    },
+    "identifier": _c(
+        _base(
+            identifier=[
+                {
+                    "use": "official",
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "ADM",
+                            }
+                        ]
+                    },
+                    "system": "https://fhir-server.dev/fhir/identifier-system/medication-administration-id",
+                    "value": "MA-1",
+                    "period": {"start": "2020-01-01"},
+                    "assigner": {"reference": "Organization/190001"},
+                },
+                {"system": "urn:other", "value": "second"},
+            ]
         )
-    ]
-
-    med_coding = MedicationAdministrationMedicationCoding(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="372687004",
-        display="Amoxicillin 500mg capsule",
-        created_by="u-test",
-    )
-
-    cat_coding = MedicationAdministrationCategoryCoding(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/medication-admin-category",
-        code="inpatient",
-        display="Inpatient",
-        created_by="u-test",
-    )
-
-    status_reason = MedicationAdministrationStatusReason(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        text="Treatment completed normally",
-        created_by="u-test",
-    )
-    status_reason.codings = [
-        MedicationAdministrationStatusReasonCoding(
-            medication_administration_status_reason_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="182992009",
-            display="Treatment completed",
-            created_by="u-test",
+    ),
+    "instantiates_and_part_of": _c(
+        _base(
+            instantiates=["http://example.org/protocol/1", "urn:uuid:1234"],
+            partOf=[
+                {"reference": "Procedure/100001"},
+                {"reference": "MedicationAdministration/580002"},
+            ],
         )
-    ]
-
-    part_of = MedicationAdministrationPartOf(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        reference_reference="Procedure/100001",
-        reference_type=MedicationAdministrationPartOfReferenceType.Procedure,
-        reference_id=100001,
-        created_by="u-test",
-    )
-
-    supp_info = MedicationAdministrationSupportingInformation(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        reference_reference="Observation/160001",
-        reference_type="Observation",
-        reference_id=160001,
-        created_by="u-test",
-    )
-
-    performer = MedicationAdministrationPerformer(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        actor_reference="Practitioner/30001",
-        actor_type=MedicationAdministrationPerformerActorReferenceType.Practitioner,
-        actor_id=30001,
-        actor_display="Dr. Bob Jones",
-        function_text="Administering Provider",
-        created_by="u-test",
-    )
-    performer.function_codings = [
-        MedicationAdministrationPerformerFunctionCoding(
-            medication_administration_performer_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/med-admin-perform-function",
-            code="performer",
-            display="Performer",
-            created_by="u-test",
+    ),
+    "status_reason_and_category": _c(
+        _base(
+            status="not-done",
+            statusReason=[
+                {
+                    "coding": [{"system": SCT, "code": "182856006"}],
+                    "text": "Unavailable",
+                }
+            ],
+            category={
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/medication-admin-category",
+                        "code": "inpatient",
+                    }
+                ]
+            },
         )
-    ]
-
-    reason_code = MedicationAdministrationReasonCode(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        text="Bacterial infection",
-        created_by="u-test",
-    )
-    reason_code.codings = [
-        MedicationAdministrationReasonCodeCoding(
-            medication_administration_reason_code_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="87628006",
-            display="Bacterial infectious disease",
-            created_by="u-test",
+    ),
+    "medication_coded": _c(
+        _base(
+            medicationCodeableConcept={
+                "coding": [
+                    {"system": RXNORM, "code": "197361", "display": "Amlodipine"}
+                ]
+            }
         )
-    ]
+    ),
+    "medication_reference": _c(
+        {
+            "status": "completed",
+            "medicationReference": {"reference": "Medication/250001"},
+            "subject": {"reference": "Patient/10001"},
+            "effectivePeriod": {"start": "2026-01-01"},
+        }
+    ),
+    "subject_group": _c(_base(subject={"reference": "Group/430001"})),
+    "subject_absolute_url": _c(
+        _base(subject={"reference": "https://other.example.org/fhir/Patient/1"})
+    ),
+    "subject_logical_identifier": _c(
+        _base(subject={"identifier": {"system": "urn:mrn", "value": "M-1"}})
+    ),
+    "context": _c(_base(context={"reference": "Encounter/20001"})),
+    "context_episode": _c(_base(context={"reference": "EpisodeOfCare/350001"})),
+    "supporting_information": _c(
+        _base(
+            supportingInformation=[
+                {"reference": "Observation/160001"},
+                {"reference": "https://other.example.org/fhir/Thing/9"},
+            ]
+        )
+    ),
+    "effective_partial_date": _c(_base(effectiveDateTime="2026-02")),
+    "effective_period": _c(
+        {
+            "status": "in-progress",
+            "medicationCodeableConcept": {"text": "Aspirin"},
+            "subject": {"reference": "Patient/10001"},
+            "effectivePeriod": {"start": "2026-01-01", "end": "2026-03-01"},
+        }
+    ),
+    **{
+        f"performer_{t}": _c(_base(performer=[{"actor": {"reference": f"{t}/1"}}]))
+        for t in (
+            "Practitioner",
+            "PractitionerRole",
+            "Patient",
+            "RelatedPerson",
+            "Device",
+        )
+    },
+    "performer_with_function": _c(
+        _base(
+            performer=[
+                {
+                    "function": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/med-admin-perform-function",
+                                "code": "performer",
+                            }
+                        ]
+                    },
+                    "actor": {"reference": "Practitioner/30001"},
+                }
+            ]
+        )
+    ),
+    "reasons": _c(
+        _base(
+            reasonCode=[
+                {
+                    "coding": [{"system": SCT, "code": "38341003"}],
+                    "text": "Hypertension",
+                }
+            ],
+            reasonReference=[
+                {"reference": "Condition/120001"},
+                {"reference": "Observation/160001"},
+                {"reference": "DiagnosticReport/110001"},
+            ],
+        )
+    ),
+    "request_device_event_history": _c(
+        _base(
+            request={"reference": "MedicationRequest/90001"},
+            device=[{"reference": "Device/12"}, {"reference": "Device/13"}],
+            eventHistory=[{"reference": "Provenance/270001"}],
+        )
+    ),
+    "note": _c(
+        _base(
+            note=[
+                {
+                    "authorReference": {"reference": "Practitioner/30001"},
+                    "time": "2026-01-15T10:06:00Z",
+                    "text": "Given with water",
+                },
+                {"authorString": "the nurse", "text": "Plain author"},
+            ]
+        )
+    ),
+    "dosage_rate_quantity": _c(
+        _base(
+            dosage={
+                "text": "5 mg orally",
+                "site": {"coding": [{"system": SCT, "code": "368208006"}]},
+                "route": {
+                    "coding": [{"system": SCT, "code": "26643006"}],
+                    "text": "Oral",
+                },
+                "method": {"text": "Swallow"},
+                "dose": {"value": 5, "unit": "mg", "system": UCUM, "code": "mg"},
+                "rateQuantity": {
+                    "value": 2.5,
+                    "unit": "mg/h",
+                    "system": UCUM,
+                    "code": "mg/h",
+                },
+            }
+        )
+    ),
+    "dosage_rate_ratio": _c(
+        _base(
+            dosage={
+                "dose": {"value": 5, "unit": "mg", "system": UCUM, "code": "mg"},
+                "rateRatio": {
+                    "numerator": {
+                        "value": 5,
+                        "unit": "mg",
+                        "system": UCUM,
+                        "code": "mg",
+                    },
+                    "denominator": {
+                        "value": 1,
+                        "unit": "h",
+                        "system": UCUM,
+                        "code": "h",
+                    },
+                },
+            }
+        )
+    ),
+    "extension": _c(
+        _base(extension=[{"url": "http://example.org/ext", "valueString": "kept"}])
+    ),
+}
 
-    reason_ref = MedicationAdministrationReasonReference(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        reference_reference="Condition/120001",
-        reference_type=MedicationAdministrationReasonReferenceType.Condition,
-        reference_id=120001,
-        created_by="u-test",
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_medication_administration_mapper_emits_valid_fhir_r4(case):
+    assert_valid(
+        pb2.MedicationAdministration, to_fhir_medication_administration(CASES[case])
     )
 
-    device = MedicationAdministrationDevice(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        reference_reference="Device/130001",
-        reference_type=MedicationAdministrationDeviceReferenceType.Device,
-        reference_id=130001,
-        created_by="u-test",
-    )
 
-    note = MedicationAdministrationNote(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        text="Infusion completed with no adverse reaction.",
-        time=D,
-        author_string="Nurse Alice",
-        created_by="u-test",
-    )
+def test_mapper_serves_content_unchanged():
+    content = _base(note=[{"text": "x"}])
+    out = to_fhir_medication_administration(_c(content))
+    assert out["resourceType"] == "MedicationAdministration"
+    assert out["id"] == "580001"
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
-    event_hist = MedicationAdministrationEventHistory(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        reference_reference="Provenance/270001",
-        reference_type="Provenance",
-        reference_id=270001,
-        created_by="u-test",
-    )
 
-    site_coding = MedicationAdministrationDosageSiteCoding(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="181220002",
-        display="Entire oral cavity",
-        created_by="u-test",
-    )
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1; the integration tests cover that.)
 
-    route_coding = MedicationAdministrationDosageRouteCoding(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="260548002",
-        display="Oral",
-        created_by="u-test",
-    )
 
-    method_coding = MedicationAdministrationDosageMethodCoding(
-        medication_administration_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="738995006",
-        display="Swallow",
-        created_by="u-test",
-    )
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "in_progress"}),
+        ("status as number", {"status": 1}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+        ("instantiates as string", {"instantiates": "http://x"}),
+        ("partOf as object", {"partOf": {"reference": "Procedure/1"}}),
+        ("statusReason as object", {"statusReason": {"text": "x"}}),
+        ("category as list", {"category": [{"text": "x"}]}),
+        ("subject as string", {"subject": "Patient/1"}),
+        ("context as string", {"context": "Encounter/1"}),
+        (
+            "supportingInformation as object",
+            {"supportingInformation": {"reference": "x"}},
+        ),
+        ("effectiveDateTime as number", {"effectiveDateTime": 5}),
+        ("effectiveDateTime not a dateTime", {"effectiveDateTime": "yesterday"}),
+        ("effectivePeriod as string", {"effectivePeriod": "2026"}),
+        (
+            "performer as object",
+            {"performer": {"actor": {"reference": "Practitioner/1"}}},
+        ),
+        ("performer entry as string", {"performer": ["x"]}),
+        ("performer actor as string", {"performer": [{"actor": "Practitioner/1"}]}),
+        ("reasonCode as object", {"reasonCode": {"text": "x"}}),
+        (
+            "reasonReference as object",
+            {"reasonReference": {"reference": "Condition/1"}},
+        ),
+        ("request as list", {"request": [{"reference": "MedicationRequest/1"}]}),
+        ("device as object", {"device": {"reference": "Device/1"}}),
+        ("note as object", {"note": {"text": "x"}}),
+        ("note time not a dateTime", {"note": [{"text": "x", "time": "later"}]}),
+        ("dosage as list", {"dosage": [{"text": "x"}]}),
+        ("dosage text as number", {"dosage": {"text": 5}}),
+        ("dosage route as string", {"dosage": {"route": "oral"}}),
+        ("dosage dose as string", {"dosage": {"dose": "5 mg"}}),
+        ("eventHistory as object", {"eventHistory": {"reference": "Provenance/1"}}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
 
-    m = _medication_administration(
-        status=MedicationAdministrationStatus.completed,
-        category_text="Inpatient",
-        category_codings=[cat_coding],
-        medication_codings=[med_coding],
-        context_reference="Encounter/20001",
-        context_type="Encounter",
-        context_id=20001,
-        request_reference="MedicationRequest/90001",
-        request_type="MedicationRequest",
-        request_id=90001,
-        instantiates=["http://example.org/protocol/amoxicillin-protocol"],
-        identifiers=[ident],
-        part_of=[part_of],
-        status_reasons=[status_reason],
-        supporting_informations=[supp_info],
-        performers=[performer],
-        reason_codes=[reason_code],
-        reason_references=[reason_ref],
-        devices=[device],
-        notes=[note],
-        event_history=[event_hist],
-        dosage_text="Take 500mg oral capsule by mouth with water",
-        dosage_site_text="Oral cavity",
-        dosage_site_codings=[site_coding],
-        dosage_route_text="Oral",
-        dosage_route_codings=[route_coding],
-        dosage_method_text="Swallow",
-        dosage_method_codings=[method_coding],
-        dosage_dose_value=500.0,
-        dosage_dose_unit="mg",
-        dosage_dose_system="http://unitsofmeasure.org",
-        dosage_dose_code="mg",
-        dosage_rate_quantity_value=50.0,
-        dosage_rate_quantity_unit="mg/h",
-        dosage_rate_quantity_system="http://unitsofmeasure.org",
-        dosage_rate_quantity_code="mg/h",
-    )
-
-    fhir = to_fhir_medication_administration(m)
-    assert_valid(medication_administration_pb2.MedicationAdministration, fhir)
+    payload = {"resourceType": "MedicationAdministration", "id": "580001", **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.MedicationAdministration, validate=True
+        )

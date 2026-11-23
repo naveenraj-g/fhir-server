@@ -112,7 +112,7 @@ async def test_create_keeps_elements_nothing_searches_on(client, patient):
     assert data["status"] == "final"
     assert data["basedOn"] == {"reference": "ServiceRequest/80001"} and data[
         "parent"
-    ] == {"reference": "MedicationAdministration/580001"}
+    ] == {"reference": "Task/580001"}
     assert data["code"]["coding"][0]["code"] == "709510001"
     assert data["reasonCode"] == [{"text": "Family history of heart disease"}]
     assert data["basis"] == [{"reference": "Observation/160002"}]
@@ -346,17 +346,18 @@ async def test_create_reference_any_elements_are_checked_for_rebuilt_types(
     client, patient
 ):
     """basedOn, parent and basis are Reference(Any): a rebuilt type must exist, a type this
-    server does not have (a Task, a MedicationAdministration) is stored as sent."""
+    server does not have (a Task, a Goal) is stored as sent."""
     stored = assessment_body(
         patient,
         basedOn={"reference": "Task/999999"},
-        parent={"reference": "MedicationAdministration/999999"},
+        parent={"reference": "Goal/999999"},
         basis=[{"reference": "Task/999998"}],
     )
     assert (await client.post(BASE + "/", json=stored)).status_code == 201
     for element, ref in (
         ("basedOn", {"reference": "ServiceRequest/999999"}),
         ("parent", {"reference": "Procedure/999999"}),
+        ("parent", {"reference": "MedicationAdministration/999999"}),
         ("basis", [{"reference": "Observation/999999"}]),
     ):
         body = assessment_body(patient, **{element: ref})

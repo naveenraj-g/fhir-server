@@ -39,6 +39,9 @@ from tests.integration.patient.support import MINIMAL as PATIENT
 from tests.integration.practitioner.support import MINIMAL as PRACTITIONER
 from tests.integration.practitioner_role.support import MINIMAL as PRACTITIONER_ROLE
 from tests.integration.procedure.support import procedure_body
+from tests.integration.medication_administration.support import (
+    medication_administration_body,
+)
 from tests.integration.medication_statement.support import (
     medication_statement_body,
 )
@@ -104,6 +107,10 @@ CASES = {
     "PractitionerRole": (f"{API}/practitioner-roles", _fixed(PRACTITIONER_ROLE)),
     "Procedure": (f"{API}/procedures", _fixed(procedure_body)),
     "Questionnaire": (f"{API}/questionnaires", _fixed({"status": "draft"})),
+    "MedicationAdministration": (
+        f"{API}/medication-administrations",
+        _fixed(medication_administration_body),
+    ),
     "MedicationStatement": (
         f"{API}/medication-statements",
         _fixed(medication_statement_body),
