@@ -1,347 +1,153 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Numeric,
-    Sequence,
-    String,
-    text,
-)
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse
-from app.models.medication_dispense.enums import (
-    MedicationDispenseContextReferenceType,
-    MedicationDispenseDestinationReferenceType,
-    MedicationDispenseLocationReferenceType,
-    MedicationDispenseMedicationReferenceType,
-    MedicationDispenseStatus,
-    MedicationDispenseStatusReasonReferenceType,
-    MedicationDispenseSubjectReferenceType,
-)
 from app.models.shared import TenantAuditMixin
+
+from .enums import MedicationDispenseStatus
+
+medication_dispense_id_seq = Sequence(
+    "medication_dispense_pub_seq", start=590000, increment=1, metadata=Base.metadata
+)
 
 
 class MedicationDispenseModel(TenantAuditMixin, Base):
-    """MedicationDispense FHIR R4 resource table.
+    """FHIR R4 MedicationDispense - stored whole in `content`, like MedicationAdministration,
+    MedicationStatement and the other content-based resources.
 
-    https://www.hl7.org/fhir/R4/medicationdispense.html
-    Public sequence block: 590000.
-    """
+    `content` (JSONB) holds the whole resource exactly as validated on write; it is the single
+    source of truth, and GET serves it back as-is (`id`/`meta` are stamped on at read time from
+    this row's own columns - see app.fhir.mappers.medication_dispense). Nothing else in this table
+    or its child tables is a second copy of the resource: every other column exists only because
+    a FHIR R4 MedicationDispense search parameter filters on it
+    (https://www.hl7.org/fhir/R4/medicationdispense.html#search), and is derived from `content` on
+    every write by app.repository.medication_dispense._indexer.
+
+    Search parameter -> storage:
+      status            -> status (Enum column, stored by value, required binding)
+      whenprepared      -> whenprepared_start/_end (0..1 dateTime, the half-open range it covers at
+                           its written precision; columns)
+      whenhandedover    -> whenhandedover_start/_end (0..1 dateTime, the same)
+      subject, patient  -> subject_reference/_type/_id + subject_identifier_* (0..1
+                           Reference(Patient | Group), columns; `patient` is `subject` narrowed to
+                           Patients)
+      context           -> context_reference/_type/_id + context_identifier_* (0..1
+                           Reference(Encounter | EpisodeOfCare), columns)
+      medication        -> medication_reference/_type/_id + medication_identifier_* (the
+                           medicationReference, Reference(Medication), columns)
+      destination       -> destination_reference/_type/_id + destination_identifier_* (0..1
+                           Reference(Location), columns)
+      code              -> MedicationDispenseToken (param `code`: medicationCodeableConcept)
+      type              -> MedicationDispenseToken (param `type`: the 0..1 type)
+      identifier        -> MedicationDispenseIdentifier (one row per identifier x type coding)
+      performer,
+      prescription,
+      receiver,
+      responsibleparty  -> MedicationDispenseReference (one row per `performer.actor`,
+                           `authorizingPrescription`, `receiver` and
+                           `substitution.responsibleParty`, told apart by `param`)
+      _id               -> medication_dispense_id;  _lastUpdated -> updated_at/created_at
+
+    `partOf`, `statusReason[x]`, `category`, `supportingInformation`, `performer.function`,
+    `location`, `quantity`, `daysSupply`, `note`, `dosageInstruction`, `substitution` (apart from
+    `responsibleParty`), `detectedIssue`, `eventHistory` and `extension` have no search parameter,
+    so they live only in `content`.
+
+    `*_type` is a plain string, not a Postgres enum: `subject`, `performer`, `receiver` and
+    `responsibleparty` have several targets, so a search by bare id is ambiguous
+    (`subject=Type/id` or `subject:Type=id`); `patient`, `context`, `medication`, `destination` and
+    `prescription` take a type or a bare id.
+
+    All index columns are nullable. No `user_id`: a MedicationDispense is a shared tenant-level
+    entity. No DB-level CHECK constraints (R4 rules - e.g. mdd-1 - are the validator's)."""
 
     __tablename__ = "medication_dispense"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    medication_dispense_id = Column(
-        BigInteger,
-        Sequence(
-            "medication_dispense_pub_seq",
-            start=590000,
-            increment=1,
-            metadata=Base.metadata,
+    __table_args__ = (
+        Index(
+            "ix_medication_dispense_whenprepared",
+            "whenprepared_start",
+            "whenprepared_end",
         ),
-        nullable=False,
-        unique=True,
-        index=True,
+        Index(
+            "ix_medication_dispense_whenhandedover",
+            "whenhandedover_start",
+            "whenhandedover_end",
+        ),
+        Index("ix_medication_dispense_subject_type_id", "subject_type", "subject_id"),
     )
 
-    # Resource-level extension (0..* Extension)
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+    medication_dispense_id = Column(
+        BigInteger,
+        medication_dispense_id_seq,
+        server_default=medication_dispense_id_seq.next_value(),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
 
-    # status (1..1 code)
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
+
+    # -- Search index (derived from `content`) --
     status = Column(
         Enum(
             MedicationDispenseStatus,
             name="medication_dispense_status",
+            # Store `in-progress` / `on-hold` / `entered-in-error`, not the member names.
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
         ),
-        nullable=False,
-    )
-
-    # statusReason[x] (0..1 choice: CodeableConcept | Reference(DetectedIssue))
-    status_reason_codeable_concept_text = Column(String, nullable=True)
-
-    status_reason_reference = Column(String, nullable=True)
-    status_reason_reference_type = Column(
-        Enum(
-            MedicationDispenseStatusReasonReferenceType,
-            name="medication_dispense_status_reason_reference_type",
-        ),
         nullable=True,
-    )
-    status_reason_reference_id = Column(BigInteger, nullable=True, index=True)
-    status_reason_reference_display = Column(String, nullable=True)
-
-    status_reason_reference_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    status_reason_reference_identifier_type_system = Column(String, nullable=True)
-    status_reason_reference_identifier_type_version = Column(String, nullable=True)
-    status_reason_reference_identifier_type_code = Column(String, nullable=True)
-    status_reason_reference_identifier_type_display = Column(String, nullable=True)
-    status_reason_reference_identifier_type_user_selected = Column(
-        Boolean, nullable=True
-    )
-    status_reason_reference_identifier_type_text = Column(String, nullable=True)
-    status_reason_reference_identifier_system = Column(String, nullable=True)
-    status_reason_reference_identifier_value = Column(String, nullable=True)
-    status_reason_reference_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    status_reason_reference_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
+        index=True,
     )
 
-    # category (0..1 CodeableConcept) — text flattened
-    category_text = Column(String, nullable=True)
+    # whenPrepared / whenHandedOver (0..1 dateTime): the half-open [start, end) range each covers.
+    whenprepared_start = Column(DateTime(timezone=True), nullable=True)
+    whenprepared_end = Column(DateTime(timezone=True), nullable=True)
+    whenhandedover_start = Column(DateTime(timezone=True), nullable=True)
+    whenhandedover_end = Column(DateTime(timezone=True), nullable=True)
 
-    # medication[x] (1..1 choice: CodeableConcept | Reference(Medication))
-    medication_codeable_concept_text = Column(String, nullable=True)
-
-    medication_reference = Column(String, nullable=True)
-    medication_type = Column(
-        Enum(
-            MedicationDispenseMedicationReferenceType,
-            name="medication_dispense_medication_reference_type",
-        ),
-        nullable=True,
-    )
-    medication_id = Column(BigInteger, nullable=True, index=True)
-    medication_display = Column(String, nullable=True)
-
-    # medication.identifier fallback (11 columns)
-    medication_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    medication_identifier_type_system = Column(String, nullable=True)
-    medication_identifier_type_version = Column(String, nullable=True)
-    medication_identifier_type_code = Column(String, nullable=True)
-    medication_identifier_type_display = Column(String, nullable=True)
-    medication_identifier_type_user_selected = Column(Boolean, nullable=True)
-    medication_identifier_type_text = Column(String, nullable=True)
-    medication_identifier_system = Column(String, nullable=True)
-    medication_identifier_value = Column(String, nullable=True)
-    medication_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    medication_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # subject (0..1 Reference(Patient | Group)) — 15 flattened columns
+    # subject (0..1 Reference(Patient | Group))
     subject_reference = Column(String, nullable=True)
-    subject_type = Column(
-        Enum(
-            MedicationDispenseSubjectReferenceType,
-            name="medication_dispense_subject_reference_type",
-        ),
-        nullable=True,
-    )
-    subject_id = Column(BigInteger, nullable=True, index=True)
-    subject_display = Column(String, nullable=True)
-
-    # subject.identifier fallback (11 columns)
-    subject_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    subject_identifier_type_system = Column(String, nullable=True)
-    subject_identifier_type_version = Column(String, nullable=True)
-    subject_identifier_type_code = Column(String, nullable=True)
-    subject_identifier_type_display = Column(String, nullable=True)
-    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
-    subject_identifier_type_text = Column(String, nullable=True)
+    subject_type = Column(String, nullable=True)
+    subject_id = Column(BigInteger, nullable=True)
     subject_identifier_system = Column(String, nullable=True)
     subject_identifier_value = Column(String, nullable=True)
-    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # context (0..1 Reference(Encounter | EpisodeOfCare)) — 15 flattened columns
+    # context (0..1 Reference(Encounter | EpisodeOfCare))
     context_reference = Column(String, nullable=True)
-    context_type = Column(
-        Enum(
-            MedicationDispenseContextReferenceType,
-            name="medication_dispense_context_reference_type",
-        ),
-        nullable=True,
-    )
+    context_type = Column(String, nullable=True)
     context_id = Column(BigInteger, nullable=True, index=True)
-    context_display = Column(String, nullable=True)
-
-    # context.identifier fallback (11 columns)
-    context_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    context_identifier_type_system = Column(String, nullable=True)
-    context_identifier_type_version = Column(String, nullable=True)
-    context_identifier_type_code = Column(String, nullable=True)
-    context_identifier_type_display = Column(String, nullable=True)
-    context_identifier_type_user_selected = Column(Boolean, nullable=True)
-    context_identifier_type_text = Column(String, nullable=True)
     context_identifier_system = Column(String, nullable=True)
     context_identifier_value = Column(String, nullable=True)
-    context_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    context_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # location (0..1 Reference(Location)) — 15 flattened columns
-    location_reference = Column(String, nullable=True)
-    location_type = Column(
-        Enum(
-            MedicationDispenseLocationReferenceType,
-            name="medication_dispense_location_reference_type",
-        ),
-        nullable=True,
-    )
-    location_id = Column(BigInteger, nullable=True, index=True)
-    location_display = Column(String, nullable=True)
+    # medicationReference (Reference(Medication)), searched as `medication`
+    medication_reference = Column(String, nullable=True)
+    medication_type = Column(String, nullable=True)
+    medication_id = Column(BigInteger, nullable=True, index=True)
+    medication_identifier_system = Column(String, nullable=True)
+    medication_identifier_value = Column(String, nullable=True)
 
-    location_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    location_identifier_type_system = Column(String, nullable=True)
-    location_identifier_type_version = Column(String, nullable=True)
-    location_identifier_type_code = Column(String, nullable=True)
-    location_identifier_type_display = Column(String, nullable=True)
-    location_identifier_type_user_selected = Column(Boolean, nullable=True)
-    location_identifier_type_text = Column(String, nullable=True)
-    location_identifier_system = Column(String, nullable=True)
-    location_identifier_value = Column(String, nullable=True)
-    location_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    location_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # type (0..1 CodeableConcept) — text flattened
-    type_text = Column(String, nullable=True)
-
-    # quantity (0..1 SimpleQuantity)
-    quantity_value = Column(Numeric, nullable=True)
-    quantity_unit = Column(String, nullable=True)
-    quantity_system = Column(String, nullable=True)
-    quantity_code = Column(String, nullable=True)
-
-    # daysSupply (0..1 SimpleQuantity)
-    days_supply_value = Column(Numeric, nullable=True)
-    days_supply_unit = Column(String, nullable=True)
-    days_supply_system = Column(String, nullable=True)
-    days_supply_code = Column(String, nullable=True)
-
-    # whenPrepared (0..1 dateTime)
-    when_prepared = Column(DateTime(timezone=True), nullable=True)
-
-    # whenHandedOver (0..1 dateTime)
-    when_handed_over = Column(DateTime(timezone=True), nullable=True)
-
-    # destination (0..1 Reference(Location)) — 15 flattened columns
+    # destination (0..1 Reference(Location))
     destination_reference = Column(String, nullable=True)
-    destination_type = Column(
-        Enum(
-            MedicationDispenseDestinationReferenceType,
-            name="medication_dispense_destination_reference_type",
-        ),
-        nullable=True,
-    )
+    destination_type = Column(String, nullable=True)
     destination_id = Column(BigInteger, nullable=True, index=True)
-    destination_display = Column(String, nullable=True)
-
-    destination_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False), nullable=True
-    )
-    destination_identifier_type_system = Column(String, nullable=True)
-    destination_identifier_type_version = Column(String, nullable=True)
-    destination_identifier_type_code = Column(String, nullable=True)
-    destination_identifier_type_display = Column(String, nullable=True)
-    destination_identifier_type_user_selected = Column(Boolean, nullable=True)
-    destination_identifier_type_text = Column(String, nullable=True)
     destination_identifier_system = Column(String, nullable=True)
     destination_identifier_value = Column(String, nullable=True)
-    destination_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    destination_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # substitution (0..1 BackboneElement) — flattened fields for 0..1 sub-elements
-    substitution_was_substituted = Column(Boolean, nullable=True)
-    substitution_type_text = Column(String, nullable=True)
-
-    # Relationships
     identifiers = relationship(
         "MedicationDispenseIdentifier",
         back_populates="medication_dispense",
         cascade="all, delete-orphan",
     )
-    part_of = relationship(
-        "MedicationDispensePartOf",
+    tokens = relationship(
+        "MedicationDispenseToken",
         back_populates="medication_dispense",
         cascade="all, delete-orphan",
     )
-    status_reason_codings = relationship(
-        "MedicationDispenseStatusReasonCoding",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    category_codings = relationship(
-        "MedicationDispenseCategoryCoding",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    medication_codings = relationship(
-        "MedicationDispenseMedicationCoding",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    supporting_informations = relationship(
-        "MedicationDispenseSupportingInfo",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    performers = relationship(
-        "MedicationDispensePerformer",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    authorizing_prescriptions = relationship(
-        "MedicationDispenseAuthorizingPrescription",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    type_codings = relationship(
-        "MedicationDispenseTypeCoding",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    receivers = relationship(
-        "MedicationDispenseReceiver",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    notes = relationship(
-        "MedicationDispenseNote",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    dosage_instructions = relationship(
-        "MedicationDispenseDosageInstruction",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    substitution_type_codings = relationship(
-        "MedicationDispenseSubstitutionTypeCoding",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    substitution_reasons = relationship(
-        "MedicationDispenseSubstitutionReason",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    substitution_responsible_parties = relationship(
-        "MedicationDispenseSubstitutionResponsibleParty",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    detected_issues = relationship(
-        "MedicationDispenseDetectedIssue",
-        back_populates="medication_dispense",
-        cascade="all, delete-orphan",
-    )
-    event_history = relationship(
-        "MedicationDispenseEventHistory",
+    references = relationship(
+        "MedicationDispenseReference",
         back_populates="medication_dispense",
         cascade="all, delete-orphan",
     )

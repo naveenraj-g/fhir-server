@@ -1,740 +1,265 @@
-from datetime import datetime
-from typing import Any
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
-from app.schemas.enums import IdentifierUse, MedicationDispenseStatus
-from app.schemas.medication_dispense.input.codeable_concept import (
-    MedicationDispenseCodeableConceptInput,
-)
-from app.schemas.medication_dispense.input.dosage import (
-    MedicationDispenseDosageInstructionInput,
-)
-from app.schemas.medication_dispense.input.identifier import (
-    MedicationDispenseIdentifierInput,
-)
-from app.schemas.medication_dispense.input.note import (
-    MedicationDispenseNoteInput,
-)
-from app.schemas.medication_dispense.input.performer import (
-    MedicationDispensePerformerInput,
-)
-from app.schemas.medication_dispense.input.reference import (
-    MedicationDispenseAuthorizingPrescriptionInput,
-    MedicationDispenseDetectedIssueInput,
-    MedicationDispenseEventHistoryInput,
-    MedicationDispensePartOfInput,
-    MedicationDispenseReceiverInput,
-    MedicationDispenseSupportingInfoInput,
-)
-from app.schemas.medication_dispense.input.substitution import (
-    MedicationDispenseSubstitutionInput,
+from pydantic import Field
+
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirReferenceInput,
 )
 
-_CREATE_EXAMPLE: dict[str, Any] = {
+# medicationdispense-status (the required binding of MedicationDispense.status).
+StatusCode = Literal[
+    "preparation",
+    "in-progress",
+    "cancelled",
+    "on-hold",
+    "completed",
+    "entered-in-error",
+    "stopped",
+    "declined",
+    "unknown",
+]
+
+_EXAMPLE = {
+    "resourceType": "MedicationDispense",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/medication-dispense-id",
+            "value": "MD-1001",
+        }
+    ],
     "status": "completed",
-    "medication_codeable_concept": {
-        "text": "Amoxicillin 500mg capsule",
+    "category": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/medicationdispense-category",
+                "code": "outpatient",
+            }
+        ]
+    },
+    "medicationCodeableConcept": {
         "coding": [
             {
                 "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
-                "code": "308182",
-                "display": "Amoxicillin 500 MG Oral Capsule",
+                "code": "197361",
+                "display": "Amlodipine 5 MG Oral Tablet",
             }
-        ],
+        ]
     },
-    "subject": "Patient/10001",
-    "when_prepared": "2026-11-03T09:00:00Z",
-    "when_handed_over": "2026-11-03T10:00:00Z",
+    "subject": {"reference": "Patient/10001"},
+    "context": {"reference": "Encounter/20001"},
+    "performer": [{"actor": {"reference": "Practitioner/30001"}}],
+    "authorizingPrescription": [{"reference": "MedicationRequest/90001"}],
+    "type": {
+        "coding": [
+            {"system": "http://terminology.hl7.org/CodeSystem/v3-ActCode", "code": "FF"}
+        ]
+    },
+    "quantity": {"value": 30, "unit": "tablet"},
+    "daysSupply": {
+        "value": 30,
+        "unit": "Day",
+        "system": "http://unitsofmeasure.org",
+        "code": "d",
+    },
+    "whenPrepared": "2026-01-15T09:00:00Z",
+    "whenHandedOver": "2026-01-15T10:00:00Z",
+    "destination": {"reference": "Location/230001"},
+    "receiver": [{"reference": "Patient/10001"}],
+    "dosageInstruction": [{"text": "1 tablet daily"}],
 }
 
 
-class MedicationDispenseCreateSchema(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _CREATE_EXAMPLE},
-    )
+class MedicationDispensePerformerInput(FhirInputModel):
+    """MedicationDispense.performer - who performed the dispense and what they did."""
 
-    status: MedicationDispenseStatus = Field(
-        ...,
-        description="preparation | in-progress | cancelled | on-hold | completed | entered-in-error | stopped | declined | unknown.",
+    function: FhirCodeableConceptInput | None = Field(
+        None, description="Who performed the dispense and what they did."
     )
-
-    # statusReason[x] (0..1 choice: CodeableConcept | Reference(DetectedIssue))
-    status_reason_codeable_concept: MedicationDispenseCodeableConceptInput | None = (
-        Field(None, description="Why a dispense was not performed.")
-    )
-    status_reason_reference: str | None = Field(
+    actor: FhirReferenceInput | None = Field(
         None,
-        description="Why a dispense was not performed. Reference(DetectedIssue), e.g. 'DetectedIssue/540001'.",
-    )
-    status_reason_reference_display: str | None = Field(
-        None, description="Display text for status reason reference."
-    )
-    status_reason_reference_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    status_reason_reference_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    status_reason_reference_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    status_reason_reference_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    status_reason_reference_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    status_reason_reference_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    status_reason_reference_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    status_reason_reference_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    status_reason_reference_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    status_reason_reference_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    status_reason_reference_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
+        description="Individual who was performing - Reference(Practitioner | PractitionerRole | Organization | Patient | Device | RelatedPerson) (required by R4). A relative reference to a resource this server has must exist in the caller's org (422 otherwise). Searched by `performer`.",
     )
 
-    # category (0..1 CodeableConcept)
-    category: MedicationDispenseCodeableConceptInput | None = Field(
+
+class MedicationDispenseAnnotationInput(FhirInputModel):
+    """Annotation - a note with an author (a Reference or plain text) and a time."""
+
+    authorReference: FhirReferenceInput | None = Field(
+        None,
+        description="Individual responsible for the annotation - Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    authorString: str | None = Field(
+        None, description="Individual responsible for the annotation, as plain text."
+    )
+    time: str | None = Field(
+        None, description="When the annotation was made (a FHIR dateTime)."
+    )
+    text: str | None = Field(
+        None, description="The annotation text, as markdown (required by R4)."
+    )
+
+
+class MedicationDispenseSubstitutionInput(FhirInputModel):
+    """MedicationDispense.substitution - whether a substitution was performed on the dispense."""
+
+    wasSubstituted: bool | None = Field(
+        None,
+        description="Whether a substitution was or was not performed (required by R4).",
+    )
+    type: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Code signifying whether a different drug was dispensed from what was prescribed.",
+    )
+    reason: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Why was substitution made."
+    )
+    responsibleParty: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Who is responsible for the substitution - Reference(Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise). Searched by `responsibleparty`.",
+    )
+
+
+class _MedicationDispenseFields(FhirInputModel):
+    """Every writable MedicationDispense element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/medicationdispense.html). Create and patch accept exactly the
+    same fields. R4 requires `status` and `medication[x]`, but only the java_validator backend
+    enforces cardinality minimums.
+
+    The validated body is stored whole (MedicationDispenseModel.content), so any valid R4 element
+    is kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the medication_dispense_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["MedicationDispense"] | None = Field(
+        None, description="Optional; if supplied it must be 'MedicationDispense'."
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="External identifier. Searched by `identifier`."
+    )
+    partOf: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Event that dispense is part of - Reference(Procedure). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="preparation | in-progress | cancelled | on-hold | completed | entered-in-error | stopped | declined | unknown (required by R4). Searched by `status`.",
+    )
+    statusReasonCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Why a dispense was not performed (a CodeableConcept). One of the statusReason[x] choices.",
+    )
+    statusReasonReference: FhirReferenceInput | None = Field(
+        None,
+        description="Why a dispense was not performed - Reference(DetectedIssue). One of the statusReason[x] choices.",
+    )
+    category: FhirCodeableConceptInput | None = Field(
         None, description="Type of medication dispense."
     )
-
-    # medication[x] (1..1 choice: CodeableConcept | Reference(Medication))
-    medication_codeable_concept: MedicationDispenseCodeableConceptInput | None = Field(
-        None, description="What medication was supplied (CodeableConcept)."
-    )
-    medication_reference: str | None = Field(
+    medicationCodeableConcept: FhirCodeableConceptInput | None = Field(
         None,
-        description="What medication was supplied. Reference(Medication), e.g. 'Medication/250001'.",
+        description="What medication was supplied (a CodeableConcept). One of the medication[x] choices (required by R4). Searched by `code`.",
     )
-    medication_display: str | None = Field(
-        None, description="Display text for medication reference."
-    )
-    medication_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    medication_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    medication_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    medication_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    medication_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    medication_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    medication_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    medication_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    medication_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    medication_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    medication_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # subject (0..1 Reference(Patient | Group))
-    subject: str | None = Field(
+    medicationReference: FhirReferenceInput | None = Field(
         None,
-        description="Who the dispense is for. Reference(Patient | Group), e.g. 'Patient/10001'.",
+        description="What medication was supplied - Reference(Medication). One of the medication[x] choices. A relative reference must exist in the caller's org (422 otherwise). Searched by `medication`.",
     )
-    subject_display: str | None = Field(None, description="Display text for subject.")
-    subject_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    subject_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    subject_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    subject_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    subject_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    subject_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    subject_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    subject_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    subject_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    subject_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    subject_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # context (0..1 Reference(Encounter | EpisodeOfCare))
-    context: str | None = Field(
+    subject: FhirReferenceInput | None = Field(
         None,
-        description="Encounter / Episode associated with event. Reference(Encounter | EpisodeOfCare), e.g. 'Encounter/20001'.",
+        description="Who the dispense is for - Reference(Patient | Group). A relative reference must exist in the caller's org (422 otherwise). Searched by `subject` / `patient`.",
     )
-    context_display: str | None = Field(None, description="Display text for context.")
-    context_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    context_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    context_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    context_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    context_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    context_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    context_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    context_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    context_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    context_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    context_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # location (0..1 Reference(Location))
-    location: str | None = Field(
+    context: FhirReferenceInput | None = Field(
         None,
-        description="Where the dispense occurred. Reference(Location), e.g. 'Location/230001'.",
+        description="Encounter / Episode associated with event - Reference(Encounter | EpisodeOfCare). A relative reference must exist in the caller's org (422 otherwise). Searched by `context`.",
     )
-    location_display: str | None = Field(None, description="Display text for location.")
-    location_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    location_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    location_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    location_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    location_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    location_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    location_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    location_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    location_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    location_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    location_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # type (0..1 CodeableConcept)
-    type: MedicationDispenseCodeableConceptInput | None = Field(
-        None, description="Trial fill, partial fill, emergency fill, etc."
-    )
-
-    # quantity (0..1 SimpleQuantity)
-    quantity_value: float | None = Field(None, description="Amount dispensed — value.")
-    quantity_unit: str | None = Field(None, description="Amount dispensed — unit.")
-    quantity_system: str | None = Field(
-        None, description="Amount dispensed — unit system."
-    )
-    quantity_code: str | None = Field(None, description="Amount dispensed — unit code.")
-
-    # daysSupply (0..1 SimpleQuantity)
-    days_supply_value: float | None = Field(
-        None, description="Amount of medication expressed as a timing amount — value."
-    )
-    days_supply_unit: str | None = Field(
-        None, description="Amount of medication — unit."
-    )
-    days_supply_system: str | None = Field(
-        None, description="Amount of medication — unit system."
-    )
-    days_supply_code: str | None = Field(
-        None, description="Amount of medication — unit code."
-    )
-
-    # whenPrepared (0..1 dateTime)
-    when_prepared: datetime | None = Field(
-        None, description="When product was packaged and reviewed."
-    )
-
-    # whenHandedOver (0..1 dateTime)
-    when_handed_over: datetime | None = Field(
-        None, description="When product was given out."
-    )
-
-    # destination (0..1 Reference(Location))
-    destination: str | None = Field(
+    supportingInformation: list[FhirReferenceInput] | None = Field(
         None,
-        description="Where the medication was sent. Reference(Location), e.g. 'Location/230001'.",
-    )
-    destination_display: str | None = Field(
-        None, description="Display text for destination."
-    )
-    destination_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    destination_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    destination_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    destination_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    destination_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    destination_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    destination_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    destination_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    destination_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    destination_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    destination_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # substitution (0..1 BackboneElement)
-    substitution: MedicationDispenseSubstitutionInput | None = Field(
-        None, description="Deals with substitution of one medicine for another."
-    )
-
-    # 0..* child lists
-    identifier: list[MedicationDispenseIdentifierInput] | None = Field(
-        None, description="External identifier."
-    )
-    part_of: list[MedicationDispensePartOfInput] | None = Field(
-        None, description="Event that dispense is part of."
-    )
-    supporting_information: list[MedicationDispenseSupportingInfoInput] | None = Field(
-        None, description="Information that supports the dispense."
+        description="Information that supports the dispensing of the medication - Reference(Any). A relative reference to a resource this server has must exist in the caller's org (422 otherwise).",
     )
     performer: list[MedicationDispensePerformerInput] | None = Field(
         None, description="Who performed event."
     )
-    authorizing_prescription: (
-        list[MedicationDispenseAuthorizingPrescriptionInput] | None
-    ) = Field(None, description="Medication order that authorizes the dispense.")
-    receiver: list[MedicationDispenseReceiverInput] | None = Field(
-        None, description="Who collected the medication."
+    location: FhirReferenceInput | None = Field(
+        None,
+        description="Where the dispense occurred - Reference(Location). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    note: list[MedicationDispenseNoteInput] | None = Field(
+    authorizingPrescription: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Medication order that authorizes the dispense - Reference(MedicationRequest). A relative reference must exist in the caller's org (422 otherwise). Searched by `prescription`.",
+    )
+    type: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Trial fill, partial fill, emergency fill, etc. Searched by `type`.",
+    )
+    quantity: dict | None = Field(
+        None,
+        description="Amount dispensed (a SimpleQuantity: value, unit, system, code).",
+    )
+    daysSupply: dict | None = Field(
+        None,
+        description="Amount of medication expressed as a timing amount (a SimpleQuantity).",
+    )
+    whenPrepared: str | None = Field(
+        None,
+        description="When product was packaged and reviewed (a FHIR dateTime, possibly partial). Searched by `whenprepared`.",
+    )
+    whenHandedOver: str | None = Field(
+        None,
+        description="When product was given out (a FHIR dateTime, possibly partial). Searched by `whenhandedover`.",
+    )
+    destination: FhirReferenceInput | None = Field(
+        None,
+        description="Where the medication was sent - Reference(Location). A relative reference must exist in the caller's org (422 otherwise). Searched by `destination`.",
+    )
+    receiver: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Who collected the medication - Reference(Patient | Practitioner). A relative reference must exist in the caller's org (422 otherwise). Searched by `receiver`.",
+    )
+    note: list[MedicationDispenseAnnotationInput] | None = Field(
         None, description="Information about the dispense."
     )
-    dosage_instruction: list[MedicationDispenseDosageInstructionInput] | None = Field(
-        None, description="How the medication is to be used by the patient."
-    )
-    detected_issue: list[MedicationDispenseDetectedIssueInput] | None = Field(
-        None, description="Clinical issue with action."
-    )
-    event_history: list[MedicationDispenseEventHistoryInput] | None = Field(
-        None, description="A list of relevant histories for the dispense."
-    )
-
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
-
-
-class MedicationDispensePatchSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    status: MedicationDispenseStatus | None = Field(
+    dosageInstruction: list[dict] | None = Field(
         None,
-        description="preparation | in-progress | cancelled | on-hold | completed | entered-in-error | stopped | declined | unknown.",
+        description="How the medication is to be used by the patient or administered by the caregiver - a list of FHIR R4 Dosage elements, validated as R4 JSON.",
     )
-
-    # statusReason[x] (0..1 choice: CodeableConcept | Reference(DetectedIssue))
-    status_reason_codeable_concept: MedicationDispenseCodeableConceptInput | None = (
-        Field(None, description="Why a dispense was not performed.")
-    )
-    status_reason_reference: str | None = Field(
-        None,
-        description="Why a dispense was not performed. Reference(DetectedIssue), e.g. 'DetectedIssue/540001'.",
-    )
-    status_reason_reference_display: str | None = Field(
-        None, description="Display text for status reason reference."
-    )
-    status_reason_reference_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    status_reason_reference_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    status_reason_reference_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    status_reason_reference_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    status_reason_reference_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    status_reason_reference_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    status_reason_reference_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    status_reason_reference_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    status_reason_reference_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    status_reason_reference_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    status_reason_reference_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # category (0..1 CodeableConcept)
-    category: MedicationDispenseCodeableConceptInput | None = Field(
-        None, description="Type of medication dispense."
-    )
-
-    # medication[x] (1..1 choice: CodeableConcept | Reference(Medication))
-    medication_codeable_concept: MedicationDispenseCodeableConceptInput | None = Field(
-        None, description="What medication was supplied (CodeableConcept)."
-    )
-    medication_reference: str | None = Field(
-        None,
-        description="What medication was supplied. Reference(Medication), e.g. 'Medication/250001'.",
-    )
-    medication_display: str | None = Field(
-        None, description="Display text for medication reference."
-    )
-    medication_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    medication_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    medication_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    medication_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    medication_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    medication_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    medication_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    medication_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    medication_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    medication_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    medication_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # subject (0..1 Reference(Patient | Group))
-    subject: str | None = Field(
-        None,
-        description="Who the dispense is for. Reference(Patient | Group), e.g. 'Patient/10001'.",
-    )
-    subject_display: str | None = Field(None, description="Display text for subject.")
-    subject_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    subject_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    subject_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    subject_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    subject_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    subject_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    subject_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    subject_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    subject_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    subject_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    subject_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # context (0..1 Reference(Encounter | EpisodeOfCare))
-    context: str | None = Field(
-        None,
-        description="Encounter / Episode associated with event. Reference(Encounter | EpisodeOfCare), e.g. 'Encounter/20001'.",
-    )
-    context_display: str | None = Field(None, description="Display text for context.")
-    context_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    context_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    context_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    context_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    context_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    context_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    context_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    context_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    context_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    context_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    context_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # location (0..1 Reference(Location))
-    location: str | None = Field(
-        None,
-        description="Where the dispense occurred. Reference(Location), e.g. 'Location/230001'.",
-    )
-    location_display: str | None = Field(None, description="Display text for location.")
-    location_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    location_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    location_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    location_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    location_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    location_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    location_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    location_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    location_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    location_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    location_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # type (0..1 CodeableConcept)
-    type: MedicationDispenseCodeableConceptInput | None = Field(
-        None, description="Trial fill, partial fill, emergency fill, etc."
-    )
-
-    # quantity (0..1 SimpleQuantity)
-    quantity_value: float | None = Field(None, description="Amount dispensed — value.")
-    quantity_unit: str | None = Field(None, description="Amount dispensed — unit.")
-    quantity_system: str | None = Field(
-        None, description="Amount dispensed — unit system."
-    )
-    quantity_code: str | None = Field(None, description="Amount dispensed — unit code.")
-
-    # daysSupply (0..1 SimpleQuantity)
-    days_supply_value: float | None = Field(
-        None, description="Amount of medication expressed as a timing amount — value."
-    )
-    days_supply_unit: str | None = Field(
-        None, description="Amount of medication — unit."
-    )
-    days_supply_system: str | None = Field(
-        None, description="Amount of medication — unit system."
-    )
-    days_supply_code: str | None = Field(
-        None, description="Amount of medication — unit code."
-    )
-
-    # whenPrepared (0..1 dateTime)
-    when_prepared: datetime | None = Field(
-        None, description="When product was packaged and reviewed."
-    )
-
-    # whenHandedOver (0..1 dateTime)
-    when_handed_over: datetime | None = Field(
-        None, description="When product was given out."
-    )
-
-    # destination (0..1 Reference(Location))
-    destination: str | None = Field(
-        None,
-        description="Where the medication was sent. Reference(Location), e.g. 'Location/230001'.",
-    )
-    destination_display: str | None = Field(
-        None, description="Display text for destination."
-    )
-    destination_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    destination_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    destination_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    destination_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    destination_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    destination_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    destination_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    destination_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    destination_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    destination_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    destination_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    # substitution (0..1 BackboneElement)
     substitution: MedicationDispenseSubstitutionInput | None = Field(
-        None, description="Deals with substitution of one medicine for another."
+        None, description="Whether a substitution was performed on the dispense."
+    )
+    detectedIssue: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Clinical issue with action - Reference(DetectedIssue). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    eventHistory: list[FhirReferenceInput] | None = Field(
+        None, description="A list of relevant lifecycle events - Reference(Provenance)."
     )
 
-    # 0..* child lists
-    identifier: list[MedicationDispenseIdentifierInput] | None = Field(
-        None, description="External identifier."
-    )
-    part_of: list[MedicationDispensePartOfInput] | None = Field(
-        None, description="Event that dispense is part of."
-    )
-    supporting_information: list[MedicationDispenseSupportingInfoInput] | None = Field(
-        None, description="Information that supports the dispense."
-    )
-    performer: list[MedicationDispensePerformerInput] | None = Field(
-        None, description="Who performed event."
-    )
-    authorizing_prescription: (
-        list[MedicationDispenseAuthorizingPrescriptionInput] | None
-    ) = Field(None, description="Medication order that authorizes the dispense.")
-    receiver: list[MedicationDispenseReceiverInput] | None = Field(
-        None, description="Who collected the medication."
-    )
-    note: list[MedicationDispenseNoteInput] | None = Field(
-        None, description="Information about the dispense."
-    )
-    dosage_instruction: list[MedicationDispenseDosageInstructionInput] | None = Field(
-        None, description="How the medication is to be used by the patient."
-    )
-    detected_issue: list[MedicationDispenseDetectedIssueInput] | None = Field(
-        None, description="Clinical issue with action."
-    )
-    event_history: list[MedicationDispenseEventHistoryInput] | None = Field(
-        None, description="A list of relevant histories for the dispense."
-    )
 
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+class MedicationDispenseCreateSchema(_MedicationDispenseFields):
+    """POST body - a FHIR R4 MedicationDispense resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class MedicationDispensePatchSchema(_MedicationDispenseFields):
+    """PATCH body - a partial FHIR R4 MedicationDispense (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object such as `substitution` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "cancelled",
+                "statusReasonCodeableConcept": {"text": "Patient did not collect"},
+            }
+        }
+    }

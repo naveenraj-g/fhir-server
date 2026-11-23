@@ -53,6 +53,13 @@ _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 # / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "MedicationDispense": (
+        "app.models.medication_dispense",
+        "MedicationDispenseModel",
+        "medication_dispense_id",
+        "app.repository.medication_dispense.search",
+        "medication_dispense_search",
+    ),
     "MedicationAdministration": (
         "app.models.medication_administration",
         "MedicationAdministrationModel",

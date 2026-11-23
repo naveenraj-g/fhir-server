@@ -1,10 +1,18 @@
-from app.repository.medication_dispense.core import _CoreMixin
-from app.repository.medication_dispense.full import _FullMixin
+from app.core.logging import trace_methods
+from app.repository.base import BaseRepository
 
-
-class MedicationDispenseRepository(_CoreMixin, _FullMixin):
-    def __init__(self, session_factory):
-        self.session_factory = session_factory
-
+from .core import _CoreMixin
+from .full import _FullMixin
 
 __all__ = ["MedicationDispenseRepository"]
+
+
+@trace_methods
+class MedicationDispenseRepository(_CoreMixin, _FullMixin, BaseRepository):
+    """All MedicationDispense DB I/O. Like Schedule/Slot/Appointment,
+    MedicationDispense has no standalone sub-resource endpoints
+    (create/patch always operate on the whole nested payload — see
+    full.py), so there are no per-sub-resource mixins beyond
+    _CoreMixin/_FullMixin. session_factory/__init__ and the generic
+    paginated-list execution (`_execute_paginated`) are inherited from
+    BaseRepository — see that class."""

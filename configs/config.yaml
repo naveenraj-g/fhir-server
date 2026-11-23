@@ -243,7 +243,7 @@ routes:
     # - measure_report
     - medication
     - medication_administration
-    # - medication_dispense
+    - medication_dispense
     # - medication_knowledge
     - medication_request
     - medication_statement

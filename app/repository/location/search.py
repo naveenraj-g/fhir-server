@@ -19,6 +19,7 @@ from functools import cache
 from sqlalchemy import Float, cast, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._medication_dispense_revinclude import column_medication_dispense_revincludes
 from app.repository._service_request_revinclude import (
     column_service_request_revincludes,
 )
@@ -867,6 +868,9 @@ def location_search() -> SearchRegistry:
             IncludeTarget("Location", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_medication_dispense_revincludes(
+                ('destination',), 'destination', 'Location', lambda x: x.location_id
+            ),
             *column_service_request_revincludes(
                 ("subject",), "subject", "Location", lambda l: l.location_id
             ),

@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._medication_dispense_revinclude import reference_medication_dispense_revincludes
 from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
 from app.repository._care_plan_revinclude import activity_care_plan_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
@@ -630,6 +631,9 @@ def medication_request_search() -> SearchRegistry:
         # A MedicationRequest is pointed at by other MedicationRequests (priorPrescription is
         # unindexed; basedOn is not searched), so there is no revinclude of its own.
         revincludes=(
+            *reference_medication_dispense_revincludes(
+                'prescription', 'MedicationRequest', lambda x: x.medication_request_id
+            ),
             *column_medication_administration_revincludes(
                 ('request',), 'request', 'MedicationRequest', lambda x: x.medication_request_id
             ),

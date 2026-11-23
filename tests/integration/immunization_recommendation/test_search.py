@@ -403,9 +403,7 @@ async def test_bad_chains_are_400(client, world):
     assert (
         await _status(client, **{"support.status": "x"}) == 400
     )  # an untyped multi-target cannot be chained
-    assert (
-        await _status(client, **{"information:MedicationDispense.status": "x"}) == 400
-    )  # likewise
+    assert await _status(client, **{"information:Goal.status": "x"}) == 400  # likewise
     assert (
         await _status(client, **{"status.x": "y"}) == 400
     )  # a token cannot be chained through
