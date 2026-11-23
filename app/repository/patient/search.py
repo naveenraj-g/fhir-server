@@ -19,6 +19,10 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._document_reference_revinclude import (
+    column_document_reference_revincludes,
+    reference_document_reference_revincludes,
+)
 from app.repository._episode_of_care_revinclude import (
     column_episode_of_care_revincludes,
 )
@@ -970,6 +974,12 @@ def patient_search() -> SearchRegistry:
         # general-practitioner / organization are declared on Practitioner,
         # PractitionerRole and Organization.
         revincludes=(
+            *column_document_reference_revincludes(
+                ("subject", "patient"), "subject", "Patient", lambda x: x.patient_id
+            ),
+            *reference_document_reference_revincludes(
+                "author", "Patient", lambda x: x.patient_id
+            ),
             *column_episode_of_care_revincludes(
                 "patient", "patient", "Patient", lambda x: x.patient_id
             ),

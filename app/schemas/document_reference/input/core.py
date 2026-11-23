@@ -1,285 +1,236 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.document_reference.input.codeable_concept import (
-    DocumentReferenceCodeableConceptInput,
-)
-from app.schemas.document_reference.input.content import DocumentReferenceContentInput
-from app.schemas.document_reference.input.context import DocumentReferenceContextInput
-from app.schemas.document_reference.input.identifier import (
-    DocumentReferenceIdentifierInput,
-)
-from app.schemas.document_reference.input.reference import (
-    DocumentReferenceReferenceInput,
-)
-from app.schemas.document_reference.input.relates_to import (
-    DocumentReferenceRelatesToInput,
-)
-from app.schemas.enums import (
-    DocumentReferenceDocStatus,
-    DocumentReferenceStatus,
-    IdentifierUse,
+from app.schemas.fhir_input import (
+    FhirAttachmentInput,
+    FhirCodeableConceptInput,
+    FhirCodingInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
+# document-reference-status (the required binding of DocumentReference.status).
+StatusCode = Literal["current", "superseded", "entered-in-error"]
+# composition-status (the required binding of DocumentReference.docStatus).
+DocStatusCode = Literal["preliminary", "final", "amended", "entered-in-error"]
+# document-relationship-type (the required binding of DocumentReference.relatesTo.code).
+RelationCode = Literal["replaces", "transforms", "signs", "appends"]
 
-class DocumentReferenceCreateSchema(BaseModel):
-    """Payload for POST /api/fhir/v1/document-references.
-
-    Tenant scoping (org_id) and created_by come from the verified JWT (actor.org_id / actor.sub).
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "current",
-                "doc_status": "preliminary",
-                "type": {
-                    "coding": [
-                        {
-                            "system": "http://loinc.org",
-                            "code": "34108-1",
-                            "display": "Outpatient Note",
-                        }
-                    ],
-                    "text": "Outpatient Note",
-                },
-                "category": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
-                                "code": "clinical-note",
-                                "display": "Clinical Note",
-                            }
-                        ],
-                        "text": "Clinical Note",
-                    }
-                ],
-                "subject": "Patient/10001",
-                "date": "2026-10-30T10:00:00Z",
-                "author": ["Practitioner/30001"],
-                "authenticator": "Practitioner/30001",
-                "custodian": "Organization/190001",
-                "description": "Consultation summary note",
-                "content": [
-                    {
-                        "attachment": {
-                            "content_type": "application/pdf",
-                            "language": "en",
-                            "url": "http://example.org/documents/note-123.pdf",
-                            "title": "Consultation Note PDF",
-                        },
-                        "format": {
-                            "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
-                            "code": "urn:ihe:pcc:xphr:2007",
-                            "display": "HL7 CDA Personal Health Monitoring Report",
-                        },
-                    }
-                ],
+_EXAMPLE = {
+    "resourceType": "DocumentReference",
+    "masterIdentifier": {
+        "system": "urn:ietf:rfc:3986",
+        "value": "urn:oid:1.2.840.113556.1.8000.2554.58783.21864",
+    },
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/document-reference-id",
+            "value": "DOC-1001",
+        }
+    ],
+    "status": "current",
+    "docStatus": "final",
+    "type": {
+        "coding": [
+            {
+                "system": "http://loinc.org",
+                "code": "34133-9",
+                "display": "Summarization of episode note",
             }
-        },
-    )
+        ]
+    },
+    "category": [
+        {
+            "coding": [
+                {
+                    "system": "http://loinc.org",
+                    "code": "LP173421-1",
+                    "display": "Report",
+                }
+            ]
+        }
+    ],
+    "subject": {"reference": "Patient/10001"},
+    "date": "2026-02-01T10:00:00Z",
+    "author": [{"reference": "Practitioner/30001"}],
+    "custodian": {"reference": "Organization/190001"},
+    "description": "Discharge summary",
+    "content": [
+        {
+            "attachment": {
+                "contentType": "application/pdf",
+                "language": "en",
+                "url": "https://documents.example.org/doc-1001.pdf",
+                "title": "Discharge summary",
+            },
+            "format": {
+                "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem",
+                "code": "urn:ihe:pcc:handp:2008",
+            },
+        }
+    ],
+    "context": {
+        "encounter": [{"reference": "Encounter/20001"}],
+        "period": {"start": "2026-01-30", "end": "2026-02-01"},
+    },
+}
 
-    master_identifier: DocumentReferenceIdentifierInput | None = Field(
-        None, description="Master business identifier."
-    )
-    identifier: list[DocumentReferenceIdentifierInput] | None = Field(
-        None, description="Other identifiers for the document."
-    )
-    status: DocumentReferenceStatus = Field(
-        ..., description="current | superseded | entered-in-error."
-    )
-    doc_status: DocumentReferenceDocStatus | None = Field(
-        None, description="preliminary | final | amended | entered-in-error."
-    )
-    type: DocumentReferenceCodeableConceptInput | None = Field(
-        None, description="Kind of document (LOINC if possible)."
-    )
-    category: list[DocumentReferenceCodeableConceptInput] | None = Field(
-        None, description="Categorization of document."
-    )
-    subject: str | None = Field(
+
+class DocumentReferenceRelatesToInput(FhirInputModel):
+    """DocumentReference.relatesTo - relationships to other documents."""
+
+    code: RelationCode | None = Field(
         None,
-        description="Who/what is the subject of the document (Patient/Practitioner/Group/Device).",
+        description="replaces | transforms | signs | appends (required by R4). Searched by `relation`.",
     )
-    subject_display: str | None = Field(
-        None, description="Display text for the subject reference."
-    )
-    subject_identifier_use: IdentifierUse | None = Field(None)
-    subject_identifier_type_system: str | None = Field(None)
-    subject_identifier_type_version: str | None = Field(None)
-    subject_identifier_type_code: str | None = Field(None)
-    subject_identifier_type_display: str | None = Field(None)
-    subject_identifier_type_user_selected: bool | None = Field(None)
-    subject_identifier_type_text: str | None = Field(None)
-    subject_identifier_system: str | None = Field(None)
-    subject_identifier_value: str | None = Field(None)
-    subject_identifier_period_start: datetime | None = Field(None)
-    subject_identifier_period_end: datetime | None = Field(None)
-
-    date: datetime | None = Field(
-        None, description="When this document reference was created."
-    )
-    author: list[DocumentReferenceReferenceInput | str] | None = Field(
-        None, description="Who and/or what authored the document."
-    )
-    authenticator: str | None = Field(
-        None, description="Who/what authenticated the document."
-    )
-    authenticator_display: str | None = Field(
-        None, description="Display text for authenticator."
-    )
-    authenticator_identifier_use: IdentifierUse | None = Field(None)
-    authenticator_identifier_type_system: str | None = Field(None)
-    authenticator_identifier_type_version: str | None = Field(None)
-    authenticator_identifier_type_code: str | None = Field(None)
-    authenticator_identifier_type_display: str | None = Field(None)
-    authenticator_identifier_type_user_selected: bool | None = Field(None)
-    authenticator_identifier_type_text: str | None = Field(None)
-    authenticator_identifier_system: str | None = Field(None)
-    authenticator_identifier_value: str | None = Field(None)
-    authenticator_identifier_period_start: datetime | None = Field(None)
-    authenticator_identifier_period_end: datetime | None = Field(None)
-
-    custodian: str | None = Field(
-        None, description="Organization which maintains the document."
-    )
-    custodian_display: str | None = Field(
-        None, description="Display text for custodian."
-    )
-    custodian_identifier_use: IdentifierUse | None = Field(None)
-    custodian_identifier_type_system: str | None = Field(None)
-    custodian_identifier_type_version: str | None = Field(None)
-    custodian_identifier_type_code: str | None = Field(None)
-    custodian_identifier_type_display: str | None = Field(None)
-    custodian_identifier_type_user_selected: bool | None = Field(None)
-    custodian_identifier_type_text: str | None = Field(None)
-    custodian_identifier_system: str | None = Field(None)
-    custodian_identifier_value: str | None = Field(None)
-    custodian_identifier_period_start: datetime | None = Field(None)
-    custodian_identifier_period_end: datetime | None = Field(None)
-
-    relates_to: list[DocumentReferenceRelatesToInput] | None = Field(
-        None, description="Relationships to other documents."
-    )
-    description: str | None = Field(None, description="Human-readable description.")
-    security_label: list[DocumentReferenceCodeableConceptInput] | None = Field(
-        None, description="Document security-tags."
-    )
-    content: list[DocumentReferenceContentInput] = Field(
-        ..., min_length=1, description="Document referenced (1..* in FHIR R4)."
-    )
-    context: DocumentReferenceContextInput | None = Field(
-        None, description="Clinical context of document."
+    target: FhirReferenceInput | None = Field(
+        None,
+        description="Target of the relationship - Reference(DocumentReference), required by R4. A relative reference must exist in the caller's org (422 otherwise). Searched by `relatesto`; `relationship` pairs it with `code`.",
     )
 
 
-class DocumentReferencePatchSchema(BaseModel):
-    """Payload for PATCH /api/fhir/v1/document-references/{document_reference_id}.
-    All fields are optional; omitted fields are left untouched.
-    """
+class DocumentReferenceContentInput(FhirInputModel):
+    """DocumentReference.content - the document and format."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "superseded",
-                "doc_status": "final",
-                "description": "Superseded consultation summary note",
-            }
-        },
+    attachment: FhirAttachmentInput | None = Field(
+        None,
+        description="Where to access the document (required by R4). `contentType` is searched by `contenttype`, `language` by `language` and `url` by `location`.",
+    )
+    format: FhirCodingInput | None = Field(
+        None,
+        description="Format/content rules for the document. Searched by `format`.",
     )
 
-    master_identifier: DocumentReferenceIdentifierInput | None = Field(
-        None, description="Master business identifier."
+
+class DocumentReferenceContextInput(FhirInputModel):
+    """DocumentReference.context - clinical context of the document."""
+
+    encounter: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Context of the document content - Reference(Encounter | EpisodeOfCare). A relative reference must exist in the caller's org (422 otherwise). Searched by `encounter`.",
     )
-    identifier: list[DocumentReferenceIdentifierInput] | None = Field(
-        None, description="Other identifiers for the document."
+    event: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Main clinical acts documented. Searched by `event`."
     )
-    status: DocumentReferenceStatus | None = Field(
-        None, description="current | superseded | entered-in-error."
+    period: FhirPeriodInput | None = Field(
+        None,
+        description="Time of service that is being documented. Searched by `period`.",
     )
-    doc_status: DocumentReferenceDocStatus | None = Field(
+    facilityType: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Kind of facility where patient was seen. Searched by `facility`.",
+    )
+    practiceSetting: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Additional details about where the content was created. Searched by `setting`.",
+    )
+    sourcePatientInfo: FhirReferenceInput | None = Field(
+        None,
+        description="Patient demographics from source - Reference(Patient). A relative reference must exist in the caller's org (422 otherwise).",
+    )
+    related: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Related identifiers or resources - Reference(Any). A relative reference to a resource this server has must exist in the caller's org (422 otherwise). Searched by `related`.",
+    )
+
+
+class _DocumentReferenceFields(FhirInputModel):
+    """Every writable DocumentReference element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/documentreference.html). Create and patch accept exactly the same
+    fields. R4 requires `status` and at least one `content` (with its `attachment`), but only the
+    java_validator backend enforces cardinality minimums.
+
+    The validated body is stored whole (DocumentReferenceModel.content), so any valid R4 element
+    is kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the document_reference_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["DocumentReference"] | None = Field(
+        None, description="Optional; if supplied it must be 'DocumentReference'."
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
+    )
+    masterIdentifier: FhirIdentifierInput | None = Field(
+        None,
+        description="Master Version Specific Identifier. Searched by `identifier` (together with `identifier`).",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None,
+        description="Other identifiers for the document. Searched by `identifier`.",
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="current | superseded | entered-in-error (required by R4). Searched by `status`.",
+    )
+    docStatus: DocStatusCode | None = Field(
         None, description="preliminary | final | amended | entered-in-error."
     )
-    type: DocumentReferenceCodeableConceptInput | None = Field(
-        None, description="Kind of document (LOINC if possible)."
+    type: FhirCodeableConceptInput | None = Field(
+        None, description="Kind of document (LOINC if possible). Searched by `type`."
     )
-    category: list[DocumentReferenceCodeableConceptInput] | None = Field(
-        None, description="Categorization of document."
+    category: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Categorization of document. Searched by `category`."
     )
-    subject: str | None = Field(
-        None, description="Who/what is the subject of the document."
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="Who/what is the subject of the document - Reference(Patient | Practitioner | Group | Device). A relative reference must exist in the caller's org (422 otherwise). Searched by `subject` / `patient`.",
     )
-    subject_display: str | None = Field(
-        None, description="Display text for the subject reference."
+    date: str | None = Field(
+        None,
+        description="When this document reference was created (a FHIR instant). Searched by `date`.",
     )
-    subject_identifier_use: IdentifierUse | None = None
-    subject_identifier_type_system: str | None = None
-    subject_identifier_type_version: str | None = None
-    subject_identifier_type_code: str | None = None
-    subject_identifier_type_display: str | None = None
-    subject_identifier_type_user_selected: bool | None = None
-    subject_identifier_type_text: str | None = None
-    subject_identifier_system: str | None = None
-    subject_identifier_value: str | None = None
-    subject_identifier_period_start: datetime | None = None
-    subject_identifier_period_end: datetime | None = None
-
-    date: datetime | None = Field(
-        None, description="When this document reference was created."
+    author: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Who and/or what authored the document - Reference(Practitioner | PractitionerRole | Organization | Device | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise). Searched by `author`.",
     )
-    author: list[DocumentReferenceReferenceInput | str] | None = Field(
-        None, description="Who and/or what authored the document."
+    authenticator: FhirReferenceInput | None = Field(
+        None,
+        description="Who/what authenticated the document - Reference(Practitioner | PractitionerRole | Organization). A relative reference must exist in the caller's org (422 otherwise). Searched by `authenticator`.",
     )
-    authenticator: str | None = Field(
-        None, description="Who/what authenticated the document."
+    custodian: FhirReferenceInput | None = Field(
+        None,
+        description="Organization which maintains the document - Reference(Organization). A relative reference must exist in the caller's org (422 otherwise). Searched by `custodian`.",
     )
-    authenticator_display: str | None = Field(
-        None, description="Display text for authenticator."
-    )
-    authenticator_identifier_use: IdentifierUse | None = None
-    authenticator_identifier_type_system: str | None = None
-    authenticator_identifier_type_version: str | None = None
-    authenticator_identifier_type_code: str | None = None
-    authenticator_identifier_type_display: str | None = None
-    authenticator_identifier_type_user_selected: bool | None = None
-    authenticator_identifier_type_text: str | None = None
-    authenticator_identifier_system: str | None = None
-    authenticator_identifier_value: str | None = None
-    authenticator_identifier_period_start: datetime | None = None
-    authenticator_identifier_period_end: datetime | None = None
-
-    custodian: str | None = Field(
-        None, description="Organization which maintains the document."
-    )
-    custodian_display: str | None = Field(
-        None, description="Display text for custodian."
-    )
-    custodian_identifier_use: IdentifierUse | None = None
-    custodian_identifier_type_system: str | None = None
-    custodian_identifier_type_version: str | None = None
-    custodian_identifier_type_code: str | None = None
-    custodian_identifier_type_display: str | None = None
-    custodian_identifier_type_user_selected: bool | None = None
-    custodian_identifier_type_text: str | None = None
-    custodian_identifier_system: str | None = None
-    custodian_identifier_value: str | None = None
-    custodian_identifier_period_start: datetime | None = None
-    custodian_identifier_period_end: datetime | None = None
-
-    relates_to: list[DocumentReferenceRelatesToInput] | None = Field(
+    relatesTo: list[DocumentReferenceRelatesToInput] | None = Field(
         None, description="Relationships to other documents."
     )
-    description: str | None = Field(None, description="Human-readable description.")
-    security_label: list[DocumentReferenceCodeableConceptInput] | None = Field(
-        None, description="Document security-tags."
+    description: str | None = Field(
+        None, description="Human-readable description. Searched by `description`."
+    )
+    securityLabel: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Document security-tags. Searched by `security-label`."
     )
     content: list[DocumentReferenceContentInput] | None = Field(
-        None, min_length=1, description="Document referenced."
+        None, description="Document referenced (required by R4, at least one)."
     )
     context: DocumentReferenceContextInput | None = Field(
         None, description="Clinical context of document."
     )
+
+
+class DocumentReferenceCreateSchema(_DocumentReferenceFields):
+    """POST body - a FHIR R4 DocumentReference resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class DocumentReferencePatchSchema(_DocumentReferenceFields):
+    """PATCH body - a partial FHIR R4 DocumentReference (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object such as `context` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "superseded",
+                "description": "Superseded discharge summary",
+            }
+        }
+    }

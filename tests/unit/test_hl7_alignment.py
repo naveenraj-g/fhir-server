@@ -54,6 +54,8 @@ REQUIRED_CODE_STORAGE = {
     ("ClinicalImpression", "status"): ("clinical_impression", "status"),
     ("DiagnosticReport", "status"): ("diagnostic_report", "status"),
     ("Encounter", "status"): ("encounter", "status"),
+    ("DocumentReference", "relation"): ("document_reference_relates_to", "code"),
+    ("DocumentReference", "status"): ("document_reference", "status"),
     ("Endpoint", "status"): ("endpoint", "status"),
     ("EpisodeOfCare", "status"): ("episode_of_care", "status"),
     ("FamilyMemberHistory", "status"): ("family_member_history", "status"),
@@ -81,6 +83,13 @@ REQUIRED_CODE_STORAGE = {
     ("Slot", "status"): ("slot", "status"),
     ("Specimen", "status"): ("specimen", "status"),
 }
+
+
+# Search parameters that read a `code` with a *required* binding whose value set is open-ended (not
+# a list HL7 can enumerate), so they cannot be enums: they stay strings.
+#   DocumentReference.contenttype -> Attachment.contentType, bound (required) to the mime-type value
+#   set, which is every BCP 13 media type.
+OPEN_REQUIRED_BINDINGS = {("DocumentReference", "contenttype")}
 
 
 @cache
@@ -173,6 +182,7 @@ def _required_code_parameters(resource_type: str) -> set[str]:
                 element
                 and "code" in element["types"]
                 and element["strength"] == "required"
+                and (resource_type, code) not in OPEN_REQUIRED_BINDINGS
             ):
                 needed.add(code)
     return needed

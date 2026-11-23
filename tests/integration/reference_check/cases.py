@@ -20,6 +20,7 @@ from tests.integration.clinical_impression.support import impression_body
 from tests.integration.condition.support import condition_body
 from tests.integration.detected_issue.support import issue_body
 from tests.integration.diagnostic_report.support import report_body
+from tests.integration.document_reference.support import document_body
 from tests.integration.encounter.support import encounter_body
 from tests.integration.episode_of_care.support import episode_body
 from tests.integration.endpoint.support import MINIMAL as ENDPOINT
@@ -70,6 +71,7 @@ CASES = {
     "Condition": (f"{API}/conditions", _fixed(condition_body)),
     "DetectedIssue": (f"{API}/detected-issues", _fixed(issue_body)),
     "DiagnosticReport": (f"{API}/diagnostic-reports", _fixed(report_body)),
+    "DocumentReference": (f"{API}/document-references", _fixed(document_body)),
     "Encounter": (f"{API}/encounters", _fixed(encounter_body)),
     "Endpoint": (f"{API}/endpoints", _fixed(ENDPOINT)),
     "EpisodeOfCare": (f"{API}/episodes-of-care", _fixed(episode_body)),

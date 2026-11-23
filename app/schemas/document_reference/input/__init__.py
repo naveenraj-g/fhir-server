@@ -1,29 +1,3 @@
-from app.schemas.document_reference.input.codeable_concept import (
-    DocumentReferenceCodeableConceptInput,
-)
-from app.schemas.document_reference.input.content import DocumentReferenceContentInput
-from app.schemas.document_reference.input.context import DocumentReferenceContextInput
-from app.schemas.document_reference.input.core import (
-    DocumentReferenceCreateSchema,
-    DocumentReferencePatchSchema,
-)
-from app.schemas.document_reference.input.identifier import (
-    DocumentReferenceIdentifierInput,
-)
-from app.schemas.document_reference.input.reference import (
-    DocumentReferenceReferenceInput,
-)
-from app.schemas.document_reference.input.relates_to import (
-    DocumentReferenceRelatesToInput,
-)
+from .core import DocumentReferenceCreateSchema, DocumentReferencePatchSchema
 
-__all__ = [
-    "DocumentReferenceCodeableConceptInput",
-    "DocumentReferenceIdentifierInput",
-    "DocumentReferenceRelatesToInput",
-    "DocumentReferenceContentInput",
-    "DocumentReferenceContextInput",
-    "DocumentReferenceCreateSchema",
-    "DocumentReferencePatchSchema",
-    "DocumentReferenceReferenceInput",
-]
+__all__ = ["DocumentReferenceCreateSchema", "DocumentReferencePatchSchema"]

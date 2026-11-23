@@ -302,7 +302,6 @@ async def test_create_reason_reference_is_checked_for_resources_here(client, pat
             {"reference": f"DiagnosticReport/{report}"},
             {"reference": "Observation/160005"},
             {"reference": "QuestionnaireResponse/999999"},
-            {"reference": "DocumentReference/999999"},  # not rebuilt: stored as sent
         ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
@@ -310,6 +309,7 @@ async def test_create_reason_reference_is_checked_for_resources_here(client, pat
         "Condition/999999",
         "AllergyIntolerance/999999",
         "DiagnosticReport/999999",
+        "DocumentReference/999999",
     ):
         resp = await client.post(
             BASE + "/",

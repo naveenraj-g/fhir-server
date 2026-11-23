@@ -1,54 +1,48 @@
-from datetime import datetime
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
-    AuditFields,
-    FHIRAttachment,
     FHIRBundle,
-    FHIRBundleEntry,
-    FHIRCoding,
     FHIRCodeableConcept,
+    FHIRCoding,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
     FHIRReference,
-    PlainAttachmentRow,
-    PlainCodingRow,
 )
+from app.schemas.datatypes.attachment import FHIRAttachment
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
 class FHIRDocumentReferenceRelatesTo(BaseModel):
-    """FHIR R4 DocumentReference.relatesTo."""
-
-    code: str = Field(..., description="replaces | transforms | signs | appends.")
-    target: FHIRReference = Field(..., description="Target of the relationship.")
+    code: str | None = Field(
+        None, description="replaces | transforms | signs | appends."
+    )
+    target: FHIRReference | None = Field(
+        None, description="Target of the relationship."
+    )
 
 
 class FHIRDocumentReferenceContent(BaseModel):
-    """FHIR R4 DocumentReference.content."""
-
-    attachment: FHIRAttachment = Field(..., description="Where to access the document.")
+    attachment: FHIRAttachment | None = Field(
+        None, description="Where to access the document."
+    )
     format: FHIRCoding | None = Field(
         None, description="Format/content rules for the document."
     )
 
 
 class FHIRDocumentReferenceContext(BaseModel):
-    """FHIR R4 DocumentReference.context."""
-
     encounter: list[FHIRReference] | None = Field(
         None, description="Context of the document content."
     )
     event: list[FHIRCodeableConcept] | None = Field(
-        None, description="Main clinical acts being documented."
+        None, description="Main clinical acts documented."
     )
     period: FHIRPeriod | None = Field(
         None, description="Time of service that is being documented."
     )
     facilityType: FHIRCodeableConcept | None = Field(
-        None, description="Kind of organization where admission occurred."
+        None, description="Kind of facility where patient was seen."
     )
     practiceSetting: FHIRCodeableConcept | None = Field(
         None, description="Additional details about where the content was created."
@@ -62,21 +56,27 @@ class FHIRDocumentReferenceContext(BaseModel):
 
 
 class FHIRDocumentReferenceSchema(BaseModel):
-    """FHIR R4 DocumentReference resource representation."""
-
-    resourceType: Literal["DocumentReference"] = Field(
+    resourceType: str = Field(
         "DocumentReference", description="Always 'DocumentReference'."
     )
     id: str = Field(..., description="Public document_reference_id as a string.")
-    meta: FHIRMeta | None = Field(None, description="Resource metadata.")
-    extension: list[dict] | None = Field(None, description="Resource extensions.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
     masterIdentifier: FHIRIdentifier | None = Field(
-        None, description="Master business identifier."
+        None, description="Master Version Specific Identifier."
     )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="Other identifiers for the document."
     )
-    status: str = Field(..., description="current | superseded | entered-in-error.")
+    status: str | None = Field(
+        None, description="current | superseded | entered-in-error."
+    )
     docStatus: str | None = Field(
         None, description="preliminary | final | amended | entered-in-error."
     )
@@ -106,141 +106,31 @@ class FHIRDocumentReferenceSchema(BaseModel):
     securityLabel: list[FHIRCodeableConcept] | None = Field(
         None, description="Document security-tags."
     )
-    content: list[FHIRDocumentReferenceContent] = Field(
-        ..., description="Document referenced (1..*)."
+    content: list[FHIRDocumentReferenceContent] | None = Field(
+        None, description="Document referenced."
     )
     context: FHIRDocumentReferenceContext | None = Field(
         None, description="Clinical context of document."
     )
 
 
-class FHIRDocumentReferenceBundleEntry(FHIRBundleEntry):
-    resource: FHIRDocumentReferenceSchema = Field(
-        ..., description="DocumentReference resource."
+class FHIRDocumentReferenceBundleEntry(BaseModel):
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
     )
+    resource: FHIRDocumentReferenceSchema | dict = Field(
+        ...,
+        description="A DocumentReference (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Group / Practitioner / PractitionerRole / RelatedPerson / Organization / Encounter / EpisodeOfCare / DocumentReference (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
 class FHIRDocumentReferenceBundle(FHIRBundle):
-    entry: list[FHIRDocumentReferenceBundleEntry] | None = Field(
-        None, description="Bundle entries."
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
     )
-
-
-# ── Plain Response Schemas (snake_case) ──────────────────────────────────────────
-
-
-class PlainCodeableConcept(BaseModel):
-    text: str | None = None
-    coding: list[PlainCodingRow] | None = None
-
-
-class PlainReference(BaseModel):
-    reference: str | None = None
-    type: str | None = None
-    id: int | None = None
-    display: str | None = None
-    identifier_use: str | None = None
-    identifier_type_system: str | None = None
-    identifier_type_version: str | None = None
-    identifier_type_code: str | None = None
-    identifier_type_display: str | None = None
-    identifier_type_user_selected: bool | None = None
-    identifier_type_text: str | None = None
-    identifier_system: str | None = None
-    identifier_value: str | None = None
-    identifier_period_start: str | None = None
-    identifier_period_end: str | None = None
-
-
-class PlainDocumentReferenceIdentifier(BaseModel):
-    id: int | None = None
-    use: str | None = None
-    system: str | None = None
-    value: str | None = None
-    type_text: str | None = None
-    type_coding: list[PlainCodingRow] | None = None
-    period_start: datetime | None = None
-    period_end: datetime | None = None
-    assigner_reference: str | None = None
-    assigner_type: str | None = None
-    assigner_id: int | None = None
-    assigner_display: str | None = None
-    assigner_identifier_use: str | None = None
-    assigner_identifier_type_system: str | None = None
-    assigner_identifier_type_version: str | None = None
-    assigner_identifier_type_code: str | None = None
-    assigner_identifier_type_display: str | None = None
-    assigner_identifier_type_user_selected: bool | None = None
-    assigner_identifier_type_text: str | None = None
-    assigner_identifier_system: str | None = None
-    assigner_identifier_value: str | None = None
-    assigner_identifier_period_start: str | None = None
-    assigner_identifier_period_end: str | None = None
-
-
-class PlainDocumentReferenceRelatesTo(BaseModel):
-    id: int | None = None
-    code: str
-    target_reference: str | None = None
-    target_type: str | None = None
-    target_id: int | None = None
-    target_display: str | None = None
-    target_identifier_use: str | None = None
-    target_identifier_type_system: str | None = None
-    target_identifier_type_version: str | None = None
-    target_identifier_type_code: str | None = None
-    target_identifier_type_display: str | None = None
-    target_identifier_type_user_selected: bool | None = None
-    target_identifier_type_text: str | None = None
-    target_identifier_system: str | None = None
-    target_identifier_value: str | None = None
-    target_identifier_period_start: str | None = None
-    target_identifier_period_end: str | None = None
-
-
-class PlainDocumentReferenceContent(BaseModel):
-    id: int | None = None
-    attachment: PlainAttachmentRow | None = None
-    format: PlainCodingRow | None = None
-
-
-class PlainDocumentReferenceContext(BaseModel):
-    encounter: list[PlainReference] | None = None
-    event: list[PlainCodeableConcept] | None = None
-    period_start: datetime | None = None
-    period_end: datetime | None = None
-    facility_type: PlainCodeableConcept | None = None
-    practice_setting: PlainCodeableConcept | None = None
-    source_patient_info: PlainReference | None = None
-    related: list[PlainReference] | None = None
-
-
-class PlainDocumentReferenceResponse(AuditFields):
-    """Plain snake_case response for DocumentReference."""
-
-    id: int = Field(..., description="Public document_reference_id.")
-    master_identifier: PlainDocumentReferenceIdentifier | None = None
-    identifier: list[PlainDocumentReferenceIdentifier] | None = None
-    status: str
-    doc_status: str | None = None
-    type: PlainCodeableConcept | None = None
-    category: list[PlainCodeableConcept] | None = None
-    subject: PlainReference | None = None
-    date: datetime | None = None
-    author: list[PlainReference] | None = None
-    authenticator: PlainReference | None = None
-    custodian: PlainReference | None = None
-    relates_to: list[PlainDocumentReferenceRelatesTo] | None = None
-    description: str | None = None
-    security_label: list[PlainCodeableConcept] | None = None
-    content: list[PlainDocumentReferenceContent]
-    context: PlainDocumentReferenceContext | None = None
-
-
-class PaginatedDocumentReferenceResponse(BaseModel):
-    """Paginated plain snake_case response."""
-
-    total: int | None = None
-    limit: int
-    offset: int
-    data: list[PlainDocumentReferenceResponse]
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRDocumentReferenceBundleEntry] | None = None

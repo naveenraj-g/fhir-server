@@ -1,132 +1,133 @@
-"""Shared helpers and payloads for document_reference integration tests."""
+"""Shared helpers and payloads for document_reference integration tests.
+
+Request bodies are genuine FHIR R4 DocumentReference JSON (camelCase, nested datatypes), and every
+response is FHIR R4 too."""
+
+# The resources a DocumentReference points at (and that point back at it) are created through
+# their own routers.
+from tests.integration.condition.support import (  # noqa: F401
+    condition_body,
+    create_condition,
+)
+from tests.integration.encounter.support import (  # noqa: F401
+    create_encounter,
+    encounter_body,
+)
+from tests.integration.group.support import create_group, group_body  # noqa: F401
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+    create_role as create_practitioner_role,
+)
+from tests.integration.related_person.support import (  # noqa: F401
+    create_related_person,
+    related_person_body,
+)
 
 BASE = "/api/fhir/v1/document-references"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+DOC_IDS = "https://fhir-server.dev/fhir/identifier-system/document-reference-id"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+LOINC = "http://loinc.org"
+STATUS_SYSTEM = "http://hl7.org/fhir/document-reference-status"
+RELATION_SYSTEM = "http://hl7.org/fhir/document-relationship-type"
+CONFIDENTIALITY = "http://terminology.hl7.org/CodeSystem/v3-Confidentiality"
+ACT_CODE = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+SCT = "http://snomed.info/sct"
+FORMAT = "urn:ihe:pcc:handp:2008"
+FORMAT_SYSTEM = "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem"
+
+EXTERNAL_PATIENT = {"reference": "https://other.example.org/fhir/Patient/1"}
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True, "name": [{"family": "Careful", "given": ["Adam"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_document_reference(patient_id: int) -> dict:
+def concept(system: str, code: str, display: str | None = None) -> dict:
     return {
-        "status": "current",
-        "subject": f"Patient/{patient_id}",
-        "content": [
+        "coding": [
             {
-                "attachment": {
-                    "url": "https://example.org/docs/1.pdf",
-                    "title": "Discharge Summary",
-                }
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
             }
-        ],
+        ]
     }
 
 
-def full_document_reference(
-    patient_id: int, practitioner_id: int | None = None
+def attachment(content_type: str = "application/pdf", **extra) -> dict:
+    return {"contentType": content_type, **extra}
+
+
+def content_entry(content_type: str = "application/pdf", **attachment_extra) -> dict:
+    return {"attachment": attachment(content_type, **attachment_extra)}
+
+
+def document_body(status: str = "current", **extra) -> dict:
+    """A valid minimal document reference: R4 requires `status` and at least one `content` with
+    an `attachment`."""
+    return {
+        "status": status,
+        "content": [content_entry(url="https://documents.example.org/doc.pdf")],
+        **extra,
+    }
+
+
+def full_body(
+    organization_id: int,
+    patient_id: int,
+    practitioner_id: int,
+    encounter_id: int,
+    condition_id: int,
 ) -> dict:
-    payload = {
-        "status": "current",
-        "doc_status": "final",
-        "type": {
-            "coding": [
-                {
-                    "system": "http://loinc.org",
-                    "code": "34108-1",
-                    "display": "Outpatient Note",
-                }
-            ],
-            "text": "Outpatient Note",
-        },
-        "category": [
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return document_body(
+        resourceType="DocumentReference",
+        masterIdentifier={"system": "urn:ietf:rfc:3986", "value": "urn:oid:1.2.3.4"},
+        identifier=[
             {
-                "coding": [
-                    {
-                        "system": "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category",
-                        "code": "clinical-note",
-                        "display": "Clinical Note",
-                    }
-                ],
-                "text": "Clinical Note",
+                "system": DOC_IDS,
+                "value": "DOC-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "ACSN"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "subject": f"Patient/{patient_id}",
-        "date": "2026-01-01T12:00:00Z",
-        "description": "Follow-up consultation note",
-        "security_label": [
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-Confidentiality",
-                        "code": "N",
-                        "display": "Normal",
-                    }
-                ],
-                "text": "Normal",
-            }
-        ],
-        "content": [
+        docStatus="final",
+        type=concept(LOINC, "34133-9", "Summarization of episode note"),
+        category=[concept(LOINC, "LP173421-1", "Report")],
+        subject={"reference": f"Patient/{patient_id}"},
+        date="2026-02-01T10:00:00Z",
+        author=[{"reference": f"Practitioner/{practitioner_id}"}],
+        authenticator={"reference": f"Practitioner/{practitioner_id}"},
+        custodian={"reference": f"Organization/{organization_id}"},
+        description="Discharge summary",
+        securityLabel=[concept(CONFIDENTIALITY, "N", "normal")],
+        content=[
             {
                 "attachment": {
-                    "url": "https://example.org/docs/1.pdf",
-                    "title": "Consultation Note",
-                    "size": 2048,
+                    "contentType": "application/pdf",
+                    "language": "en",
+                    "url": "https://documents.example.org/doc-1001.pdf",
+                    "size": 1234,
+                    "title": "Discharge summary",
+                    "creation": "2026-02-01",
                 },
-                "format": {
-                    "system": "urn:oid:1.2.840.10008.2.1.1",
-                    "code": "urn:ihe:pcc:xphr:2007",
-                    "display": "Personal Health Record",
-                },
+                "format": {"system": FORMAT_SYSTEM, "code": FORMAT},
             }
         ],
-        "context": {
-            "facility_type": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "225732001",
-                        "display": "Hospital",
-                    }
-                ],
-                "text": "Hospital",
-            },
-            "practice_setting": {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "408443003",
-                        "display": "General medical practice",
-                    }
-                ],
-                "text": "General medical practice",
-            },
+        context={
+            "encounter": [{"reference": f"Encounter/{encounter_id}"}],
+            "event": [concept(ACT_CODE, "AMB", "ambulatory")],
+            "period": {"start": "2026-01-30", "end": "2026-02-01"},
+            "facilityType": concept(SCT, "22232009", "Hospital"),
+            "practiceSetting": concept(SCT, "408443003", "General medical practice"),
+            "sourcePatientInfo": {"reference": f"Patient/{patient_id}"},
+            "related": [{"reference": f"Condition/{condition_id}"}],
         },
-    }
-    if practitioner_id is not None:
-        payload["author"] = [f"Practitioner/{practitioner_id}"]
-    return payload
+    )
 
 
-async def create_document_reference(client, patient_id: int, **overrides) -> dict:
-    payload = minimal_document_reference(patient_id)
-    payload.update(overrides)
-    resp = await client.post(BASE + "/", json=payload)
+async def create_document(client, body: dict) -> int:
+    """Create a document reference and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return int(resp.json()["id"])

@@ -326,13 +326,11 @@ async def test_create_reason_reference_is_checked_for_resources_here(client, pat
             {"reference": f"Condition/{condition}"},
             {"reference": f"DiagnosticReport/{report}"},
             {"reference": "Observation/160005"},
-            {"reference": "DocumentReference/999999"},
         ],
     )
-    assert (
-        await client.post(BASE + "/", json=ok)
-    ).status_code == 201  # not rebuilt: stored as sent
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
     for missing in (
+        "DocumentReference/999999",
         "Condition/999999",
         "DiagnosticReport/999999",
         "Observation/999999",

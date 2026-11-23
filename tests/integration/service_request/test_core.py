@@ -480,13 +480,10 @@ async def test_create_reason_reference_is_checked_for_rebuilt_types(client, pati
         "Condition/999999",
         "Observation/999999",
         "DiagnosticReport/999999",
+        "DocumentReference/999999",
     ):
         body = service_request_body(patient, reasonReference=[{"reference": missing}])
         assert (await client.post(BASE + "/", json=body)).status_code == 422, missing
-    stored = service_request_body(
-        patient, reasonReference=[{"reference": "DocumentReference/999999"}]
-    )
-    assert (await client.post(BASE + "/", json=stored)).status_code == 201
 
 
 async def test_create_supporting_info_is_checked_for_rebuilt_types(client, patient):
@@ -499,7 +496,7 @@ async def test_create_supporting_info_is_checked_for_rebuilt_types(client, patie
     )
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
     stored = service_request_body(
-        patient, supportingInfo=[{"reference": "DocumentReference/999999"}]
+        patient, supportingInfo=[{"reference": "Goal/999999"}]
     )
     assert (await client.post(BASE + "/", json=stored)).status_code == 201
 

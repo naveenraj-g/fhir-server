@@ -445,20 +445,25 @@ async def test_create_identifier_assigner_must_exist(client, patient):
 
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
-    """A report that is not a DiagnosticReport, usedReference, focalDevice.manipulated, a
-    partOf that is not a Procedure and the reasonReference type that is not rebuilt
-    (DocumentReference) are stored as sent."""
+    """A report that is not a DiagnosticReport or DocumentReference, usedReference,
+    focalDevice.manipulated and a partOf that is not a Procedure are stored as sent."""
     body = procedure_body(
         patient,
-        report=[
-            {"reference": "DocumentReference/999999"},
-            {"reference": "Composition/999999"},
-        ],
+        report=[{"reference": "Composition/999999"}],
         usedReference=[{"reference": "Device/999999"}],
-        reasonReference=[{"reference": "DocumentReference/999999"}],
         partOf=[{"reference": "MedicationAdministration/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
+
+
+async def test_create_document_reference_targets_must_exist(client, patient):
+    """DocumentReference is a rebuilt resource: a relative reference to one (in `report` or
+    `reasonReference`) must exist."""
+    for element in ("report", "reasonReference"):
+        body = procedure_body(
+            patient, **{element: [{"reference": "DocumentReference/999999"}]}
+        )
+        assert (await client.post(BASE + "/", json=body)).status_code == 422, element
 
 
 async def test_create_absolute_and_logical_references_not_resolved(client):

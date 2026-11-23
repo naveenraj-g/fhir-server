@@ -9,4 +9,10 @@ __all__ = ["DocumentReferenceRepository"]
 
 @trace_methods
 class DocumentReferenceRepository(_CoreMixin, _FullMixin, BaseRepository):
-    """All DocumentReference DB I/O."""
+    """All DocumentReference DB I/O. Like Schedule/Slot/Appointment,
+    DocumentReference has no standalone sub-resource endpoints
+    (create/patch always operate on the whole nested payload — see
+    full.py), so there are no per-sub-resource mixins beyond
+    _CoreMixin/_FullMixin. session_factory/__init__ and the generic
+    paginated-list execution (`_execute_paginated`) are inherited from
+    BaseRepository — see that class."""

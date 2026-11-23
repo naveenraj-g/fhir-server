@@ -52,6 +52,13 @@ _STATUS_SYSTEM = "http://hl7.org/fhir/event-status"
 # join for chaining / `_include`, and its registry.
 #   type -> (model module, model class, public id column, search module, search factory)
 _MODELED = {
+    "DocumentReference": (
+        "app.models.document_reference",
+        "DocumentReferenceModel",
+        "document_reference_id",
+        "app.repository.document_reference.search",
+        "document_reference_search",
+    ),
     "Group": (
         "app.models.group",
         "GroupModel",

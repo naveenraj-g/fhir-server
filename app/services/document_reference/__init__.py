@@ -7,4 +7,5 @@ __all__ = ["DocumentReferenceService"]
 
 @trace_methods
 class DocumentReferenceService(_CoreMixin):
-    """Orchestrates DocumentReference business logic."""
+    """All DocumentReference business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

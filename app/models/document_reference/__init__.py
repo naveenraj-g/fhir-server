@@ -1,71 +1,47 @@
-from app.models.document_reference.author import DocumentReferenceAuthor
-from app.models.document_reference.category import (
-    DocumentReferenceCategory,
-    DocumentReferenceCategoryCoding,
-)
-from app.models.document_reference.content import DocumentReferenceContent
-from app.models.document_reference.context import (
-    DocumentReferenceContextEncounter,
-    DocumentReferenceContextEvent,
-    DocumentReferenceContextEventCoding,
-    DocumentReferenceContextRelated,
-)
-from app.models.document_reference.core import (
-    DocumentReferenceContextFacilityTypeCoding,
-    DocumentReferenceContextPracticeSettingCoding,
-    DocumentReferenceMasterIdentifierTypeCoding,
+from .content import DocumentReferenceContent
+from .core import (
+    AUTHENTICATOR_TYPES,
+    CUSTODIAN_TYPES,
+    SUBJECT_TYPES,
     DocumentReferenceModel,
-    DocumentReferenceTypeCoding,
     document_reference_id_seq,
 )
-from app.models.document_reference.enums import (
-    DocumentReferenceAuthenticatorReferenceType,
-    DocumentReferenceAuthorReferenceType,
-    DocumentReferenceContextEncounterReferenceType,
-    DocumentReferenceDocStatus,
-    DocumentReferencePatientReferenceType,
-    DocumentReferenceStatus,
-    DocumentReferenceSubjectReferenceType,
-    DocumentReferenceTargetReferenceType,
-    DocumentRelationshipType,
+from .enums import DocumentReferenceStatus, DocumentRelationshipType
+from .identifier import DocumentReferenceIdentifier
+from .reference import (
+    AUTHOR_TYPES,
+    ENCOUNTER_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    RELATED_TYPES,
+    DocumentReferenceReference,
 )
-from app.models.document_reference.identifier import (
-    DocumentReferenceIdentifier,
-    DocumentReferenceIdentifierTypeCoding,
+from .relates_to import (
+    RELATES_TO_TYPES,
+    RELATION_SYSTEM,
+    DocumentReferenceRelatesTo,
 )
-from app.models.document_reference.relates_to import DocumentReferenceRelatesTo
-from app.models.document_reference.security_label import (
-    DocumentReferenceSecurityLabel,
-    DocumentReferenceSecurityLabelCoding,
-)
+from .token import TOKEN_PARAMS, DocumentReferenceToken
 
 __all__ = [
-    "DocumentReferenceModel",
-    "document_reference_id_seq",
-    "DocumentReferenceStatus",
-    "DocumentReferenceDocStatus",
-    "DocumentRelationshipType",
-    "DocumentReferenceSubjectReferenceType",
-    "DocumentReferenceAuthorReferenceType",
-    "DocumentReferenceAuthenticatorReferenceType",
-    "DocumentReferenceTargetReferenceType",
-    "DocumentReferenceContextEncounterReferenceType",
-    "DocumentReferencePatientReferenceType",
-    "DocumentReferenceMasterIdentifierTypeCoding",
-    "DocumentReferenceTypeCoding",
-    "DocumentReferenceContextFacilityTypeCoding",
-    "DocumentReferenceContextPracticeSettingCoding",
-    "DocumentReferenceIdentifier",
-    "DocumentReferenceIdentifierTypeCoding",
-    "DocumentReferenceCategory",
-    "DocumentReferenceCategoryCoding",
-    "DocumentReferenceAuthor",
-    "DocumentReferenceRelatesTo",
-    "DocumentReferenceSecurityLabel",
-    "DocumentReferenceSecurityLabelCoding",
+    "AUTHENTICATOR_TYPES",
+    "AUTHOR_TYPES",
+    "CUSTODIAN_TYPES",
+    "ENCOUNTER_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "RELATED_TYPES",
+    "RELATES_TO_TYPES",
+    "RELATION_SYSTEM",
+    "SUBJECT_TYPES",
+    "TOKEN_PARAMS",
     "DocumentReferenceContent",
-    "DocumentReferenceContextEncounter",
-    "DocumentReferenceContextEvent",
-    "DocumentReferenceContextEventCoding",
-    "DocumentReferenceContextRelated",
+    "DocumentReferenceIdentifier",
+    "DocumentReferenceModel",
+    "DocumentReferenceReference",
+    "DocumentReferenceRelatesTo",
+    "DocumentReferenceStatus",
+    "DocumentReferenceToken",
+    "DocumentRelationshipType",
+    "document_reference_id_seq",
 ]

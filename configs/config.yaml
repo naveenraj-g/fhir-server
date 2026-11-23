@@ -228,7 +228,7 @@ routes:
     # - consent
     - detected_issue
     - diagnostic_report
-    # - document_reference
+    - document_reference
     - encounter
     - endpoint
     - episode_of_care

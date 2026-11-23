@@ -177,6 +177,15 @@ def main() -> int:
                     continue
                 if el.get("binding", {}).get("strength") != "required":
                     continue
+                codes = value_set_codes(el["binding"]["valueSet"])
+                if not codes:
+                    # a required binding to an open-ended value set (e.g. every BCP 13 mime type)
+                    # is not a closed list: it stays a string
+                    notes.append(
+                        f"{rt}.{code}: required binding to the open-ended value set "
+                        f"{el['binding']['valueSet'].split('|')[0].rsplit('/', 1)[-1]} (a string, not an enum)"
+                    )
+                    break
                 stored = REQUIRED_CODE_STORAGE.get((rt, code))
                 if stored is None:
                     problems.append(
