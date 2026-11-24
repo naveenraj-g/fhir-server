@@ -1,120 +1,170 @@
-from typing import Any, Literal
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel, ConfigDict, Field
+from app.schemas.datatypes import (
+    FHIRBundle,
+    FHIRCodeableConcept,
+    FHIRMeta,
+    FHIRQuantity,
+    FHIRReference,
+)
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
-from app.schemas.datatypes import FHIRMeta
-from app.schemas.medication_knowledge.response.codeable_concept import (
-    MedicationKnowledgeCodeableConceptResponse,
-)
-from app.schemas.medication_knowledge.response.quantity import (
-    MedicationKnowledgeQuantityResponse,
-)
-from app.schemas.medication_knowledge.response.reference import (
-    PlainMedicationKnowledgeReference,
-)
-from app.schemas.medication_knowledge.response.sub_resources import (
-    PlainMedicationKnowledgeAdminGuideline,
-    PlainMedicationKnowledgeCost,
-    PlainMedicationKnowledgeDrugCharacteristic,
-    PlainMedicationKnowledgeIngredient,
-    PlainMedicationKnowledgeKinetics,
-    PlainMedicationKnowledgeMedicineClassification,
-    PlainMedicationKnowledgeMonitoringProgram,
-    PlainMedicationKnowledgeMonograph,
-    PlainMedicationKnowledgePackaging,
-    PlainMedicationKnowledgeRegulatory,
-    PlainMedicationKnowledgeRelated,
-)
+
+class FHIRMedicationKnowledgeRelated(BaseModel):
+    type: FHIRCodeableConcept | None = Field(
+        None, description="Category of medicationKnowledge."
+    )
+    reference: list[FHIRReference] | None = Field(
+        None, description="Associated documentation (MedicationKnowledge)."
+    )
+
+
+class FHIRMedicationKnowledgeMonograph(BaseModel):
+    type: FHIRCodeableConcept | None = Field(
+        None, description="The category of medication document."
+    )
+    source: FHIRReference | None = Field(
+        None, description="Associated documentation (DocumentReference or Media)."
+    )
+
+
+class FHIRMedicationKnowledgeIngredient(BaseModel):
+    itemCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="The ingredient (CodeableConcept)."
+    )
+    itemReference: FHIRReference | None = Field(
+        None, description="The ingredient (Substance)."
+    )
+    isActive: bool | None = Field(None, description="Active ingredient indicator.")
+    strength: dict | None = Field(
+        None, description="Quantity of ingredient present (a Ratio)."
+    )
+
+
+class FHIRMedicationKnowledgeCost(BaseModel):
+    type: FHIRCodeableConcept | None = Field(
+        None, description="The category of the cost information."
+    )
+    source: str | None = Field(
+        None, description="The source or owner for the price information."
+    )
+    cost: dict | None = Field(
+        None, description="The price of the medication (a Money)."
+    )
+
+
+class FHIRMedicationKnowledgeMonitoringProgram(BaseModel):
+    type: FHIRCodeableConcept | None = Field(None, description="Type of program.")
+    name: str | None = Field(None, description="Name of the reviewing program.")
+
+
+class FHIRMedicationKnowledgeMedicineClassification(BaseModel):
+    type: FHIRCodeableConcept | None = Field(
+        None, description="The type of category for the medication."
+    )
+    classification: list[FHIRCodeableConcept] | None = Field(
+        None, description="Specific category assigned to the medication."
+    )
 
 
 class FHIRMedicationKnowledgeSchema(BaseModel):
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    resourceType: Literal["MedicationKnowledge"] = "MedicationKnowledge"
-    id: str | None = None
-    meta: FHIRMeta | None = None
-    extension: list[dict[str, Any]] | None = None
-
-    code: dict[str, Any] | None = None
-    status: str | None = None
-    manufacturer: dict[str, Any] | None = None
-    doseForm: dict[str, Any] | None = None
-    amount: dict[str, Any] | None = None
-    synonym: list[str] | None = None
-    relatedMedicationKnowledge: list[dict[str, Any]] | None = None
-    associatedMedication: list[dict[str, Any]] | None = None
-    productType: list[dict[str, Any]] | None = None
-    monograph: list[dict[str, Any]] | None = None
-    ingredient: list[dict[str, Any]] | None = None
-    preparationInstruction: str | None = None
-    intendedRoute: list[dict[str, Any]] | None = None
-    cost: list[dict[str, Any]] | None = None
-    monitoringProgram: list[dict[str, Any]] | None = None
-    administrationGuidelines: list[dict[str, Any]] | None = None
-    medicineClassification: list[dict[str, Any]] | None = None
-    packaging: dict[str, Any] | None = None
-    drugCharacteristic: list[dict[str, Any]] | None = None
-    contraindication: list[dict[str, Any]] | None = None
-    regulatory: list[dict[str, Any]] | None = None
-    kinetics: list[dict[str, Any]] | None = None
-
-
-class PlainMedicationKnowledgeResponse(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    id: int
-    extension: list[dict[str, Any]] | None = None
-
-    code: MedicationKnowledgeCodeableConceptResponse | None = None
-    status: str | None = None
-    manufacturer: PlainMedicationKnowledgeReference | None = None
-    dose_form: MedicationKnowledgeCodeableConceptResponse | None = None
-    amount: MedicationKnowledgeQuantityResponse | None = None
-    synonym: list[str] | None = None
-    related_medication_knowledge: list[PlainMedicationKnowledgeRelated] | None = None
-    associated_medication: list[PlainMedicationKnowledgeReference] | None = None
-    product_type: list[MedicationKnowledgeCodeableConceptResponse] | None = None
-    monograph: list[PlainMedicationKnowledgeMonograph] | None = None
-    ingredient: list[PlainMedicationKnowledgeIngredient] | None = None
-    preparation_instruction: str | None = None
-    intended_route: list[MedicationKnowledgeCodeableConceptResponse] | None = None
-    cost: list[PlainMedicationKnowledgeCost] | None = None
-    monitoring_program: list[PlainMedicationKnowledgeMonitoringProgram] | None = None
-    administration_guidelines: list[PlainMedicationKnowledgeAdminGuideline] | None = (
-        None
+    resourceType: str = Field(
+        "MedicationKnowledge", description="Always 'MedicationKnowledge'."
     )
-    medicine_classification: (
-        list[PlainMedicationKnowledgeMedicineClassification] | None
-    ) = None
-    packaging: PlainMedicationKnowledgePackaging | None = None
-    drug_characteristic: list[PlainMedicationKnowledgeDrugCharacteristic] | None = None
-    contraindication: list[PlainMedicationKnowledgeReference] | None = None
-    regulatory: list[PlainMedicationKnowledgeRegulatory] | None = None
-    kinetics: list[PlainMedicationKnowledgeKinetics] | None = None
-
-
-class PaginatedMedicationKnowledgeResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    total: int = Field(..., description="Total number of resources matching the query.")
-    limit: int = Field(..., description="Page size.")
-    offset: int = Field(..., description="Offset.")
-    data: list[PlainMedicationKnowledgeResponse] = Field(
-        ..., description="List of medications in plain format."
+    id: str = Field(..., description="Public medication_knowledge_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
+    code: FHIRCodeableConcept | None = Field(
+        None, description="Code that identifies this medication."
+    )
+    status: str | None = Field(
+        None, description="active | inactive | entered-in-error."
+    )
+    manufacturer: FHIRReference | None = Field(
+        None, description="Manufacturer of the item."
+    )
+    doseForm: FHIRCodeableConcept | None = Field(
+        None, description="powder | tablets | capsule ..."
+    )
+    amount: FHIRQuantity | None = Field(None, description="Amount of drug in package.")
+    synonym: list[str] | None = Field(
+        None, description="Additional names for a medication."
+    )
+    relatedMedicationKnowledge: list[FHIRMedicationKnowledgeRelated] | None = Field(
+        None, description="Associated or related medication information."
+    )
+    associatedMedication: list[FHIRReference] | None = Field(
+        None,
+        description="A medication resource that is associated with this medication.",
+    )
+    productType: list[FHIRCodeableConcept] | None = Field(
+        None, description="Category of the medication or product."
+    )
+    monograph: list[FHIRMedicationKnowledgeMonograph] | None = Field(
+        None, description="Associated documentation about the medication."
+    )
+    ingredient: list[FHIRMedicationKnowledgeIngredient] | None = Field(
+        None, description="Active or inactive ingredient."
+    )
+    preparationInstruction: str | None = Field(
+        None, description="The instructions for preparing the medication."
+    )
+    intendedRoute: list[FHIRCodeableConcept] | None = Field(
+        None, description="The intended or approved route of administration."
+    )
+    cost: list[FHIRMedicationKnowledgeCost] | None = Field(
+        None, description="The pricing of the drug."
+    )
+    monitoringProgram: list[FHIRMedicationKnowledgeMonitoringProgram] | None = Field(
+        None, description="Program under which a medication is reviewed."
+    )
+    administrationGuidelines: list[dict] | None = Field(
+        None, description="Guidelines for the administration of the medication."
+    )
+    medicineClassification: (
+        list[FHIRMedicationKnowledgeMedicineClassification] | None
+    ) = Field(None, description="Categorization of the medication.")
+    packaging: dict | None = Field(
+        None, description="Details about packaged medications."
+    )
+    drugCharacteristic: list[dict] | None = Field(
+        None, description="Specifies descriptive properties of the medicine."
+    )
+    contraindication: list[FHIRReference] | None = Field(
+        None, description="Potential clinical issue with or between medication(s)."
+    )
+    regulatory: list[dict] | None = Field(
+        None, description="Regulatory information about a medication."
+    )
+    kinetics: list[dict] | None = Field(
+        None,
+        description="The time course of drug absorption, distribution, metabolism and excretion.",
     )
 
 
 class FHIRMedicationKnowledgeBundleEntry(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRMedicationKnowledgeSchema | dict = Field(
+        ...,
+        description="A MedicationKnowledge (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Organization / DocumentReference (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
-    fullUrl: str | None = None
-    resource: FHIRMedicationKnowledgeSchema
 
-
-class FHIRMedicationKnowledgeBundle(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int = Field(..., description="Total matching resources.")
-    entry: list[FHIRMedicationKnowledgeBundleEntry] = Field(default_factory=list)
+class FHIRMedicationKnowledgeBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRMedicationKnowledgeBundleEntry] | None = None

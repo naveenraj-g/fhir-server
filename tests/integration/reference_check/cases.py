@@ -45,6 +45,9 @@ from tests.integration.medication_dispense.support import (
 from tests.integration.medication_administration.support import (
     medication_administration_body,
 )
+from tests.integration.medication_knowledge.support import (
+    medication_knowledge_body,
+)
 from tests.integration.medication_statement.support import (
     medication_statement_body,
 )
@@ -117,6 +120,10 @@ CASES = {
     "MedicationAdministration": (
         f"{API}/medication-administrations",
         _fixed(medication_administration_body),
+    ),
+    "MedicationKnowledge": (
+        f"{API}/medication-knowledge",
+        _fixed(medication_knowledge_body),
     ),
     "MedicationStatement": (
         f"{API}/medication-statements",

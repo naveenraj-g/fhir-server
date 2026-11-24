@@ -1,306 +1,275 @@
-from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.schemas.enums import IdentifierUse, MedicationKnowledgeStatus
-from app.schemas.medication_knowledge.input.admin_guideline import (
-    MedicationKnowledgeAdminGuidelineInput,
-)
-from app.schemas.medication_knowledge.input.codeable_concept import (
-    MedicationKnowledgeCodeableConceptInput,
-)
-from app.schemas.medication_knowledge.input.cost import (
-    MedicationKnowledgeCostInput,
-)
-from app.schemas.medication_knowledge.input.drug_characteristic import (
-    MedicationKnowledgeDrugCharacteristicInput,
-)
-from app.schemas.medication_knowledge.input.ingredient import (
-    MedicationKnowledgeIngredientInput,
-)
-from app.schemas.medication_knowledge.input.kinetics import (
-    MedicationKnowledgeKineticsInput,
-)
-from app.schemas.medication_knowledge.input.medicine_classification import (
-    MedicationKnowledgeMedicineClassificationInput,
-)
-from app.schemas.medication_knowledge.input.monitoring_program import (
-    MedicationKnowledgeMonitoringProgramInput,
-)
-from app.schemas.medication_knowledge.input.monograph import (
-    MedicationKnowledgeMonographInput,
-)
-from app.schemas.medication_knowledge.input.packaging import (
-    MedicationKnowledgePackagingInput,
-)
-from app.schemas.medication_knowledge.input.quantity import (
-    MedicationKnowledgeQuantityInput,
-)
-from app.schemas.medication_knowledge.input.regulatory import (
-    MedicationKnowledgeRegulatoryInput,
-)
-from app.schemas.medication_knowledge.input.related import (
-    MedicationKnowledgeRelatedInput,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirInputModel,
+    FhirReferenceInput,
 )
 
-_CREATE_EXAMPLE: dict[str, Any] = {
-    "status": "active",
+# MedicationKnowledge Status Codes (the required binding of MedicationKnowledge.status).
+StatusCode = Literal["active", "inactive", "entered-in-error"]
+
+_EXAMPLE = {
+    "resourceType": "MedicationKnowledge",
     "code": {
-        "text": "Amoxicillin 500mg capsule",
         "coding": [
             {
                 "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
-                "code": "308182",
-                "display": "Amoxicillin 500 MG Oral Capsule",
+                "code": "1049502",
+                "display": "12 HR Oxycodone Hydrochloride 10 MG Extended Release Oral Tablet",
             }
-        ],
+        ]
     },
-    "dose_form": {
-        "text": "Oral Capsule",
+    "status": "active",
+    "manufacturer": {"reference": "Organization/190001"},
+    "doseForm": {
         "coding": [
             {
                 "system": "http://snomed.info/sct",
-                "code": "385055001",
-                "display": "Oral Capsule",
+                "code": "385057009",
+                "display": "Film-coated tablet",
             }
-        ],
+        ]
     },
-    "synonym": ["Amoxil"],
+    "amount": {"value": 30, "unit": "tablet"},
+    "synonym": ["Oxycodone ER 10 mg"],
+    "ingredient": [
+        {
+            "itemCodeableConcept": {
+                "coding": [
+                    {
+                        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+                        "code": "7804",
+                        "display": "Oxycodone",
+                    }
+                ]
+            },
+            "isActive": True,
+            "strength": {
+                "numerator": {"value": 10, "unit": "mg"},
+                "denominator": {"value": 1, "unit": "tablet"},
+            },
+        }
+    ],
+    "medicineClassification": [
+        {
+            "type": {"text": "therapeutic"},
+            "classification": [
+                {"coding": [{"system": "http://www.whocc.no/atc", "code": "N02AA05"}]}
+            ],
+        }
+    ],
+    "monitoringProgram": [{"name": "Opioid-Safety"}],
+    "cost": [
+        {
+            "type": {"text": "wholesale"},
+            "source": "Wholesaler-A",
+            "cost": {"value": 12.5, "currency": "USD"},
+        }
+    ],
 }
 
 
-class MedicationKnowledgeCreateSchema(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _CREATE_EXAMPLE},
+class MedicationKnowledgeRelatedInput(FhirInputModel):
+    """MedicationKnowledge.relatedMedicationKnowledge - associated or related knowledge."""
+
+    type: FhirCodeableConceptInput | None = Field(
+        None, description="Category of medicationKnowledge (required by R4)."
+    )
+    reference: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Associated documentation about the associated medication knowledge - Reference(MedicationKnowledge), 1..* in R4. A relative reference must exist in the caller's org (422 otherwise).",
     )
 
-    code: MedicationKnowledgeCodeableConceptInput | None = Field(
-        None, description="Code that identifies this medication."
-    )
-    status: MedicationKnowledgeStatus | None = Field(
-        None, description="active | inactive | entered-in-error."
-    )
-    manufacturer: str | None = Field(
+
+class MedicationKnowledgeMonographInput(FhirInputModel):
+    """MedicationKnowledge.monograph - associated documentation about the medication."""
+
+    type: FhirCodeableConceptInput | None = Field(
         None,
-        description="Manufacturer of the item. Reference(Organization), e.g. 'Organization/190001'.",
+        description="The category of medication document. Searched by `monograph-type`.",
     )
-    manufacturer_display: str | None = Field(
-        None, description="Display text for manufacturer reference."
-    )
-    manufacturer_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    manufacturer_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    manufacturer_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    manufacturer_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    manufacturer_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    manufacturer_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    manufacturer_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    manufacturer_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    manufacturer_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    manufacturer_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    manufacturer_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
+    source: FhirReferenceInput | None = Field(
+        None,
+        description="Associated documentation about the medication - Reference(DocumentReference | Media). Searched by `monograph`. A relative DocumentReference must exist in the caller's org (422 otherwise).",
     )
 
-    dose_form: MedicationKnowledgeCodeableConceptInput | None = Field(
-        None, description="powder | tablets | capsule +"
-    )
-    amount: MedicationKnowledgeQuantityInput | None = Field(
-        None, description="Amount of product in package."
-    )
-    synonym: list[str] | None = Field(
-        None, description="Additional names for a medication."
-    )
-    related_medication_knowledge: list[MedicationKnowledgeRelatedInput] | None = Field(
-        None, description="Associated or related medication information."
-    )
-    associated_medication: list[str] | None = Field(
-        None, description="The set of associated medications. Reference(Medication)."
-    )
-    product_type: list[MedicationKnowledgeCodeableConceptInput] | None = Field(
-        None, description="Category of the medication or product (e.g. OTC, Rx)."
-    )
-    monograph: list[MedicationKnowledgeMonographInput] | None = Field(
-        None, description="Associated documentation about the medication."
-    )
-    ingredient: list[MedicationKnowledgeIngredientInput] | None = Field(
-        None, description="Active or inactive ingredients."
-    )
-    preparation_instruction: str | None = Field(
-        None, description="The instructions for preparing the medication."
-    )
-    intended_route: list[MedicationKnowledgeCodeableConceptInput] | None = Field(
-        None, description="The intended route of administration."
-    )
-    cost: list[MedicationKnowledgeCostInput] | None = Field(
-        None, description="The pricing of the medication."
-    )
-    monitoring_program: list[MedicationKnowledgeMonitoringProgramInput] | None = Field(
-        None, description="Program under which the medication is monitored."
-    )
-    administration_guidelines: list[MedicationKnowledgeAdminGuidelineInput] | None = (
-        Field(None, description="Guidelines for medication administration.")
-    )
-    medicine_classification: (
-        list[MedicationKnowledgeMedicineClassificationInput] | None
-    ) = Field(
+
+class MedicationKnowledgeIngredientInput(FhirInputModel):
+    """MedicationKnowledge.ingredient - active or inactive ingredient."""
+
+    itemCodeableConcept: FhirCodeableConceptInput | None = Field(
         None,
-        description="Categorization of the medication within a classification system.",
+        description="Medication(s) or substance(s) contained in the medication (a CodeableConcept). One of the item[x] choices (required by R4); searched by `ingredient-code`.",
     )
-    packaging: MedicationKnowledgePackagingInput | None = Field(
-        None, description="Details about packaged medications."
-    )
-    drug_characteristic: list[MedicationKnowledgeDrugCharacteristicInput] | None = (
-        Field(None, description="Specifies descriptive properties of the medicine.")
-    )
-    contraindication: list[str] | None = Field(
+    itemReference: FhirReferenceInput | None = Field(
         None,
-        description="Potential clinical issue with or between medication(s). Reference(DetectedIssue).",
+        description="Medication(s) or substance(s) contained in the medication - Reference(Substance). One of the item[x] choices (required by R4); searched by `ingredient`.",
     )
-    regulatory: list[MedicationKnowledgeRegulatoryInput] | None = Field(
-        None, description="Regulatory information about a medication."
+    isActive: bool | None = Field(None, description="Active ingredient indicator.")
+    strength: dict | None = Field(
+        None, description="Quantity of ingredient present (a Ratio)."
     )
-    kinetics: list[MedicationKnowledgeKineticsInput] | None = Field(
+
+
+class MedicationKnowledgeCostInput(FhirInputModel):
+    """MedicationKnowledge.cost - the pricing of the drug."""
+
+    type: FhirCodeableConceptInput | None = Field(
+        None, description="The category of the cost information (required by R4)."
+    )
+    source: str | None = Field(
         None,
-        description="The time course of drug absorption, distribution, metabolism and excretion of a medication from the body.",
+        description="The source or owner for the price information. Searched by `source-cost`.",
+    )
+    cost: dict | None = Field(
+        None, description="The price of the medication (a Money; required by R4)."
+    )
+
+
+class MedicationKnowledgeMonitoringProgramInput(FhirInputModel):
+    """MedicationKnowledge.monitoringProgram - program under which a medication is reviewed."""
+
+    type: FhirCodeableConceptInput | None = Field(
+        None,
+        description="Type of program under which the medication is monitored. Searched by `monitoring-program-type`.",
+    )
+    name: str | None = Field(
+        None,
+        description="Name of the reviewing program. Searched by `monitoring-program-name`.",
+    )
+
+
+class MedicationKnowledgeMedicineClassificationInput(FhirInputModel):
+    """MedicationKnowledge.medicineClassification - categorization of the medication."""
+
+    type: FhirCodeableConceptInput | None = Field(
+        None,
+        description="The type of category for the medication (for example, therapeutic classification, therapeutic sub-classification; required by R4). Searched by `classification-type`.",
+    )
+    classification: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="Specific category assigned to the medication. Searched by `classification`.",
+    )
+
+
+class _MedicationKnowledgeFields(FhirInputModel):
+    """Every writable MedicationKnowledge element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/medicationknowledge.html). Create and patch accept exactly the
+    same fields. R4 requires nothing at the top level (every MedicationKnowledge element is
+    optional; the nested minimums are only enforced by the `java_validator` backend), so any
+    well-formed document is valid.
+
+    The validated body is stored whole (MedicationKnowledgeModel.content), so any valid R4
+    element is kept - including ones this model does not declare (`packaging`,
+    `drugCharacteristic`, `regulatory`, `kinetics`, `administrationGuidelines`, ...).
+    Server-managed elements are ignored if sent: `id` (assigned from the
+    medication_knowledge_id sequence) and `meta` (audit/tenant data, stamped on at read time).
+    org_id and created_by/updated_by come from the verified JWT (actor.org_id / actor.sub),
+    never the body. There is no user_id."""
+
+    resourceType: Literal["MedicationKnowledge"] | None = Field(
+        None, description="Optional; if supplied it must be 'MedicationKnowledge'."
     )
     extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
-
-
-class MedicationKnowledgePatchSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    code: MedicationKnowledgeCodeableConceptInput | None = Field(
-        None, description="Code that identifies this medication."
+    code: FhirCodeableConceptInput | None = Field(
+        None, description="Code that identifies this medication. Searched by `code`."
     )
-    status: MedicationKnowledgeStatus | None = Field(
-        None, description="active | inactive | entered-in-error."
+    status: StatusCode | None = Field(
+        None, description="active | inactive | entered-in-error. Searched by `status`."
     )
-    manufacturer: str | None = Field(
-        None, description="Manufacturer of the item. Reference(Organization)."
+    manufacturer: FhirReferenceInput | None = Field(
+        None,
+        description="Manufacturer of the item - Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    manufacturer_display: str | None = Field(
-        None, description="Display text for manufacturer reference."
+    doseForm: FhirCodeableConceptInput | None = Field(
+        None, description="powder | tablets | capsule ... Searched by `doseform`."
     )
-    manufacturer_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier — purpose."
-    )
-    manufacturer_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier — type system."
-    )
-    manufacturer_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier — type version."
-    )
-    manufacturer_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier — type code."
-    )
-    manufacturer_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier — type display."
-    )
-    manufacturer_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier — type user selected."
-    )
-    manufacturer_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier — type text."
-    )
-    manufacturer_identifier_system: str | None = Field(
-        None, description="Fallback identifier — system."
-    )
-    manufacturer_identifier_value: str | None = Field(
-        None, description="Fallback identifier — value."
-    )
-    manufacturer_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier — period start."
-    )
-    manufacturer_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier — period end."
-    )
-
-    dose_form: MedicationKnowledgeCodeableConceptInput | None = Field(
-        None, description="powder | tablets | capsule +"
-    )
-    amount: MedicationKnowledgeQuantityInput | None = Field(
-        None, description="Amount of product in package."
+    amount: dict | None = Field(
+        None, description="Amount of drug in package (a SimpleQuantity)."
     )
     synonym: list[str] | None = Field(
         None, description="Additional names for a medication."
     )
-    related_medication_knowledge: list[MedicationKnowledgeRelatedInput] | None = Field(
+    relatedMedicationKnowledge: list[MedicationKnowledgeRelatedInput] | None = Field(
         None, description="Associated or related medication information."
     )
-    associated_medication: list[str] | None = Field(
-        None, description="The set of associated medications. Reference(Medication)."
+    associatedMedication: list[FhirReferenceInput] | None = Field(
+        None,
+        description="A medication resource that is associated with this medication - Reference(Medication). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    product_type: list[MedicationKnowledgeCodeableConceptInput] | None = Field(
+    productType: list[FhirCodeableConceptInput] | None = Field(
         None, description="Category of the medication or product."
     )
     monograph: list[MedicationKnowledgeMonographInput] | None = Field(
         None, description="Associated documentation about the medication."
     )
     ingredient: list[MedicationKnowledgeIngredientInput] | None = Field(
-        None, description="Active or inactive ingredients."
+        None, description="Active or inactive ingredient."
     )
-    preparation_instruction: str | None = Field(
-        None, description="The instructions for preparing the medication."
+    preparationInstruction: str | None = Field(
+        None, description="The instructions for preparing the medication (markdown)."
     )
-    intended_route: list[MedicationKnowledgeCodeableConceptInput] | None = Field(
-        None, description="The intended route of administration."
+    intendedRoute: list[FhirCodeableConceptInput] | None = Field(
+        None, description="The intended or approved route of administration."
     )
     cost: list[MedicationKnowledgeCostInput] | None = Field(
-        None, description="The pricing of the medication."
+        None, description="The pricing of the drug."
     )
-    monitoring_program: list[MedicationKnowledgeMonitoringProgramInput] | None = Field(
-        None, description="Program under which the medication is monitored."
+    monitoringProgram: list[MedicationKnowledgeMonitoringProgramInput] | None = Field(
+        None, description="Program under which a medication is reviewed."
     )
-    administration_guidelines: list[MedicationKnowledgeAdminGuidelineInput] | None = (
-        Field(None, description="Guidelines for medication administration.")
+    administrationGuidelines: list[dict] | None = Field(
+        None,
+        description="Guidelines for the administration of the medication (dosage, indication, patientCharacteristics).",
     )
-    medicine_classification: (
+    medicineClassification: (
         list[MedicationKnowledgeMedicineClassificationInput] | None
     ) = Field(
         None,
-        description="Categorization of the medication within a classification system.",
+        description="Categorization of the medication within a formulary or classification system.",
     )
-    packaging: MedicationKnowledgePackagingInput | None = Field(
-        None, description="Details about packaged medications."
+    packaging: dict | None = Field(
+        None, description="Details about packaged medications (type, quantity)."
     )
-    drug_characteristic: list[MedicationKnowledgeDrugCharacteristicInput] | None = (
-        Field(None, description="Specifies descriptive properties of the medicine.")
+    drugCharacteristic: list[dict] | None = Field(
+        None, description="Specifies descriptive properties of the medicine."
     )
-    contraindication: list[str] | None = Field(
+    contraindication: list[FhirReferenceInput] | None = Field(
         None,
-        description="Potential clinical issue with or between medication(s). Reference(DetectedIssue).",
+        description="Potential clinical issue with or between medication(s) - Reference(DetectedIssue). A relative reference must exist in the caller's org (422 otherwise).",
     )
-    regulatory: list[MedicationKnowledgeRegulatoryInput] | None = Field(
+    regulatory: list[dict] | None = Field(
         None, description="Regulatory information about a medication."
     )
-    kinetics: list[MedicationKnowledgeKineticsInput] | None = Field(
+    kinetics: list[dict] | None = Field(
         None,
         description="The time course of drug absorption, distribution, metabolism and excretion.",
     )
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+
+
+class MedicationKnowledgeCreateSchema(_MedicationKnowledgeFields):
+    """POST body - a FHIR R4 MedicationKnowledge resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class MedicationKnowledgePatchSchema(_MedicationKnowledgeFields):
+    """PATCH body - a partial FHIR R4 MedicationKnowledge (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object such as `packaging` replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "inactive",
+                "synonym": ["Oxycodone ER 10 mg", "OxyContin 10 mg"],
+            }
+        }
+    }

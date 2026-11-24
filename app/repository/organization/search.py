@@ -62,6 +62,9 @@ from app.repository._group_revinclude import (
 from app.repository._medication_request_revinclude import (
     column_medication_request_revincludes,
 )
+from app.repository._medication_knowledge_revinclude import (
+    column_medication_knowledge_revincludes,
+)
 from app.repository._medication_revinclude import column_medication_revincludes
 from app.repository._service_request_revinclude import (
     column_service_request_revincludes,
@@ -741,6 +744,12 @@ def organization_search() -> SearchRegistry:
                 lambda o: o.organization_id,
             ),
             *column_medication_revincludes(
+                ("manufacturer",),
+                "manufacturer",
+                "Organization",
+                lambda o: o.organization_id,
+            ),
+            *column_medication_knowledge_revincludes(
                 ("manufacturer",),
                 "manufacturer",
                 "Organization",

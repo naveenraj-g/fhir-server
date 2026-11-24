@@ -55,6 +55,7 @@ from app.repository.medication_administration.search import (
 from app.repository.medication_dispense.search import (
     medication_dispense_search,
 )
+from app.repository.medication_knowledge.search import medication_knowledge_search
 from app.repository.medication_statement.search import medication_statement_search
 from app.repository.questionnaire.search import questionnaire_search
 from app.repository.questionnaire_response.search import questionnaire_response_search
@@ -80,6 +81,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "episode_of_care": episode_of_care_search,
     "medication_administration": medication_administration_search,
     "medication_dispense": medication_dispense_search,
+    "medication_knowledge": medication_knowledge_search,
     "medication_statement": medication_statement_search,
     "questionnaire": questionnaire_search,
     "questionnaire_response": questionnaire_response_search,

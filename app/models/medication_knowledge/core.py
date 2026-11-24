@@ -1,214 +1,107 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Numeric,
-    Sequence,
-    String,
-    Text,
-    text,
-)
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy import BigInteger, Column, Enum, Sequence, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.enums import IdentifierUse
-from app.models.medication_knowledge.enums import (
-    MedicationKnowledgeManufacturerReferenceType,
-    MedicationKnowledgeQuantityComparator,
-    MedicationKnowledgeStatus,
-)
 from app.models.shared import TenantAuditMixin
 
+from .enums import MedicationKnowledgeStatus
 
-class MedicationKnowledgeModel(Base, TenantAuditMixin):
-    """MedicationKnowledge resource ORM model (FHIR R4).
-    https://www.hl7.org/fhir/R4/medicationknowledge.html
-    """
+medication_knowledge_id_seq = Sequence(
+    "medication_knowledge_pub_seq", start=600000, increment=1, metadata=Base.metadata
+)
+
+# R4 target of MedicationKnowledge.manufacturer.
+MANUFACTURER_TYPES = ("Organization",)
+
+
+class MedicationKnowledgeModel(TenantAuditMixin, Base):
+    """FHIR R4 MedicationKnowledge - content-based storage, same as Medication, Patient,
+    Encounter and the other rebuilt resources.
+
+    `content` (JSONB) holds the whole resource exactly as validated on write; it is the
+    single source of truth, and GET serves it back as-is (`id`/`meta` are stamped on at
+    read time from this row's own columns - see app.fhir.mappers.medication_knowledge).
+    Every other column exists only because a FHIR R4 MedicationKnowledge search parameter
+    filters on it (https://www.hl7.org/fhir/R4/medicationknowledge.html#search) and is derived
+    from `content` on every write by app.repository.medication_knowledge._indexer.
+
+    Search parameter -> storage:
+      status           -> status (0..1 code, Enum column, stored by value so
+                          `entered-in-error` is the real FHIR code)
+      manufacturer     -> manufacturer_reference/_type/_id + manufacturer_identifier_*
+                          (0..1 Reference(Organization), columns)
+      code, doseform, ingredient-code, classification, classification-type,
+      monograph-type, monitoring-program-type
+                       -> MedicationKnowledgeToken (one shared table, one row per coding;
+                          `ingredient-code` reads ingredient.itemCodeableConcept,
+                          `classification` / `classification-type` read
+                          medicineClassification.classification / .type of every entry)
+      monitoring-program-name, source-cost
+                       -> MedicationKnowledgeToken too: a token search over a plain string
+                          (monitoringProgram.name, cost.source), the string held as `code`
+                          with no system
+      ingredient       -> MedicationKnowledgeReference (ingredient.itemReference, a
+                          Reference(Substance))
+      monograph        -> MedicationKnowledgeReference (monograph.source, a
+                          Reference(DocumentReference | Media))
+      _id              -> medication_knowledge_id;  _lastUpdated -> updated_at/created_at
+
+    Everything else (`doseForm`, `amount`, `synonym`, `relatedMedicationKnowledge`,
+    `associatedMedication`, `productType`, `ingredient.isActive`/`.strength`,
+    `preparationInstruction`, `intendedRoute`, `contraindication`, `regulatory`, `kinetics`,
+    `packaging`, `drugCharacteristic`, `administrationGuidelines`, `extension`) has no search
+    parameter and lives only in `content`.
+
+    `monograph` points at two resource types, so `reference_type` records which one a
+    relative `Type/<id>` names (a plain string, not a Postgres enum): a search by bare id is
+    ambiguous (`monograph=Type/id` or `monograph:Type=id`). `ingredient` (Substance) and
+    `manufacturer` (Organization) have one target, so a bare id works.
+
+    All index columns are nullable (every MedicationKnowledge element is optional in R4). No
+    `user_id`: a MedicationKnowledge is a shared tenant-level entity. No DB-level CHECK
+    constraints."""
 
     __tablename__ = "medication_knowledge"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     medication_knowledge_id = Column(
         BigInteger,
-        Sequence(
-            "medication_knowledge_pub_seq",
-            start=600000,
-            increment=1,
-            metadata=Base.metadata,
-        ),
-        nullable=False,
+        medication_knowledge_id_seq,
+        server_default=medication_knowledge_id_seq.next_value(),
         unique=True,
         index=True,
+        nullable=False,
     )
 
-    # Resource-level extension (0..* Extension)
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
-    # code (0..1 CodeableConcept) — text flattened, codings in child table
-    code_text = Column(String, nullable=True)
-
-    # status (0..1 code)
+    # -- Search index (derived from `content`) --
     status = Column(
         Enum(
             MedicationKnowledgeStatus,
             name="medication_knowledge_status",
+            # Store `entered-in-error`, not the Python member name.
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
         ),
         nullable=True,
     )
 
-    # manufacturer (0..1 Reference(Organization)) with identifier fallback (15 columns)
+    # manufacturer (0..1 Reference(Organization))
     manufacturer_reference = Column(String, nullable=True)
-    manufacturer_type = Column(
-        Enum(
-            MedicationKnowledgeManufacturerReferenceType,
-            name="medication_knowledge_manufacturer_reference_type",
-        ),
-        nullable=True,
-    )
+    manufacturer_type = Column(String, nullable=True)
     manufacturer_id = Column(BigInteger, nullable=True, index=True)
-    manufacturer_display = Column(String, nullable=True)
-
-    manufacturer_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    manufacturer_identifier_type_system = Column(String, nullable=True)
-    manufacturer_identifier_type_version = Column(String, nullable=True)
-    manufacturer_identifier_type_code = Column(String, nullable=True)
-    manufacturer_identifier_type_display = Column(String, nullable=True)
-    manufacturer_identifier_type_user_selected = Column(Boolean, nullable=True)
-    manufacturer_identifier_type_text = Column(String, nullable=True)
     manufacturer_identifier_system = Column(String, nullable=True)
     manufacturer_identifier_value = Column(String, nullable=True)
-    manufacturer_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    manufacturer_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # doseForm (0..1 CodeableConcept) — text flattened, codings in child table
-    dose_form_text = Column(String, nullable=True)
-
-    # amount (0..1 SimpleQuantity)
-    amount_value = Column(Numeric, nullable=True)
-    amount_comparator = Column(
-        Enum(
-            MedicationKnowledgeQuantityComparator,
-            name="medication_knowledge_quantity_comparator",
-        ),
-        nullable=True,
-    )
-    amount_unit = Column(String, nullable=True)
-    amount_system = Column(String, nullable=True)
-    amount_code = Column(String, nullable=True)
-
-    # synonym (0..* string)
-    synonym = Column(ARRAY(String), nullable=True)
-
-    # preparationInstruction (0..1 markdown)
-    preparation_instruction = Column(Text, nullable=True)
-
-    # packaging (0..1 BackboneElement)
-    packaging_type_text = Column(String, nullable=True)
-    packaging_quantity_value = Column(Numeric, nullable=True)
-    packaging_quantity_comparator = Column(
-        Enum(
-            MedicationKnowledgeQuantityComparator,
-            name="medication_knowledge_quantity_comparator",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    packaging_quantity_unit = Column(String, nullable=True)
-    packaging_quantity_system = Column(String, nullable=True)
-    packaging_quantity_code = Column(String, nullable=True)
-
-    # Relationships
-    code_codings = relationship(
-        "MedicationKnowledgeCodeCoding",
+    tokens = relationship(
+        "MedicationKnowledgeToken",
         back_populates="medication_knowledge",
         cascade="all, delete-orphan",
     )
-    dose_form_codings = relationship(
-        "MedicationKnowledgeDoseFormCoding",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    packaging_type_codings = relationship(
-        "MedicationKnowledgePackagingTypeCoding",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    related_knowledge = relationship(
-        "MedicationKnowledgeRelated",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    associated_medications = relationship(
-        "MedicationKnowledgeAssociatedMedication",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    product_types = relationship(
-        "MedicationKnowledgeProductType",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    monographs = relationship(
-        "MedicationKnowledgeMonograph",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    ingredients = relationship(
-        "MedicationKnowledgeIngredient",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    intended_routes = relationship(
-        "MedicationKnowledgeIntendedRoute",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    costs = relationship(
-        "MedicationKnowledgeCost",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    monitoring_programs = relationship(
-        "MedicationKnowledgeMonitoringProgram",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    administration_guidelines = relationship(
-        "MedicationKnowledgeAdminGuideline",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    medicine_classifications = relationship(
-        "MedicationKnowledgeMedicineClassification",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    drug_characteristics = relationship(
-        "MedicationKnowledgeDrugCharacteristic",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    contraindications = relationship(
-        "MedicationKnowledgeContraindication",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    regulatory = relationship(
-        "MedicationKnowledgeRegulatory",
-        back_populates="medication_knowledge",
-        cascade="all, delete-orphan",
-    )
-    kinetics = relationship(
-        "MedicationKnowledgeKinetics",
+    references = relationship(
+        "MedicationKnowledgeReference",
         back_populates="medication_knowledge",
         cascade="all, delete-orphan",
     )
