@@ -19,6 +19,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._communication_revinclude import column_communication_revincludes
 from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._task_revinclude import column_task_revincludes
 from app.repository._search_targets import MODELED
@@ -958,6 +959,9 @@ def encounter_search() -> SearchRegistry:
         ),
         # An Encounter that is part of another one points back at it.
         revincludes=(
+            *column_communication_revincludes(
+                ("encounter",), "encounter", "Encounter", lambda x: x.encounter_id
+            ),
             *column_flag_revincludes(
                 ("encounter",), "encounter", "Encounter", lambda x: x.encounter_id
             ),

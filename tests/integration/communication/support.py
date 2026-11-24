@@ -1,231 +1,113 @@
-"""Shared helpers and payloads for communication integration tests."""
+"""Shared helpers and payloads for communication integration tests.
+
+Request bodies are genuine FHIR R4 Communication JSON (camelCase, nested datatypes), and every
+response is FHIR R4 too."""
+
+from tests.integration.care_team.support import (  # noqa: F401
+    care_team_body,
+    create_care_team,
+)
+from tests.integration.encounter.support import (  # noqa: F401
+    create_encounter,
+    encounter_body,
+)
+from tests.integration.group.support import create_group, group_body  # noqa: F401
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+)
+from tests.integration.related_person.support import (  # noqa: F401
+    create_related_person,
+    related_person_body,
+)
+from tests.integration.service_request.support import (  # noqa: F401
+    create_service_request,
+    service_request_body,
+)
 
 BASE = "/api/fhir/v1/communications"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+COMM_IDS = "https://fhir-server.dev/fhir/identifier-system/communication-id"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+CATEGORY = "http://terminology.hl7.org/CodeSystem/communication-category"
+MEDIUM = "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode"
+PLAN_DEFINITION = "http://example.org/fhir/PlanDefinition/notify"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True, "name": [{"family": "Smith", "given": ["Alice"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"name": "Good Health Clinic"},
-    )
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
-
-
-async def create_test_encounter(client, patient_id: int) -> int:
-    """Create a minimal encounter and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/encounters/",
-        json={
-            "status": "in-progress",
-            "class_coding": {
-                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                "code": "AMB",
-                "display": "ambulatory",
-            },
-            "subject": f"Patient/{patient_id}",
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_condition(client, patient_id: int) -> int:
-    """Create a minimal condition and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/conditions/",
-        json={
-            "clinical_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
-                        "code": "active",
-                    }
-                ]
-            },
-            "verification_status": {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
-                        "code": "confirmed",
-                    }
-                ]
-            },
-            "subject": {"reference": f"Patient/{patient_id}"},
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_observation(client, patient_id: int) -> int:
-    """Create a minimal observation and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/observations/",
-        json={
-            "status": "final",
-            "code": {
-                "coding": [
-                    {
-                        "system": "http://loinc.org",
-                        "code": "8867-4",
-                        "display": "Heart rate",
-                    }
-                ]
-            },
-            "subject": {"reference": f"Patient/{patient_id}"},
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_communication(patient_id: int) -> dict:
+def concept(system: str, code: str, display: str | None = None) -> dict:
     return {
-        "status": "completed",
-        "subject": f"Patient/{patient_id}",
-        "subject_display": "Jane Doe",
+        "coding": [
+            {
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
+            }
+        ]
     }
 
 
-def full_communication(
+def communication_body(**extra) -> dict:
+    """A valid minimal Communication: R4 requires `status`."""
+    return {"status": "completed", **extra}
+
+
+def full_body(
     patient_id: int,
+    encounter_id: int,
     practitioner_id: int,
     organization_id: int,
-    encounter_id: int,
-    condition_id: int,
+    service_request_id: int,
+    parent_id: int,
 ) -> dict:
-    return {
-        "status": "completed",
-        "status_reason_text": "Patient confirmed receipt",
-        "status_reason_coding": [
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return communication_body(
+        resourceType="Communication",
+        identifier=[
             {
-                "system": "http://terminology.hl7.org/CodeSystem/communication-not-done-reason",
-                "code": "unknown",
-                "display": "Unknown",
+                "system": COMM_IDS,
+                "value": "CM-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "FILL"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "priority": "routine",
-        "category": [
+        instantiatesCanonical=[f"{PLAN_DEFINITION}|1.0"],
+        instantiatesUri=["http://example.org/protocols/notify"],
+        basedOn=[{"reference": f"ServiceRequest/{service_request_id}"}],
+        partOf=[{"reference": f"Communication/{parent_id}"}],
+        inResponseTo=[{"reference": f"Communication/{parent_id}"}],
+        status="completed",
+        statusReason=concept("http://example.org/reasons", "done"),
+        category=[concept(CATEGORY, "notification", "Notification")],
+        priority="urgent",
+        medium=[concept(MEDIUM, "WRITTEN", "written")],
+        subject={"reference": f"Patient/{patient_id}"},
+        topic={"text": "lab results"},
+        about=[{"reference": f"Patient/{patient_id}"}],
+        encounter={"reference": f"Encounter/{encounter_id}"},
+        sent="2026-01-15T09:00:00Z",
+        received="2026-01-15T09:05:00Z",
+        recipient=[{"reference": f"Patient/{patient_id}"}],
+        sender={"reference": f"Practitioner/{practitioner_id}"},
+        reasonCode=[{"text": "results ready"}],
+        reasonReference=[{"reference": "Device/9"}],
+        payload=[
+            {"contentString": "Your results are ready."},
             {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/communication-category",
-                        "code": "notification",
-                        "display": "Notification",
-                    }
-                ],
-                "text": "Notification",
-            }
-        ],
-        "medium": [
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode",
-                        "code": "WRITTEN",
-                        "display": "written",
-                    }
-                ],
-                "text": "written",
-            }
-        ],
-        "subject": f"Patient/{patient_id}",
-        "subject_display": "Jane Doe",
-        "topic_text": "Annual Wellness Visit Follow-up",
-        "topic_coding": [
-            {
-                "system": "http://example.org/topics",
-                "code": "wellness",
-                "display": "Wellness",
-            }
-        ],
-        "about": [
-            {
-                "reference": f"Condition/{condition_id}",
-                "display": "Patient condition",
-            }
-        ],
-        "encounter": f"Encounter/{encounter_id}",
-        "encounter_display": "Office Visit",
-        "sent": "2026-11-01T08:00:00Z",
-        "received": "2026-11-01T08:01:00Z",
-        "recipient": [
-            {
-                "reference": f"Patient/{patient_id}",
-                "display": "Jane Doe",
-            }
-        ],
-        "sender": f"Practitioner/{practitioner_id}",
-        "sender_display": "Dr. Smith",
-        "reason_code": [
-            {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "439401001",
-                        "display": "Abnormal lab result",
-                    }
-                ],
-                "text": "Abnormal lab result",
-            }
-        ],
-        "reason_reference": [
-            {
-                "reference": f"Condition/{condition_id}",
-                "display": "Patient condition",
-            }
-        ],
-        "payload": [
-            {
-                "content_string": "Please follow up on heart rate test results.",
-            },
-            {
-                "content_attachment": {
-                    "content_type": "text/plain",
-                    "data": "SGVsbG8gV29ybGQ=",
-                    "title": "Notes attachment",
+                "contentAttachment": {
+                    "contentType": "application/pdf",
+                    "title": "report",
                 }
             },
+            {"contentReference": {"reference": f"Patient/{patient_id}"}},
         ],
-        "note": [
-            {
-                "author_reference": f"Practitioner/{practitioner_id}",
-                "author_display": "Dr. Smith",
-                "text": "Contacted patient by phone; left voicemail.",
-            }
-        ],
-        "identifier": [
-            {
-                "use": "official",
-                "system": "http://hospital.example.org",
-                "value": "COMM-12345",
-                "assigner": f"Organization/{organization_id}",
-                "assigner_display": "Good Health Clinic",
-            }
-        ],
-        "instantiates_canonical": ["http://example.org/fhir/Questionnaire/example"],
-        "instantiates_uri": ["http://example.org/protocols/protocol1"],
-    }
+        note=[{"text": "Sent by post", "time": "2026-01-15T09:00:00Z"}],
+    )
+
+
+async def create_communication(client, body: dict) -> int:
+    """Create a communication and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])

@@ -64,6 +64,8 @@ def test_reference_any_allows_every_r4_type_and_follows_every_rebuilt_one():
         ("Task", "focus"),
         ("Task", "based-on"),
         ("Consent", "data"),
+        ("Communication", "based-on"),
+        ("Communication", "part-of"),
     }
     for rt, registry, param in any_params:
         assert param.targets is ANY_RESOURCE_TYPES

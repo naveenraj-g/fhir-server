@@ -266,7 +266,7 @@ routes:
     # - specimen_definition
     - task
     - goal
-    # - communication
+    - communication
     # - communication_request
     - family_member_history
     # - terminology

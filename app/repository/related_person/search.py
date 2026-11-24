@@ -18,6 +18,10 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._communication_revinclude import (
+    column_communication_revincludes,
+    reference_communication_revincludes,
+)
 from app.repository._consent_revinclude import reference_consent_revincludes
 from app.repository._task_revinclude import column_task_revincludes
 from app.fhir.search import (
@@ -673,6 +677,12 @@ def related_person_search() -> SearchRegistry:
         # What points at a RelatedPerson: Appointment / AppointmentResponse actors, Encounter
         # participants and Patient.link.
         revincludes=(
+            *column_communication_revincludes(
+                ("sender",), "sender", "RelatedPerson", lambda x: x.related_person_id
+            ),
+            *reference_communication_revincludes(
+                ("recipient",), "RelatedPerson", lambda x: x.related_person_id
+            ),
             *reference_consent_revincludes(
                 ("consentor", "actor"), "RelatedPerson", lambda x: x.related_person_id
             ),

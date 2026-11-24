@@ -1,334 +1,203 @@
-from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.models.communication.enums import (
-    CommunicationPriority,
-    CommunicationStatus,
+from app.schemas.fhir_input import (
+    FhirAttachmentInput,
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirReferenceInput,
 )
-from app.schemas.datatypes import CodingInput
-from app.schemas.enums import IdentifierUse
 
-from .category import CommunicationCategoryInput
-from .identifier import CommunicationIdentifierInput
-from .note import CommunicationNoteInput
-from .payload import CommunicationPayloadInput
-from .reference import CommunicationReferenceInput
+# EventStatus / RequestPriority (the required bindings of Communication.status and .priority).
+StatusCode = Literal[
+    "preparation",
+    "in-progress",
+    "not-done",
+    "on-hold",
+    "stopped",
+    "completed",
+    "entered-in-error",
+    "unknown",
+]
+PriorityCode = Literal["routine", "urgent", "asap", "stat"]
 
 _EXAMPLE = {
+    "resourceType": "Communication",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/communication-id",
+            "value": "CM-1",
+        }
+    ],
+    "basedOn": [{"reference": "CommunicationRequest/470001"}],
     "status": "completed",
-    "priority": "routine",
     "category": [
         {
             "coding": [
                 {
                     "system": "http://terminology.hl7.org/CodeSystem/communication-category",
                     "code": "notification",
-                    "display": "Notification",
                 }
-            ],
-            "text": "Notification",
+            ]
         }
     ],
+    "priority": "routine",
     "medium": [
         {
             "coding": [
                 {
                     "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationMode",
                     "code": "WRITTEN",
-                    "display": "written",
                 }
-            ],
-            "text": "written",
+            ]
         }
     ],
-    "subject": "Patient/10001",
-    "subject_display": "Jane Doe",
-    "topic_text": "Annual Wellness Visit Follow-up",
-    "sent": "2026-11-01T08:00:00Z",
-    "received": "2026-11-01T08:01:00Z",
-    "sender": "Practitioner/30001",
-    "sender_display": "Dr. Smith",
-    "recipient": [{"reference": "Patient/10001", "display": "Jane Doe"}],
-    "payload": [{"content_string": "Your recent lab test results are normal."}],
+    "subject": {"reference": "Patient/10001"},
+    "encounter": {"reference": "Encounter/20001"},
+    "sent": "2026-01-15T09:00:00Z",
+    "received": "2026-01-15T09:05:00Z",
+    "recipient": [{"reference": "Patient/10001"}],
+    "sender": {"reference": "Practitioner/30001"},
+    "payload": [{"contentString": "Your results are ready."}],
 }
 
 
-class CommunicationCreateSchema(BaseModel):
-    """Request body for POST /api/fhir/v1/communications.
+class CommunicationPayloadInput(FhirInputModel):
+    """Communication.payload - the message content. `content[x]` is a choice of `contentString`,
+    `contentAttachment` or `contentReference` (Reference(Any)), required by R4 (only the
+    `java_validator` backend enforces it)."""
 
-    Communication is an org-scoped clinical entity and has no user_id.
-    status is required per FHIR R4.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _EXAMPLE},
+    contentString: str | None = Field(
+        None, description="content[x]: the message as a string."
     )
-
-    identifier: list[CommunicationIdentifierInput] | None = Field(
-        None, description="Unique identifier."
+    contentAttachment: FhirAttachmentInput | None = Field(
+        None, description="content[x]: the message as an Attachment."
     )
-    instantiates_canonical: list[str] | None = Field(
-        None, description="Instantiates FHIR protocol or definition."
-    )
-    instantiates_uri: list[str] | None = Field(
-        None, description="Instantiates external protocol or definition."
-    )
-    based_on: list[CommunicationReferenceInput | str] | None = Field(
+    contentReference: FhirReferenceInput | None = Field(
         None,
-        description="Request fulfilled by this communication (Reference(Resource)).",
+        description="content[x]: the message as a Reference(Any). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise).",
     )
-    part_of: list[CommunicationReferenceInput | str] | None = Field(
-        None, description="Part of this action (Reference(Resource))."
+
+
+class _CommunicationFields(FhirInputModel):
+    """Every writable Communication element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/communication.html). Create and patch accept exactly the same
+    fields. R4 requires `status`; the native validator cannot see a missing primitive `status`,
+    which only the `java_validator` backend rejects.
+
+    The validated body is stored whole (CommunicationModel.content), so any valid R4 element is
+    kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the communication_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["Communication"] | None = Field(
+        None, description="Optional; if supplied it must be 'Communication'."
     )
-    in_response_to: list[CommunicationReferenceInput | str] | None = Field(
-        None, description="Reply to previous communication (Reference(Communication))."
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
-    status: CommunicationStatus = Field(
-        ...,
-        description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown.",
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Unique identifier. Searched by `identifier`."
     )
-    status_reason_text: str | None = Field(
-        None, description="Reason for current status (plain text)."
+    instantiatesCanonical: list[str] | None = Field(
+        None,
+        description="Instantiates FHIR protocol or definition (canonical URLs). Searched by `instantiates-canonical`.",
     )
-    status_reason_coding: list[CodingInput] | None = Field(
-        None, description="Reason for current status (codings)."
+    instantiatesUri: list[str] | None = Field(
+        None,
+        description="Instantiates external protocol or definition (URIs). Searched by `instantiates-uri`.",
     )
-    category: list[CommunicationCategoryInput] | None = Field(
-        None, description="Message category."
+    basedOn: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Request fulfilled by this communication - Reference(Any). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise). Searched by `based-on`.",
     )
-    priority: CommunicationPriority | None = Field(
+    partOf: list[FhirReferenceInput] | None = Field(
+        None, description="Part of this action - Reference(Any). Searched by `part-of`."
+    )
+    inResponseTo: list[FhirReferenceInput] | None = Field(
+        None, description="Reply to - Reference(Communication)."
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown (required by R4). Searched by `status`.",
+    )
+    statusReason: FhirCodeableConceptInput | None = Field(
+        None, description="Reason for current status."
+    )
+    category: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Message category. Searched by `category`."
+    )
+    priority: PriorityCode | None = Field(
         None, description="routine | urgent | asap | stat."
     )
-    medium: list[CommunicationCategoryInput] | None = Field(
-        None, description="A channel of communication."
+    medium: list[FhirCodeableConceptInput] | None = Field(
+        None, description="A channel of communication. Searched by `medium`."
     )
-    subject: str | None = Field(
-        None, description="Focus of message (Reference(Patient | Group))."
-    )
-    subject_display: str | None = Field(
-        None, description="Display narrative for subject reference."
-    )
-    subject_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier purpose."
-    )
-    subject_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier type system."
-    )
-    subject_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier type version."
-    )
-    subject_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier type code."
-    )
-    subject_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier type display."
-    )
-    subject_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier type text."
-    )
-    subject_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier type user selected."
-    )
-    subject_identifier_system: str | None = Field(
-        None, description="Fallback identifier system."
-    )
-    subject_identifier_value: str | None = Field(
-        None, description="Fallback identifier value."
-    )
-    subject_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier period start."
-    )
-    subject_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier period end."
-    )
-    topic_text: str | None = Field(
-        None, description="Description of the purpose/content (plain text)."
-    )
-    topic_coding: list[CodingInput] | None = Field(
-        None, description="Description of the purpose/content (codings)."
-    )
-    about: list[CommunicationReferenceInput | str] | None = Field(
+    subject: FhirReferenceInput | None = Field(
         None,
-        description="Resources that pertain to this communication (Reference(Resource)).",
+        description="Focus of message - Reference(Patient | Group). Searched by `subject` / `patient`.",
     )
-    encounter: str | None = Field(
-        None, description="Encounter created as part of (Reference(Encounter))."
+    topic: FhirCodeableConceptInput | None = Field(
+        None, description="Description of the purpose/content."
     )
-    encounter_display: str | None = Field(
-        None, description="Display narrative for encounter reference."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier purpose."
-    )
-    encounter_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier type system."
-    )
-    encounter_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier type version."
-    )
-    encounter_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier type code."
-    )
-    encounter_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier type display."
-    )
-    encounter_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier type text."
-    )
-    encounter_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier type user selected."
-    )
-    encounter_identifier_system: str | None = Field(
-        None, description="Fallback identifier system."
-    )
-    encounter_identifier_value: str | None = Field(
-        None, description="Fallback identifier value."
-    )
-    encounter_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier period start."
-    )
-    encounter_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier period end."
-    )
-    sent: datetime | None = Field(None, description="When sent.")
-    received: datetime | None = Field(None, description="When received.")
-    recipient: list[CommunicationReferenceInput | str] | None = Field(
+    about: list[FhirReferenceInput] | None = Field(
         None,
-        description="Message recipient (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | Group | CareTeam | HealthcareService)).",
+        description="Resources that pertain to this communication - Reference(Any).",
     )
-    sender: str | None = Field(
+    encounter: FhirReferenceInput | None = Field(
         None,
-        description="Message sender (Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | HealthcareService)).",
+        description="Encounter created as part of - Reference(Encounter). Searched by `encounter`.",
     )
-    sender_display: str | None = Field(
-        None, description="Display narrative for sender reference."
+    sent: str | None = Field(
+        None, description="When sent (a FHIR dateTime). Searched by `sent`."
     )
-    sender_identifier_use: IdentifierUse | None = Field(
-        None, description="Fallback identifier purpose."
+    received: str | None = Field(
+        None, description="When received (a FHIR dateTime). Searched by `received`."
     )
-    sender_identifier_type_system: str | None = Field(
-        None, description="Fallback identifier type system."
-    )
-    sender_identifier_type_version: str | None = Field(
-        None, description="Fallback identifier type version."
-    )
-    sender_identifier_type_code: str | None = Field(
-        None, description="Fallback identifier type code."
-    )
-    sender_identifier_type_display: str | None = Field(
-        None, description="Fallback identifier type display."
-    )
-    sender_identifier_type_text: str | None = Field(
-        None, description="Fallback identifier type text."
-    )
-    sender_identifier_type_user_selected: bool | None = Field(
-        None, description="Fallback identifier type user selected."
-    )
-    sender_identifier_system: str | None = Field(
-        None, description="Fallback identifier system."
-    )
-    sender_identifier_value: str | None = Field(
-        None, description="Fallback identifier value."
-    )
-    sender_identifier_period_start: datetime | None = Field(
-        None, description="Fallback identifier period start."
-    )
-    sender_identifier_period_end: datetime | None = Field(
-        None, description="Fallback identifier period end."
-    )
-    reason_code: list[CommunicationCategoryInput] | None = Field(
-        None, description="Indication for communication."
-    )
-    reason_reference: list[CommunicationReferenceInput | str] | None = Field(
+    recipient: list[FhirReferenceInput] | None = Field(
         None,
-        description="Why was communication done? (Reference(Condition | Observation | DiagnosticReport | DocumentReference)).",
+        description="Message recipient - Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | Group | CareTeam | HealthcareService). Searched by `recipient`.",
+    )
+    sender: FhirReferenceInput | None = Field(
+        None,
+        description="Message sender - Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | HealthcareService). Searched by `sender`.",
+    )
+    reasonCode: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Indication for message."
+    )
+    reasonReference: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Why was communication done? - Reference(Condition | Observation | DiagnosticReport | DocumentReference).",
     )
     payload: list[CommunicationPayloadInput] | None = Field(
         None, description="Message payload."
     )
-    note: list[CommunicationNoteInput] | None = Field(
-        None, description="Comments made about the communication."
+    note: list[dict] | None = Field(
+        None, description="Comments made about the communication (Annotation)."
     )
-    extension: list[dict[str, Any]] | None = Field(None, description="FHIR extensions.")
 
 
-class CommunicationPatchSchema(BaseModel):
-    """Request body for PATCH /api/fhir/v1/communications/{id}.
+class CommunicationCreateSchema(_CommunicationFields):
+    """POST body - a FHIR R4 Communication resource."""
 
-    All fields are optional; exclude immutable fields.
-    """
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+
+class CommunicationPatchSchema(_CommunicationFields):
+    """PATCH body - a partial FHIR R4 Communication (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "completed",
+                "received": "2026-01-15T09:05:00Z",
             }
-        },
-    )
-
-    identifier: list[CommunicationIdentifierInput] | None = None
-    instantiates_canonical: list[str] | None = None
-    instantiates_uri: list[str] | None = None
-    based_on: list[CommunicationReferenceInput | str] | None = None
-    part_of: list[CommunicationReferenceInput | str] | None = None
-    in_response_to: list[CommunicationReferenceInput | str] | None = None
-    status: CommunicationStatus | None = None
-    status_reason_text: str | None = None
-    status_reason_coding: list[CodingInput] | None = None
-    category: list[CommunicationCategoryInput] | None = None
-    priority: CommunicationPriority | None = None
-    medium: list[CommunicationCategoryInput] | None = None
-    subject: str | None = None
-    subject_display: str | None = None
-    subject_identifier_use: IdentifierUse | None = None
-    subject_identifier_type_system: str | None = None
-    subject_identifier_type_version: str | None = None
-    subject_identifier_type_code: str | None = None
-    subject_identifier_type_display: str | None = None
-    subject_identifier_type_text: str | None = None
-    subject_identifier_type_user_selected: bool | None = None
-    subject_identifier_system: str | None = None
-    subject_identifier_value: str | None = None
-    subject_identifier_period_start: datetime | None = None
-    subject_identifier_period_end: datetime | None = None
-    topic_text: str | None = None
-    topic_coding: list[CodingInput] | None = None
-    about: list[CommunicationReferenceInput | str] | None = None
-    encounter: str | None = None
-    encounter_display: str | None = None
-    encounter_identifier_use: IdentifierUse | None = None
-    encounter_identifier_type_system: str | None = None
-    encounter_identifier_type_version: str | None = None
-    encounter_identifier_type_code: str | None = None
-    encounter_identifier_type_display: str | None = None
-    encounter_identifier_type_text: str | None = None
-    encounter_identifier_type_user_selected: bool | None = None
-    encounter_identifier_system: str | None = None
-    encounter_identifier_value: str | None = None
-    encounter_identifier_period_start: datetime | None = None
-    encounter_identifier_period_end: datetime | None = None
-    sent: datetime | None = None
-    received: datetime | None = None
-    recipient: list[CommunicationReferenceInput | str] | None = None
-    sender: str | None = None
-    sender_display: str | None = None
-    sender_identifier_use: IdentifierUse | None = None
-    sender_identifier_type_system: str | None = None
-    sender_identifier_type_version: str | None = None
-    sender_identifier_type_code: str | None = None
-    sender_identifier_type_display: str | None = None
-    sender_identifier_type_text: str | None = None
-    sender_identifier_type_user_selected: bool | None = None
-    sender_identifier_system: str | None = None
-    sender_identifier_value: str | None = None
-    sender_identifier_period_start: datetime | None = None
-    sender_identifier_period_end: datetime | None = None
-    reason_code: list[CommunicationCategoryInput] | None = None
-    reason_reference: list[CommunicationReferenceInput | str] | None = None
-    payload: list[CommunicationPayloadInput] | None = None
-    note: list[CommunicationNoteInput] | None = None
-    extension: list[dict[str, Any]] | None = None
+        }
+    }

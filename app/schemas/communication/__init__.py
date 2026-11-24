@@ -1,45 +1,17 @@
-from .input import (
-    CommunicationCategoryInput,
+from app.schemas.communication.input import (
     CommunicationCreateSchema,
-    CommunicationIdentifierInput,
-    CommunicationNoteInput,
     CommunicationPatchSchema,
-    CommunicationPayloadInput,
-    CommunicationReferenceInput,
 )
-from .response import (
-    FHIRCommunicationAnnotation,
+from app.schemas.communication.response import (
     FHIRCommunicationBundle,
     FHIRCommunicationBundleEntry,
-    FHIRCommunicationPayload,
     FHIRCommunicationSchema,
-    PaginatedCommunicationResponse,
-    PlainCommunicationCategory,
-    PlainCommunicationIdentifier,
-    PlainCommunicationNote,
-    PlainCommunicationPayload,
-    PlainCommunicationReference,
-    PlainCommunicationResponse,
 )
 
 __all__ = [
     "CommunicationCreateSchema",
     "CommunicationPatchSchema",
-    "CommunicationCategoryInput",
-    "CommunicationIdentifierInput",
-    "CommunicationNoteInput",
-    "CommunicationPayloadInput",
-    "CommunicationReferenceInput",
-    "FHIRCommunicationAnnotation",
     "FHIRCommunicationBundle",
     "FHIRCommunicationBundleEntry",
-    "FHIRCommunicationPayload",
     "FHIRCommunicationSchema",
-    "PaginatedCommunicationResponse",
-    "PlainCommunicationCategory",
-    "PlainCommunicationIdentifier",
-    "PlainCommunicationNote",
-    "PlainCommunicationPayload",
-    "PlainCommunicationReference",
-    "PlainCommunicationResponse",
 ]

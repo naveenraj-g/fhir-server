@@ -16,6 +16,10 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._communication_revinclude import (
+    column_communication_revincludes,
+    reference_communication_revincludes,
+)
 from app.repository._consent_revinclude import reference_consent_revincludes
 from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._task_revinclude import column_task_revincludes
@@ -613,6 +617,12 @@ def practitioner_search() -> SearchRegistry:
         includes=(),
         # PractitionerRole.practitioner points here.
         revincludes=(
+            *column_communication_revincludes(
+                ("sender",), "sender", "Practitioner", lambda x: x.practitioner_id
+            ),
+            *reference_communication_revincludes(
+                ("recipient",), "Practitioner", lambda x: x.practitioner_id
+            ),
             *reference_consent_revincludes(
                 ("consentor", "actor"), "Practitioner", lambda x: x.practitioner_id
             ),

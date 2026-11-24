@@ -1,71 +1,40 @@
-from app.models.communication.category import (
-    CommunicationCategory,
-    CommunicationCategoryCoding,
+from .core import (
+    ENCOUNTER_TYPES,
+    SENDER_TYPES,
+    SUBJECT_TYPES,
+    CommunicationModel,
+    communication_id_seq,
 )
-from app.models.communication.codings import (
-    CommunicationStatusReasonCoding,
-    CommunicationTopicCoding,
+from .enums import CommunicationStatus
+from .identifier import CommunicationIdentifier
+from .instantiates_uri import CommunicationInstantiatesUri
+from .reference import (
+    BASED_ON_TYPES,
+    CANONICAL_TYPES,
+    PART_OF_TYPES,
+    RECIPIENT_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    CommunicationReference,
 )
-from app.models.communication.core import CommunicationModel
-from app.models.communication.enums import (
-    CommunicationEncounterReferenceType,
-    CommunicationInResponseToReferenceType,
-    CommunicationPriority,
-    CommunicationReasonReferenceType,
-    CommunicationRecipientReferenceType,
-    CommunicationSenderReferenceType,
-    CommunicationStatus,
-    CommunicationSubjectReferenceType,
-)
-from app.models.communication.identifier import (
-    CommunicationIdentifier,
-    CommunicationIdentifierTypeCoding,
-)
-from app.models.communication.medium import (
-    CommunicationMedium,
-    CommunicationMediumCoding,
-)
-from app.models.communication.note import CommunicationNote
-from app.models.communication.payload import CommunicationPayload
-from app.models.communication.reason_code import (
-    CommunicationReasonCode,
-    CommunicationReasonCodeCoding,
-)
-from app.models.communication.references import (
-    CommunicationAbout,
-    CommunicationBasedOn,
-    CommunicationInResponseTo,
-    CommunicationPartOf,
-    CommunicationReasonReference,
-    CommunicationRecipient,
-)
+from .token import TOKEN_PARAMS, CommunicationToken
 
 __all__ = [
-    "CommunicationModel",
-    "CommunicationStatus",
-    "CommunicationPriority",
-    "CommunicationSubjectReferenceType",
-    "CommunicationEncounterReferenceType",
-    "CommunicationSenderReferenceType",
-    "CommunicationRecipientReferenceType",
-    "CommunicationInResponseToReferenceType",
-    "CommunicationReasonReferenceType",
+    "BASED_ON_TYPES",
+    "CANONICAL_TYPES",
+    "ENCOUNTER_TYPES",
+    "PART_OF_TYPES",
+    "RECIPIENT_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "SENDER_TYPES",
+    "SUBJECT_TYPES",
+    "TOKEN_PARAMS",
     "CommunicationIdentifier",
-    "CommunicationIdentifierTypeCoding",
-    "CommunicationCategory",
-    "CommunicationCategoryCoding",
-    "CommunicationMedium",
-    "CommunicationMediumCoding",
-    "CommunicationStatusReasonCoding",
-    "CommunicationTopicCoding",
-    "CommunicationReasonCode",
-    "CommunicationReasonCodeCoding",
-    "CommunicationBasedOn",
-    "CommunicationPartOf",
-    "CommunicationInResponseTo",
-    "CommunicationAbout",
-    "CommunicationRecipient",
-    "CommunicationReasonReference",
-    "CommunicationPayload",
-    "CommunicationNote",
+    "CommunicationInstantiatesUri",
+    "CommunicationModel",
+    "CommunicationReference",
+    "CommunicationStatus",
+    "CommunicationToken",
+    "communication_id_seq",
 ]

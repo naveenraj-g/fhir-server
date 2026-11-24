@@ -1,35 +1,37 @@
-from typing import Any, Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
-    AuditFields,
     FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRReference,
-    PlainCodingRow,
 )
-
-from .category import PlainCommunicationCategory
-from .identifier import PlainCommunicationIdentifier
-from .note import FHIRCommunicationAnnotation, PlainCommunicationNote
-from .payload import FHIRCommunicationPayload, PlainCommunicationPayload
-from .reference import PlainCommunicationReference
+from app.schemas.datatypes.annotation import FHIRAnnotation
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
-# ── FHIR JSON ─────────────────────────────────────────────────────────────────
+class FHIRCommunicationPayload(BaseModel):
+    contentString: str | None = Field(None, description="content[x]: a string.")
+    contentAttachment: dict | None = Field(
+        None, description="content[x]: an Attachment."
+    )
+    contentReference: FHIRReference | None = Field(
+        None, description="content[x]: a Reference(Any)."
+    )
 
 
 class FHIRCommunicationSchema(BaseModel):
-    """FHIR R4 Communication resource schema."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    resourceType: Literal["Communication"] = "Communication"
-    id: str = Field(..., description="Logical ID of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
+    resourceType: str = Field("Communication", description="Always 'Communication'.")
+    id: str = Field(..., description="Public communication_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="Unique identifier."
     )
@@ -43,11 +45,9 @@ class FHIRCommunicationSchema(BaseModel):
         None, description="Request fulfilled by this communication."
     )
     partOf: list[FHIRReference] | None = Field(None, description="Part of this action.")
-    inResponseTo: list[FHIRReference] | None = Field(
-        None, description="Reply to previous communication."
-    )
-    status: str = Field(
-        ...,
+    inResponseTo: list[FHIRReference] | None = Field(None, description="Reply to.")
+    status: str | None = Field(
+        None,
         description="preparation | in-progress | not-done | on-hold | stopped | completed | entered-in-error | unknown.",
     )
     statusReason: FHIRCodeableConcept | None = Field(
@@ -77,112 +77,36 @@ class FHIRCommunicationSchema(BaseModel):
     )
     sender: FHIRReference | None = Field(None, description="Message sender.")
     reasonCode: list[FHIRCodeableConcept] | None = Field(
-        None, description="Indication for communication."
+        None, description="Indication for message."
     )
     reasonReference: list[FHIRReference] | None = Field(
-        None, description="Why was communication done?."
+        None, description="Why was communication done?"
     )
     payload: list[FHIRCommunicationPayload] | None = Field(
         None, description="Message payload."
     )
-    note: list[FHIRCommunicationAnnotation] | None = Field(
+    note: list[FHIRAnnotation] | None = Field(
         None, description="Comments made about the communication."
     )
-    extension: list[dict[str, Any]] | None = Field(None, description="FHIR extensions.")
 
 
 class FHIRCommunicationBundleEntry(BaseModel):
-    resource: FHIRCommunicationSchema
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRCommunicationSchema | dict = Field(
+        ...,
+        description="A Communication (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
 class FHIRCommunicationBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
     entry: list[FHIRCommunicationBundleEntry] | None = None
-
-
-# ── Plain (snake_case) ─────────────────────────────────────────────────────────
-
-
-class PlainCommunicationResponse(AuditFields):
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Public communication_id.")
-    instantiates_canonical: list[str] | None = None
-    instantiates_uri: list[str] | None = None
-    status: str = Field(..., description="Current status of the communication.")
-    status_reason_text: str | None = None
-    status_reason_codings: list[PlainCodingRow] | None = None
-    priority: str | None = None
-    subject_reference: str | None = None
-    subject: str | None = None
-    subject_type: str | None = None
-    subject_id: int | None = None
-    subject_display: str | None = None
-    subject_identifier_use: str | None = None
-    subject_identifier_type_system: str | None = None
-    subject_identifier_type_version: str | None = None
-    subject_identifier_type_code: str | None = None
-    subject_identifier_type_display: str | None = None
-    subject_identifier_type_text: str | None = None
-    subject_identifier_type_user_selected: bool | None = None
-    subject_identifier_system: str | None = None
-    subject_identifier_value: str | None = None
-    subject_identifier_period_start: str | None = None
-    subject_identifier_period_end: str | None = None
-    topic_text: str | None = None
-    topic_codings: list[PlainCodingRow] | None = None
-    encounter_reference: str | None = None
-    encounter: str | None = None
-    encounter_type: str | None = None
-    encounter_id: int | None = None
-    encounter_display: str | None = None
-    encounter_identifier_use: str | None = None
-    encounter_identifier_type_system: str | None = None
-    encounter_identifier_type_version: str | None = None
-    encounter_identifier_type_code: str | None = None
-    encounter_identifier_type_display: str | None = None
-    encounter_identifier_type_text: str | None = None
-    encounter_identifier_type_user_selected: bool | None = None
-    encounter_identifier_system: str | None = None
-    encounter_identifier_value: str | None = None
-    encounter_identifier_period_start: str | None = None
-    encounter_identifier_period_end: str | None = None
-    sent: str | None = None
-    received: str | None = None
-    sender_reference: str | None = None
-    sender: str | None = None
-    sender_type: str | None = None
-    sender_id: int | None = None
-    sender_display: str | None = None
-    sender_identifier_use: str | None = None
-    sender_identifier_type_system: str | None = None
-    sender_identifier_type_version: str | None = None
-    sender_identifier_type_code: str | None = None
-    sender_identifier_type_display: str | None = None
-    sender_identifier_type_text: str | None = None
-    sender_identifier_type_user_selected: bool | None = None
-    sender_identifier_system: str | None = None
-    sender_identifier_value: str | None = None
-    sender_identifier_period_start: str | None = None
-    sender_identifier_period_end: str | None = None
-    identifier: list[PlainCommunicationIdentifier] | None = None
-    based_on: list[PlainCommunicationReference] | None = None
-    part_of: list[PlainCommunicationReference] | None = None
-    in_response_to: list[PlainCommunicationReference] | None = None
-    category: list[PlainCommunicationCategory] | None = None
-    medium: list[PlainCommunicationCategory] | None = None
-    about: list[PlainCommunicationReference] | None = None
-    recipient: list[PlainCommunicationReference] | None = None
-    reason_code: list[PlainCommunicationCategory] | None = None
-    reason_reference: list[PlainCommunicationReference] | None = None
-    payload: list[PlainCommunicationPayload] | None = None
-    note: list[PlainCommunicationNote] | None = None
-    extension: list[dict[str, Any]] | None = None
-
-
-class PaginatedCommunicationResponse(BaseModel):
-    """Paginated plain snake_case response."""
-
-    total: int
-    limit: int
-    offset: int
-    data: list[PlainCommunicationResponse]

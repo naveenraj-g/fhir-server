@@ -1,6 +1,12 @@
 """FHIR R4 conformance for `to_fhir_communication()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Communication is stored content-based (like Task, Goal, Consent and the other rebuilt resources):
+the resource lives whole in CommunicationModel.content, and to_fhir_communication() only stamps
+`id` and `meta` onto it. So what can go wrong on the read side is that stamping (e.g. a malformed
+meta extension) or a stored document the server returns that isn't valid R4 - each case below is a
+`content` document as the write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,350 +14,219 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.communication import to_fhir_communication
-from app.models.communication import (
-    CommunicationAbout,
-    CommunicationBasedOn,
-    CommunicationCategory,
-    CommunicationCategoryCoding,
-    CommunicationEncounterReferenceType,
-    CommunicationIdentifier,
-    CommunicationIdentifierTypeCoding,
-    CommunicationInResponseTo,
-    CommunicationInResponseToReferenceType,
-    CommunicationMedium,
-    CommunicationMediumCoding,
-    CommunicationModel,
-    CommunicationNote,
-    CommunicationPartOf,
-    CommunicationPayload,
-    CommunicationPriority,
-    CommunicationReasonCode,
-    CommunicationReasonCodeCoding,
-    CommunicationReasonReference,
-    CommunicationReasonReferenceType,
-    CommunicationRecipient,
-    CommunicationRecipientReferenceType,
-    CommunicationSenderReferenceType,
-    CommunicationStatus,
-    CommunicationStatusReasonCoding,
-    CommunicationSubjectReferenceType,
-    CommunicationTopicCoding,
-)
-from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.communication import CommunicationModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-communication_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.communication_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-T = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "based_on_list",
-    "part_of_list",
-    "in_response_to_list",
-    "status_reason_codings",
-    "categories",
-    "medium_list",
-    "topic_codings",
-    "about_list",
-    "payloads",
-    "recipients",
-    "reason_codes",
-    "reason_references",
-    "notes",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+CATEGORY = "http://terminology.hl7.org/CodeSystem/communication-category"
+BASE = {"status": "completed"}
 
 
-def _communication(**overrides) -> CommunicationModel:
+def _comm(content: dict, **overrides) -> CommunicationModel:
     fields = {
-        "id": 1,
         "communication_id": 480001,
         "tenant_id": "org-test",
-        "status": CommunicationStatus.completed,
-        "priority": CommunicationPriority.routine,
-        "subject_reference": "Patient/10001",
-        "subject_type": CommunicationSubjectReferenceType.Patient,
-        "subject_id": 10001,
-        "subject_display": "Jane Doe",
-        "encounter_reference": "Encounter/20001",
-        "encounter_type": CommunicationEncounterReferenceType.Encounter,
-        "encounter_id": 20001,
-        "encounter_display": "Office Visit",
-        "sent": T,
-        "received": T + dt.timedelta(minutes=1),
-        "sender_reference": "Practitioner/30001",
-        "sender_type": CommunicationSenderReferenceType.Practitioner,
-        "sender_id": 30001,
-        "sender_display": "Dr. Smith",
-        "created_at": T,
-        "updated_at": T,
-        "created_by": "user-1",
-        "updated_by": "user-1",
+        "created_by": "u-test",
+        "created_at": D,
+        "content": content,
     }
     fields.update(overrides)
-    m = CommunicationModel()
-    for k, v in fields.items():
-        setattr(m, k, v)
-    for attr in _CHILD_ATTRS:
-        if not hasattr(m, attr) or getattr(m, attr) is None:
-            setattr(m, attr, [])
-    return m
+    return CommunicationModel(**fields)
 
 
-def test_communication_minimal_conformance():
-    """Minimal Communication conforming to FHIR R4."""
-    model = _communication()
-    fhir_dict = to_fhir_communication(model)
-    assert fhir_dict["resourceType"] == "Communication"
-    assert fhir_dict["id"] == "480001"
-    assert fhir_dict["status"] == "completed"
-    assert_valid(communication_pb2.Communication, fhir_dict)
+def _c(**extra) -> CommunicationModel:
+    return _comm({**BASE, **extra})
 
 
-def test_communication_full_conformance():
-    """Full Communication with all sub-elements populated conforming to FHIR R4."""
-    model = _communication()
-
-    # instantiatesCanonical & instantiatesUri
-    model.instantiates_canonical = ["http://hl7.org/fhir/PlanDefinition/123"]
-    model.instantiates_uri = ["http://example.org/protocols/comm"]
-
-    # Identifier
-    ident = CommunicationIdentifier(
-        id=1,
-        communication_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="Requisition ID",
-        system="http://hospital.example.org",
-        value="COMM-12345",
-        period_start=T,
-        period_end=T + dt.timedelta(days=365),
-        assigner_reference="Organization/190001",
-        assigner_type=OrganizationReferenceType.Organization,
-        assigner_id=190001,
-        assigner_display="Example Hospital",
-    )
-    ident.type_codings = [
-        CommunicationIdentifierTypeCoding(
-            id=1,
-            communication_identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="FILL",
-            display="Filler Identifier",
+CASES = {
+    "minimal": _comm(BASE),
+    "updated_by_and_updated_at": _comm(BASE, updated_by="u-other", updated_at=D),
+    **{
+        f"status_{s}": _c(status=s)
+        for s in (
+            "preparation",
+            "in-progress",
+            "not-done",
+            "on-hold",
+            "stopped",
+            "completed",
+            "entered-in-error",
+            "unknown",
         )
-    ]
-    model.identifiers = [ident]
+    },
+    **{f"priority_{p}": _c(priority=p) for p in ("routine", "urgent", "asap", "stat")},
+    "identifier_with_type_and_assigner": _c(
+        identifier=[
+            {
+                "use": "official",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
+                "system": "https://fhir-server.dev/fhir/identifier-system/communication-id",
+                "value": "CM-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        ]
+    ),
+    "instantiates": _c(
+        instantiatesCanonical=["http://example.org/PlanDefinition/x|1.0"],
+        instantiatesUri=["http://example.org/protocols/x", "http://example.org/y"],
+    ),
+    "based_on_and_part_of_any_type": _c(
+        basedOn=[
+            {"reference": "ServiceRequest/80001"},
+            {"reference": "Device/7"},
+            {"reference": "https://other.example.org/fhir/CarePlan/9"},
+        ],
+        partOf=[{"reference": "Communication/480000"}],
+    ),
+    "in_response_to": _c(inResponseTo=[{"reference": "Communication/480000"}]),
+    "status_reason": _c(statusReason={"text": "no answer"}),
+    "category_and_medium": _c(
+        category=[{"coding": [{"system": CATEGORY, "code": "alert"}]}, {"text": "x"}],
+        medium=[{"text": "written"}, {"coding": [{"system": "http://x", "code": "W"}]}],
+    ),
+    "subject_patient": _c(subject={"reference": "Patient/10001"}),
+    "subject_group": _c(subject={"reference": "Group/430001"}),
+    "subject_logical": _c(
+        subject={"identifier": {"system": "urn:mrn", "value": "M-9"}, "display": "Jane"}
+    ),
+    "topic_about_encounter": _c(
+        topic={"text": "results"},
+        about=[{"reference": "Observation/160001"}],
+        encounter={"reference": "Encounter/20001"},
+    ),
+    "sent_and_received": _c(
+        sent="2026-01-15T09:00:00Z", received="2026-01-15T09:05:00Z"
+    ),
+    "sent_partial": _c(sent="2026-01"),
+    "recipient_and_sender": _c(
+        recipient=[
+            {"reference": "Patient/10001"},
+            {"reference": "Group/430001"},
+            {"reference": "CareTeam/390001"},
+        ],
+        sender={"reference": "Practitioner/30001"},
+    ),
+    "reason": _c(
+        reasonCode=[{"text": "results ready"}],
+        reasonReference=[{"reference": "Condition/120001"}],
+    ),
+    "payload_choices": _c(
+        payload=[
+            {"contentString": "Your results are ready."},
+            {"contentAttachment": {"contentType": "application/pdf", "title": "r"}},
+            {"contentReference": {"reference": "DocumentReference/320001"}},
+        ]
+    ),
+    "note": _c(
+        note=[
+            {"text": "Sent by post", "time": "2026-01-15T09:00:00Z"},
+            {
+                "text": "by a person",
+                "authorReference": {"reference": "Practitioner/30001"},
+            },
+        ]
+    ),
+    "extension": _c(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
+    "full": _c(
+        identifier=[{"system": "urn:c", "value": "CM-1"}],
+        category=[{"text": "alert"}],
+        priority="urgent",
+        subject={"reference": "Patient/10001"},
+        encounter={"reference": "Encounter/20001"},
+        sent="2026-01-15T09:00:00Z",
+        recipient=[{"reference": "Patient/10001"}],
+        sender={"reference": "Practitioner/30001"},
+        payload=[{"contentString": "hello"}],
+    ),
+}
 
-    # basedOn
-    model.based_on_list = [
-        CommunicationBasedOn(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            reference_reference="CommunicationRequest/470001",
-            reference_type="CommunicationRequest",
-            reference_id=470001,
-            reference_display="Communication Request",
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_communication_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.Communication, to_fhir_communication(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = {**BASE, "priority": "stat", "sent": "2026-01-15"}
+    out = to_fhir_communication(_comm(content))
+    assert out["resourceType"] == "Communication"
+    assert out["id"] == "480001"
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
+
+
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `subject`, `sender` or `topic` as a one-item list; the
+# integration tests cover what they can.)
+
+
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "robot"}),
+        ("status as number", {"status": 1}),
+        ("priority with an unknown code", {"priority": "now"}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+        ("instantiatesCanonical as string", {"instantiatesCanonical": "http://x"}),
+        ("instantiatesUri entry as number", {"instantiatesUri": [5]}),
+        (
+            "basedOn as object not a list",
+            {"basedOn": {"reference": "ServiceRequest/1"}},
+        ),
+        ("partOf as string", {"partOf": "Communication/1"}),
+        ("inResponseTo as object", {"inResponseTo": {"reference": "Communication/1"}}),
+        ("statusReason as string", {"statusReason": "x"}),
+        ("category as object not a list", {"category": {"text": "x"}}),
+        ("medium as string", {"medium": "x"}),
+        ("subject as string not a Reference", {"subject": "Patient/1"}),
+        ("topic as string", {"topic": "x"}),
+        ("encounter as string", {"encounter": "Encounter/1"}),
+        ("sent not a dateTime", {"sent": "yesterday"}),
+        ("received as number", {"received": 5}),
+        ("recipient as object not a list", {"recipient": {"reference": "Patient/1"}}),
+        ("sender as string", {"sender": "Practitioner/1"}),
+        ("reasonCode as object", {"reasonCode": {"text": "x"}}),
+        ("payload as object not a list", {"payload": {"contentString": "x"}}),
+        ("payload contentString as number", {"payload": [{"contentString": 5}]}),
+        (
+            "payload contentReference as string",
+            {"payload": [{"contentReference": "Patient/1"}]},
+        ),
+        ("note as string", {"note": "x"}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {"resourceType": "Communication", "id": "480001", **BASE, **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.Communication, validate=True
         )
-    ]
-
-    # partOf
-    model.part_of_list = [
-        CommunicationPartOf(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            reference_reference="Task/280001",
-            reference_type="Task",
-            reference_id=280001,
-            reference_display="Patient Check-in Task",
-        )
-    ]
-
-    # inResponseTo
-    model.in_response_to_list = [
-        CommunicationInResponseTo(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            reference_reference="Communication/480000",
-            reference_type=CommunicationInResponseToReferenceType.Communication,
-            reference_id=480000,
-            reference_display="Initial inquiry",
-        )
-    ]
-
-    # statusReason
-    model.status_reason_text = "Scheduled regular transmission"
-    model.status_reason_codings = [
-        CommunicationStatusReasonCoding(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/communication-category",
-            code="routine",
-            display="Routine",
-        )
-    ]
-
-    # category
-    cat = CommunicationCategory(
-        id=1,
-        communication_pk=1,
-        tenant_id="org-test",
-        text="Notification Message",
-    )
-    cat.codings = [
-        CommunicationCategoryCoding(
-            id=1,
-            communication_category_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/communication-category",
-            code="notification",
-            display="Notification",
-        )
-    ]
-    model.categories = [cat]
-
-    # medium
-    med = CommunicationMedium(
-        id=1,
-        communication_pk=1,
-        tenant_id="org-test",
-        text="Written letter",
-    )
-    med.codings = [
-        CommunicationMediumCoding(
-            id=1,
-            communication_medium_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-ParticipationMode",
-            code="WRITTEN",
-            display="written",
-        )
-    ]
-    model.medium_list = [med]
-
-    # topic
-    model.topic_text = "Followup instructions"
-    model.topic_codings = [
-        CommunicationTopicCoding(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            system="http://example.org/topics",
-            code="followup",
-            display="Followup Instructions",
-        )
-    ]
-
-    # about
-    model.about_list = [
-        CommunicationAbout(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            reference_reference="Condition/120001",
-            reference_type="Condition",
-            reference_id=120001,
-            reference_display="Type 2 Diabetes",
-        )
-    ]
-
-    # recipient
-    model.recipients = [
-        CommunicationRecipient(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            reference_reference="Patient/10001",
-            reference_type=CommunicationRecipientReferenceType.Patient,
-            reference_id=10001,
-            reference_display="Jane Doe",
-        )
-    ]
-
-    # reasonCode
-    rc = CommunicationReasonCode(
-        id=1,
-        communication_pk=1,
-        tenant_id="org-test",
-        text="Routine Care",
-    )
-    rc.codings = [
-        CommunicationReasonCodeCoding(
-            id=1,
-            communication_reason_code_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-ActReason",
-            code="ROUTINE",
-            display="Routine",
-        )
-    ]
-    model.reason_codes = [rc]
-
-    # reasonReference
-    model.reason_references = [
-        CommunicationReasonReference(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            reference_reference="Observation/160001",
-            reference_type=CommunicationReasonReferenceType.Observation,
-            reference_id=160001,
-            reference_display="Blood Pressure Observation",
-        )
-    ]
-
-    # payloads (string, attachment, reference)
-    p_str = CommunicationPayload(
-        id=1,
-        communication_pk=1,
-        tenant_id="org-test",
-        content_string="Please review the attached discharge instructions.",
-    )
-    p_att = CommunicationPayload(
-        id=2,
-        communication_pk=1,
-        tenant_id="org-test",
-        content_type="application/pdf",
-        language="en",
-        url="http://hospital.example.org/docs/instructions.pdf",
-        title="Discharge Instructions",
-    )
-    p_ref = CommunicationPayload(
-        id=3,
-        communication_pk=1,
-        tenant_id="org-test",
-        content_reference_reference="DocumentReference/320001",
-        content_reference_type="DocumentReference",
-        content_reference_id=320001,
-        content_reference_display="Discharge Summary Document",
-    )
-    model.payloads = [p_str, p_att, p_ref]
-
-    # note
-    model.notes = [
-        CommunicationNote(
-            id=1,
-            communication_pk=1,
-            tenant_id="org-test",
-            author_string="Nurse Kelly",
-            time=T,
-            text="Patient verbally confirmed receipt of information.",
-        )
-    ]
-
-    fhir_dict = to_fhir_communication(model)
-    assert fhir_dict["resourceType"] == "Communication"
-    assert fhir_dict["id"] == "480001"
-    assert len(fhir_dict["payload"]) == 3
-    assert fhir_dict["topic"]["text"] == "Followup instructions"
-    assert len(fhir_dict["inResponseTo"]) == 1
-    assert_valid(communication_pb2.Communication, fhir_dict)
