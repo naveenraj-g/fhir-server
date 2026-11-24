@@ -1,6 +1,12 @@
 """FHIR R4 conformance for `to_fhir_task()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Task is stored content-based (like Goal, CarePlan, Patient and the other rebuilt resources): the
+resource lives whole in TaskModel.content, and to_fhir_task() only stamps `id` and `meta` onto
+it. So what can go wrong on the read side is that stamping (e.g. a malformed meta extension) or a
+stored document the server returns that isn't valid R4 - each case below is a `content` document
+as the write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,307 +14,271 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.task import to_fhir_task
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.task import (
-    TaskBasedOn,
-    TaskBusinessStatusCoding,
-    TaskCodeCoding,
-    TaskEncounterReferenceType,
-    TaskIdentifier,
-    TaskIdentifierTypeCoding,
-    TaskInput,
-    TaskInputTypeCoding,
-    TaskInsurance,
-    TaskInsuranceReferenceType,
-    TaskIntent,
-    TaskLocationReferenceType,
-    TaskModel,
-    TaskNote,
-    TaskOutput,
-    TaskOutputTypeCoding,
-    TaskOwnerReferenceType,
-    TaskPartOf,
-    TaskPartOfReferenceType,
-    TaskPerformerType,
-    TaskPerformerTypeCoding,
-    TaskPriority,
-    TaskReasonCodeCoding,
-    TaskRelevantHistory,
-    TaskRelevantHistoryReferenceType,
-    TaskRequesterReferenceType,
-    TaskRestrictionRecipient,
-    TaskRestrictionRecipientReferenceType,
-    TaskStatus,
-    TaskStatusReasonCoding,
-)
+from app.models.task import TaskModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-task_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.task_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "based_on_list",
-    "part_of_list",
-    "insurance_list",
-    "relevant_history_list",
-    "restriction_recipients",
-    "performer_types",
-    "code_codings",
-    "status_reason_codings",
-    "business_status_codings",
-    "reason_code_codings",
-    "notes",
-    "inputs",
-    "outputs",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+SCT = "http://snomed.info/sct"
+BASE = {"status": "requested", "intent": "order"}
 
 
-def _task(**overrides) -> TaskModel:
+def _task(content: dict, **overrides) -> TaskModel:
     fields = {
-        "id": 1,
         "task_id": 280001,
         "tenant_id": "org-test",
-        "status": TaskStatus.requested,
-        "intent": TaskIntent.order,
-        "priority": TaskPriority.routine,
-        "description": "Please review and approve the medication order.",
-        "code_text": "Approve medication request",
-        "for_reference": "Patient/10001",
-        "for_type": "Patient",
-        "for_id": 10001,
-        "for_display": "Jane Doe",
-        "encounter_reference": "Encounter/20001",
-        "encounter_type": TaskEncounterReferenceType.Encounter,
-        "encounter_id": 20001,
-        "encounter_display": "Outpatient consultation",
-        "execution_period_start": D,
-        "execution_period_end": D + dt.timedelta(days=1),
-        "authored_on": D,
-        "last_modified": D,
-        "requester_reference": "Practitioner/30001",
-        "requester_type": TaskRequesterReferenceType.Practitioner,
-        "requester_id": 30001,
-        "requester_display": "Dr. Alice Smith",
-        "owner_reference": "Practitioner/30002",
-        "owner_type": TaskOwnerReferenceType.Practitioner,
-        "owner_id": 30002,
-        "owner_display": "Dr. Bob Jones",
         "created_by": "u-test",
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = TaskModel(**fields)
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
+    return TaskModel(**fields)
 
 
-def test_task_minimal_conformance():
-    m = _task()
-    fhir = to_fhir_task(m)
-    assert_valid(task_pb2.Task, fhir)
+def _t(**extra) -> TaskModel:
+    return _task({**BASE, **extra})
 
 
-def test_task_full_conformance():
-    id_coding = TaskIdentifierTypeCoding(
-        task_identifier_id=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/v2-0203",
-        code="FILL",
-        display="Filler Identifier",
-        created_by="u-test",
-    )
-    identifier = TaskIdentifier(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        system="urn:oid:1.2.3.4",
-        value="TASK12345",
-        period_start=D,
-        period_end=D + dt.timedelta(days=365),
-        assigner_reference="Organization/190001",
-        assigner_type=OrganizationReferenceType.Organization,
-        assigner_id=190001,
-        assigner_display="Test Clinic",
-        created_by="u-test",
-    )
-    identifier.type_codings = [id_coding]
+CASES = {
+    "minimal": _task(BASE),
+    "updated_by_and_updated_at": _task(BASE, updated_by="u-other", updated_at=D),
+    **{
+        f"status_{s}": _t(status=s)
+        for s in (
+            "draft",
+            "requested",
+            "received",
+            "accepted",
+            "rejected",
+            "ready",
+            "cancelled",
+            "in-progress",
+            "on-hold",
+            "failed",
+            "completed",
+            "entered-in-error",
+        )
+    },
+    **{
+        f"intent_{i}": _t(intent=i)
+        for i in (
+            "unknown",
+            "proposal",
+            "plan",
+            "order",
+            "original-order",
+            "reflex-order",
+            "filler-order",
+            "instance-order",
+            "option",
+        )
+    },
+    **{f"priority_{p}": _t(priority=p) for p in ("routine", "urgent", "asap", "stat")},
+    "identifier_with_type_and_assigner": _t(
+        identifier=[
+            {
+                "use": "official",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
+                "system": "https://fhir-server.dev/fhir/identifier-system/task-id",
+                "value": "T-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        ]
+    ),
+    "instantiates": _t(
+        instantiatesCanonical="http://example.org/ActivityDefinition/x|1.0",
+        instantiatesUri="http://example.org/protocols/x",
+    ),
+    "based_on_any_type": _t(
+        basedOn=[
+            {"reference": "ServiceRequest/80001"},
+            {"reference": "Device/7"},
+            {"reference": "https://other.example.org/fhir/CarePlan/9"},
+        ]
+    ),
+    "group_identifier": _t(groupIdentifier={"system": "urn:g", "value": "GRP-1"}),
+    "part_of": _t(partOf=[{"reference": "Task/280000"}]),
+    "status_reason_and_business_status": _t(
+        statusReason={"text": "waiting for the lab"},
+        businessStatus={"coding": [{"system": SCT, "code": "1"}], "text": "Waiting"},
+    ),
+    "code": _t(code={"coding": [{"system": SCT, "code": "2", "display": "Fulfill"}]}),
+    "description": _t(description="Collect a blood sample"),
+    "focus_and_for": _t(
+        focus={"reference": "ServiceRequest/80001"},
+        **{"for": {"reference": "Patient/10001"}},
+    ),
+    "for_group": _t(**{"for": {"reference": "Group/430001"}}),
+    "for_logical": _t(
+        **{"for": {"identifier": {"system": "urn:mrn", "value": "M-9"}, "display": "J"}}
+    ),
+    "encounter": _t(encounter={"reference": "Encounter/20001"}),
+    "execution_period": _t(
+        executionPeriod={"start": "2026-02-01T09:00:00Z", "end": "2026-02-01T10:00:00Z"}
+    ),
+    "authored_and_modified": _t(
+        authoredOn="2026-01-15T08:00:00Z", lastModified="2026-01-16T09:00:00Z"
+    ),
+    "requester_owner_location": _t(
+        requester={"reference": "Practitioner/30001"},
+        owner={"reference": "Organization/190001"},
+        location={"reference": "Location/230001"},
+    ),
+    "performer_type": _t(performerType=[{"text": "requester"}, {"text": "scheduler"}]),
+    "reason": _t(
+        reasonCode={"text": "routine"},
+        reasonReference={"reference": "Condition/120001"},
+    ),
+    "insurance_note_history": _t(
+        insurance=[{"reference": "Coverage/9"}],
+        note=[
+            {"text": "Fasting", "time": "2026-01-15T08:00:00Z"},
+            {
+                "text": "By a person",
+                "authorReference": {"reference": "Practitioner/30001"},
+            },
+        ],
+        relevantHistory=[{"reference": "Provenance/9"}],
+    ),
+    "restriction": _t(
+        restriction={
+            "repetitions": 2,
+            "period": {"end": "2026-02-15T00:00:00Z"},
+            "recipient": [
+                {"reference": "Patient/10001"},
+                {"reference": "Group/430001"},
+            ],
+        }
+    ),
+    "input_output_value_choices": _t(
+        input=[
+            {"type": {"text": "a"}, "valueString": "x"},
+            {"type": {"text": "b"}, "valueBoolean": True},
+            {"type": {"text": "c"}, "valueInteger": 5},
+            {"type": {"text": "d"}, "valueDecimal": 1.5},
+            {"type": {"text": "e"}, "valueDateTime": "2026-01-15T08:00:00Z"},
+            {"type": {"text": "f"}, "valueQuantity": {"value": 5, "unit": "mL"}},
+            {"type": {"text": "g"}, "valueCodeableConcept": {"text": "x"}},
+            {"type": {"text": "h"}, "valueReference": {"reference": "Patient/10001"}},
+            {"type": {"text": "i"}, "valueCoding": {"system": SCT, "code": "3"}},
+            {"type": {"text": "j"}, "valuePeriod": {"start": "2026-01-01"}},
+        ],
+        output=[
+            {"type": {"text": "k"}, "valueString": "done"},
+            {"type": {"text": "l"}, "valueUri": "http://example.org/r"},
+        ],
+    ),
+    "extension": _t(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
+    "full": _t(
+        identifier=[{"system": "urn:t", "value": "T-1"}],
+        priority="urgent",
+        code={"text": "fulfill"},
+        description="d",
+        focus={"reference": "ServiceRequest/80001"},
+        encounter={"reference": "Encounter/20001"},
+        authoredOn="2026-01-15T08:00:00Z",
+        requester={"reference": "Practitioner/30001"},
+        owner={"reference": "Practitioner/30001"},
+        input=[{"type": {"text": "a"}, "valueString": "x"}],
+        **{"for": {"reference": "Patient/10001"}},
+    ),
+}
 
-    code_coding = TaskCodeCoding(
-        task_pk=1,
-        tenant_id="org-test",
-        system="http://hl7.org/fhir/CodeSystem/task-code",
-        code="approve",
-        display="Activate/approve the focal resource",
-        created_by="u-test",
-    )
 
-    status_reason_coding = TaskStatusReasonCoding(
-        task_pk=1,
-        tenant_id="org-test",
-        system="http://example.org/status-reason",
-        code="standard-review",
-        display="Standard clinical review required",
-        created_by="u-test",
-    )
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_task_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.Task, to_fhir_task(CASES[case]))
 
-    business_status_coding = TaskBusinessStatusCoding(
-        task_pk=1,
-        tenant_id="org-test",
-        system="http://example.org/business-status",
-        code="waiting-on-review",
-        display="Waiting on review",
-        created_by="u-test",
-    )
 
-    reason_code_coding = TaskReasonCodeCoding(
-        task_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="182888003",
-        display="Medication review needed",
-        created_by="u-test",
-    )
+def test_mapper_serves_content_unchanged():
+    content = {
+        **BASE,
+        "description": "Collect",
+        **{"for": {"reference": "Patient/10001"}},
+    }
+    out = to_fhir_task(_task(content))
+    assert out["resourceType"] == "Task"
+    assert out["id"] == "280001"
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
-    perf_coding = TaskPerformerTypeCoding(
-        task_performer_type_id=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-        code="RESP",
-        display="Responsible Party",
-        created_by="u-test",
-    )
-    perf_type = TaskPerformerType(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        text="Responsible Doctor",
-        created_by="u-test",
-    )
-    perf_type.codings = [perf_coding]
 
-    based_on = TaskBasedOn(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        reference_reference="ServiceRequest/80001",
-        reference_type="ServiceRequest",
-        reference_id=80001,
-        reference_display="Lab order",
-        created_by="u-test",
-    )
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `code`, `for` or `restriction` as a one-item list; the
+# integration tests cover what they can.)
 
-    part_of = TaskPartOf(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        reference_reference="Task/280000",
-        reference_type=TaskPartOfReferenceType.Task,
-        reference_id=280000,
-        reference_display="Parent Task",
-        created_by="u-test",
-    )
 
-    note = TaskNote(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        author_string="Nurse Kelly",
-        time=D,
-        text="All vitals checked and normal.",
-        created_by="u-test",
-    )
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "robot"}),
+        ("status as number", {"status": 1}),
+        ("intent with an unknown code", {"intent": "robot"}),
+        ("priority with an unknown code", {"priority": "now"}),
+        ("code as string not a CodeableConcept", {"code": "x"}),
+        ("businessStatus as string", {"businessStatus": "x"}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+        ("groupIdentifier as string", {"groupIdentifier": "x"}),
+        (
+            "basedOn as object not a list",
+            {"basedOn": {"reference": "ServiceRequest/1"}},
+        ),
+        ("partOf as object not a list", {"partOf": {"reference": "Task/1"}}),
+        ("focus as string not a Reference", {"focus": "ServiceRequest/1"}),
+        ("for as string not a Reference", {"for": "Patient/1"}),
+        ("encounter as string", {"encounter": "Encounter/1"}),
+        ("executionPeriod as string", {"executionPeriod": "today"}),
+        ("authoredOn not a dateTime", {"authoredOn": "yesterday"}),
+        ("lastModified as number", {"lastModified": 5}),
+        ("requester as string", {"requester": "Practitioner/1"}),
+        ("owner as string", {"owner": "Practitioner/1"}),
+        ("performerType as object not a list", {"performerType": {"text": "x"}}),
+        ("description as number", {"description": 5}),
+        ("note as string", {"note": "x"}),
+        ("restriction as string", {"restriction": "x"}),
+        (
+            "restriction repetitions as string",
+            {"restriction": {"repetitions": "twice"}},
+        ),
+        ("input as object not a list", {"input": {"type": {"text": "x"}}}),
+        (
+            "input valueBoolean as string",
+            {"input": [{"type": {"text": "x"}, "valueBoolean": "yes"}]},
+        ),
+        ("output type as string", {"output": [{"type": "x", "valueString": "y"}]}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
 
-    inp_coding = TaskInputTypeCoding(
-        task_input_id=1,
-        tenant_id="org-test",
-        system="http://example.org/task-input",
-        code="specification",
-        display="Task Specification",
-        created_by="u-test",
-    )
-    task_input = TaskInput(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        type_text="Task Specification",
-        value_string="Sample instructions",
-        created_by="u-test",
-    )
-    task_input.type_codings = [inp_coding]
-
-    out_coding = TaskOutputTypeCoding(
-        task_output_id=1,
-        tenant_id="org-test",
-        system="http://example.org/task-output",
-        code="result",
-        display="Approval Decision",
-        created_by="u-test",
-    )
-    task_output = TaskOutput(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        type_text="Approval Decision",
-        value_string="Approved by supervisor",
-        created_by="u-test",
-    )
-    task_output.type_codings = [out_coding]
-
-    restr_recip = TaskRestrictionRecipient(
-        id=1,
-        task_pk=1,
-        tenant_id="org-test",
-        reference_reference="Practitioner/30002",
-        reference_type=TaskRestrictionRecipientReferenceType.Practitioner,
-        reference_id=30002,
-        reference_display="Dr. Bob Jones",
-        created_by="u-test",
-    )
-
-    m = _task(
-        instantiates_canonical="http://example.org/ActivityDefinition/ad-1",
-        instantiates_uri="http://example.org/protocols/task-proto",
-        focus_reference="MedicationRequest/90001",
-        focus_type="MedicationRequest",
-        focus_id=90001,
-        focus_display="Amoxicillin 500mg prescription",
-        location_reference="Location/230001",
-        location_type=TaskLocationReferenceType.Location,
-        location_id=230001,
-        location_display="Main Clinic Room 1",
-        reason_reference_reference="Condition/120001",
-        reason_reference_type="Condition",
-        reason_reference_id=120001,
-        reason_reference_display="Bacterial infection",
-        group_identifier_use=IdentifierUse.official,
-        group_identifier_system="http://example.org/requisitions",
-        group_identifier_value="REQ-2026-001",
-        restriction_repetitions=1,
-        restriction_period_start=D,
-        restriction_period_end=D + dt.timedelta(days=7),
-        identifiers=[identifier],
-        code_codings=[code_coding],
-        status_reason_codings=[status_reason_coding],
-        business_status_codings=[business_status_coding],
-        reason_code_codings=[reason_code_coding],
-        performer_types=[perf_type],
-        based_on_list=[based_on],
-        part_of_list=[part_of],
-        notes=[note],
-        inputs=[task_input],
-        outputs=[task_output],
-        restriction_recipients=[restr_recip],
-    )
-
-    fhir = to_fhir_task(m)
-    assert_valid(task_pb2.Task, fhir)
+    payload = {"resourceType": "Task", "id": "280001", **BASE, **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.Task, validate=True
+        )

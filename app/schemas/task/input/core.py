@@ -1,467 +1,226 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from app.models.enums import IdentifierUse
-from app.models.task.enums import (
-    TaskIntent,
-    TaskPriority,
-    TaskStatus,
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
-from app.schemas.datatypes import CodingInput
 
-from .identifier import TaskIdentifierInput
-from .io import TaskInputInput, TaskOutputInput
-from .note import TaskNoteInput
-from .performer_type import TaskPerformerTypeInput
-from .reference import TaskReferenceInput
-from .restriction import TaskRestrictionInput
+# TaskStatus / TaskIntent / RequestPriority (the required bindings of Task.status, .intent and
+# .priority).
+StatusCode = Literal[
+    "draft",
+    "requested",
+    "received",
+    "accepted",
+    "rejected",
+    "ready",
+    "cancelled",
+    "in-progress",
+    "on-hold",
+    "failed",
+    "completed",
+    "entered-in-error",
+]
+IntentCode = Literal[
+    "unknown",
+    "proposal",
+    "plan",
+    "order",
+    "original-order",
+    "reflex-order",
+    "filler-order",
+    "instance-order",
+    "option",
+]
+PriorityCode = Literal["routine", "urgent", "asap", "stat"]
 
 _EXAMPLE = {
+    "resourceType": "Task",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/task-id",
+            "value": "T-1",
+        }
+    ],
     "status": "requested",
     "intent": "order",
     "priority": "routine",
-    "code_coding": [
-        {
-            "system": "http://hl7.org/fhir/CodeSystem/task-code",
-            "code": "approve",
-            "display": "Activate/approve the focal resource",
-        }
+    "code": {
+        "coding": [
+            {"system": "http://hl7.org/fhir/CodeSystem/task-code", "code": "fulfill"}
+        ]
+    },
+    "description": "Collect a blood sample",
+    "focus": {"reference": "ServiceRequest/80001"},
+    "for": {"reference": "Patient/10001"},
+    "encounter": {"reference": "Encounter/20001"},
+    "authoredOn": "2026-01-15T09:00:00Z",
+    "requester": {"reference": "Practitioner/30001"},
+    "owner": {"reference": "Practitioner/30001"},
+    "restriction": {"repetitions": 1, "period": {"end": "2026-02-15T00:00:00Z"}},
+    "input": [
+        {"type": {"text": "sample type"}, "valueString": "venous blood"},
     ],
-    "code_text": "Approve medication request",
-    "description": "Please review and approve the medication order.",
-    "for": "Patient/10001",
-    "for_display": "Jane Doe",
-    "encounter": "Encounter/20001",
-    "encounter_display": "Outpatient consultation",
-    "authored_on": "2026-01-01T12:00:00Z",
-    "last_modified": "2026-01-01T12:00:00Z",
-    "requester": "Practitioner/30001",
-    "requester_display": "Dr. Alice Smith",
-    "owner": "Practitioner/30002",
-    "owner_display": "Dr. Bob Jones",
-    "execution_period_start": "2026-01-01T12:00:00Z",
-    "execution_period_end": "2026-01-02T12:00:00Z",
 }
 
 
-class TaskCreateSchema(BaseModel):
-    """Request body for POST /api/fhir/v1/tasks.
+class TaskRestrictionInput(FhirInputModel):
+    """Task.restriction - constraints on fulfillment tasks."""
 
-    Task is an org-scoped entity and has no user_id.
-    status and intent are required (1..1) per FHIR R4.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        populate_by_name=True,
-        json_schema_extra={"example": _EXAMPLE},
+    repetitions: int | None = Field(
+        None, description="How many times to repeat (a positiveInt)."
+    )
+    period: FhirPeriodInput | None = Field(
+        None, description="When fulfillment is sought."
+    )
+    recipient: list[FhirReferenceInput] | None = Field(
+        None,
+        description="For whom is fulfillment sought - Reference(Patient | Practitioner | PractitionerRole | RelatedPerson | Group | Organization).",
     )
 
-    identifier: list[TaskIdentifierInput] | None = Field(
-        None, description="Task Instance Identifier."
+
+class TaskInputInput(FhirInputModel):
+    """Task.input - information used to perform the task. `value[x]` is an open choice of fifty
+    types (valueString, valueBoolean, valueQuantity, valueReference, ...), sent and kept as is."""
+
+    type: FhirCodeableConceptInput | None = Field(
+        None, description="Label for the input (required by R4)."
     )
-    instantiates_canonical: str | None = Field(
-        None, description="Formal definition of task (canonical(ActivityDefinition))."
+
+
+class TaskOutputInput(FhirInputModel):
+    """Task.output - information produced as part of the task. `value[x]` is an open choice of
+    fifty types, sent and kept as is."""
+
+    type: FhirCodeableConceptInput | None = Field(
+        None, description="Label for the output (required by R4)."
     )
-    instantiates_uri: str | None = Field(
-        None, description="Formal definition of task (uri)."
+
+
+class _TaskFields(FhirInputModel):
+    """Every writable Task element, in genuine FHIR R4 shape (https://www.hl7.org/fhir/R4/task.html).
+    Create and patch accept exactly the same fields. R4 requires `status` and `intent` (a missing
+    one is only rejected by the `java_validator` backend, along with each `input` / `output`'s
+    `type` and `value[x]` and rule inv-1: `lastModified` not before `authoredOn`).
+
+    The validated body is stored whole (TaskModel.content), so any valid R4 element is kept -
+    including ones this model does not declare (every `input.value[x]` / `output.value[x]`).
+    Server-managed elements are ignored if sent: `id` (assigned from the task_id sequence) and
+    `meta` (audit/tenant data, stamped on at read time). org_id and created_by/updated_by come from
+    the verified JWT (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["Task"] | None = Field(
+        None, description="Optional; if supplied it must be 'Task'."
     )
-    based_on: list[TaskReferenceInput | str] | None = Field(
-        None, description="Request fulfilled by this task (Reference(Any))."
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
-    group_identifier_use: IdentifierUse | None = Field(
-        None, description="Group identifier use."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Task Instance Identifier. Searched by `identifier`."
     )
-    group_identifier_system: str | None = Field(
-        None, description="Group identifier system."
+    instantiatesCanonical: str | None = Field(
+        None,
+        description="Formal definition of task (a canonical URL, ActivityDefinition).",
     )
-    group_identifier_value: str | None = Field(
-        None, description="Group identifier value."
+    instantiatesUri: str | None = Field(
+        None, description="Formal definition of task (a URI)."
     )
-    group_identifier_period_start: datetime | None = Field(
-        None, description="Group identifier validity start."
+    basedOn: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Request fulfilled by this task - Reference(Any). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise). Searched by `based-on`.",
     )
-    group_identifier_period_end: datetime | None = Field(
-        None, description="Group identifier validity end."
+    groupIdentifier: FhirIdentifierInput | None = Field(
+        None, description="Requisition or grouper id. Searched by `group-identifier`."
     )
-    group_identifier_assigner: str | None = Field(
-        None, description="Group identifier assigner reference."
+    partOf: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Composite task - Reference(Task). A relative reference must exist in the caller's org (422 otherwise). Searched by `part-of`.",
     )
-    group_identifier_assigner_display: str | None = Field(
-        None, description="Group identifier assigner display."
+    status: StatusCode | None = Field(
+        None,
+        description="draft | requested | received | accepted | rejected | ready | cancelled | in-progress | on-hold | failed | completed | entered-in-error (required by R4). Searched by `status`.",
     )
-    group_identifier_assigner_identifier_use: IdentifierUse | None = Field(
-        None, description="Group identifier assigner identifier use."
+    statusReason: FhirCodeableConceptInput | None = Field(
+        None, description="Reason for current status."
     )
-    group_identifier_assigner_identifier_type_system: str | None = Field(
-        None, description="Group identifier assigner identifier type system."
+    businessStatus: FhirCodeableConceptInput | None = Field(
+        None,
+        description="E.g. 'Specimen collected', 'IV prepped'. Searched by `business-status`.",
     )
-    group_identifier_assigner_identifier_type_version: str | None = Field(
-        None, description="Group identifier assigner identifier type version."
+    intent: IntentCode | None = Field(
+        None,
+        description="unknown | proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option (required by R4). Searched by `intent`.",
     )
-    group_identifier_assigner_identifier_type_code: str | None = Field(
-        None, description="Group identifier assigner identifier type code."
+    priority: PriorityCode | None = Field(
+        None, description="routine | urgent | asap | stat. Searched by `priority`."
     )
-    group_identifier_assigner_identifier_type_display: str | None = Field(
-        None, description="Group identifier assigner identifier type display."
+    code: FhirCodeableConceptInput | None = Field(
+        None, description="Task Type. Searched by `code`."
     )
-    group_identifier_assigner_identifier_type_user_selected: bool | None = Field(
-        None, description="Group identifier assigner identifier type user selected."
-    )
-    group_identifier_assigner_identifier_type_text: str | None = Field(
-        None, description="Group identifier assigner identifier type text."
-    )
-    group_identifier_assigner_identifier_system: str | None = Field(
-        None, description="Group identifier assigner identifier system."
-    )
-    group_identifier_assigner_identifier_value: str | None = Field(
-        None, description="Group identifier assigner identifier value."
-    )
-    group_identifier_assigner_identifier_period_start: datetime | None = Field(
-        None, description="Group identifier assigner identifier period start."
-    )
-    group_identifier_assigner_identifier_period_end: datetime | None = Field(
-        None, description="Group identifier assigner identifier period end."
-    )
-    part_of: list[TaskReferenceInput | str] | None = Field(
-        None, description="Composite task (Reference(Task))."
-    )
-    status: TaskStatus = Field(
-        ...,
-        description="draft | requested | received | accepted | rejected | ready | cancelled | in-progress | on-hold | failed | completed | entered-in-error.",
-    )
-    status_reason_coding: list[CodingInput] | None = Field(
-        None, description="Reason for current status codings."
-    )
-    status_reason_text: str | None = Field(
-        None, description="Reason for current status text."
-    )
-    business_status_coding: list[CodingInput] | None = Field(
-        None, description="E.g. 'Waiting on review', 'Deferred' codings."
-    )
-    business_status_text: str | None = Field(
-        None, description="E.g. 'Waiting on review', 'Deferred' text."
-    )
-    intent: TaskIntent = Field(
-        ...,
-        description="unknown | proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option.",
-    )
-    priority: TaskPriority | None = Field(
-        None, description="routine | urgent | asap | stat."
-    )
-    code_coding: list[CodingInput] | None = Field(
-        None, description="Task Type codings."
-    )
-    code_text: str | None = Field(None, description="Task Type text description.")
     description: str | None = Field(
         None, description="Human-readable explanation of task."
     )
-    focus: str | None = Field(
-        None, description="What task is acting on (Reference(Any))."
+    focus: FhirReferenceInput | None = Field(
+        None,
+        description="What task is acting on - Reference(Any). Searched by `focus`.",
     )
-    focus_display: str | None = Field(
-        None, description="Narrative for focus reference."
-    )
-    focus_identifier_use: IdentifierUse | None = Field(
-        None, description="Focus identifier use."
-    )
-    focus_identifier_type_system: str | None = Field(
-        None, description="Focus identifier type system."
-    )
-    focus_identifier_type_version: str | None = Field(
-        None, description="Focus identifier type version."
-    )
-    focus_identifier_type_code: str | None = Field(
-        None, description="Focus identifier type code."
-    )
-    focus_identifier_type_display: str | None = Field(
-        None, description="Focus identifier type display."
-    )
-    focus_identifier_type_user_selected: bool | None = Field(
-        None, description="Focus identifier type user selected."
-    )
-    focus_identifier_type_text: str | None = Field(
-        None, description="Focus identifier type text."
-    )
-    focus_identifier_system: str | None = Field(
-        None, description="Focus identifier system."
-    )
-    focus_identifier_value: str | None = Field(
-        None, description="Focus identifier value."
-    )
-    focus_identifier_period_start: datetime | None = Field(
-        None, description="Focus identifier period start."
-    )
-    focus_identifier_period_end: datetime | None = Field(
-        None, description="Focus identifier period end."
-    )
-    for_: str | None = Field(
+    for_: FhirReferenceInput | None = Field(
         None,
         alias="for",
-        description="Beneficiary of the task (Reference(Any)).",
+        description="Beneficiary of the Task - Reference(Any). Searched by `subject` (and `patient` when it names a Patient).",
     )
-    for_display: str | None = Field(
-        None, description="Narrative for beneficiary reference."
-    )
-    for_identifier_use: IdentifierUse | None = Field(
-        None, description="Beneficiary identifier use."
-    )
-    for_identifier_type_system: str | None = Field(
-        None, description="Beneficiary identifier type system."
-    )
-    for_identifier_type_version: str | None = Field(
-        None, description="Beneficiary identifier type version."
-    )
-    for_identifier_type_code: str | None = Field(
-        None, description="Beneficiary identifier type code."
-    )
-    for_identifier_type_display: str | None = Field(
-        None, description="Beneficiary identifier type display."
-    )
-    for_identifier_type_user_selected: bool | None = Field(
-        None, description="Beneficiary identifier type user selected."
-    )
-    for_identifier_type_text: str | None = Field(
-        None, description="Beneficiary identifier type text."
-    )
-    for_identifier_system: str | None = Field(
-        None, description="Beneficiary identifier system."
-    )
-    for_identifier_value: str | None = Field(
-        None, description="Beneficiary identifier value."
-    )
-    for_identifier_period_start: datetime | None = Field(
-        None, description="Beneficiary identifier period start."
-    )
-    for_identifier_period_end: datetime | None = Field(
-        None, description="Beneficiary identifier period end."
-    )
-    encounter: str | None = Field(
+    encounter: FhirReferenceInput | None = Field(
         None,
-        description="Healthcare event during which task was created (Reference(Encounter)).",
+        description="Healthcare event during which this task originated - Reference(Encounter).",
     )
-    encounter_display: str | None = Field(
-        None, description="Narrative for encounter reference."
+    executionPeriod: FhirPeriodInput | None = Field(
+        None, description="Start and end time of execution. Searched by `period`."
     )
-    encounter_identifier_use: IdentifierUse | None = Field(
-        None, description="Encounter identifier use."
-    )
-    encounter_identifier_type_system: str | None = Field(
-        None, description="Encounter identifier type system."
-    )
-    encounter_identifier_type_version: str | None = Field(
-        None, description="Encounter identifier type version."
-    )
-    encounter_identifier_type_code: str | None = Field(
-        None, description="Encounter identifier type code."
-    )
-    encounter_identifier_type_display: str | None = Field(
-        None, description="Encounter identifier type display."
-    )
-    encounter_identifier_type_user_selected: bool | None = Field(
-        None, description="Encounter identifier type user selected."
-    )
-    encounter_identifier_type_text: str | None = Field(
-        None, description="Encounter identifier type text."
-    )
-    encounter_identifier_system: str | None = Field(
-        None, description="Encounter identifier system."
-    )
-    encounter_identifier_value: str | None = Field(
-        None, description="Encounter identifier value."
-    )
-    encounter_identifier_period_start: datetime | None = Field(
-        None, description="Encounter identifier period start."
-    )
-    encounter_identifier_period_end: datetime | None = Field(
-        None, description="Encounter identifier period end."
-    )
-    execution_period_start: datetime | None = Field(
-        None, description="Start of execution period."
-    )
-    execution_period_end: datetime | None = Field(
-        None, description="End of execution period."
-    )
-    authored_on: datetime | None = Field(None, description="Task Creation Date.")
-    last_modified: datetime | None = Field(None, description="Task Last Modified Date.")
-    requester: str | None = Field(
+    authoredOn: str | None = Field(
         None,
-        description="Who is asking for task to be done (Reference(Device|Organization|Patient|Practitioner|PractitionerRole|RelatedPerson)).",
+        description="Task Creation Date (a FHIR dateTime). Searched by `authored-on`.",
     )
-    requester_display: str | None = Field(
-        None, description="Narrative for requester reference."
-    )
-    requester_identifier_use: IdentifierUse | None = Field(
-        None, description="Requester identifier use."
-    )
-    requester_identifier_type_system: str | None = Field(
-        None, description="Requester identifier type system."
-    )
-    requester_identifier_type_version: str | None = Field(
-        None, description="Requester identifier type version."
-    )
-    requester_identifier_type_code: str | None = Field(
-        None, description="Requester identifier type code."
-    )
-    requester_identifier_type_display: str | None = Field(
-        None, description="Requester identifier type display."
-    )
-    requester_identifier_type_user_selected: bool | None = Field(
-        None, description="Requester identifier type user selected."
-    )
-    requester_identifier_type_text: str | None = Field(
-        None, description="Requester identifier type text."
-    )
-    requester_identifier_system: str | None = Field(
-        None, description="Requester identifier system."
-    )
-    requester_identifier_value: str | None = Field(
-        None, description="Requester identifier value."
-    )
-    requester_identifier_period_start: datetime | None = Field(
-        None, description="Requester identifier period start."
-    )
-    requester_identifier_period_end: datetime | None = Field(
-        None, description="Requester identifier period end."
-    )
-    performer_type: list[TaskPerformerTypeInput] | None = Field(
-        None, description="Requested performer normal role."
-    )
-    owner: str | None = Field(
+    lastModified: str | None = Field(
         None,
-        description="Responsible individual (Reference(Practitioner|PractitionerRole|Organization|CareTeam|HealthcareService|Patient|Device|RelatedPerson)).",
+        description="Task Last Modified Date (a FHIR dateTime). Searched by `modified`.",
     )
-    owner_display: str | None = Field(
-        None, description="Narrative for owner reference."
-    )
-    owner_identifier_use: IdentifierUse | None = Field(
-        None, description="Owner identifier use."
-    )
-    owner_identifier_type_system: str | None = Field(
-        None, description="Owner identifier type system."
-    )
-    owner_identifier_type_version: str | None = Field(
-        None, description="Owner identifier type version."
-    )
-    owner_identifier_type_code: str | None = Field(
-        None, description="Owner identifier type code."
-    )
-    owner_identifier_type_display: str | None = Field(
-        None, description="Owner identifier type display."
-    )
-    owner_identifier_type_user_selected: bool | None = Field(
-        None, description="Owner identifier type user selected."
-    )
-    owner_identifier_type_text: str | None = Field(
-        None, description="Owner identifier type text."
-    )
-    owner_identifier_system: str | None = Field(
-        None, description="Owner identifier system."
-    )
-    owner_identifier_value: str | None = Field(
-        None, description="Owner identifier value."
-    )
-    owner_identifier_period_start: datetime | None = Field(
-        None, description="Owner identifier period start."
-    )
-    owner_identifier_period_end: datetime | None = Field(
-        None, description="Owner identifier period end."
-    )
-    location: str | None = Field(
-        None, description="Where task occurs (Reference(Location))."
-    )
-    location_display: str | None = Field(
-        None, description="Narrative for location reference."
-    )
-    location_identifier_use: IdentifierUse | None = Field(
-        None, description="Location identifier use."
-    )
-    location_identifier_type_system: str | None = Field(
-        None, description="Location identifier type system."
-    )
-    location_identifier_type_version: str | None = Field(
-        None, description="Location identifier type version."
-    )
-    location_identifier_type_code: str | None = Field(
-        None, description="Location identifier type code."
-    )
-    location_identifier_type_display: str | None = Field(
-        None, description="Location identifier type display."
-    )
-    location_identifier_type_user_selected: bool | None = Field(
-        None, description="Location identifier type user selected."
-    )
-    location_identifier_type_text: str | None = Field(
-        None, description="Location identifier type text."
-    )
-    location_identifier_system: str | None = Field(
-        None, description="Location identifier system."
-    )
-    location_identifier_value: str | None = Field(
-        None, description="Location identifier value."
-    )
-    location_identifier_period_start: datetime | None = Field(
-        None, description="Location identifier period start."
-    )
-    location_identifier_period_end: datetime | None = Field(
-        None, description="Location identifier period end."
-    )
-    reason_code_coding: list[CodingInput] | None = Field(
-        None, description="Why task is needed codings."
-    )
-    reason_code_text: str | None = Field(None, description="Why task is needed text.")
-    reason_reference: str | None = Field(
-        None, description="Why task is needed reference (Reference(Any))."
-    )
-    reason_reference_display: str | None = Field(
-        None, description="Narrative for reason reference."
-    )
-    reason_reference_identifier_use: IdentifierUse | None = Field(
-        None, description="Reason reference identifier use."
-    )
-    reason_reference_identifier_type_system: str | None = Field(
-        None, description="Reason reference identifier type system."
-    )
-    reason_reference_identifier_type_version: str | None = Field(
-        None, description="Reason reference identifier type version."
-    )
-    reason_reference_identifier_type_code: str | None = Field(
-        None, description="Reason reference identifier type code."
-    )
-    reason_reference_identifier_type_display: str | None = Field(
-        None, description="Reason reference identifier type display."
-    )
-    reason_reference_identifier_type_user_selected: bool | None = Field(
-        None, description="Reason reference identifier type user selected."
-    )
-    reason_reference_identifier_type_text: str | None = Field(
-        None, description="Reason reference identifier type text."
-    )
-    reason_reference_identifier_system: str | None = Field(
-        None, description="Reason reference identifier system."
-    )
-    reason_reference_identifier_value: str | None = Field(
-        None, description="Reason reference identifier value."
-    )
-    reason_reference_identifier_period_start: datetime | None = Field(
-        None, description="Reason reference identifier period start."
-    )
-    reason_reference_identifier_period_end: datetime | None = Field(
-        None, description="Reason reference identifier period end."
-    )
-    insurance: list[TaskReferenceInput | str] | None = Field(
+    requester: FhirReferenceInput | None = Field(
         None,
-        description="Associated insurance coverage (Reference(Coverage|ClaimResponse)).",
+        description="Who is asking for task to be done - Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson).",
     )
-    note: list[TaskNoteInput] | None = Field(
-        None, description="Comments made about the task."
+    performerType: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="Requested performer (e.g. Requester, Performer, Scheduler). Searched by `performer`.",
     )
-    relevant_history: list[TaskReferenceInput | str] | None = Field(
-        None, description="Key events in history of the task (Reference(Provenance))."
+    owner: FhirReferenceInput | None = Field(
+        None,
+        description="Responsible individual - Reference(Practitioner | PractitionerRole | Organization | CareTeam | HealthcareService | Patient | Device | RelatedPerson).",
+    )
+    location: FhirReferenceInput | None = Field(
+        None, description="Where task occurs - Reference(Location)."
+    )
+    reasonCode: FhirCodeableConceptInput | None = Field(
+        None, description="Why task is needed."
+    )
+    reasonReference: FhirReferenceInput | None = Field(
+        None, description="Why task is needed - Reference(Any)."
+    )
+    insurance: list[FhirReferenceInput] | None = Field(
+        None,
+        description="Associated insurance coverage - Reference(Coverage | ClaimResponse).",
+    )
+    note: list[dict] | None = Field(None, description="Comments made about the task.")
+    relevantHistory: list[FhirReferenceInput] | None = Field(
+        None, description="Key events in history of the Task - Reference(Provenance)."
     )
     restriction: TaskRestrictionInput | None = Field(
-        None, description="Constraints on task execution."
+        None, description="Constraints on fulfillment tasks."
     )
     input: list[TaskInputInput] | None = Field(
         None, description="Information used to perform task."
@@ -471,154 +230,23 @@ class TaskCreateSchema(BaseModel):
     )
 
 
-class TaskPatchSchema(BaseModel):
-    """Request body for PATCH /api/fhir/v1/tasks/{id}. All fields optional."""
+class TaskCreateSchema(_TaskFields):
+    """POST body - a FHIR R4 Task resource."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        populate_by_name=True,
-        json_schema_extra={
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+
+
+class TaskPatchSchema(_TaskFields):
+    """PATCH body - a partial FHIR R4 Task (merge-patch semantics on top-level elements). Only
+    supplied elements are written; omitted ones are left untouched. A supplied element replaces
+    the stored value wholesale - a list (even `[]`) replaces every existing entry, an object
+    replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "completed",
-                "last_modified": "2026-01-02T12:00:00Z",
+                "businessStatus": {"text": "Specimen collected"},
             }
-        },
-    )
-
-    identifier: list[TaskIdentifierInput] | None = None
-    instantiates_canonical: str | None = None
-    instantiates_uri: str | None = None
-    based_on: list[TaskReferenceInput | str] | None = None
-    group_identifier_use: IdentifierUse | None = None
-    group_identifier_system: str | None = None
-    group_identifier_value: str | None = None
-    group_identifier_period_start: datetime | None = None
-    group_identifier_period_end: datetime | None = None
-    group_identifier_assigner: str | None = None
-    group_identifier_assigner_display: str | None = None
-    group_identifier_assigner_identifier_use: IdentifierUse | None = None
-    group_identifier_assigner_identifier_type_system: str | None = None
-    group_identifier_assigner_identifier_type_version: str | None = None
-    group_identifier_assigner_identifier_type_code: str | None = None
-    group_identifier_assigner_identifier_type_display: str | None = None
-    group_identifier_assigner_identifier_type_user_selected: bool | None = None
-    group_identifier_assigner_identifier_type_text: str | None = None
-    group_identifier_assigner_identifier_system: str | None = None
-    group_identifier_assigner_identifier_value: str | None = None
-    group_identifier_assigner_identifier_period_start: datetime | None = None
-    group_identifier_assigner_identifier_period_end: datetime | None = None
-    part_of: list[TaskReferenceInput | str] | None = None
-    status: TaskStatus | None = None
-    status_reason_coding: list[CodingInput] | None = None
-    status_reason_text: str | None = None
-    business_status_coding: list[CodingInput] | None = None
-    business_status_text: str | None = None
-    intent: TaskIntent | None = None
-    priority: TaskPriority | None = None
-    code_coding: list[CodingInput] | None = None
-    code_text: str | None = None
-    description: str | None = None
-    focus: str | None = None
-    focus_display: str | None = None
-    focus_identifier_use: IdentifierUse | None = None
-    focus_identifier_type_system: str | None = None
-    focus_identifier_type_version: str | None = None
-    focus_identifier_type_code: str | None = None
-    focus_identifier_type_display: str | None = None
-    focus_identifier_type_user_selected: bool | None = None
-    focus_identifier_type_text: str | None = None
-    focus_identifier_system: str | None = None
-    focus_identifier_value: str | None = None
-    focus_identifier_period_start: datetime | None = None
-    focus_identifier_period_end: datetime | None = None
-    for_: str | None = Field(None, alias="for")
-    for_display: str | None = None
-    for_identifier_use: IdentifierUse | None = None
-    for_identifier_type_system: str | None = None
-    for_identifier_type_version: str | None = None
-    for_identifier_type_code: str | None = None
-    for_identifier_type_display: str | None = None
-    for_identifier_type_user_selected: bool | None = None
-    for_identifier_type_text: str | None = None
-    for_identifier_system: str | None = None
-    for_identifier_value: str | None = None
-    for_identifier_period_start: datetime | None = None
-    for_identifier_period_end: datetime | None = None
-    encounter: str | None = None
-    encounter_display: str | None = None
-    encounter_identifier_use: IdentifierUse | None = None
-    encounter_identifier_type_system: str | None = None
-    encounter_identifier_type_version: str | None = None
-    encounter_identifier_type_code: str | None = None
-    encounter_identifier_type_display: str | None = None
-    encounter_identifier_type_user_selected: bool | None = None
-    encounter_identifier_type_text: str | None = None
-    encounter_identifier_system: str | None = None
-    encounter_identifier_value: str | None = None
-    encounter_identifier_period_start: datetime | None = None
-    encounter_identifier_period_end: datetime | None = None
-    execution_period_start: datetime | None = None
-    execution_period_end: datetime | None = None
-    authored_on: datetime | None = None
-    last_modified: datetime | None = None
-    requester: str | None = None
-    requester_display: str | None = None
-    requester_identifier_use: IdentifierUse | None = None
-    requester_identifier_type_system: str | None = None
-    requester_identifier_type_version: str | None = None
-    requester_identifier_type_code: str | None = None
-    requester_identifier_type_display: str | None = None
-    requester_identifier_type_user_selected: bool | None = None
-    requester_identifier_type_text: str | None = None
-    requester_identifier_system: str | None = None
-    requester_identifier_value: str | None = None
-    requester_identifier_period_start: datetime | None = None
-    requester_identifier_period_end: datetime | None = None
-    performer_type: list[TaskPerformerTypeInput] | None = None
-    owner: str | None = None
-    owner_display: str | None = None
-    owner_identifier_use: IdentifierUse | None = None
-    owner_identifier_type_system: str | None = None
-    owner_identifier_type_version: str | None = None
-    owner_identifier_type_code: str | None = None
-    owner_identifier_type_display: str | None = None
-    owner_identifier_type_user_selected: bool | None = None
-    owner_identifier_type_text: str | None = None
-    owner_identifier_system: str | None = None
-    owner_identifier_value: str | None = None
-    owner_identifier_period_start: datetime | None = None
-    owner_identifier_period_end: datetime | None = None
-    location: str | None = None
-    location_display: str | None = None
-    location_identifier_use: IdentifierUse | None = None
-    location_identifier_type_system: str | None = None
-    location_identifier_type_version: str | None = None
-    location_identifier_type_code: str | None = None
-    location_identifier_type_display: str | None = None
-    location_identifier_type_user_selected: bool | None = None
-    location_identifier_type_text: str | None = None
-    location_identifier_system: str | None = None
-    location_identifier_value: str | None = None
-    location_identifier_period_start: datetime | None = None
-    location_identifier_period_end: datetime | None = None
-    reason_code_coding: list[CodingInput] | None = None
-    reason_code_text: str | None = None
-    reason_reference: str | None = None
-    reason_reference_display: str | None = None
-    reason_reference_identifier_use: IdentifierUse | None = None
-    reason_reference_identifier_type_system: str | None = None
-    reason_reference_identifier_type_version: str | None = None
-    reason_reference_identifier_type_code: str | None = None
-    reason_reference_identifier_type_display: str | None = None
-    reason_reference_identifier_type_user_selected: bool | None = None
-    reason_reference_identifier_type_text: str | None = None
-    reason_reference_identifier_system: str | None = None
-    reason_reference_identifier_value: str | None = None
-    reason_reference_identifier_period_start: datetime | None = None
-    reason_reference_identifier_period_end: datetime | None = None
-    insurance: list[TaskReferenceInput | str] | None = None
-    note: list[TaskNoteInput] | None = None
-    relevant_history: list[TaskReferenceInput | str] | None = None
-    restriction: TaskRestrictionInput | None = None
-    input: list[TaskInputInput] | None = None
-    output: list[TaskOutputInput] | None = None
+        }
+    }

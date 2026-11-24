@@ -1,145 +1,48 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import OrganizationReferenceType
-from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+from app.models.task import TaskModel
+from app.repository._reference_shared import _validate_reference
 
+__all__ = [
+    "INDEX_RELATIONSHIPS",
+    "_validate_reference",
+    "_with_relationships",
+    "any_typed",
+    "typed",
+]
 
-def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
-    if payload is None:
-        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
-    return {
-        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
-
-
-def _child_reference_identifier_kwargs(ref_item) -> dict:
-    if isinstance(ref_item, str) or ref_item is None:
-        return {f"reference_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
-    return {
-        f"reference_{suffix}": getattr(ref_item, suffix, None)
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
-
-
-from app.models.task import (
-    TaskBasedOn,
-    TaskBusinessStatusCoding,
-    TaskCodeCoding,
-    TaskEncounterReferenceType,
-    TaskIdentifier,
-    TaskIdentifierTypeCoding,
-    TaskInput,
-    TaskInputTypeCoding,
-    TaskInsurance,
-    TaskInsuranceReferenceType,
-    TaskLocationReferenceType,
-    TaskModel,
-    TaskNote,
-    TaskOutput,
-    TaskOutputTypeCoding,
-    TaskOwnerReferenceType,
-    TaskPartOf,
-    TaskPartOfReferenceType,
-    TaskPerformerType,
-    TaskPerformerTypeCoding,
-    TaskReasonCodeCoding,
-    TaskRelevantHistory,
-    TaskRelevantHistoryReferenceType,
-    TaskRequesterReferenceType,
-    TaskRestrictionRecipient,
-    TaskRestrictionRecipientReferenceType,
-    TaskStatusReasonCoding,
+# Relationship attributes the search index owns - every one is rebuilt on each write.
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "tokens",
+    "references",
 )
 
-_SORTABLE_FIELDS = {
-    "task_id": TaskModel.task_id,
-    "status": TaskModel.status,
-    "intent": TaskModel.intent,
-    "priority": TaskModel.priority,
-    "authored_on": TaskModel.authored_on,
-    "last_modified": TaskModel.last_modified,
-    "created_at": TaskModel.created_at,
-    "updated_at": TaskModel.updated_at,
-}
-
-
-def _parse_requester_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskRequesterReferenceType)
-
-
-def _parse_owner_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskOwnerReferenceType)
-
-
-def _parse_location_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskLocationReferenceType)
-
-
-def _parse_encounter_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskEncounterReferenceType)
-
-
-def _parse_assigner_ref(ref: str) -> tuple:
-    return parse_reference(ref, OrganizationReferenceType)
-
-
-def _parse_insurance_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskInsuranceReferenceType)
-
-
-def _parse_relevant_history_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskRelevantHistoryReferenceType)
-
-
-def _parse_part_of_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskPartOfReferenceType)
-
-
-def _parse_recipient_ref(ref: str) -> tuple:
-    return parse_reference(ref, TaskRestrictionRecipientReferenceType)
-
-
-def _parse_generic_ref(ref: str) -> tuple:
-    """Parse any Type/ID reference string into (type_str, id_int)."""
-    if "/" in ref:
-        parts = ref.split("/", 1)
-        try:
-            return parts[0], int(parts[1])
-        except ValueError:
-            return parts[0], None
-    return None, None
-
-
-async def _validate_ref(
-    session, org_id: str, ref_type, ref_id: int | None, field_name: str
-) -> None:
-    if not ref_type or ref_id is None:
-        return
-    type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
-    if type_str in RESOURCE_REGISTRY:
-        await ensure_resource_exists(
-            session, type_str, ref_id, org_id=org_id, field_name=field_name
-        )
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
-    """Eager-load all Task sub-resources to avoid N+1 and async lazy-load failures."""
+    """Eager-load the search-index child rows. Only needed when a write is about to replace them
+    (patch_full) - reads never touch them, since every response is served straight from
+    TaskModel.content."""
     return stmt.options(
-        selectinload(TaskModel.identifiers).selectinload(TaskIdentifier.type_codings),
-        selectinload(TaskModel.based_on_list),
-        selectinload(TaskModel.part_of_list),
-        selectinload(TaskModel.insurance_list),
-        selectinload(TaskModel.relevant_history_list),
-        selectinload(TaskModel.restriction_recipients),
-        selectinload(TaskModel.performer_types).selectinload(TaskPerformerType.codings),
-        selectinload(TaskModel.code_codings),
-        selectinload(TaskModel.status_reason_codings),
-        selectinload(TaskModel.business_status_codings),
-        selectinload(TaskModel.reason_code_codings),
-        selectinload(TaskModel.notes),
-        selectinload(TaskModel.inputs).selectinload(TaskInput.type_codings),
-        selectinload(TaskModel.outputs).selectinload(TaskOutput.type_codings),
+        *(selectinload(getattr(TaskModel, rel)) for rel in INDEX_RELATIONSHIPS)
     )
+
+
+def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:
+    """('Patient', 10001) for a relative `Type/<id>` whose type is in `allowed`; None for an
+    absolute URL, a contained reference or any other shape (those match by their raw string
+    only)."""
+    match = _REF.match(reference or "")
+    if match and match["type"] in allowed:
+        return match["type"], int(match["id"])
+    return None
+
+
+def any_typed(reference: str | None) -> tuple[str, int] | None:
+    """`typed()` for a Reference(Any): any relative `Type/<id>` names a type."""
+    match = _REF.match(reference or "")
+    return (match["type"], int(match["id"])) if match else None

@@ -108,8 +108,9 @@ def test_checkable_types_are_the_rebuilt_content_based_resources():
         "EpisodeOfCare",
         "DocumentReference",
         "Goal",
+        "Task",
     } <= types
     # the registry still lists old resources whose routes are off: not checked yet
-    assert "Task" not in types
+    assert "Flag" not in types
     # not a resource this server has at all
     assert "Device" not in types

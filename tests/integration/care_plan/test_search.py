@@ -85,7 +85,7 @@ async def world(client):
          2027, performed by a role and a healthcare service)
       c  completed option for patient 2, covering 2020; activities: a MedicationRequest reference
          and a detail performed by patient 2
-      d  entered-in-error plan with a logical subject; activities: a Task reference (not a
+      d  entered-in-error plan with a logical subject; activities: a DeviceRequest reference (not a
          resource here) and a detail scheduled by a string, performed by an external device
       e  only what R4 requires
     """
@@ -207,7 +207,7 @@ async def world(client):
                 status="entered-in-error",
                 intent="plan",
                 activity=[
-                    {"reference": {"reference": "Task/5"}},
+                    {"reference": {"reference": "DeviceRequest/5"}},
                     _detail(
                         status="unknown",
                         scheduledString="next week",
@@ -507,8 +507,10 @@ async def test_activity_reference_is_multi_target(client, world):
     assert await _keys(
         client, world, **{"activity-reference": f"MedicationRequest/{world['mr']}"}
     ) == {"c"}
-    # a Task is not a resource here, but the reference is still searchable by type and id
-    assert await _keys(client, world, **{"activity-reference": "Task/5"}) == {"d"}
+    # a DeviceRequest is not a resource here, but the reference is still searchable by type and id
+    assert await _keys(client, world, **{"activity-reference": "DeviceRequest/5"}) == {
+        "d"
+    }
     assert (
         await _keys(
             client, world, **{"activity-reference": f"Appointment/{world['sr']}"}
@@ -553,7 +555,7 @@ async def test_bad_chains_are_400(client, world):
     assert (
         await _status(client, **{"performer:Device.x": "x"}) == 400
     )  # not searchable here
-    assert await _status(client, **{"activity-reference:Task.x": "x"}) == 400
+    assert await _status(client, **{"activity-reference:DeviceRequest.x": "x"}) == 400
     assert (
         await _status(client, **{"goal.nonsense": "x"}) == 400
     )  # unknown Goal parameter

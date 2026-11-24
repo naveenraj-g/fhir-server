@@ -353,10 +353,10 @@ async def test_create_stage_assessment_clinical_impression_must_exist(client, pa
 
 async def test_create_unrebuilt_targets_are_not_checked(client, patient):
     """evidence.detail (Reference(Any)) is checked like any other reference, but a type this
-    server does not have (a Task here) is stored as sent."""
+    server does not have (a Device here) is stored as sent."""
     body = condition_body(
         patient,
-        evidence=[{"detail": [{"reference": "Task/999999"}]}],
+        evidence=[{"detail": [{"reference": "Device/999999"}]}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
     dangling = condition_body(
@@ -424,11 +424,11 @@ async def test_references_to_a_missing_condition_are_rejected(client, patient):
     assert (
         await client.post(f"{API}/appointments/", json=appointment)
     ).status_code == 422
-    # A type this server does not have (a Task) is not checked: stored as sent.
+    # A type this server does not have (a Device) is not checked: stored as sent.
     enc = {
         "status": "finished",
         "class": {"code": "AMB"},
-        "reasonReference": [{"reference": "Task/999999"}],
+        "reasonReference": [{"reference": "Device/999999"}],
     }
     assert (await client.post(f"{API}/encounters/", json=enc)).status_code == 201
 

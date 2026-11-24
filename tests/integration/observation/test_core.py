@@ -427,7 +427,7 @@ async def test_create_part_of_is_checked_for_a_procedure_or_immunization(
         partOf=[
             {"reference": f"Procedure/{procedure}"},
             {"reference": f"Immunization/{immunization}"},
-            {"reference": "Task/999999"},
+            {"reference": "Device/999999"},
         ],
     )
     assert (await client.post(BASE + "/", json=ok)).status_code == 201
@@ -447,7 +447,7 @@ async def test_create_based_on_focus_and_device_are_not_checked(client, patient)
     body = observation_body(
         patient,
         basedOn=[{"reference": "DeviceRequest/999999"}],
-        focus=[{"reference": "Task/999999"}],
+        focus=[{"reference": "Device/999999"}],
         device={"reference": "Device/999999"},
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201

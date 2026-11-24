@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._task_revinclude import column_task_revincludes
 from app.repository._search_targets import MODELED
 from app.repository._care_plan_revinclude import (
     performer_care_plan_revincludes,
@@ -599,6 +600,9 @@ def care_team_search() -> SearchRegistry:
         ),
         # A care team can name another care team as a participant (CareTeam:participant).
         revincludes=(
+            *column_task_revincludes(
+                ("owner",), "owner", "CareTeam", lambda x: x.care_team_id
+            ),
             *performer_report_revincludes("CareTeam", lambda x: x.care_team_id),
             *reference_observation_revincludes(
                 "performer", "CareTeam", lambda x: x.care_team_id

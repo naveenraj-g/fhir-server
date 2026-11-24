@@ -1,70 +1,64 @@
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
-    AuditFields,
     FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
     FHIRReference,
-    PlainCodingRow,
 )
-
-from .identifier import PlainTaskIdentifier
-from .io import (
-    FHIRTaskInput,
-    FHIRTaskOutput,
-    PlainTaskInput,
-    PlainTaskOutput,
-)
-from .note import FHIRTaskAnnotation, PlainTaskNote
-from .performer_type import PlainTaskPerformerType
-from .reference import PlainTaskReference
-from .restriction import FHIRTaskRestriction, PlainTaskRestriction
+from app.schemas.datatypes.annotation import FHIRAnnotation
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
-# ── FHIR JSON ─────────────────────────────────────────────────────────────────
+class FHIRTaskRestriction(BaseModel):
+    repetitions: int | None = Field(None, description="How many times to repeat.")
+    period: FHIRPeriod | None = Field(None, description="When fulfillment is sought.")
+    recipient: list[FHIRReference] | None = Field(
+        None, description="For whom is fulfillment sought."
+    )
 
 
 class FHIRTaskSchema(BaseModel):
-    """FHIR R4 Task resource schema."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    resourceType: Literal["Task"] = "Task"
-    id: str = Field(..., description="Logical ID of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
+    resourceType: str = Field("Task", description="Always 'Task'.")
+    id: str = Field(..., description="Public task_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
     identifier: list[FHIRIdentifier] | None = Field(
         None, description="Task Instance Identifier."
     )
     instantiatesCanonical: str | None = Field(
-        None, description="Formal definition of task (canonical(ActivityDefinition))."
+        None, description="Formal definition of task (canonical)."
     )
     instantiatesUri: str | None = Field(
-        None, description="Formal definition of task (uri)."
+        None, description="Formal definition of task (URI)."
     )
     basedOn: list[FHIRReference] | None = Field(
         None, description="Request fulfilled by this task."
     )
     groupIdentifier: FHIRIdentifier | None = Field(
-        None, description="Requisition or Form identifier."
+        None, description="Requisition or grouper id."
     )
     partOf: list[FHIRReference] | None = Field(None, description="Composite task.")
-    status: str = Field(
-        ...,
+    status: str | None = Field(
+        None,
         description="draft | requested | received | accepted | rejected | ready | cancelled | in-progress | on-hold | failed | completed | entered-in-error.",
     )
     statusReason: FHIRCodeableConcept | None = Field(
         None, description="Reason for current status."
     )
     businessStatus: FHIRCodeableConcept | None = Field(
-        None, description="E.g. 'Waiting on review', 'Deferred'."
+        None, description="E.g. 'Specimen collected', 'IV prepped'."
     )
-    intent: str = Field(
-        ...,
+    intent: str | None = Field(
+        None,
         description="unknown | proposal | plan | order | original-order | reflex-order | filler-order | instance-order | option.",
     )
     priority: str | None = Field(None, description="routine | urgent | asap | stat.")
@@ -74,12 +68,10 @@ class FHIRTaskSchema(BaseModel):
     )
     focus: FHIRReference | None = Field(None, description="What task is acting on.")
     for_: FHIRReference | None = Field(
-        None,
-        alias="for",
-        description="Beneficiary of the task.",
+        None, alias="for", description="Beneficiary of the Task."
     )
     encounter: FHIRReference | None = Field(
-        None, description="Healthcare event during which task was created."
+        None, description="Healthcare event during which this task originated."
     )
     executionPeriod: FHIRPeriod | None = Field(
         None, description="Start and end time of execution."
@@ -90,7 +82,7 @@ class FHIRTaskSchema(BaseModel):
         None, description="Who is asking for task to be done."
     )
     performerType: list[FHIRCodeableConcept] | None = Field(
-        None, description="Requested performer normal role."
+        None, description="Requested performer."
     )
     owner: FHIRReference | None = Field(None, description="Responsible individual.")
     location: FHIRReference | None = Field(None, description="Where task occurs.")
@@ -98,215 +90,47 @@ class FHIRTaskSchema(BaseModel):
         None, description="Why task is needed."
     )
     reasonReference: FHIRReference | None = Field(
-        None, description="Why task is needed (Reference)."
+        None, description="Why task is needed."
     )
     insurance: list[FHIRReference] | None = Field(
         None, description="Associated insurance coverage."
     )
-    note: list[FHIRTaskAnnotation] | None = Field(
+    note: list[FHIRAnnotation] | None = Field(
         None, description="Comments made about the task."
     )
     relevantHistory: list[FHIRReference] | None = Field(
-        None, description="Key events in history of the task."
+        None, description="Key events in history of the Task."
     )
     restriction: FHIRTaskRestriction | None = Field(
-        None, description="Constraints on task execution."
+        None, description="Constraints on fulfillment tasks."
     )
-    input: list[FHIRTaskInput] | None = Field(
-        None, description="Information used to perform task."
+    input: list[dict] | None = Field(
+        None, description="Information used to perform task (type + value[x])."
     )
-    output: list[FHIRTaskOutput] | None = Field(
-        None, description="Information produced as part of task."
+    output: list[dict] | None = Field(
+        None, description="Information produced as part of task (type + value[x])."
     )
-    extension: list[dict] | None = Field(
-        None, description="Resource-level FHIR extensions."
-    )
+
+    model_config = {"populate_by_name": True}
 
 
 class FHIRTaskBundleEntry(BaseModel):
-    resource: FHIRTaskSchema
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRTaskSchema | dict = Field(
+        ...,
+        description="A Task (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
 class FHIRTaskBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
     entry: list[FHIRTaskBundleEntry] | None = None
-
-
-# ── Plain (snake_case) ─────────────────────────────────────────────────────────
-
-
-class PlainTaskResponse(AuditFields):
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Public task_id.")
-    status: str = Field(..., description="Current status of the task.")
-    intent: str = Field(..., description="Intent of the task.")
-    priority: str | None = Field(None, description="Priority.")
-    description: str | None = Field(None, description="Description.")
-    instantiates_canonical: str | None = None
-    instantiates_uri: str | None = None
-    authored_on: str | None = None
-    last_modified: str | None = None
-    code_text: str | None = None
-    code_codings: list[PlainCodingRow] | None = None
-    status_reason_text: str | None = None
-    status_reason_codings: list[PlainCodingRow] | None = None
-    business_status_text: str | None = None
-    business_status_codings: list[PlainCodingRow] | None = None
-    reason_code_text: str | None = None
-    reason_code_codings: list[PlainCodingRow] | None = None
-    focus_reference: str | None = None
-    focus: str | None = None
-    focus_type: str | None = None
-    focus_id: int | None = None
-    focus_display: str | None = None
-    focus_identifier_use: str | None = None
-    focus_identifier_type_system: str | None = None
-    focus_identifier_type_version: str | None = None
-    focus_identifier_type_code: str | None = None
-    focus_identifier_type_display: str | None = None
-    focus_identifier_type_user_selected: bool | None = None
-    focus_identifier_type_text: str | None = None
-    focus_identifier_system: str | None = None
-    focus_identifier_value: str | None = None
-    focus_identifier_period_start: str | None = None
-    focus_identifier_period_end: str | None = None
-    for_reference: str | None = None
-    for_: str | None = Field(None, alias="for")
-    for_type: str | None = None
-    for_id: int | None = None
-    for_display: str | None = None
-    for_identifier_use: str | None = None
-    for_identifier_type_system: str | None = None
-    for_identifier_type_version: str | None = None
-    for_identifier_type_code: str | None = None
-    for_identifier_type_display: str | None = None
-    for_identifier_type_user_selected: bool | None = None
-    for_identifier_type_text: str | None = None
-    for_identifier_system: str | None = None
-    for_identifier_value: str | None = None
-    for_identifier_period_start: str | None = None
-    for_identifier_period_end: str | None = None
-    encounter_reference: str | None = None
-    encounter: str | None = None
-    encounter_type: str | None = None
-    encounter_id: int | None = None
-    encounter_display: str | None = None
-    encounter_identifier_use: str | None = None
-    encounter_identifier_type_system: str | None = None
-    encounter_identifier_type_version: str | None = None
-    encounter_identifier_type_code: str | None = None
-    encounter_identifier_type_display: str | None = None
-    encounter_identifier_type_user_selected: bool | None = None
-    encounter_identifier_type_text: str | None = None
-    encounter_identifier_system: str | None = None
-    encounter_identifier_value: str | None = None
-    encounter_identifier_period_start: str | None = None
-    encounter_identifier_period_end: str | None = None
-    execution_period_start: str | None = None
-    execution_period_end: str | None = None
-    requester_reference: str | None = None
-    requester: str | None = None
-    requester_type: str | None = None
-    requester_id: int | None = None
-    requester_display: str | None = None
-    requester_identifier_use: str | None = None
-    requester_identifier_type_system: str | None = None
-    requester_identifier_type_version: str | None = None
-    requester_identifier_type_code: str | None = None
-    requester_identifier_type_display: str | None = None
-    requester_identifier_type_user_selected: bool | None = None
-    requester_identifier_type_text: str | None = None
-    requester_identifier_system: str | None = None
-    requester_identifier_value: str | None = None
-    requester_identifier_period_start: str | None = None
-    requester_identifier_period_end: str | None = None
-    owner_reference: str | None = None
-    owner: str | None = None
-    owner_type: str | None = None
-    owner_id: int | None = None
-    owner_display: str | None = None
-    owner_identifier_use: str | None = None
-    owner_identifier_type_system: str | None = None
-    owner_identifier_type_version: str | None = None
-    owner_identifier_type_code: str | None = None
-    owner_identifier_type_display: str | None = None
-    owner_identifier_type_user_selected: bool | None = None
-    owner_identifier_type_text: str | None = None
-    owner_identifier_system: str | None = None
-    owner_identifier_value: str | None = None
-    owner_identifier_period_start: str | None = None
-    owner_identifier_period_end: str | None = None
-    location_reference: str | None = None
-    location: str | None = None
-    location_type: str | None = None
-    location_id: int | None = None
-    location_display: str | None = None
-    location_identifier_use: str | None = None
-    location_identifier_type_system: str | None = None
-    location_identifier_type_version: str | None = None
-    location_identifier_type_code: str | None = None
-    location_identifier_type_display: str | None = None
-    location_identifier_type_user_selected: bool | None = None
-    location_identifier_type_text: str | None = None
-    location_identifier_system: str | None = None
-    location_identifier_value: str | None = None
-    location_identifier_period_start: str | None = None
-    location_identifier_period_end: str | None = None
-    reason_reference_reference: str | None = None
-    reason_reference: str | None = None
-    reason_reference_type: str | None = None
-    reason_reference_id: int | None = None
-    reason_reference_display: str | None = None
-    reason_reference_identifier_use: str | None = None
-    reason_reference_identifier_type_system: str | None = None
-    reason_reference_identifier_type_version: str | None = None
-    reason_reference_identifier_type_code: str | None = None
-    reason_reference_identifier_type_display: str | None = None
-    reason_reference_identifier_type_user_selected: bool | None = None
-    reason_reference_identifier_type_text: str | None = None
-    reason_reference_identifier_system: str | None = None
-    reason_reference_identifier_value: str | None = None
-    reason_reference_identifier_period_start: str | None = None
-    reason_reference_identifier_period_end: str | None = None
-    group_identifier_use: str | None = None
-    group_identifier_system: str | None = None
-    group_identifier_value: str | None = None
-    group_identifier_period_start: str | None = None
-    group_identifier_period_end: str | None = None
-    group_identifier_assigner_reference: str | None = None
-    group_identifier_assigner: str | None = None
-    group_identifier_assigner_type: str | None = None
-    group_identifier_assigner_id: int | None = None
-    group_identifier_assigner_display: str | None = None
-    group_identifier_assigner_identifier_use: str | None = None
-    group_identifier_assigner_identifier_type_system: str | None = None
-    group_identifier_assigner_identifier_type_version: str | None = None
-    group_identifier_assigner_identifier_type_code: str | None = None
-    group_identifier_assigner_identifier_type_display: str | None = None
-    group_identifier_assigner_identifier_type_user_selected: bool | None = None
-    group_identifier_assigner_identifier_type_text: str | None = None
-    group_identifier_assigner_identifier_system: str | None = None
-    group_identifier_assigner_identifier_value: str | None = None
-    group_identifier_assigner_identifier_period_start: str | None = None
-    group_identifier_assigner_identifier_period_end: str | None = None
-    restriction_repetitions: int | None = None
-    restriction_period_start: str | None = None
-    restriction_period_end: str | None = None
-    extension: list[dict] | None = None
-    identifiers: list[PlainTaskIdentifier] | None = None
-    performer_types: list[PlainTaskPerformerType] | None = None
-    based_on_list: list[PlainTaskReference] | None = None
-    part_of_list: list[PlainTaskReference] | None = None
-    insurance_list: list[PlainTaskReference] | None = None
-    relevant_history_list: list[PlainTaskReference] | None = None
-    restriction_recipients: list[PlainTaskReference] | None = None
-    notes: list[PlainTaskNote] | None = None
-    inputs: list[PlainTaskInput] | None = None
-    outputs: list[PlainTaskOutput] | None = None
-
-
-class PaginatedTaskResponse(BaseModel):
-    total: int = Field(..., description="Total matching records.")
-    limit: int = Field(..., description="Maximum results returned.")
-    offset: int = Field(..., description="Offset applied.")
-    data: list[PlainTaskResponse] = Field(..., description="Page of task records.")

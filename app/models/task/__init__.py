@@ -1,72 +1,40 @@
-from app.models.task.codings import (
-    TaskBusinessStatusCoding,
-    TaskCodeCoding,
-    TaskReasonCodeCoding,
-    TaskStatusReasonCoding,
+from .core import (
+    ENCOUNTER_TYPES,
+    FOCUS_TYPES,
+    FOR_TYPES,
+    OWNER_TYPES,
+    REQUESTER_TYPES,
+    TaskModel,
+    task_id_seq,
 )
-from app.models.task.core import TaskModel
-from app.models.task.enums import (
-    TaskEncounterReferenceType,
-    TaskInsuranceReferenceType,
-    TaskIntent,
-    TaskLocationReferenceType,
-    TaskOwnerReferenceType,
-    TaskPartOfReferenceType,
-    TaskPriority,
-    TaskRelevantHistoryReferenceType,
-    TaskRequesterReferenceType,
-    TaskRestrictionRecipientReferenceType,
-    TaskStatus,
+from .enums import TaskIntent, TaskPriority, TaskStatus
+from .identifier import TaskIdentifier
+from .reference import (
+    BASED_ON_TYPES,
+    PART_OF_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    TaskReference,
 )
-from app.models.task.identifier import TaskIdentifier, TaskIdentifierTypeCoding
-from app.models.task.io import (
-    TaskInput,
-    TaskInputTypeCoding,
-    TaskOutput,
-    TaskOutputTypeCoding,
-)
-from app.models.task.note import TaskNote
-from app.models.task.performer_type import (
-    TaskPerformerType,
-    TaskPerformerTypeCoding,
-)
-from app.models.task.references import (
-    TaskBasedOn,
-    TaskInsurance,
-    TaskPartOf,
-    TaskRelevantHistory,
-    TaskRestrictionRecipient,
-)
+from .token import TOKEN_PARAMS, TaskToken
 
 __all__ = [
-    "TaskModel",
-    "TaskStatus",
-    "TaskIntent",
-    "TaskPriority",
-    "TaskRequesterReferenceType",
-    "TaskOwnerReferenceType",
-    "TaskLocationReferenceType",
-    "TaskEncounterReferenceType",
-    "TaskRestrictionRecipientReferenceType",
-    "TaskInsuranceReferenceType",
-    "TaskRelevantHistoryReferenceType",
-    "TaskPartOfReferenceType",
+    "BASED_ON_TYPES",
+    "ENCOUNTER_TYPES",
+    "FOCUS_TYPES",
+    "FOR_TYPES",
+    "OWNER_TYPES",
+    "PART_OF_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "REQUESTER_TYPES",
+    "TOKEN_PARAMS",
     "TaskIdentifier",
-    "TaskIdentifierTypeCoding",
-    "TaskBasedOn",
-    "TaskPartOf",
-    "TaskInsurance",
-    "TaskRelevantHistory",
-    "TaskRestrictionRecipient",
-    "TaskPerformerType",
-    "TaskPerformerTypeCoding",
-    "TaskCodeCoding",
-    "TaskStatusReasonCoding",
-    "TaskBusinessStatusCoding",
-    "TaskReasonCodeCoding",
-    "TaskNote",
-    "TaskInput",
-    "TaskInputTypeCoding",
-    "TaskOutput",
-    "TaskOutputTypeCoding",
+    "TaskIntent",
+    "TaskModel",
+    "TaskPriority",
+    "TaskReference",
+    "TaskStatus",
+    "TaskToken",
+    "task_id_seq",
 ]

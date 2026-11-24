@@ -1,204 +1,122 @@
-"""Shared helpers and payloads for task integration tests."""
+"""Shared helpers and payloads for task integration tests.
+
+Request bodies are genuine FHIR R4 Task JSON (camelCase, nested datatypes), and every response is
+FHIR R4 too."""
+
+from tests.integration.encounter.support import (  # noqa: F401
+    create_encounter,
+    encounter_body,
+)
+from tests.integration.group.support import create_group, group_body  # noqa: F401
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_location,
+    create_organization,
+    create_practitioner,
+)
+from tests.integration.service_request.support import (  # noqa: F401
+    create_service_request,
+    service_request_body,
+)
 
 BASE = "/api/fhir/v1/tasks"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+TASK_IDS = "https://fhir-server.dev/fhir/identifier-system/task-id"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+TASK_CODE = "http://hl7.org/fhir/CodeSystem/task-code"
+BUSINESS = "http://example.org/business-status"
+PERFORMER = "http://terminology.hl7.org/CodeSystem/task-performer-type"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"name": "Good Health Clinic"},
-    )
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
-
-
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True, "name": [{"family": "Smith", "given": ["Alice"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_location(client) -> int:
-    """Create a minimal location and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/locations/",
-        json={"name": "Examination Room 1", "status": "active"},
-    )
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
-
-
-async def create_test_encounter(client, patient_id: int) -> int:
-    """Create a minimal encounter and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/encounters/",
-        json={
-            "status": "in-progress",
-            "class_coding": {
-                "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                "code": "AMB",
-                "display": "ambulatory",
-            },
-            "subject": f"Patient/{patient_id}",
-        },
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_task(patient_id: int) -> dict:
+def concept(system: str, code: str, display: str | None = None) -> dict:
     return {
-        "status": "requested",
-        "intent": "order",
-        "for": f"Patient/{patient_id}",
-        "for_display": "Jane Doe",
-    }
-
-
-def full_task(
-    patient_id: int,
-    encounter_id: int | None = None,
-    requester_id: int | None = None,
-    owner_id: int | None = None,
-    location_id: int | None = None,
-    org_id: int | None = None,
-) -> dict:
-    payload = {
-        "status": "requested",
-        "intent": "order",
-        "priority": "routine",
-        "description": "Please review and approve the medication order.",
-        "code_coding": [
+        "coding": [
             {
-                "system": "http://hl7.org/fhir/CodeSystem/task-code",
-                "code": "approve",
-                "display": "Activate/approve the focal resource",
-            }
-        ],
-        "code_text": "Approve medication request",
-        "for": f"Patient/{patient_id}",
-        "for_display": "Jane Doe",
-        "execution_period_start": "2026-01-01T12:00:00Z",
-        "execution_period_end": "2026-01-02T12:00:00Z",
-        "authored_on": "2026-01-01T12:00:00Z",
-        "last_modified": "2026-01-01T12:00:00Z",
-        "status_reason_coding": [
-            {
-                "system": "http://example.org/status-reason",
-                "code": "standard-review",
-                "display": "Standard clinical review required",
-            }
-        ],
-        "status_reason_text": "Standard clinical review required",
-        "business_status_coding": [
-            {
-                "system": "http://example.org/business-status",
-                "code": "waiting-on-review",
-                "display": "Waiting on review",
-            }
-        ],
-        "business_status_text": "Waiting on review",
-        "reason_code_coding": [
-            {
-                "system": "http://snomed.info/sct",
-                "code": "182888003",
-                "display": "Medication review needed",
-            }
-        ],
-        "reason_code_text": "Medication review needed",
-        "performer_type": [
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                        "code": "RESP",
-                        "display": "Responsible Party",
-                    }
-                ],
-                "text": "Responsible Doctor",
-            }
-        ],
-        "note": [
-            {
-                "author_string": "Nurse Kelly",
-                "text": "All vitals checked and normal.",
-            }
-        ],
-        "input": [
-            {
-                "type_coding": [
-                    {
-                        "system": "http://example.org/task-input",
-                        "code": "specification",
-                        "display": "Task Specification",
-                    }
-                ],
-                "type_text": "Task Specification",
-                "value_string": "Sample instructions",
-            }
-        ],
-        "output": [
-            {
-                "type_coding": [
-                    {
-                        "system": "http://example.org/task-output",
-                        "code": "result",
-                        "display": "Approval Decision",
-                    }
-                ],
-                "type_text": "Approval Decision",
-                "value_string": "Approved by supervisor",
-            }
-        ],
-        "restriction": {
-            "repetitions": 1,
-            "period_start": "2026-01-01T12:00:00Z",
-            "period_end": "2026-01-08T12:00:00Z",
-        },
-    }
-
-    if encounter_id:
-        payload["encounter"] = f"Encounter/{encounter_id}"
-        payload["encounter_display"] = "Outpatient consultation"
-    if requester_id:
-        payload["requester"] = f"Practitioner/{requester_id}"
-        payload["requester_display"] = "Dr. Alice Smith"
-    if owner_id:
-        payload["owner"] = f"Practitioner/{owner_id}"
-        payload["owner_display"] = "Dr. Bob Jones"
-    if location_id:
-        payload["location"] = f"Location/{location_id}"
-        payload["location_display"] = "Examination Room 1"
-    if org_id:
-        payload["identifier"] = [
-            {
-                "use": "official",
-                "system": "http://example.org/task-ids",
-                "value": "TASK-12345",
-                "assigner": f"Organization/{org_id}",
-                "assigner_display": "Good Health Clinic",
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
             }
         ]
-        payload["group_identifier_use"] = "official"
-        payload["group_identifier_system"] = "http://example.org/group-ids"
-        payload["group_identifier_value"] = "GRP-999"
-        payload["group_identifier_assigner"] = f"Organization/{org_id}"
-        payload["group_identifier_assigner_display"] = "Good Health Clinic"
+    }
 
-    return payload
+
+def task_body(**extra) -> dict:
+    """A valid minimal Task: R4 requires `status` and `intent`."""
+    return {"status": "requested", "intent": "order", **extra}
+
+
+def full_body(
+    patient_id: int,
+    encounter_id: int,
+    practitioner_id: int,
+    organization_id: int,
+    location_id: int,
+    service_request_id: int,
+    parent_id: int,
+) -> dict:
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return task_body(
+        resourceType="Task",
+        identifier=[
+            {
+                "system": TASK_IDS,
+                "value": "T-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "FILL"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
+            }
+        ],
+        instantiatesCanonical="http://example.org/ActivityDefinition/collect|1.0",
+        instantiatesUri="http://example.org/protocols/collect",
+        basedOn=[{"reference": f"ServiceRequest/{service_request_id}"}],
+        groupIdentifier={"system": TASK_IDS, "value": "GRP-1"},
+        partOf=[{"reference": f"Task/{parent_id}"}],
+        status="in-progress",
+        statusReason=concept("http://example.org/reasons", "waiting"),
+        businessStatus=concept(BUSINESS, "specimen-collected", "Specimen collected"),
+        intent="order",
+        priority="urgent",
+        code=concept(TASK_CODE, "fulfill", "Fulfill the focal request"),
+        description="Collect a blood sample",
+        focus={"reference": f"ServiceRequest/{service_request_id}"},
+        encounter={"reference": f"Encounter/{encounter_id}"},
+        executionPeriod={
+            "start": "2026-01-15T09:00:00Z",
+            "end": "2026-01-15T10:00:00Z",
+        },
+        authoredOn="2026-01-15T08:00:00Z",
+        lastModified="2026-01-15T09:30:00Z",
+        requester={"reference": f"Practitioner/{practitioner_id}"},
+        performerType=[concept(PERFORMER, "performer", "Performer")],
+        owner={"reference": f"Practitioner/{practitioner_id}"},
+        location={"reference": f"Location/{location_id}"},
+        reasonCode={"text": "routine collection"},
+        reasonReference={"reference": f"Patient/{patient_id}"},
+        insurance=[{"reference": "Coverage/9"}],
+        note=[{"text": "Fasting required", "time": "2026-01-15T08:00:00Z"}],
+        relevantHistory=[{"reference": "Provenance/9"}],
+        restriction={
+            "repetitions": 2,
+            "period": {"end": "2026-02-15T00:00:00Z"},
+            "recipient": [{"reference": f"Patient/{patient_id}"}],
+        },
+        input=[
+            {"type": {"text": "sample type"}, "valueString": "venous blood"},
+            {"type": {"text": "volume"}, "valueQuantity": {"value": 5, "unit": "mL"}},
+            {"type": {"text": "fasting"}, "valueBoolean": True},
+        ],
+        output=[
+            {
+                "type": {"text": "result"},
+                "valueReference": {"reference": f"Patient/{patient_id}"},
+            }
+        ],
+        **{"for": {"reference": f"Patient/{patient_id}"}},
+    )
+
+
+async def create_task(client, body: dict) -> int:
+    """Create a task and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])

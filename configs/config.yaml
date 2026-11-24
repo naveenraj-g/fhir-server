@@ -264,7 +264,7 @@ routes:
     - slot
     - specimen
     # - specimen_definition
-    # - task
+    - task
     - goal
     # - communication
     # - communication_request

@@ -374,7 +374,7 @@ async def test_create_supporting_info_is_a_reference_any(client):
         client, supportingInfo=[{"reference": "CareTeam/999999"}]
     )
     # a type that is not a resource here is stored as sent
-    assert await _created_ok(client, supportingInfo=[{"reference": "Task/5"}])
+    assert await _created_ok(client, supportingInfo=[{"reference": "DeviceRequest/5"}])
 
 
 async def test_create_goal_must_exist(client):
@@ -414,7 +414,11 @@ async def test_create_activity_reference_must_exist_for_rebuilt_types(client):
             client, activity=[{"reference": {"reference": missing}}]
         ), missing
     # CommunicationRequest, Task, DeviceRequest ... are not resources here: stored as sent.
-    for sent in ("Task/999999", "CommunicationRequest/999999", "RequestGroup/999999"):
+    for sent in (
+        "DeviceRequest/999999",
+        "NutritionOrder/999999",
+        "RequestGroup/999999",
+    ):
         assert await _created_ok(
             client, activity=[{"reference": {"reference": sent}}]
         ), sent
