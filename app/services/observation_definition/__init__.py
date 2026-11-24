@@ -7,4 +7,5 @@ __all__ = ["ObservationDefinitionService"]
 
 @trace_methods
 class ObservationDefinitionService(_CoreMixin):
-    """Orchestrates ObservationDefinition CRUD operations and data transformations."""
+    """All ObservationDefinition business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

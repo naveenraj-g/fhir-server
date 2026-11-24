@@ -1,176 +1,101 @@
-from sqlalchemy import delete as sql_delete, func, select
+from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter, array_contains
-from app.core.pagination import resolve_sort
-from app.models.observation_definition import (
-    ObservationDefinitionCategory,
-    ObservationDefinitionCategoryCoding,
-    ObservationDefinitionCodeCoding,
-    ObservationDefinitionIdentifier,
-    ObservationDefinitionMethodCoding,
-    ObservationDefinitionModel,
-)
+from app.core.logging import get_logger
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.observation_definition import ObservationDefinitionModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import observation_definition_search
+
+logger = get_logger(__name__)
+
+_M = ObservationDefinitionModel
 
 
 class _CoreMixin:
-    """Read, list, and delete operations for ObservationDefinition."""
+    """Reads, search and delete. Every read loads only the observation_definition
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
     async def get_by_observation_definition_id(
         self, observation_definition_id: int
-    ) -> ObservationDefinitionModel | None:
+    ) -> _M | None:
         async with self.session_factory() as session:
-            stmt = select(ObservationDefinitionModel).where(
-                ObservationDefinitionModel.observation_definition_id
-                == observation_definition_id
+            stmt = select(_M).where(
+                _M.observation_definition_id == observation_definition_id
             )
-            stmt = _with_relationships(stmt)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+            return (await session.execute(stmt)).scalars().first()
 
     async def get_by_observation_definition_id_in_org(
         self, observation_definition_id: int, org_id: str
-    ) -> ObservationDefinitionModel | None:
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the observation_definition
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(ObservationDefinitionModel).where(
-                ObservationDefinitionModel.observation_definition_id
-                == observation_definition_id,
-                ObservationDefinitionModel.tenant_id == org_id,
+            stmt = select(_M).where(
+                _M.observation_definition_id == observation_definition_id,
+                _M.tenant_id == org_id,
             )
-            stmt = _with_relationships(stmt)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+            return (await session.execute(stmt)).scalars().first()
 
     async def observation_definition_belongs_to_org(
         self, observation_definition_id: int, org_id: str
     ) -> bool:
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the observation_definition exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(ObservationDefinitionModel.id).where(
-                ObservationDefinitionModel.observation_definition_id
-                == observation_definition_id,
-                ObservationDefinitionModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.observation_definition_id == observation_definition_id,
+                _M.tenant_id == org_id,
             )
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none() is not None
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str,
-        code: str | None = None,
-        category: str | None = None,
-        method: str | None = None,
-        identifier: str | None = None,
-        permitted_data_type: str | None = None,
-    ):
-        stmt = stmt.where(ObservationDefinitionModel.tenant_id == org_id)
-        if permitted_data_type:
-            val = (
-                permitted_data_type.value
-                if hasattr(permitted_data_type, "value")
-                else permitted_data_type
-            )
-            stmt = stmt.where(
-                array_contains(ObservationDefinitionModel.permitted_data_type, val)
-            )
-        if code:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ObservationDefinitionCodeCoding.id).where(
-                    ObservationDefinitionCodeCoding.observation_definition_pk
-                    == ObservationDefinitionModel.id,
-                    ObservationDefinitionCodeCoding.code == code,
-                ),
-            )
-        if category:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ObservationDefinitionCategoryCoding.id)
-                .join(
-                    ObservationDefinitionCategory,
-                    ObservationDefinitionCategoryCoding.category_id
-                    == ObservationDefinitionCategory.id,
-                )
-                .where(
-                    ObservationDefinitionCategory.observation_definition_pk
-                    == ObservationDefinitionModel.id,
-                    ObservationDefinitionCategoryCoding.code == category,
-                ),
-            )
-        if method:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ObservationDefinitionMethodCoding.id).where(
-                    ObservationDefinitionMethodCoding.observation_definition_pk
-                    == ObservationDefinitionModel.id,
-                    ObservationDefinitionMethodCoding.code == method,
-                ),
-            )
-        if identifier:
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(ObservationDefinitionIdentifier.id).where(
-                    ObservationDefinitionIdentifier.observation_definition_pk
-                    == ObservationDefinitionModel.id,
-                    ObservationDefinitionIdentifier.value == identifier,
-                ),
-            )
-        return stmt
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-    async def list(
-        self,
-        org_id: str,
-        code: str | None = None,
-        category: str | None = None,
-        method: str | None = None,
-        identifier: str | None = None,
-        permitted_data_type: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
-        sort: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[ObservationDefinitionModel], int | None]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            filter_kwargs = {
-                "org_id": org_id,
-                "code": code,
-                "category": category,
-                "method": method,
-                "identifier": identifier,
-                "permitted_data_type": permitted_data_type,
-            }
-            base = self._apply_list_filters(
-                _with_relationships(select(ObservationDefinitionModel)), **filter_kwargs
-            )
-            count_base = self._apply_list_filters(
-                select(func.count()).select_from(ObservationDefinitionModel),
-                **filter_kwargs,
-            )
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                default_column=ObservationDefinitionModel.observation_definition_id,
-                default_desc=True,
-            )
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                base,
-                count_base,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=observation_definition_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.observation_definition_id,
             )
-            return list(rows), total
+        logger.debug(
+            "ObservationDefinitions searched",
+            extra={
+                "event": "observation_definition.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
+
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
     async def delete(self, observation_definition_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = sql_delete(ObservationDefinitionModel).where(
-                ObservationDefinitionModel.observation_definition_id
-                == observation_definition_id
+            stmt = select(_M).where(
+                _M.observation_definition_id == observation_definition_id
             )
-            result = await session.execute(stmt)
-            await session.commit()
-            return result.rowcount > 0
+            observation_definition = (await session.execute(stmt)).scalars().first()
+            if not observation_definition:
+                return False
+            try:
+                await session.delete(observation_definition)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

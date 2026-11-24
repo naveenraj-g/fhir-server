@@ -224,7 +224,7 @@ def test_search_parameters_match_the_hl7_resource_page(resource_type):
     assert ours == theirs, (
         f"{resource_type}: missing {sorted(theirs - ours)}, not in R4 {sorted(ours - theirs)}"
     )
-    for code, (stype, _expr) in _hl7_search_parameters()[resource_type].items():
+    for code, (stype, _expr) in _hl7_search_parameters().get(resource_type, {}).items():
         if code in ours:
             assert _registries()[resource_type].params[code].type == stype, (
                 f"{resource_type}.{code} is a {stype} search parameter in R4"

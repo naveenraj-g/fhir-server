@@ -248,7 +248,7 @@ routes:
     - medication_request
     - medication_statement
     - observation
-    # - observation_definition
+    - observation_definition
     - healthcare_service
     - patient
     - plan_definition

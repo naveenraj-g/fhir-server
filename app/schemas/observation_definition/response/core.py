@@ -1,231 +1,88 @@
-from datetime import datetime
-from typing import Any, Literal
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRReference,
-    PlainCodingRow,
 )
-
-from .identifier import PlainObservationDefinitionIdentifier
-from .qualified_interval import (
-    FHIRQualifiedInterval,
-    PlainObservationDefinitionQualifiedInterval,
-)
-
-
-class FHIRObservationDefinitionQuantitativeDetails(BaseModel):
-    """ObservationDefinition.quantitativeDetails FHIR representation."""
-
-    model_config = ConfigDict(extra="allow")
-
-    customaryUnit: FHIRCodeableConcept | None = Field(
-        None, description="Customary unit used to report quantitative results."
-    )
-    unit: FHIRCodeableConcept | None = Field(
-        None, description="SI unit used to report quantitative results."
-    )
-    conversionFactor: float | None = Field(
-        None,
-        description="Factor for converting value expressed with SI unit to customary unit.",
-    )
-    decimalPrecision: int | None = Field(
-        None, description="Number of digits after decimal separator."
-    )
-
-
-class PlainObservationDefinitionQuantitativeDetails(BaseModel):
-    """Plain quantitative details representation."""
-
-    model_config = ConfigDict(extra="allow")
-
-    customary_unit_text: str | None = Field(None, description="Customary unit text.")
-    customary_unit_codings: list[PlainCodingRow] | None = Field(
-        None, description="Customary unit codings."
-    )
-    unit_text: str | None = Field(None, description="Unit text.")
-    unit_codings: list[PlainCodingRow] | None = Field(None, description="Unit codings.")
-    conversion_factor: float | None = Field(None, description="Conversion factor.")
-    decimal_precision: int | None = Field(None, description="Decimal precision.")
-
-
-class PlainObservationDefinitionCategory(BaseModel):
-    """Plain category representation."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Internal DB ID.")
-    text: str | None = Field(None, description="Category text.")
-    codings: list[PlainCodingRow] | None = Field(None, description="Category codings.")
-
-
-class PlainObservationDefinitionCode(BaseModel):
-    """Plain code representation."""
-
-    model_config = ConfigDict(extra="allow")
-
-    text: str | None = Field(None, description="Code text.")
-    codings: list[PlainCodingRow] | None = Field(None, description="Code codings.")
-
-
-class PlainObservationDefinitionMethod(BaseModel):
-    """Plain method representation."""
-
-    model_config = ConfigDict(extra="allow")
-
-    text: str | None = Field(None, description="Method text.")
-    codings: list[PlainCodingRow] | None = Field(None, description="Method codings.")
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
 class FHIRObservationDefinitionSchema(BaseModel):
-    """FHIR R4 ObservationDefinition resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["ObservationDefinition"] = "ObservationDefinition"
-    id: str = Field(..., description="Logical ID of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    category: list[FHIRCodeableConcept] | None = Field(
-        None, description="A code that classifies the general type of observation."
+    resourceType: str = Field(
+        "ObservationDefinition", description="Always 'ObservationDefinition'."
     )
-    code: FHIRCodeableConcept = Field(
-        ..., description="Describes what will be observed (name/code)."
+    id: str = Field(..., description="Public observation_definition_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
     identifier: list[FHIRIdentifier] | None = Field(
-        None, description="Unique identifier for this artifact."
+        None, description="Business identifier for this ObservationDefinition instance."
+    )
+    category: list[FHIRCodeableConcept] | None = Field(
+        None, description="Category of observation."
+    )
+    code: FHIRCodeableConcept | None = Field(
+        None, description="Type of observation (code / type)."
     )
     permittedDataType: list[str] | None = Field(
-        None, description="Data types allowed for the value element."
+        None,
+        description="Quantity | CodeableConcept | string | boolean | integer | Range | Ratio | SampledData | time | dateTime | Period.",
     )
     multipleResultsAllowed: bool | None = Field(
         None, description="Multiple results allowed."
     )
     method: FHIRCodeableConcept | None = Field(
-        None, description="Method or technique used."
+        None, description="Method used to produce the observation."
     )
     preferredReportName: str | None = Field(None, description="Preferred report name.")
-    quantitativeDetails: FHIRObservationDefinitionQuantitativeDetails | None = Field(
-        None, description="Characteristics for quantitative results."
+    quantitativeDetails: dict | None = Field(
+        None, description="Characteristics of quantitative results."
     )
-    qualifiedInterval: list[FHIRQualifiedInterval] | None = Field(
-        None, description="Ranges of results qualified by context."
+    qualifiedInterval: list[dict] | None = Field(
+        None,
+        description="Qualified range for continuous and ordinal observation results.",
     )
     validCodedValueSet: FHIRReference | None = Field(
-        None, description="Valid coded results ValueSet reference."
+        None, description="Value set of valid coded values."
     )
     normalCodedValueSet: FHIRReference | None = Field(
-        None, description="Normal coded results ValueSet reference."
+        None, description="Value set of normal coded values."
     )
     abnormalCodedValueSet: FHIRReference | None = Field(
-        None, description="Abnormal coded results ValueSet reference."
+        None, description="Value set of abnormal coded values."
     )
     criticalCodedValueSet: FHIRReference | None = Field(
-        None, description="Critical coded results ValueSet reference."
+        None, description="Value set of critical coded values."
     )
-    extension: list[dict] | None = Field(None, description="FHIR extension list.")
-
-
-class PlainObservationDefinitionResponse(BaseModel):
-    """Plain (snake_case) ObservationDefinition response schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Public observation_definition_id identifier.")
-    tenant_id: str = Field(..., description="Tenant organization ID.")
-    code: PlainObservationDefinitionCode | None = Field(
-        None, description="Observation code."
-    )
-    category: list[PlainObservationDefinitionCategory] | None = Field(
-        None, description="Categories."
-    )
-    identifier: list[PlainObservationDefinitionIdentifier] | None = Field(
-        None, description="Identifiers."
-    )
-    permitted_data_type: list[str] | None = Field(
-        None, description="Permitted data types."
-    )
-    multiple_results_allowed: bool | None = Field(
-        None, description="Multiple results allowed."
-    )
-    method: PlainObservationDefinitionMethod | None = Field(
-        None, description="Observation method."
-    )
-    preferred_report_name: str | None = Field(
-        None, description="Preferred report name."
-    )
-    quantitative_details: PlainObservationDefinitionQuantitativeDetails | None = Field(
-        None, description="Quantitative details."
-    )
-    qualified_interval: list[PlainObservationDefinitionQualifiedInterval] | None = (
-        Field(None, description="Qualified intervals.")
-    )
-    valid_coded_value_set: str | None = Field(
-        None, description="Valid coded ValueSet reference."
-    )
-    valid_coded_value_set_display: str | None = Field(
-        None, description="Valid coded ValueSet display."
-    )
-    normal_coded_value_set: str | None = Field(
-        None, description="Normal coded ValueSet reference."
-    )
-    normal_coded_value_set_display: str | None = Field(
-        None, description="Normal coded ValueSet display."
-    )
-    abnormal_coded_value_set: str | None = Field(
-        None, description="Abnormal coded ValueSet reference."
-    )
-    abnormal_coded_value_set_display: str | None = Field(
-        None, description="Abnormal coded ValueSet display."
-    )
-    critical_coded_value_set: str | None = Field(
-        None, description="Critical coded ValueSet reference."
-    )
-    critical_coded_value_set_display: str | None = Field(
-        None, description="Critical coded ValueSet display."
-    )
-    extension: list[dict] | None = Field(None, description="Extension list.")
-    created_by: str = Field(..., description="Creator user ID.")
-    updated_by: str | None = Field(None, description="Last updater user ID.")
-    created_at: datetime = Field(..., description="Creation timestamp.")
-    updated_at: datetime = Field(..., description="Last update timestamp.")
-
-
-class PaginatedObservationDefinitionResponse(BaseModel):
-    """Paginated plain ObservationDefinition list response."""
-
-    model_config = ConfigDict(extra="allow")
-
-    data: list[PlainObservationDefinitionResponse] = Field(
-        ..., description="List of observation definitions."
-    )
-    total: int | None = Field(None, description="Total matching records.")
-    limit: int = Field(..., description="Page size.")
-    offset: int = Field(..., description="Page offset.")
 
 
 class FHIRObservationDefinitionBundleEntry(BaseModel):
-    """Single entry in an ObservationDefinition FHIR Bundle."""
-
-    model_config = ConfigDict(extra="allow")
-
-    fullUrl: str | None = Field(None, description="Full URL for resource.")
-    resource: FHIRObservationDefinitionSchema = Field(
-        ..., description="ObservationDefinition resource."
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
     )
-
-
-class FHIRObservationDefinitionBundle(BaseModel):
-    """FHIR R4 Bundle for ObservationDefinition resources."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int | None = Field(None, description="Total matching records.")
-    entry: list[FHIRObservationDefinitionBundleEntry] = Field(
-        default_factory=list, description="Bundle entries."
+    resource: FHIRObservationDefinitionSchema | dict = Field(
+        ...,
+        description="An ObservationDefinition (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED) or an OperationOutcome (outcome).",
     )
+    search: FHIRBundleEntrySearch
+
+
+class FHIRObservationDefinitionBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages. Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRObservationDefinitionBundleEntry] | None = None

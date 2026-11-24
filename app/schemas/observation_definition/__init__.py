@@ -1,47 +1,17 @@
-from .input import (
-    ObservationDefinitionCodeableConceptInput,
+from app.schemas.observation_definition.input import (
     ObservationDefinitionCreateSchema,
-    ObservationDefinitionIdentifierInput,
     ObservationDefinitionPatchSchema,
-    ObservationDefinitionQualifiedIntervalInput,
-    ObservationDefinitionQuantitativeDetailsInput,
 )
-from .response import (
+from app.schemas.observation_definition.response import (
     FHIRObservationDefinitionBundle,
     FHIRObservationDefinitionBundleEntry,
-    FHIRObservationDefinitionQuantitativeDetails,
     FHIRObservationDefinitionSchema,
-    FHIRQualifiedInterval,
-    PaginatedObservationDefinitionResponse,
-    PlainObservationDefinitionCategory,
-    PlainObservationDefinitionCode,
-    PlainObservationDefinitionIdentifier,
-    PlainObservationDefinitionMethod,
-    PlainObservationDefinitionQualifiedInterval,
-    PlainObservationDefinitionQualifiedIntervalAppliesTo,
-    PlainObservationDefinitionQuantitativeDetails,
-    PlainObservationDefinitionResponse,
 )
 
 __all__ = [
-    "ObservationDefinitionCodeableConceptInput",
     "ObservationDefinitionCreateSchema",
-    "ObservationDefinitionIdentifierInput",
     "ObservationDefinitionPatchSchema",
-    "ObservationDefinitionQualifiedIntervalInput",
-    "ObservationDefinitionQuantitativeDetailsInput",
     "FHIRObservationDefinitionBundle",
     "FHIRObservationDefinitionBundleEntry",
-    "FHIRObservationDefinitionQuantitativeDetails",
     "FHIRObservationDefinitionSchema",
-    "FHIRQualifiedInterval",
-    "PaginatedObservationDefinitionResponse",
-    "PlainObservationDefinitionCategory",
-    "PlainObservationDefinitionCode",
-    "PlainObservationDefinitionIdentifier",
-    "PlainObservationDefinitionMethod",
-    "PlainObservationDefinitionQualifiedInterval",
-    "PlainObservationDefinitionQualifiedIntervalAppliesTo",
-    "PlainObservationDefinitionQuantitativeDetails",
-    "PlainObservationDefinitionResponse",
 ]

@@ -1,114 +1,98 @@
-"""Shared helpers and payloads for observation_definition integration tests."""
+"""Shared helpers and payloads for observation_definition integration tests.
+
+Request bodies are genuine FHIR R4 ObservationDefinition JSON (camelCase, nested datatypes), and
+every response is FHIR R4 too."""
+
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+)
 
 BASE = "/api/fhir/v1/observation-definitions"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+OBSERVATION_DEFINITION_IDS = (
+    "https://fhir-server.dev/fhir/identifier-system/observation-definition-id"
+)
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+LOINC = "http://loinc.org"
+UCUM = "http://unitsofmeasure.org"
+OBS_CATEGORY = "http://terminology.hl7.org/CodeSystem/observation-category"
 
 
-def minimal_observation_definition() -> dict:
-    return {
-        "code": {
-            "coding": [
-                {
-                    "system": "http://loinc.org",
-                    "code": "15074-8",
-                    "display": "Glucose [Moles/volume] in Blood",
-                }
-            ],
-            "text": "Glucose in Blood",
-        }
-    }
+def observation_definition_body(code: str = "718-7", **extra) -> dict:
+    """A valid minimal observation definition: R4 requires only `code`."""
+    return {"code": {"coding": [{"system": LOINC, "code": code}]}, **extra}
 
 
-def full_observation_definition() -> dict:
-    return {
-        "code": {
-            "coding": [
-                {
-                    "system": "http://loinc.org",
-                    "code": "15074-8",
-                    "display": "Glucose [Moles/volume] in Blood",
-                }
-            ],
-            "text": "Glucose in Blood",
-        },
-        "category": [
+def full_body(organization_id: int) -> dict:
+    """Every element: none of them is indexed (R4 defines no search parameter), so all of it must
+    round-trip through `content` unchanged."""
+    return observation_definition_body(
+        resourceType="ObservationDefinition",
+        identifier=[
             {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                        "code": "laboratory",
-                        "display": "Laboratory",
-                    }
-                ],
-                "text": "Laboratory",
+                "system": OBSERVATION_DEFINITION_IDS,
+                "value": "OD-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "ACSN"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "permitted_data_type": ["Quantity", "string"],
-        "multiple_results_allowed": False,
-        "method": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "271077007",
-                    "display": "Blood glucose measurement",
-                }
-            ],
-            "text": "Test strip reflectance",
+        category=[
+            {"coding": [{"system": OBS_CATEGORY, "code": "laboratory"}], "text": "Lab"}
+        ],
+        permittedDataType=["Quantity", "CodeableConcept", "string"],
+        multipleResultsAllowed=False,
+        method={"text": "automated count"},
+        preferredReportName="Hemoglobin",
+        quantitativeDetails={
+            "customaryUnit": {"coding": [{"system": UCUM, "code": "g/dL"}]},
+            "unit": {"coding": [{"system": UCUM, "code": "g/L"}]},
+            "conversionFactor": 10.0,
+            "decimalPrecision": 1,
         },
-        "preferred_report_name": "Blood Glucose",
-        "quantitative_details": {
-            "customary_unit": {
-                "coding": [
-                    {
-                        "system": "http://unitsofmeasure.org",
-                        "code": "mg/dL",
-                        "display": "mg/dL",
-                    }
-                ],
-                "text": "mg/dL",
-            },
-            "unit": {
-                "coding": [
-                    {
-                        "system": "http://unitsofmeasure.org",
-                        "code": "mmol/L",
-                        "display": "mmol/L",
-                    }
-                ],
-                "text": "mmol/L",
-            },
-            "conversion_factor": 0.0555,
-            "decimal_precision": 1,
-        },
-        "qualified_interval": [
+        qualifiedInterval=[
             {
                 "category": "reference",
-                "range_low_value": 70.0,
-                "range_low_unit": "mg/dL",
-                "range_high_value": 99.0,
-                "range_high_unit": "mg/dL",
-                "gender": "male",
-                "condition": "Fasting blood sugar",
-            }
+                "range": {
+                    "low": {
+                        "value": 12,
+                        "unit": "g/dL",
+                        "system": UCUM,
+                        "code": "g/dL",
+                    },
+                    "high": {
+                        "value": 16,
+                        "unit": "g/dL",
+                        "system": UCUM,
+                        "code": "g/dL",
+                    },
+                },
+                "context": {"text": "adult female"},
+                "appliesTo": [{"text": "female"}],
+                "gender": "female",
+                "age": {
+                    "low": {"value": 18, "unit": "a"},
+                    "high": {"value": 65, "unit": "a"},
+                },
+                "gestationalAge": {"low": {"value": 0, "unit": "wk"}},
+                "condition": "not pregnant",
+            },
+            {"category": "critical", "range": {"low": {"value": 7}}},
         ],
-        "valid_coded_value_set": "ValueSet/40001",
-        "normal_coded_value_set": "ValueSet/40002",
-        "abnormal_coded_value_set": "ValueSet/40003",
-        "critical_coded_value_set": "ValueSet/40004",
-        "identifier": [
-            {
-                "use": "official",
-                "system": "http://example.org/obsdef",
-                "value": "OBSDEF-12345",
-            }
-        ],
-    }
+        validCodedValueSet={"reference": "ValueSet/valid"},
+        normalCodedValueSet={"reference": "ValueSet/normal"},
+        abnormalCodedValueSet={
+            "reference": "https://example.org/fhir/ValueSet/abnormal"
+        },
+        criticalCodedValueSet={
+            "identifier": {"system": "urn:vs", "value": "critical"},
+            "display": "Critical values",
+        },
+    )
 
 
-async def create_observation_definition(client, **overrides) -> dict:
-    """Helper to create an ObservationDefinition and return the response json."""
-    payload = minimal_observation_definition()
-    payload.update(overrides)
-    resp = await client.post(BASE + "/", json=payload)
+async def create_observation_definition(client, body: dict) -> int:
+    """Create an observation definition and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    return int(resp.json()["id"])

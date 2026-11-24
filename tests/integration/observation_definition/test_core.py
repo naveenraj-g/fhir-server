@@ -1,331 +1,473 @@
-"""Core observation_definition endpoint coverage.
+"""Core observation-definition endpoint coverage.
 
-ObservationDefinition has 5 endpoints (create/get/patch/list/delete), no sub-resource routes and no /me route.
-Every supplied sub-resource list on create/patch replaces corresponding rows wholesale.
+ObservationDefinition is stored whole in `content` (like the other content-based resources): the
+request body (genuine FHIR R4 ObservationDefinition JSON) is validated and stored in `content`,
+every response is FHIR R4 (`application/fhir+json`, regardless of Accept). **R4 defines no search
+parameter for it**, so nothing is indexed: every element must round-trip through `content`.
 
-This file holds:
-- create (minimal + full nested payload, FHIR format, validation)
-- read (plain + FHIR, not found)
-- patch (field updates, sub-list replace, not found)
-- list (plain, FHIR bundle, filters, pagination)
-- delete
-- auth: cross-org isolation and org-less rejection
+This file holds create, read, patch, delete and auth (org-less token, missing scope, cross-org
+isolation) plus the existence check on `identifier.assigner` and on a relative
+`ObservationDefinition/<id>` in a Reference element. Search (only `_id` / `_lastUpdated`) lives in
+test_search.py.
 """
 
+import pytest
+from fastapi import Request
+
 from app.auth.dependencies import get_current_user
+from app.core.config import settings
 from app.main import app
 from tests.conftest import make_test_user
-from tests.helpers.assertions import (
-    assert_fhir_bundle,
-    assert_fhir_observation_definition,
-    assert_operation_outcome,
-    assert_paginated,
-    assert_plain_observation_definition,
+from tests.helpers.assertions import assert_operation_outcome
+from tests.integration.observation_definition.conftest import (
+    OBSERVATION_DEFINITION_PERMS,
 )
 from tests.integration.observation_definition.support import (
     BASE,
-    FHIR_ACCEPT,
     create_observation_definition,
-    full_observation_definition,
-    minimal_observation_definition,
+    create_organization,
+    full_body,
+    observation_definition_body,
 )
 
-OBSERVATION_DEFINITION_PERMS = [
-    "observation_definition:create",
-    "observation_definition:read",
-    "observation_definition:update",
-    "observation_definition:delete",
-    "organization:create",
-    "organization:read",
-]
+ACTIVITY_DEFINITIONS = "/api/fhir/v1/activity-definitions/"
+ISSUES = "/api/fhir/v1/detected-issues/"
 
 
-# ── Create ───────────────────────────────────────────────────────────────
+@pytest.fixture
+def native_validation(monkeypatch):
+    """The base R4 validator may be switched off in configs/config.yaml; tests that assert "a key
+    that isn't FHIR is a 422" need it on: the project's own structural check."""
+    monkeypatch.setattr(settings.fhir_validation, "enabled", True)
+    monkeypatch.setattr(settings.fhir_validation, "backend", "native")
 
 
-async def test_create_observation_definition_minimal(client):
-    resp = await client.post(BASE + "/", json=minimal_observation_definition())
-    assert resp.status_code == 201, resp.text
-    data = resp.json()
-    assert_plain_observation_definition(data)
-    assert data["code"]["codings"][0]["code"] == "15074-8"
-
-
-async def test_create_observation_definition_full(client):
-    payload = full_observation_definition()
-    resp = await client.post(BASE + "/", json=payload)
-    assert resp.status_code == 201, resp.text
-    data = resp.json()
-    assert_plain_observation_definition(data)
-    assert data["code"]["codings"][0]["code"] == "15074-8"
-    assert len(data["category"]) == 1
-    assert data["category"][0]["codings"][0]["code"] == "laboratory"
-    assert data["permitted_data_type"] == ["Quantity", "string"]
-    assert data["multiple_results_allowed"] is False
-    assert data["method"]["codings"][0]["code"] == "271077007"
-    assert data["preferred_report_name"] == "Blood Glucose"
-    assert data["quantitative_details"]["conversion_factor"] == 0.0555
-    assert len(data["qualified_interval"]) == 1
-    assert data["qualified_interval"][0]["category"] == "reference"
-    assert data["qualified_interval"][0]["range_low_value"] == 70.0
-    assert data["valid_coded_value_set"] == "ValueSet/40001"
-    assert len(data["identifier"]) == 1
-    assert data["identifier"][0]["value"] == "OBSDEF-12345"
-
-
-async def test_create_observation_definition_fhir_content_negotiation(client):
-    resp = await client.post(
-        BASE + "/",
-        json=minimal_observation_definition(),
-        headers=FHIR_ACCEPT,
-    )
-    assert resp.status_code == 201, resp.text
-    data = resp.json()
-    assert_fhir_observation_definition(data)
-    assert data["code"]["coding"][0]["code"] == "15074-8"
-
-
-async def test_create_observation_definition_validation_failure_missing_code(client):
-    resp = await client.post(
-        BASE + "/",
-        json={"preferred_report_name": "No Code"},
-    )
-    assert resp.status_code == 422, resp.text
-
-
-async def test_create_observation_definition_invalid_permitted_data_type(client):
-    resp = await client.post(
-        BASE + "/",
-        json={
-            "code": {"text": "Blood Glucose"},
-            "permitted_data_type": ["invalid_type"],
-        },
-    )
-    assert resp.status_code == 422, resp.text
-
-
-# ── Read ─────────────────────────────────────────────────────────────────
-
-
-async def test_get_observation_definition_plain(client):
-    obsdef = await create_observation_definition(client)
-    resp = await client.get(f"{BASE}/{obsdef['id']}")
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_plain_observation_definition(data, id=obsdef["id"])
-    assert data["code"]["codings"][0]["code"] == "15074-8"
-
-
-async def test_get_observation_definition_fhir(client):
-    obsdef = await create_observation_definition(client)
-    resp = await client.get(f"{BASE}/{obsdef['id']}", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_fhir_observation_definition(data, id=str(obsdef["id"]))
-
-
-async def test_get_observation_definition_not_found(client):
-    resp = await client.get(f"{BASE}/99999999")
-    assert resp.status_code == 404, resp.text
-    assert_operation_outcome(resp.json(), 404, 404)
-
-
-# ── Patch ────────────────────────────────────────────────────────────────
-
-
-async def test_patch_observation_definition_scalar_fields(client):
-    obsdef = await create_observation_definition(client)
-    patch_body = {
-        "preferred_report_name": "Updated Glucose Name",
-        "multiple_results_allowed": True,
-    }
-    resp = await client.patch(f"{BASE}/{obsdef['id']}", json=patch_body)
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_plain_observation_definition(data, id=obsdef["id"])
-    assert data["preferred_report_name"] == "Updated Glucose Name"
-    assert data["multiple_results_allowed"] is True
-
-
-async def test_patch_observation_definition_sub_resources_replace(client):
-    obsdef = await create_observation_definition(client)
-    patch_body = {
-        "identifier": [
-            {
-                "use": "secondary",
-                "system": "http://example.org/internal",
-                "value": "INT-999",
-            }
-        ],
-        "category": [
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                        "code": "vital-signs",
-                        "display": "Vital Signs",
-                    }
-                ],
-                "text": "Vital Signs",
-            }
-        ],
-    }
-    resp = await client.patch(f"{BASE}/{obsdef['id']}", json=patch_body)
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert len(data["identifier"]) == 1
-    assert data["identifier"][0]["value"] == "INT-999"
-    assert len(data["category"]) == 1
-    assert data["category"][0]["codings"][0]["code"] == "vital-signs"
-
-
-async def test_patch_observation_definition_not_found(client):
-    resp = await client.patch(f"{BASE}/99999999", json={"preferred_report_name": "X"})
-    assert resp.status_code == 404, resp.text
-
-
-# ── List ─────────────────────────────────────────────────────────────────
-
-
-async def test_list_observation_definitions_plain(client):
-    obsdef = await create_observation_definition(client)
-    resp = await client.get(f"{BASE}/")
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_paginated(data)
-    ids = [item["id"] for item in data["data"]]
-    assert obsdef["id"] in ids
-
-
-async def test_list_observation_definitions_fhir_bundle(client):
-    obsdef = await create_observation_definition(client)
-    resp = await client.get(f"{BASE}/", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert_fhir_bundle(data)
-    entry_ids = [e["resource"]["id"] for e in data["entry"]]
-    assert str(obsdef["id"]) in entry_ids
-
-
-async def test_list_observation_definitions_filters(client):
-    obsdef = await create_observation_definition(
-        client,
-        code={
-            "coding": [{"system": "http://loinc.org", "code": "FILTER-CODE-999"}],
-            "text": "Filtered Test",
-        },
-        category=[
-            {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                        "code": "exam",
-                    }
-                ]
-            }
-        ],
-        permitted_data_type=["boolean"],
-        identifier=[{"system": "http://test.org/id", "value": "FILTER-ID-123"}],
-    )
-
-    # Filter by code
-    resp = await client.get(f"{BASE}/?code=FILTER-CODE-999")
-    assert resp.status_code == 200, resp.text
-    items = resp.json()["data"]
-    assert any(x["id"] == obsdef["id"] for x in items)
-
-    # Filter by category
-    resp = await client.get(f"{BASE}/?category=exam")
-    assert resp.status_code == 200, resp.text
-    items = resp.json()["data"]
-    assert any(x["id"] == obsdef["id"] for x in items)
-
-    # Filter by permitted_data_type
-    resp = await client.get(f"{BASE}/?permitted_data_type=boolean")
-    assert resp.status_code == 200, resp.text
-    items = resp.json()["data"]
-    assert any(x["id"] == obsdef["id"] for x in items)
-
-    # Filter by identifier
-    resp = await client.get(f"{BASE}/?identifier=FILTER-ID-123")
-    assert resp.status_code == 200, resp.text
-    items = resp.json()["data"]
-    assert any(x["id"] == obsdef["id"] for x in items)
-
-
-async def test_list_observation_definitions_pagination(client):
-    resp = await client.get(f"{BASE}/?limit=2&offset=0")
-    assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert len(data["data"]) <= 2
-
-
-# ── Delete ───────────────────────────────────────────────────────────────
-
-
-async def test_delete_observation_definition_success(client):
-    obsdef = await create_observation_definition(client)
-    del_resp = await client.delete(f"{BASE}/{obsdef['id']}")
-    assert del_resp.status_code == 204, del_resp.text
-
-    get_resp = await client.get(f"{BASE}/{obsdef['id']}")
-    assert get_resp.status_code == 404
-
-
-async def test_delete_observation_definition_not_found(client):
-    resp = await client.delete(f"{BASE}/99999999")
-    assert resp.status_code == 404, resp.text
-
-
-# ── Auth & Scoping ───────────────────────────────────────────────────────
-
-
-async def test_cross_org_isolation(client):
-    obsdef = await create_observation_definition(client)
-
-    # Switch user to another organization
+def _as_user(sub="u-test", org_id="org-test", permissions=OBSERVATION_DEFINITION_PERMS):
     app.dependency_overrides[get_current_user] = make_test_user(
-        org_id="org-other",
-        permissions=OBSERVATION_DEFINITION_PERMS,
+        sub=sub, org_id=org_id, permissions=permissions
     )
-    # Get -> 404 (not 403, no leak)
-    resp = await client.get(f"{BASE}/{obsdef['id']}")
-    assert resp.status_code == 404, resp.text
 
-    # Patch -> 404
+
+async def _full(client) -> tuple[int, dict]:
+    organization = await create_organization(client)
+    body = full_body(organization)
+    return await create_observation_definition(client, body), body
+
+
+# -- Create ---------------------------------------------------------------------------------
+
+
+async def test_create_minimal(client):
+    resp = await client.post(BASE + "/", json=observation_definition_body())
+    assert resp.status_code == 201, resp.text
+    assert "application/fhir+json" in resp.headers["content-type"]
+    assert resp.json()["resourceType"] == "ObservationDefinition"
+    assert resp.json()["id"] == "400000"  # the first id of the block
+
+
+async def test_create_full_round_trip(client):
+    observation_definition, body = await _full(client)
+    data = (await client.get(f"{BASE}/{observation_definition}")).json()
+    expected = {k: v for k, v in body.items() if k != "resourceType"}
+    assert {
+        k: v for k, v in data.items() if k not in ("resourceType", "id", "meta")
+    } == expected
+
+
+@pytest.mark.parametrize(
+    "datatype",
+    [
+        "Quantity",
+        "CodeableConcept",
+        "string",
+        "boolean",
+        "integer",
+        "Range",
+        "Ratio",
+        "SampledData",
+        "time",
+        "dateTime",
+        "Period",
+    ],
+)
+async def test_create_every_permitted_data_type_round_trips(client, datatype):
+    body = observation_definition_body(permittedDataType=[datatype])
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["permittedDataType"] == [datatype]
+
+
+@pytest.mark.parametrize("category", ["reference", "critical", "absolute"])
+async def test_create_every_interval_category_round_trips(client, category):
+    body = observation_definition_body(
+        qualifiedInterval=[{"category": category, "range": {"low": {"value": 1}}}]
+    )
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["qualifiedInterval"][0]["category"] == category
+
+
+async def test_create_ignores_server_managed_id_and_meta(client):
+    body = observation_definition_body(
+        id="999", meta={"lastUpdated": "2000-01-01T00:00:00Z"}
+    )
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["id"] != "999"
+    assert not resp.json()["meta"]["lastUpdated"].startswith("2000")
+
+
+async def test_create_bad_datatypes_rejected(client):
+    for bad in (
+        {"permittedDataType": ["banana"]},
+        {"permittedDataType": "Quantity"},
+        {"identifier": {"value": "x"}},
+        {"category": {"text": "x"}},
+        {"code": "718-7"},
+        {"multipleResultsAllowed": "maybe"},
+        {"method": "automated"},
+        {"preferredReportName": 5},
+        {"quantitativeDetails": "x"},
+        {"qualifiedInterval": {"category": "reference"}},
+        {"qualifiedInterval": [{"category": "banana"}]},
+        {"qualifiedInterval": [{"gender": "robot"}]},
+        {"validCodedValueSet": "ValueSet/1"},
+    ):
+        body = {**observation_definition_body(), **bad}
+        resp = await client.post(BASE + "/", json=body)
+        assert resp.status_code == 422, (bad, resp.text)
+
+
+async def test_create_missing_code_rejected(client, native_validation):
+    resp = await client.post(BASE + "/", json={"preferredReportName": "x"})
+    assert resp.status_code == 422
+
+
+async def test_create_non_fhir_key_rejected(client, native_validation):
+    resp = await client.post(
+        BASE + "/", json=observation_definition_body(not_a_fhir_element=1)
+    )
+    assert resp.status_code == 422
+
+
+async def test_create_old_flat_fields_rejected(client, native_validation):
+    for stale in ({"code_text": "x"}, {"method_text": "x"}, {"org_id": "x"}):
+        resp = await client.post(BASE + "/", json=observation_definition_body(**stale))
+        assert resp.status_code == 422, (stale, resp.text)
+
+
+async def test_create_wrong_resource_type_rejected(client):
+    resp = await client.post(
+        BASE + "/", json=observation_definition_body(resourceType="Patient")
+    )
+    assert resp.status_code == 422
+
+
+async def test_create_audit_meta_from_actor(client):
+    data = (await client.post(BASE + "/", json=observation_definition_body())).json()
+    exts = {e["url"].rsplit("/", 1)[1]: e for e in data["meta"]["extension"]}
+    assert exts["org-id"]["valueString"] == "org-test"
+    assert exts["created-by"]["valueString"] == "u-test"
+
+
+# -- Create: existence checks on local references --------------------------------------------
+
+
+async def test_create_identifier_assigner_must_exist(client):
+    organization = await create_organization(client)
+    ok = observation_definition_body(
+        identifier=[
+            {"value": "1", "assigner": {"reference": f"Organization/{organization}"}}
+        ]
+    )
+    assert (await client.post(BASE + "/", json=ok)).status_code == 201
+    bad = observation_definition_body(
+        identifier=[{"value": "1", "assigner": {"reference": "Organization/999999"}}]
+    )
+    resp = await client.post(BASE + "/", json=bad)
+    assert resp.status_code == 422 and "assigner" in resp.text
+
+
+async def test_value_set_references_are_stored_as_sent(client):
+    """ValueSet is not a resource on this server, so a relative, absolute or logical reference
+    to one is stored as sent."""
+    body = observation_definition_body(
+        validCodedValueSet={"reference": "ValueSet/999999"},
+        normalCodedValueSet={"reference": "https://example.org/fhir/ValueSet/normal"},
+        criticalCodedValueSet={"identifier": {"value": "crit"}},
+    )
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["validCodedValueSet"] == {"reference": "ValueSet/999999"}
+
+
+async def test_a_relative_observation_definition_reference_is_checked(client):
+    """ObservationDefinition is a rebuilt resource: a relative `ObservationDefinition/<id>` in a
+    Reference (DetectedIssue.implicated is Reference(Any)) must exist."""
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    ok = {
+        "status": "final",
+        "implicated": [
+            {"reference": f"ObservationDefinition/{observation_definition}"}
+        ],
+    }
+    assert (await client.post(ISSUES, json=ok)).status_code == 201
+    bad = {
+        "status": "final",
+        "implicated": [{"reference": "ObservationDefinition/999999"}],
+    }
+    resp = await client.post(ISSUES, json=bad)
+    assert resp.status_code == 422 and "implicated" in resp.text
+
+
+async def test_activity_definition_requirements_are_checked(client):
+    """ActivityDefinition.observationRequirement / observationResultRequirement name an
+    ObservationDefinition: a relative reference must exist."""
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    ref = {"reference": f"ObservationDefinition/{observation_definition}"}
+    ok = {
+        "status": "active",
+        "observationRequirement": [ref],
+        "observationResultRequirement": [ref],
+    }
+    assert (await client.post(ACTIVITY_DEFINITIONS, json=ok)).status_code == 201
+    bad = {
+        "status": "active",
+        "observationRequirement": [{"reference": "ObservationDefinition/999999"}],
+    }
+    assert (await client.post(ACTIVITY_DEFINITIONS, json=bad)).status_code == 422
+
+
+async def test_reference_in_another_org_is_rejected(client, other_client):
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        theirs = await create_organization(other_client)
+    finally:
+        _as_user()
+    body = observation_definition_body(
+        identifier=[{"value": "1", "assigner": {"reference": f"Organization/{theirs}"}}]
+    )
+    assert (await client.post(BASE + "/", json=body)).status_code == 422
+
+
+# -- Read -----------------------------------------------------------------------------------
+
+
+async def test_get_by_id(client):
+    observation_definition, _ = await _full(client)
+    resp = await client.get(f"{BASE}/{observation_definition}")
+    assert resp.status_code == 200 and resp.json()["id"] == str(observation_definition)
+
+
+async def test_get_is_fhir_regardless_of_accept(client):
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    for accept in (None, "application/json", "*/*"):
+        headers = {"Accept": accept} if accept else {}
+        resp = await client.get(f"{BASE}/{observation_definition}", headers=headers)
+        assert resp.headers["content-type"].startswith("application/fhir+json"), accept
+        assert resp.json()["resourceType"] == "ObservationDefinition"
+
+
+async def test_xml_only_accept_is_406(client):
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    resp = await client.get(
+        f"{BASE}/{observation_definition}", headers={"Accept": "application/fhir+xml"}
+    )
+    assert resp.status_code == 406 and resp.json()["resourceType"] == "OperationOutcome"
+
+
+async def test_get_not_found(client):
+    resp = await client.get(f"{BASE}/999999")
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
+
+
+# -- Patch ----------------------------------------------------------------------------------
+
+
+async def test_patch_scalar_keeps_the_rest(client):
+    observation_definition, _ = await _full(client)
     resp = await client.patch(
-        f"{BASE}/{obsdef['id']}", json={"preferred_report_name": "Leak Attempt"}
+        f"{BASE}/{observation_definition}",
+        json={"preferredReportName": "Haemoglobin", "multipleResultsAllowed": True},
     )
-    assert resp.status_code == 404, resp.text
-
-    # Delete -> 404
-    resp = await client.delete(f"{BASE}/{obsdef['id']}")
-    assert resp.status_code == 404, resp.text
-
-    # List -> does not include obsdef["id"]
-    resp = await client.get(f"{BASE}/")
     assert resp.status_code == 200, resp.text
-    ids = [item["id"] for item in resp.json()["data"]]
-    assert obsdef["id"] not in ids
+    assert resp.json()["preferredReportName"] == "Haemoglobin"
+    assert resp.json()["multipleResultsAllowed"] is True
+    assert resp.json()["quantitativeDetails"]["decimalPrecision"] == 1  # untouched
+    assert resp.json()["qualifiedInterval"][0]["gender"] == "female"  # untouched
+
+
+async def test_patch_replaces_lists_and_objects_wholesale(client):
+    observation_definition, _ = await _full(client)
+    resp = await client.patch(
+        f"{BASE}/{observation_definition}",
+        json={
+            "permittedDataType": ["boolean"],
+            "qualifiedInterval": [],
+            "quantitativeDetails": {"decimalPrecision": 3},
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["permittedDataType"] == ["boolean"]
+    assert "qualifiedInterval" not in resp.json()
+    assert resp.json()["quantitativeDetails"] == {"decimalPrecision": 3}
+    assert resp.json()["identifier"][0]["value"] == "OD-1001"  # untouched
+
+
+async def test_patch_clears_an_element(client):
+    observation_definition, _ = await _full(client)
+    resp = await client.patch(
+        f"{BASE}/{observation_definition}",
+        json={"method": None, "validCodedValueSet": None},
+    )
+    assert "method" not in resp.json() and "validCodedValueSet" not in resp.json()
+    assert resp.json()["code"]["coding"][0]["code"] == "718-7"  # untouched
+
+
+async def test_patch_changes_the_code(client):
+    observation_definition, _ = await _full(client)
+    resp = await client.patch(
+        f"{BASE}/{observation_definition}",
+        json={"code": {"coding": [{"system": "http://loinc.org", "code": "4548-4"}]}},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["code"]["coding"][0]["code"] == "4548-4"
+
+
+async def test_patch_nonexistent_reference_rejected_and_nothing_written(client):
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    resp = await client.patch(
+        f"{BASE}/{observation_definition}",
+        json={
+            "identifier": [
+                {"value": "1", "assigner": {"reference": "Organization/999999"}}
+            ]
+        },
+    )
+    assert resp.status_code == 422
+    assert (
+        "identifier"
+        not in (await client.get(f"{BASE}/{observation_definition}")).json()
+    )
+
+
+async def test_patch_invalid_value_rejected_and_nothing_written(client):
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    assert (
+        await client.patch(
+            f"{BASE}/{observation_definition}",
+            json={"permittedDataType": ["broken"]},
+        )
+    ).status_code == 422
+    assert (
+        "permittedDataType"
+        not in (await client.get(f"{BASE}/{observation_definition}")).json()
+    )
+
+
+async def test_patch_not_found(client):
+    resp = await client.patch(f"{BASE}/999999", json={"preferredReportName": "x"})
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
+
+
+# -- Delete ---------------------------------------------------------------------------------
+
+
+async def test_delete(client):
+    observation_definition, _ = await _full(client)
+    assert (await client.delete(f"{BASE}/{observation_definition}")).status_code == 204
+    assert (await client.get(f"{BASE}/{observation_definition}")).status_code == 404
+    bundle = (
+        await client.get(BASE + "/", params={"_id": str(observation_definition)})
+    ).json()
+    assert bundle["total"] == 0
+
+
+async def test_delete_not_found(client):
+    resp = await client.delete(f"{BASE}/999999")
+    assert_operation_outcome(
+        resp.json(), expected_status=404, response_status=resp.status_code
+    )
+
+
+# -- Auth -----------------------------------------------------------------------------------
+
+
+async def test_create_without_permission(client):
+    _as_user(permissions=["observation_definition:read"])
+    assert (
+        await client.post(BASE + "/", json=observation_definition_body())
+    ).status_code == 403
 
 
 async def test_org_less_token_rejected(client):
-    # Actor without org_id
-    app.dependency_overrides[get_current_user] = make_test_user(
-        org_id=None,
-        permissions=OBSERVATION_DEFINITION_PERMS,
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
     )
-    resp = await client.post(BASE + "/", json=minimal_observation_definition())
-    assert resp.status_code == 403, resp.text
 
-    resp = await client.get(f"{BASE}/")
-    assert resp.status_code == 403, resp.text
+    async def _no_org(request: Request):
+        request.state.user = {
+            "sub": "u-test",
+            "permissions": OBSERVATION_DEFINITION_PERMS,
+        }
+
+    app.dependency_overrides[get_current_user] = _no_org
+    assert (
+        await client.post(BASE + "/", json=observation_definition_body())
+    ).status_code == 403
+    assert (await client.get(BASE + "/")).status_code == 403
+    assert (await client.get(f"{BASE}/{observation_definition}")).status_code == 403
 
 
-async def test_missing_permission_rejected(client):
-    # No observation_definition permissions
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=["patient:read"]
+async def test_cross_org_get_patch_delete_return_404(client, other_client):
+    _as_user()  # the other_client fixture resets the override
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
     )
-    resp = await client.post(BASE + "/", json=minimal_observation_definition())
-    assert resp.status_code == 403, resp.text
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        for resp in (
+            await other_client.get(f"{BASE}/{observation_definition}"),
+            await other_client.patch(
+                f"{BASE}/{observation_definition}", json={"preferredReportName": "x"}
+            ),
+            await other_client.delete(f"{BASE}/{observation_definition}"),
+        ):
+            assert_operation_outcome(
+                resp.json(), expected_status=404, response_status=resp.status_code
+            )
+    finally:
+        _as_user()
+
+
+async def test_search_cross_tenant_isolation(client, other_client):
+    _as_user()
+    observation_definition = await create_observation_definition(
+        client, observation_definition_body()
+    )
+    _as_user(sub="u-other", org_id="org-other")
+    try:
+        bundle = (
+            await other_client.get(
+                BASE + "/", params={"_id": str(observation_definition)}
+            )
+        ).json()
+        assert bundle["total"] == 0
+    finally:
+        _as_user()
