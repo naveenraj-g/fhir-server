@@ -554,7 +554,9 @@ def upgrade() -> None:
     for (table,) in bind.execute(
         sa.text(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() "
-            "AND table_name LIKE 'communication\\_%' AND table_type = 'BASE TABLE'"
+            "AND table_name LIKE 'communication\\_%' "
+            "AND table_name NOT LIKE 'communication\\_request%' "
+            "AND table_type = 'BASE TABLE'"
         )
     ).all():
         op.execute(f'DROP TABLE IF EXISTS "{table}" CASCADE')
@@ -584,7 +586,8 @@ def upgrade() -> None:
     for (name,) in bind.execute(
         sa.text(
             "SELECT typname FROM pg_type WHERE typtype = 'e' AND typname LIKE 'communication\\_%' "
-            "AND typname <> 'communication_status'"
+            "AND typname <> 'communication_status' "
+            "AND typname NOT LIKE 'communication\\_request%'"
         )
     ).all():
         op.execute(f'DROP TYPE IF EXISTS "{name}"')

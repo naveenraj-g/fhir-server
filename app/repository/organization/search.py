@@ -17,6 +17,10 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+    reference_communication_request_revincludes,
+)
 from app.repository._communication_revinclude import (
     column_communication_revincludes,
     reference_communication_revincludes,
@@ -697,6 +701,15 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *column_communication_request_revincludes(
+                ("requester",), "requester", "Organization", lambda x: x.organization_id
+            ),
+            *column_communication_request_revincludes(
+                ("sender",), "sender", "Organization", lambda x: x.organization_id
+            ),
+            *reference_communication_request_revincludes(
+                ("recipient",), "Organization", lambda x: x.organization_id
+            ),
             *column_communication_revincludes(
                 ("sender",), "sender", "Organization", lambda x: x.organization_id
             ),

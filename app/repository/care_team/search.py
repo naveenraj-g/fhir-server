@@ -17,6 +17,9 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._communication_request_revinclude import (
+    reference_communication_request_revincludes,
+)
 from app.repository._communication_revinclude import reference_communication_revincludes
 from app.repository._consent_revinclude import reference_consent_revincludes
 from app.repository._task_revinclude import column_task_revincludes
@@ -602,6 +605,9 @@ def care_team_search() -> SearchRegistry:
         ),
         # A care team can name another care team as a participant (CareTeam:participant).
         revincludes=(
+            *reference_communication_request_revincludes(
+                ("recipient",), "CareTeam", lambda x: x.care_team_id
+            ),
             *reference_communication_revincludes(
                 ("recipient",), "CareTeam", lambda x: x.care_team_id
             ),

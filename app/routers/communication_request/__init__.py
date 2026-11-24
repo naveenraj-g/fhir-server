@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 
-from .core import router as core_router
+from . import core
 
-router = APIRouter(prefix="/communication-requests", tags=["CommunicationRequests"])
-router.include_router(core_router)
-
-__all__ = ["router"]
+router = APIRouter(prefix="/communication-requests", tags=["CommunicationRequestRequests"])
+router.include_router(core.router)

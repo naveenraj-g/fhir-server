@@ -16,6 +16,10 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+    reference_communication_request_revincludes,
+)
 from app.repository._communication_revinclude import (
     column_communication_revincludes,
     reference_communication_revincludes,
@@ -750,6 +754,21 @@ def practitioner_role_search() -> SearchRegistry:
         ),
         # Schedule.actor points here (Appointment, ... will add theirs when rebuilt).
         revincludes=(
+            *column_communication_request_revincludes(
+                ("requester",),
+                "requester",
+                "PractitionerRole",
+                lambda x: x.practitioner_role_id,
+            ),
+            *column_communication_request_revincludes(
+                ("sender",),
+                "sender",
+                "PractitionerRole",
+                lambda x: x.practitioner_role_id,
+            ),
+            *reference_communication_request_revincludes(
+                ("recipient",), "PractitionerRole", lambda x: x.practitioner_role_id
+            ),
             *column_communication_revincludes(
                 ("sender",),
                 "sender",

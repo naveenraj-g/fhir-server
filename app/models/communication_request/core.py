@@ -1,108 +1,119 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    Sequence,
-    String,
-    text,
-)
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.communication_request.enums import (
-    CommunicationRequestEncounterReferenceType,
-    CommunicationRequestPriority,
-    CommunicationRequestRequesterReferenceType,
-    CommunicationRequestSenderReferenceType,
-    CommunicationRequestStatus,
-    CommunicationRequestSubjectReferenceType,
-)
-from app.models.enums import IdentifierUse, OrganizationReferenceType
 from app.models.shared import TenantAuditMixin
+
+from .enums import CommunicationRequestPriority, CommunicationRequestStatus
+
+communication_request_id_seq = Sequence(
+    "communication_request_pub_seq", start=470000, increment=1, metadata=Base.metadata
+)
+
+# The R4 targets of the 0..1 reference elements held as columns.
+SUBJECT_TYPES = ("Patient", "Group")
+ENCOUNTER_TYPES = ("Encounter",)
+REQUESTER_TYPES = (
+    "Practitioner",
+    "Organization",
+    "Device",
+    "Patient",
+    "PractitionerRole",
+    "RelatedPerson",
+)
+SENDER_TYPES = (
+    "Device",
+    "Organization",
+    "Patient",
+    "Practitioner",
+    "PractitionerRole",
+    "RelatedPerson",
+    "HealthcareService",
+)
 
 
 class CommunicationRequestModel(TenantAuditMixin, Base):
-    """SQLAlchemy ORM model for FHIR R4 CommunicationRequest resource.
+    """FHIR R4 CommunicationRequest - content-based storage, same as Communication, Task, Goal and
+    the other rebuilt resources.
 
-    A request to convey information; e.g. the alert, notification, or request to make a phone call.
-    Sequenced public ID block starts at 470000 (communication_request_pub_seq).
-    There is deliberately no user_id: CommunicationRequest is an org-scoped clinical entity.
-    """
+    `content` (JSONB) holds the whole resource exactly as validated on write; it is the single
+    source of truth, and GET serves it back as-is (`id`/`meta` are stamped on at read time from
+    this row's own columns - see app.fhir.mappers.communication_request). Every other column exists
+    only because a FHIR R4 CommunicationRequest search parameter filters on it
+    (https://www.hl7.org/fhir/R4/communicationrequest.html#search) and is derived from `content` on
+    every write by app.repository.communication_request._indexer.
+
+    Search parameter -> storage:
+      status           -> status (1..1 code, Enum column, stored by value so `on-hold` /
+                          `entered-in-error` are the real FHIR codes)
+      priority         -> priority (0..1 code, Enum column: a required binding read by a search
+                          parameter)
+      authored         -> authored_start/_end (the half-open range `authoredOn` covers; columns)
+      occurrence       -> occurrence_start/_end (the range `occurrenceDateTime` covers - R4's
+                          expression is `(CommunicationRequest.occurrence as dateTime)`, so an
+                          `occurrencePeriod` is not indexed and counts as missing; columns)
+      subject, patient -> subject_reference/_type/_id + subject_identifier_* (0..1
+                          Reference(Patient | Group), columns; `patient` is `subject` narrowed to
+                          Patients)
+      encounter        -> encounter_reference/_type/_id + encounter_identifier_* (0..1
+                          Reference(Encounter), columns)
+      requester        -> requester_reference/_type/_id + requester_identifier_* (0..1 reference
+                          to one of six types, columns)
+      sender           -> sender_reference/_type/_id + sender_identifier_* (0..1 reference to one
+                          of seven types, columns)
+      group-identifier -> group_identifier_system/_value (0..1 Identifier, columns)
+      identifier       -> CommunicationRequestIdentifier (0..*)
+      category, medium -> CommunicationRequestToken (one shared table, one row per coding of each
+                          concept, told apart by `param`)
+      based-on, replaces, recipient
+                       -> CommunicationRequestReference (one shared table, told apart by `param`;
+                          `based-on` is Reference(Any))
+      _id              -> communication_request_id;  _lastUpdated -> updated_at/created_at
+
+    Everything else - `statusReason`, `doNotPerform`, `about`, `payload`, `reasonCode`,
+    `reasonReference`, `note`, `occurrencePeriod`, `extension` - lives only in `content`.
+
+    `subject`, `requester`, `sender` and `recipient` point at several resource types, so a search
+    by bare id is ambiguous (`subject=Type/id` or `subject:Type=id`); `based-on` is Reference(Any);
+    `patient` is `subject` narrowed to Patients (a bare id works; a Group or logical subject counts
+    as missing it); `encounter` and `replaces` have one target.
+
+    All index columns are nullable. No `user_id`: a CommunicationRequest is a shared tenant-level
+    entity. No DB-level CHECK constraints."""
 
     __tablename__ = "communication_request"
+    __table_args__ = (
+        Index("ix_communication_request_authored", "authored_start", "authored_end"),
+        Index(
+            "ix_communication_request_occurrence", "occurrence_start", "occurrence_end"
+        ),
+        Index("ix_communication_request_subject_type_id", "subject_type", "subject_id"),
+    )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     communication_request_id = Column(
         BigInteger,
-        Sequence(
-            "communication_request_pub_seq",
-            start=470000,
-            increment=1,
-            metadata=Base.metadata,
-        ),
+        communication_request_id_seq,
+        server_default=communication_request_id_seq.next_value(),
         unique=True,
         index=True,
         nullable=False,
     )
 
-    # groupIdentifier (0..1 Identifier)
-    group_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    group_identifier_system = Column(String, nullable=True)
-    group_identifier_value = Column(String, nullable=True)
-    group_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    group_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
-    group_identifier_assigner_reference = Column(String, nullable=True)
-    group_identifier_assigner_type = Column(
-        Enum(
-            OrganizationReferenceType,
-            name="organization_reference_type",
-            create_type=False,
-        ),
-        nullable=True,
-    )
-    group_identifier_assigner_id = Column(BigInteger, nullable=True, index=True)
-    group_identifier_assigner_display = Column(String, nullable=True)
-    group_identifier_assigner_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    group_identifier_assigner_identifier_type_system = Column(String, nullable=True)
-    group_identifier_assigner_identifier_type_version = Column(String, nullable=True)
-    group_identifier_assigner_identifier_type_code = Column(String, nullable=True)
-    group_identifier_assigner_identifier_type_display = Column(String, nullable=True)
-    group_identifier_assigner_identifier_type_text = Column(String, nullable=True)
-    group_identifier_assigner_identifier_type_user_selected = Column(
-        Boolean, nullable=True
-    )
-    group_identifier_assigner_identifier_system = Column(String, nullable=True)
-    group_identifier_assigner_identifier_value = Column(String, nullable=True)
-    group_identifier_assigner_identifier_period_start = Column(
-        DateTime(timezone=True), nullable=True
-    )
-    group_identifier_assigner_identifier_period_end = Column(
-        DateTime(timezone=True), nullable=True
-    )
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
 
-    # status (1..1 code, binding: request-status)
+    # -- Search index (derived from `content`) --
     status = Column(
         Enum(
             CommunicationRequestStatus,
             name="communication_request_status",
             values_callable=lambda enum_cls: [m.value for m in enum_cls],
         ),
-        nullable=False,
+        nullable=True,
+        index=True,
     )
-
-    # statusReason (0..1 CodeableConcept) — text stored flat, codings in communication_request_status_reason_coding
-    status_reason_text = Column(String, nullable=True)
-
-    # priority (0..1 code, binding: request-priority)
     priority = Column(
         Enum(
             CommunicationRequestPriority,
@@ -112,182 +123,56 @@ class CommunicationRequestModel(TenantAuditMixin, Base):
         nullable=True,
     )
 
-    # doNotPerform (0..1 boolean)
-    do_not_perform = Column(Boolean, nullable=True)
+    # authoredOn / occurrenceDateTime: half-open [start, end) ranges (NULL = absent).
+    authored_start = Column(DateTime(timezone=True), nullable=True)
+    authored_end = Column(DateTime(timezone=True), nullable=True)
+    occurrence_start = Column(DateTime(timezone=True), nullable=True)
+    occurrence_end = Column(DateTime(timezone=True), nullable=True)
 
-    # subject (0..1 Reference(Patient | Group))
+    # groupIdentifier (0..1 Identifier)
+    group_identifier_system = Column(String, nullable=True)
+    group_identifier_value = Column(String, nullable=True)
+
+    # subject (0..1 Reference)
     subject_reference = Column(String, nullable=True)
-    subject_type = Column(
-        Enum(
-            CommunicationRequestSubjectReferenceType,
-            name="communication_request_subject_reference_type",
-        ),
-        nullable=True,
-    )
-    subject_id = Column(BigInteger, nullable=True, index=True)
-    subject_display = Column(String, nullable=True)
-    subject_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    subject_identifier_type_system = Column(String, nullable=True)
-    subject_identifier_type_version = Column(String, nullable=True)
-    subject_identifier_type_code = Column(String, nullable=True)
-    subject_identifier_type_display = Column(String, nullable=True)
-    subject_identifier_type_text = Column(String, nullable=True)
-    subject_identifier_type_user_selected = Column(Boolean, nullable=True)
+    subject_type = Column(String, nullable=True)
+    subject_id = Column(BigInteger, nullable=True)
     subject_identifier_system = Column(String, nullable=True)
     subject_identifier_value = Column(String, nullable=True)
-    subject_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    subject_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # encounter (0..1 Reference(Encounter))
+    # encounter (0..1 Reference)
     encounter_reference = Column(String, nullable=True)
-    encounter_type = Column(
-        Enum(
-            CommunicationRequestEncounterReferenceType,
-            name="communication_request_encounter_reference_type",
-        ),
-        nullable=True,
-    )
+    encounter_type = Column(String, nullable=True)
     encounter_id = Column(BigInteger, nullable=True, index=True)
-    encounter_display = Column(String, nullable=True)
-    encounter_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    encounter_identifier_type_system = Column(String, nullable=True)
-    encounter_identifier_type_version = Column(String, nullable=True)
-    encounter_identifier_type_code = Column(String, nullable=True)
-    encounter_identifier_type_display = Column(String, nullable=True)
-    encounter_identifier_type_text = Column(String, nullable=True)
-    encounter_identifier_type_user_selected = Column(Boolean, nullable=True)
     encounter_identifier_system = Column(String, nullable=True)
     encounter_identifier_value = Column(String, nullable=True)
-    encounter_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    encounter_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # occurrence[x] (0..1 dateTime | Period)
-    occurrence_date_time = Column(DateTime(timezone=True), nullable=True)
-    occurrence_period_start = Column(DateTime(timezone=True), nullable=True)
-    occurrence_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # authoredOn (0..1 dateTime)
-    authored_on = Column(DateTime(timezone=True), nullable=True)
-
-    # requester (0..1 Reference(Practitioner | PractitionerRole | Organization | Patient | RelatedPerson | Device))
+    # requester (0..1 Reference)
     requester_reference = Column(String, nullable=True)
-    requester_type = Column(
-        Enum(
-            CommunicationRequestRequesterReferenceType,
-            name="communication_request_requester_reference_type",
-        ),
-        nullable=True,
-    )
+    requester_type = Column(String, nullable=True)
     requester_id = Column(BigInteger, nullable=True, index=True)
-    requester_display = Column(String, nullable=True)
-    requester_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    requester_identifier_type_system = Column(String, nullable=True)
-    requester_identifier_type_version = Column(String, nullable=True)
-    requester_identifier_type_code = Column(String, nullable=True)
-    requester_identifier_type_display = Column(String, nullable=True)
-    requester_identifier_type_text = Column(String, nullable=True)
-    requester_identifier_type_user_selected = Column(Boolean, nullable=True)
     requester_identifier_system = Column(String, nullable=True)
     requester_identifier_value = Column(String, nullable=True)
-    requester_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    requester_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # sender (0..1 Reference(Device | Organization | Patient | Practitioner | PractitionerRole | RelatedPerson | HealthcareService))
+    # sender (0..1 Reference)
     sender_reference = Column(String, nullable=True)
-    sender_type = Column(
-        Enum(
-            CommunicationRequestSenderReferenceType,
-            name="communication_request_sender_reference_type",
-        ),
-        nullable=True,
-    )
+    sender_type = Column(String, nullable=True)
     sender_id = Column(BigInteger, nullable=True, index=True)
-    sender_display = Column(String, nullable=True)
-    sender_identifier_use = Column(
-        Enum(IdentifierUse, name="identifier_use", create_type=False),
-        nullable=True,
-    )
-    sender_identifier_type_system = Column(String, nullable=True)
-    sender_identifier_type_version = Column(String, nullable=True)
-    sender_identifier_type_code = Column(String, nullable=True)
-    sender_identifier_type_display = Column(String, nullable=True)
-    sender_identifier_type_text = Column(String, nullable=True)
-    sender_identifier_type_user_selected = Column(Boolean, nullable=True)
     sender_identifier_system = Column(String, nullable=True)
     sender_identifier_value = Column(String, nullable=True)
-    sender_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
-    sender_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
 
-    # extension (0..* Extension, JSONB)
-    extension = Column(JSONB, nullable=False, server_default=text("'[]'"))
-
-    # Relationships
     identifiers = relationship(
         "CommunicationRequestIdentifier",
         back_populates="communication_request",
         cascade="all, delete-orphan",
     )
-    based_on_list = relationship(
-        "CommunicationRequestBasedOn",
+    tokens = relationship(
+        "CommunicationRequestToken",
         back_populates="communication_request",
         cascade="all, delete-orphan",
     )
-    replaces_list = relationship(
-        "CommunicationRequestReplaces",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    status_reason_codings = relationship(
-        "CommunicationRequestStatusReasonCoding",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    categories = relationship(
-        "CommunicationRequestCategory",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    medium_list = relationship(
-        "CommunicationRequestMedium",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    about_list = relationship(
-        "CommunicationRequestAbout",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    payloads = relationship(
-        "CommunicationRequestPayload",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    recipients = relationship(
-        "CommunicationRequestRecipient",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    reason_codes = relationship(
-        "CommunicationRequestReasonCode",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    reason_references = relationship(
-        "CommunicationRequestReasonReference",
-        back_populates="communication_request",
-        cascade="all, delete-orphan",
-    )
-    notes = relationship(
-        "CommunicationRequestNote",
+    references = relationship(
+        "CommunicationRequestReference",
         back_populates="communication_request",
         cascade="all, delete-orphan",
     )

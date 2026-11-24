@@ -1,65 +1,39 @@
-from .category import (
-    CommunicationRequestCategory,
-    CommunicationRequestCategoryCoding,
+from .core import (
+    ENCOUNTER_TYPES,
+    REQUESTER_TYPES,
+    SENDER_TYPES,
+    SUBJECT_TYPES,
+    CommunicationRequestModel,
+    communication_request_id_seq,
 )
-from .codings import CommunicationRequestStatusReasonCoding
-from .core import CommunicationRequestModel
-from .enums import (
-    CommunicationRequestEncounterReferenceType,
-    CommunicationRequestPriority,
-    CommunicationRequestReasonReferenceType,
-    CommunicationRequestRecipientReferenceType,
-    CommunicationRequestRequesterReferenceType,
-    CommunicationRequestSenderReferenceType,
-    CommunicationRequestStatus,
-    CommunicationRequestSubjectReferenceType,
+from .enums import CommunicationRequestPriority, CommunicationRequestStatus
+from .identifier import CommunicationRequestIdentifier
+from .reference import (
+    BASED_ON_TYPES,
+    REPLACES_TYPES,
+    RECIPIENT_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    CommunicationRequestReference,
 )
-from .identifier import (
-    CommunicationRequestIdentifier,
-    CommunicationRequestIdentifierTypeCoding,
-)
-from .medium import (
-    CommunicationRequestMedium,
-    CommunicationRequestMediumCoding,
-)
-from .note import CommunicationRequestNote
-from .payload import CommunicationRequestPayload
-from .reason_code import (
-    CommunicationRequestReasonCode,
-    CommunicationRequestReasonCodeCoding,
-)
-from .references import (
-    CommunicationRequestAbout,
-    CommunicationRequestBasedOn,
-    CommunicationRequestReasonReference,
-    CommunicationRequestRecipient,
-    CommunicationRequestReplaces,
-)
+from .token import TOKEN_PARAMS, CommunicationRequestToken
 
 __all__ = [
-    "CommunicationRequestAbout",
-    "CommunicationRequestBasedOn",
-    "CommunicationRequestCategory",
-    "CommunicationRequestCategoryCoding",
-    "CommunicationRequestEncounterReferenceType",
+    "BASED_ON_TYPES",
+    "ENCOUNTER_TYPES",
+    "REPLACES_TYPES",
+    "REQUESTER_TYPES",
+    "RECIPIENT_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "SENDER_TYPES",
+    "SUBJECT_TYPES",
+    "TOKEN_PARAMS",
     "CommunicationRequestIdentifier",
-    "CommunicationRequestIdentifierTypeCoding",
-    "CommunicationRequestMedium",
-    "CommunicationRequestMediumCoding",
     "CommunicationRequestModel",
-    "CommunicationRequestNote",
-    "CommunicationRequestPayload",
     "CommunicationRequestPriority",
-    "CommunicationRequestReasonCode",
-    "CommunicationRequestReasonCodeCoding",
-    "CommunicationRequestReasonReference",
-    "CommunicationRequestReasonReferenceType",
-    "CommunicationRequestRecipient",
-    "CommunicationRequestRecipientReferenceType",
-    "CommunicationRequestReplaces",
-    "CommunicationRequestRequesterReferenceType",
-    "CommunicationRequestSenderReferenceType",
+    "CommunicationRequestReference",
     "CommunicationRequestStatus",
-    "CommunicationRequestStatusReasonCoding",
-    "CommunicationRequestSubjectReferenceType",
+    "CommunicationRequestToken",
+    "communication_request_id_seq",
 ]

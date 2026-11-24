@@ -267,7 +267,7 @@ routes:
     - task
     - goal
     - communication
-    # - communication_request
+    - communication_request
     - family_member_history
     # - terminology
     # - fhir_profile

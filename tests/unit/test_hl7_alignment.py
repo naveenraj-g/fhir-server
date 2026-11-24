@@ -55,6 +55,8 @@ REQUIRED_CODE_STORAGE = {
     ("DiagnosticReport", "status"): ("diagnostic_report", "status"),
     ("Encounter", "status"): ("encounter", "status"),
     ("Communication", "status"): ("communication", "status"),
+    ("CommunicationRequest", "status"): ("communication_request", "status"),
+    ("CommunicationRequest", "priority"): ("communication_request", "priority"),
     ("Consent", "status"): ("consent", "status"),
     ("DocumentReference", "relation"): ("document_reference_relates_to", "code"),
     ("DocumentReference", "status"): ("document_reference", "status"),

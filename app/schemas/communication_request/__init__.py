@@ -1,45 +1,17 @@
-from .input import (
-    CommunicationRequestCategoryInput,
+from app.schemas.communication_request.input import (
     CommunicationRequestCreateSchema,
-    CommunicationRequestIdentifierInput,
-    CommunicationRequestNoteInput,
     CommunicationRequestPatchSchema,
-    CommunicationRequestPayloadInput,
-    CommunicationRequestReferenceInput,
 )
-from .response import (
-    FHIRCommunicationRequestAnnotation,
+from app.schemas.communication_request.response import (
     FHIRCommunicationRequestBundle,
     FHIRCommunicationRequestBundleEntry,
-    FHIRCommunicationRequestPayload,
     FHIRCommunicationRequestSchema,
-    PaginatedCommunicationRequestResponse,
-    PlainCommunicationRequestCategory,
-    PlainCommunicationRequestIdentifier,
-    PlainCommunicationRequestNote,
-    PlainCommunicationRequestPayload,
-    PlainCommunicationRequestReference,
-    PlainCommunicationRequestResponse,
 )
 
 __all__ = [
-    "CommunicationRequestCategoryInput",
     "CommunicationRequestCreateSchema",
-    "CommunicationRequestIdentifierInput",
-    "CommunicationRequestNoteInput",
     "CommunicationRequestPatchSchema",
-    "CommunicationRequestPayloadInput",
-    "CommunicationRequestReferenceInput",
-    "FHIRCommunicationRequestAnnotation",
     "FHIRCommunicationRequestBundle",
     "FHIRCommunicationRequestBundleEntry",
-    "FHIRCommunicationRequestPayload",
     "FHIRCommunicationRequestSchema",
-    "PaginatedCommunicationRequestResponse",
-    "PlainCommunicationRequestCategory",
-    "PlainCommunicationRequestIdentifier",
-    "PlainCommunicationRequestNote",
-    "PlainCommunicationRequestPayload",
-    "PlainCommunicationRequestReference",
-    "PlainCommunicationRequestResponse",
 ]
