@@ -1,77 +1,89 @@
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
-    AuditFields,
     FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRReference,
 )
-
-from .category import PlainGoalCategory
-from .identifier import PlainGoalIdentifier
-from .note import FHIRGoalAnnotation, PlainGoalNote
-from .reference import PlainGoalReference
-from .target import FHIRGoalTarget, PlainGoalTarget
+from app.schemas.datatypes.annotation import FHIRAnnotation
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
-# ── FHIR JSON ─────────────────────────────────────────────────────────────────
+class FHIRGoalTarget(BaseModel):
+    measure: FHIRCodeableConcept | None = Field(
+        None, description="The parameter whose value is being tracked."
+    )
+    detailQuantity: dict | None = Field(None, description="detail[x]: a Quantity.")
+    detailRange: dict | None = Field(None, description="detail[x]: a Range.")
+    detailCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="detail[x]: a CodeableConcept."
+    )
+    detailString: str | None = Field(None, description="detail[x]: a string.")
+    detailBoolean: bool | None = Field(None, description="detail[x]: a boolean.")
+    detailInteger: int | None = Field(None, description="detail[x]: an integer.")
+    detailRatio: dict | None = Field(None, description="detail[x]: a Ratio.")
+    dueDate: str | None = Field(None, description="due[x]: reach goal on this date.")
+    dueDuration: dict | None = Field(
+        None, description="due[x]: reach goal within this Duration."
+    )
 
 
 class FHIRGoalSchema(BaseModel):
-    """FHIR R4 Goal resource schema."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    resourceType: Literal["Goal"] = "Goal"
-    id: str = Field(..., description="Logical ID of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="External Ids for this goal."
+    resourceType: str = Field("Goal", description="Always 'Goal'.")
+    id: str = Field(..., description="Public goal_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
-    lifecycleStatus: str = Field(
-        ...,
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="External ids for this goal."
+    )
+    lifecycleStatus: str | None = Field(
+        None,
         description="proposed | planned | accepted | active | on-hold | completed | cancelled | entered-in-error | rejected.",
     )
     achievementStatus: FHIRCodeableConcept | None = Field(
         None,
-        description="in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable.",
+        description="in-progress | improving | worsening | no-change | achieved ...",
     )
     category: list[FHIRCodeableConcept] | None = Field(
         None, description="E.g. Treatment, dietary, behavioral, etc."
     )
     priority: FHIRCodeableConcept | None = Field(
-        None, description="high-priority | moderate-priority | low-priority."
+        None, description="high-priority | medium-priority | low-priority."
     )
-    description: FHIRCodeableConcept = Field(
-        ..., description="Code or text describing the goal."
+    description: FHIRCodeableConcept | None = Field(
+        None, description="Code or text describing the goal."
     )
-    subject: FHIRReference = Field(
-        ...,
-        description="Who this goal is intended for (Patient | Group | Organization).",
+    subject: FHIRReference | None = Field(
+        None, description="Who this goal is intended for."
     )
-    startDate: str | None = Field(None, description="When goal pursuit begins (date).")
+    startDate: str | None = Field(
+        None, description="start[x]: when goal pursuit begins."
+    )
     startCodeableConcept: FHIRCodeableConcept | None = Field(
-        None, description="When goal pursuit begins (CodeableConcept)."
+        None, description="start[x]: reference point for the goal."
     )
     target: list[FHIRGoalTarget] | None = Field(
         None, description="Target outcome for the goal."
     )
-    statusDate: str | None = Field(None, description="When goal status took effect.")
-    statusReason: str | None = Field(
-        None, description="Reason for current status (string)."
+    statusDate: str | None = Field(
+        None, description="When the goal status took effect."
     )
+    statusReason: str | None = Field(None, description="Reason for the current status.")
     expressedBy: FHIRReference | None = Field(
-        None,
-        description="Who's responsible for creating Goal (Patient | Practitioner | PractitionerRole | RelatedPerson).",
+        None, description="Who is responsible for creating the goal."
     )
     addresses: list[FHIRReference] | None = Field(
         None, description="Issues addressed by this goal."
     )
-    note: list[FHIRGoalAnnotation] | None = Field(
+    note: list[FHIRAnnotation] | None = Field(
         None, description="Comments about the goal."
     )
     outcomeCode: list[FHIRCodeableConcept] | None = Field(
@@ -80,109 +92,25 @@ class FHIRGoalSchema(BaseModel):
     outcomeReference: list[FHIRReference] | None = Field(
         None, description="Observation that resulted from goal."
     )
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
 
 
 class FHIRGoalBundleEntry(BaseModel):
-    """Entry element within a FHIR searchset Bundle for Goal."""
-
-    fullUrl: str = Field(..., description="Absolute URL for the resource.")
-    resource: FHIRGoalSchema = Field(..., description="FHIR Goal resource.")
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRGoalSchema | dict = Field(
+        ...,
+        description="A Goal (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Group / Organization (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
 
 class FHIRGoalBundle(FHIRBundle):
-    """FHIR R4 searchset Bundle for Goal resources."""
-
-    entry: list[FHIRGoalBundleEntry] = Field(
-        default_factory=list, description="Entries in this bundle page."
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
     )
-
-
-# ── Plain JSON ────────────────────────────────────────────────────────────────
-
-
-class PlainGoalResponse(AuditFields):
-    """Plain snake_case serialization of a Goal entity."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Public sequence ID of the goal.")
-    lifecycle_status: str = Field(..., description="Lifecycle status.")
-    achievement_status: PlainGoalCategory | None = Field(
-        None, description="Achievement status concept."
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
     )
-    category: list[PlainGoalCategory] | None = Field(None, description="Categories.")
-    priority: PlainGoalCategory | None = Field(None, description="Priority concept.")
-    description: PlainGoalCategory | None = Field(
-        None, description="Description concept."
-    )
-    subject: str | None = Field(None, description="Computed subject reference string.")
-    subject_display: str | None = Field(None, description="Subject display text.")
-    subject_type: str | None = Field(None, description="Subject resource type.")
-    subject_id: int | None = Field(None, description="Subject public ID.")
-    subject_identifier_use: str | None = None
-    subject_identifier_type_system: str | None = None
-    subject_identifier_type_version: str | None = None
-    subject_identifier_type_code: str | None = None
-    subject_identifier_type_display: str | None = None
-    subject_identifier_type_user_selected: bool | None = None
-    subject_identifier_type_text: str | None = None
-    subject_identifier_system: str | None = None
-    subject_identifier_value: str | None = None
-    subject_identifier_period_start: str | None = None
-    subject_identifier_period_end: str | None = None
-    start_date: str | None = Field(None, description="Start date.")
-    start_codeable_concept: PlainGoalCategory | None = Field(
-        None, description="Start codeable concept."
-    )
-    target: list[PlainGoalTarget] | None = Field(None, description="Target outcomes.")
-    status_date: str | None = Field(None, description="Status date.")
-    status_reason: str | None = Field(None, description="Status reason string.")
-    expressed_by: str | None = Field(
-        None, description="Computed expressedBy reference string."
-    )
-    expressed_by_display: str | None = Field(
-        None, description="ExpressedBy display text."
-    )
-    expressed_by_type: str | None = Field(
-        None, description="ExpressedBy resource type."
-    )
-    expressed_by_id: int | None = Field(None, description="ExpressedBy public ID.")
-    expressed_by_identifier_use: str | None = None
-    expressed_by_identifier_type_system: str | None = None
-    expressed_by_identifier_type_version: str | None = None
-    expressed_by_identifier_type_code: str | None = None
-    expressed_by_identifier_type_display: str | None = None
-    expressed_by_identifier_type_user_selected: bool | None = None
-    expressed_by_identifier_type_text: str | None = None
-    expressed_by_identifier_system: str | None = None
-    expressed_by_identifier_value: str | None = None
-    expressed_by_identifier_period_start: str | None = None
-    expressed_by_identifier_period_end: str | None = None
-    addresses: list[PlainGoalReference] | None = Field(
-        None, description="Addresses references."
-    )
-    note: list[PlainGoalNote] | None = Field(None, description="Notes/annotations.")
-    outcome_code: list[PlainGoalCategory] | None = Field(
-        None, description="Outcome codes."
-    )
-    outcome_reference: list[PlainGoalReference] | None = Field(
-        None, description="Outcome references."
-    )
-    identifier: list[PlainGoalIdentifier] | None = Field(
-        None, description="Identifier child rows."
-    )
-    extension: list[dict] | None = Field(None, description="Extensions.")
-
-
-class PaginatedGoalResponse(BaseModel):
-    """Paginated plain JSON response for Goal list queries."""
-
-    total: int = Field(..., description="Total matching records count.")
-    limit: int = Field(..., description="Page size limit applied.")
-    offset: int = Field(..., description="Offset applied.")
-    data: list[PlainGoalResponse] = Field(
-        default_factory=list, description="Page of Goal results."
-    )
+    entry: list[FHIRGoalBundleEntry] | None = None

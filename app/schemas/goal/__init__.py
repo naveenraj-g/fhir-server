@@ -1,45 +1,17 @@
-from .input import (
-    GoalCategoryInput,
+from app.schemas.goal.input import (
     GoalCreateSchema,
-    GoalIdentifierInput,
-    GoalNoteInput,
     GoalPatchSchema,
-    GoalReferenceInput,
-    GoalTargetInput,
 )
-from .response import (
-    FHIRGoalAnnotation,
+from app.schemas.goal.response import (
     FHIRGoalBundle,
     FHIRGoalBundleEntry,
     FHIRGoalSchema,
-    FHIRGoalTarget,
-    PaginatedGoalResponse,
-    PlainGoalCategory,
-    PlainGoalIdentifier,
-    PlainGoalNote,
-    PlainGoalReference,
-    PlainGoalResponse,
-    PlainGoalTarget,
 )
 
 __all__ = [
-    "FHIRGoalAnnotation",
+    "GoalCreateSchema",
+    "GoalPatchSchema",
     "FHIRGoalBundle",
     "FHIRGoalBundleEntry",
     "FHIRGoalSchema",
-    "FHIRGoalTarget",
-    "GoalCategoryInput",
-    "GoalCreateSchema",
-    "GoalIdentifierInput",
-    "GoalNoteInput",
-    "GoalPatchSchema",
-    "GoalReferenceInput",
-    "GoalTargetInput",
-    "PaginatedGoalResponse",
-    "PlainGoalCategory",
-    "PlainGoalIdentifier",
-    "PlainGoalNote",
-    "PlainGoalReference",
-    "PlainGoalResponse",
-    "PlainGoalTarget",
 ]

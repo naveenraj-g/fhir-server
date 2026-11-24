@@ -22,6 +22,7 @@ from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.assertions import assert_operation_outcome
 from tests.integration.care_plan.conftest import CARE_PLAN_PERMS
+from tests.integration.goal.support import create_goal, goal_body
 from tests.integration.care_plan.support import (
     BASE,
     SCT,
@@ -376,9 +377,15 @@ async def test_create_supporting_info_is_a_reference_any(client):
     assert await _created_ok(client, supportingInfo=[{"reference": "Task/5"}])
 
 
-async def test_create_goal_is_stored_as_sent(client):
-    """Goal is not a resource here yet."""
-    assert await _created_ok(client, goal=[{"reference": "Goal/999999"}])
+async def test_create_goal_must_exist(client):
+    """Goal is a rebuilt resource: a relative reference to one must exist."""
+    goal = await create_goal(client, goal_body())
+    assert await _created_ok(client, goal=[{"reference": f"Goal/{goal}"}])
+    resp = await client.post(
+        BASE + "/",
+        json=care_plan_body(goal=[{"reference": "Goal/999999"}]),
+    )
+    assert resp.status_code == 422, resp.text
 
 
 async def test_create_activity_reference_must_exist_for_rebuilt_types(client):

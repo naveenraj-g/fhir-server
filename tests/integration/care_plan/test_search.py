@@ -12,6 +12,7 @@ POST _search.
 
 import pytest
 
+from tests.integration.goal.support import create_goal, goal_body
 from tests.integration.care_plan.support import (
     API,
     BASE,
@@ -104,6 +105,9 @@ async def world(client):
     w["enc"] = await create_encounter(client, encounter_body())
     w["team"] = await create_care_team(client, care_team_body(status="active"))
     w["cond"] = await create_condition(client, condition_body(w["p1"]))
+    w["goal"] = await create_goal(
+        client, goal_body({"reference": f"Patient/{w['p1']}"}, lifecycleStatus="active")
+    )
     w["sr"] = await create_service_request(client, service_request_body(w["p1"]))
     w["appt"] = await create_appointment(client, appointment_body(w["p1"]))
     w["mr"] = await create_medication_request(client, medication_request_body(w["p1"]))
@@ -133,7 +137,7 @@ async def world(client):
             basedOn=[{"reference": f"CarePlan/{w['e']}"}],
             careTeam=[{"reference": f"CareTeam/{w['team']}"}],
             addresses=[{"reference": f"Condition/{w['cond']}"}],
-            goal=[{"reference": "Goal/460001"}],
+            goal=[{"reference": f"Goal/{w['goal']}"}],
             instantiatesCanonical=[f"{PLAN_DEFINITION}|1.0"],
             instantiatesUri=["http://example.org/protocols/diabetes"],
             activity=[
@@ -430,9 +434,11 @@ async def test_care_team_condition_and_goal(client, world):
     assert await _keys(client, world, **{"care-team": str(world["team"])}) == {"a"}
     assert await _keys(client, world, condition=str(world["cond"])) == {"a"}
     assert await _keys(client, world, condition=f"Condition/{world['cond']}") == {"a"}
-    # Goal is not a resource here, but the reference is still searchable
-    assert await _keys(client, world, goal="460001") == {"a"}
-    assert await _keys(client, world, goal="Goal/460001") == {"a"}
+    assert await _keys(client, world, goal=str(world["goal"])) == {"a"}
+    assert await _keys(client, world, goal=f"Goal/{world['goal']}") == {"a"}
+    # Goal is a rebuilt resource: the reference chains
+    assert await _keys(client, world, **{"goal.lifecycle-status": "active"}) == {"a"}
+    assert await _keys(client, world, **{"goal.lifecycle-status": "completed"}) == set()
     assert await _keys(client, world, **{"goal:missing": "true"}) == ALL - {"a"}
     assert await _keys(client, world, **{"care-team:missing": "true"}) == ALL - {"a"}
     assert await _keys(client, world, **{"condition:missing": "true"}) == ALL - {"a"}
@@ -549,8 +555,8 @@ async def test_bad_chains_are_400(client, world):
     )  # not searchable here
     assert await _status(client, **{"activity-reference:Task.x": "x"}) == 400
     assert (
-        await _status(client, **{"goal.x": "x"}) == 400
-    )  # Goal is not a resource here
+        await _status(client, **{"goal.nonsense": "x"}) == 400
+    )  # unknown Goal parameter
     assert (
         await _status(client, **{"category.x": "y"}) == 400
     )  # a token cannot be chained

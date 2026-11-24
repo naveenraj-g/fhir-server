@@ -17,6 +17,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._goal_revinclude import column_goal_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -754,6 +755,9 @@ def organization_search() -> SearchRegistry:
                 "manufacturer",
                 "Organization",
                 lambda o: o.organization_id,
+            ),
+            *column_goal_revincludes(
+                ("subject",), "subject", "Organization", lambda o: o.organization_id
             ),
             *column_service_request_revincludes(
                 ("requester",), "requester", "Organization", lambda o: o.organization_id

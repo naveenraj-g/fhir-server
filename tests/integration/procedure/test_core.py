@@ -451,7 +451,7 @@ async def test_create_unrebuilt_targets_are_not_checked(client, patient):
         patient,
         report=[{"reference": "Composition/999999"}],
         usedReference=[{"reference": "Device/999999"}],
-        partOf=[{"reference": "Goal/999999"}],
+        partOf=[{"reference": "Device/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
 

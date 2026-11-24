@@ -369,7 +369,7 @@ async def test_create_absolute_logical_and_unmodeled_references_not_resolved(cli
         subject={"reference": "https://other.example.org/fhir/Patient/1"},
         informationSource={"identifier": {"system": "urn:pr", "value": "P-9"}},
         basedOn=[{"reference": "https://other.example.org/fhir/CarePlan/9"}],
-        derivedFrom=[{"reference": "Goal/12"}],
+        derivedFrom=[{"reference": "Device/12"}],
         partOf=[{"reference": "https://other.example.org/fhir/MedicationDispense/9"}],
     )
     resp = await client.post(BASE + "/", json=body)
@@ -377,7 +377,7 @@ async def test_create_absolute_logical_and_unmodeled_references_not_resolved(cli
     data = resp.json()
     assert data["subject"]["reference"] == "https://other.example.org/fhir/Patient/1"
     assert data["informationSource"]["identifier"]["value"] == "P-9"
-    assert data["derivedFrom"][0]["reference"] == "Goal/12"
+    assert data["derivedFrom"][0]["reference"] == "Device/12"
     assert (
         data["partOf"][0]["reference"]
         == "https://other.example.org/fhir/MedicationDispense/9"

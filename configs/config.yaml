@@ -265,7 +265,7 @@ routes:
     - specimen
     # - specimen_definition
     # - task
-    # - goal
+    - goal
     # - communication
     # - communication_request
     - family_member_history

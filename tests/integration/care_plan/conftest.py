@@ -31,6 +31,8 @@ CARE_PLAN_PERMS = [
     "encounter:read",
     "condition:create",
     "condition:read",
+    "goal:create",
+    "goal:read",
     "group:create",
     "group:read",
     "appointment:create",

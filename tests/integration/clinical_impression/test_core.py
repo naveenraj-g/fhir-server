@@ -388,7 +388,7 @@ async def test_create_supporting_info_is_checked_for_resources_here(client, pati
             {"reference": f"Condition/{condition}"},
             {"reference": f"Patient/{patient}"},
             {"reference": "Observation/160005"},
-            {"reference": "Goal/999999"},
+            {"reference": "Device/999999"},
         ],
     )
     assert (

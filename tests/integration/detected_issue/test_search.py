@@ -358,7 +358,7 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"author:Device.model": "x"}) == 400
     )  # Device is not searchable here
     assert (
-        await _status(client, **{"implicated:Goal.status": "x"}) == 400
+        await _status(client, **{"implicated:Device.status": "x"}) == 400
     )  # a valid R4 type, but not a resource built here (nothing to follow)
     assert (
         await _status(client, **{"implicated:Banana.status": "x"}) == 400

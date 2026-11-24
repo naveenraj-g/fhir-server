@@ -19,6 +19,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._goal_revinclude import column_goal_revincludes
 from app.repository._search_targets import MODELED
 from app.repository._medication_dispense_revinclude import (
     column_medication_dispense_revincludes,
@@ -1001,6 +1002,9 @@ def patient_search() -> SearchRegistry:
                 ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
             ),
             *participant_care_team_revincludes("Patient", lambda p: p.patient_id),
+            *column_goal_revincludes(
+                ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
+            ),
             *actor_schedule_revincludes("Patient", lambda p: p.patient_id),
             *member_group_revincludes("Patient", lambda p: p.patient_id),
             *column_medication_request_revincludes(

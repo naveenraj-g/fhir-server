@@ -33,6 +33,7 @@ from app.repository._document_reference_revinclude import (
 )
 from app.repository._care_plan_revinclude import column_care_plan_revincludes
 from app.repository._care_team_revinclude import column_care_team_revincludes
+from app.repository._goal_revinclude import column_goal_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.composite import split_composite
 from app.fhir.search.sql import (
@@ -583,6 +584,9 @@ def group_search() -> SearchRegistry:
                 ("subject",), "subject", "Group", lambda x: x.group_id
             ),
             *column_care_team_revincludes(
+                ("subject",), "subject", "Group", lambda g: g.group_id
+            ),
+            *column_goal_revincludes(
                 ("subject",), "subject", "Group", lambda g: g.group_id
             ),
             IncludeTarget(

@@ -1,106 +1,41 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import OrganizationReferenceType
-from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+from app.models.goal import GoalModel
+from app.repository._reference_shared import _validate_reference
 
+__all__ = [
+    "INDEX_RELATIONSHIPS",
+    "_validate_reference",
+    "_with_relationships",
+    "typed",
+]
 
-def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
-    if payload is None:
-        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
-    return {
-        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
-
-
-def _child_reference_identifier_kwargs(ref_item) -> dict:
-    if isinstance(ref_item, str) or ref_item is None:
-        return {f"reference_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
-    return {
-        f"reference_{suffix}": getattr(ref_item, suffix, None)
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
-
-
-from app.models.goal import (
-    GoalAddresses,
-    GoalAddressesReferenceType,
-    GoalCategory,
-    GoalExpressedByReferenceType,
-    GoalIdentifier,
-    GoalModel,
-    GoalNote,
-    GoalOutcomeCode,
-    GoalOutcomeReference,
-    GoalOutcomeReferenceType,
-    GoalSubjectReferenceType,
-    GoalTarget,
+# Relationship attributes the search index owns - every one is rebuilt on each write.
+INDEX_RELATIONSHIPS = (
+    "identifiers",
+    "tokens",
+    "targets",
 )
 
-_SORTABLE_FIELDS = {
-    "goal_id": GoalModel.goal_id,
-    "lifecycle_status": GoalModel.lifecycle_status,
-    "status_date": GoalModel.status_date,
-    "start_date": GoalModel.start_date,
-    "created_at": GoalModel.created_at,
-    "updated_at": GoalModel.updated_at,
-}
-
-
-def _parse_subject_ref(ref: str) -> tuple:
-    return parse_reference(ref, GoalSubjectReferenceType)
-
-
-def _parse_expressed_by_ref(ref: str) -> tuple:
-    return parse_reference(ref, GoalExpressedByReferenceType)
-
-
-def _parse_assigner_ref(ref: str) -> tuple:
-    return parse_reference(ref, OrganizationReferenceType)
-
-
-def _parse_outcome_ref(ref: str) -> tuple:
-    return parse_reference(ref, GoalOutcomeReferenceType)
-
-
-def _parse_generic_ref(ref: str) -> tuple:
-    """Parse any Type/ID reference string into (type_str, id_int)."""
-    if "/" in ref:
-        parts = ref.split("/", 1)
-        try:
-            return parts[0], int(parts[1])
-        except ValueError:
-            return parts[0], None
-    return None, None
-
-
-async def _validate_ref(
-    session, org_id: str, ref_type, ref_id: int | None, field_name: str
-) -> None:
-    if not ref_type or ref_id is None:
-        return
-    type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
-    if type_str in RESOURCE_REGISTRY:
-        await ensure_resource_exists(
-            session, type_str, ref_id, org_id=org_id, field_name=field_name
-        )
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
-    """Eager-load all Goal sub-resources to avoid N+1 and async lazy-load failures."""
+    """Eager-load the search-index child rows. Only needed when a write is about to replace them
+    (patch_full) - reads never touch them, since every response is served straight from
+    GoalModel.content."""
     return stmt.options(
-        selectinload(GoalModel.identifiers).selectinload(GoalIdentifier.type_codings),
-        selectinload(GoalModel.achievement_status_codings),
-        selectinload(GoalModel.priority_codings),
-        selectinload(GoalModel.description_codings),
-        selectinload(GoalModel.start_codings),
-        selectinload(GoalModel.categories).selectinload(GoalCategory.codings),
-        selectinload(GoalModel.targets).selectinload(GoalTarget.measure_codings),
-        selectinload(GoalModel.targets).selectinload(GoalTarget.detail_codings),
-        selectinload(GoalModel.addresses_list),
-        selectinload(GoalModel.notes),
-        selectinload(GoalModel.outcome_codes).selectinload(GoalOutcomeCode.codings),
-        selectinload(GoalModel.outcome_references),
+        *(selectinload(getattr(GoalModel, rel)) for rel in INDEX_RELATIONSHIPS)
     )
+
+
+def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:
+    """('Patient', 10001) for a relative `Type/<id>` whose type is in `allowed`; None for an
+    absolute URL, a contained reference or any other shape (those match by their raw string
+    only)."""
+    match = _REF.match(reference or "")
+    if match and match["type"] in allowed:
+        return match["type"], int(match["id"])
+    return None

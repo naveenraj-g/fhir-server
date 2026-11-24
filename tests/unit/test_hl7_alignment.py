@@ -59,6 +59,7 @@ REQUIRED_CODE_STORAGE = {
     ("Endpoint", "status"): ("endpoint", "status"),
     ("EpisodeOfCare", "status"): ("episode_of_care", "status"),
     ("FamilyMemberHistory", "status"): ("family_member_history", "status"),
+    ("Goal", "lifecycle-status"): ("goal", "lifecycle_status"),
     ("Group", "type"): ("group", "type"),
     ("Immunization", "status"): ("immunization", "status"),
     ("ImmunizationEvaluation", "status"): ("immunization_evaluation", "status"),

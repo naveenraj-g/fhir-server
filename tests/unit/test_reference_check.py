@@ -99,8 +99,17 @@ def test_the_same_target_is_reported_at_every_path():
 def test_checkable_types_are_the_rebuilt_content_based_resources():
     types = checkable_types()
     # rebuilt resources are checked, including the ones added recently
-    assert {"Patient", "Observation", "CareTeam", "CarePlan", "Group", "EpisodeOfCare", "DocumentReference"} <= types
+    assert {
+        "Patient",
+        "Observation",
+        "CareTeam",
+        "CarePlan",
+        "Group",
+        "EpisodeOfCare",
+        "DocumentReference",
+        "Goal",
+    } <= types
     # the registry still lists old resources whose routes are off: not checked yet
-    assert not {"Goal", "Task"} & types
+    assert "Task" not in types
     # not a resource this server has at all
     assert "Device" not in types

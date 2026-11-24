@@ -316,11 +316,11 @@ async def _related_person(client) -> int:
 
 async def test_create_unrebuilt_reference_targets_are_not_checked(client, patient):
     """supportingInformation is a Reference(Any): a type this server does not have (a
-    Goal) is stored as sent. Every other target here is a rebuilt resource, so a
+    Device) is stored as sent. Every other target here is a rebuilt resource, so a
     dangling one is rejected."""
     body = appointment_body(
         patient,
-        supportingInformation=[{"reference": "Goal/999999"}],
+        supportingInformation=[{"reference": "Device/999999"}],
     )
     assert (await client.post(BASE + "/", json=body)).status_code == 201
     for element, ref in (

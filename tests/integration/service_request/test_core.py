@@ -496,7 +496,7 @@ async def test_create_supporting_info_is_checked_for_rebuilt_types(client, patie
     )
     assert (await client.post(BASE + "/", json=missing)).status_code == 422
     stored = service_request_body(
-        patient, supportingInfo=[{"reference": "Goal/999999"}]
+        patient, supportingInfo=[{"reference": "Device/999999"}]
     )
     assert (await client.post(BASE + "/", json=stored)).status_code == 201
 

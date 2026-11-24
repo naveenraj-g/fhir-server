@@ -1,3 +1,11 @@
-from .core import GoalService
+from app.core.logging import trace_methods
+
+from .core import _CoreMixin
 
 __all__ = ["GoalService"]
+
+
+@trace_methods
+class GoalService(_CoreMixin):
+    """All Goal business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

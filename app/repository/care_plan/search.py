@@ -916,6 +916,7 @@ def care_plan_search() -> SearchRegistry:
             reference_include("part-of", "CarePlan"),
             reference_include("care-team", "CareTeam"),
             reference_include("condition", "Condition"),
+            reference_include("goal", "Goal"),
             *performer_includes,
             *activity_includes,
         ),
