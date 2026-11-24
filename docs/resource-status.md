@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-25, after rebuilding Measure._
+_Last updated: 2026-11-25, after rebuilding MeasureReport._
 
 ## Architecture in one line
 
@@ -10,7 +10,7 @@ Medplum-style: the whole FHIR R4 resource lives in one `content` JSONB column; o
 
 ---
 
-## 1. Rebuilt on the current architecture (51)
+## 1. Rebuilt on the current architecture (52)
 
 "Params" is the number of R4 search parameters served, excluding the common `_id` and `_lastUpdated` that every resource also has (read from each `SearchRegistry`).
 
@@ -89,20 +89,13 @@ stored FHIR document and checks **every** relative `Type/<id>` reference, wherev
 Registering a rebuilt resource in `RESOURCE_REGISTRY` is all it takes for every other resource to check references to it.
 Covered by `tests/unit/test_reference_check.py` and `tests/integration/reference_check/` (one row per rebuilt resource in
 `cases.py`, a dangling reference to every checkable type on every resource).
+| 52 | MeasureReport | `/measure-reports` | 9 | 570000 | `f1b4c7d0e529` | _pending_ | **`measure` is a canonical URL resolved against the stored Measure's own `url`** (the `QuestionnaireResponse.questionnaire` pattern: `url`, `url|1.0`, relative `Measure/<id>`; an unversioned search finds every stored version; `measure.title=` chains, `_include=MeasureReport:measure`, and `Measure?_revinclude=MeasureReport:measure` both ways). The other 8 parameters: `status` (enum), `date` and `period` (half-open range searches), `identifier`, `subject` / `patient` / `reporter` (column references; `subject` is multi-target, `patient` is `subject` narrowed to Patients), and `evaluated-resource` (Reference(Any), reference table, chaining through every rebuilt type). The whole `group` tree (population counts, `subjectResults`, `measureScore`, stratifier / stratum / component results), `type` and `improvementNotation` have no search parameter and live only in `content` (the migration rebuilds the nested tree from some twenty old tables). On write, relative `subject`, `reporter`, `evaluatedResource` and `identifier.assigner` that name a rebuilt resource are existence-checked (422); the `measure` canonical is never checked. `_revinclude=MeasureReport:subject|patient|reporter` is declared on Patient, Group, Practitioner, PractitionerRole, Location, Organization and RelatedPerson. |
 
 ---
 
-## 2. Not yet rebuilt (1)
+## 2. Not yet rebuilt (0)
 
-Still on the old fully-normalized model and **not mounted** (commented out in `routes.enabled`). Each becomes a rebuild when it is picked up.
-
-| Group | Resources |
-|---|---|
-| Definitions and measures | MeasureReport |
-
-Brand-new resources outside this list (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
-
-Suggested next: any of the resources in the list above; **MedicationStatement**, **MedicationAdministration** and **MedicationDispense** can now point at a rebuilt Medication and MedicationRequest (`medication[x]`, `request`, `authorizingPrescription`).
+Every resource that was on the old fully-normalized model has been rebuilt. Brand-new resources outside the list above (like Endpoint was) can be added at any time; record them in section 1 when built, with a note that they are new rather than rebuilt.
 
 ---
 
@@ -123,7 +116,8 @@ Suggested next: any of the resources in the list above; **MedicationStatement**,
 | Specimen references | `processing.additive` and `container.additiveReference` (Substance) are stored as sent; there is no `:request` search parameter on Specimen; `Specimen:subject` does not include a Group / Device / Substance (not resources here) | Specimen |
 | ServiceRequest references | Device performers, `insurance` (Coverage / ClaimResponse) and `relevantHistory` (Provenance) are stored as sent until those resources are rebuilt; no `Appointment:based-on` revinclude on ServiceRequest (an appointment cannot be found from the request it fulfils), and no `:supporting-info` revinclude; rule prr-1 (`orderDetail` only with a `code`) is only enforced by the `java_validator` backend; `RiskAssessment.basedOn` (Reference(Any)) still stores a ServiceRequest as sent | ServiceRequest |
 | Medication references | A Substance ingredient is stored as sent (Substance is not rebuilt); nothing rebuilt references a Medication yet apart from the Reference(Any) lists, so there is no `medication` chain or revinclude from MedicationRequest / MedicationStatement / MedicationAdministration / MedicationDispense until those are rebuilt | Medication |
-| Measure references | Same as ActivityDefinition: absolute canonical URLs (`relatedArtifact.resource`, `library`) are searched as strings and by a relative `Type/<id>` but not resolved to a stored resource; `MeasureReport.measure` is a canonical URL and will need the same wiring as `QuestionnaireResponse.questionnaire` when MeasureReport is rebuilt; R4's `status` minimum and rules msr-* (a population's `criteria`, a stratifier's criteria or components) are only enforced by the `java_validator` backend | Measure |
+| Measure references | Same as ActivityDefinition: absolute canonical URLs (`relatedArtifact.resource`, `library`) are searched as strings and by a relative `Type/<id>` but not resolved to a stored resource; `MeasureReport.measure` is a canonical URL resolved against a stored Measure's `url` (see MeasureReport); R4's `status` minimum and rules msr-* (a population's `criteria`, a stratifier's criteria or components) are only enforced by the `java_validator` backend | Measure |
+| MeasureReport references | `subjectResults` (List) is stored as sent (List is not rebuilt); a Device subject, Device-only checks and absolute URLs are stored as sent; `evaluated-resource` has no `_revinclude`; R4's `status`, `type`, `measure` and `period` minimums are only enforced by the `java_validator` backend (the native validator checks `measure` and `period`) | MeasureReport |
 | SpecimenDefinition references | `additiveReference` (Substance) is stored as sent; nothing points back at a SpecimenDefinition through a search parameter (R4 defines none), so there is no `_include` / `_revinclude`; R4's `typeTested.preference` minimum and rule spd-* are only enforced by the `java_validator` backend | SpecimenDefinition |
 | ObservationDefinition references | The four `*CodedValueSet` references (ValueSet, not rebuilt) are stored as sent; nothing can be searched but `_id` / `_lastUpdated` because R4 defines nothing else (a search parameter added by a later R4 point release would need a column / table, an indexer line and a backfill); R4's `code` minimum and rule obd-* are only enforced by the `java_validator` backend | ObservationDefinition |
 | PlanDefinition references | Same as ActivityDefinition: absolute canonical URLs (`relatedArtifact.resource`, `library`, an action's `definitionCanonical`) are searched as strings and by a relative `Type/<id>` but not resolved to a stored resource; an action's `definitionUri` is not searched (R4's `definition` is the canonical form); `ActivityDefinition?_revinclude=PlanDefinition:definition` and Questionnaire's find only relative `Type/<id>` canonicals; R4's `status` minimum and the action / goal rules (pld-*) are only enforced by the `java_validator` backend | PlanDefinition |

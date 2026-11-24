@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 
-from app.routers.measure_report.core import router as core_router
+from . import core
 
 router = APIRouter(prefix="/measure-reports", tags=["MeasureReports"])
-router.include_router(core_router)
-
-__all__ = ["router"]
+router.include_router(core.router)

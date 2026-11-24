@@ -18,6 +18,9 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._measure_report_revinclude import (
+    column_measure_report_revincludes,
+)
 from app.repository._communication_request_revinclude import (
     column_communication_request_revincludes,
     reference_communication_request_revincludes,
@@ -681,6 +684,9 @@ def related_person_search() -> SearchRegistry:
         # What points at a RelatedPerson: Appointment / AppointmentResponse actors, Encounter
         # participants and Patient.link.
         revincludes=(
+            *column_measure_report_revincludes(
+                ('subject',), "subject", "RelatedPerson", lambda x: x.related_person_id
+            ),
             *column_communication_request_revincludes(
                 ("requester",),
                 "requester",

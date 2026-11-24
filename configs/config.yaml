@@ -240,7 +240,7 @@ routes:
     - organization
     - location
     - measure
-    # - measure_report
+    - measure_report
     - medication
     - medication_administration
     - medication_dispense

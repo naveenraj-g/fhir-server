@@ -57,6 +57,7 @@ REQUIRED_CODE_STORAGE = {
     ("ActivityDefinition", "status"): ("activity_definition", "status"),
     ("PlanDefinition", "status"): ("plan_definition", "status"),
     ("Measure", "status"): ("measure", "status"),
+    ("MeasureReport", "status"): ("measure_report", "status"),
     ("Communication", "status"): ("communication", "status"),
     ("CommunicationRequest", "status"): ("communication_request", "status"),
     ("CommunicationRequest", "priority"): ("communication_request", "priority"),

@@ -21,6 +21,9 @@ from functools import cache
 from sqlalchemy import exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._measure_report_revinclude import (
+    measure_measure_report_revincludes,
+)
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -724,6 +727,8 @@ def measure_search() -> SearchRegistry:
                 reverse=True,
             )
             for param in REFERENCE_PARAMS
-        ),
+        )
+        # A MeasureReport names its measure by canonical URL.
+        + measure_measure_report_revincludes(lambda r: r.url, lambda r: r.measure_id),
         default_sort=lambda: [M.measure_id.desc()],
     )
