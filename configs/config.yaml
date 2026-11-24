@@ -239,7 +239,7 @@ routes:
     - immunization_recommendation
     - organization
     - location
-    # - measure
+    - measure
     # - measure_report
     - medication
     - medication_administration

@@ -41,6 +41,7 @@ from app.repository.medication_dispense.search import (
 from app.repository.activity_definition.search import activity_definition_search
 from app.repository.communication.search import communication_search
 from app.repository.communication_request.search import communication_request_search
+from app.repository.measure.search import measure_search
 from app.repository.observation_definition.search import observation_definition_search
 from app.repository.plan_definition.search import plan_definition_search
 from app.repository.specimen_definition.search import specimen_definition_search
@@ -119,6 +120,7 @@ async def test_search_params_match_registries(client):
             "SpecimenDefinition",
             specimen_definition_search(),
         ),
+        "measure": ("Measure", measure_search()),
         "communication_request": (
             "CommunicationRequest",
             communication_request_search(),

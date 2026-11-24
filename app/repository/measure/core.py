@@ -1,165 +1,91 @@
-from sqlalchemy import delete, func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.measure import (
-    MeasureIdentifier,
-    MeasureModel,
-    MeasureStatus,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.measure import MeasureModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import measure_search
 
 logger = get_logger(__name__)
 
+_M = MeasureModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for Measure."""
+    """Reads, search and delete. Every read loads only the measure
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
-    async def get_by_measure_id(self, measure_id: int) -> MeasureModel | None:
+    async def get_by_measure_id(self, measure_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(MeasureModel).where(MeasureModel.measure_id == measure_id)
-            )
+            stmt = select(_M).where(_M.measure_id == measure_id)
             return (await session.execute(stmt)).scalars().first()
 
-    async def get_by_measure_id_in_org(
-        self, measure_id: int, org_id: str
-    ) -> MeasureModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    async def get_by_measure_id_in_org(self, measure_id: int, org_id: str) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the measure
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(MeasureModel).where(
-                    MeasureModel.measure_id == measure_id,
-                    MeasureModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.measure_id == measure_id,
+                _M.tenant_id == org_id,
             )
             return (await session.execute(stmt)).scalars().first()
 
     async def measure_belongs_to_org(self, measure_id: int, org_id: str) -> bool:
-        """Cheap existence/ownership check (no joins, no sub-resources)."""
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the measure exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(func.count(MeasureModel.id)).where(
-                MeasureModel.measure_id == measure_id,
-                MeasureModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.measure_id == measure_id,
+                _M.tenant_id == org_id,
             )
-            count = (await session.execute(stmt)).scalar() or 0
-            return count > 0
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str,
-        url: str | None = None,
-        identifier: str | None = None,
-        name: str | None = None,
-        title: str | None = None,
-        status: str | None = None,
-        publisher: str | None = None,
-        description: str | None = None,
-    ):
-        stmt = stmt.where(MeasureModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if url:
-            stmt = stmt.where(MeasureModel.url == url)
-
-        if identifier:
-            conditions = [MeasureIdentifier.measure_pk == MeasureModel.id]
-            if "|" in identifier:
-                sys, val = identifier.split("|", 1)
-                if sys:
-                    conditions.append(MeasureIdentifier.system == sys)
-                if val:
-                    conditions.append(MeasureIdentifier.value == val)
-            else:
-                conditions.append(MeasureIdentifier.value == identifier)
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(MeasureIdentifier.id).where(*conditions),
-            )
-
-        if name:
-            stmt = stmt.where(MeasureModel.name.ilike(f"%{name}%"))
-
-        if title:
-            stmt = stmt.where(MeasureModel.title.ilike(f"%{title}%"))
-
-        if status:
-            val = status.value if hasattr(status, "value") else str(status)
-            stmt = stmt.where(MeasureModel.status == MeasureStatus(val))
-
-        if publisher:
-            stmt = stmt.where(MeasureModel.publisher.ilike(f"%{publisher}%"))
-
-        if description:
-            stmt = stmt.where(MeasureModel.description.ilike(f"%{description}%"))
-
-        return stmt
-
-    async def list(
-        self,
-        *,
-        org_id: str,
-        url: str | None = None,
-        identifier: str | None = None,
-        name: str | None = None,
-        title: str | None = None,
-        status: str | None = None,
-        publisher: str | None = None,
-        description: str | None = None,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-    ) -> tuple[list[MeasureModel], int]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            count_stmt = select(func.count(MeasureModel.id))
-            count_stmt = self._apply_list_filters(
-                count_stmt,
-                org_id=org_id,
-                url=url,
-                identifier=identifier,
-                name=name,
-                title=title,
-                status=status,
-                publisher=publisher,
-                description=description,
+            rows, total, included = await execute_search(
+                session,
+                model=_M,
+                registry=measure_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.measure_id,
             )
-            total = (await session.execute(count_stmt)).scalar() or 0
+        logger.debug(
+            "Measures searched",
+            extra={
+                "event": "measure.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-            data_stmt = select(MeasureModel)
-            data_stmt = self._apply_list_filters(
-                data_stmt,
-                org_id=org_id,
-                url=url,
-                identifier=identifier,
-                name=name,
-                title=title,
-                status=status,
-                publisher=publisher,
-                description=description,
-            )
-            data_stmt = _with_relationships(data_stmt)
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
 
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                MeasureModel.measure_id,
-                default_desc=True,
-            )
-            order_by = sort_column.desc() if sort_desc else sort_column.asc()
-            data_stmt = data_stmt.order_by(order_by).limit(limit).offset(offset)
-
-            items = (await session.execute(data_stmt)).scalars().all()
-            return list(items), total
-
-    async def delete(self, measure_id: int, org_id: str | None = None) -> bool:
+    async def delete(self, measure_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = delete(MeasureModel).where(MeasureModel.measure_id == measure_id)
-            if org_id:
-                stmt = stmt.where(MeasureModel.tenant_id == org_id)
-            res = await session.execute(stmt)
-            await session.commit()
-            return res.rowcount > 0
+            stmt = select(_M).where(_M.measure_id == measure_id)
+            measure = (await session.execute(stmt)).scalars().first()
+            if not measure:
+                return False
+            try:
+                await session.delete(measure)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

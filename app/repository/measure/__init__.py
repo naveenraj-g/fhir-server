@@ -1,10 +1,18 @@
+from app.core.logging import trace_methods
 from app.repository.base import BaseRepository
-from app.repository.measure.core import _CoreMixin
-from app.repository.measure.full import _FullMixin
 
-
-class MeasureRepository(BaseRepository, _CoreMixin, _FullMixin):
-    """Repository managing Measure persistence and queries."""
-
+from .core import _CoreMixin
+from .full import _FullMixin
 
 __all__ = ["MeasureRepository"]
+
+
+@trace_methods
+class MeasureRepository(_CoreMixin, _FullMixin, BaseRepository):
+    """All Measure DB I/O. Like Schedule/Slot/Appointment,
+    Measure has no standalone sub-resource endpoints
+    (create/patch always operate on the whole nested payload — see
+    full.py), so there are no per-sub-resource mixins beyond
+    _CoreMixin/_FullMixin. session_factory/__init__ and the generic
+    paginated-list execution (`_execute_paginated`) are inherited from
+    BaseRepository — see that class."""

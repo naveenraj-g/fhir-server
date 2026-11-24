@@ -1,289 +1,192 @@
-"""Shared helpers and payloads for Measure integration tests."""
+"""Shared helpers and payloads for measure integration tests.
+
+Request bodies are genuine FHIR R4 Measure JSON (camelCase, nested datatypes), and
+every response is FHIR R4 too."""
+
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+)
 
 BASE = "/api/fhir/v1/measures"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+MEASURE_IDS = "https://fhir-server.dev/fhir/identifier-system/measure-id"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+STATUS_SYSTEM = "http://hl7.org/fhir/publication-status"
+SCT = "http://snomed.info/sct"
+LOINC = "http://loinc.org"
+UCUM = "http://unitsofmeasure.org"
+USAGE_CONTEXT_TYPE = "http://terminology.hl7.org/CodeSystem/usage-context-type"
+URL = "https://fhir-server.dev/fhir/Measure/follow-up"
 
 
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"active": True, "name": "Quality Health Organization"},
-    )
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
+def measure_body(status: str = "active", **extra) -> dict:
+    """A valid minimal measure: R4 requires only `status`."""
+    return {"status": status, **extra}
 
 
-async def create_test_group(client) -> int:
-    """Create a minimal group and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/groups/",
-        json={"type": "person", "actual": True, "name": "Test Group Cohort"},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def minimal_measure() -> dict:
-    return {
-        "status": "draft",
-    }
-
-
-async def create_measure(client) -> int:
-    """Create a minimal measure and return its public ID."""
-    resp = await client.post(
-        f"{BASE}/",
-        json=minimal_measure(),
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-def full_measure(organization_id: int | None = None) -> dict:
-    assigner_ref = f"Organization/{organization_id}" if organization_id else None
-    return {
-        "url": "http://example.org/fhir/Measure/exclusive-breastfeeding-measure",
-        "identifier": [
+def full_body(organization_id: int) -> dict:
+    """Every searchable element plus the elements no search parameter reads (they must all
+    round-trip: none of them is indexed)."""
+    return measure_body(
+        resourceType="Measure",
+        url=URL,
+        identifier=[
             {
-                "use": "official",
-                "system": "http://example.org/fhir/measure",
-                "value": "meas-full-001",
-                "type_text": "Filler Identifier",
-                "type_coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                        "code": "FILL",
-                        "display": "Filler Identifier",
-                    }
-                ],
-                "period_start": "2026-02-01T10:00:00Z",
-                "period_end": "2026-02-01T10:00:00Z",
-                "assigner": assigner_ref,
+                "system": MEASURE_IDS,
+                "value": "M-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "ACSN"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "version": "1.0.0",
-        "name": "ExclusiveBreastfeedingMeasure",
-        "title": "Exclusive Breastfeeding Measure",
-        "subtitle": "Birth Stay Measure",
-        "status": "draft",
-        "experimental": True,
-        "subject_codeable_concept": {
-            "text": "Patient",
-            "coding": [
-                {
-                    "system": "http://hl7.org/fhir/resource-types",
-                    "code": "Patient",
-                    "display": "Patient",
-                }
-            ],
-        },
-        "date": "2026-02-01T10:00:00Z",
-        "publisher": "National Quality Agency",
-        "contact": [
-            {
-                "name": "Quality Lead",
-                "telecom": [
-                    {
-                        "system": "phone",
-                        "value": "555-1234",
-                        "use": "work",
-                        "rank": 1,
-                    }
-                ],
-            }
+        version="1.0",
+        name="FollowUp",
+        title="Follow-up visit",
+        subtitle="Book it",
+        experimental=False,
+        subjectCodeableConcept={"text": "adults"},
+        date="2026-01-15T10:00:00Z",
+        publisher="Example Health",
+        contact=[
+            {"name": "Help desk", "telecom": [{"system": "phone", "value": "555-1234"}]}
         ],
-        "description": "Exclusive breastfeeding measure for newborns during birth stay.",
-        "use_context": [
+        description="Book a follow-up visit.",
+        useContext=[
             {
-                "code_system": "http://terminology.hl7.org/CodeSystem/usage-context-type",
-                "code_code": "focus",
-                "code_display": "Clinical Focus",
-                "value_codeable_concept_text": "Cardiology",
-                "value_codeable_concept_coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "394579002",
-                        "display": "Cardiology",
-                    }
-                ],
-            }
+                "code": {"system": USAGE_CONTEXT_TYPE, "code": "focus"},
+                "valueCodeableConcept": {
+                    "coding": [
+                        {"system": SCT, "code": "35489007", "display": "Depression"}
+                    ]
+                },
+            },
+            {
+                "code": {"system": USAGE_CONTEXT_TYPE, "code": "age"},
+                "valueRange": {
+                    "low": {"value": 12, "system": UCUM, "code": "a"},
+                    "high": {"value": 17, "system": UCUM, "code": "a"},
+                },
+            },
         ],
-        "jurisdiction": [
+        jurisdiction=[{"coding": [{"system": "urn:iso:std:iso:3166", "code": "US"}]}],
+        purpose="Follow-up",
+        usage="Use after discharge",
+        copyright="(c) Example",
+        approvalDate="2026-01-10",
+        lastReviewDate="2026-01-12",
+        effectivePeriod={"start": "2026-01-01", "end": "2026-12-31"},
+        topic=[
             {
-                "text": "US",
                 "coding": [
                     {
-                        "system": "urn:iso:std:iso:3166",
-                        "code": "US",
-                        "display": "United States of America",
+                        "system": "http://terminology.hl7.org/CodeSystem/definition-topic",
+                        "code": "treatment",
                     }
-                ],
+                ]
             }
         ],
-        "purpose": "Improve infant nutrition and health outcomes.",
-        "usage": "Use annually across hospital maternal wards.",
-        "copyright": "Copyright 2026 National Quality Agency.",
-        "approval_date": "2026-01-15",
-        "last_review_date": "2026-01-20",
-        "effective_period_start": "2026-01-01T00:00:00Z",
-        "effective_period_end": "2026-12-31T23:59:59Z",
-        "topic": [
+        author=[{"name": "Dr A"}],
+        editor=[{"name": "Dr B"}],
+        reviewer=[{"name": "Dr C"}],
+        endorser=[{"name": "Dr D"}],
+        relatedArtifact=[
             {
-                "text": "Pediatrics",
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "394537008",
-                        "display": "Pediatrics",
-                    }
-                ],
-            }
-        ],
-        "author": [{"name": "Dr. Author"}],
-        "editor": [{"name": "Dr. Editor"}],
-        "reviewer": [{"name": "Dr. Reviewer"}],
-        "endorser": [{"name": "Endorsement Board"}],
-        "related_artifact": [
+                "type": "documentation",
+                "display": "Guide",
+                "url": "http://example.org/g",
+            },
             {
-                "type": "depends-on",
-                "label": "CQM Logic",
-                "display": "Clinical Quality Measure Logic Library",
-                "url": "http://example.org/fhir/Library/breastfeeding-logic",
-            }
+                "type": "composed-of",
+                "resource": "http://example.org/fhir/Library/x|1.0",
+            },
         ],
-        "library": ["http://example.org/fhir/Library/breastfeeding-logic"],
-        "disclaimer": "Informational purpose only.",
-        "scoring": {
-            "text": "Proportion",
+        library=["http://example.org/fhir/Library/lib1"],
+        disclaimer="For research use",
+        scoring={
             "coding": [
                 {
                     "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
                     "code": "proportion",
-                    "display": "Proportion",
                 }
-            ],
+            ]
         },
-        "composite_scoring": {
-            "text": "Linear",
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/composite-measure-scoring",
-                    "code": "linear",
-                    "display": "Linear",
-                }
-            ],
-        },
-        "type": [
+        compositeScoring={"text": "linear"},
+        type=[
             {
-                "text": "Process",
                 "coding": [
                     {
                         "system": "http://terminology.hl7.org/CodeSystem/measure-type",
                         "code": "process",
-                        "display": "Process",
                     }
-                ],
+                ]
             }
         ],
-        "risk_adjustment": "None",
-        "rate_aggregation": "None",
-        "rationale": "Breastfeeding promotes vital early infant immune response.",
-        "clinical_recommendation_statement": "Infants should be breastfed exclusively.",
-        "improvement_notation": {
-            "text": "Increase",
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/measure-improvement-notation",
-                    "code": "increase",
-                    "display": "Increased score indicates improvement",
-                }
-            ],
-        },
-        "definition": ["Exclusively breastfed: receiving only breast milk."],
-        "guidance": "Follow WHO recommendations.",
-        "group": [
+        riskAdjustment="By age",
+        rateAggregation="Weighted average",
+        rationale="Reduces readmissions",
+        clinicalRecommendationStatement="Follow up within 7 days",
+        improvementNotation={"text": "increase"},
+        definition=["Readmission: an unplanned return within 30 days"],
+        guidance="Use the discharge date",
+        group=[
             {
-                "description": "Initial Population and Denominator",
-                "code": {
-                    "text": "Primary Group",
-                    "coding": [
-                        {
-                            "system": "http://example.org/fhir/measure-group",
-                            "code": "primary",
-                            "display": "Primary Group",
-                        }
-                    ],
-                },
+                "id": "g1",
+                "code": {"text": "overall"},
+                "description": "Overall",
                 "population": [
                     {
-                        "description": "Initial Population",
-                        "code": {
-                            "text": "Initial Population",
-                            "coding": [
-                                {
-                                    "system": "http://terminology.hl7.org/CodeSystem/measure-population",
-                                    "code": "initial-population",
-                                    "display": "Initial Population",
-                                }
-                            ],
-                        },
+                        "code": {"text": "initial-population"},
+                        "description": "All discharges",
                         "criteria": {
                             "language": "text/cql",
                             "expression": "Initial Population",
                         },
-                    }
+                    },
+                    {
+                        "code": {"text": "numerator"},
+                        "criteria": {"language": "text/cql", "expression": "Numerator"},
+                    },
                 ],
                 "stratifier": [
                     {
-                        "description": "Gestational Age Stratifier",
-                        "code": {
-                            "text": "Gestational Age",
-                            "coding": [
-                                {
-                                    "system": "http://example.org/stratifier",
-                                    "code": "gestational-age",
-                                    "display": "Gestational Age",
-                                }
-                            ],
-                        },
-                        "criteria": {
-                            "language": "text/cql",
-                            "expression": "Gestational Age Stratifier",
-                        },
-                    }
-                ],
-            }
-        ],
-        "supplemental_data": [
-            {
-                "description": "Payer Information",
-                "code": {
-                    "text": "Payer",
-                    "coding": [
-                        {
-                            "system": "http://example.org/supplemental-data",
-                            "code": "payer",
-                            "display": "Payer",
-                        }
-                    ],
-                },
-                "usage": [
+                        "code": {"text": "age"},
+                        "criteria": {"language": "text/cql", "expression": "AgeGroup"},
+                    },
                     {
-                        "text": "Risk Adjustment",
-                        "coding": [
+                        "code": {"text": "multi"},
+                        "component": [
                             {
-                                "system": "http://terminology.hl7.org/CodeSystem/measure-data-usage",
-                                "code": "risk-adjustment-factor",
-                                "display": "Risk Adjustment Factor",
-                            }
+                                "code": {"text": "sex"},
+                                "criteria": {
+                                    "language": "text/cql",
+                                    "expression": "Sex",
+                                },
+                            },
+                            {
+                                "code": {"text": "ward"},
+                                "criteria": {
+                                    "language": "text/cql",
+                                    "expression": "Ward",
+                                },
+                            },
                         ],
-                    }
+                    },
                 ],
-                "criteria": {
-                    "language": "text/cql",
-                    "expression": "Coverage.payer",
-                },
             }
         ],
-    }
+        supplementalData=[
+            {
+                "code": {"text": "race"},
+                "usage": [{"text": "supplemental-data"}],
+                "criteria": {"language": "text/cql", "expression": "Race"},
+            }
+        ],
+    )
+
+
+async def create_measure(client, body: dict) -> int:
+    """Create a measure and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])

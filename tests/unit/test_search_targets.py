@@ -77,6 +77,11 @@ def test_reference_any_allows_every_r4_type_and_follows_every_rebuilt_one():
         ("PlanDefinition", "derived-from"),
         ("PlanDefinition", "predecessor"),
         ("PlanDefinition", "successor"),
+        ("Measure", "composed-of"),
+        ("Measure", "depends-on"),
+        ("Measure", "derived-from"),
+        ("Measure", "predecessor"),
+        ("Measure", "successor"),
     }
     for rt, registry, param in any_params:
         assert param.targets is ANY_RESOURCE_TYPES

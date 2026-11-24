@@ -1,14 +1,24 @@
-from fastapi import APIRouter, Depends, Path, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Request, status
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
+from app.core.config import settings
 from app.core.content_negotiation import (
-    format_paginated_response,
-    format_response,
+    FHIRJSONResponse,
+    fhir_response,
+    require_fhir_json,
 )
 from app.core.logging import get_logger, log_payload
-from app.core.pagination import ListParams
 from app.di.dependencies.measure import get_measure_service
+from app.fhir.search.openapi import search_description, search_parameters
+from app.repository.measure.search import measure_search
+from app.routers._fhir_search import (
+    get_query,
+    post_query,
+    search_urls,
+    searchset_response,
+    strict_handling,
+)
 from app.schemas.measure import (
     MeasureCreateSchema,
     MeasurePatchSchema,
@@ -17,17 +27,25 @@ from app.services.measure import MeasureService
 
 from ._responses import (
     _CONTENT_NEG,
+    _ERR_NOT_ACCEPTABLE,
     _ERR_NOT_FOUND,
+    _ERR_SEARCH,
     _ERR_VALIDATION,
     _LIST_200,
     _SINGLE_200,
     _SINGLE_201,
 )
 
-router = APIRouter()
+# Measure always responds with FHIR R4 JSON, whatever the Accept
+# header says (Medplum's approach) — only a client that rules JSON out
+# entirely (Accept: application/fhir+xml, _format=xml) gets a 406.
+router = APIRouter(
+    default_response_class=FHIRJSONResponse,
+    dependencies=[Depends(require_fhir_json)],
+    responses={**_ERR_NOT_ACCEPTABLE},
+)
 
 logger = get_logger(__name__)
-
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
@@ -38,10 +56,19 @@ logger = get_logger(__name__)
     operation_id="create_measure",
     summary="Create a new Measure resource",
     description=(
-        "A quality measure or clinical quality measure definition. "
-        "Accepts the full nested payload atomically in one DB transaction. "
-        "`tenant_id`/`created_by` come from the verified JWT (`actor.org_id`/`actor.sub`) — "
-        "an org-less token is rejected outright (403). " + _CONTENT_NEG
+        "Records a quality measure: how a population is defined, scored and reported (a proportion, ratio, continuous variable or cohort over populations, strata and supplemental data). "
+        "The request body is a FHIR R4 Measure resource (camelCase, nested datatypes - "
+        "https://www.hl7.org/fhir/R4/measure.html); every supplied element (url, identifier, version, name, "
+        "title, status, experimental, date, publisher, contact, description, useContext, jurisdiction, topic, "
+        "relatedArtifact, library, scoring, type, improvementNotation, group, supplementalData, ...) is stored as sent. "
+        "R4 requires `status`, which only the "
+        "java_validator backend enforces. The body is checked against base FHIR R4: any valid R4 element is "
+        "accepted and stored as sent (server-managed `id`/`meta` are ignored); a key that is not FHIR at all is "
+        "rejected with 422. A relative reference in `identifier.assigner`, `subjectReference` or a "
+        "`useContext.valueReference` that "
+        "names a resource this server has is rejected with 422 if it does not exist in the caller's org; an "
+        "absolute URL, a logical reference or a resource type this server does not have is stored as sent. "
+        + _CONTENT_NEG
     ),
     responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
@@ -51,56 +78,165 @@ async def create_measure(
     actor: AuthUser = Depends(require_permission("measure", "create")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):
+    """org_id and created_by both come from the verified JWT (actor.org_id /
+    actor.sub) — org_id is not a request body field at all, and an org-less
+    token is rejected outright (403)."""
     logger.info(
         "Create a new Measure resource",
-        extra={"event": "route.create_measure", "org_id": actor.org_id},
+        extra={"event": "route.create_measure"},
     )
     log_payload(logger, "measure.create.payload", payload)
-    model = await measure_service.create_measure(payload, actor.org_id, actor.sub)
-    return format_response(
-        measure_service._to_fhir(model),
-        measure_service._to_plain(model),
-        request,
+    measure = await measure_service.create_measure(
+        payload, actor.org_id, actor.sub, body=await request.json()
+    )
+    return fhir_response(
+        measure_service._to_fhir(measure),
         status_code=status.HTTP_201_CREATED,
     )
 
 
-# ── Read ───────────────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────
+# FHIR R4 search (https://www.hl7.org/fhir/R4/search.html). Query
+# parameters are read raw from the request — FHIR parameter names carry
+# modifiers (`name:exact`), chains and repeat for AND, none of which fit
+# FastAPI's per-name Query() declarations — and validated against the
+# Measure search registry. The OpenAPI parameter list is generated
+# from that same registry.
+
+_SEARCH_REGISTRY = measure_search()
+_SEARCH_PARAMETERS = search_parameters(
+    _SEARCH_REGISTRY, settings.pagination.max_limit, settings.pagination.default_limit
+)
+_SEARCH_DESCRIPTION = (
+    search_description(_SEARCH_REGISTRY)
+    + " Always scoped to the caller's own org (from the verified token) — `org_id` is not a "
+    "client-suppliable filter. " + _CONTENT_NEG
+)
+_FORM_BODY = {
+    "required": False,
+    "content": {
+        "application/x-www-form-urlencoded": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    p["name"]: {**p["schema"], "description": p["description"]}
+                    for p in _SEARCH_PARAMETERS
+                    if p["in"] == "query"
+                },
+            }
+        }
+    },
+}
+
+
+async def _search(
+    request: Request,
+    query: list[tuple[str, str]],
+    actor: AuthUser,
+    measure_service: MeasureService,
+):
+    search_url, fhir_base = search_urls(request, "search_measures")
+    (
+        search_request,
+        rows,
+        total,
+        included,
+    ) = await measure_service.search_measures(
+        query,
+        actor.org_id,
+        strict=strict_handling(request),
+        fhir_base=fhir_base,
+    )
+    return searchset_response(
+        registry=_SEARCH_REGISTRY,
+        search_request=search_request,
+        search_url=search_url,
+        fhir_base=fhir_base,
+        rows=rows,
+        total=total,
+        included=included,
+    )
+
+
+@router.get(
+    "/",
+    operation_id="search_measures",
+    summary="Search Measure resources (FHIR R4 search)",
+    description=_SEARCH_DESCRIPTION,
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS},
+)
+async def search_measures(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("measure", "read")),
+    measure_service: MeasureService = Depends(get_measure_service),
+):
+    """org_id is always the caller's own (actor.org_id), never
+    client-suppliable; an org-less token is rejected outright (403)."""
+    logger.info(
+        "Search Measure resources",
+        extra={"event": "route.search_measures"},
+    )
+    return await _search(request, get_query(request), actor, measure_service)
+
+
+@router.post(
+    "/_search",
+    operation_id="search_measures_post",
+    summary="Search Measure resources (FHIR R4 search via POST)",
+    description=(
+        "Same search as `GET /`, with the parameters sent as an "
+        "`application/x-www-form-urlencoded` body (R4 `POST [base]/[type]/_search`) — use it when "
+        "the query string would be too long, or to keep search values out of URLs. Query-string "
+        "parameters, if any, are combined with the body. " + _SEARCH_DESCRIPTION
+    ),
+    responses={**_LIST_200, **_ERR_SEARCH},
+    openapi_extra={"parameters": _SEARCH_PARAMETERS, "requestBody": _FORM_BODY},
+)
+async def search_measures_post(
+    request: Request,
+    actor: AuthUser = Depends(require_permission("measure", "read")),
+    measure_service: MeasureService = Depends(get_measure_service),
+):
+    logger.info(
+        "Search Measure resources (POST _search)",
+        extra={"event": "route.search_measures_post"},
+    )
+    return await _search(request, await post_query(request), actor, measure_service)
+
+
+# ── Get ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{measure_id}",
-    operation_id="get_measure",
-    summary="Get a Measure resource by ID",
+    operation_id="get_measure_by_id",
+    summary="Retrieve a Measure resource by public measure_id",
     description=(
-        "Returns the complete Measure representation. Scoped to the caller's "
-        "own org — raises NotFoundError (404, not 403) if actor.org_id doesn't match. "
-        + _CONTENT_NEG
+        "Scoped to the caller's own org — get_measure_scoped() raises "
+        "PermissionDeniedError (403) outright for an org-less token, or NotFoundError "
+        "(404, never 403) if it belongs to a different org, so existence isn't leaked."
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_measure(
     request: Request,
-    measure_id: int = Path(..., ge=1, description="Public Measure identifier."),
+    measure_id: int = Path(..., ge=1, description="Public measure identifier."),
     actor: AuthUser = Depends(require_permission("measure", "read")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):
     logger.info(
-        "Get a Measure resource by ID",
+        "Retrieve a Measure resource by public measure_id",
         extra={
-            "event": "route.get_measure",
+            "event": "route.get_measure_by_id",
             "measure_id": measure_id,
         },
     )
-    model = await measure_service.get_measure_scoped(measure_id, actor.org_id)
-    return format_response(
-        measure_service._to_fhir(model),
-        measure_service._to_plain(model),
-        request,
-    )
+    measure = await measure_service.get_measure_scoped(measure_id, actor.org_id)
+    return fhir_response(measure_service._to_fhir(measure))
 
 
-# ── Patch ──────────────────────────────────────────────────────────────────────
+# ── Patch ────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -108,9 +244,12 @@ async def get_measure(
     operation_id="patch_measure",
     summary="Update a Measure resource",
     description=(
-        "Only supplied fields are written; omitted fields are left unchanged. Every "
-        "supplied sub-resource list atomically replaces corresponding rows. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if "
+        "The request body is a partial FHIR R4 Measure (merge-patch on top-level elements). "
+        "Only supplied elements are written; omitted elements are left unchanged. A supplied list "
+        "(identifier, contact, useContext, jurisdiction, topic, relatedArtifact, group, supplementalData - even `[]`) atomically replaces "
+        "the stored entries, a supplied `effectivePeriod` replaces the whole value, and `null` clears an element. "
+        "Scoped to the caller's own org — patch_measure() raises NotFoundError (404, not "
+        "403 — avoids leaking that a Measure with this id exists in another org) if "
         "actor.org_id doesn't match. " + _CONTENT_NEG
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
@@ -118,10 +257,12 @@ async def get_measure(
 async def patch_measure(
     payload: MeasurePatchSchema,
     request: Request,
-    measure_id: int = Path(..., ge=1, description="Public Measure identifier."),
+    measure_id: int = Path(..., ge=1, description="Public measure identifier."),
     actor: AuthUser = Depends(require_permission("measure", "update")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):
+    """updated_by comes from the verified JWT (actor.sub); patch_measure()
+    raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
     logger.info(
         "Update a Measure resource",
         extra={
@@ -130,76 +271,17 @@ async def patch_measure(
         },
     )
     log_payload(logger, "measure.patch.payload", payload)
-    model = await measure_service.patch_measure(
-        measure_id, payload, updated_by=actor.sub, org_id=actor.org_id
-    )
-    return format_response(
-        measure_service._to_fhir(model),
-        measure_service._to_plain(model),
-        request,
-    )
-
-
-# ── List ───────────────────────────────────────────────────────────────────────
-
-
-@router.get(
-    "/",
-    operation_id="list_measures",
-    summary="List Measure resources",
-    description=(
-        "Search and filter Measure resources scoped to the caller's org. "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200},
-)
-async def list_measures(
-    request: Request,
-    url: str | None = Query(None, description="Filter by canonical URL."),
-    identifier: str | None = Query(
-        None, description="Filter by business identifier system|value or value."
-    ),
-    name: str | None = Query(None, description="Filter by computer-friendly name."),
-    title: str | None = Query(None, description="Filter by human-friendly title."),
-    status: str | None = Query(
-        None, description="Filter by status (draft, active, retired, unknown)."
-    ),
-    publisher: str | None = Query(None, description="Filter by publisher."),
-    description: str | None = Query(None, description="Filter by description."),
-    list_params: ListParams = Depends(),
-    actor: AuthUser = Depends(require_permission("measure", "read")),
-    measure_service: MeasureService = Depends(get_measure_service),
-):
-    logger.info(
-        "List Measure resources",
-        extra={"event": "route.list_measures", "org_id": actor.org_id},
-    )
-    rows, total = await measure_service.list_measures(
+    updated = await measure_service.patch_measure(
+        measure_id,
+        payload,
+        actor.sub,
         org_id=actor.org_id,
-        url=url,
-        identifier=identifier,
-        name=name,
-        title=title,
-        status=status,
-        publisher=publisher,
-        description=description,
-        limit=list_params.limit,
-        offset=list_params.offset,
-        sort=list_params.sort,
+        body=await request.json(),
     )
-    fhir_list = [measure_service._to_fhir(r) for r in rows]
-    plain_list = [measure_service._to_plain(r) for r in rows]
-    return format_paginated_response(
-        fhir_list,
-        plain_list,
-        total,
-        list_params.limit,
-        list_params.offset,
-        request,
-    )
+    return fhir_response(measure_service._to_fhir(updated))
 
 
-# ── Delete ─────────────────────────────────────────────────────────────────────
+# ── Delete ───────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -208,20 +290,19 @@ async def list_measures(
     operation_id="delete_measure",
     summary="Delete a Measure resource",
     description=(
-        "Deletes a Measure and cascades to all child records. "
-        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if "
-        "actor.org_id doesn't match."
+        "Permanently deletes the Measure and its search-index rows. "
+        "Scoped to the caller's own org — raises NotFoundError (404, not 403) if the "
+        "measure exists but belongs to a different org. Returns 204 on success."
     ),
-    responses={
-        204: {"description": "Measure deleted successfully"},
-        **_ERR_NOT_FOUND,
-    },
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_measure(
-    measure_id: int = Path(..., ge=1, description="Public Measure identifier."),
+    measure_id: int = Path(..., ge=1, description="Public measure identifier."),
     actor: AuthUser = Depends(require_permission("measure", "delete")),
     measure_service: MeasureService = Depends(get_measure_service),
 ):
+    """delete_measure() raises NotFoundError (404) if the id doesn't
+    exist at all, or if it exists but belongs to a different org."""
     logger.info(
         "Delete a Measure resource",
         extra={
@@ -230,4 +311,3 @@ async def delete_measure(
         },
     )
     await measure_service.delete_measure(measure_id, org_id=actor.org_id)
-    return None

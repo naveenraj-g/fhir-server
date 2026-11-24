@@ -1,108 +1,169 @@
-import datetime as dt
-from typing import Any
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
-from app.schemas.enums import MeasureStatus
-from app.schemas.measure.input.codeable_concept import MeasureCodeableConceptInput
-from app.schemas.measure.input.contact import MeasureContactInput
-from app.schemas.measure.input.group import MeasureGroupInput
-from app.schemas.measure.input.identifier import MeasureIdentifierInput
-from app.schemas.measure.input.related_artifact import MeasureRelatedArtifactInput
-from app.schemas.measure.input.supplemental_data import MeasureSupplementalDataInput
-from app.schemas.measure.input.use_context import MeasureUseContextInput
+from pydantic import Field
 
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
+)
 
-class MeasureCreateSchema(BaseModel):
-    """Payload to create a new Measure resource."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "url": "http://example.org/fhir/Measure/exclusive-breastfeeding-measure",
-                "version": "1.0.0",
-                "name": "ExclusiveBreastfeedingMeasure",
-                "title": "Exclusive Breastfeeding Measure",
-                "status": "draft",
-                "experimental": True,
-                "description": "Exclusive breastfeeding measure for newborns during birth stay.",
-                "group": [
-                    {
-                        "description": "Initial Population, Denominator, Numerator",
-                        "population": [
-                            {
-                                "code": {
-                                    "coding": [
-                                        {
-                                            "system": "http://terminology.hl7.org/CodeSystem/measure-population",
-                                            "code": "initial-population",
-                                            "display": "Initial Population",
-                                        }
-                                    ]
-                                },
-                                "criteria": {
-                                    "language": "text/cql",
-                                    "expression": "Initial Population",
-                                },
-                            }
-                        ],
-                    }
-                ],
+# publication-status (the required binding of Measure.status).
+StatusCode = Literal["draft", "active", "retired", "unknown"]
+_EXAMPLE = {
+    "resourceType": "Measure",
+    "url": "https://fhir-server.dev/fhir/Measure/follow-up-visit",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/measure-id",
+            "value": "AD-1",
+        }
+    ],
+    "version": "1.0",
+    "name": "FollowUpVisit",
+    "title": "Follow-up visit",
+    "status": "active",
+    "date": "2026-01-15",
+    "publisher": "Example Health",
+    "description": "Book a follow-up visit.",
+    "useContext": [
+        {
+            "code": {
+                "system": "http://terminology.hl7.org/CodeSystem/usage-context-type",
+                "code": "focus",
+            },
+            "valueCodeableConcept": {
+                "coding": [{"system": "http://snomed.info/sct", "code": "35489007"}]
+            },
+        }
+    ],
+    "jurisdiction": [{"coding": [{"system": "urn:iso:std:iso:3166", "code": "US"}]}],
+    "topic": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/definition-topic",
+                    "code": "treatment",
+                }
+            ]
+        }
+    ],
+    "scoring": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+                "code": "proportion",
             }
-        },
-    )
+        ]
+    },
+    "improvementNotation": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/measure-improvement-notation",
+                "code": "increase",
+            }
+        ]
+    },
+    "group": [
+        {
+            "description": "Overall",
+            "population": [
+                {
+                    "code": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                                "code": "initial-population",
+                            }
+                        ]
+                    },
+                    "criteria": {
+                        "language": "text/cql",
+                        "expression": "Initial Population",
+                    },
+                }
+            ],
+        }
+    ],
+}
 
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="May be used to represent additional information."
+
+class _MeasureFields(FhirInputModel):
+    """Every writable Measure element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/measure.html). Create and patch accept exactly the
+    same fields. R4 requires `status`; the native validator cannot see a missing primitive
+    `status`, which only the `java_validator` backend rejects.
+
+    The validated body is stored whole (MeasureModel.content), so any valid R4 element
+    is kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the measure_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["Measure"] | None = Field(
+        None, description="Optional; if supplied it must be 'Measure'."
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
     url: str | None = Field(
-        None, description="Canonical identifier for this measure, represented as a URI."
+        None,
+        description="Canonical identifier for this measure. Searched by `url`.",
     )
-    identifier: list[MeasureIdentifierInput] | None = Field(
-        None, description="Additional identifier for the measure."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Additional identifier. Searched by `identifier`."
     )
-    version: str | None = Field(None, description="Business version of the measure.")
+    version: str | None = Field(
+        None,
+        description="Business version of the measure. Searched by `version`.",
+    )
     name: str | None = Field(
-        None, description="Name for this measure (computer friendly)."
+        None,
+        description="Name for this measure (computer friendly). Searched by `name`.",
     )
     title: str | None = Field(
-        None, description="Name for this measure (human friendly)."
+        None,
+        description="Name for this measure (human friendly). Searched by `title`.",
     )
-    subtitle: str | None = Field(None, description="Subordinate title of the measure.")
-    status: MeasureStatus = Field(
-        ..., description="draft | active | retired | unknown."
+    subtitle: str | None = Field(None, description="Subordinate title.")
+    status: StatusCode | None = Field(
+        None,
+        description="draft | active | retired | unknown (required by R4). Searched by `status`.",
     )
     experimental: bool | None = Field(
         None, description="For testing purposes, not real usage."
     )
-
-    # subject[x] (CodeableConcept | Reference(Group))
-    subject_codeable_concept: MeasureCodeableConceptInput | None = Field(
-        None, description="E.g. Patient, Practitioner, RelatedPerson, Location."
+    subjectCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="subject[x]: type of individual the measure is intended for.",
     )
-    subject_reference: str | None = Field(
-        None, description="Reference to Group definition (e.g. 'Group/101')."
+    subjectReference: FhirReferenceInput | None = Field(
+        None,
+        description="subject[x]: Reference(Group) the measure is intended for.",
     )
-    subject_reference_display: str | None = Field(
-        None, description="Text alternative for the subject reference."
+    date: str | None = Field(
+        None, description="Date last changed (a FHIR dateTime). Searched by `date`."
     )
-
-    date: dt.datetime | None = Field(None, description="Date last changed.")
     publisher: str | None = Field(
-        None, description="Name of the publisher (organization or individual)."
+        None, description="Name of the publisher. Searched by `publisher`."
     )
-    contact: list[MeasureContactInput] | None = Field(
-        None, description="Contact details for the publisher."
+    contact: list[dict] | None = Field(
+        None, description="Contact details for the publisher (ContactDetail)."
     )
     description: str | None = Field(
-        None, description="Natural language description of the measure."
+        None, description="Natural language description. Searched by `description`."
     )
-    use_context: list[MeasureUseContextInput] | None = Field(
-        None, description="The context that the content is intended to support."
+    useContext: list[dict] | None = Field(
+        None,
+        description="The context that the content is intended to support (UsageContext). Searched by `context`, `context-type`, `context-quantity` and the two composites.",
     )
-    jurisdiction: list[MeasureCodeableConceptInput] | None = Field(
-        None, description="Intended jurisdiction for measure (e.g. country)."
+    jurisdiction: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Intended jurisdiction. Searched by `jurisdiction`."
     )
     purpose: str | None = Field(None, description="Why this measure is defined.")
     usage: str | None = Field(
@@ -111,66 +172,67 @@ class MeasureCreateSchema(BaseModel):
     copyright: str | None = Field(
         None, description="Use and/or publishing restrictions."
     )
-    approval_date: dt.date | None = Field(
-        None, description="When the measure was approved by publisher."
+    approvalDate: str | None = Field(
+        None, description="When the measure was approved by the publisher."
     )
-    last_review_date: dt.date | None = Field(
+    lastReviewDate: str | None = Field(
         None, description="When the measure was last reviewed."
     )
-    effective_period_start: dt.datetime | None = Field(
-        None, description="When the measure is expected to be used (start)."
+    effectivePeriod: FhirPeriodInput | None = Field(
+        None,
+        description="When the measure is expected to be used. Searched by `effective`.",
     )
-    effective_period_end: dt.datetime | None = Field(
-        None, description="When the measure is expected to be used (end)."
+    topic: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="E.g. Education, Treatment, Assessment, etc. Searched by `topic`.",
     )
-    topic: list[MeasureCodeableConceptInput] | None = Field(
-        None, description="The category of the measure, such as ACC, AHA, etc."
+    author: list[dict] | None = Field(
+        None, description="Who authored the content (ContactDetail)."
     )
-    author: list[MeasureContactInput] | None = Field(
-        None, description="Who authored the content."
+    editor: list[dict] | None = Field(
+        None, description="Who edited the content (ContactDetail)."
     )
-    editor: list[MeasureContactInput] | None = Field(
-        None, description="Who edited the content."
+    reviewer: list[dict] | None = Field(
+        None, description="Who reviewed the content (ContactDetail)."
     )
-    reviewer: list[MeasureContactInput] | None = Field(
-        None, description="Who reviewed the content."
+    endorser: list[dict] | None = Field(
+        None, description="Who endorsed the content (ContactDetail)."
     )
-    endorser: list[MeasureContactInput] | None = Field(
-        None, description="Who endorsed the content."
-    )
-    related_artifact: list[MeasureRelatedArtifactInput] | None = Field(
-        None, description="Additional documentation, citations, etc."
+    relatedArtifact: list[dict] | None = Field(
+        None,
+        description="Additional documentation, citations, etc. (RelatedArtifact). The `resource` of a `composed-of` / `depends-on` / `derived-from` / `predecessor` / `successor` entry is searched by the parameter of that name.",
     )
     library: list[str] | None = Field(
-        None, description="Logic used by the measure (canonical references)."
+        None,
+        description="Logic used by the measure (canonical(Library)). Searched by `depends-on`.",
     )
     disclaimer: str | None = Field(
-        None, description="Disclaimer for use of the measure."
+        None, description="Disclaimer for use of the measure or its referenced content."
     )
-    scoring: MeasureCodeableConceptInput | None = Field(
+    scoring: FhirCodeableConceptInput | None = Field(
         None, description="proportion | ratio | continuous-variable | cohort."
     )
-    composite_scoring: MeasureCodeableConceptInput | None = Field(
+    compositeScoring: FhirCodeableConceptInput | None = Field(
         None, description="opportunity | all-or-nothing | linear | weighted."
     )
-    type: list[MeasureCodeableConceptInput] | None = Field(
-        None, description="process | outcome | structure | process | composite."
+    type: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="process | outcome | structure | patient-reported-outcome | composite.",
     )
-    risk_adjustment: str | None = Field(
+    riskAdjustment: str | None = Field(
         None, description="How risk adjustment is applied for this measure."
     )
-    rate_aggregation: str | None = Field(
-        None, description="How rate aggregation is performed for this measure."
+    rateAggregation: str | None = Field(
+        None, description="How is rate aggregation performed for this measure."
     )
     rationale: str | None = Field(
-        None, description="Detailed description of rationale for measure."
+        None, description="Detailed description of why the measure exists."
     )
-    clinical_recommendation_statement: str | None = Field(
-        None, description="Summary of clinical guidelines or recommendations."
+    clinicalRecommendationStatement: str | None = Field(
+        None, description="Summary of clinical guidelines."
     )
-    improvement_notation: MeasureCodeableConceptInput | None = Field(
-        None,
-        description="Increased score indicates improvement / Decreased score indicates improvement.",
+    improvementNotation: FhirCodeableConceptInput | None = Field(
+        None, description="increase | decrease."
     )
     definition: list[str] | None = Field(
         None, description="Defined terms used in the measure documentation."
@@ -178,63 +240,30 @@ class MeasureCreateSchema(BaseModel):
     guidance: str | None = Field(
         None, description="Additional guidance for implementers."
     )
-    group: list[MeasureGroupInput] | None = Field(
-        None, description="What groups are in the measure."
+    group: list[dict] | None = Field(
+        None,
+        description="Population criteria group: [{code, description, population[{code, description, criteria}], stratifier[{code, description, criteria, component[]}]}].",
     )
-    supplemental_data: list[MeasureSupplementalDataInput] | None = Field(
-        None, description="What other data should be reported with the measure."
+    supplementalData: list[dict] | None = Field(
+        None,
+        description="What other data should be reported with the measure: [{code, usage, description, criteria}].",
     )
 
 
-class MeasurePatchSchema(BaseModel):
-    """Payload to patch an existing Measure resource. All fields optional."""
+class MeasureCreateSchema(_MeasureFields):
+    """POST body - a FHIR R4 Measure resource."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    extension: list[dict[str, Any]] | None = None
-    url: str | None = None
-    identifier: list[MeasureIdentifierInput] | None = None
-    version: str | None = None
-    name: str | None = None
-    title: str | None = None
-    subtitle: str | None = None
-    status: MeasureStatus | None = None
-    experimental: bool | None = None
 
-    subject_codeable_concept: MeasureCodeableConceptInput | None = None
-    subject_reference: str | None = None
-    subject_reference_display: str | None = None
+class MeasurePatchSchema(_MeasureFields):
+    """PATCH body - a partial FHIR R4 Measure (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object replaces the whole value, and `null` clears it."""
 
-    date: dt.datetime | None = None
-    publisher: str | None = None
-    contact: list[MeasureContactInput] | None = None
-    description: str | None = None
-    use_context: list[MeasureUseContextInput] | None = None
-    jurisdiction: list[MeasureCodeableConceptInput] | None = None
-    purpose: str | None = None
-    usage: str | None = None
-    copyright: str | None = None
-    approval_date: dt.date | None = None
-    last_review_date: dt.date | None = None
-    effective_period_start: dt.datetime | None = None
-    effective_period_end: dt.datetime | None = None
-    topic: list[MeasureCodeableConceptInput] | None = None
-    author: list[MeasureContactInput] | None = None
-    editor: list[MeasureContactInput] | None = None
-    reviewer: list[MeasureContactInput] | None = None
-    endorser: list[MeasureContactInput] | None = None
-    related_artifact: list[MeasureRelatedArtifactInput] | None = None
-    library: list[str] | None = None
-    disclaimer: str | None = None
-    scoring: MeasureCodeableConceptInput | None = None
-    composite_scoring: MeasureCodeableConceptInput | None = None
-    type: list[MeasureCodeableConceptInput] | None = None
-    risk_adjustment: str | None = None
-    rate_aggregation: str | None = None
-    rationale: str | None = None
-    clinical_recommendation_statement: str | None = None
-    improvement_notation: MeasureCodeableConceptInput | None = None
-    definition: list[str] | None = None
-    guidance: str | None = None
-    group: list[MeasureGroupInput] | None = None
-    supplemental_data: list[MeasureSupplementalDataInput] | None = None
+    model_config = {
+        "json_schema_extra": {
+            "example": {"status": "retired", "version": "1.1"},
+        }
+    }

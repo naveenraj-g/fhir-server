@@ -1,6 +1,12 @@
 """FHIR R4 conformance for `to_fhir_measure()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Measure is stored whole in `content` (like ActivityDefinition, PlanDefinition and the other
+content-based resources): the resource lives in MeasureModel.content, and to_fhir_measure() only
+stamps `id` and `meta` onto it. So what can go wrong on the read side is that stamping (e.g. a
+malformed meta extension) or a stored document the server returns that isn't valid R4 - each case
+below is a `content` document as the write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,370 +14,314 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.measure import to_fhir_measure
-from app.models.enums import IdentifierUse
-from app.schemas.enums import ContactPointSystem, ContactPointUse
-from app.models.measure import (
-    MeasureCompositeScoringCoding,
-    MeasureContact,
-    MeasureContactRole,
-    MeasureContactTelecom,
-    MeasureGroup,
-    MeasureGroupCodeCoding,
-    MeasureGroupPopulation,
-    MeasureGroupPopulationCodeCoding,
-    MeasureGroupStratifier,
-    MeasureGroupStratifierCodeCoding,
-    MeasureGroupStratifierComponent,
-    MeasureGroupStratifierComponentCodeCoding,
-    MeasureIdentifier,
-    MeasureIdentifierTypeCoding,
-    MeasureImprovementNotationCoding,
-    MeasureJurisdiction,
-    MeasureJurisdictionCoding,
-    MeasureModel,
-    MeasureQuantityComparator,
-    MeasureRelatedArtifact,
-    MeasureRelatedArtifactType,
-    MeasureScoringCoding,
-    MeasureStatus,
-    MeasureSubjectCoding,
-    MeasureSubjectReferenceType,
-    MeasureSupplementalData,
-    MeasureSupplementalDataCodeCoding,
-    MeasureSupplementalDataUsage,
-    MeasureSupplementalDataUsageCoding,
-    MeasureTopic,
-    MeasureTopicCoding,
-    MeasureType,
-    MeasureTypeCoding,
-    MeasureUseContext,
-    MeasureUseContextValueCoding,
-    MeasureUseContextValueReferenceType,
-)
+from app.models.measure import MeasureModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-measure_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.measure_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 2, 1, 10, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "subject_codings",
-    "contacts",
-    "use_contexts",
-    "jurisdictions",
-    "topics",
-    "related_artifacts",
-    "scoring_codings",
-    "composite_scoring_codings",
-    "types",
-    "improvement_notation_codings",
-    "groups",
-    "supplemental_data",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+SCT = "http://snomed.info/sct"
+UCUM = "http://unitsofmeasure.org"
+USAGE = "http://terminology.hl7.org/CodeSystem/usage-context-type"
+TOPIC = "http://terminology.hl7.org/CodeSystem/definition-topic"
+POPULATION = "http://terminology.hl7.org/CodeSystem/measure-population"
+CQL = {"language": "text/cql", "expression": "Initial Population"}
 
 
-def _measure(**overrides) -> MeasureModel:
+def _c(content: dict, **overrides) -> MeasureModel:
     fields = {
-        "id": 1,
         "measure_id": 560001,
         "tenant_id": "org-test",
         "created_by": "u-test",
-        "status": MeasureStatus.draft,
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = MeasureModel(**fields)
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
+    return MeasureModel(**fields)
 
 
-def test_minimal_measure_conforms():
-    m = _measure()
-    resource = to_fhir_measure(m)
-    assert_valid(measure_pb2.Measure, resource)
+def _base(**extra) -> dict:
+    return {"status": "active", **extra}
 
 
-def test_full_measure_conforms():
-    id_coding = MeasureIdentifierTypeCoding(
-        system="http://terminology.hl7.org/CodeSystem/v2-0203",
-        code="FILL",
-        display="Filler Identifier",
-    )
-    ident = MeasureIdentifier(
-        use=IdentifierUse.official,
-        system="http://example.org/fhir/measure",
-        value="meas-12345",
-        period_start=D,
-        period_end=D,
-        assigner_reference="Organization/190001",
-        type_text="Filler",
-    )
-    ident.type_codings = [id_coding]
+def _case(**extra) -> MeasureModel:
+    return _c(_base(**extra))
 
-    subj_coding = MeasureSubjectCoding(
-        system="http://hl7.org/fhir/resource-types",
-        code="Patient",
-        display="Patient",
-    )
 
-    t = MeasureContactTelecom(
-        system=ContactPointSystem.phone,
-        value="555-1234",
-        use=ContactPointUse.work,
-        rank=1,
-    )
-    c_contact = MeasureContact(
-        role=MeasureContactRole.contact,
-        name="Clinical Quality Lead",
-    )
-    c_contact.telecoms = [t]
-
-    c_author = MeasureContact(
-        role=MeasureContactRole.author,
-        name="Dr. Author",
-    )
-    c_editor = MeasureContact(
-        role=MeasureContactRole.editor,
-        name="Dr. Editor",
-    )
-    c_reviewer = MeasureContact(
-        role=MeasureContactRole.reviewer,
-        name="Dr. Reviewer",
-    )
-    c_endorser = MeasureContact(
-        role=MeasureContactRole.endorser,
-        name="Quality Board",
-    )
-
-    uc1 = MeasureUseContext(
-        system="http://terminology.hl7.org/CodeSystem/usage-context-type",
-        code="focus",
-        display="Clinical Focus",
-        value_codeable_concept_text="Cardiology",
-    )
-    uc1.value_codings = [
-        MeasureUseContextValueCoding(
-            system="http://snomed.info/sct",
-            code="394579002",
-            display="Cardiology",
-        )
-    ]
-
-    uc2 = MeasureUseContext(
-        system="http://terminology.hl7.org/CodeSystem/usage-context-type",
-        code="age",
-        display="Age",
-        value_quantity_value=18,
-        value_quantity_comparator=MeasureQuantityComparator.ge,
-        value_quantity_unit="a",
-        value_quantity_system="http://unitsofmeasure.org",
-        value_quantity_code="a",
-    )
-
-    uc3 = MeasureUseContext(
-        system="http://terminology.hl7.org/CodeSystem/usage-context-type",
-        code="age",
-        display="Age Range",
-        value_range_low_value=18,
-        value_range_low_unit="a",
-        value_range_high_value=65,
-        value_range_high_unit="a",
-    )
-
-    uc4 = MeasureUseContext(
-        system="http://terminology.hl7.org/CodeSystem/usage-context-type",
-        code="venue",
-        display="Clinical Venue",
-        value_reference_type=MeasureUseContextValueReferenceType.Location,
-        value_reference_id=230001,
-        value_reference_display="Cardiology Clinic",
-    )
-
-    jur = MeasureJurisdiction(text="US")
-    jur.codings = [
-        MeasureJurisdictionCoding(
-            system="urn:iso:std:iso:3166",
-            code="US",
-            display="United States of America",
-        )
-    ]
-
-    top = MeasureTopic(text="Hypertension")
-    top.codings = [
-        MeasureTopicCoding(
-            system="http://snomed.info/sct",
-            code="38341003",
-            display="Hypertensive disorder",
-        )
-    ]
-
-    ra = MeasureRelatedArtifact(
-        type=MeasureRelatedArtifactType.depends_on,
-        label="CQM Logic",
-        display="Clinical Quality Measure Logic Library",
-        url="http://example.org/fhir/Library/example-logic",
-    )
-
-    scoring_coding = MeasureScoringCoding(
-        system="http://terminology.hl7.org/CodeSystem/measure-scoring",
-        code="proportion",
-        display="Proportion",
-    )
-
-    comp_scoring_coding = MeasureCompositeScoringCoding(
-        system="http://terminology.hl7.org/CodeSystem/composite-measure-scoring",
-        code="linear",
-        display="Linear",
-    )
-
-    mtype = MeasureType(text="Process")
-    mtype.codings = [
-        MeasureTypeCoding(
-            system="http://terminology.hl7.org/CodeSystem/measure-type",
-            code="process",
-            display="Process",
-        )
-    ]
-
-    imp_not_coding = MeasureImprovementNotationCoding(
-        system="http://terminology.hl7.org/CodeSystem/measure-improvement-notation",
-        code="increase",
-        display="Increased score indicates improvement",
-    )
-
-    # Group
-    grp = MeasureGroup(
-        description="Main Population Group",
-        code_text="Hypertension Control",
-    )
-    grp.code_codings = [
-        MeasureGroupCodeCoding(
-            system="http://example.org/fhir/measure-group",
-            code="htn-control",
-            display="Hypertension Control",
-        )
-    ]
-
-    pop = MeasureGroupPopulation(
-        description="Initial Population",
-        code_text="Initial Population",
-        criteria_language="text/cql",
-        criteria_expression="Initial Population",
-    )
-    pop.code_codings = [
-        MeasureGroupPopulationCodeCoding(
-            system="http://terminology.hl7.org/CodeSystem/measure-population",
-            code="initial-population",
-            display="Initial Population",
-        )
-    ]
-    grp.populations = [pop]
-
-    comp = MeasureGroupStratifierComponent(
-        description="Gender Component",
-        code_text="Gender",
-        criteria_language="text/cql",
-        criteria_expression="Patient.gender",
-    )
-    comp.code_codings = [
-        MeasureGroupStratifierComponentCodeCoding(
-            system="http://example.org/fhir/stratifier-component",
-            code="gender",
-            display="Gender",
-        )
-    ]
-
-    strat = MeasureGroupStratifier(
-        description="Age Stratifier",
-        code_text="Age Group",
-        criteria_language="text/cql",
-        criteria_expression="Age Stratifier",
-    )
-    strat.code_codings = [
-        MeasureGroupStratifierCodeCoding(
-            system="http://example.org/fhir/stratifier",
-            code="age-group",
-            display="Age Group",
-        )
-    ]
-    strat.components = [comp]
-    grp.stratifiers = [strat]
-
-    # Supplemental Data
-    sd = MeasureSupplementalData(
-        description="Payer Information",
-        code_text="Payer",
-        criteria_language="text/cql",
-        criteria_expression="Coverage.payer",
-    )
-    sd.code_codings = [
-        MeasureSupplementalDataCodeCoding(
-            system="http://example.org/fhir/supplemental-data",
-            code="payer",
-            display="Payer",
-        )
-    ]
-    sd_usage = MeasureSupplementalDataUsage(text="Risk Adjustment")
-    sd_usage.codings = [
-        MeasureSupplementalDataUsageCoding(
-            system="http://terminology.hl7.org/CodeSystem/measure-data-usage",
-            code="risk-adjustment-factor",
-            display="Risk Adjustment Factor",
-        )
-    ]
-    sd.usages = [sd_usage]
-
-    m = _measure(
-        url="http://example.org/fhir/Measure/example",
-        version="1.0.0",
-        name="ExampleMeasure",
-        title="Example Measure",
-        subtitle="Subtitle for Example Measure",
+CASES = {
+    "minimal": _c(_base()),
+    "updated_by_and_updated_at": _c(_base(), updated_by="u-other", updated_at=D),
+    **{
+        f"status_{s}": _case(status=s)
+        for s in ("draft", "active", "retired", "unknown")
+    },
+    "url_version_name_title": _case(
+        url="https://fhir-server.dev/fhir/Measure/x",
+        version="1.0",
+        name="Readmission",
+        title="30-day readmission",
+        subtitle="Adults",
         experimental=True,
-        date=D,
-        publisher="Example Health System",
-        description="A measure for testing hypertension control.",
-        purpose="To track hypertension control in patients.",
-        usage="Used annually by primary care physicians.",
-        copyright="Copyright 2026 Example Health System",
-        approval_date=dt.date(2026, 1, 15),
-        last_review_date=dt.date(2026, 1, 20),
-        effective_period_start=D,
-        effective_period_end=D,
-        library=["http://example.org/fhir/Library/example-logic"],
-        disclaimer="None",
-        scoring_text="Proportion",
-        composite_scoring_text="Linear",
-        risk_adjustment="None",
-        rate_aggregation="None",
-        rationale="Hypertension is a major risk factor for cardiovascular disease.",
-        clinical_recommendation_statement="Screen adults for hypertension.",
-        improvement_notation_text="Increase",
-        definition=["Hypertension: Systolic BP >= 140 or Diastolic BP >= 90"],
-        guidance="Follow clinical practice guidelines.",
-        identifiers=[ident],
-        subject_codings=[subj_coding],
-        subject_codeable_concept_text="Patient",
-        contacts=[c_contact, c_author, c_editor, c_reviewer, c_endorser],
-        use_contexts=[uc1, uc2, uc3, uc4],
-        jurisdictions=[jur],
-        topics=[top],
-        related_artifacts=[ra],
-        scoring_codings=[scoring_coding],
-        composite_scoring_codings=[comp_scoring_coding],
-        types=[mtype],
-        improvement_notation_codings=[imp_not_coding],
-        groups=[grp],
-        supplemental_data=[sd],
-    )
+    ),
+    "identifier_with_type_and_assigner": _case(
+        identifier=[
+            {
+                "use": "official",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "ACSN",
+                        }
+                    ]
+                },
+                "system": "https://fhir-server.dev/fhir/identifier-system/measure-id",
+                "value": "M-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        ]
+    ),
+    "date_publisher_description": _case(
+        date="2026-01-15T10:00:00Z",
+        publisher="Example Health",
+        description="Readmissions within **30 days**.",
+        purpose="Quality",
+        usage="Reporting",
+        copyright="(c) Example",
+        disclaimer="For research use",
+    ),
+    "approval_and_review_dates": _case(
+        approvalDate="2026-01-10", lastReviewDate="2026-01-12"
+    ),
+    "effective_period": _case(
+        effectivePeriod={"start": "2026-01-01", "end": "2026-12-31"}
+    ),
+    "contact_and_roles": _case(
+        contact=[
+            {"name": "Help desk", "telecom": [{"system": "phone", "value": "555"}]}
+        ],
+        author=[{"name": "Dr A"}],
+        editor=[{"name": "Dr B"}],
+        reviewer=[{"name": "Dr C"}],
+        endorser=[{"name": "Dr D"}],
+    ),
+    "use_context_every_value_kind": _case(
+        useContext=[
+            {
+                "code": {"system": USAGE, "code": "focus"},
+                "valueCodeableConcept": {
+                    "coding": [{"system": SCT, "code": "35489007"}]
+                },
+            },
+            {
+                "code": {"system": USAGE, "code": "age"},
+                "valueRange": {
+                    "low": {"value": 12, "system": UCUM, "code": "a"},
+                    "high": {"value": 17, "system": UCUM, "code": "a"},
+                },
+            },
+            {
+                "code": {"system": USAGE, "code": "venue"},
+                "valueQuantity": {
+                    "value": 5,
+                    "unit": "mg",
+                    "system": UCUM,
+                    "code": "mg",
+                },
+            },
+            {
+                "code": {"system": USAGE, "code": "workflow"},
+                "valueReference": {"reference": "Organization/190001"},
+            },
+        ]
+    ),
+    "jurisdiction_and_topic": _case(
+        jurisdiction=[{"coding": [{"system": "urn:iso:std:iso:3166", "code": "US"}]}],
+        topic=[{"coding": [{"system": TOPIC, "code": "treatment"}]}, {"text": "x"}],
+    ),
+    "related_artifacts": _case(
+        relatedArtifact=[
+            {
+                "type": "documentation",
+                "display": "Guide",
+                "url": "http://example.org/g",
+            },
+            {"type": "predecessor", "resource": "http://example.org/Measure/old"},
+            {"type": "composed-of", "resource": "http://example.org/Library/x|1.0"},
+            {"type": "citation", "citation": "A. Author. 2020."},
+        ],
+        library=["http://example.org/Library/lib1"],
+    ),
+    "subject_codeable_concept": _case(subjectCodeableConcept={"text": "adults"}),
+    "subject_reference": _case(subjectReference={"reference": "Group/430001"}),
+    "scoring_and_notation": _case(
+        scoring={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+                    "code": "proportion",
+                }
+            ]
+        },
+        compositeScoring={"text": "linear"},
+        type=[{"text": "process"}, {"text": "outcome"}],
+        improvementNotation={"text": "increase"},
+    ),
+    "narrative_elements": _case(
+        riskAdjustment="By age",
+        rateAggregation="Weighted",
+        rationale="Reduces readmissions",
+        clinicalRecommendationStatement="Follow up within 7 days",
+        definition=["Readmission: an unplanned return"],
+        guidance="Use the discharge date",
+    ),
+    "group_population_and_stratifier": _case(
+        group=[
+            {
+                "id": "g1",
+                "code": {"text": "overall"},
+                "description": "Overall",
+                "population": [
+                    {
+                        "code": {
+                            "coding": [
+                                {"system": POPULATION, "code": "initial-population"}
+                            ]
+                        },
+                        "description": "All discharges",
+                        "criteria": CQL,
+                    },
+                    {"code": {"text": "numerator"}, "criteria": CQL},
+                ],
+                "stratifier": [
+                    {"code": {"text": "age"}, "criteria": CQL},
+                    {
+                        "code": {"text": "multi"},
+                        "component": [
+                            {"code": {"text": "sex"}, "criteria": CQL},
+                            {
+                                "code": {"text": "ward"},
+                                "description": "Ward",
+                                "criteria": CQL,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {"description": "second"},
+        ]
+    ),
+    "supplemental_data": _case(
+        supplementalData=[
+            {
+                "code": {"text": "race"},
+                "usage": [
+                    {"text": "supplemental-data"},
+                    {"text": "risk-adjustment-factor"},
+                ],
+                "description": "Race",
+                "criteria": CQL,
+            }
+        ]
+    ),
+    "extension": _case(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
+}
 
-    resource = to_fhir_measure(m)
-    assert_valid(measure_pb2.Measure, resource)
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_measure_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.Measure, to_fhir_measure(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = _base(name="Readmission", group=[{"description": "g"}])
+    out = to_fhir_measure(_c(content))
+    assert out["resourceType"] == "Measure"
+    assert out["id"] == "560001"
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
+
+
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `scoring` or `subjectReference` as a one-item list; the
+# integration tests cover what they can.)
+
+
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "robot"}),
+        ("status as number", {"status": 1}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+        ("url as number", {"url": 5}),
+        ("experimental as string", {"experimental": "yes"}),
+        ("date not a dateTime", {"date": "yesterday"}),
+        ("approvalDate not a date", {"approvalDate": "not-a-date"}),
+        ("contact as object not a list", {"contact": {"name": "x"}}),
+        ("useContext as string", {"useContext": "x"}),
+        (
+            "useContext entry without a code",
+            {"useContext": [{"valueReference": {"reference": "Patient/1"}}]},
+        ),
+        ("jurisdiction as string", {"jurisdiction": "US"}),
+        ("topic as object not a list", {"topic": {"text": "x"}}),
+        ("effectivePeriod as string", {"effectivePeriod": "2026"}),
+        ("relatedArtifact as object", {"relatedArtifact": {"type": "x"}}),
+        (
+            "relatedArtifact with an unknown type",
+            {"relatedArtifact": [{"type": "banana"}]},
+        ),
+        ("library as string", {"library": "http://x"}),
+        ("disclaimer as number", {"disclaimer": 5}),
+        ("scoring as string", {"scoring": "proportion"}),
+        ("compositeScoring as string", {"compositeScoring": "linear"}),
+        ("type as object not a list", {"type": {"text": "process"}}),
+        ("riskAdjustment as number", {"riskAdjustment": 5}),
+        ("improvementNotation as string", {"improvementNotation": "increase"}),
+        ("definition as string", {"definition": "x"}),
+        ("group as object not a list", {"group": {"description": "x"}}),
+        (
+            "group population as object",
+            {"group": [{"population": {"description": "x"}}]},
+        ),
+        (
+            "population without a criteria",
+            {"group": [{"population": [{"description": "x"}]}]},
+        ),
+        (
+            "stratifier component as object",
+            {"group": [{"stratifier": [{"component": {"description": "x"}}]}]},
+        ),
+        ("supplementalData as object", {"supplementalData": {"code": {"text": "x"}}}),
+        (
+            "supplementalData without a criteria",
+            {"supplementalData": [{"code": {"text": "x"}}]},
+        ),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {"resourceType": "Measure", "id": "560001", **_base(), **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.Measure, validate=True
+        )
