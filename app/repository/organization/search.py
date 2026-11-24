@@ -38,8 +38,12 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_dispense_revinclude import reference_medication_dispense_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -683,10 +687,10 @@ def organization_search() -> SearchRegistry:
         ),
         revincludes=(
             *reference_medication_dispense_revincludes(
-                'performer', 'Organization', lambda x: x.organization_id
+                "performer", "Organization", lambda x: x.organization_id
             ),
             *column_medication_statement_revincludes(
-                ('source',), 'source', 'Organization', lambda x: x.organization_id
+                ("source",), "source", "Organization", lambda x: x.organization_id
             ),
             *column_questionnaire_response_revincludes(
                 ("author",), "author", "Organization", lambda x: x.organization_id

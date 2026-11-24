@@ -19,10 +19,17 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
-from app.repository._medication_dispense_revinclude import column_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -77,102 +84,10 @@ _P = EncounterParticipant
 _L = EncounterLocation
 _STATUS_SYSTEM = "http://hl7.org/fhir/encounter-status"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "EpisodeOfCare": (
-        "app.models.episode_of_care",
-        "EpisodeOfCareModel",
-        "episode_of_care_id",
-        "app.repository.episode_of_care.search",
-        "episode_of_care_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Appointment": (
-        "app.models.appointment",
-        "AppointmentModel",
-        "appointment_id",
-        "app.repository.appointment.search",
-        "appointment_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "Procedure": (
-        "app.models.procedure",
-        "ProcedureModel",
-        "procedure_id",
-        "app.repository.procedure.search",
-        "procedure_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -1042,13 +957,13 @@ def encounter_search() -> SearchRegistry:
         # An Encounter that is part of another one points back at it.
         revincludes=(
             *column_medication_dispense_revincludes(
-                ('context',), 'context', 'Encounter', lambda x: x.encounter_id
+                ("context",), "context", "Encounter", lambda x: x.encounter_id
             ),
             *column_medication_administration_revincludes(
-                ('context',), 'context', 'Encounter', lambda x: x.encounter_id
+                ("context",), "context", "Encounter", lambda x: x.encounter_id
             ),
             *column_medication_statement_revincludes(
-                ('context',), 'context', 'Encounter', lambda x: x.encounter_id
+                ("context",), "context", "Encounter", lambda x: x.encounter_id
             ),
             *column_questionnaire_response_revincludes(
                 ("encounter",), "encounter", "Encounter", lambda x: x.encounter_id

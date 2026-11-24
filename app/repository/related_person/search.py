@@ -37,9 +37,15 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_dispense_revinclude import reference_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import reference_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    reference_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -47,6 +53,7 @@ from app.repository._document_reference_revinclude import (
     reference_document_reference_revincludes,
 )
 from app.repository._care_plan_revinclude import performer_care_plan_revincludes
+from app.repository._schedule_revinclude import actor_schedule_revincludes
 from app.repository._care_team_revinclude import participant_care_team_revincludes
 from app.repository._group_revinclude import (
     managing_entity_group_revincludes,
@@ -665,13 +672,13 @@ def related_person_search() -> SearchRegistry:
         # participants and Patient.link.
         revincludes=(
             *reference_medication_dispense_revincludes(
-                'performer', 'RelatedPerson', lambda x: x.related_person_id
+                "performer", "RelatedPerson", lambda x: x.related_person_id
             ),
             *reference_medication_administration_revincludes(
-                'performer', 'RelatedPerson', lambda x: x.related_person_id
+                "performer", "RelatedPerson", lambda x: x.related_person_id
             ),
             *column_medication_statement_revincludes(
-                ('source',), 'source', 'RelatedPerson', lambda x: x.related_person_id
+                ("source",), "source", "RelatedPerson", lambda x: x.related_person_id
             ),
             *column_questionnaire_response_revincludes(
                 ("author",), "author", "RelatedPerson", lambda x: x.related_person_id
@@ -688,6 +695,7 @@ def related_person_search() -> SearchRegistry:
             *participant_care_team_revincludes(
                 "RelatedPerson", lambda p: p.related_person_id
             ),
+            *actor_schedule_revincludes("RelatedPerson", lambda r: r.related_person_id),
             *managing_entity_group_revincludes(
                 "RelatedPerson", lambda r: r.related_person_id
             ),

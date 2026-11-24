@@ -16,9 +16,15 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._medication_dispense_revinclude import reference_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import reference_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    reference_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -605,19 +611,19 @@ def practitioner_search() -> SearchRegistry:
         # PractitionerRole.practitioner points here.
         revincludes=(
             *reference_medication_dispense_revincludes(
-                'performer', 'Practitioner', lambda x: x.practitioner_id
+                "performer", "Practitioner", lambda x: x.practitioner_id
             ),
             *reference_medication_dispense_revincludes(
-                'receiver', 'Practitioner', lambda x: x.practitioner_id
+                "receiver", "Practitioner", lambda x: x.practitioner_id
             ),
             *reference_medication_dispense_revincludes(
-                'responsibleparty', 'Practitioner', lambda x: x.practitioner_id
+                "responsibleparty", "Practitioner", lambda x: x.practitioner_id
             ),
             *reference_medication_administration_revincludes(
-                'performer', 'Practitioner', lambda x: x.practitioner_id
+                "performer", "Practitioner", lambda x: x.practitioner_id
             ),
             *column_medication_statement_revincludes(
-                ('source',), 'source', 'Practitioner', lambda x: x.practitioner_id
+                ("source",), "source", "Practitioner", lambda x: x.practitioner_id
             ),
             *column_questionnaire_response_revincludes(
                 ("author",), "author", "Practitioner", lambda x: x.practitioner_id

@@ -19,6 +19,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.core.filters import array_contains
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
@@ -55,39 +56,10 @@ _I = AllergyIntoleranceIdentifier
 _Tk = AllergyIntoleranceToken
 _Rx = AllergyIntoleranceReaction
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

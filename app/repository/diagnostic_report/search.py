@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -53,95 +54,10 @@ _R = DiagnosticReportReference
 _Pf = DiagnosticReportPerformer
 _STATUS_SYSTEM = "http://hl7.org/fhir/diagnostic-report-status"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "CareTeam": (
-        "app.models.care_team",
-        "CareTeamModel",
-        "care_team_id",
-        "app.repository.care_team.search",
-        "care_team_search",
-    ),
-    "CarePlan": (
-        "app.models.care_plan",
-        "CarePlanModel",
-        "care_plan_id",
-        "app.repository.care_plan.search",
-        "care_plan_search",
-    ),
-    "MedicationRequest": (
-        "app.models.medication_request",
-        "MedicationRequestModel",
-        "medication_request_id",
-        "app.repository.medication_request.search",
-        "medication_request_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-    "Specimen": (
-        "app.models.specimen",
-        "SpecimenModel",
-        "specimen_id",
-        "app.repository.specimen.search",
-        "specimen_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

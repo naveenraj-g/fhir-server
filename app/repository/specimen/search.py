@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -57,46 +58,10 @@ _R = SpecimenReference
 # Specimen.status is a `code` from the R4 specimen-status system.
 _STATUS_SYSTEM = "http://hl7.org/fhir/specimen-status"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "Specimen": (
-        "app.models.specimen",
-        "SpecimenModel",
-        "specimen_id",
-        "app.repository.specimen.search",
-        "specimen_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

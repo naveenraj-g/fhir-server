@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -42,165 +43,10 @@ _I = ImmunizationRecommendationIdentifier
 _Tk = ImmunizationRecommendationToken
 _R = ImmunizationRecommendationReference
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "MedicationDispense": (
-        "app.models.medication_dispense",
-        "MedicationDispenseModel",
-        "medication_dispense_id",
-        "app.repository.medication_dispense.search",
-        "medication_dispense_search",
-    ),
-    "MedicationAdministration": (
-        "app.models.medication_administration",
-        "MedicationAdministrationModel",
-        "medication_administration_id",
-        "app.repository.medication_administration.search",
-        "medication_administration_search",
-    ),
-    "MedicationStatement": (
-        "app.models.medication_statement",
-        "MedicationStatementModel",
-        "medication_statement_id",
-        "app.repository.medication_statement.search",
-        "medication_statement_search",
-    ),
-    "Questionnaire": (
-        "app.models.questionnaire",
-        "QuestionnaireModel",
-        "questionnaire_id",
-        "app.repository.questionnaire.search",
-        "questionnaire_search",
-    ),
-    "QuestionnaireResponse": (
-        "app.models.questionnaire_response",
-        "QuestionnaireResponseModel",
-        "questionnaire_response_id",
-        "app.repository.questionnaire_response.search",
-        "questionnaire_response_search",
-    ),
-    "DocumentReference": (
-        "app.models.document_reference",
-        "DocumentReferenceModel",
-        "document_reference_id",
-        "app.repository.document_reference.search",
-        "document_reference_search",
-    ),
-    "Group": (
-        "app.models.group",
-        "GroupModel",
-        "group_id",
-        "app.repository.group.search",
-        "group_search",
-    ),
-    "CareTeam": (
-        "app.models.care_team",
-        "CareTeamModel",
-        "care_team_id",
-        "app.repository.care_team.search",
-        "care_team_search",
-    ),
-    "CarePlan": (
-        "app.models.care_plan",
-        "CarePlanModel",
-        "care_plan_id",
-        "app.repository.care_plan.search",
-        "care_plan_search",
-    ),
-    "MedicationRequest": (
-        "app.models.medication_request",
-        "MedicationRequestModel",
-        "medication_request_id",
-        "app.repository.medication_request.search",
-        "medication_request_search",
-    ),
-    "Medication": (
-        "app.models.medication",
-        "MedicationModel",
-        "medication_id",
-        "app.repository.medication.search",
-        "medication_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-    "Specimen": (
-        "app.models.specimen",
-        "SpecimenModel",
-        "specimen_id",
-        "app.repository.specimen.search",
-        "specimen_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "Procedure": (
-        "app.models.procedure",
-        "ProcedureModel",
-        "procedure_id",
-        "app.repository.procedure.search",
-        "procedure_search",
-    ),
-    "DiagnosticReport": (
-        "app.models.diagnostic_report",
-        "DiagnosticReportModel",
-        "diagnostic_report_id",
-        "app.repository.diagnostic_report.search",
-        "diagnostic_report_search",
-    ),
-    "AllergyIntolerance": (
-        "app.models.allergy_intolerance",
-        "AllergyIntoleranceModel",
-        "allergy_intolerance_id",
-        "app.repository.allergy_intolerance.search",
-        "allergy_intolerance_search",
-    ),
-    "Immunization": (
-        "app.models.immunization",
-        "ImmunizationModel",
-        "immunization_id",
-        "app.repository.immunization.search",
-        "immunization_search",
-    ),
-    "ImmunizationEvaluation": (
-        "app.models.immunization_evaluation",
-        "ImmunizationEvaluationModel",
-        "immunization_evaluation_id",
-        "app.repository.immunization_evaluation.search",
-        "immunization_evaluation_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

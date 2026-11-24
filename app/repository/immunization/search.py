@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -66,67 +67,10 @@ _Rr = ImmunizationReasonReference
 # Immunization.status is a `code` from the event-status code system.
 _STATUS_SYSTEM = "http://hl7.org/fhir/event-status"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "DiagnosticReport": (
-        "app.models.diagnostic_report",
-        "DiagnosticReportModel",
-        "diagnostic_report_id",
-        "app.repository.diagnostic_report.search",
-        "diagnostic_report_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

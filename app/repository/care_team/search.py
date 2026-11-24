@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.repository._care_plan_revinclude import (
     performer_care_plan_revincludes,
     reference_care_plan_revincludes,
@@ -59,67 +60,10 @@ _P = CareTeamParticipant
 # CareTeam.status is a `code` from the R4 care_team-status system.
 _STATUS_SYSTEM = "http://hl7.org/fhir/care-team-status"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Group": (
-        "app.models.group",
-        "GroupModel",
-        "group_id",
-        "app.repository.group.search",
-        "group_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "CareTeam": (
-        "app.models.care_team",
-        "CareTeamModel",
-        "care_team_id",
-        "app.repository.care_team.search",
-        "care_team_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

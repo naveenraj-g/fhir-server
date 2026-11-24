@@ -1,43 +1,17 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
 
 # The reference parameter held in DetectedIssueReference, and the element it reads.
 REFERENCE_PARAMS = {
     "implicated": "implicated",
 }
-# `implicated` is Reference(Any): the parser only accepts `:Type` for a declared target, so
-# list the types an implicated resource can realistically be. A relative reference to a type
-# not listed is still indexed (and found by its absolute URL).
-IMPLICATED_TYPES = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Observation",
-    "Procedure",
-    "DiagnosticReport",
-    "DocumentReference",
-    "ServiceRequest",
-    "MedicationRequest",
-    "MedicationStatement",
-    "MedicationAdministration",
-    "MedicationDispense",
-    "CarePlan",
-    "AllergyIntolerance",
-    "Immunization",
-    "FamilyMemberHistory",
-    "RiskAssessment",
-    "ClinicalImpression",
-    "Device",
-)
+# `implicated` is Reference(Any): R4 allows every resource type, so the whole R4 list is the target
+# list (a plain reference search accepts any valid type; chaining and `_include` follow the
+# types that are rebuilt on this server - see app/repository/_search_targets.py).
+IMPLICATED_TYPES = ANY_RESOURCE_TYPES
 REFERENCE_TYPES = {"implicated": IMPLICATED_TYPES}
 
 

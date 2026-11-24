@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -51,18 +52,10 @@ _U = FamilyMemberHistoryInstantiatesUri
 _STATUS_SYSTEM = "http://hl7.org/fhir/history-status"
 _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

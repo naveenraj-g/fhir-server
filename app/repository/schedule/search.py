@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -48,39 +49,10 @@ _I = ScheduleIdentifier
 _Tk = ScheduleToken
 _A = ScheduleActor
 
-# Actor types that are searchable resources on this server: the model to join
-# for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "HealthcareService": (
-        "app.models.healthcare_service",
-        "HealthcareServiceModel",
-        "healthcare_service_id",
-        "app.repository.healthcare_service.search",
-        "healthcare_service_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -359,7 +331,7 @@ def schedule_search() -> SearchRegistry:
             frozenset({"identifier", "missing"}),
             targets=ACTOR_TYPES,
             chain=_actor_chain,
-            chain_targets={t: _registry_of(t) for t in _MODELED},
+            chain_targets={t: _registry_of(t) for t in ACTOR_TYPES if t in _MODELED},
             sort=lambda: _child_sort(_A.reference_id, _A),
             example="Practitioner/30001",
             modifier_docs={
@@ -434,7 +406,9 @@ def schedule_search() -> SearchRegistry:
         # of them and `Schedule:actor:Location` just the Locations. Patient /
         # RelatedPerson / Device aren't resources on this server.
         includes=tuple(
-            IncludeTarget("Schedule", "actor", t, _include_actors(t)) for t in _MODELED
+            IncludeTarget("Schedule", "actor", t, _include_actors(t))
+            for t in ACTOR_TYPES
+            if t in _MODELED
         ),
         # Slot is on the engine; Appointment (via its slots) will add its own later.
         revincludes=(

@@ -18,6 +18,7 @@ from .params import (
     IncludeSpec,
     SearchRegistry,
     SearchRequest,
+    target_names,
 )
 from .values import split_escaped
 
@@ -147,7 +148,7 @@ def _parse_clause(registry: SearchRegistry, key: str, value: str) -> Clause | No
         if modifier and modifier not in param.targets:
             raise SearchError(
                 key,
-                f"'{modifier}' is not a target type of '{name}' ({', '.join(param.targets)}).",
+                f"'{modifier}' is not a target type of '{name}' ({target_names(param.targets)}).",
             )
         target = modifier
         if target is None:
@@ -178,7 +179,7 @@ def _parse_clause(registry: SearchRegistry, key: str, value: str) -> Clause | No
             if modifier not in param.targets:
                 raise SearchError(
                     key,
-                    f"'{modifier}' is not a target type of '{name}' ({', '.join(param.targets)}).",
+                    f"'{modifier}' is not a target type of '{name}' ({target_names(param.targets)}).",
                 )
         elif modifier not in param.modifiers:
             if modifier in _ALL_MODIFIERS:

@@ -7,6 +7,8 @@ callers can discover them), and the result parameters.
 
 from __future__ import annotations
 
+from app.models.shared.resource_types import is_any
+
 from .params import SearchParam, SearchRegistry
 
 R4_SEARCH = "https://www.hl7.org/fhir/R4/search.html"
@@ -104,9 +106,11 @@ def _search_params(param: SearchParam) -> list[dict]:
     if "missing" in param.modifiers:
         mods.append("missing")
     extra = []
-    if param.type == "reference" and param.targets:
+    # A Reference(Any) parameter allows every R4 type; document only the ones this server holds.
+    doc_targets = tuple(param.chain_targets) if is_any(param.targets) else param.targets
+    if param.type == "reference" and doc_targets:
         extra.append(
-            f"`:{param.targets[0]}` — restrict to that target type (value is the bare id)."
+            f"`:{doc_targets[0]}` — restrict to that target type (value is the bare id)."
         )
     if param.chain_targets:
         targets = ", ".join(param.chain_targets)
@@ -131,7 +135,7 @@ def _search_params(param: SearchParam) -> list[dict]:
         else:
             out.append(_param(f"{param.name}:{m}", f"{param.name} with {desc}"))
     if param.type == "reference":
-        for t in param.targets:
+        for t in doc_targets:
             out.append(
                 _param(
                     f"{param.name}:{t}",

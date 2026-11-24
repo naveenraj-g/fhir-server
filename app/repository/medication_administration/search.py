@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.repository._medication_statement_revinclude import (
     reference_medication_statement_revincludes,
 )
@@ -53,34 +54,10 @@ _R = MedicationAdministrationReference
 _STATUS_SYSTEM = "http://hl7.org/fhir/CodeSystem/medication-admin-status"
 
 
-def _modeled(resource_type: str, snake: str):
-    """The `_MODELED` entry of a rebuilt resource, by the project's naming convention."""
-    return (
-        f"app.models.{snake}",
-        f"{resource_type}Model",
-        f"{snake}_id",
-        f"app.repository.{snake}.search",
-        f"{snake}_search",
-    )
-
-
-# Reference targets that are searchable resources on this server: the model to join for
-# chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    t: _modeled(t, s)
-    for t, s in (
-        ("Patient", "patient"),
-        ("Group", "group"),
-        ("Encounter", "encounter"),
-        ("EpisodeOfCare", "episode_of_care"),
-        ("Practitioner", "practitioner"),
-        ("PractitionerRole", "practitioner_role"),
-        ("RelatedPerson", "related_person"),
-        ("Medication", "medication"),
-        ("MedicationRequest", "medication_request"),
-    )
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

@@ -18,6 +18,8 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -53,156 +55,15 @@ _R = AppointmentReference
 _STATUS_SYSTEM = "http://hl7.org/fhir/appointmentstatus"
 _PARTICIPATION_STATUS_SYSTEM = "http://hl7.org/fhir/participationstatus"
 
-# Reference(Any): `supporting-info` can name any type, but the parser only
-# accepts `:Type` for a declared target, so list the types a supporting
-# document can realistically be. A relative reference to a type not listed is
-# still indexed (and found by its absolute URL).
-SUPPORTING_INFO_TYPES = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Encounter",
-    "Appointment",
-    "Slot",
-    "Schedule",
-    "Condition",
-    "Observation",
-    "Procedure",
-    "DiagnosticReport",
-    "DocumentReference",
-    "ServiceRequest",
-    "MedicationRequest",
-    "MedicationStatement",
-    "MedicationDispense",
-    "MedicationAdministration",
-    "CarePlan",
-    "AllergyIntolerance",
-    "Immunization",
-    "Questionnaire",
-    "QuestionnaireResponse",
-    "Task",
-)
+# `supportingInformation` is Reference(Any): R4 allows every resource type, so the whole R4 list is the target
+# list (a plain reference search accepts any valid type; chaining and `_include` follow the
+# types that are rebuilt on this server - see app/repository/_search_targets.py).
+SUPPORTING_INFO_TYPES = ANY_RESOURCE_TYPES
 
-# Actor / reference types that are searchable resources on this server: the
-# model to join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "MedicationDispense": (
-        "app.models.medication_dispense",
-        "MedicationDispenseModel",
-        "medication_dispense_id",
-        "app.repository.medication_dispense.search",
-        "medication_dispense_search",
-    ),
-    "MedicationAdministration": (
-        "app.models.medication_administration",
-        "MedicationAdministrationModel",
-        "medication_administration_id",
-        "app.repository.medication_administration.search",
-        "medication_administration_search",
-    ),
-    "MedicationStatement": (
-        "app.models.medication_statement",
-        "MedicationStatementModel",
-        "medication_statement_id",
-        "app.repository.medication_statement.search",
-        "medication_statement_search",
-    ),
-    "Questionnaire": (
-        "app.models.questionnaire",
-        "QuestionnaireModel",
-        "questionnaire_id",
-        "app.repository.questionnaire.search",
-        "questionnaire_search",
-    ),
-    "QuestionnaireResponse": (
-        "app.models.questionnaire_response",
-        "QuestionnaireResponseModel",
-        "questionnaire_response_id",
-        "app.repository.questionnaire_response.search",
-        "questionnaire_response_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "HealthcareService": (
-        "app.models.healthcare_service",
-        "HealthcareServiceModel",
-        "healthcare_service_id",
-        "app.repository.healthcare_service.search",
-        "healthcare_service_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Slot": (
-        "app.models.slot",
-        "SlotModel",
-        "slot_id",
-        "app.repository.slot.search",
-        "slot_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "Procedure": (
-        "app.models.procedure",
-        "ProcedureModel",
-        "procedure_id",
-        "app.repository.procedure.search",
-        "procedure_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -487,45 +348,15 @@ def _include_participants(resource_type: str):
     return fetch
 
 
-async def _include_based_on(session, ctx, appointments):
-    """_include=Appointment:based-on - the service requests these appointments fulfil."""
-    model, id_col = _model("ServiceRequest")
-    referenced = select(_R.reference_id).where(
-        _R.appointment_pk.in_({a.id for a in appointments}),
-        _R.param == "based-on",
-        _R.reference_type == "ServiceRequest",
-        _R.reference_id.is_not(None),
-    )
-    return await _fetch(
-        session,
-        select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)),
-    )
-
-
-async def _include_slots(session, ctx, appointments):
-    """_include=Appointment:slot — the slots these appointments fill."""
-    model, id_col = _model("Slot")
-    referenced = select(_R.reference_id).where(
-        _R.appointment_pk.in_({a.id for a in appointments}),
-        _R.param == "slot",
-        _R.reference_type == "Slot",
-        _R.reference_id.is_not(None),
-    )
-    return await _fetch(
-        session,
-        select(model).where(model.tenant_id == ctx.tenant_id, id_col.in_(referenced)),
-    )
-
-
-def _include_reason(resource_type: str):
-    """_include=Appointment:reason-reference — the Conditions / Procedures these
-    appointments are for."""
+def _include_reference(param: str, resource_type: str):
+    """_include=Appointment:<param> (based-on | reason-reference | slot | supporting-info) - the
+    resources of one type these appointments point at through that reference."""
 
     async def fetch(session, ctx, appointments):
         model, id_col = _model(resource_type)
         referenced = select(_R.reference_id).where(
             _R.appointment_pk.in_({a.id for a in appointments}),
-            _R.param == "reason-reference",
+            _R.param == param,
             _R.reference_type == resource_type,
             _R.reference_id.is_not(None),
         )
@@ -650,9 +481,10 @@ def appointment_search() -> SearchRegistry:
             },
         )
 
-    def reference(name, description, expression, example, chain_types=()):
+    def reference(name, description, expression, example):
         # The R4 search-parameter name is also the `param` value in the reference table.
         targets = REFERENCE_TYPES[name] or SUPPORTING_INFO_TYPES
+        chain_types = [t for t in targets if t in _MODELED]
         match, present, chain, sort = _reference_param(name, targets)
         return SearchParam(
             name,
@@ -714,7 +546,6 @@ def appointment_search() -> SearchRegistry:
             "The service request this appointment is allocated to assess",
             "Appointment.basedOn",
             "ServiceRequest/80001",
-            chain_types=("ServiceRequest",),
         ),
         SearchParam(
             "date",
@@ -783,7 +614,6 @@ def appointment_search() -> SearchRegistry:
             "Reason the appointment is to take place (resource)",
             "Appointment.reasonReference",
             "Condition/120001",
-            chain_types=("Condition", "Procedure", "Observation"),
         ),
         token(
             "service-category",
@@ -802,7 +632,6 @@ def appointment_search() -> SearchRegistry:
             "The slots that this appointment is filling",
             "Appointment.slot",
             "Slot/220001",
-            chain_types=("Slot",),
         ),
         token(
             "specialty",
@@ -832,8 +661,16 @@ def appointment_search() -> SearchRegistry:
 
     actor_includes = tuple(
         IncludeTarget("Appointment", "actor", t, _include_participants(t))
-        for t in _MODELED
-        if t not in ("Slot", "Condition", "Procedure", "Observation")
+        for t in ACTOR_TYPES
+        if t in _MODELED
+    )
+    # One include per type each reference can point at that is a resource here (Reference(Any)
+    # `supporting-info`: every rebuilt resource).
+    reference_includes = tuple(
+        IncludeTarget("Appointment", name, t, _include_reference(name, t))
+        for name in ("slot", "based-on", "reason-reference", "supporting-info")
+        for t in (REFERENCE_TYPES[name] or SUPPORTING_INFO_TYPES)
+        if t in _MODELED
     )
     narrowed_includes = tuple(
         IncludeTarget("Appointment", name, t, _include_participants(t))
@@ -871,28 +708,7 @@ def appointment_search() -> SearchRegistry:
         includes=(
             *actor_includes,
             *narrowed_includes,
-            IncludeTarget("Appointment", "slot", "Slot", _include_slots),
-            IncludeTarget(
-                "Appointment", "based-on", "ServiceRequest", _include_based_on
-            ),
-            IncludeTarget(
-                "Appointment",
-                "reason-reference",
-                "Condition",
-                _include_reason("Condition"),
-            ),
-            IncludeTarget(
-                "Appointment",
-                "reason-reference",
-                "Procedure",
-                _include_reason("Procedure"),
-            ),
-            IncludeTarget(
-                "Appointment",
-                "reason-reference",
-                "Observation",
-                _include_reason("Observation"),
-            ),
+            *reference_includes,
         ),
         # AppointmentResponse.appointment points here (Encounter, ... add theirs when rebuilt).
         revincludes=(

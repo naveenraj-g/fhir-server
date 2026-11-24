@@ -20,6 +20,8 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.quantity import quantity_range_match
 from app.repository._episode_of_care_revinclude import (
@@ -59,134 +61,15 @@ _I = ConditionIdentifier
 _Tk = ConditionToken
 _Ev = ConditionEvidenceDetail
 
-# Condition.evidence.detail is Reference(Any): the parser only accepts `:Type`
-# for a declared target, so list the types a piece of evidence can realistically
-# be. A relative reference to a type not listed is still indexed (and found by
-# its absolute URL).
-EVIDENCE_DETAIL_TYPES = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Observation",
-    "Procedure",
-    "DiagnosticReport",
-    "DocumentReference",
-    "ServiceRequest",
-    "MedicationRequest",
-    "MedicationStatement",
-    "MedicationDispense",
-    "MedicationAdministration",
-    "CarePlan",
-    "AllergyIntolerance",
-    "Immunization",
-    "Questionnaire",
-    "QuestionnaireResponse",
-    "Task",
-)
+# `evidence.detail` is Reference(Any): R4 allows every resource type, so the whole R4 list is the target
+# list (a plain reference search accepts any valid type; chaining and `_include` follow the
+# types that are rebuilt on this server - see app/repository/_search_targets.py).
+EVIDENCE_DETAIL_TYPES = ANY_RESOURCE_TYPES
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "MedicationDispense": (
-        "app.models.medication_dispense",
-        "MedicationDispenseModel",
-        "medication_dispense_id",
-        "app.repository.medication_dispense.search",
-        "medication_dispense_search",
-    ),
-    "MedicationAdministration": (
-        "app.models.medication_administration",
-        "MedicationAdministrationModel",
-        "medication_administration_id",
-        "app.repository.medication_administration.search",
-        "medication_administration_search",
-    ),
-    "MedicationStatement": (
-        "app.models.medication_statement",
-        "MedicationStatementModel",
-        "medication_statement_id",
-        "app.repository.medication_statement.search",
-        "medication_statement_search",
-    ),
-    "Questionnaire": (
-        "app.models.questionnaire",
-        "QuestionnaireModel",
-        "questionnaire_id",
-        "app.repository.questionnaire.search",
-        "questionnaire_search",
-    ),
-    "QuestionnaireResponse": (
-        "app.models.questionnaire_response",
-        "QuestionnaireResponseModel",
-        "questionnaire_response_id",
-        "app.repository.questionnaire_response.search",
-        "questionnaire_response_search",
-    ),
-    "DocumentReference": (
-        "app.models.document_reference",
-        "DocumentReferenceModel",
-        "document_reference_id",
-        "app.repository.document_reference.search",
-        "document_reference_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "DiagnosticReport": (
-        "app.models.diagnostic_report",
-        "DiagnosticReportModel",
-        "diagnostic_report_id",
-        "app.repository.diagnostic_report.search",
-        "diagnostic_report_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

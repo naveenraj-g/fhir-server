@@ -27,6 +27,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.composite import split_composite
 from app.fhir.search.quantity import quantity_match
@@ -41,7 +42,9 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_statement_revinclude import reference_medication_statement_revincludes
+from app.repository._medication_statement_revinclude import (
+    reference_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     reference_questionnaire_response_revincludes,
 )
@@ -77,186 +80,10 @@ _R = ObservationReference
 # Observation.status is a `code` from the R4 observation-status system.
 _STATUS_SYSTEM = "http://hl7.org/fhir/observation-status"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "MedicationDispense": (
-        "app.models.medication_dispense",
-        "MedicationDispenseModel",
-        "medication_dispense_id",
-        "app.repository.medication_dispense.search",
-        "medication_dispense_search",
-    ),
-    "MedicationAdministration": (
-        "app.models.medication_administration",
-        "MedicationAdministrationModel",
-        "medication_administration_id",
-        "app.repository.medication_administration.search",
-        "medication_administration_search",
-    ),
-    "CareTeam": (
-        "app.models.care_team",
-        "CareTeamModel",
-        "care_team_id",
-        "app.repository.care_team.search",
-        "care_team_search",
-    ),
-    "CarePlan": (
-        "app.models.care_plan",
-        "CarePlanModel",
-        "care_plan_id",
-        "app.repository.care_plan.search",
-        "care_plan_search",
-    ),
-    "MedicationRequest": (
-        "app.models.medication_request",
-        "MedicationRequestModel",
-        "medication_request_id",
-        "app.repository.medication_request.search",
-        "medication_request_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-    "Specimen": (
-        "app.models.specimen",
-        "SpecimenModel",
-        "specimen_id",
-        "app.repository.specimen.search",
-        "specimen_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "Appointment": (
-        "app.models.appointment",
-        "AppointmentModel",
-        "appointment_id",
-        "app.repository.appointment.search",
-        "appointment_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "Procedure": (
-        "app.models.procedure",
-        "ProcedureModel",
-        "procedure_id",
-        "app.repository.procedure.search",
-        "procedure_search",
-    ),
-    "DiagnosticReport": (
-        "app.models.diagnostic_report",
-        "DiagnosticReportModel",
-        "diagnostic_report_id",
-        "app.repository.diagnostic_report.search",
-        "diagnostic_report_search",
-    ),
-    "AllergyIntolerance": (
-        "app.models.allergy_intolerance",
-        "AllergyIntoleranceModel",
-        "allergy_intolerance_id",
-        "app.repository.allergy_intolerance.search",
-        "allergy_intolerance_search",
-    ),
-    "Immunization": (
-        "app.models.immunization",
-        "ImmunizationModel",
-        "immunization_id",
-        "app.repository.immunization.search",
-        "immunization_search",
-    ),
-    "FamilyMemberHistory": (
-        "app.models.family_member_history",
-        "FamilyMemberHistoryModel",
-        "family_member_history_id",
-        "app.repository.family_member_history.search",
-        "family_member_history_search",
-    ),
-    "RiskAssessment": (
-        "app.models.risk_assessment",
-        "RiskAssessmentModel",
-        "risk_assessment_id",
-        "app.repository.risk_assessment.search",
-        "risk_assessment_search",
-    ),
-    "ClinicalImpression": (
-        "app.models.clinical_impression",
-        "ClinicalImpressionModel",
-        "clinical_impression_id",
-        "app.repository.clinical_impression.search",
-        "clinical_impression_search",
-    ),
-    "DetectedIssue": (
-        "app.models.detected_issue",
-        "DetectedIssueModel",
-        "detected_issue_id",
-        "app.repository.detected_issue.search",
-        "detected_issue_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -1197,7 +1024,7 @@ def observation_search() -> SearchRegistry:
         # Observation:has-member / :derived-from — the observations that group / derive from these.
         revincludes=(
             *reference_medication_statement_revincludes(
-                'part-of', 'Observation', lambda x: x.observation_id
+                "part-of", "Observation", lambda x: x.observation_id
             ),
             *reference_questionnaire_response_revincludes(
                 "part-of", "Observation", lambda x: x.observation_id

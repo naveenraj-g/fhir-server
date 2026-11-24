@@ -21,6 +21,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -33,7 +34,9 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
-from app.repository._medication_statement_revinclude import reference_medication_statement_revincludes
+from app.repository._medication_statement_revinclude import (
+    reference_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     reference_questionnaire_response_revincludes,
 )
@@ -62,109 +65,10 @@ _U = ProcedureInstantiatesUri
 _STATUS_SYSTEM = "http://hl7.org/fhir/event-status"
 _ABSOLUTE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "MedicationAdministration": (
-        "app.models.medication_administration",
-        "MedicationAdministrationModel",
-        "medication_administration_id",
-        "app.repository.medication_administration.search",
-        "medication_administration_search",
-    ),
-    "CarePlan": (
-        "app.models.care_plan",
-        "CarePlanModel",
-        "care_plan_id",
-        "app.repository.care_plan.search",
-        "care_plan_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-    "Observation": (
-        "app.models.observation",
-        "ObservationModel",
-        "observation_id",
-        "app.repository.observation.search",
-        "observation_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Encounter": (
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "Procedure": (
-        "app.models.procedure",
-        "ProcedureModel",
-        "procedure_id",
-        "app.repository.procedure.search",
-        "procedure_search",
-    ),
-    "DiagnosticReport": (
-        "app.models.diagnostic_report",
-        "DiagnosticReportModel",
-        "diagnostic_report_id",
-        "app.repository.diagnostic_report.search",
-        "diagnostic_report_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -906,7 +810,7 @@ def procedure_search() -> SearchRegistry:
         # and a Procedure that is part of, or justified by, another one points back at it.
         revincludes=(
             *reference_medication_statement_revincludes(
-                'part-of', 'Procedure', lambda x: x.procedure_id
+                "part-of", "Procedure", lambda x: x.procedure_id
             ),
             *reference_questionnaire_response_revincludes(
                 "part-of", "Procedure", lambda x: x.procedure_id

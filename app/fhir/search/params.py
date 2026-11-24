@@ -54,6 +54,13 @@ MODIFIERS_BY_TYPE: dict[str, frozenset[str]] = {
 NEGATING_MODIFIERS = {"not": None, "not-in": "in"}
 
 
+def target_names(targets: tuple[str, ...]) -> str:
+    """The allowed target types, for an error message (a Reference(Any) parameter allows any)."""
+    from app.models.shared.resource_types import is_any
+
+    return "any resource type" if is_any(targets) else ", ".join(targets)
+
+
 @dataclass(frozen=True)
 class SearchContext:
     """Per-request facts a condition builder may need."""

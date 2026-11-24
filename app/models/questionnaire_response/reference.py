@@ -1,6 +1,7 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
 
 # Which search parameter a QuestionnaireResponseReference row feeds, the QuestionnaireResponse
@@ -29,36 +30,10 @@ AUTHOR_TYPES = (
     "RelatedPerson",
 )
 SOURCE_TYPES = ("Practitioner", "Patient", "PractitionerRole", "RelatedPerson")
-# `subject` is Reference(Any): the parser only accepts `:Type` for a declared target, so list the
-# types a subject can realistically be. A relative reference to a type not listed is still indexed
-# (and found by its absolute URL).
-SUBJECT_TYPES = (
-    "Patient",
-    "Group",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Encounter",
-    "EpisodeOfCare",
-    "Appointment",
-    "Condition",
-    "Observation",
-    "Procedure",
-    "DiagnosticReport",
-    "DocumentReference",
-    "ServiceRequest",
-    "MedicationRequest",
-    "MedicationStatement",
-    "MedicationDispense",
-    "MedicationAdministration",
-    "CarePlan",
-    "CareTeam",
-    "Specimen",
-    "Device",
-)
+# `subject` is Reference(Any): R4 allows every resource type, so the whole R4 list is the target
+# list (a plain reference search accepts any valid type; chaining and `_include` follow the
+# types that are rebuilt on this server - see app/repository/_search_targets.py).
+SUBJECT_TYPES = ANY_RESOURCE_TYPES
 
 
 class QuestionnaireResponseReference(Base):

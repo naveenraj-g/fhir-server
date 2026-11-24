@@ -669,9 +669,8 @@ async def test_bad_chains_are_400(client, world):
     )  # Group is not searchable here
     assert await _status(client, **{"asserter.family": "x"}) == 400
     assert (
-        await _status(client, **{"evidence-detail:MedicationRequest.status": "x"})
-        == 400
-    )  # not a resource here
+        await _status(client, **{"evidence-detail:Goal.status": "x"}) == 400
+    )  # a valid R4 type, but not a resource here yet
     assert (
         await _status(client, **{"code.x": "y"}) == 400
     )  # a token cannot be chained through

@@ -17,8 +17,13 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._medication_dispense_revinclude import reference_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
+from app.repository._search_targets import MODELED
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
 from app.repository._care_plan_revinclude import activity_care_plan_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
@@ -55,71 +60,10 @@ _INTENT_SYSTEM = "http://hl7.org/fhir/CodeSystem/medicationrequest-intent"
 _PRIORITY_SYSTEM = "http://hl7.org/fhir/request-priority"
 
 
-def _modeled(module: str, cls: str, id_col: str, search_module: str, factory: str):
-    return (module, cls, id_col, search_module, factory)
-
-
-# Reference targets that are searchable resources on this server: the model to join for
-# chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "CareTeam": (
-        "app.models.care_team",
-        "CareTeamModel",
-        "care_team_id",
-        "app.repository.care_team.search",
-        "care_team_search",
-    ),
-    "Medication": _modeled(
-        "app.models.medication",
-        "MedicationModel",
-        "medication_id",
-        "app.repository.medication.search",
-        "medication_search",
-    ),
-    "Patient": _modeled(
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": _modeled(
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": _modeled(
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": _modeled(
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Organization": _modeled(
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Encounter": _modeled(
-        "app.models.encounter",
-        "EncounterModel",
-        "encounter_id",
-        "app.repository.encounter.search",
-        "encounter_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -632,10 +576,13 @@ def medication_request_search() -> SearchRegistry:
         # unindexed; basedOn is not searched), so there is no revinclude of its own.
         revincludes=(
             *reference_medication_dispense_revincludes(
-                'prescription', 'MedicationRequest', lambda x: x.medication_request_id
+                "prescription", "MedicationRequest", lambda x: x.medication_request_id
             ),
             *column_medication_administration_revincludes(
-                ('request',), 'request', 'MedicationRequest', lambda x: x.medication_request_id
+                ("request",),
+                "request",
+                "MedicationRequest",
+                lambda x: x.medication_request_id,
             ),
             *activity_care_plan_revincludes(
                 "MedicationRequest", lambda x: x.medication_request_id

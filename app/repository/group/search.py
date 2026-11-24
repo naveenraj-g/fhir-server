@@ -18,9 +18,16 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._medication_dispense_revinclude import column_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._search_targets import MODELED
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._document_reference_revinclude import (
     column_document_reference_revincludes,
 )
@@ -54,64 +61,10 @@ _Mb = GroupMember
 _TYPE_SYSTEM = "http://hl7.org/fhir/group-type"
 
 
-def _modeled(module: str, cls: str, id_col: str, search_module: str, factory: str):
-    return (module, cls, id_col, search_module, factory)
-
-
-# Reference targets that are searchable resources on this server: the model to join for
-# chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Group": _modeled(
-        "app.models.group",
-        "GroupModel",
-        "group_id",
-        "app.repository.group.search",
-        "group_search",
-    ),
-    "Patient": _modeled(
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": _modeled(
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": _modeled(
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": _modeled(
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "Organization": _modeled(
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Medication": _modeled(
-        "app.models.medication",
-        "MedicationModel",
-        "medication_id",
-        "app.repository.medication.search",
-        "medication_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -615,13 +568,13 @@ def group_search() -> SearchRegistry:
         # A Group that has another one as a member points back at it.
         revincludes=(
             *column_medication_dispense_revincludes(
-                ('subject',), 'subject', 'Group', lambda x: x.group_id
+                ("subject",), "subject", "Group", lambda x: x.group_id
             ),
             *column_medication_administration_revincludes(
-                ('subject',), 'subject', 'Group', lambda x: x.group_id
+                ("subject",), "subject", "Group", lambda x: x.group_id
             ),
             *column_medication_statement_revincludes(
-                ('subject',), 'subject', 'Group', lambda x: x.group_id
+                ("subject",), "subject", "Group", lambda x: x.group_id
             ),
             *column_document_reference_revincludes(
                 ("subject",), "subject", "Group", lambda x: x.group_id

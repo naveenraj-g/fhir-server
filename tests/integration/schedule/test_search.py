@@ -430,9 +430,12 @@ async def test_actor_chaining_through_a_typed_actor(client, world):
 
 
 async def test_actor_chaining_needs_a_supported_type(client, world):
-    for key in ("actor.family", "actor:Patient.family", "actor:Device.manufacturer"):
+    for key in ("actor.family", "actor:Device.manufacturer", "actor:Banana.family"):
         resp = await client.get(BASE + "/", params={key: "x"})
         assert resp.status_code == 400, key  # untyped, or not searchable on this server
+    # Patient is a rebuilt resource now, so the chain is followed.
+    resp = await client.get(BASE + "/", params={"actor:Patient.family": "x"})
+    assert resp.status_code == 200
 
 
 # ── _include / _revinclude ───────────────────────────────────────────────────
@@ -475,13 +478,14 @@ async def test_include_star_and_dedup(client, world):
         ("Location", str(world["loc"])),
         ("PractitionerRole", str(world["role"])),
         ("HealthcareService", str(world["svc"])),
-    }  # Patient / Device / logical actors resolve to nothing
+        ("Patient", str(world["patient"])),
+    }  # Device / logical actors resolve to nothing
 
 
 async def test_unsupported_include_is_400(client, world):
     for value in (
         "Schedule:bogus",
-        "Schedule:actor:Patient",
+        "Schedule:actor:Device",
         "Patient:actor",
         "Schedule",
     ):
@@ -512,6 +516,30 @@ async def test_revinclude_schedules_from_every_actor_resource(client, world):
         base=f"{API}/practitioners",
     )
     assert _included(none) == set()
+
+
+async def test_revinclude_schedules_from_a_patient_and_a_related_person(client, world):
+    from tests.integration.related_person.support import (
+        create_related_person,
+        related_person_body,
+    )
+
+    bundle = await _search(
+        client,
+        {"_id": str(world["patient"]), "_revinclude": "Schedule:actor"},
+        base=f"{API}/patients",
+    )
+    assert _included(bundle) == {("Schedule", str(world["cover"]))}
+    related = await create_related_person(client, related_person_body(world["patient"]))
+    sched = await create_schedule(
+        client, {"actor": [{"reference": f"RelatedPerson/{related}"}]}
+    )
+    bundle = await _search(
+        client,
+        {"_id": str(related), "_revinclude": "Schedule:actor"},
+        base=f"{API}/related-persons",
+    )
+    assert _included(bundle) == {("Schedule", str(sched))}
 
 
 async def test_revinclude_matches_the_actor_type_not_just_the_number(client, world):

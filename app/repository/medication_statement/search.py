@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -50,39 +51,10 @@ _R = MedicationStatementReference
 _STATUS_SYSTEM = "http://hl7.org/fhir/CodeSystem/medication-statement-status"
 
 
-def _modeled(resource_type: str, snake: str):
-    """The `_MODELED` entry of a rebuilt resource, by the project's naming convention."""
-    return (
-        f"app.models.{snake}",
-        f"{resource_type}Model",
-        f"{snake}_id",
-        f"app.repository.{snake}.search",
-        f"{snake}_search",
-    )
-
-
-# Reference targets that are searchable resources on this server: the model to join for
-# chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    t: _modeled(t, s)
-    for t, s in (
-        ("Patient", "patient"),
-        ("Group", "group"),
-        ("Encounter", "encounter"),
-        ("EpisodeOfCare", "episode_of_care"),
-        ("Practitioner", "practitioner"),
-        ("PractitionerRole", "practitioner_role"),
-        ("RelatedPerson", "related_person"),
-        ("Organization", "organization"),
-        ("Medication", "medication"),
-        ("Observation", "observation"),
-        ("Procedure", "procedure"),
-        ("MedicationStatement", "medication_statement"),
-        ("MedicationDispense", "medication_dispense"),
-        ("MedicationAdministration", "medication_administration"),
-    )
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):

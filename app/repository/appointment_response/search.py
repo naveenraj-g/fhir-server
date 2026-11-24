@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     date_match,
@@ -38,60 +39,10 @@ R = AppointmentResponseModel
 _I = AppointmentResponseIdentifier
 _PARTICIPATION_STATUS_SYSTEM = "http://hl7.org/fhir/participationstatus"
 
-# Reference targets that are searchable resources on this server: the model to
-# join for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Appointment": (
-        "app.models.appointment",
-        "AppointmentModel",
-        "appointment_id",
-        "app.repository.appointment.search",
-        "appointment_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-    "HealthcareService": (
-        "app.models.healthcare_service",
-        "HealthcareServiceModel",
-        "healthcare_service_id",
-        "app.repository.healthcare_service.search",
-        "healthcare_service_search",
-    ),
-    "Location": (
-        "app.models.location",
-        "LocationModel",
-        "location_id",
-        "app.repository.location.search",
-        "location_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -488,7 +439,8 @@ def appointment_response_search() -> SearchRegistry:
 
     actor_includes = tuple(
         IncludeTarget("AppointmentResponse", "actor", t, _include_actors(t))
-        for t in _MODELED
+        for t in ACTOR_TYPES
+        if t in _MODELED
         if t != "Appointment"
     )
     narrowed_includes = tuple(

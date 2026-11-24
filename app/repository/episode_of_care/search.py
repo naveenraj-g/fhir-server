@@ -17,6 +17,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -38,9 +39,15 @@ from app.models.episode_of_care import (
     EpisodeOfCareStatus,
     EpisodeOfCareToken,
 )
-from app.repository._medication_dispense_revinclude import column_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._document_reference_revinclude import (
     reference_document_reference_revincludes,
 )
@@ -54,46 +61,10 @@ _R = EpisodeOfCareReference
 # EpisodeOfCare.status is a `code` from the R4 episode-of-care-status system.
 _STATUS_SYSTEM = "http://hl7.org/fhir/episode-of-care-status"
 
-# Reference targets that are searchable resources on this server: the model to join for chaining
-# / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "Condition": (
-        "app.models.condition",
-        "ConditionModel",
-        "condition_id",
-        "app.repository.condition.search",
-        "condition_search",
-    ),
-    "ServiceRequest": (
-        "app.models.service_request",
-        "ServiceRequestModel",
-        "service_request_id",
-        "app.repository.service_request.search",
-        "service_request_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -657,13 +628,13 @@ def episode_of_care_search() -> SearchRegistry:
         # Encounters that name one of these episodes in `episodeOfCare`.
         revincludes=(
             *column_medication_dispense_revincludes(
-                ('context',), 'context', 'EpisodeOfCare', lambda x: x.episode_of_care_id
+                ("context",), "context", "EpisodeOfCare", lambda x: x.episode_of_care_id
             ),
             *column_medication_administration_revincludes(
-                ('context',), 'context', 'EpisodeOfCare', lambda x: x.episode_of_care_id
+                ("context",), "context", "EpisodeOfCare", lambda x: x.episode_of_care_id
             ),
             *column_medication_statement_revincludes(
-                ('context',), 'context', 'EpisodeOfCare', lambda x: x.episode_of_care_id
+                ("context",), "context", "EpisodeOfCare", lambda x: x.episode_of_care_id
             ),
             *reference_document_reference_revincludes(
                 "encounter", "EpisodeOfCare", lambda x: x.episode_of_care_id

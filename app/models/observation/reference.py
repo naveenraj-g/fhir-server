@@ -1,6 +1,7 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
 
 # The reference parameters held in ObservationReference, and the element each reads.
@@ -46,39 +47,10 @@ DERIVED_FROM_TYPES = (
     "Observation",
     "MolecularSequence",
 )
-# `focus` is Reference(Any): the parser only accepts `:Type` for a declared target, so list the
-# types an Observation can realistically focus on. A relative reference to a type not listed is
-# still indexed (and found by its absolute URL).
-FOCUS_TYPES = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "HealthcareService",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Observation",
-    "Procedure",
-    "DiagnosticReport",
-    "DocumentReference",
-    "ServiceRequest",
-    "MedicationRequest",
-    "MedicationStatement",
-    "MedicationAdministration",
-    "MedicationDispense",
-    "CarePlan",
-    "AllergyIntolerance",
-    "Immunization",
-    "FamilyMemberHistory",
-    "RiskAssessment",
-    "ClinicalImpression",
-    "DetectedIssue",
-    "Specimen",
-    "Device",
-)
+# `focus` is Reference(Any): R4 allows every resource type, so the whole R4 list is the target
+# list (a plain reference search accepts any valid type; chaining and `_include` follow the
+# types that are rebuilt on this server - see app/repository/_search_targets.py).
+FOCUS_TYPES = ANY_RESOURCE_TYPES
 REFERENCE_TYPES = {
     "based-on": BASED_ON_TYPES,
     "part-of": PART_OF_TYPES,

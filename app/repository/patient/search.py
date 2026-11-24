@@ -19,9 +19,18 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._medication_dispense_revinclude import column_medication_dispense_revincludes, reference_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import column_medication_administration_revincludes, reference_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._search_targets import MODELED
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+    reference_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._questionnaire_response_revinclude import (
     column_questionnaire_response_revincludes,
 )
@@ -36,6 +45,7 @@ from app.repository._care_plan_revinclude import (
     column_care_plan_revincludes,
     performer_care_plan_revincludes,
 )
+from app.repository._schedule_revinclude import actor_schedule_revincludes
 from app.repository._care_team_revinclude import (
     column_care_team_revincludes,
     participant_care_team_revincludes,
@@ -116,46 +126,10 @@ P = PatientModel
 _ADDRESS_USE_SYSTEM = "http://hl7.org/fhir/address-use"
 _GENDER_SYSTEM = "http://hl7.org/fhir/administrative-gender"
 
-# Target types that are searchable resources on this server: the model to join
-# for chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Practitioner": (
-        "app.models.practitioner",
-        "PractitionerModel",
-        "practitioner_id",
-        "app.repository.practitioner.search",
-        "practitioner_search",
-    ),
-    "PractitionerRole": (
-        "app.models.practitioner_role",
-        "PractitionerRoleModel",
-        "practitioner_role_id",
-        "app.repository.practitioner_role.search",
-        "practitioner_role_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-    "Patient": (
-        "app.models.patient",
-        "PatientModel",
-        "patient_id",
-        "app.repository.patient.search",
-        "patient_search",
-    ),
-    "RelatedPerson": (
-        "app.models.related_person",
-        "RelatedPersonModel",
-        "related_person_id",
-        "app.repository.related_person.search",
-        "related_person_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -981,25 +955,25 @@ def patient_search() -> SearchRegistry:
         # PractitionerRole and Organization.
         revincludes=(
             *column_medication_dispense_revincludes(
-                ('subject', 'patient'), 'subject', 'Patient', lambda x: x.patient_id
+                ("subject", "patient"), "subject", "Patient", lambda x: x.patient_id
             ),
             *reference_medication_dispense_revincludes(
-                'performer', 'Patient', lambda x: x.patient_id
+                "performer", "Patient", lambda x: x.patient_id
             ),
             *reference_medication_dispense_revincludes(
-                'receiver', 'Patient', lambda x: x.patient_id
+                "receiver", "Patient", lambda x: x.patient_id
             ),
             *column_medication_administration_revincludes(
-                ('subject', 'patient'), 'subject', 'Patient', lambda x: x.patient_id
+                ("subject", "patient"), "subject", "Patient", lambda x: x.patient_id
             ),
             *reference_medication_administration_revincludes(
-                'performer', 'Patient', lambda x: x.patient_id
+                "performer", "Patient", lambda x: x.patient_id
             ),
             *column_medication_statement_revincludes(
-                ('subject', 'patient'), 'subject', 'Patient', lambda x: x.patient_id
+                ("subject", "patient"), "subject", "Patient", lambda x: x.patient_id
             ),
             *column_medication_statement_revincludes(
-                ('source',), 'source', 'Patient', lambda x: x.patient_id
+                ("source",), "source", "Patient", lambda x: x.patient_id
             ),
             *column_questionnaire_response_revincludes(
                 ("subject", "patient"), "subject", "Patient", lambda x: x.patient_id
@@ -1027,6 +1001,7 @@ def patient_search() -> SearchRegistry:
                 ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id
             ),
             *participant_care_team_revincludes("Patient", lambda p: p.patient_id),
+            *actor_schedule_revincludes("Patient", lambda p: p.patient_id),
             *member_group_revincludes("Patient", lambda p: p.patient_id),
             *column_medication_request_revincludes(
                 ("subject", "patient"), "subject", "Patient", lambda p: p.patient_id

@@ -358,8 +358,11 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"author:Device.model": "x"}) == 400
     )  # Device is not searchable here
     assert (
-        await _status(client, **{"implicated:MedicationDispense.status": "x"}) == 400
-    )  # not built yet
+        await _status(client, **{"implicated:Goal.status": "x"}) == 400
+    )  # a valid R4 type, but not a resource built here (nothing to follow)
+    assert (
+        await _status(client, **{"implicated:Banana.status": "x"}) == 400
+    )  # not an R4 resource type at all
     assert (
         await _status(client, **{"code.x": "y"}) == 400
     )  # a token cannot be chained through
@@ -584,3 +587,53 @@ async def test_bundle_shape(client, world):
 async def test_empty_result(client, world):
     bundle = await _search(client, identifier="nope")
     assert bundle["total"] == 0 and "entry" not in bundle
+
+
+async def test_implicated_follows_every_rebuilt_resource(client, world):
+    """`implicated` is Reference(Any): chaining and `_include` work for any rebuilt type, including
+    ones built after this resource (MedicationDispense, MedicationStatement, ...)."""
+    from tests.integration.medication_dispense.support import (
+        create_medication_dispense,
+        medication_dispense_body,
+    )
+
+    dispense = await create_medication_dispense(
+        client, medication_dispense_body(world["p1"], status="completed")
+    )
+    other = await create_medication_dispense(
+        client, medication_dispense_body(world["p1"], status="on-hold")
+    )
+    issue = await create_issue(
+        client,
+        issue_body(
+            world["p1"],
+            "final",
+            implicated=[{"reference": f"MedicationDispense/{dispense}"}],
+        ),
+    )
+    ids = _ids(
+        await _search(client, **{"implicated:MedicationDispense.status": "completed"})
+    )
+    assert ids == {issue}
+    assert (
+        _ids(
+            await _search(client, **{"implicated:MedicationDispense.status": "on-hold"})
+        )
+        == set()
+    )
+    bundle = (
+        await _search(client, **{"implicated:MedicationDispense.status": "completed"})
+        | {}
+    )
+    included = await _search(
+        client,
+        **{
+            "_id": str(issue),
+            "_include": "DetectedIssue:implicated:MedicationDispense",
+        },
+    )
+    assert _of_type(included, "MedicationDispense", "include") == {str(dispense)}
+    assert str(other) not in _of_type(included, "MedicationDispense", "include")
+    assert bundle["resourceType"] == "Bundle"
+    # a plain search by a valid R4 type that is not built here still matches what is stored
+    assert await _status(client, implicated="Goal/5") == 200

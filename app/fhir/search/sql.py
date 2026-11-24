@@ -34,6 +34,7 @@ from sqlalchemy.types import Boolean, String
 from app.core.filters import array_contains
 
 from .errors import SearchError
+from .params import target_names
 from .values import (
     ReferenceValue,
     Token,
@@ -367,7 +368,7 @@ def reference_target(
     if rtype is None:
         raise SearchError(
             value,
-            f"Reference '{value}' is ambiguous: give a type ({', '.join(targets)}).",
+            f"Reference '{value}' is ambiguous: give a type ({target_names(targets)}).",
         )
     if (
         (modifier and rtype != modifier)

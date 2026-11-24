@@ -9,6 +9,8 @@ from tests.helpers.observations import seed_observations
 # (its patient, author, implicated resources, evidence and mitigation authors) and the ones to look
 # at what points back at it.
 ISSUE_PERMS = [
+    "medication_dispense:create",
+    "medication_dispense:read",
     "medication_request:create",
     "medication_request:read",
     "observation:create",

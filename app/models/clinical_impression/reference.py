@@ -1,6 +1,7 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
 
 # The reference parameters held in ClinicalImpressionReference, and the element each reads.
@@ -22,37 +23,10 @@ INVESTIGATION_TYPES = (
     "QuestionnaireResponse",
 )
 FINDING_TYPES = ("Condition", "Observation", "Media")
-# `supportingInfo` is Reference(Any): the parser only accepts `:Type` for a declared target, so
-# list the types supporting information can realistically be. A relative reference to a type
-# not listed is still indexed (and found by its absolute URL).
-INFORMATION_TYPES = (
-    "Patient",
-    "Practitioner",
-    "PractitionerRole",
-    "RelatedPerson",
-    "Organization",
-    "Location",
-    "Encounter",
-    "Appointment",
-    "Condition",
-    "Observation",
-    "Procedure",
-    "DiagnosticReport",
-    "DocumentReference",
-    "ServiceRequest",
-    "MedicationRequest",
-    "MedicationStatement",
-    "MedicationDispense",
-    "MedicationAdministration",
-    "CarePlan",
-    "AllergyIntolerance",
-    "Immunization",
-    "FamilyMemberHistory",
-    "Questionnaire",
-    "QuestionnaireResponse",
-    "RiskAssessment",
-    "ClinicalImpression",
-)
+# `supportingInfo` is Reference(Any): R4 allows every resource type, so the whole R4 list is the target
+# list (a plain reference search accepts any valid type; chaining and `_include` follow the
+# types that are rebuilt on this server - see app/repository/_search_targets.py).
+INFORMATION_TYPES = ANY_RESOURCE_TYPES
 REFERENCE_TYPES = {
     "problem": PROBLEM_TYPES,
     "investigation": INVESTIGATION_TYPES,

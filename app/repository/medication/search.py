@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -29,9 +30,15 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_dispense_revinclude import column_medication_dispense_revincludes
-from app.repository._medication_administration_revinclude import column_medication_administration_revincludes
-from app.repository._medication_statement_revinclude import column_medication_statement_revincludes
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
 from app.repository._group_revinclude import (
     managing_entity_group_revincludes,
     member_group_revincludes,
@@ -55,25 +62,10 @@ _Tk = MedicationToken
 _R = MedicationReference
 _STATUS_SYSTEM = "http://hl7.org/fhir/CodeSystem/medication-status"
 
-# Reference targets that are searchable resources on this server: the model to join for
-# chaining / `_include`, and its registry.
+# Every rebuilt resource type this server can chain through and `_include`: derived from
+# RESOURCE_REGISTRY by app/repository/_search_targets.py, so there is no list to keep here.
 #   type -> (model module, model class, public id column, search module, search factory)
-_MODELED = {
-    "Medication": (
-        "app.models.medication",
-        "MedicationModel",
-        "medication_id",
-        "app.repository.medication.search",
-        "medication_search",
-    ),
-    "Organization": (
-        "app.models.organization",
-        "OrganizationModel",
-        "organization_id",
-        "app.repository.organization.search",
-        "organization_search",
-    ),
-}
+_MODELED = MODELED
 
 
 def _model(resource_type: str):
@@ -562,13 +554,13 @@ def medication_search() -> SearchRegistry:
         # A Medication that has another one as an ingredient points back at it.
         revincludes=(
             *column_medication_dispense_revincludes(
-                ('medication',), 'medication', 'Medication', lambda x: x.medication_id
+                ("medication",), "medication", "Medication", lambda x: x.medication_id
             ),
             *column_medication_administration_revincludes(
-                ('medication',), 'medication', 'Medication', lambda x: x.medication_id
+                ("medication",), "medication", "Medication", lambda x: x.medication_id
             ),
             *column_medication_statement_revincludes(
-                ('medication',), 'medication', 'Medication', lambda x: x.medication_id
+                ("medication",), "medication", "Medication", lambda x: x.medication_id
             ),
             *member_group_revincludes("Medication", lambda m: m.medication_id),
             *column_medication_request_revincludes(
