@@ -49,6 +49,7 @@ from tests.integration.activity_definition.support import (
     activity_definition_body,
 )
 from tests.integration.communication.support import communication_body
+from tests.integration.plan_definition.support import plan_definition_body
 from tests.integration.communication_request.support import (
     communication_request_body,
 )
@@ -135,6 +136,10 @@ CASES = {
     "Goal": (f"{API}/goals", _fixed(goal_body)),
     "Flag": (f"{API}/flags", _fixed(flag_body)),
     "Consent": (f"{API}/consents", _fixed(consent_body)),
+    "PlanDefinition": (
+        f"{API}/plan-definitions",
+        _fixed(plan_definition_body),
+    ),
     "ActivityDefinition": (
         f"{API}/activity-definitions",
         _fixed(activity_definition_body),

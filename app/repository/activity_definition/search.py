@@ -51,6 +51,9 @@ from app.models.activity_definition import (
     ActivityDefinitionToken,
 )
 from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+from app.repository._plan_definition_revinclude import (
+    definition_plan_definition_revincludes,
+)
 from app.repository._search_targets import MODELED
 
 M = ActivityDefinitionModel
@@ -719,6 +722,10 @@ def activity_definition_search() -> SearchRegistry:
                 reverse=True,
             )
             for param in REFERENCE_PARAMS
+        )
+        # A PlanDefinition's action can perform an activity definition.
+        + definition_plan_definition_revincludes(
+            "ActivityDefinition", lambda r: r.activity_definition_id
         ),
         default_sort=lambda: [M.activity_definition_id.desc()],
     )

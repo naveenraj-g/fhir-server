@@ -7,4 +7,5 @@ __all__ = ["PlanDefinitionService"]
 
 @trace_methods
 class PlanDefinitionService(_CoreMixin):
-    """Orchestrates PlanDefinition CRUD operations and data transformations."""
+    """All PlanDefinition business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

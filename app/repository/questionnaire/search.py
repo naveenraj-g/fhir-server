@@ -18,6 +18,9 @@ from functools import cache
 from sqlalchemy import exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._plan_definition_revinclude import (
+    definition_plan_definition_revincludes,
+)
 from app.core.filters import array_contains
 from app.fhir.search import (
     IncludeTarget,
@@ -588,6 +591,10 @@ def questionnaire_search() -> SearchRegistry:
                 "Questionnaire",
                 _revinclude_responses(),
                 reverse=True,
+            ),
+            # A PlanDefinition's action can ask a questionnaire.
+            *definition_plan_definition_revincludes(
+                "Questionnaire", lambda r: r.questionnaire_id
             ),
         ),
         default_sort=lambda: [M.questionnaire_id.desc()],

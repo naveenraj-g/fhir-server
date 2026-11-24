@@ -1,237 +1,217 @@
-import datetime as dt
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
-from app.models.plan_definition.enums import PlanDefinitionStatus
-from app.schemas.plan_definition.input.action import PlanDefinitionActionInput
-from app.schemas.plan_definition.input.codeable_concept import (
-    PlanDefinitionCodeableConceptInput,
-)
-from app.schemas.plan_definition.input.contact import PlanDefinitionContactInput
-from app.schemas.plan_definition.input.goal import PlanDefinitionGoalInput
-from app.schemas.plan_definition.input.identifier import (
-    PlanDefinitionIdentifierInput,
-)
-from app.schemas.plan_definition.input.related_artifact import (
-    PlanDefinitionRelatedArtifactInput,
-)
-from app.schemas.plan_definition.input.use_context import (
-    PlanDefinitionUseContextInput,
+from pydantic import Field
+
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
-
-class PlanDefinitionCreateSchema(BaseModel):
-    """Request body for creating a PlanDefinition resource."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "draft",
-                "name": "DiabetesManagementProtocol",
-                "title": "Protocol for Glycemic Control",
-                "type": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
-                            "code": "clinical-protocol",
-                            "display": "Clinical Protocol",
-                        }
-                    ],
-                    "text": "Clinical Protocol",
-                },
-                "description": "Standardized clinical care protocol for glycemic management in Type 2 Diabetes.",
+# publication-status (the required binding of PlanDefinition.status).
+StatusCode = Literal["draft", "active", "retired", "unknown"]
+_EXAMPLE = {
+    "resourceType": "PlanDefinition",
+    "url": "https://fhir-server.dev/fhir/PlanDefinition/discharge-pathway",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/plan-definition-id",
+            "value": "AD-1",
+        }
+    ],
+    "version": "1.0",
+    "name": "FollowUpVisit",
+    "title": "Follow-up visit",
+    "status": "active",
+    "date": "2026-01-15",
+    "publisher": "Example Health",
+    "description": "Book a follow-up visit.",
+    "useContext": [
+        {
+            "code": {
+                "system": "http://terminology.hl7.org/CodeSystem/usage-context-type",
+                "code": "focus",
+            },
+            "valueCodeableConcept": {
+                "coding": [{"system": "http://snomed.info/sct", "code": "35489007"}]
+            },
+        }
+    ],
+    "jurisdiction": [{"coding": [{"system": "urn:iso:std:iso:3166", "code": "US"}]}],
+    "topic": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/definition-topic",
+                    "code": "treatment",
+                }
+            ]
+        }
+    ],
+    "type": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+                "code": "order-set",
             }
-        },
-    )
+        ]
+    },
+    "action": [
+        {
+            "title": "Book a visit",
+            "definitionCanonical": "http://example.org/fhir/ActivityDefinition/follow-up-visit",
+        }
+    ],
+}
 
-    status: PlanDefinitionStatus = Field(
-        ..., description="draft | active | retired | unknown."
+
+class _PlanDefinitionFields(FhirInputModel):
+    """Every writable PlanDefinition element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/plandefinition.html). Create and patch accept exactly the
+    same fields. R4 requires `status`; the native validator cannot see a missing primitive
+    `status`, which only the `java_validator` backend rejects.
+
+    The validated body is stored whole (PlanDefinitionModel.content), so any valid R4 element
+    is kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the plan_definition_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["PlanDefinition"] | None = Field(
+        None, description="Optional; if supplied it must be 'PlanDefinition'."
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
     url: str | None = Field(
         None,
-        description="Canonical identifier for this plan definition, represented as a URI.",
+        description="Canonical identifier for this plan definition. Searched by `url`.",
+    )
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Additional identifier. Searched by `identifier`."
     )
     version: str | None = Field(
-        None, description="Business version of the plan definition."
+        None,
+        description="Business version of the plan definition. Searched by `version`.",
     )
     name: str | None = Field(
-        None, description="Name for this plan definition (computer friendly)."
+        None,
+        description="Name for this plan definition (computer friendly). Searched by `name`.",
     )
     title: str | None = Field(
-        None, description="Name for this plan definition (human friendly)."
-    )
-    subtitle: str | None = Field(
-        None, description="Subordinate title of the plan definition."
-    )
-    type: PlanDefinitionCodeableConceptInput | None = Field(
         None,
-        description="order-set | clinical-protocol | eca-rule | workflow-definition.",
+        description="Name for this plan definition (human friendly). Searched by `title`.",
+    )
+    subtitle: str | None = Field(None, description="Subordinate title.")
+    type: FhirCodeableConceptInput | None = Field(
+        None,
+        description="order-set | clinical-protocol | eca-rule | workflow-definition. Searched by `type`.",
+    )
+    status: StatusCode | None = Field(
+        None,
+        description="draft | active | retired | unknown (required by R4). Searched by `status`.",
     )
     experimental: bool | None = Field(
         None, description="For testing purposes, not real usage."
     )
-    subject_codeable_concept: PlanDefinitionCodeableConceptInput | None = Field(
-        None, description="Type of the subject of the plan definition."
+    subjectCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="subject[x]: type of individual the plan definition is intended for.",
     )
-    subject_reference: str | None = Field(
-        None, description="Who or what the plan definition is for (Reference(Group))."
+    subjectReference: FhirReferenceInput | None = Field(
+        None,
+        description="subject[x]: Reference(Group) the plan definition is intended for.",
     )
-    subject_display: str | None = Field(
-        None, description="Plain text display for subject."
+    date: str | None = Field(
+        None, description="Date last changed (a FHIR dateTime). Searched by `date`."
     )
-    date: dt.datetime | None = Field(None, description="Date last changed.")
     publisher: str | None = Field(
-        None, description="Name of the publisher (organization or individual)."
+        None, description="Name of the publisher. Searched by `publisher`."
+    )
+    contact: list[dict] | None = Field(
+        None, description="Contact details for the publisher (ContactDetail)."
     )
     description: str | None = Field(
-        None, description="Natural language description of the plan definition."
+        None, description="Natural language description. Searched by `description`."
+    )
+    useContext: list[dict] | None = Field(
+        None,
+        description="The context that the content is intended to support (UsageContext). Searched by `context`, `context-type`, `context-quantity` and the two composites.",
+    )
+    jurisdiction: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Intended jurisdiction. Searched by `jurisdiction`."
     )
     purpose: str | None = Field(
         None, description="Why this plan definition is defined."
     )
     usage: str | None = Field(
-        None, description="Describes the clinical usage of the plan."
+        None, description="Describes the clinical usage of the plan definition."
     )
     copyright: str | None = Field(
         None, description="Use and/or publishing restrictions."
     )
-    approval_date: dt.date | None = Field(
-        None, description="When the plan definition was approved by publisher."
+    approvalDate: str | None = Field(
+        None, description="When the plan definition was approved by the publisher."
     )
-    last_review_date: dt.date | None = Field(
+    lastReviewDate: str | None = Field(
         None, description="When the plan definition was last reviewed."
     )
-    effective_period_start: dt.datetime | None = Field(
-        None, description="When the plan definition is expected to be used."
+    effectivePeriod: FhirPeriodInput | None = Field(
+        None,
+        description="When the plan definition is expected to be used. Searched by `effective`.",
     )
-    effective_period_end: dt.datetime | None = Field(
-        None, description="When the plan definition is expected to be used."
+    topic: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="E.g. Education, Treatment, Assessment, etc. Searched by `topic`.",
+    )
+    author: list[dict] | None = Field(
+        None, description="Who authored the content (ContactDetail)."
+    )
+    editor: list[dict] | None = Field(
+        None, description="Who edited the content (ContactDetail)."
+    )
+    reviewer: list[dict] | None = Field(
+        None, description="Who reviewed the content (ContactDetail)."
+    )
+    endorser: list[dict] | None = Field(
+        None, description="Who endorsed the content (ContactDetail)."
+    )
+    relatedArtifact: list[dict] | None = Field(
+        None,
+        description="Additional documentation, citations, etc. (RelatedArtifact). The `resource` of a `composed-of` / `depends-on` / `derived-from` / `predecessor` / `successor` entry is searched by the parameter of that name.",
     )
     library: list[str] | None = Field(
-        None, description="Logic used by the plan definition (canonical URLs)."
+        None,
+        description="Logic used by the plan definition (canonical(Library)). Searched by `depends-on`.",
     )
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
+    goal: list[dict] | None = Field(
+        None, description="What the plan is trying to accomplish (PlanDefinition.goal)."
     )
-
-    # Sub-resource lists
-    identifier: list[PlanDefinitionIdentifierInput] | None = Field(
-        None, description="Additional identifier for the plan definition."
-    )
-    contact: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Contact details for the publisher."
-    )
-    author: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Who authored the content."
-    )
-    editor: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Who edited the content."
-    )
-    reviewer: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Who reviewed the content."
-    )
-    endorser: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Who endorsed the content."
-    )
-    use_context: list[PlanDefinitionUseContextInput] | None = Field(
-        None, description="The context that the content is intended to support."
-    )
-    jurisdiction: list[PlanDefinitionCodeableConceptInput] | None = Field(
-        None, description="Intended jurisdiction for plan definition."
-    )
-    topic: list[PlanDefinitionCodeableConceptInput] | None = Field(
-        None, description="E.g. Education, Treatment, Assessment, etc."
-    )
-    related_artifact: list[PlanDefinitionRelatedArtifactInput] | None = Field(
-        None, description="Additional documentation, citations, etc."
-    )
-    goal: list[PlanDefinitionGoalInput] | None = Field(
-        None, description="What the plan is trying to accomplish."
-    )
-    action: list[PlanDefinitionActionInput] | None = Field(
-        None, description="Action defined by the plan."
+    action: list[dict] | None = Field(
+        None,
+        description="Action defined by the plan (PlanDefinition.action, a recursive tree). The `definitionCanonical` of every action, at any depth, is searched by `definition`.",
     )
 
 
-class PlanDefinitionPatchSchema(BaseModel):
-    """Request body for patching a PlanDefinition resource. All fields optional."""
+class PlanDefinitionCreateSchema(_PlanDefinitionFields):
+    """POST body - a FHIR R4 PlanDefinition resource."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "active",
-                "title": "Updated Protocol for Glycemic Control",
-            }
-        },
-    )
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
-    status: PlanDefinitionStatus | None = Field(
-        None, description="draft | active | retired | unknown."
-    )
-    url: str | None = Field(None, description="Canonical identifier.")
-    version: str | None = Field(None, description="Business version.")
-    name: str | None = Field(None, description="Computer-friendly name.")
-    title: str | None = Field(None, description="Human-friendly title.")
-    subtitle: str | None = Field(None, description="Subordinate title.")
-    type: PlanDefinitionCodeableConceptInput | None = Field(
-        None, description="Type of plan."
-    )
-    experimental: bool | None = Field(None, description="For testing purposes.")
-    subject_codeable_concept: PlanDefinitionCodeableConceptInput | None = Field(
-        None, description="Subject concept."
-    )
-    subject_reference: str | None = Field(
-        None, description="Subject reference (Group/123)."
-    )
-    subject_display: str | None = Field(
-        None, description="Plain text display for subject."
-    )
-    date: dt.datetime | None = Field(None, description="Date last changed.")
-    publisher: str | None = Field(None, description="Publisher name.")
-    description: str | None = Field(None, description="Natural language description.")
-    purpose: str | None = Field(None, description="Why defined.")
-    usage: str | None = Field(None, description="Clinical usage.")
-    copyright: str | None = Field(None, description="Copyright statement.")
-    approval_date: dt.date | None = Field(None, description="Approval date.")
-    last_review_date: dt.date | None = Field(None, description="Last review date.")
-    effective_period_start: dt.datetime | None = Field(
-        None, description="Effective start."
-    )
-    effective_period_end: dt.datetime | None = Field(None, description="Effective end.")
-    library: list[str] | None = Field(None, description="Logic libraries.")
-    extension: list[dict] | None = Field(None, description="Extensions.")
 
-    identifier: list[PlanDefinitionIdentifierInput] | None = Field(
-        None, description="Identifiers."
-    )
-    contact: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Contacts."
-    )
-    author: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Authors."
-    )
-    editor: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Editors."
-    )
-    reviewer: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Reviewers."
-    )
-    endorser: list[PlanDefinitionContactInput] | None = Field(
-        None, description="Endorsers."
-    )
-    use_context: list[PlanDefinitionUseContextInput] | None = Field(
-        None, description="Contexts."
-    )
-    jurisdiction: list[PlanDefinitionCodeableConceptInput] | None = Field(
-        None, description="Jurisdictions."
-    )
-    topic: list[PlanDefinitionCodeableConceptInput] | None = Field(
-        None, description="Topics."
-    )
-    related_artifact: list[PlanDefinitionRelatedArtifactInput] | None = Field(
-        None, description="Related artifacts."
-    )
-    goal: list[PlanDefinitionGoalInput] | None = Field(None, description="Goals.")
-    action: list[PlanDefinitionActionInput] | None = Field(None, description="Actions.")
+class PlanDefinitionPatchSchema(_PlanDefinitionFields):
+    """PATCH body - a partial FHIR R4 PlanDefinition (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object replaces the whole value, and `null` clears it."""
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {"status": "retired", "version": "1.1"},
+        }
+    }

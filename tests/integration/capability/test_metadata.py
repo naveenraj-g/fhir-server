@@ -41,6 +41,7 @@ from app.repository.medication_dispense.search import (
 from app.repository.activity_definition.search import activity_definition_search
 from app.repository.communication.search import communication_search
 from app.repository.communication_request.search import communication_request_search
+from app.repository.plan_definition.search import plan_definition_search
 from app.repository.consent.search import consent_search
 from app.repository.flag.search import flag_search
 from app.repository.goal.search import goal_search
@@ -107,6 +108,7 @@ async def test_search_params_match_registries(client):
             "ActivityDefinition",
             activity_definition_search(),
         ),
+        "plan_definition": ("PlanDefinition", plan_definition_search()),
         "communication_request": (
             "CommunicationRequest",
             communication_request_search(),

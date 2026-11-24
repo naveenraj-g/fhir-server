@@ -55,6 +55,7 @@ REQUIRED_CODE_STORAGE = {
     ("DiagnosticReport", "status"): ("diagnostic_report", "status"),
     ("Encounter", "status"): ("encounter", "status"),
     ("ActivityDefinition", "status"): ("activity_definition", "status"),
+    ("PlanDefinition", "status"): ("plan_definition", "status"),
     ("Communication", "status"): ("communication", "status"),
     ("CommunicationRequest", "status"): ("communication_request", "status"),
     ("CommunicationRequest", "priority"): ("communication_request", "priority"),

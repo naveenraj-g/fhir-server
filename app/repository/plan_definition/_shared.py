@@ -1,96 +1,47 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import OrganizationReferenceType
-from app.models.plan_definition import (
-    PlanDefinitionAction,
-    PlanDefinitionContact,
-    PlanDefinitionGoal,
-    PlanDefinitionIdentifier,
-    PlanDefinitionJurisdiction,
-    PlanDefinitionModel,
-    PlanDefinitionSubjectReferenceType,
-    PlanDefinitionTopic,
-    PlanDefinitionUseContext,
-    PlanDefinitionUseContextValueReferenceType,
-)
+from app.models.plan_definition import PlanDefinitionModel
+from app.repository._reference_shared import _validate_reference
 
-_SORTABLE_FIELDS = {
-    "plan_definition_id": PlanDefinitionModel.plan_definition_id,
-    "created_at": PlanDefinitionModel.created_at,
-    "updated_at": PlanDefinitionModel.updated_at,
-    "name": PlanDefinitionModel.name,
-    "title": PlanDefinitionModel.title,
-    "status": PlanDefinitionModel.status,
-    "date": PlanDefinitionModel.date,
-}
+__all__ = [
+    "INDEX_RELATIONSHIPS",
+    "_validate_reference",
+    "_with_relationships",
+    "any_typed",
+    "typed",
+]
 
+# Relationship attributes the search index owns — every one is rebuilt on each write.
+INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references", "context_quantities")
 
-def _parse_subject_ref(ref: str) -> tuple:
-    return parse_reference(ref, PlanDefinitionSubjectReferenceType)
-
-
-def _parse_assigner_ref(ref: str) -> tuple:
-    return parse_reference(ref, OrganizationReferenceType)
-
-
-def _parse_use_context_value_ref(ref: str) -> tuple:
-    return parse_reference(ref, PlanDefinitionUseContextValueReferenceType)
-
-
-async def _validate_ref(
-    session,
-    org_id: str,
-    res_type_enum,
-    res_id: int | None,
-    field_name: str,
-) -> None:
-    if not res_type_enum or not res_id:
-        return
-    res_type_str = (
-        res_type_enum.value if hasattr(res_type_enum, "value") else str(res_type_enum)
-    )
-    if res_type_str not in RESOURCE_REGISTRY:
-        return
-    await ensure_resource_exists(
-        session, res_type_str, res_id, org_id=org_id, field_name=field_name
-    )
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
+    """Eager-load the search-index child rows. Only needed when a write is
+    about to replace them (patch_full) — reads never touch them, since every
+    response is served straight from PlanDefinitionModel.content."""
     return stmt.options(
-        selectinload(PlanDefinitionModel.identifiers).selectinload(
-            PlanDefinitionIdentifier.type_codings
-        ),
-        selectinload(PlanDefinitionModel.type_codings),
-        selectinload(PlanDefinitionModel.subject_codings),
-        selectinload(PlanDefinitionModel.contacts).selectinload(
-            PlanDefinitionContact.telecoms
-        ),
-        selectinload(PlanDefinitionModel.use_contexts).selectinload(
-            PlanDefinitionUseContext.value_codings
-        ),
-        selectinload(PlanDefinitionModel.jurisdictions).selectinload(
-            PlanDefinitionJurisdiction.codings
-        ),
-        selectinload(PlanDefinitionModel.topics).selectinload(
-            PlanDefinitionTopic.codings
-        ),
-        selectinload(PlanDefinitionModel.related_artifacts),
-        selectinload(PlanDefinitionModel.goals).selectinload(
-            PlanDefinitionGoal.category_codings
-        ),
-        selectinload(PlanDefinitionModel.goals).selectinload(
-            PlanDefinitionGoal.description_codings
-        ),
-        selectinload(PlanDefinitionModel.goals).selectinload(
-            PlanDefinitionGoal.priority_codings
-        ),
-        selectinload(PlanDefinitionModel.goals).selectinload(
-            PlanDefinitionGoal.start_codings
-        ),
-        selectinload(PlanDefinitionModel.actions).selectinload(
-            PlanDefinitionAction.type_codings
-        ),
+        *(
+            selectinload(getattr(PlanDefinitionModel, rel))
+            for rel in INDEX_RELATIONSHIPS
+        )
     )
+
+
+def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:
+    """('Patient', 10001) for a relative `Type/<id>` whose type is in `allowed`; None for
+    an absolute URL, a contained reference or any other shape (those match by their raw
+    string only)."""
+    match = _REF.match(reference or "")
+    if match and match["type"] in allowed:
+        return match["type"], int(match["id"])
+    return None
+
+
+def any_typed(reference: str | None) -> tuple[str, int] | None:
+    """`typed()` for a Reference(Any): any relative `Type/<id>` names a type."""
+    match = _REF.match(reference or "")
+    return (match["type"], int(match["id"])) if match else None
