@@ -1,6 +1,12 @@
 """FHIR R4 conformance for `to_fhir_consent()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+Consent is stored content-based (like Goal, Task, Flag and the other rebuilt resources): the
+resource lives whole in ConsentModel.content, and to_fhir_consent() only stamps `id` and `meta`
+onto it. So what can go wrong on the read side is that stamping (e.g. a malformed meta extension)
+or a stored document the server returns that isn't valid R4 - each case below is a `content`
+document as the write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,384 +14,251 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.consent import to_fhir_consent
-from app.models.consent import (
-    ConsentCategory,
-    ConsentCategoryCoding,
-    ConsentDataMeaning,
-    ConsentIdentifier,
-    ConsentIdentifierTypeCoding,
-    ConsentModel,
-    ConsentOrganization,
-    ConsentPatientReferenceType,
-    ConsentPerformer,
-    ConsentPerformerReferenceType,
-    ConsentPolicy,
-    ConsentPolicyRuleCoding,
-    ConsentProvision,
-    ConsentProvisionAction,
-    ConsentProvisionActionCoding,
-    ConsentProvisionActor,
-    ConsentProvisionActorReferenceType,
-    ConsentProvisionActorRoleCoding,
-    ConsentProvisionClass,
-    ConsentProvisionCode,
-    ConsentProvisionCodeCoding,
-    ConsentProvisionData,
-    ConsentProvisionPurpose,
-    ConsentProvisionSecurityLabel,
-    ConsentProvisionType,
-    ConsentScopeCoding,
-    ConsentSourceReferenceType,
-    ConsentStatus,
-    ConsentVerification,
-    ConsentVerifiedWithReferenceType,
-)
-from app.models.enums import IdentifierUse, OrganizationReferenceType
+from app.models.consent import ConsentModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-consent_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.consent_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "scope_codings",
-    "categories",
-    "performers",
-    "organizations",
-    "policies",
-    "policy_rule_codings",
-    "verifications",
-    "provisions",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+SCOPE = "http://terminology.hl7.org/CodeSystem/consentscope"
+LOINC = "http://loinc.org"
+ACTION = "http://terminology.hl7.org/CodeSystem/consentaction"
+BASE = {
+    "status": "active",
+    "scope": {"coding": [{"system": SCOPE, "code": "patient-privacy"}]},
+    "category": [{"coding": [{"system": LOINC, "code": "59284-0"}]}],
+}
 
 
-def _consent(**overrides) -> ConsentModel:
+def _consent(content: dict, **overrides) -> ConsentModel:
     fields = {
-        "id": 1,
         "consent_id": 440001,
         "tenant_id": "org-test",
-        "status": ConsentStatus.active,
-        "scope_text": "Privacy Consent",
-        "patient_reference": "Patient/10001",
-        "patient_type": ConsentPatientReferenceType.Patient,
-        "patient_id": 10001,
-        "patient_display": "John Doe",
-        "date_time": D,
         "created_by": "u-test",
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = ConsentModel(**fields)
+    return ConsentModel(**fields)
 
-    # By default, add a minimal category and scope coding so R4 required fields are present
-    if "scope_codings" not in children or not children["scope_codings"]:
-        children["scope_codings"] = [
-            ConsentScopeCoding(
-                consent_pk=1,
-                tenant_id="org-test",
-                system="http://terminology.hl7.org/CodeSystem/consentscope",
-                code="patient-privacy",
-                display="Privacy Consent",
-                created_by="u-test",
-            )
-        ]
 
-    if "categories" not in children or not children["categories"]:
-        cat = ConsentCategory(
-            consent_pk=1,
-            tenant_id="org-test",
-            text="Information Access",
-            created_by="u-test",
+def _c(**extra) -> ConsentModel:
+    return _consent({**BASE, **extra})
+
+
+CASES = {
+    "minimal": _consent(BASE),
+    "updated_by_and_updated_at": _consent(BASE, updated_by="u-other", updated_at=D),
+    **{
+        f"status_{s}": _c(status=s)
+        for s in (
+            "draft",
+            "proposed",
+            "active",
+            "rejected",
+            "inactive",
+            "entered-in-error",
         )
-        cat.codings = [
-            ConsentCategoryCoding(
-                category_id=1,
-                tenant_id="org-test",
-                system="http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                code="INFA",
-                display="information access",
-                created_by="u-test",
-            )
+    },
+    "identifier_with_type_and_assigner": _c(
+        identifier=[
+            {
+                "use": "official",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "FILL",
+                        }
+                    ]
+                },
+                "system": "https://fhir-server.dev/fhir/identifier-system/consent-id",
+                "value": "C-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
         ]
-        children["categories"] = [cat]
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
-
-
-def test_consent_minimal_conformance():
-    m = _consent()
-    fhir = to_fhir_consent(m)
-    assert_valid(consent_pb2.Consent, fhir)
-
-
-def test_consent_statuses_conformance():
-    for status in ConsentStatus:
-        m = _consent(status=status)
-        fhir = to_fhir_consent(m)
-        assert_valid(consent_pb2.Consent, fhir)
-
-
-def test_consent_identifiers_conformance():
-    ident = ConsentIdentifier(
-        consent_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="Consent ID",
-        system="http://example.org/consents",
-        value="CONSENT-12345",
-        period_start=D,
-        period_end=D + dt.timedelta(days=365),
-        assigner_reference="Organization/190001",
-        assigner_type=OrganizationReferenceType.Organization,
-        assigner_id=190001,
-        assigner_display="National Registry",
-        created_by="u-test",
-    )
-    ident.type_codings = [
-        ConsentIdentifierTypeCoding(
-            identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="TAX",
-            display="Tax ID",
-            created_by="u-test",
-        )
-    ]
-    m = _consent(identifiers=[ident])
-    fhir = to_fhir_consent(m)
-    assert_valid(consent_pb2.Consent, fhir)
-
-
-def test_consent_performers_and_organizations_conformance():
-    performer = ConsentPerformer(
-        consent_pk=1,
-        tenant_id="org-test",
-        reference_reference="Practitioner/30001",
-        reference_type=ConsentPerformerReferenceType.Practitioner,
-        reference_id=30001,
-        reference_display="Dr. Alice Smith",
-        created_by="u-test",
-    )
-    org = ConsentOrganization(
-        consent_pk=1,
-        tenant_id="org-test",
-        reference_reference="Organization/190001",
-        reference_type=OrganizationReferenceType.Organization,
-        reference_id=190001,
-        reference_display="General Hospital",
-        created_by="u-test",
-    )
-    m = _consent(performers=[performer], organizations=[org])
-    fhir = to_fhir_consent(m)
-    assert_valid(consent_pb2.Consent, fhir)
-
-
-def test_consent_source_conformance():
-    m1 = _consent(
-        source_reference_reference="DocumentReference/320001",
-        source_reference_type=ConsentSourceReferenceType.DocumentReference,
-        source_reference_id=320001,
-        source_reference_display="Signed Consent Document",
-    )
-    fhir1 = to_fhir_consent(m1)
-    assert_valid(consent_pb2.Consent, fhir1)
-
-    m2 = _consent(
-        source_attachment={
-            "contentType": "application/pdf",
-            "title": "Signed Consent PDF",
+    ),
+    "scope_text_only": _c(scope={"text": "privacy"}),
+    "several_categories": _c(
+        category=[{"text": "a"}, {"coding": [{"system": LOINC, "code": "1"}]}]
+    ),
+    "patient": _c(patient={"reference": "Patient/10001"}),
+    "patient_logical": _c(
+        patient={"identifier": {"system": "urn:mrn", "value": "M-9"}, "display": "Jane"}
+    ),
+    "patient_absolute_url": _c(
+        patient={"reference": "https://other.example.org/fhir/Patient/1"}
+    ),
+    "date_time": _c(dateTime="2026-01-15T09:00:00Z"),
+    "date_time_partial": _c(dateTime="2026-01"),
+    "performer_and_organization": _c(
+        performer=[{"reference": "Patient/10001"}, {"reference": "Practitioner/30001"}],
+        organization=[{"reference": "Organization/190001"}],
+    ),
+    "source_attachment": _c(
+        sourceAttachment={"contentType": "application/pdf", "title": "signed"}
+    ),
+    **{
+        f"source_reference_{t.lower()}": _c(sourceReference={"reference": f"{t}/1"})
+        for t in ("Consent", "DocumentReference", "Contract", "QuestionnaireResponse")
+    },
+    "policy": _c(
+        policy=[
+            {"authority": "urn:authority", "uri": "http://example.org/policy"},
+            {"uri": "http://example.org/other"},
+        ]
+    ),
+    "policy_rule": _c(
+        policyRule={
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                    "code": "OPTIN",
+                }
+            ]
         }
-    )
-    fhir2 = to_fhir_consent(m2)
-    assert_valid(consent_pb2.Consent, fhir2)
+    ),
+    "verification": _c(
+        verification=[
+            {
+                "verified": True,
+                "verifiedWith": {"reference": "Patient/10001"},
+                "verificationDate": "2026-01-16T10:00:00Z",
+            },
+            {"verified": False},
+        ]
+    ),
+    "provision": _c(
+        provision={
+            "type": "permit",
+            "period": {"start": "2026-01-15", "end": "2027-01-14"},
+            "actor": [
+                {
+                    "role": {"coding": [{"system": SCOPE, "code": "x"}]},
+                    "reference": {"reference": "Practitioner/30001"},
+                }
+            ],
+            "action": [{"coding": [{"system": ACTION, "code": "access"}]}],
+            "securityLabel": [{"system": "http://example.org/sl", "code": "R"}],
+            "purpose": [{"system": "http://example.org/p", "code": "TREAT"}],
+            "class": [
+                {"system": "http://hl7.org/fhir/resource-types", "code": "Observation"}
+            ],
+            "code": [{"text": "vitals"}],
+            "dataPeriod": {"start": "2025-01-01", "end": "2025-12-31"},
+            "data": [
+                {
+                    "meaning": "instance",
+                    "reference": {"reference": "Observation/160001"},
+                },
+                {"meaning": "related", "reference": {"reference": "Device/9"}},
+            ],
+        }
+    ),
+    "provision_deny": _c(provision={"type": "deny"}),
+    "nested_provisions": _c(
+        provision={
+            "type": "permit",
+            "provision": [
+                {
+                    "type": "deny",
+                    "actor": [
+                        {
+                            "role": {"text": "r"},
+                            "reference": {"reference": "Organization/190001"},
+                        }
+                    ],
+                    "provision": [{"type": "permit", "action": [{"text": "access"}]}],
+                }
+            ],
+        }
+    ),
+    "extension": _c(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
+    "full": _c(
+        identifier=[{"system": "urn:c", "value": "C-1"}],
+        patient={"reference": "Patient/10001"},
+        dateTime="2026-01-15T09:00:00Z",
+        performer=[{"reference": "Patient/10001"}],
+        organization=[{"reference": "Organization/190001"}],
+        sourceReference={"reference": "DocumentReference/320001"},
+        policyRule={"text": "opt in"},
+        provision={"type": "permit", "period": {"start": "2026-01-15"}},
+    ),
+}
 
 
-def test_consent_policy_and_verification_conformance():
-    policy = ConsentPolicy(
-        consent_pk=1,
-        tenant_id="org-test",
-        authority="http://example.org/fhir/ConsentPolicy",
-        uri="http://example.org/fhir/ConsentPolicy/1",
-        created_by="u-test",
-    )
-    rule_coding = ConsentPolicyRuleCoding(
-        consent_pk=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/v3-ActCode",
-        code="OPTIN",
-        display="opt-in",
-        created_by="u-test",
-    )
-    verification = ConsentVerification(
-        consent_pk=1,
-        tenant_id="org-test",
-        verified=True,
-        verified_with_reference="Patient/10001",
-        verified_with_type=ConsentVerifiedWithReferenceType.Patient,
-        verified_with_id=10001,
-        verified_with_display="John Doe",
-        verification_date=D,
-        created_by="u-test",
-    )
-    m = _consent(
-        policies=[policy],
-        policy_rule_codings=[rule_coding],
-        policy_rule_text="opt-in",
-        verifications=[verification],
-    )
-    fhir = to_fhir_consent(m)
-    assert_valid(consent_pb2.Consent, fhir)
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_consent_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.Consent, to_fhir_consent(CASES[case]))
 
 
-def test_consent_provision_conformance():
-    prov = ConsentProvision(
-        id=1,
-        consent_pk=1,
-        parent_provision_id=None,
-        tenant_id="org-test",
-        type=ConsentProvisionType.permit,
-        period_start=D,
-        period_end=D + dt.timedelta(days=365),
-        data_period_start=D - dt.timedelta(days=30),
-        data_period_end=D,
-        created_by="u-test",
-    )
+def test_mapper_serves_content_unchanged():
+    content = {**BASE, "dateTime": "2026-01-15"}
+    out = to_fhir_consent(_consent(content))
+    assert out["resourceType"] == "Consent"
+    assert out["id"] == "440001"
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
-    actor = ConsentProvisionActor(
-        id=1,
-        provision_id=1,
-        tenant_id="org-test",
-        role_text="Primary Recipient",
-        reference_reference="Practitioner/30001",
-        reference_type=ConsentProvisionActorReferenceType.Practitioner,
-        reference_id=30001,
-        reference_display="Dr. Alice Smith",
-        created_by="u-test",
-    )
-    actor.role_codings = [
-        ConsentProvisionActorRoleCoding(
-            provision_actor_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-            code="PRCP",
-            display="primary recipient",
-            created_by="u-test",
+
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `scope`, `patient` or `provision` as a one-item list; the
+# integration tests cover what they can.)
+
+
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "robot"}),
+        ("status as number", {"status": 1}),
+        ("scope as string", {"scope": "patient-privacy"}),
+        ("category as object not a list", {"category": {"text": "x"}}),
+        ("patient as string not a Reference", {"patient": "Patient/1"}),
+        ("dateTime not a dateTime", {"dateTime": "yesterday"}),
+        ("performer as object not a list", {"performer": {"reference": "Patient/1"}}),
+        ("organization as string", {"organization": "Organization/1"}),
+        ("sourceReference as string", {"sourceReference": "Consent/1"}),
+        ("policy as object not a list", {"policy": {"uri": "x"}}),
+        ("policy uri as number", {"policy": [{"uri": 5}]}),
+        ("policyRule as string", {"policyRule": "x"}),
+        ("verification verified as string", {"verification": [{"verified": "yes"}]}),
+        ("provision type unknown code", {"provision": {"type": "maybe"}}),
+        ("provision period as string", {"provision": {"period": "now"}}),
+        (
+            "provision actor as object",
+            {"provision": {"actor": {"role": {"text": "x"}}}},
+        ),
+        (
+            "provision data meaning unknown code",
+            {"provision": {"data": [{"meaning": "everything"}]}},
+        ),
+        ("provision securityLabel as string", {"provision": {"securityLabel": ["R"]}}),
+        ("nested provision as object", {"provision": {"provision": {"type": "deny"}}}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {"resourceType": "Consent", "id": "440001", **BASE, **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.Consent, validate=True
         )
-    ]
-    prov.actors = [actor]
-
-    action = ConsentProvisionAction(
-        id=1,
-        provision_id=1,
-        tenant_id="org-test",
-        text="Access",
-        created_by="u-test",
-    )
-    action.codings = [
-        ConsentProvisionActionCoding(
-            action_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/consentaction",
-            code="access",
-            display="Access",
-            created_by="u-test",
-        )
-    ]
-    prov.actions = [action]
-
-    prov.security_labels = [
-        ConsentProvisionSecurityLabel(
-            provision_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-Confidentiality",
-            code="N",
-            display="normal",
-            created_by="u-test",
-        )
-    ]
-
-    prov.purposes = [
-        ConsentProvisionPurpose(
-            provision_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v3-ActReason",
-            code="TREAT",
-            display="treatment",
-            created_by="u-test",
-        )
-    ]
-
-    prov.classes = [
-        ConsentProvisionClass(
-            provision_id=1,
-            tenant_id="org-test",
-            system="http://hl7.org/fhir/resource-types",
-            code="Observation",
-            display="Observation",
-            created_by="u-test",
-        )
-    ]
-
-    code = ConsentProvisionCode(
-        id=1,
-        provision_id=1,
-        tenant_id="org-test",
-        text="Common cold",
-        created_by="u-test",
-    )
-    code.codings = [
-        ConsentProvisionCodeCoding(
-            code_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="82272006",
-            display="Common cold",
-            created_by="u-test",
-        )
-    ]
-    prov.codes = [code]
-
-    prov.data_entries = [
-        ConsentProvisionData(
-            id=1,
-            provision_id=1,
-            tenant_id="org-test",
-            meaning=ConsentDataMeaning.instance,
-            reference_reference="Observation/160001",
-            reference_type="Observation",
-            reference_id=160001,
-            reference_display="Blood Glucose",
-            created_by="u-test",
-        )
-    ]
-
-    # Nested sub-provision
-    sub = ConsentProvision(
-        id=2,
-        consent_pk=1,
-        parent_provision_id=1,
-        tenant_id="org-test",
-        type=ConsentProvisionType.deny,
-        created_by="u-test",
-    )
-    sub.actors = []
-    sub.actions = []
-    sub.security_labels = []
-    sub.purposes = []
-    sub.classes = []
-    sub.codes = []
-    sub.data_entries = []
-    sub.sub_provisions = []
-    prov.sub_provisions = [sub]
-
-    m = _consent(provisions=[prov, sub])
-    fhir = to_fhir_consent(m)
-    assert_valid(consent_pb2.Consent, fhir)

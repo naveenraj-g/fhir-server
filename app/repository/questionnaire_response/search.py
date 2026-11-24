@@ -19,6 +19,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._consent_revinclude import column_consent_revincludes
 from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
@@ -743,6 +744,13 @@ def questionnaire_response_search() -> SearchRegistry:
         ),
         # Nothing rebuilt points at a QuestionnaireResponse through a search parameter we declare
         # a reverse include for (Observation.derivedFrom / hasMember are not followed yet).
-        revincludes=(),
+        revincludes=(
+            *column_consent_revincludes(
+                ("source-reference",),
+                "source",
+                "QuestionnaireResponse",
+                lambda x: x.questionnaire_response_id,
+            ),
+        ),
         default_sort=lambda: [M.questionnaire_response_id.desc()],
     )

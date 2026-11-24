@@ -7,4 +7,5 @@ __all__ = ["ConsentService"]
 
 @trace_methods
 class ConsentService(_CoreMixin):
-    """Orchestrates Consent CRUD operations and data transformations."""
+    """All Consent business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

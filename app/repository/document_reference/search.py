@@ -19,6 +19,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._consent_revinclude import column_consent_revincludes
 from app.repository._medication_knowledge_revinclude import (
     reference_medication_knowledge_revincludes,
 )
@@ -950,6 +951,12 @@ def document_reference_search() -> SearchRegistry:
         ),
         # A document can name another document as the target of its relatesTo.
         revincludes=(
+            *column_consent_revincludes(
+                ("source-reference",),
+                "source",
+                "DocumentReference",
+                lambda x: x.document_reference_id,
+            ),
             IncludeTarget(
                 "DocumentReference",
                 "relatesto",

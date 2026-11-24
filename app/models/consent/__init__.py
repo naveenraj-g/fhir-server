@@ -1,69 +1,31 @@
-from .category import ConsentCategory, ConsentCategoryCoding
-from .coding import ConsentPolicyRuleCoding, ConsentScopeCoding
-from .core import ConsentModel
-from .enums import (
-    ConsentDataMeaning,
-    ConsentPatientReferenceType,
-    ConsentPerformerReferenceType,
-    ConsentProvisionActorReferenceType,
-    ConsentProvisionType,
-    ConsentSourceReferenceType,
-    ConsentStatus,
-    ConsentVerifiedWithReferenceType,
+from .core import PATIENT_TYPES, SOURCE_TYPES, ConsentModel, consent_id_seq
+from .enums import ConsentStatus
+from .identifier import ConsentIdentifier
+from .reference import (
+    ACTOR_TYPES,
+    CONSENTOR_TYPES,
+    DATA_TYPES,
+    ORGANIZATION_TYPES,
+    REFERENCE_PARAMS,
+    REFERENCE_TYPES,
+    ConsentReference,
 )
-from .identifier import ConsentIdentifier, ConsentIdentifierTypeCoding
-from .provision import (
-    ConsentProvision,
-    ConsentProvisionAction,
-    ConsentProvisionActionCoding,
-    ConsentProvisionActor,
-    ConsentProvisionActorRoleCoding,
-    ConsentProvisionClass,
-    ConsentProvisionCode,
-    ConsentProvisionCodeCoding,
-    ConsentProvisionData,
-    ConsentProvisionPurpose,
-    ConsentProvisionSecurityLabel,
-)
-from .references import (
-    ConsentOrganization,
-    ConsentPerformer,
-    ConsentPolicy,
-    ConsentVerification,
-)
+from .token import TOKEN_PARAMS, ConsentToken
 
 __all__ = [
-    # Enums
-    "ConsentStatus",
-    "ConsentPatientReferenceType",
-    "ConsentPerformerReferenceType",
-    "ConsentSourceReferenceType",
-    "ConsentVerifiedWithReferenceType",
-    "ConsentProvisionType",
-    "ConsentProvisionActorReferenceType",
-    "ConsentDataMeaning",
-    # Main Model
-    "ConsentModel",
-    # Sub-models
-    "ConsentScopeCoding",
-    "ConsentPolicyRuleCoding",
-    "ConsentCategory",
-    "ConsentCategoryCoding",
+    "ACTOR_TYPES",
+    "CONSENTOR_TYPES",
+    "DATA_TYPES",
+    "ORGANIZATION_TYPES",
+    "PATIENT_TYPES",
+    "REFERENCE_PARAMS",
+    "REFERENCE_TYPES",
+    "SOURCE_TYPES",
+    "TOKEN_PARAMS",
     "ConsentIdentifier",
-    "ConsentIdentifierTypeCoding",
-    "ConsentPerformer",
-    "ConsentOrganization",
-    "ConsentPolicy",
-    "ConsentVerification",
-    "ConsentProvision",
-    "ConsentProvisionActor",
-    "ConsentProvisionActorRoleCoding",
-    "ConsentProvisionAction",
-    "ConsentProvisionActionCoding",
-    "ConsentProvisionSecurityLabel",
-    "ConsentProvisionPurpose",
-    "ConsentProvisionClass",
-    "ConsentProvisionCode",
-    "ConsentProvisionCodeCoding",
-    "ConsentProvisionData",
+    "ConsentModel",
+    "ConsentReference",
+    "ConsentStatus",
+    "ConsentToken",
+    "consent_id_seq",
 ]

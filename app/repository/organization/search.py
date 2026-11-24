@@ -17,6 +17,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._consent_revinclude import reference_consent_revincludes
 from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._task_revinclude import column_task_revincludes
 from app.repository._goal_revinclude import column_goal_revincludes
@@ -692,6 +693,11 @@ def organization_search() -> SearchRegistry:
             IncludeTarget("Organization", "endpoint", "Endpoint", _include_endpoint),
         ),
         revincludes=(
+            *reference_consent_revincludes(
+                ("organization", "consentor", "actor"),
+                "Organization",
+                lambda x: x.organization_id,
+            ),
             *column_flag_revincludes(
                 ("subject",), "subject", "Organization", lambda x: x.organization_id
             ),

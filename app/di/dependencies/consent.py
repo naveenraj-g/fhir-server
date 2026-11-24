@@ -7,6 +7,8 @@ from app.services.consent import ConsentService
 
 @inject
 def get_consent_service(
-    service: ConsentService = Depends(Provide[Container.consent.consent_service]),
+    service: ConsentService = Depends(
+        Provide[Container.consent.consent_service]
+    ),
 ) -> ConsentService:
     return service

@@ -1,204 +1,145 @@
-"""Shared helpers and payloads for consent integration tests."""
+"""Shared helpers and payloads for consent integration tests.
+
+Request bodies are genuine FHIR R4 Consent JSON (camelCase, nested datatypes), and every response is
+FHIR R4 too."""
+
+from tests.integration.care_team.support import (  # noqa: F401
+    care_team_body,
+    create_care_team,
+)
+from tests.integration.document_reference.support import (  # noqa: F401
+    create_document,
+    document_body,
+)
+from tests.integration.group.support import create_group, group_body  # noqa: F401
+from tests.integration.observation.support import (  # noqa: F401
+    create_observation,
+    observation_body,
+)
+from tests.integration.patient.support import create_patient  # noqa: F401
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+    create_practitioner,
+)
+from tests.integration.related_person.support import (  # noqa: F401
+    create_related_person,
+    related_person_body,
+)
 
 BASE = "/api/fhir/v1/consents"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+CONSENT_IDS = "https://fhir-server.dev/fhir/identifier-system/consent-id"
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+SCOPE = "http://terminology.hl7.org/CodeSystem/consentscope"
+LOINC = "http://loinc.org"
+ACTION = "http://terminology.hl7.org/CodeSystem/consentaction"
+PURPOSE = "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+CONFIDENTIALITY = "http://terminology.hl7.org/CodeSystem/v3-Confidentiality"
+ROLE = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
 
 
-async def create_test_patient(client) -> int:
-    """Create a minimal patient and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/patients/",
-        json={"active": True, "name": [{"family": "Doe", "given": ["Jane"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_practitioner(client) -> int:
-    """Create a minimal practitioner and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/practitioners/",
-        json={"active": True, "name": [{"family": "Smith", "given": ["Alice"]}]},
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
-
-
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"active": True, "name": "General Hospital"},
-    )
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
-
-
-def minimal_consent(patient_id: int | None = None) -> dict:
-    payload = {
-        "status": "active",
-        "scope": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/consentscope",
-                    "code": "patient-privacy",
-                    "display": "Privacy Consent",
-                }
-            ],
-            "text": "Privacy Consent",
-        },
-        "category": [
+def concept(system: str, code: str, display: str | None = None) -> dict:
+    return {
+        "coding": [
             {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                        "code": "INFA",
-                        "display": "information access",
-                    }
-                ],
-                "text": "Information Access",
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
             }
-        ],
+        ]
+    }
+
+
+def consent_body(patient_id: int | None = None, **extra) -> dict:
+    """A valid minimal Consent: R4 requires `status`, `scope` and `category`. With no patient the
+    `patient` element is omitted."""
+    body = {
+        "status": "active",
+        "scope": concept(SCOPE, "patient-privacy"),
+        "category": [concept(LOINC, "59284-0")],
+        **extra,
     }
     if patient_id:
-        payload["patient"] = f"Patient/{patient_id}"
-        payload["patient_display"] = "Jane Doe"
-    return payload
+        body["patient"] = {"reference": f"Patient/{patient_id}"}
+    return body
 
 
-def full_consent(
+def full_body(
     patient_id: int,
+    organization_id: int,
     practitioner_id: int,
-    org_id: int,
+    document_id: int,
+    observation_id: int,
 ) -> dict:
-    return {
-        "status": "active",
-        "scope": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/consentscope",
-                    "code": "patient-privacy",
-                    "display": "Privacy Consent",
-                }
-            ],
-            "text": "Privacy Consent",
-        },
-        "category": [
+    """Every R4 element, including the ones no search parameter reads (they must round-trip)."""
+    return consent_body(
+        patient_id,
+        resourceType="Consent",
+        identifier=[
             {
-                "coding": [
-                    {
-                        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                        "code": "INFA",
-                        "display": "information access",
-                    }
-                ],
-                "text": "Information Access",
+                "system": CONSENT_IDS,
+                "value": "C-1001",
+                "type": {"coding": [{"system": V2_0203, "code": "FILL"}]},
+                "assigner": {"reference": f"Organization/{organization_id}"},
             }
         ],
-        "patient": f"Patient/{patient_id}",
-        "patient_display": "Jane Doe",
-        "date_time": "2026-01-01T10:00:00Z",
-        "performer": [
-            {
-                "reference": f"Practitioner/{practitioner_id}",
-                "display": "Dr. Alice Smith",
-            }
-        ],
-        "organization": [
-            {
-                "reference": f"Organization/{org_id}",
-                "display": "General Hospital",
-            }
-        ],
-        "policy": [
-            {
-                "authority": "http://example.org/fhir/ConsentPolicy",
-                "uri": "http://example.org/fhir/ConsentPolicy/1",
-            }
-        ],
-        "policy_rule": {
-            "coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                    "code": "OPTIN",
-                    "display": "opt-in",
-                }
-            ],
-            "text": "opt-in",
-        },
-        "verification": [
+        dateTime="2026-01-15T09:00:00Z",
+        performer=[{"reference": f"Patient/{patient_id}"}],
+        organization=[{"reference": f"Organization/{organization_id}"}],
+        sourceReference={"reference": f"DocumentReference/{document_id}"},
+        policy=[{"authority": "urn:authority", "uri": "http://example.org/policy"}],
+        policyRule=concept("http://terminology.hl7.org/CodeSystem/v3-ActCode", "OPTIN"),
+        verification=[
             {
                 "verified": True,
-                "verified_with": f"Patient/{patient_id}",
-                "verified_with_display": "Jane Doe",
-                "verification_date": "2026-01-01T10:00:00Z",
+                "verifiedWith": {"reference": f"Patient/{patient_id}"},
+                "verificationDate": "2026-01-16T10:00:00Z",
             }
         ],
-        "provision": {
+        provision={
             "type": "permit",
-            "period_start": "2026-01-01T00:00:00Z",
-            "period_end": "2026-12-31T23:59:59Z",
+            "period": {"start": "2026-01-15", "end": "2027-01-14"},
             "actor": [
                 {
-                    "role": {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                                "code": "PRCP",
-                                "display": "primary recipient",
-                            }
-                        ],
-                        "text": "Primary Recipient",
-                    },
-                    "reference": f"Practitioner/{practitioner_id}",
-                    "reference_display": "Dr. Alice Smith",
+                    "role": concept(ROLE, "IRCP"),
+                    "reference": {"reference": f"Practitioner/{practitioner_id}"},
                 }
             ],
-            "action": [
+            "action": [concept(ACTION, "access")],
+            "securityLabel": [{"system": CONFIDENTIALITY, "code": "R"}],
+            "purpose": [{"system": PURPOSE, "code": "TREAT"}],
+            "class": [
+                {"system": "http://hl7.org/fhir/resource-types", "code": "Observation"}
+            ],
+            "code": [concept(LOINC, "8867-4")],
+            "dataPeriod": {"start": "2025-01-01", "end": "2025-12-31"},
+            "data": [
                 {
-                    "coding": [
+                    "meaning": "instance",
+                    "reference": {"reference": f"Observation/{observation_id}"},
+                }
+            ],
+            "provision": [
+                {
+                    "type": "deny",
+                    "action": [concept(ACTION, "disclose")],
+                    "actor": [
                         {
-                            "system": "http://terminology.hl7.org/CodeSystem/consentaction",
-                            "code": "access",
-                            "display": "Access",
+                            "role": concept(ROLE, "IRCP"),
+                            "reference": {
+                                "reference": f"Organization/{organization_id}"
+                            },
                         }
                     ],
-                    "text": "Access",
-                }
-            ],
-            "security_label": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-Confidentiality",
-                    "code": "N",
-                    "display": "normal",
-                }
-            ],
-            "purpose": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/v3-ActReason",
-                    "code": "TREAT",
-                    "display": "treatment",
                 }
             ],
         },
-        "identifier": [
-            {
-                "system": "http://example.org/consents",
-                "value": "CONSENT-001",
-            }
-        ],
-    }
+    )
 
 
-async def create_consent(
-    client,
-    payload: dict | None = None,
-    patient_id: int | None = None,
-) -> int:
-    if payload is None:
-        if patient_id is None:
-            patient_id = await create_test_patient(client)
-        payload = minimal_consent(patient_id)
-    resp = await client.post(BASE + "/", json=payload)
+async def create_consent(client, body: dict) -> int:
+    """Create a consent and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
     assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+    return int(resp.json()["id"])

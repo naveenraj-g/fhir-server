@@ -1,160 +1,150 @@
-from datetime import datetime
-from typing import Any, Literal
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from app.schemas.consent.response.codeable_concept import (
-    PlainConsentCodeableConcept,
-)
-from app.schemas.consent.response.identifier import PlainConsentIdentifier
-from app.schemas.consent.response.policy import (
-    FHIRConsentPolicy,
-    PlainConsentPolicy,
-    PlainConsentReference,
-)
-from app.schemas.consent.response.provision import (
-    FHIRConsentProvision,
-    PlainConsentProvision,
-)
-from app.schemas.consent.response.verification import (
-    FHIRConsentVerification,
-    PlainConsentVerification,
-)
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
+    FHIRPeriod,
     FHIRReference,
 )
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+
+
+class FHIRConsentPolicy(BaseModel):
+    authority: str | None = Field(None, description="Enforcement source for policy.")
+    uri: str | None = Field(
+        None, description="Specific policy covered by this consent."
+    )
+
+
+class FHIRConsentVerification(BaseModel):
+    verified: bool | None = Field(None, description="Has been verified.")
+    verifiedWith: FHIRReference | None = Field(None, description="Person who verified.")
+    verificationDate: str | None = Field(None, description="When consent verified.")
+
+
+class FHIRConsentProvisionActor(BaseModel):
+    role: FHIRCodeableConcept | None = Field(
+        None, description="How the actor is involved."
+    )
+    reference: FHIRReference | None = Field(None, description="Resource for the actor.")
+
+
+class FHIRConsentProvisionData(BaseModel):
+    meaning: str | None = Field(
+        None, description="instance | related | dependents | authoredby."
+    )
+    reference: FHIRReference | None = Field(
+        None, description="The actual data reference."
+    )
+
+
+class FHIRConsentProvision(BaseModel):
+    type: str | None = Field(None, description="deny | permit.")
+    period: FHIRPeriod | None = Field(None, description="Timeframe for this rule.")
+    actor: list[FHIRConsentProvisionActor] | None = Field(
+        None, description="Who|what controlled by this rule."
+    )
+    action: list[FHIRCodeableConcept] | None = Field(
+        None, description="Actions controlled by this rule."
+    )
+    securityLabel: list[dict] | None = Field(
+        None, description="Security Labels that define affected resources (Codings)."
+    )
+    purpose: list[dict] | None = Field(
+        None, description="Context of activities covered by this rule (Codings)."
+    )
+    class_: list[dict] | None = Field(
+        None, alias="class", description="e.g. Resource Type, Profile, CDA, etc."
+    )
+    code: list[FHIRCodeableConcept] | None = Field(
+        None, description="e.g. LOINC or SNOMED CT code, etc. in the content."
+    )
+    dataPeriod: FHIRPeriod | None = Field(
+        None, description="Timeframe for data controlled by this rule."
+    )
+    data: list[FHIRConsentProvisionData] | None = Field(
+        None, description="Data controlled by this rule."
+    )
+    provision: list[dict] | None = Field(None, description="Nested Exception Rules.")
+
+    model_config = {"populate_by_name": True}
 
 
 class FHIRConsentSchema(BaseModel):
-    """FHIR R4 Consent resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Consent"] = "Consent"
-    id: str
-    meta: FHIRMeta | None = None
-    identifier: list[FHIRIdentifier] | None = None
-    status: str
-    scope: FHIRCodeableConcept
-    category: list[FHIRCodeableConcept]
-    patient: FHIRReference | None = None
-    dateTime: str | None = None
-    performer: list[FHIRReference] | None = None
-    organization: list[FHIRReference] | None = None
-    sourceAttachment: dict[str, Any] | None = None
-    sourceReference: FHIRReference | None = None
-    policy: list[FHIRConsentPolicy] | None = None
-    policyRule: FHIRCodeableConcept | None = None
-    verification: list[FHIRConsentVerification] | None = None
-    provision: FHIRConsentProvision | None = None
-    extension: list[dict[str, Any]] | None = None
-
-
-class PlainConsentResponse(BaseModel):
-    """Plain snake_case response schema for Consent."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    id: int = Field(..., description="Public sequence Consent ID.")
-    status: str = Field(
-        ...,
+    resourceType: str = Field("Consent", description="Always 'Consent'.")
+    id: str = Field(..., description="Public consent_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="Identifier for this record."
+    )
+    status: str | None = Field(
+        None,
         description="draft | proposed | active | rejected | inactive | entered-in-error.",
     )
-    scope: PlainConsentCodeableConcept = Field(
-        ..., description="Which problem code this consent applies to."
+    scope: FHIRCodeableConcept | None = Field(
+        None, description="Which of the four areas this resource covers."
     )
-    category: list[PlainConsentCodeableConcept] = Field(
-        ..., description="Classification of the consent statement."
+    category: list[FHIRCodeableConcept] | None = Field(
+        None, description="Classification of the consent statement."
     )
-    patient: str | None = Field(None, description="Who the consent applies to.")
-    patient_display: str | None = Field(
-        None, description="Plain text display for patient reference."
+    patient: FHIRReference | None = Field(
+        None, description="Who the consent applies to."
     )
-    patient_identifier_use: str | None = None
-    patient_identifier_type_system: str | None = None
-    patient_identifier_type_version: str | None = None
-    patient_identifier_type_code: str | None = None
-    patient_identifier_type_display: str | None = None
-    patient_identifier_type_user_selected: bool | None = None
-    patient_identifier_type_text: str | None = None
-    patient_identifier_system: str | None = None
-    patient_identifier_value: str | None = None
-    patient_identifier_period_start: str | None = None
-    patient_identifier_period_end: str | None = None
-    date_time: datetime | None = Field(
+    dateTime: str | None = Field(
         None, description="When this Consent was created or indexed."
     )
-    performer: list[PlainConsentReference] | None = Field(
+    performer: list[FHIRReference] | None = Field(
         None, description="Who is agreeing to the policy and rules."
     )
-    organization: list[PlainConsentReference] | None = Field(
+    organization: list[FHIRReference] | None = Field(
         None, description="Custodian of the consent."
     )
-    source_attachment: dict[str, Any] | None = Field(
-        None, description="Source attachment as FHIR Attachment dict."
+    sourceAttachment: dict | None = Field(
+        None, description="source[x]: the source of the consent, as an Attachment."
     )
-    source_reference: str | None = Field(None, description="Source reference string.")
-    source_reference_display: str | None = Field(
-        None, description="Display name for source reference."
+    sourceReference: FHIRReference | None = Field(
+        None, description="source[x]: the source of the consent, as a Reference."
     )
-    source_reference_identifier_use: str | None = None
-    source_reference_identifier_type_system: str | None = None
-    source_reference_identifier_type_version: str | None = None
-    source_reference_identifier_type_code: str | None = None
-    source_reference_identifier_type_display: str | None = None
-    source_reference_identifier_type_user_selected: bool | None = None
-    source_reference_identifier_type_text: str | None = None
-    source_reference_identifier_system: str | None = None
-    source_reference_identifier_value: str | None = None
-    source_reference_identifier_period_start: str | None = None
-    source_reference_identifier_period_end: str | None = None
-    policy: list[PlainConsentPolicy] | None = Field(
-        None, description="Policies that this consent's rule conforms to."
+    policy: list[FHIRConsentPolicy] | None = Field(
+        None, description="Policies covered by this consent."
     )
-    policy_rule: PlainConsentCodeableConcept | None = Field(
-        None, description="Regulation that this consent conforms to."
+    policyRule: FHIRCodeableConcept | None = Field(
+        None, description="Regulation that this consents to."
     )
-    verification: list[PlainConsentVerification] | None = Field(
-        None, description="Consent verification by patient or guardian."
+    verification: list[FHIRConsentVerification] | None = Field(
+        None, description="Consent Verified by patient or family."
     )
-    provision: PlainConsentProvision | None = Field(
-        None, description="Constraints to the base Consent.provision rule."
+    provision: FHIRConsentProvision | None = Field(
+        None, description="Constraints to the base Consent.policyRule."
     )
-    identifier: list[PlainConsentIdentifier] | None = Field(
-        None, description="External identifiers."
-    )
-    extension: list[dict[str, Any]] | None = Field(None, description="Extensions.")
-
-
-class PaginatedConsentResponse(BaseModel):
-    """Paginated response for plain Consent listing."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    total: int
-    limit: int
-    offset: int
-    data: list[PlainConsentResponse]
 
 
 class FHIRConsentBundleEntry(BaseModel):
-    """Single entry in FHIR Consent searchset bundle."""
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
+    )
+    resource: FHIRConsentSchema | dict = Field(
+        ...,
+        description="A Consent (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
+    )
+    search: FHIRBundleEntrySearch
 
-    model_config = ConfigDict(extra="allow")
 
-    fullUrl: str | None = None
-    resource: FHIRConsentSchema
-
-
-class FHIRConsentBundle(BaseModel):
-    """FHIR searchset Bundle for Consent resources."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int
-    entry: list[FHIRConsentBundleEntry] = []
+class FHIRConsentBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRConsentBundleEntry] | None = None

@@ -45,6 +45,7 @@ from tests.integration.medication_dispense.support import (
 from tests.integration.medication_administration.support import (
     medication_administration_body,
 )
+from tests.integration.consent.support import consent_body
 from tests.integration.flag.support import flag_body
 from tests.integration.goal.support import goal_body
 from tests.integration.task.support import task_body
@@ -126,6 +127,7 @@ CASES = {
     ),
     "Goal": (f"{API}/goals", _fixed(goal_body)),
     "Flag": (f"{API}/flags", _fixed(flag_body)),
+    "Consent": (f"{API}/consents", _fixed(consent_body)),
     "Task": (f"{API}/tasks", _fixed(task_body)),
     "MedicationKnowledge": (
         f"{API}/medication-knowledge",

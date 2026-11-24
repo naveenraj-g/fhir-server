@@ -38,6 +38,7 @@ from app.repository.medication_administration.search import (
 from app.repository.medication_dispense.search import (
     medication_dispense_search,
 )
+from app.repository.consent.search import consent_search
 from app.repository.flag.search import flag_search
 from app.repository.goal.search import goal_search
 from app.repository.task.search import task_search
@@ -97,6 +98,7 @@ async def test_search_params_match_registries(client):
         ),
         "goal": ("Goal", goal_search()),
         "flag": ("Flag", flag_search()),
+        "consent": ("Consent", consent_search()),
         "task": ("Task", task_search()),
         "medication_knowledge": (
             "MedicationKnowledge",

@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._consent_revinclude import reference_consent_revincludes
 from app.repository._task_revinclude import column_task_revincludes
 from app.fhir.search import (
     IncludeTarget,
@@ -672,6 +673,9 @@ def related_person_search() -> SearchRegistry:
         # What points at a RelatedPerson: Appointment / AppointmentResponse actors, Encounter
         # participants and Patient.link.
         revincludes=(
+            *reference_consent_revincludes(
+                ("consentor", "actor"), "RelatedPerson", lambda x: x.related_person_id
+            ),
             *column_task_revincludes(
                 ("owner",), "owner", "RelatedPerson", lambda x: x.related_person_id
             ),

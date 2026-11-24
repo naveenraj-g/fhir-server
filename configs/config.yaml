@@ -225,7 +225,7 @@ routes:
     - care_team
     - clinical_impression
     - condition
-    # - consent
+    - consent
     - detected_issue
     - diagnostic_report
     - document_reference
