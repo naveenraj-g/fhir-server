@@ -1,370 +1,113 @@
-from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field
 
-from app.models.enums import IdentifierUse
-from app.models.flag.enums import FlagStatus
-from app.schemas.datatypes import CodingInput
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
+)
 
-from .category import FlagCategoryInput
-from .identifier import FlagIdentifierInput
+# FlagStatus (the required binding of Flag.status).
+StatusCode = Literal["active", "inactive", "entered-in-error"]
 
 _EXAMPLE = {
+    "resourceType": "Flag",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/flag-id",
+            "value": "F-1",
+        }
+    ],
     "status": "active",
     "category": [
         {
             "coding": [
                 {
                     "system": "http://terminology.hl7.org/CodeSystem/flag-category",
-                    "code": "clinical",
-                    "display": "Clinical",
+                    "code": "safety",
+                    "display": "Safety",
                 }
-            ],
-            "text": "Clinical",
+            ]
         }
     ],
-    "code_coding": [
-        {
-            "system": "http://snomed.info/sct",
-            "code": "399166001",
-            "display": "Infection control precaution",
-        }
-    ],
-    "code_text": "Infection control precaution",
-    "subject": "Patient/10001",
-    "subject_display": "Jane Doe",
-    "period_start": "2026-01-01T00:00:00Z",
-    "period_end": "2026-12-31T23:59:59Z",
-    "encounter": "Encounter/20001",
-    "encounter_display": "Inpatient encounter",
-    "author": "Practitioner/30001",
-    "author_display": "Dr. Smith",
+    "code": {"text": "Patient has a latex allergy"},
+    "subject": {"reference": "Patient/10001"},
+    "period": {"start": "2026-01-15"},
+    "encounter": {"reference": "Encounter/20001"},
+    "author": {"reference": "Practitioner/30001"},
 }
 
 
-class FlagCreateSchema(BaseModel):
-    """Request body for POST /api/fhir/v1/flags.
+class _FlagFields(FhirInputModel):
+    """Every writable Flag element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/flag.html). Create and patch accept exactly the same fields. R4
+    requires `status`, `code` and `subject`; the native validator checks `code` and `subject`
+    (a missing primitive `status` is only rejected by the `java_validator` backend).
 
-    Flag is an org-scoped entity and has no user_id.
-    status, code (code_coding or code_text), and subject are required per FHIR R4.
-    """
+    The validated body is stored whole (FlagModel.content), so any valid R4 element is kept -
+    including ones this model does not declare. Server-managed elements are ignored if sent:
+    `id` (assigned from the flag_id sequence) and `meta` (audit/tenant data, stamped on at read
+    time). org_id and created_by/updated_by come from the verified JWT (actor.org_id /
+    actor.sub), never the body. There is no user_id."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={"example": _EXAMPLE},
+    resourceType: Literal["Flag"] | None = Field(
+        None, description="Optional; if supplied it must be 'Flag'."
     )
-
-    identifier: list[FlagIdentifierInput] | None = Field(
-        None, description="Business identifier for each flag."
-    )
-    status: FlagStatus = Field(..., description="active | inactive | entered-in-error.")
-    category: list[FlagCategoryInput] | None = Field(
-        None, description="Clinical, administrative, etc."
-    )
-    code_coding: list[CodingInput] | None = Field(
-        None, description="Coded aspect of flag."
-    )
-    code_text: str | None = Field(
-        None, description="Plain text representation of the flag code."
-    )
-    subject: str | None = Field(
+    extension: list[dict] | None = Field(
         None,
-        description="Who/What is the flag about, as a FHIR reference string (e.g. 'Patient/10001').",
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
     )
-    subject_display: str | None = Field(
-        None, description="Plain text narrative for the subject reference."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Business identifier. Searched by `identifier`."
     )
-    subject_identifier_use: IdentifierUse | None = Field(
-        None, description="Subject identifier use."
+    status: StatusCode | None = Field(
+        None, description="active | inactive | entered-in-error (required by R4)."
     )
-    subject_identifier_type_system: str | None = Field(
-        None, description="Subject identifier type system."
-    )
-    subject_identifier_type_version: str | None = Field(
-        None, description="Subject identifier type version."
-    )
-    subject_identifier_type_code: str | None = Field(
-        None, description="Subject identifier type code."
-    )
-    subject_identifier_type_display: str | None = Field(
-        None, description="Subject identifier type display."
-    )
-    subject_identifier_type_user_selected: bool | None = Field(
-        None, description="Subject identifier type user selected."
-    )
-    subject_identifier_type_text: str | None = Field(
-        None, description="Subject identifier type text."
-    )
-    subject_identifier_system: str | None = Field(
-        None, description="Subject identifier system."
-    )
-    subject_identifier_value: str | None = Field(
-        None, description="Subject identifier value."
-    )
-    subject_identifier_period_start: datetime | None = Field(
-        None, description="Subject identifier period start."
-    )
-    subject_identifier_period_end: datetime | None = Field(
-        None, description="Subject identifier period end."
-    )
-    period_start: datetime | None = Field(
-        None, description="Start of time period when flag is active."
-    )
-    period_end: datetime | None = Field(
-        None, description="End of time period when flag is active."
-    )
-    encounter: str | None = Field(
+    category: list[FhirCodeableConceptInput] | None = Field(
         None,
-        description="Alert relevant to this encounter, as a FHIR reference string (e.g. 'Encounter/20001').",
+        description="Clinical, administrative, etc. (R4 defines no search parameter for it).",
     )
-    encounter_display: str | None = Field(
-        None, description="Plain text narrative for the encounter reference."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(
-        None, description="Encounter identifier use."
-    )
-    encounter_identifier_type_system: str | None = Field(
-        None, description="Encounter identifier type system."
-    )
-    encounter_identifier_type_version: str | None = Field(
-        None, description="Encounter identifier type version."
-    )
-    encounter_identifier_type_code: str | None = Field(
-        None, description="Encounter identifier type code."
-    )
-    encounter_identifier_type_display: str | None = Field(
-        None, description="Encounter identifier type display."
-    )
-    encounter_identifier_type_user_selected: bool | None = Field(
-        None, description="Encounter identifier type user selected."
-    )
-    encounter_identifier_type_text: str | None = Field(
-        None, description="Encounter identifier type text."
-    )
-    encounter_identifier_system: str | None = Field(
-        None, description="Encounter identifier system."
-    )
-    encounter_identifier_value: str | None = Field(
-        None, description="Encounter identifier value."
-    )
-    encounter_identifier_period_start: datetime | None = Field(
-        None, description="Encounter identifier period start."
-    )
-    encounter_identifier_period_end: datetime | None = Field(
-        None, description="Encounter identifier period end."
-    )
-    author: str | None = Field(
+    code: FhirCodeableConceptInput | None = Field(
         None,
-        description="Flag creator, as a FHIR reference string (e.g. 'Practitioner/30001').",
+        description="Coded or textual message to display to user (required by R4; no search parameter).",
     )
-    author_display: str | None = Field(
-        None, description="Plain text narrative for the author reference."
+    subject: FhirReferenceInput | None = Field(
+        None,
+        description="Who/What is flag about - Reference(Patient | Location | Group | Organization | Practitioner | PlanDefinition | Medication | Procedure) (required by R4). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise). Searched by `subject` / `patient`.",
     )
-    author_identifier_use: IdentifierUse | None = Field(
-        None, description="Author identifier use."
+    period: FhirPeriodInput | None = Field(
+        None, description="Time period when flag is active. Searched by `date`."
     )
-    author_identifier_type_system: str | None = Field(
-        None, description="Author identifier type system."
+    encounter: FhirReferenceInput | None = Field(
+        None,
+        description="Alert relevant during encounter - Reference(Encounter). Searched by `encounter`.",
     )
-    author_identifier_type_version: str | None = Field(
-        None, description="Author identifier type version."
-    )
-    author_identifier_type_code: str | None = Field(
-        None, description="Author identifier type code."
-    )
-    author_identifier_type_display: str | None = Field(
-        None, description="Author identifier type display."
-    )
-    author_identifier_type_user_selected: bool | None = Field(
-        None, description="Author identifier type user selected."
-    )
-    author_identifier_type_text: str | None = Field(
-        None, description="Author identifier type text."
-    )
-    author_identifier_system: str | None = Field(
-        None, description="Author identifier system."
-    )
-    author_identifier_value: str | None = Field(
-        None, description="Author identifier value."
-    )
-    author_identifier_period_start: datetime | None = Field(
-        None, description="Author identifier period start."
-    )
-    author_identifier_period_end: datetime | None = Field(
-        None, description="Author identifier period end."
+    author: FhirReferenceInput | None = Field(
+        None,
+        description="Flag creator - Reference(Device | Organization | Patient | Practitioner | PractitionerRole). Searched by `author`.",
     )
 
-    @model_validator(mode="after")
-    def validate_required_fields(self) -> "FlagCreateSchema":
-        if not self.code_coding and not self.code_text:
-            raise ValueError(
-                "Flag.code is required (at least code_coding or code_text must be provided)"
-            )
-        if (
-            not self.subject
-            and not self.subject_identifier_value
-            and not self.subject_display
-        ):
-            raise ValueError(
-                "Flag.subject is required (at least subject reference, identifier, or display must be provided)"
-            )
-        return self
+
+class FlagCreateSchema(_FlagFields):
+    """POST body - a FHIR R4 Flag resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
 
-class FlagPatchSchema(BaseModel):
-    """Request body for PATCH /api/fhir/v1/flags/{flag_id}.
+class FlagPatchSchema(_FlagFields):
+    """PATCH body - a partial FHIR R4 Flag (merge-patch semantics on top-level elements). Only
+    supplied elements are written; omitted ones are left untouched. A supplied element replaces
+    the stored value wholesale - a list (even `[]`) replaces every existing entry, an object
+    replaces the whole value, and `null` clears it."""
 
-    All fields optional; excludes immutable fields.
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "inactive",
-                "period_end": "2026-12-31T23:59:59Z",
+                "period": {"start": "2026-01-15", "end": "2026-06-30"},
             }
-        },
-    )
-
-    identifier: list[FlagIdentifierInput] | None = Field(
-        None, description="Business identifier for each flag."
-    )
-    status: FlagStatus | None = Field(
-        None, description="active | inactive | entered-in-error."
-    )
-    category: list[FlagCategoryInput] | None = Field(
-        None, description="Clinical, administrative, etc."
-    )
-    code_coding: list[CodingInput] | None = Field(
-        None, description="Coded aspect of flag."
-    )
-    code_text: str | None = Field(
-        None, description="Plain text representation of the flag code."
-    )
-    subject: str | None = Field(
-        None,
-        description="Who/What is the flag about, as a FHIR reference string (e.g. 'Patient/10001').",
-    )
-    subject_display: str | None = Field(
-        None, description="Plain text narrative for the subject reference."
-    )
-    subject_identifier_use: IdentifierUse | None = Field(
-        None, description="Subject identifier use."
-    )
-    subject_identifier_type_system: str | None = Field(
-        None, description="Subject identifier type system."
-    )
-    subject_identifier_type_version: str | None = Field(
-        None, description="Subject identifier type version."
-    )
-    subject_identifier_type_code: str | None = Field(
-        None, description="Subject identifier type code."
-    )
-    subject_identifier_type_display: str | None = Field(
-        None, description="Subject identifier type display."
-    )
-    subject_identifier_type_user_selected: bool | None = Field(
-        None, description="Subject identifier type user selected."
-    )
-    subject_identifier_type_text: str | None = Field(
-        None, description="Subject identifier type text."
-    )
-    subject_identifier_system: str | None = Field(
-        None, description="Subject identifier system."
-    )
-    subject_identifier_value: str | None = Field(
-        None, description="Subject identifier value."
-    )
-    subject_identifier_period_start: datetime | None = Field(
-        None, description="Subject identifier period start."
-    )
-    subject_identifier_period_end: datetime | None = Field(
-        None, description="Subject identifier period end."
-    )
-    period_start: datetime | None = Field(
-        None, description="Start of time period when flag is active."
-    )
-    period_end: datetime | None = Field(
-        None, description="End of time period when flag is active."
-    )
-    encounter: str | None = Field(
-        None,
-        description="Alert relevant to this encounter, as a FHIR reference string (e.g. 'Encounter/20001').",
-    )
-    encounter_display: str | None = Field(
-        None, description="Plain text narrative for the encounter reference."
-    )
-    encounter_identifier_use: IdentifierUse | None = Field(
-        None, description="Encounter identifier use."
-    )
-    encounter_identifier_type_system: str | None = Field(
-        None, description="Encounter identifier type system."
-    )
-    encounter_identifier_type_version: str | None = Field(
-        None, description="Encounter identifier type version."
-    )
-    encounter_identifier_type_code: str | None = Field(
-        None, description="Encounter identifier type code."
-    )
-    encounter_identifier_type_display: str | None = Field(
-        None, description="Encounter identifier type display."
-    )
-    encounter_identifier_type_user_selected: bool | None = Field(
-        None, description="Encounter identifier type user selected."
-    )
-    encounter_identifier_type_text: str | None = Field(
-        None, description="Encounter identifier type text."
-    )
-    encounter_identifier_system: str | None = Field(
-        None, description="Encounter identifier system."
-    )
-    encounter_identifier_value: str | None = Field(
-        None, description="Encounter identifier value."
-    )
-    encounter_identifier_period_start: datetime | None = Field(
-        None, description="Encounter identifier period start."
-    )
-    encounter_identifier_period_end: datetime | None = Field(
-        None, description="Encounter identifier period end."
-    )
-    author: str | None = Field(
-        None,
-        description="Flag creator, as a FHIR reference string (e.g. 'Practitioner/30001').",
-    )
-    author_display: str | None = Field(
-        None, description="Plain text narrative for the author reference."
-    )
-    author_identifier_use: IdentifierUse | None = Field(
-        None, description="Author identifier use."
-    )
-    author_identifier_type_system: str | None = Field(
-        None, description="Author identifier type system."
-    )
-    author_identifier_type_version: str | None = Field(
-        None, description="Author identifier type version."
-    )
-    author_identifier_type_code: str | None = Field(
-        None, description="Author identifier type code."
-    )
-    author_identifier_type_display: str | None = Field(
-        None, description="Author identifier type display."
-    )
-    author_identifier_type_user_selected: bool | None = Field(
-        None, description="Author identifier type user selected."
-    )
-    author_identifier_type_text: str | None = Field(
-        None, description="Author identifier type text."
-    )
-    author_identifier_system: str | None = Field(
-        None, description="Author identifier system."
-    )
-    author_identifier_value: str | None = Field(
-        None, description="Author identifier value."
-    )
-    author_identifier_period_start: datetime | None = Field(
-        None, description="Author identifier period start."
-    )
-    author_identifier_period_end: datetime | None = Field(
-        None, description="Author identifier period end."
-    )
+        }
+    }

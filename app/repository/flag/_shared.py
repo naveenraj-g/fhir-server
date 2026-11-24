@@ -1,73 +1,37 @@
+import re
+
 from sqlalchemy.orm import selectinload
 
-from app.core.filters import parse_reference
-from app.core.reference_resolver import RESOURCE_REGISTRY, ensure_resource_exists
-from app.models.enums import OrganizationReferenceType
-from app.models.flag import (
-    FlagAuthorReferenceType,
-    FlagCategory,
-    FlagCategoryCoding,
-    FlagCodeCoding,
-    FlagEncounterReferenceType,
-    FlagIdentifier,
-    FlagIdentifierTypeCoding,
-    FlagModel,
-    FlagSubjectReferenceType,
-)
-from app.repository._reference_shared import _IDENTIFIER_FALLBACK_SUFFIXES
+from app.models.flag import FlagModel
+from app.repository._reference_shared import _validate_reference
 
+__all__ = [
+    "INDEX_RELATIONSHIPS",
+    "_validate_reference",
+    "_with_relationships",
+    "typed",
+]
 
-def _prefixed_identifier_kwargs(prefix: str, payload) -> dict:
-    if payload is None:
-        return {f"{prefix}_{suffix}": None for suffix in _IDENTIFIER_FALLBACK_SUFFIXES}
-    return {
-        f"{prefix}_{suffix}": getattr(payload, f"{prefix}_{suffix}", None)
-        for suffix in _IDENTIFIER_FALLBACK_SUFFIXES
-    }
+# Relationship attributes the search index owns - every one is rebuilt on each write.
+INDEX_RELATIONSHIPS = ("identifiers",)
 
-
-_SORTABLE_FIELDS = {
-    "flag_id": FlagModel.flag_id,
-    "status": FlagModel.status,
-    "period_start": FlagModel.period_start,
-    "period_end": FlagModel.period_end,
-    "created_at": FlagModel.created_at,
-    "updated_at": FlagModel.updated_at,
-}
-
-
-def _parse_subject_ref(ref: str) -> tuple:
-    return parse_reference(ref, FlagSubjectReferenceType)
-
-
-def _parse_encounter_ref(ref: str) -> tuple:
-    return parse_reference(ref, FlagEncounterReferenceType)
-
-
-def _parse_author_ref(ref: str) -> tuple:
-    return parse_reference(ref, FlagAuthorReferenceType)
-
-
-def _parse_assigner_ref(ref: str) -> tuple:
-    return parse_reference(ref, OrganizationReferenceType)
-
-
-async def _validate_ref(
-    session, org_id: str, ref_type, ref_id: int | None, field_name: str
-) -> None:
-    if not ref_type or ref_id is None:
-        return
-    type_str = ref_type.value if hasattr(ref_type, "value") else str(ref_type)
-    if type_str in RESOURCE_REGISTRY:
-        await ensure_resource_exists(
-            session, type_str, ref_id, org_id=org_id, field_name=field_name
-        )
+_REF = re.compile(r"^(?P<type>[A-Za-z]+)/(?P<id>\d+)$")
 
 
 def _with_relationships(stmt):
-    """Eager-load all Flag sub-resources to avoid N+1 and async lazy-load failures."""
+    """Eager-load the search-index child rows. Only needed when a write is about to replace them
+    (patch_full) - reads never touch them, since every response is served straight from
+    FlagModel.content."""
     return stmt.options(
-        selectinload(FlagModel.identifiers).selectinload(FlagIdentifier.type_codings),
-        selectinload(FlagModel.categories).selectinload(FlagCategory.codings),
-        selectinload(FlagModel.code_codings),
+        *(selectinload(getattr(FlagModel, rel)) for rel in INDEX_RELATIONSHIPS)
     )
+
+
+def typed(reference: str | None, allowed: tuple[str, ...]) -> tuple[str, int] | None:
+    """('Patient', 10001) for a relative `Type/<id>` whose type is in `allowed`; None for an
+    absolute URL, a contained reference or any other shape (those match by their raw string
+    only)."""
+    match = _REF.match(reference or "")
+    if match and match["type"] in allowed:
+        return match["type"], int(match["id"])
+    return None

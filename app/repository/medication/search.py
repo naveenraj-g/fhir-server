@@ -18,6 +18,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
@@ -553,6 +554,9 @@ def medication_search() -> SearchRegistry:
         ),
         # A Medication that has another one as an ingredient points back at it.
         revincludes=(
+            *column_flag_revincludes(
+                ("subject",), "subject", "Medication", lambda x: x.medication_id
+            ),
             *column_medication_dispense_revincludes(
                 ("medication",), "medication", "Medication", lambda x: x.medication_id
             ),

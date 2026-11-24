@@ -1,29 +1,17 @@
-from .input import (
-    FlagCategoryInput,
+from app.schemas.flag.input import (
     FlagCreateSchema,
-    FlagIdentifierInput,
     FlagPatchSchema,
 )
-from .response import (
+from app.schemas.flag.response import (
     FHIRFlagBundle,
     FHIRFlagBundleEntry,
     FHIRFlagSchema,
-    PaginatedFlagResponse,
-    PlainFlagCategory,
-    PlainFlagIdentifier,
-    PlainFlagResponse,
 )
 
 __all__ = [
+    "FlagCreateSchema",
+    "FlagPatchSchema",
     "FHIRFlagBundle",
     "FHIRFlagBundleEntry",
     "FHIRFlagSchema",
-    "FlagCategoryInput",
-    "FlagCreateSchema",
-    "FlagIdentifierInput",
-    "FlagPatchSchema",
-    "PaginatedFlagResponse",
-    "PlainFlagCategory",
-    "PlainFlagIdentifier",
-    "PlainFlagResponse",
 ]

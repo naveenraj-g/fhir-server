@@ -232,7 +232,7 @@ routes:
     - encounter
     - endpoint
     - episode_of_care
-    # - flag
+    - flag
     - group
     - immunization
     - immunization_evaluation

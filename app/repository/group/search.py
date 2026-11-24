@@ -18,6 +18,7 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
+from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._search_targets import MODELED
 from app.repository._medication_dispense_revinclude import (
     column_medication_dispense_revincludes,
@@ -568,6 +569,9 @@ def group_search() -> SearchRegistry:
         ),
         # A Group that has another one as a member points back at it.
         revincludes=(
+            *column_flag_revincludes(
+                ("subject",), "subject", "Group", lambda x: x.group_id
+            ),
             *column_medication_dispense_revincludes(
                 ("subject",), "subject", "Group", lambda x: x.group_id
             ),

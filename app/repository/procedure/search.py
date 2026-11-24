@@ -21,6 +21,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
@@ -809,6 +810,9 @@ def procedure_search() -> SearchRegistry:
         # Encounter.diagnosis / .reasonReference and Appointment.reasonReference point here,
         # and a Procedure that is part of, or justified by, another one points back at it.
         revincludes=(
+            *column_flag_revincludes(
+                ("subject",), "subject", "Procedure", lambda x: x.procedure_id
+            ),
             *reference_medication_statement_revincludes(
                 "part-of", "Procedure", lambda x: x.procedure_id
             ),

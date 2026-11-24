@@ -16,6 +16,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
+from app.repository._flag_revinclude import column_flag_revincludes
 from app.repository._task_revinclude import column_task_revincludes
 from app.repository._medication_dispense_revinclude import (
     reference_medication_dispense_revincludes,
@@ -611,6 +612,12 @@ def practitioner_search() -> SearchRegistry:
         includes=(),
         # PractitionerRole.practitioner points here.
         revincludes=(
+            *column_flag_revincludes(
+                ("subject",), "subject", "Practitioner", lambda x: x.practitioner_id
+            ),
+            *column_flag_revincludes(
+                ("author",), "author", "Practitioner", lambda x: x.practitioner_id
+            ),
             *column_task_revincludes(
                 ("owner",), "owner", "Practitioner", lambda x: x.practitioner_id
             ),

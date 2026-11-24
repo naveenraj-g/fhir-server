@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 
-from .core import router as core_router
+from . import core
 
-router = APIRouter(prefix="/flags", tags=["Flag"])
-router.include_router(core_router)
-
-__all__ = ["router"]
+router = APIRouter(prefix="/flags", tags=["Flags"])
+router.include_router(core.router)
