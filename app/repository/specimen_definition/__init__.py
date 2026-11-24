@@ -1,10 +1,18 @@
+from app.core.logging import trace_methods
 from app.repository.base import BaseRepository
-from app.repository.specimen_definition.core import _CoreMixin
-from app.repository.specimen_definition.full import _FullMixin
 
-
-class SpecimenDefinitionRepository(BaseRepository, _CoreMixin, _FullMixin):
-    """Repository managing SpecimenDefinition persistence and queries."""
-
+from .core import _CoreMixin
+from .full import _FullMixin
 
 __all__ = ["SpecimenDefinitionRepository"]
+
+
+@trace_methods
+class SpecimenDefinitionRepository(_CoreMixin, _FullMixin, BaseRepository):
+    """All SpecimenDefinition DB I/O. Like Schedule/Slot/Appointment,
+    SpecimenDefinition has no standalone sub-resource endpoints
+    (create/patch always operate on the whole nested payload — see
+    full.py), so there are no per-sub-resource mixins beyond
+    _CoreMixin/_FullMixin. session_factory/__init__ and the generic
+    paginated-list execution (`_execute_paginated`) are inherited from
+    BaseRepository — see that class."""

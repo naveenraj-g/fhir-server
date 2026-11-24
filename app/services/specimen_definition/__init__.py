@@ -1,3 +1,11 @@
-from app.services.specimen_definition.core import SpecimenDefinitionService
+from app.core.logging import trace_methods
+
+from .core import _CoreMixin
 
 __all__ = ["SpecimenDefinitionService"]
+
+
+@trace_methods
+class SpecimenDefinitionService(_CoreMixin):
+    """All SpecimenDefinition business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

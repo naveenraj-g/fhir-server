@@ -53,6 +53,9 @@ from tests.integration.observation_definition.support import (
     observation_definition_body,
 )
 from tests.integration.plan_definition.support import plan_definition_body
+from tests.integration.specimen_definition.support import (
+    specimen_definition_body,
+)
 from tests.integration.communication_request.support import (
     communication_request_body,
 )
@@ -139,6 +142,10 @@ CASES = {
     "Goal": (f"{API}/goals", _fixed(goal_body)),
     "Flag": (f"{API}/flags", _fixed(flag_body)),
     "Consent": (f"{API}/consents", _fixed(consent_body)),
+    "SpecimenDefinition": (
+        f"{API}/specimen-definitions",
+        _fixed(specimen_definition_body),
+    ),
     "ObservationDefinition": (
         f"{API}/observation-definitions",
         _fixed(observation_definition_body),

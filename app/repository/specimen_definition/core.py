@@ -1,169 +1,97 @@
-from sqlalchemy import func
 from sqlalchemy.future import select
 
-from app.core.filters import apply_child_exists_filter, apply_token_filter
 from app.core.logging import get_logger
-from app.core.pagination import resolve_sort
-from app.models.specimen_definition import (
-    SpecimenDefinitionModel,
-    SpecimenDefinitionTypeCollectedCoding,
-)
+from app.fhir.search import SearchContext, SearchRequest
+from app.fhir.search.execute import execute_search
+from app.models.specimen_definition import SpecimenDefinitionModel
 
-from ._shared import _SORTABLE_FIELDS, _with_relationships
+from .search import specimen_definition_search
 
 logger = get_logger(__name__)
 
+_M = SpecimenDefinitionModel
+
 
 class _CoreMixin:
-    """Core CRUD and list operations for SpecimenDefinition."""
+    """Reads, search and delete. Every read loads only the specimen_definition
+    row itself — the response is served from `content`, so the search-index
+    child tables are never eager-loaded here."""
 
     async def get_by_specimen_definition_id(
         self, specimen_definition_id: int
-    ) -> SpecimenDefinitionModel | None:
+    ) -> _M | None:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id
-                    == specimen_definition_id
-                )
-            )
+            stmt = select(_M).where(_M.specimen_definition_id == specimen_definition_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_specimen_definition_id_in_org(
         self, specimen_definition_id: int, org_id: str
-    ) -> SpecimenDefinitionModel | None:
-        """Full lookup (with sub-resources) scoped to org_id — returns None
-        unless the resource exists AND belongs to org_id."""
+    ) -> _M | None:
+        """Lookup scoped to org_id — returns None unless the specimen_definition
+        exists AND belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id
-                    == specimen_definition_id,
-                    SpecimenDefinitionModel.tenant_id == org_id,
-                )
+            stmt = select(_M).where(
+                _M.specimen_definition_id == specimen_definition_id,
+                _M.tenant_id == org_id,
             )
             return (await session.execute(stmt)).scalars().first()
 
     async def specimen_definition_belongs_to_org(
         self, specimen_definition_id: int, org_id: str
     ) -> bool:
-        """Cheap existence/ownership check (no joins, no sub-resources)."""
+        """Lightweight existence check (no eager-loading) for tenant-ownership
+        gates on write routes — True iff the specimen_definition exists AND
+        belongs to org_id."""
         async with self.session_factory() as session:
-            stmt = select(func.count(SpecimenDefinitionModel.id)).where(
-                SpecimenDefinitionModel.specimen_definition_id
-                == specimen_definition_id,
-                SpecimenDefinitionModel.tenant_id == org_id,
+            stmt = select(_M.id).where(
+                _M.specimen_definition_id == specimen_definition_id,
+                _M.tenant_id == org_id,
             )
-            count = (await session.execute(stmt)).scalar() or 0
-            return count > 0
+            return (await session.execute(stmt)).scalar_one_or_none() is not None
 
-    def _apply_list_filters(
-        self,
-        stmt,
-        org_id: str,
-        identifier: str | None = None,
-        type_collected: str | None = None,
-    ):
-        stmt = stmt.where(SpecimenDefinitionModel.tenant_id == org_id)
+    # ── Search ────────────────────────────────────────────────────────────
+    # FHIR R4 search — every parameter, modifier and result parameter is
+    # declared in search.py's registry and run by app.fhir.search.
 
-        if identifier:
-            if "|" in identifier:
-                sys, val = identifier.split("|", 1)
-                if sys:
-                    stmt = stmt.where(SpecimenDefinitionModel.identifier_system == sys)
-                if val:
-                    stmt = stmt.where(SpecimenDefinitionModel.identifier_value == val)
-            else:
-                stmt = stmt.where(
-                    SpecimenDefinitionModel.identifier_value == identifier
-                )
-
-        if type_collected:
-            conditions = [
-                SpecimenDefinitionTypeCollectedCoding.specimen_definition_pk
-                == SpecimenDefinitionModel.id
-            ]
-            if "|" in type_collected:
-                sys, val = type_collected.split("|", 1)
-                if sys:
-                    conditions.append(
-                        SpecimenDefinitionTypeCollectedCoding.system == sys
-                    )
-                if val:
-                    conditions.append(SpecimenDefinitionTypeCollectedCoding.code == val)
-            else:
-                conditions.append(
-                    SpecimenDefinitionTypeCollectedCoding.code == type_collected
-                )
-            stmt = apply_child_exists_filter(
-                stmt,
-                select(SpecimenDefinitionTypeCollectedCoding.id).where(*conditions),
-            )
-
-        return stmt
-
-    async def list(
-        self,
-        *,
-        org_id: str,
-        limit: int = 20,
-        offset: int = 0,
-        sort: str | None = None,
-        identifier: str | None = None,
-        type_collected: str | None = None,
-        total_mode: str = "accurate",
-    ) -> tuple[list[SpecimenDefinitionModel], int]:
+    async def search(self, request: SearchRequest, ctx: SearchContext):
+        """(matches for this page, total or None, included (type, row)
+        pairs). Always scoped to ctx.tenant_id."""
         async with self.session_factory() as session:
-            count_stmt = select(func.count(SpecimenDefinitionModel.id))
-            count_stmt = self._apply_list_filters(
-                count_stmt,
-                org_id=org_id,
-                identifier=identifier,
-                type_collected=type_collected,
-            )
-
-            data_stmt = select(SpecimenDefinitionModel)
-            data_stmt = self._apply_list_filters(
-                data_stmt,
-                org_id=org_id,
-                identifier=identifier,
-                type_collected=type_collected,
-            )
-            data_stmt = _with_relationships(data_stmt)
-
-            sort_column, sort_desc = resolve_sort(
-                sort,
-                _SORTABLE_FIELDS,
-                SpecimenDefinitionModel.specimen_definition_id,
-                default_desc=True,
-            )
-
-            rows, total = await self._execute_paginated(
+            rows, total, included = await execute_search(
                 session,
-                data_stmt,
-                count_stmt,
-                sort_column=sort_column,
-                sort_desc=sort_desc,
-                limit=limit,
-                offset=offset,
-                total_mode=total_mode,
+                model=_M,
+                registry=specimen_definition_search(),
+                request=request,
+                ctx=ctx,
+                tiebreak=_M.specimen_definition_id,
             )
-            return list(rows), total or 0
+        logger.debug(
+            "SpecimenDefinitions searched",
+            extra={
+                "event": "specimen_definition.searched",
+                "returned": len(rows),
+                "included": len(included),
+                "total": total,
+                "count": request.count,
+                "offset": request.offset,
+                "params": sorted({c.key for c in request.clauses}),
+            },
+        )
+        return rows, total, included
 
-    async def delete(self, specimen_definition_id: int, org_id: str) -> bool:
-        """Deletes a SpecimenDefinition resource if it belongs to org_id."""
+    # ── Delete ────────────────────────────────────────────────────────────────
+    # create_full()/patch_full() live in full.py.
+
+    async def delete(self, specimen_definition_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(SpecimenDefinitionModel).where(
-                    SpecimenDefinitionModel.specimen_definition_id
-                    == specimen_definition_id,
-                    SpecimenDefinitionModel.tenant_id == org_id,
-                )
-            )
-            model = (await session.execute(stmt)).scalars().first()
-            if not model:
+            stmt = select(_M).where(_M.specimen_definition_id == specimen_definition_id)
+            specimen_definition = (await session.execute(stmt)).scalars().first()
+            if not specimen_definition:
                 return False
-
-            await session.delete(model)
-            await session.commit()
-            return True
+            try:
+                await session.delete(specimen_definition)
+                await session.commit()
+                return True
+            except Exception:
+                await session.rollback()
+                raise

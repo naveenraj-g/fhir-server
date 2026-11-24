@@ -1,115 +1,64 @@
-from datetime import datetime
-from typing import Any, Literal
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
-    PlainIdentifier,
 )
-from app.schemas.specimen_definition.response.codeable_concept import (
-    PlainSpecimenDefinitionChildConcept,
-    PlainSpecimenDefinitionCodeableConcept,
-)
-from app.schemas.specimen_definition.response.type_tested import (
-    FHIRSpecimenDefinitionTypeTested,
-    PlainSpecimenDefinitionTypeTested,
-)
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
 class FHIRSpecimenDefinitionSchema(BaseModel):
-    """FHIR R4 SpecimenDefinition resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["SpecimenDefinition"] = "SpecimenDefinition"
-    id: str = Field(..., description="Logical id of this artifact.")
-    meta: FHIRMeta | None = Field(None, description="Metadata about the resource.")
-    extension: list[dict[str, Any]] | None = Field(
-        None, description="Additional content defined by implementations."
+    resourceType: str = Field(
+        "SpecimenDefinition", description="Always 'SpecimenDefinition'."
+    )
+    id: str = Field(..., description="Public specimen_definition_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+    )
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
     )
     identifier: FHIRIdentifier | None = Field(
         None, description="Business identifier of a kind of specimen."
     )
     typeCollected: FHIRCodeableConcept | None = Field(
-        None, description="Kind of specimen to collect."
+        None, description="Kind of material to collect."
     )
     patientPreparation: list[FHIRCodeableConcept] | None = Field(
-        None, description="Patient preparation before collection."
+        None, description="Patient preparation for collection."
     )
-    timeAspect: str | None = Field(
-        None, description="Time aspect for collection (e.g. 24 hour)."
-    )
+    timeAspect: str | None = Field(None, description="Time aspect for collection.")
     collection: list[FHIRCodeableConcept] | None = Field(
         None, description="Specimen collection procedure."
     )
-    typeTested: list[FHIRSpecimenDefinitionTypeTested] | None = Field(
-        None, description="Specimen in container tested."
-    )
-
-
-class PlainSpecimenDefinitionResponse(BaseModel):
-    """Plain snake_case SpecimenDefinition response schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Sequence-based public identifier.")
-    identifier: PlainIdentifier | None = Field(None, description="Business identifier.")
-    type_collected: PlainSpecimenDefinitionCodeableConcept | None = Field(
-        None, description="Kind of specimen to collect."
-    )
-    patient_preparation: list[PlainSpecimenDefinitionChildConcept] | None = Field(
-        None, description="Patient preparation before collection."
-    )
-    time_aspect: str | None = Field(None, description="Time aspect for collection.")
-    collection: list[PlainSpecimenDefinitionChildConcept] | None = Field(
-        None, description="Specimen collection procedure."
-    )
-    type_tested: list[PlainSpecimenDefinitionTypeTested] | None = Field(
-        None, description="Specimen in container tested."
-    )
-    created_at: datetime | None = Field(None, description="Timestamp of creation.")
-    updated_at: datetime | None = Field(None, description="Timestamp of last update.")
-    created_by: str = Field(..., description="Subject that created the record.")
-    updated_by: str | None = Field(
-        None, description="Subject that last updated the record."
-    )
-
-
-class PaginatedSpecimenDefinitionResponse(BaseModel):
-    """Paginated plain snake_case SpecimenDefinition response."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    total: int = Field(..., description="Total number of matching records.")
-    limit: int = Field(..., description="Page size limit.")
-    offset: int = Field(..., description="Page offset.")
-    data: list[PlainSpecimenDefinitionResponse] = Field(
-        ..., description="List of matching SpecimenDefinition records."
+    typeTested: list[dict] | None = Field(
+        None, description="Specimen in container intended for testing by lab."
     )
 
 
 class FHIRSpecimenDefinitionBundleEntry(BaseModel):
-    """Entry in a FHIR SpecimenDefinition searchset Bundle."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    fullUrl: str = Field(..., description="Full URL for the resource.")
-    resource: FHIRSpecimenDefinitionSchema = Field(
-        ..., description="SpecimenDefinition resource."
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
     )
-
-
-class FHIRSpecimenDefinitionBundle(BaseModel):
-    """FHIR R4 searchset Bundle for SpecimenDefinition."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: Literal["searchset"] = "searchset"
-    total: int = Field(..., description="Total number of matches.")
-    entry: list[FHIRSpecimenDefinitionBundleEntry] = Field(
-        default_factory=list, description="Matched resources."
+    resource: FHIRSpecimenDefinitionSchema | dict = Field(
+        ...,
+        description="A SpecimenDefinition (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED) or an OperationOutcome (outcome).",
     )
+    search: FHIRBundleEntrySearch
+
+
+class FHIRSpecimenDefinitionBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages. Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRSpecimenDefinitionBundleEntry] | None = None

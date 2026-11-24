@@ -1,211 +1,113 @@
-"""Shared helpers and payloads for SpecimenDefinition integration tests."""
+"""Shared helpers and payloads for specimen_definition integration tests.
+
+Request bodies are genuine FHIR R4 SpecimenDefinition JSON (camelCase, nested datatypes), and
+every response is FHIR R4 too."""
+
+from tests.integration.practitioner_role.support import (  # noqa: F401
+    create_organization,
+)
 
 BASE = "/api/fhir/v1/specimen-definitions"
-FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+API = "/api/fhir/v1"
+
+SPECIMEN_DEFINITION_IDS = (
+    "https://fhir-server.dev/fhir/identifier-system/specimen-definition-id"
+)
+V2_0203 = "http://terminology.hl7.org/CodeSystem/v2-0203"
+V2_0487 = "http://terminology.hl7.org/CodeSystem/v2-0487"
+UCUM = "http://unitsofmeasure.org"
 
 
-async def create_test_organization(client) -> int:
-    """Create a minimal organization and return its public ID."""
-    resp = await client.post(
-        "/api/fhir/v1/organizations/",
-        json={"active": True, "name": "Acme Pathology Lab"},
-    )
-    assert resp.status_code == 201, resp.text
-    return int(resp.json()["id"])
-
-
-def minimal_specimen_definition() -> dict:
+def concept(code: str, display: str | None = None, system: str = V2_0487) -> dict:
     return {
-        "time_aspect": "fasting",
+        "coding": [
+            {
+                "system": system,
+                "code": code,
+                **({"display": display} if display else {}),
+            }
+        ]
     }
 
 
-async def create_specimen_definition(client) -> int:
-    """Create a minimal specimen definition and return its public ID."""
-    resp = await client.post(
-        f"{BASE}/",
-        json=minimal_specimen_definition(),
-    )
-    assert resp.status_code == 201, resp.text
-    return resp.json()["id"]
+def specimen_definition_body(**extra) -> dict:
+    """A valid minimal specimen definition: R4 has no required top-level element."""
+    return {"typeCollected": concept("BLD"), **extra}
 
 
-def full_specimen_definition(organization_id: int | None = None) -> dict:
-    payload = {
-        "identifier": {
-            "use": "official",
-            "system": "http://example.org/specimen-definitions",
-            "value": "SERUM-2026-001",
-            "type_text": "Specimen Code",
-            "type_coding": [
-                {
-                    "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
-                    "code": "FILL",
-                    "display": "Filler Identifier",
-                }
-            ],
-            "period_start": "2026-02-01T10:00:00Z",
-            "period_end": "2026-02-01T10:00:00Z",
+def type_tested(container_type: str | None = None, **extra) -> dict:
+    """One typeTested entry (R4 requires its `preference`)."""
+    entry = {"preference": "preferred", **extra}
+    if container_type:
+        entry["container"] = {"type": concept(container_type)}
+    return entry
+
+
+def full_body(organization_id: int) -> dict:
+    """Every element, including the ones no search parameter reads (they must round-trip)."""
+    return specimen_definition_body(
+        resourceType="SpecimenDefinition",
+        identifier={
+            "system": SPECIMEN_DEFINITION_IDS,
+            "value": "SD-1001",
+            "type": {"coding": [{"system": V2_0203, "code": "ACSN"}]},
+            "assigner": {"reference": f"Organization/{organization_id}"},
         },
-        "type_collected": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": "122555007",
-                    "display": "Venous blood specimen",
-                }
-            ],
-            "text": "Venous blood",
-        },
-        "patient_preparation": [
+        typeCollected=concept("BLD", "Whole blood"),
+        patientPreparation=[{"text": "Fasting for 8 hours"}, concept("FAST")],
+        timeAspect="Morning",
+        collection=[{"text": "Venipuncture"}],
+        typeTested=[
             {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "726054005",
-                        "display": "Fasting",
-                    }
-                ],
-                "text": "12 hour fasting prior to collection",
-            }
-        ],
-        "time_aspect": "morning",
-        "collection": [
-            {
-                "coding": [
-                    {
-                        "system": "http://snomed.info/sct",
-                        "code": "28520004",
-                        "display": "Venipuncture",
-                    }
-                ],
-                "text": "Venipuncture procedure",
-            }
-        ],
-        "type_tested": [
-            {
-                "is_derived": True,
-                "type": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "119364003",
-                            "display": "Serum specimen",
-                        }
-                    ],
-                    "text": "Serum",
-                },
+                "isDerived": False,
+                "type": {"text": "Whole blood"},
                 "preference": "preferred",
-                "requirement": "Fasting sample preferred",
-                "retention_time_value": 24.0,
-                "retention_time_comparator": "<=",
-                "retention_time_unit": "h",
-                "retention_time_system": "http://unitsofmeasure.org",
-                "retention_time_code": "h",
                 "container": {
-                    "material": {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "61088005",
-                                "display": "Plastic",
-                            }
-                        ],
-                        "text": "Plastic",
+                    "material": {"text": "glass"},
+                    "type": concept("SPECIMEN", "Specimen"),
+                    "cap": {"text": "purple"},
+                    "description": "EDTA tube",
+                    "capacity": {
+                        "value": 5,
+                        "unit": "mL",
+                        "system": UCUM,
+                        "code": "mL",
                     },
-                    "type": {
-                        "coding": [
-                            {
-                                "system": "http://snomed.info/sct",
-                                "code": "706053007",
-                                "display": "General specimen container",
-                            }
-                        ],
-                        "text": "Vacuum blood collection tube",
-                    },
-                    "cap": {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/container-cap",
-                                "code": "red",
-                                "display": "Red Cap",
-                            }
-                        ],
-                        "text": "Red top",
-                    },
-                    "description": "Serum separator tube (SST)",
-                    "capacity_value": 5.0,
-                    "capacity_unit": "mL",
-                    "capacity_system": "http://unitsofmeasure.org",
-                    "capacity_code": "mL",
-                    "minimum_volume_quantity_value": 1.0,
-                    "minimum_volume_quantity_unit": "mL",
-                    "minimum_volume_quantity_system": "http://unitsofmeasure.org",
-                    "minimum_volume_quantity_code": "mL",
+                    "minimumVolumeQuantity": {"value": 1, "unit": "mL"},
                     "additive": [
-                        {
-                            "additive_codeable_concept": {
-                                "coding": [
-                                    {
-                                        "system": "http://snomed.info/sct",
-                                        "code": "88480006",
-                                        "display": "Lithium heparin",
-                                    }
-                                ],
-                                "text": "Heparin",
-                            },
-                            "additive_reference": {
-                                "reference": "Substance/10001",
-                                "display": "Lithium Heparin",
-                            },
-                        }
+                        {"additiveCodeableConcept": {"text": "EDTA"}},
+                        {"additiveReference": {"reference": "Substance/1"}},
                     ],
-                    "preparation": "Invert gently 5 times",
+                    "preparation": "Mix gently",
                 },
-                "rejection_criterion": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/rejection-criteria",
-                                "code": "hemolyzed",
-                                "display": "Hemolyzed specimen",
-                            }
-                        ],
-                        "text": "Grossly hemolyzed",
-                    }
-                ],
+                "requirement": "Keep cold",
+                "retentionTime": {"value": 7, "unit": "d", "system": UCUM, "code": "d"},
+                "rejectionCriterion": [{"text": "hemolyzed"}],
                 "handling": [
                     {
-                        "temperature_qualifier": {
-                            "coding": [
-                                {
-                                    "system": "http://terminology.hl7.org/CodeSystem/handling-condition",
-                                    "code": "refrigerated",
-                                    "display": "Refrigerated",
-                                }
-                            ],
-                            "text": "Refrigerated temperature",
+                        "temperatureQualifier": {"text": "refrigerated"},
+                        "temperatureRange": {
+                            "low": {"value": 2, "unit": "Cel"},
+                            "high": {"value": 8, "unit": "Cel"},
                         },
-                        "temperature_range_low_value": 2.0,
-                        "temperature_range_low_unit": "degC",
-                        "temperature_range_low_system": "http://unitsofmeasure.org",
-                        "temperature_range_low_code": "Cel",
-                        "temperature_range_high_value": 8.0,
-                        "temperature_range_high_unit": "degC",
-                        "temperature_range_high_system": "http://unitsofmeasure.org",
-                        "temperature_range_high_code": "Cel",
-                        "max_duration_value": 48.0,
-                        "max_duration_comparator": "<=",
-                        "max_duration_unit": "h",
-                        "max_duration_system": "http://unitsofmeasure.org",
-                        "max_duration_code": "h",
-                        "instruction": "Store at 2-8 degC until analysis.",
+                        "maxDuration": {"value": 24, "unit": "h"},
+                        "instruction": "Do not freeze",
                     }
                 ],
-            }
+            },
+            {
+                "preference": "alternate",
+                "container": {
+                    "type": concept("TUBE", "Tube"),
+                    "minimumVolumeString": "about 1 mL",
+                },
+            },
         ],
-    }
-    if organization_id:
-        payload["identifier"]["assigner"] = f"Organization/{organization_id}"
-        payload["identifier"]["assigner_display"] = "Acme Pathology Lab"
-    return payload
+    )
+
+
+async def create_specimen_definition(client, body: dict) -> int:
+    """Create a specimen definition and return its public id (int)."""
+    resp = await client.post(BASE + "/", json=body)
+    assert resp.status_code == 201, resp.text
+    return int(resp.json()["id"])

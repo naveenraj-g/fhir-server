@@ -60,6 +60,7 @@ from app.repository.communication.search import communication_search
 from app.repository.communication_request.search import communication_request_search
 from app.repository.observation_definition.search import observation_definition_search
 from app.repository.plan_definition.search import plan_definition_search
+from app.repository.specimen_definition.search import specimen_definition_search
 from app.repository.consent.search import consent_search
 from app.repository.flag.search import flag_search
 from app.repository.goal.search import goal_search
@@ -98,6 +99,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "activity_definition": activity_definition_search,
     "plan_definition": plan_definition_search,
     "observation_definition": observation_definition_search,
+    "specimen_definition": specimen_definition_search,
     "communication_request": communication_request_search,
     "task": task_search,
     "medication_statement": medication_statement_search,

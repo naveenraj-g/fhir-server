@@ -263,7 +263,7 @@ routes:
     - service_request
     - slot
     - specimen
-    # - specimen_definition
+    - specimen_definition
     - task
     - goal
     - communication

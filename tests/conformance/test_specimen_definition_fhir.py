@@ -1,6 +1,12 @@
 """FHIR R4 conformance for `to_fhir_specimen_definition()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+SpecimenDefinition is stored whole in `content` (like the other content-based resources): the
+resource lives in SpecimenDefinitionModel.content, and to_fhir_specimen_definition() only stamps
+`id` and `meta` onto it. So what can go wrong on the read side is that stamping (e.g. a malformed
+meta extension) or a stored document the server returns that isn't valid R4 - each case below is a
+`content` document as the write path would store it, run through the real read mapper.
 """
 
 import datetime as dt
@@ -8,237 +14,271 @@ import datetime as dt
 import pytest
 
 from app.fhir.mappers.specimen_definition import to_fhir_specimen_definition
-from app.models.enums import IdentifierUse, OrganizationReferenceType
-from app.models.specimen_definition import (
-    SpecimenDefinitionAdditiveReferenceType,
-    SpecimenDefinitionCollection,
-    SpecimenDefinitionCollectionCoding,
-    SpecimenDefinitionContainerAdditive,
-    SpecimenDefinitionContainerAdditiveCoding,
-    SpecimenDefinitionContainerCapCoding,
-    SpecimenDefinitionContainerMaterialCoding,
-    SpecimenDefinitionContainerTypeCoding,
-    SpecimenDefinitionHandlingTempQualCoding,
-    SpecimenDefinitionIdentifierTypeCoding,
-    SpecimenDefinitionModel,
-    SpecimenDefinitionPatientPreparation,
-    SpecimenDefinitionPatientPreparationCoding,
-    SpecimenDefinitionPreference,
-    SpecimenDefinitionQuantityComparator,
-    SpecimenDefinitionTypeCollectedCoding,
-    SpecimenDefinitionTypeTested,
-    SpecimenDefinitionTypeTestedHandling,
-    SpecimenDefinitionTypeTestedRejectionCriterion,
-    SpecimenDefinitionTypeTestedRejectionCriterionCoding,
-    SpecimenDefinitionTypeTestedTypeCoding,
-)
+from app.models.specimen_definition import SpecimenDefinitionModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-specimen_definition_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.specimen_definition_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 2, 1, 10, 0, 0, tzinfo=dt.timezone.utc)
-
-_CHILD_ATTRS = (
-    "identifier_type_codings",
-    "type_collected_codings",
-    "patient_preparations",
-    "collections",
-    "types_tested",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+V2_0487 = "http://terminology.hl7.org/CodeSystem/v2-0487"
+UCUM = "http://unitsofmeasure.org"
 
 
-def _specimen_definition(**overrides) -> SpecimenDefinitionModel:
+def _c(content: dict, **overrides) -> SpecimenDefinitionModel:
     fields = {
-        "id": 1,
         "specimen_definition_id": 550001,
         "tenant_id": "org-test",
         "created_by": "u-test",
-        "updated_at": D,
+        "created_at": D,
+        "content": content,
     }
-    children = {attr: overrides.pop(attr, []) for attr in _CHILD_ATTRS}
     fields.update(overrides)
-    m = SpecimenDefinitionModel(**fields)
-
-    for attr, val in children.items():
-        setattr(m, attr, val)
-    return m
+    return SpecimenDefinitionModel(**fields)
 
 
-def test_minimal_specimen_definition_conforms():
-    m = _specimen_definition()
-    resource = to_fhir_specimen_definition(m)
-    assert_valid(specimen_definition_pb2.SpecimenDefinition, resource)
+def _tested(**extra) -> dict:
+    return {"preference": "preferred", **extra}
 
 
-def test_full_specimen_definition_conforms():
-    id_coding = SpecimenDefinitionIdentifierTypeCoding(
-        system="http://terminology.hl7.org/CodeSystem/v2-0203",
-        code="FILL",
-        display="Filler Identifier",
-    )
-    tc_coding = SpecimenDefinitionTypeCollectedCoding(
-        system="http://snomed.info/sct",
-        code="122555007",
-        display="Venous blood specimen",
-    )
+CASES = {
+    "empty": _c({}),
+    "updated_by_and_updated_at": _c({}, updated_by="u-other", updated_at=D),
+    "identifier_with_type_and_assigner": _c(
+        {
+            "identifier": {
+                "use": "official",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "ACSN",
+                        }
+                    ]
+                },
+                "system": "https://fhir-server.dev/fhir/identifier-system/specimen-definition-id",
+                "value": "SD-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        }
+    ),
+    "type_collected": _c(
+        {
+            "typeCollected": {
+                "coding": [{"system": V2_0487, "code": "BLD", "display": "Blood"}]
+            }
+        }
+    ),
+    "preparation_time_aspect_and_collection": _c(
+        {
+            "patientPreparation": [{"text": "Fasting"}, {"coding": [{"code": "x"}]}],
+            "timeAspect": "Morning",
+            "collection": [{"text": "Venipuncture"}],
+        }
+    ),
+    **{
+        f"preference_{p}": _c({"typeTested": [_tested(preference=p)]})
+        for p in ("preferred", "alternate")
+    },
+    "type_tested_simple": _c(
+        {
+            "typeTested": [
+                _tested(
+                    isDerived=False,
+                    type={"text": "Whole blood"},
+                    requirement="Keep cold",
+                    retentionTime={
+                        "value": 7,
+                        "unit": "d",
+                        "system": UCUM,
+                        "code": "d",
+                    },
+                )
+            ]
+        }
+    ),
+    "container_every_element": _c(
+        {
+            "typeTested": [
+                _tested(
+                    container={
+                        "material": {"text": "glass"},
+                        "type": {"coding": [{"system": V2_0487, "code": "SPECIMEN"}]},
+                        "cap": {"text": "purple"},
+                        "description": "EDTA tube",
+                        "capacity": {
+                            "value": 5,
+                            "unit": "mL",
+                            "system": UCUM,
+                            "code": "mL",
+                        },
+                        "minimumVolumeQuantity": {"value": 1, "unit": "mL"},
+                        "additive": [
+                            {"additiveCodeableConcept": {"text": "EDTA"}},
+                            {"additiveReference": {"reference": "Substance/1"}},
+                        ],
+                        "preparation": "Mix gently",
+                    }
+                )
+            ]
+        }
+    ),
+    "container_minimum_volume_string": _c(
+        {"typeTested": [_tested(container={"minimumVolumeString": "about 1 mL"})]}
+    ),
+    "rejection_criteria": _c(
+        {
+            "typeTested": [
+                _tested(rejectionCriterion=[{"text": "hemolyzed"}, {"text": "clotted"}])
+            ]
+        }
+    ),
+    "handling": _c(
+        {
+            "typeTested": [
+                _tested(
+                    handling=[
+                        {
+                            "temperatureQualifier": {"text": "refrigerated"},
+                            "temperatureRange": {
+                                "low": {"value": 2, "unit": "Cel"},
+                                "high": {"value": 8, "unit": "Cel"},
+                            },
+                            "maxDuration": {"value": 24, "unit": "h"},
+                            "instruction": "Do not freeze",
+                        },
+                        {"instruction": "Protect from light"},
+                    ]
+                )
+            ]
+        }
+    ),
+    "several_types_tested": _c(
+        {"typeTested": [_tested(), _tested(preference="alternate", isDerived=True)]}
+    ),
+    "extension": _c(
+        {
+            "extension": [
+                {
+                    "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                    "valueString": "y",
+                }
+            ]
+        }
+    ),
+}
 
-    pp = SpecimenDefinitionPatientPreparation(text="12h fasting")
-    pp.codings = [
-        SpecimenDefinitionPatientPreparationCoding(
-            system="http://snomed.info/sct",
-            code="726054005",
-            display="Fasting",
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_specimen_definition_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.SpecimenDefinition, to_fhir_specimen_definition(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = {"timeAspect": "Morning", "typeTested": [_tested()]}
+    out = to_fhir_specimen_definition(_c(content))
+    assert out["resourceType"] == "SpecimenDefinition"
+    assert out["id"] == "550001"
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
+
+
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `identifier` or `typeCollected` as a one-item list; the
+# integration tests cover what they can.)
+
+
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("identifier as string", {"identifier": "SD-1"}),
+        ("typeCollected as string", {"typeCollected": "BLD"}),
+        ("patientPreparation as object", {"patientPreparation": {"text": "x"}}),
+        ("timeAspect as number", {"timeAspect": 5}),
+        ("collection as string", {"collection": "x"}),
+        ("typeTested as object", {"typeTested": {"preference": "preferred"}}),
+        ("typeTested without a preference", {"typeTested": [{"isDerived": True}]}),
+        ("preference with an unknown code", {"typeTested": [{"preference": "banana"}]}),
+        (
+            "isDerived as string",
+            {"typeTested": [{"preference": "preferred", "isDerived": "yes"}]},
+        ),
+        (
+            "typeTested type as string",
+            {"typeTested": [{"preference": "preferred", "type": "x"}]},
+        ),
+        (
+            "container capacity as string",
+            {
+                "typeTested": [
+                    {"preference": "preferred", "container": {"capacity": "5 mL"}}
+                ]
+            },
+        ),
+        (
+            "additive as object",
+            {
+                "typeTested": [
+                    {
+                        "preference": "preferred",
+                        "container": {"additive": {"additiveCodeableConcept": {}}},
+                    }
+                ]
+            },
+        ),
+        (
+            "additive without its choice",
+            {
+                "typeTested": [
+                    {"preference": "preferred", "container": {"additive": [{}]}}
+                ]
+            },
+        ),
+        (
+            "retentionTime as string",
+            {"typeTested": [{"preference": "preferred", "retentionTime": "7 days"}]},
+        ),
+        (
+            "rejectionCriterion as object",
+            {
+                "typeTested": [
+                    {"preference": "preferred", "rejectionCriterion": {"text": "x"}}
+                ]
+            },
+        ),
+        (
+            "handling as object",
+            {
+                "typeTested": [
+                    {"preference": "preferred", "handling": {"instruction": "x"}}
+                ]
+            },
+        ),
+        (
+            "handling instruction as number",
+            {
+                "typeTested": [
+                    {"preference": "preferred", "handling": [{"instruction": 5}]}
+                ]
+            },
+        ),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {"resourceType": "SpecimenDefinition", "id": "550001", **broken}
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.SpecimenDefinition, validate=True
         )
-    ]
-
-    col = SpecimenDefinitionCollection(text="Venipuncture")
-    col.codings = [
-        SpecimenDefinitionCollectionCoding(
-            system="http://snomed.info/sct",
-            code="28520004",
-            display="Venipuncture",
-        )
-    ]
-
-    tt = SpecimenDefinitionTypeTested(
-        is_derived=True,
-        type_text="Serum",
-        preference=SpecimenDefinitionPreference.preferred,
-        requirement="Fasting required",
-        retention_time_value=24,
-        retention_time_comparator=SpecimenDefinitionQuantityComparator.le,
-        retention_time_unit="h",
-        retention_time_system="http://unitsofmeasure.org",
-        retention_time_code="h",
-        container_description="SST tube",
-        container_preparation="Invert gently 5 times",
-        container_material_text="Plastic",
-        container_type_text="Vacuum tube",
-        container_cap_text="Red",
-        container_capacity_value=5.0,
-        container_capacity_unit="mL",
-        container_capacity_system="http://unitsofmeasure.org",
-        container_capacity_code="mL",
-        container_minimum_volume_quantity_value=1.0,
-        container_minimum_volume_quantity_comparator=SpecimenDefinitionQuantityComparator.ge,
-        container_minimum_volume_quantity_unit="mL",
-        container_minimum_volume_quantity_system="http://unitsofmeasure.org",
-        container_minimum_volume_quantity_code="mL",
-    )
-    tt.type_codings = [
-        SpecimenDefinitionTypeTestedTypeCoding(
-            system="http://snomed.info/sct",
-            code="119364003",
-            display="Serum specimen",
-        )
-    ]
-    tt.container_material_codings = [
-        SpecimenDefinitionContainerMaterialCoding(
-            system="http://snomed.info/sct",
-            code="61088005",
-            display="Plastic",
-        )
-    ]
-    tt.container_type_codings = [
-        SpecimenDefinitionContainerTypeCoding(
-            system="http://snomed.info/sct",
-            code="706053007",
-            display="General specimen container",
-        )
-    ]
-    tt.container_cap_codings = [
-        SpecimenDefinitionContainerCapCoding(
-            system="http://terminology.hl7.org/CodeSystem/container-cap",
-            code="red",
-            display="Red Cap",
-        )
-    ]
-
-    ad = SpecimenDefinitionContainerAdditive(
-        additive_codeable_concept_text="Heparin",
-        additive_reference_reference="Substance/10001",
-        additive_reference_type=SpecimenDefinitionAdditiveReferenceType.Substance,
-        additive_reference_id=10001,
-        additive_reference_display="Lithium Heparin",
-    )
-    ad.additive_codings = [
-        SpecimenDefinitionContainerAdditiveCoding(
-            system="http://snomed.info/sct",
-            code="88480006",
-            display="Lithium heparin",
-        )
-    ]
-    tt.container_additives = [ad]
-
-    rc = SpecimenDefinitionTypeTestedRejectionCriterion(text="Hemolyzed specimen")
-    rc.codings = [
-        SpecimenDefinitionTypeTestedRejectionCriterionCoding(
-            system="http://terminology.hl7.org/CodeSystem/rejection-criteria",
-            code="hemolyzed",
-            display="Hemolyzed",
-        )
-    ]
-    tt.rejection_criteria = [rc]
-
-    h = SpecimenDefinitionTypeTestedHandling(
-        temperature_qualifier_text="Refrigerated",
-        temperature_range_low_value=2.0,
-        temperature_range_low_unit="degC",
-        temperature_range_low_system="http://unitsofmeasure.org",
-        temperature_range_low_code="Cel",
-        temperature_range_high_value=8.0,
-        temperature_range_high_unit="degC",
-        temperature_range_high_system="http://unitsofmeasure.org",
-        temperature_range_high_code="Cel",
-        max_duration_value=48,
-        max_duration_comparator=SpecimenDefinitionQuantityComparator.le,
-        max_duration_unit="h",
-        max_duration_system="http://unitsofmeasure.org",
-        max_duration_code="h",
-        instruction="Keep cold until analysis",
-    )
-    h.temperature_qualifier_codings = [
-        SpecimenDefinitionHandlingTempQualCoding(
-            system="http://terminology.hl7.org/CodeSystem/handling-condition",
-            code="refrigerated",
-            display="Refrigerated",
-        )
-    ]
-    tt.handlings = [h]
-
-    m = _specimen_definition(
-        identifier_use=IdentifierUse.official,
-        identifier_system="http://example.org/specimen-definitions",
-        identifier_value="SERUM-001",
-        identifier_period_start=D,
-        identifier_period_end=D,
-        identifier_assigner_reference="Organization/190001",
-        identifier_assigner_type=OrganizationReferenceType.Organization,
-        identifier_assigner_id=190001,
-        identifier_assigner_display="Acme Pathology",
-        identifier_type_text="Catalog ID",
-        identifier_type_codings=[id_coding],
-        type_collected_text="Venous blood",
-        type_collected_codings=[tc_coding],
-        patient_preparations=[pp],
-        time_aspect="morning, fasting",
-        collections=[col],
-        types_tested=[tt],
-    )
-
-    resource = to_fhir_specimen_definition(m)
-    assert_valid(specimen_definition_pb2.SpecimenDefinition, resource)
-
-
-def test_specimen_definition_minimum_volume_string_conforms():
-    tt = SpecimenDefinitionTypeTested(
-        preference=SpecimenDefinitionPreference.alternate,
-        container_minimum_volume_string="At least 2-3 drops",
-    )
-    m = _specimen_definition(types_tested=[tt])
-    resource = to_fhir_specimen_definition(m)
-    assert_valid(specimen_definition_pb2.SpecimenDefinition, resource)
