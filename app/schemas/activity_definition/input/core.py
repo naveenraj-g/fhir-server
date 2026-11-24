@@ -1,495 +1,301 @@
-import datetime as dt
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
-from app.models.activity_definition.enums import (
-    ActivityDefinitionIntent,
-    ActivityDefinitionKind,
-    ActivityDefinitionPriority,
-    ActivityDefinitionQuantityComparator,
-    ActivityDefinitionStatus,
-)
-from app.schemas.activity_definition.input.codeable_concept import (
-    ActivityDefinitionCodeableConceptInput,
-)
-from app.schemas.activity_definition.input.contact import ActivityDefinitionContactInput
-from app.schemas.activity_definition.input.dosage import ActivityDefinitionDosageInput
-from app.schemas.activity_definition.input.dynamic_value import (
-    ActivityDefinitionDynamicValueInput,
-)
-from app.schemas.activity_definition.input.identifier import (
-    ActivityDefinitionIdentifierInput,
-)
-from app.schemas.activity_definition.input.participant import (
-    ActivityDefinitionParticipantInput,
-)
-from app.schemas.activity_definition.input.related_artifact import (
-    ActivityDefinitionRelatedArtifactInput,
-)
-from app.schemas.activity_definition.input.use_context import (
-    ActivityDefinitionUseContextInput,
+from pydantic import Field
+
+from app.schemas.fhir_input import (
+    FhirCodeableConceptInput,
+    FhirIdentifierInput,
+    FhirInputModel,
+    FhirPeriodInput,
+    FhirReferenceInput,
 )
 
+# publication-status (the required binding of ActivityDefinition.status).
+StatusCode = Literal["draft", "active", "retired", "unknown"]
+# RequestResourceType (the required binding of ActivityDefinition.kind).
+KindCode = Literal[
+    "Appointment",
+    "AppointmentResponse",
+    "CarePlan",
+    "Claim",
+    "CommunicationRequest",
+    "Contract",
+    "DeviceRequest",
+    "EnrollmentRequest",
+    "ImmunizationRecommendation",
+    "MedicationRequest",
+    "NutritionOrder",
+    "ServiceRequest",
+    "SupplyRequest",
+    "Task",
+    "VisionPrescription",
+]
+IntentCode = Literal[
+    "proposal",
+    "plan",
+    "directive",
+    "order",
+    "original-order",
+    "reflex-order",
+    "filler-order",
+    "instance-order",
+    "option",
+]
+PriorityCode = Literal["routine", "urgent", "asap", "stat"]
 
-class ActivityDefinitionCreateSchema(BaseModel):
-    """Request body for creating an ActivityDefinition resource."""
+_EXAMPLE = {
+    "resourceType": "ActivityDefinition",
+    "url": "https://fhir-server.dev/fhir/ActivityDefinition/follow-up-visit",
+    "identifier": [
+        {
+            "system": "https://fhir-server.dev/fhir/identifier-system/activity-definition-id",
+            "value": "AD-1",
+        }
+    ],
+    "version": "1.0",
+    "name": "FollowUpVisit",
+    "title": "Follow-up visit",
+    "status": "active",
+    "date": "2026-01-15",
+    "publisher": "Example Health",
+    "description": "Book a follow-up visit.",
+    "useContext": [
+        {
+            "code": {
+                "system": "http://terminology.hl7.org/CodeSystem/usage-context-type",
+                "code": "focus",
+            },
+            "valueCodeableConcept": {
+                "coding": [{"system": "http://snomed.info/sct", "code": "35489007"}]
+            },
+        }
+    ],
+    "jurisdiction": [{"coding": [{"system": "urn:iso:std:iso:3166", "code": "US"}]}],
+    "topic": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/definition-topic",
+                    "code": "treatment",
+                }
+            ]
+        }
+    ],
+    "kind": "ServiceRequest",
+    "intent": "order",
+    "priority": "routine",
+}
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "draft",
-                "name": "BloodGlucoseMonitoringActivity",
-                "title": "Blood Glucose Monitoring Activity",
-                "kind": "ServiceRequest",
-                "code": {
-                    "coding": [
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "35335000",
-                            "display": "Blood glucose measurement",
-                        }
-                    ],
-                    "text": "Blood glucose measurement",
-                },
-                "intent": "order",
-                "priority": "routine",
-                "do_not_perform": False,
-            }
-        },
+
+class _ActivityDefinitionFields(FhirInputModel):
+    """Every writable ActivityDefinition element, in genuine FHIR R4 shape
+    (https://www.hl7.org/fhir/R4/activitydefinition.html). Create and patch accept exactly the
+    same fields. R4 requires `status`; the native validator cannot see a missing primitive
+    `status`, which only the `java_validator` backend rejects.
+
+    The validated body is stored whole (ActivityDefinitionModel.content), so any valid R4 element
+    is kept - including ones this model does not declare. Server-managed elements are ignored if
+    sent: `id` (assigned from the activity_definition_id sequence) and `meta` (audit/tenant data,
+    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
+    (actor.org_id / actor.sub), never the body. There is no user_id."""
+
+    resourceType: Literal["ActivityDefinition"] | None = Field(
+        None, description="Optional; if supplied it must be 'ActivityDefinition'."
     )
-
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
+    )
     url: str | None = Field(
-        None, description="Canonical identifier for this activity definition."
+        None,
+        description="Canonical identifier for this activity definition. Searched by `url`.",
     )
-    identifier: list[ActivityDefinitionIdentifierInput] | None = Field(
-        None, description="Additional identifier for the activity definition."
+    identifier: list[FhirIdentifierInput] | None = Field(
+        None, description="Additional identifier. Searched by `identifier`."
     )
     version: str | None = Field(
-        None, description="Business version of the activity definition."
+        None,
+        description="Business version of the activity definition. Searched by `version`.",
     )
     name: str | None = Field(
-        None, description="Name for this activity definition (computer friendly)."
+        None,
+        description="Name for this activity definition (computer friendly). Searched by `name`.",
     )
     title: str | None = Field(
-        None, description="Name for this activity definition (human friendly)."
+        None,
+        description="Name for this activity definition (human friendly). Searched by `title`.",
     )
-    subtitle: str | None = Field(
-        None, description="Sub-title of the activity definition."
-    )
-    status: ActivityDefinitionStatus = Field(
-        ...,
-        description="draft | active | retired | unknown (PublicationStatus).",
+    subtitle: str | None = Field(None, description="Subordinate title.")
+    status: StatusCode | None = Field(
+        None,
+        description="draft | active | retired | unknown (required by R4). Searched by `status`.",
     )
     experimental: bool | None = Field(
         None, description="For testing purposes, not real usage."
     )
-    date: dt.datetime | None = Field(None, description="Date last changed.")
-    publisher: str | None = Field(
-        None, description="Name of the publisher/organization."
+    subjectCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None,
+        description="subject[x]: type of individual the activity definition is intended for.",
     )
-    contact: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Contact details for the publisher."
+    subjectReference: FhirReferenceInput | None = Field(
+        None,
+        description="subject[x]: Reference(Group) the activity definition is intended for.",
+    )
+    date: str | None = Field(
+        None, description="Date last changed (a FHIR dateTime). Searched by `date`."
+    )
+    publisher: str | None = Field(
+        None, description="Name of the publisher. Searched by `publisher`."
+    )
+    contact: list[dict] | None = Field(
+        None, description="Contact details for the publisher (ContactDetail)."
     )
     description: str | None = Field(
-        None, description="Natural language description of the activity definition."
+        None, description="Natural language description. Searched by `description`."
     )
-    use_context: list[ActivityDefinitionUseContextInput] | None = Field(
-        None, description="The context that the content is intended to support."
+    useContext: list[dict] | None = Field(
+        None,
+        description="The context that the content is intended to support (UsageContext). Searched by `context`, `context-type`, `context-quantity` and the two composites.",
     )
-    jurisdiction: list[ActivityDefinitionCodeableConceptInput] | None = Field(
-        None, description="Intended jurisdiction for activity definition."
+    jurisdiction: list[FhirCodeableConceptInput] | None = Field(
+        None, description="Intended jurisdiction. Searched by `jurisdiction`."
     )
     purpose: str | None = Field(
         None, description="Why this activity definition is defined."
     )
     usage: str | None = Field(
-        None, description="Describes how the definition is intended to be used."
+        None, description="Describes the clinical usage of the activity definition."
     )
-    copyright: str | None = Field(None, description="Use and/or publishing rights.")
-    approval_date: dt.date | None = Field(
-        None, description="When the activity definition was approved by publisher."
+    copyright: str | None = Field(
+        None, description="Use and/or publishing restrictions."
     )
-    last_review_date: dt.date | None = Field(
+    approvalDate: str | None = Field(
+        None, description="When the activity definition was approved by the publisher."
+    )
+    lastReviewDate: str | None = Field(
         None, description="When the activity definition was last reviewed."
     )
-    effective_period_start: dt.datetime | None = Field(
-        None, description="When the activity definition is expected to be used (start)."
+    effectivePeriod: FhirPeriodInput | None = Field(
+        None,
+        description="When the activity definition is expected to be used. Searched by `effective`.",
     )
-    effective_period_end: dt.datetime | None = Field(
-        None, description="When the activity definition is expected to be used (end)."
+    topic: list[FhirCodeableConceptInput] | None = Field(
+        None,
+        description="E.g. Education, Treatment, Assessment, etc. Searched by `topic`.",
     )
-    topic: list[ActivityDefinitionCodeableConceptInput] | None = Field(
-        None, description="E.g. treatment, education, assessment, etc."
+    author: list[dict] | None = Field(
+        None, description="Who authored the content (ContactDetail)."
     )
-    author: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who authored the content."
+    editor: list[dict] | None = Field(
+        None, description="Who edited the content (ContactDetail)."
     )
-    editor: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who edited the content."
+    reviewer: list[dict] | None = Field(
+        None, description="Who reviewed the content (ContactDetail)."
     )
-    reviewer: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who reviewed the content."
+    endorser: list[dict] | None = Field(
+        None, description="Who endorsed the content (ContactDetail)."
     )
-    endorser: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who endorsed the content."
-    )
-    related_artifact: list[ActivityDefinitionRelatedArtifactInput] | None = Field(
-        None, description="Additional documentation, citations, etc."
+    relatedArtifact: list[dict] | None = Field(
+        None,
+        description="Additional documentation, citations, etc. (RelatedArtifact). The `resource` of a `composed-of` / `depends-on` / `derived-from` / `predecessor` / `successor` entry is searched by the parameter of that name.",
     )
     library: list[str] | None = Field(
-        None, description="Logic framework used by the activity definition."
+        None,
+        description="Logic used by the activity definition (canonical(Library)). Searched by `depends-on`.",
     )
-    kind: ActivityDefinitionKind | None = Field(
-        None, description="Kind of activity (ServiceRequest, MedicationRequest, etc.)."
-    )
+    kind: KindCode | None = Field(None, description="Kind of resource.")
     profile: str | None = Field(
-        None, description="What profile the resulting resource conforms to."
+        None, description="What profile the resource needs to conform to."
     )
-    code: ActivityDefinitionCodeableConceptInput | None = Field(
+    code: FhirCodeableConceptInput | None = Field(
         None, description="Detail type of activity."
     )
-    intent: ActivityDefinitionIntent | None = Field(
+    intent: IntentCode | None = Field(
         None,
         description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option.",
     )
-    priority: ActivityDefinitionPriority | None = Field(
+    priority: PriorityCode | None = Field(
         None, description="routine | urgent | asap | stat."
     )
-    do_not_perform: bool | None = Field(
+    doNotPerform: bool | None = Field(
         None, description="True if the activity should not be performed."
     )
-
-    # timing[x]
-    timing_timing: dict | None = Field(
-        None, description="When activity is to occur (Timing)."
+    timingTiming: dict | None = Field(
+        None, description="timing[x]: when activity is to occur (Timing)."
     )
-    timing_date_time: dt.datetime | None = Field(
-        None, description="When activity is to occur (dateTime)."
+    timingDateTime: str | None = Field(
+        None, description="timing[x]: when activity is to occur (dateTime)."
     )
-    timing_age_value: float | None = Field(
-        None, description="When activity is to occur (Age value)."
+    timingAge: dict | None = Field(
+        None, description="timing[x]: when activity is to occur (Age)."
     )
-    timing_age_unit: str | None = Field(
-        None, description="When activity is to occur (Age unit)."
+    timingPeriod: FhirPeriodInput | None = Field(
+        None, description="timing[x]: when activity is to occur (Period)."
     )
-    timing_age_system: str | None = Field(
-        None, description="When activity is to occur (Age system)."
+    timingRange: dict | None = Field(
+        None, description="timing[x]: when activity is to occur (Range)."
     )
-    timing_age_code: str | None = Field(
-        None, description="When activity is to occur (Age code)."
+    timingDuration: dict | None = Field(
+        None, description="timing[x]: when activity is to occur (Duration)."
     )
-    timing_period_start: dt.datetime | None = Field(
-        None, description="When activity is to occur (Period start)."
+    location: FhirReferenceInput | None = Field(
+        None, description="Where it should happen - Reference(Location)."
     )
-    timing_period_end: dt.datetime | None = Field(
-        None, description="When activity is to occur (Period end)."
-    )
-    timing_range_low_value: float | None = Field(
-        None, description="When activity is to occur (Range low value)."
-    )
-    timing_range_low_unit: str | None = Field(
-        None, description="When activity is to occur (Range low unit)."
-    )
-    timing_range_high_value: float | None = Field(
-        None, description="When activity is to occur (Range high value)."
-    )
-    timing_range_high_unit: str | None = Field(
-        None, description="When activity is to occur (Range high unit)."
-    )
-    timing_duration_value: float | None = Field(
-        None, description="When activity is to occur (Duration value)."
-    )
-    timing_duration_unit: str | None = Field(
-        None, description="When activity is to occur (Duration unit)."
-    )
-    timing_duration_system: str | None = Field(
-        None, description="When activity is to occur (Duration system)."
-    )
-    timing_duration_code: str | None = Field(
-        None, description="When activity is to occur (Duration code)."
-    )
-
-    location: str | None = Field(
-        None, description="Where it should happen (Location/123)."
-    )
-    location_display: str | None = Field(None, description="Location display text.")
-    participant: list[ActivityDefinitionParticipantInput] | None = Field(
+    participant: list[dict] | None = Field(
         None, description="Who should participate in the action."
     )
-    product_codeable_concept: ActivityDefinitionCodeableConceptInput | None = Field(
-        None, description="What product is used (CodeableConcept)."
+    productReference: FhirReferenceInput | None = Field(
+        None,
+        description="product[x]: what's administered/supplied - Reference(Medication | Substance).",
     )
-    product_reference: str | None = Field(
-        None, description="What product is used (Medication/123 | Substance/123)."
+    productCodeableConcept: FhirCodeableConceptInput | None = Field(
+        None, description="product[x]: what's administered/supplied."
     )
-    product_display: str | None = Field(None, description="Product display text.")
-    quantity_value: float | None = Field(
-        None, description="How much is required/consumed (value)."
+    quantity: dict | None = Field(
+        None, description="How much is administered/consumed/supplied (SimpleQuantity)."
     )
-    quantity_comparator: ActivityDefinitionQuantityComparator | None = Field(
-        None, description="Quantity comparator."
+    dosage: list[dict] | None = Field(
+        None, description="Detailed dosage instructions (Dosage)."
     )
-    quantity_unit: str | None = Field(None, description="Quantity unit.")
-    quantity_system: str | None = Field(None, description="Quantity unit system.")
-    quantity_code: str | None = Field(None, description="Quantity coded form.")
-    dosage: list[ActivityDefinitionDosageInput] | None = Field(
-        None, description="Detailed dosage instructions."
-    )
-    body_site: list[ActivityDefinitionCodeableConceptInput] | None = Field(
+    bodySite: list[FhirCodeableConceptInput] | None = Field(
         None, description="What part of body to perform on."
     )
-    specimen_requirement: list[str] | None = Field(
-        None, description="What specimens are required (SpecimenDefinition/123)."
-    )
-    observation_requirement: list[str] | None = Field(
+    specimenRequirement: list[FhirReferenceInput] | None = Field(
         None,
-        description="What observation results are required (ObservationDefinition/123).",
+        description="What specimens are required to perform this action - Reference(SpecimenDefinition).",
     )
-    observation_result_requirement: list[str] | None = Field(
+    observationRequirement: list[FhirReferenceInput] | None = Field(
         None,
-        description="What observation results are produced (ObservationDefinition/123).",
+        description="What observations are required to perform this action - Reference(ObservationDefinition).",
+    )
+    observationResultRequirement: list[FhirReferenceInput] | None = Field(
+        None,
+        description="What observations must be produced by this action - Reference(ObservationDefinition).",
     )
     transform: str | None = Field(
-        None, description="Transform to advance the activity."
+        None, description="Transform to apply the template (canonical(StructureMap))."
     )
-    dynamic_value: list[ActivityDefinitionDynamicValueInput] | None = Field(
+    dynamicValue: list[dict] | None = Field(
         None, description="Dynamic aspects of the definition."
     )
 
-    # subject[x]
-    subject_codeable_concept: ActivityDefinitionCodeableConceptInput | None = Field(
-        None, description="Type of subject for the activity (CodeableConcept)."
-    )
-    subject_reference: str | None = Field(
-        None, description="Type of subject for the activity (Group/123)."
-    )
-    subject_display: str | None = Field(None, description="Subject display text.")
 
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+class ActivityDefinitionCreateSchema(_ActivityDefinitionFields):
+    """POST body - a FHIR R4 ActivityDefinition resource."""
+
+    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
 
 
-class ActivityDefinitionPatchSchema(BaseModel):
-    """Request body for updating an ActivityDefinition resource."""
+class ActivityDefinitionPatchSchema(_ActivityDefinitionFields):
+    """PATCH body - a partial FHIR R4 ActivityDefinition (merge-patch semantics on top-level
+    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
+    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
+    entry, an object replaces the whole value, and `null` clears it."""
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {
-                "status": "active",
-                "title": "Updated Blood Glucose Monitoring Activity",
-            }
-        },
-    )
-
-    url: str | None = Field(
-        None, description="Canonical identifier for this activity definition."
-    )
-    identifier: list[ActivityDefinitionIdentifierInput] | None = Field(
-        None, description="Additional identifier for the activity definition."
-    )
-    version: str | None = Field(
-        None, description="Business version of the activity definition."
-    )
-    name: str | None = Field(
-        None, description="Name for this activity definition (computer friendly)."
-    )
-    title: str | None = Field(
-        None, description="Name for this activity definition (human friendly)."
-    )
-    subtitle: str | None = Field(
-        None, description="Sub-title of the activity definition."
-    )
-    status: ActivityDefinitionStatus | None = Field(
-        None, description="draft | active | retired | unknown (PublicationStatus)."
-    )
-    experimental: bool | None = Field(
-        None, description="For testing purposes, not real usage."
-    )
-    date: dt.datetime | None = Field(None, description="Date last changed.")
-    publisher: str | None = Field(
-        None, description="Name of the publisher/organization."
-    )
-    contact: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Contact details for the publisher."
-    )
-    description: str | None = Field(
-        None, description="Natural language description of the activity definition."
-    )
-    use_context: list[ActivityDefinitionUseContextInput] | None = Field(
-        None, description="The context that the content is intended to support."
-    )
-    jurisdiction: list[ActivityDefinitionCodeableConceptInput] | None = Field(
-        None, description="Intended jurisdiction for activity definition."
-    )
-    purpose: str | None = Field(
-        None, description="Why this activity definition is defined."
-    )
-    usage: str | None = Field(
-        None, description="Describes how the definition is intended to be used."
-    )
-    copyright: str | None = Field(None, description="Use and/or publishing rights.")
-    approval_date: dt.date | None = Field(
-        None, description="When the activity definition was approved by publisher."
-    )
-    last_review_date: dt.date | None = Field(
-        None, description="When the activity definition was last reviewed."
-    )
-    effective_period_start: dt.datetime | None = Field(
-        None, description="When the activity definition is expected to be used (start)."
-    )
-    effective_period_end: dt.datetime | None = Field(
-        None, description="When the activity definition is expected to be used (end)."
-    )
-    topic: list[ActivityDefinitionCodeableConceptInput] | None = Field(
-        None, description="E.g. treatment, education, assessment, etc."
-    )
-    author: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who authored the content."
-    )
-    editor: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who edited the content."
-    )
-    reviewer: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who reviewed the content."
-    )
-    endorser: list[ActivityDefinitionContactInput] | None = Field(
-        None, description="Who endorsed the content."
-    )
-    related_artifact: list[ActivityDefinitionRelatedArtifactInput] | None = Field(
-        None, description="Additional documentation, citations, etc."
-    )
-    library: list[str] | None = Field(
-        None, description="Logic framework used by the activity definition."
-    )
-    kind: ActivityDefinitionKind | None = Field(
-        None, description="Kind of activity (ServiceRequest, MedicationRequest, etc.)."
-    )
-    profile: str | None = Field(
-        None, description="What profile the resulting resource conforms to."
-    )
-    code: ActivityDefinitionCodeableConceptInput | None = Field(
-        None, description="Detail type of activity."
-    )
-    intent: ActivityDefinitionIntent | None = Field(
-        None,
-        description="proposal | plan | directive | order | original-order | reflex-order | filler-order | instance-order | option.",
-    )
-    priority: ActivityDefinitionPriority | None = Field(
-        None, description="routine | urgent | asap | stat."
-    )
-    do_not_perform: bool | None = Field(
-        None, description="True if the activity should not be performed."
-    )
-
-    # timing[x]
-    timing_timing: dict | None = Field(
-        None, description="When activity is to occur (Timing)."
-    )
-    timing_date_time: dt.datetime | None = Field(
-        None, description="When activity is to occur (dateTime)."
-    )
-    timing_age_value: float | None = Field(
-        None, description="When activity is to occur (Age value)."
-    )
-    timing_age_unit: str | None = Field(
-        None, description="When activity is to occur (Age unit)."
-    )
-    timing_age_system: str | None = Field(
-        None, description="When activity is to occur (Age system)."
-    )
-    timing_age_code: str | None = Field(
-        None, description="When activity is to occur (Age code)."
-    )
-    timing_period_start: dt.datetime | None = Field(
-        None, description="When activity is to occur (Period start)."
-    )
-    timing_period_end: dt.datetime | None = Field(
-        None, description="When activity is to occur (Period end)."
-    )
-    timing_range_low_value: float | None = Field(
-        None, description="When activity is to occur (Range low value)."
-    )
-    timing_range_low_unit: str | None = Field(
-        None, description="When activity is to occur (Range low unit)."
-    )
-    timing_range_high_value: float | None = Field(
-        None, description="When activity is to occur (Range high value)."
-    )
-    timing_range_high_unit: str | None = Field(
-        None, description="When activity is to occur (Range high unit)."
-    )
-    timing_duration_value: float | None = Field(
-        None, description="When activity is to occur (Duration value)."
-    )
-    timing_duration_unit: str | None = Field(
-        None, description="When activity is to occur (Duration unit)."
-    )
-    timing_duration_system: str | None = Field(
-        None, description="When activity is to occur (Duration system)."
-    )
-    timing_duration_code: str | None = Field(
-        None, description="When activity is to occur (Duration code)."
-    )
-
-    location: str | None = Field(
-        None, description="Where it should happen (Location/123)."
-    )
-    location_display: str | None = Field(None, description="Location display text.")
-    participant: list[ActivityDefinitionParticipantInput] | None = Field(
-        None, description="Who should participate in the action."
-    )
-    product_codeable_concept: ActivityDefinitionCodeableConceptInput | None = Field(
-        None, description="What product is used (CodeableConcept)."
-    )
-    product_reference: str | None = Field(
-        None, description="What product is used (Medication/123 | Substance/123)."
-    )
-    product_display: str | None = Field(None, description="Product display text.")
-    quantity_value: float | None = Field(
-        None, description="How much is required/consumed (value)."
-    )
-    quantity_comparator: ActivityDefinitionQuantityComparator | None = Field(
-        None, description="Quantity comparator."
-    )
-    quantity_unit: str | None = Field(None, description="Quantity unit.")
-    quantity_system: str | None = Field(None, description="Quantity unit system.")
-    quantity_code: str | None = Field(None, description="Quantity coded form.")
-    dosage: list[ActivityDefinitionDosageInput] | None = Field(
-        None, description="Detailed dosage instructions."
-    )
-    body_site: list[ActivityDefinitionCodeableConceptInput] | None = Field(
-        None, description="What part of body to perform on."
-    )
-    specimen_requirement: list[str] | None = Field(
-        None, description="What specimens are required (SpecimenDefinition/123)."
-    )
-    observation_requirement: list[str] | None = Field(
-        None,
-        description="What observation results are required (ObservationDefinition/123).",
-    )
-    observation_result_requirement: list[str] | None = Field(
-        None,
-        description="What observation results are produced (ObservationDefinition/123).",
-    )
-    transform: str | None = Field(
-        None, description="Transform to advance the activity."
-    )
-    dynamic_value: list[ActivityDefinitionDynamicValueInput] | None = Field(
-        None, description="Dynamic aspects of the definition."
-    )
-
-    # subject[x]
-    subject_codeable_concept: ActivityDefinitionCodeableConceptInput | None = Field(
-        None, description="Type of subject for the activity (CodeableConcept)."
-    )
-    subject_reference: str | None = Field(
-        None, description="Type of subject for the activity (Group/123)."
-    )
-    subject_display: str | None = Field(None, description="Subject display text.")
-
-    extension: list[dict] | None = Field(
-        None, description="Additional content defined by implementations."
-    )
+    model_config = {
+        "json_schema_extra": {
+            "example": {"status": "retired", "version": "1.1"},
+        }
+    }

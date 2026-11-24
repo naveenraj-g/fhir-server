@@ -38,6 +38,7 @@ from app.repository.medication_administration.search import (
 from app.repository.medication_dispense.search import (
     medication_dispense_search,
 )
+from app.repository.activity_definition.search import activity_definition_search
 from app.repository.communication.search import communication_search
 from app.repository.communication_request.search import communication_request_search
 from app.repository.consent.search import consent_search
@@ -102,6 +103,10 @@ async def test_search_params_match_registries(client):
         "flag": ("Flag", flag_search()),
         "consent": ("Consent", consent_search()),
         "communication": ("Communication", communication_search()),
+        "activity_definition": (
+            "ActivityDefinition",
+            activity_definition_search(),
+        ),
         "communication_request": (
             "CommunicationRequest",
             communication_request_search(),

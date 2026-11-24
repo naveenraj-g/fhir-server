@@ -7,4 +7,5 @@ __all__ = ["ActivityDefinitionService"]
 
 @trace_methods
 class ActivityDefinitionService(_CoreMixin):
-    """Orchestrates ActivityDefinition CRUD operations and data transformations."""
+    """All ActivityDefinition business logic. __init__ (repository=...) is
+    inherited from _CoreMixin."""

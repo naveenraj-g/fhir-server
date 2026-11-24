@@ -113,6 +113,7 @@ def test_checkable_types_are_the_rebuilt_content_based_resources():
         "Consent",
         "Communication",
         "CommunicationRequest",
+        "ActivityDefinition",
     } <= types
     # the registry still lists old resources whose routes are off: not checked yet
     # not a resource this server has at all

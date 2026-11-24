@@ -55,6 +55,7 @@ from app.repository.medication_administration.search import (
 from app.repository.medication_dispense.search import (
     medication_dispense_search,
 )
+from app.repository.activity_definition.search import activity_definition_search
 from app.repository.communication.search import communication_search
 from app.repository.communication_request.search import communication_request_search
 from app.repository.consent.search import consent_search
@@ -92,6 +93,7 @@ SEARCH_REGISTRIES: dict[str, Callable[[], SearchRegistry]] = {
     "flag": flag_search,
     "consent": consent_search,
     "communication": communication_search,
+    "activity_definition": activity_definition_search,
     "communication_request": communication_request_search,
     "task": task_search,
     "medication_statement": medication_statement_search,

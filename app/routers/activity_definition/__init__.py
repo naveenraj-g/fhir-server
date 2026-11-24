@@ -1,8 +1,6 @@
 from fastapi import APIRouter
 
-from .core import router as core_router
+from . import core
 
 router = APIRouter(prefix="/activity-definitions", tags=["ActivityDefinitions"])
-router.include_router(core_router)
-
-__all__ = ["router"]
+router.include_router(core.router)

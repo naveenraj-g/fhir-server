@@ -1,69 +1,38 @@
-from sqlalchemy import BigInteger, Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Column, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.activity_definition.enums import ActivityDefinitionAssignerReferenceType
-from app.models.enums import IdentifierUse
-from app.models.shared import FhirCodingMixin, TenantAuditMixin
 
 
-class ActivityDefinitionIdentifier(TenantAuditMixin, Base):
-    """ActivityDefinition.identifier (0..*) child table."""
+class ActivityDefinitionIdentifier(Base):
+    """Search index for the `identifier` token parameter (ActivityDefinition.identifier, 0..*).
+    Derived from ActivityDefinitionModel.content - never read to build a response.
+
+    One row per Identifier.type.coding (one row with no type when the identifier has no coded
+    type), so that `identifier:of-type=type-system|type-code|value` can match type and value on the
+    same row.
+
+      identifier            -> system, value
+      identifier:of-type    -> type_system, type_code, value
+      identifier:text       -> type_text_norm / type_display_norm
+
+    No UniqueConstraint on (system, value): FHIR R4 does not require identifier uniqueness."""
 
     __tablename__ = "activity_definition_identifier"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # Named activity_definition_pk (not activity_definition_id) so it cannot be confused with
+    # ActivityDefinitionModel.activity_definition_id, the public id.
     activity_definition_pk = Column(
-        BigInteger,
-        ForeignKey("activity_definition.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+        BigInteger, ForeignKey("activity_definition.id"), nullable=False, index=True
     )
-
-    use = Column(
-        Enum(IdentifierUse, name="activity_definition_identifier_use"),
-        nullable=True,
-    )
-    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
-    value = Column(String, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    assigner_reference = Column(String, nullable=True)
-    assigner_type = Column(
-        Enum(
-            ActivityDefinitionAssignerReferenceType,
-            name="activity_definition_assigner_reference_type",
-        ),
-        nullable=True,
-    )
-    assigner_id = Column(BigInteger, nullable=True, index=True)
-    assigner_display = Column(String, nullable=True)
+    value = Column(String, nullable=True, index=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_text_norm = Column(String, nullable=True)
+    type_display_norm = Column(String, nullable=True)
 
     activity_definition = relationship(
         "ActivityDefinitionModel", back_populates="identifiers"
-    )
-    type_codings = relationship(
-        "ActivityDefinitionIdentifierTypeCoding",
-        back_populates="identifier",
-        cascade="all, delete-orphan",
-    )
-
-
-class ActivityDefinitionIdentifierTypeCoding(FhirCodingMixin, TenantAuditMixin, Base):
-    """ActivityDefinition.identifier.type.coding (0..*) grandchild table."""
-
-    __tablename__ = "activity_definition_identifier_type_coding"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    identifier_id = Column(
-        BigInteger,
-        ForeignKey("activity_definition_identifier.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    identifier = relationship(
-        "ActivityDefinitionIdentifier", back_populates="type_codings"
     )

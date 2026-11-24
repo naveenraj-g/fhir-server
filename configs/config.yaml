@@ -217,7 +217,7 @@ routes:
   # (it manages real FHIR StructureDefinition documents), so it lives at
   # /api/fhir/v1/fhir-profiles, not its own prefix.
   enabled:
-    # - activity_definition
+    - activity_definition
     - allergy_intolerance
     - appointment
     - appointment_response

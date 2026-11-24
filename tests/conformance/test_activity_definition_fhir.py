@@ -1,420 +1,321 @@
 """FHIR R4 conformance for `to_fhir_activity_definition()`, checked against google-fhir-r4.
 
 See tests/conformance/support.py for why this exists and what it does not cover.
+
+ActivityDefinition is stored whole in `content` (like Questionnaire, CarePlan and the other
+content-based resources): the resource lives in ActivityDefinitionModel.content, and
+to_fhir_activity_definition() only stamps `id` and `meta` onto it. So what can go wrong on the
+read side is that stamping (e.g. a malformed meta extension) or a stored document the server
+returns that isn't valid R4 - each case below is a `content` document as the write path would
+store it, run through the real read mapper.
 """
 
 import datetime as dt
 
 import pytest
 
-from app.fhir.mappers.activity_definition import (
-    to_fhir_activity_definition,
-)
-from app.models.activity_definition import (
-    ActivityDefinitionAssignerReferenceType,
-    ActivityDefinitionBodySite,
-    ActivityDefinitionBodySiteCoding,
-    ActivityDefinitionCodeCoding,
-    ActivityDefinitionContact,
-    ActivityDefinitionContactRole,
-    ActivityDefinitionContactTelecom,
-    ActivityDefinitionDosage,
-    ActivityDefinitionDosageRouteCoding,
-    ActivityDefinitionDosageSiteCoding,
-    ActivityDefinitionDynamicValue,
-    ActivityDefinitionIdentifier,
-    ActivityDefinitionIdentifierTypeCoding,
-    ActivityDefinitionIntent,
-    ActivityDefinitionJurisdiction,
-    ActivityDefinitionJurisdictionCoding,
-    ActivityDefinitionKind,
-    ActivityDefinitionModel,
-    ActivityDefinitionParticipant,
-    ActivityDefinitionParticipantRoleCoding,
-    ActivityDefinitionParticipantType,
-    ActivityDefinitionPriority,
-    ActivityDefinitionRelatedArtifact,
-    ActivityDefinitionRelatedArtifactType,
-    ActivityDefinitionStatus,
-    ActivityDefinitionSubjectCoding,
-    ActivityDefinitionTopic,
-    ActivityDefinitionTopicCoding,
-    ActivityDefinitionUseContext,
-)
-from app.models.enums import IdentifierUse
-from app.schemas.enums import ContactPointSystem, ContactPointUse
+from app.fhir.mappers.activity_definition import to_fhir_activity_definition
+from app.models.activity_definition import ActivityDefinitionModel
 
-from .support import assert_valid
+from .support import assert_valid, fhir_json_text
 
-activity_definition_pb2 = pytest.importorskip(
+pb2 = pytest.importorskip(
     "google.fhir.r4.proto.core.resources.activity_definition_pb2",
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-D_DATE = dt.date(2026, 1, 1)
-
-_CHILD_ATTRS = (
-    "identifiers",
-    "contacts",
-    "use_contexts",
-    "jurisdictions",
-    "topics",
-    "body_sites",
-    "code_codings",
-    "subject_codings",
-    "product_codings",
-    "related_artifacts",
-    "participants",
-    "dosages",
-    "dynamic_values",
-    "specimen_requirements",
-    "observation_requirements",
-    "observation_result_requirements",
-)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+SCT = "http://snomed.info/sct"
+LOINC = "http://loinc.org"
+UCUM = "http://unitsofmeasure.org"
+USAGE = "http://terminology.hl7.org/CodeSystem/usage-context-type"
+TOPIC = "http://terminology.hl7.org/CodeSystem/definition-topic"
 
 
-def _activity_definition(**overrides) -> ActivityDefinitionModel:
+def _c(content: dict, **overrides) -> ActivityDefinitionModel:
     fields = {
-        "id": 1,
         "activity_definition_id": 410001,
         "tenant_id": "org-test",
-        "status": ActivityDefinitionStatus.draft,
-        "name": "BloodGlucoseMonitoringActivity",
-        "title": "Blood Glucose Monitoring Activity",
-        "kind": ActivityDefinitionKind.ServiceRequest,
-        "intent": ActivityDefinitionIntent.order,
-        "priority": ActivityDefinitionPriority.routine,
-        "do_not_perform": False,
         "created_by": "u-test",
         "created_at": D,
-        "updated_at": D,
-        "extension": [],
+        "content": content,
     }
     fields.update(overrides)
-    ad = ActivityDefinitionModel(**fields)
-    for attr in _CHILD_ATTRS:
-        if getattr(ad, attr, None) is None:
-            setattr(ad, attr, [])
-    return ad
+    return ActivityDefinitionModel(**fields)
 
 
-def test_minimal_activity_definition_conforms():
-    ad = _activity_definition()
-    out = to_fhir_activity_definition(ad)
+def _base(**extra) -> dict:
+    return {"status": "active", **extra}
+
+
+def _case(**extra) -> ActivityDefinitionModel:
+    return _c(_base(**extra))
+
+
+CASES = {
+    "minimal": _c(_base()),
+    "updated_by_and_updated_at": _c(_base(), updated_by="u-other", updated_at=D),
+    **{
+        f"status_{s}": _case(status=s)
+        for s in ("draft", "active", "retired", "unknown")
+    },
+    "url_version_name_title": _case(
+        url="https://fhir-server.dev/fhir/ActivityDefinition/x",
+        version="1.0",
+        name="FollowUp",
+        title="Follow-up visit",
+        subtitle="Book it",
+        experimental=True,
+    ),
+    "identifier_with_type_and_assigner": _case(
+        identifier=[
+            {
+                "use": "official",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                            "code": "ACSN",
+                        }
+                    ]
+                },
+                "system": "https://fhir-server.dev/fhir/identifier-system/activity-definition-id",
+                "value": "AD-1",
+                "period": {"start": "2020-01-01"},
+                "assigner": {"reference": "Organization/190001"},
+            }
+        ]
+    ),
+    "date_publisher_description": _case(
+        date="2026-01-15T10:00:00Z",
+        publisher="Example Health",
+        description="Book a **follow-up** visit.",
+        purpose="Follow-up",
+        usage="After discharge",
+        copyright="(c) Example",
+    ),
+    "approval_and_review_dates": _case(
+        approvalDate="2026-01-10", lastReviewDate="2026-01-12"
+    ),
+    "effective_period": _case(
+        effectivePeriod={"start": "2026-01-01", "end": "2026-12-31"}
+    ),
+    "contact_and_roles": _case(
+        contact=[
+            {"name": "Help desk", "telecom": [{"system": "phone", "value": "555"}]}
+        ],
+        author=[{"name": "Dr A"}],
+        editor=[{"name": "Dr B"}],
+        reviewer=[{"name": "Dr C"}],
+        endorser=[{"name": "Dr D"}],
+    ),
+    "use_context_every_value_kind": _case(
+        useContext=[
+            {
+                "code": {"system": USAGE, "code": "focus"},
+                "valueCodeableConcept": {
+                    "coding": [{"system": SCT, "code": "35489007"}]
+                },
+            },
+            {
+                "code": {"system": USAGE, "code": "age"},
+                "valueRange": {
+                    "low": {"value": 12, "system": UCUM, "code": "a"},
+                    "high": {"value": 17, "system": UCUM, "code": "a"},
+                },
+            },
+            {
+                "code": {"system": USAGE, "code": "venue"},
+                "valueQuantity": {
+                    "value": 5,
+                    "unit": "mg",
+                    "system": UCUM,
+                    "code": "mg",
+                },
+            },
+            {
+                "code": {"system": USAGE, "code": "workflow"},
+                "valueReference": {"reference": "Organization/190001"},
+            },
+        ]
+    ),
+    "jurisdiction_and_topic": _case(
+        jurisdiction=[{"coding": [{"system": "urn:iso:std:iso:3166", "code": "US"}]}],
+        topic=[{"coding": [{"system": TOPIC, "code": "treatment"}]}, {"text": "x"}],
+    ),
+    "related_artifacts": _case(
+        relatedArtifact=[
+            {
+                "type": "documentation",
+                "display": "Guide",
+                "url": "http://example.org/g",
+            },
+            {
+                "type": "predecessor",
+                "resource": "http://example.org/ActivityDefinition/old",
+            },
+            {"type": "composed-of", "resource": "http://example.org/Library/x|1.0"},
+            {"type": "citation", "citation": "A. Author. 2020."},
+        ],
+        library=["http://example.org/Library/lib1"],
+    ),
+    "subject_codeable_concept": _case(subjectCodeableConcept={"text": "adults"}),
+    "subject_reference": _case(subjectReference={"reference": "Group/430001"}),
+    "kind_profile_code": _case(
+        kind="ServiceRequest",
+        profile="http://example.org/StructureDefinition/my-request",
+        code={"coding": [{"system": LOINC, "code": "44249-1"}]},
+        intent="order",
+        priority="routine",
+        doNotPerform=False,
+    ),
+    **{
+        f"intent_{i}": _case(intent=i)
+        for i in (
+            "proposal",
+            "plan",
+            "directive",
+            "order",
+            "original-order",
+            "reflex-order",
+            "filler-order",
+            "instance-order",
+            "option",
+        )
+    },
+    **{
+        f"priority_{p}": _case(priority=p)
+        for p in ("routine", "urgent", "asap", "stat")
+    },
+    "timing_timing": _case(
+        timingTiming={"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}}
+    ),
+    "timing_date_time": _case(timingDateTime="2026-02-01T09:00:00Z"),
+    "timing_age": _case(
+        timingAge={"value": 3, "unit": "years", "system": UCUM, "code": "a"}
+    ),
+    "timing_period": _case(timingPeriod={"start": "2026-01-01", "end": "2026-02-01"}),
+    "timing_range": _case(timingRange={"low": {"value": 1}, "high": {"value": 2}}),
+    "timing_duration": _case(
+        timingDuration={"value": 4, "unit": "h", "system": UCUM, "code": "h"}
+    ),
+    "location_and_participant": _case(
+        location={"reference": "Location/230001"},
+        participant=[
+            {"type": "practitioner", "role": {"text": "nurse"}},
+            {"type": "patient"},
+        ],
+    ),
+    "product_reference": _case(productReference={"reference": "Medication/250001"}),
+    "product_codeable_concept": _case(productCodeableConcept={"text": "saline"}),
+    "quantity_and_dosage": _case(
+        quantity={"value": 2, "unit": "mL"},
+        dosage=[{"sequence": 1, "text": "2 mL once", "route": {"text": "oral"}}],
+        bodySite=[{"text": "arm"}],
+    ),
+    "requirements": _case(
+        specimenRequirement=[{"reference": "SpecimenDefinition/550001"}],
+        observationRequirement=[{"reference": "ObservationDefinition/400001"}],
+        observationResultRequirement=[{"reference": "ObservationDefinition/400002"}],
+    ),
+    "transform_and_dynamic_values": _case(
+        transform="http://example.org/StructureMap/t1",
+        dynamicValue=[
+            {
+                "path": "priority",
+                "expression": {"language": "text/cql", "expression": "Urgent()"},
+            }
+        ],
+    ),
+    "extension": _case(
+        extension=[
+            {
+                "url": "https://fhir-server.dev/fhir/StructureDefinition/x",
+                "valueString": "y",
+            }
+        ]
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CASES), ids=sorted(CASES))
+def test_activity_definition_mapper_emits_valid_fhir_r4(case):
+    assert_valid(pb2.ActivityDefinition, to_fhir_activity_definition(CASES[case]))
+
+
+def test_mapper_serves_content_unchanged():
+    content = _base(name="FollowUp", priority="stat", dosage=[{"text": "x"}])
+    out = to_fhir_activity_definition(_c(content))
     assert out["resourceType"] == "ActivityDefinition"
     assert out["id"] == "410001"
-    assert out["status"] == "draft"
-    assert out["name"] == "BloodGlucoseMonitoringActivity"
-    assert out["title"] == "Blood Glucose Monitoring Activity"
-    assert out["kind"] == "ServiceRequest"
-    assert out["intent"] == "order"
-    assert out["priority"] == "routine"
-    assert out["doNotPerform"] is False
-    assert_valid(activity_definition_pb2.ActivityDefinition, out)
+    assert {
+        k: v for k, v in out.items() if k not in ("resourceType", "id", "meta")
+    } == content
 
 
-def test_activity_definition_identifiers_conforms():
-    ident = ActivityDefinitionIdentifier(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        use=IdentifierUse.official,
-        type_text="Definition ID",
-        system="http://example.org/act-def",
-        value="AD-999",
-        period_start=D,
-        period_end=D,
-        assigner_reference="Organization/190001",
-        assigner_type=ActivityDefinitionAssignerReferenceType.Organization,
-        assigner_id=190001,
-        assigner_display="Acme Hospital",
-        created_by="u-test",
-    )
-    ident.type_codings = [
-        ActivityDefinitionIdentifierTypeCoding(
-            id=1,
-            identifier_id=1,
-            tenant_id="org-test",
-            system="http://terminology.hl7.org/CodeSystem/v2-0203",
-            code="PLAC",
-            display="Placer Identifier",
-            created_by="u-test",
+# -- Guarding the oracle ---------------------------------------------------------------------
+# If google-fhir-r4 ever stops validating - a version bump, a changed API, a
+# silently-swallowed error - every test above would keep passing while checking
+# nothing. These deliberately-broken payloads prove the check still has teeth.
+# (Not covered by the oracle, as noted in CLAUDE.md: a single-element array
+# where the spec says 0..1 - `code`, `location` or `quantity` as a one-item list; the
+# integration tests cover what they can.)
+
+
+@pytest.mark.parametrize(
+    "label,broken",
+    [
+        ("misspelled element", {"typo": "x"}),
+        ("status with an unknown code", {"status": "robot"}),
+        ("status as number", {"status": 1}),
+        ("kind with an unknown code", {"kind": "Banana"}),
+        ("intent with an unknown code", {"intent": "maybe"}),
+        ("priority with an unknown code", {"priority": "now"}),
+        ("identifier as object not a list", {"identifier": {"value": "x"}}),
+        ("url as number", {"url": 5}),
+        ("experimental as string", {"experimental": "yes"}),
+        ("date not a dateTime", {"date": "yesterday"}),
+        ("approvalDate with a time", {"approvalDate": "not-a-date"}),
+        ("contact as object not a list", {"contact": {"name": "x"}}),
+        ("useContext as string", {"useContext": "x"}),
+        (
+            "useContext entry without a code",
+            {"useContext": [{"valueReference": {"reference": "Patient/1"}}]},
+        ),
+        ("jurisdiction as string", {"jurisdiction": "US"}),
+        ("topic as object not a list", {"topic": {"text": "x"}}),
+        ("effectivePeriod as string", {"effectivePeriod": "2026"}),
+        ("relatedArtifact as object", {"relatedArtifact": {"type": "x"}}),
+        (
+            "relatedArtifact with an unknown type",
+            {"relatedArtifact": [{"type": "banana"}]},
+        ),
+        ("library as string", {"library": "http://x"}),
+        ("doNotPerform as string", {"doNotPerform": "maybe"}),
+        ("timingDateTime not a dateTime", {"timingDateTime": "tomorrow"}),
+        ("location as string", {"location": "Location/1"}),
+        ("participant as object", {"participant": {"type": "patient"}}),
+        ("participant with an unknown type", {"participant": [{"type": "banana"}]}),
+        ("quantity as string", {"quantity": "2 mL"}),
+        ("dosage as object not a list", {"dosage": {"text": "x"}}),
+        ("bodySite as object", {"bodySite": {"text": "x"}}),
+        (
+            "specimenRequirement as object",
+            {"specimenRequirement": {"reference": "SpecimenDefinition/1"}},
+        ),
+        ("dynamicValue as object", {"dynamicValue": {"path": "x"}}),
+    ],
+)
+def test_validator_rejects_invalid_fhir(label, broken):
+    from google.fhir.r4 import json_format
+
+    payload = {
+        "resourceType": "ActivityDefinition",
+        "id": "410001",
+        **_base(),
+        **broken,
+    }
+    with pytest.raises(Exception):  # noqa: B017 - the library raises several types
+        json_format.json_fhir_string_to_proto(
+            fhir_json_text(payload), pb2.ActivityDefinition, validate=True
         )
-    ]
-    ad = _activity_definition(identifiers=[ident])
-    out = to_fhir_activity_definition(ad)
-    assert len(out["identifier"]) == 1
-    i = out["identifier"][0]
-    assert i["use"] == "official"
-    assert i["value"] == "AD-999"
-    assert i["system"] == "http://example.org/act-def"
-    assert i["type"]["text"] == "Definition ID"
-    assert i["assigner"]["reference"] == "Organization/190001"
-    assert_valid(activity_definition_pb2.ActivityDefinition, out)
-
-
-def test_activity_definition_contacts_conforms():
-    c = ActivityDefinitionContact(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        role=ActivityDefinitionContactRole.contact,
-        name="Clinical Protocols Committee",
-        created_by="u-test",
-    )
-    c.telecoms = [
-        ActivityDefinitionContactTelecom(
-            id=1,
-            activity_definition_contact_id=1,
-            tenant_id="org-test",
-            system=ContactPointSystem.email,
-            value="protocols@example.org",
-            use=ContactPointUse.work,
-            rank=1,
-            created_by="u-test",
-        )
-    ]
-    author = ActivityDefinitionContact(
-        id=2,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        role=ActivityDefinitionContactRole.author,
-        name="Dr. Author",
-        created_by="u-test",
-    )
-    author.telecoms = []
-
-    ad = _activity_definition(contacts=[c, author])
-    out = to_fhir_activity_definition(ad)
-    assert len(out["contact"]) == 1
-    assert out["contact"][0]["name"] == "Clinical Protocols Committee"
-    assert out["contact"][0]["telecom"][0]["value"] == "protocols@example.org"
-    assert len(out["author"]) == 1
-    assert out["author"][0]["name"] == "Dr. Author"
-    assert_valid(activity_definition_pb2.ActivityDefinition, out)
-
-
-def test_activity_definition_use_context_and_jurisdiction_conforms():
-    uc = ActivityDefinitionUseContext(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        system="http://terminology.hl7.org/CodeSystem/usage-context-type",
-        code="venue",
-        display="Clinical Venue",
-        value_codeable_concept_text="Inpatient",
-        created_by="u-test",
-    )
-    uc.value_codings = []
-
-    jur = ActivityDefinitionJurisdiction(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        text="US",
-        created_by="u-test",
-    )
-    jur.codings = [
-        ActivityDefinitionJurisdictionCoding(
-            id=1,
-            activity_definition_jurisdiction_id=1,
-            tenant_id="org-test",
-            system="urn:iso:std:iso:3166",
-            code="US",
-            display="United States of America",
-            created_by="u-test",
-        )
-    ]
-
-    top = ActivityDefinitionTopic(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        text="Endocrinology",
-        created_by="u-test",
-    )
-    top.codings = [
-        ActivityDefinitionTopicCoding(
-            id=1,
-            activity_definition_topic_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="394583002",
-            display="Endocrinology",
-            created_by="u-test",
-        )
-    ]
-
-    ad = _activity_definition(
-        use_contexts=[uc],
-        jurisdictions=[jur],
-        topics=[top],
-        approval_date=D_DATE,
-        last_review_date=D_DATE,
-    )
-    out = to_fhir_activity_definition(ad)
-    assert len(out["useContext"]) == 1
-    assert out["useContext"][0]["code"]["code"] == "venue"
-    assert out["useContext"][0]["valueCodeableConcept"]["text"] == "Inpatient"
-    assert len(out["jurisdiction"]) == 1
-    assert out["jurisdiction"][0]["coding"][0]["code"] == "US"
-    assert len(out["topic"]) == 1
-    assert out["topic"][0]["coding"][0]["code"] == "394583002"
-    assert out["approvalDate"] == "2026-01-01"
-    assert out["lastReviewDate"] == "2026-01-01"
-    assert_valid(activity_definition_pb2.ActivityDefinition, out)
-
-
-def test_activity_definition_full_conforms():
-    # participant
-    part = ActivityDefinitionParticipant(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        type=ActivityDefinitionParticipantType.practitioner,
-        role_text="Primary Nurse",
-        created_by="u-test",
-    )
-    part.role_codings = [
-        ActivityDefinitionParticipantRoleCoding(
-            id=1,
-            activity_definition_participant_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="224535009",
-            display="Registered nurse",
-            created_by="u-test",
-        )
-    ]
-
-    # dosage
-    dosage = ActivityDefinitionDosage(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        sequence=1,
-        text="Take 1 tablet daily",
-        patient_instruction="Take with food",
-        timing={"repeat": {"frequency": 1, "period": 1, "periodUnit": "d"}},
-        as_needed_boolean=False,
-        site_text="Oral",
-        route_text="Oral",
-        method_text="Swallow",
-        created_by="u-test",
-    )
-    dosage.site_codings = [
-        ActivityDefinitionDosageSiteCoding(
-            id=1,
-            activity_definition_dosage_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="181220002",
-            display="Entire oral cavity",
-            created_by="u-test",
-        )
-    ]
-    dosage.route_codings = [
-        ActivityDefinitionDosageRouteCoding(
-            id=1,
-            activity_definition_dosage_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="260548002",
-            display="Oral",
-            created_by="u-test",
-        )
-    ]
-    dosage.method_codings = []
-    dosage.as_needed_codings = []
-
-    # body site
-    bs = ActivityDefinitionBodySite(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        text="Left Arm",
-        created_by="u-test",
-    )
-    bs.codings = [
-        ActivityDefinitionBodySiteCoding(
-            id=1,
-            activity_definition_body_site_id=1,
-            tenant_id="org-test",
-            system="http://snomed.info/sct",
-            code="368208006",
-            display="Left upper arm structure",
-            created_by="u-test",
-        )
-    ]
-
-    # related artifact
-    ra = ActivityDefinitionRelatedArtifact(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        type=ActivityDefinitionRelatedArtifactType.documentation,
-        label="Guideline",
-        display="ADA 2026 Standards of Care",
-        url="https://diabetesjournals.org/care",
-        created_by="u-test",
-    )
-
-    # dynamic value
-    dv = ActivityDefinitionDynamicValue(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        path="priority",
-        expression_description="Dynamic priority",
-        expression_language="text/cql",
-        expression_expression="CalculatePriority()",
-        created_by="u-test",
-    )
-
-    code_coding = ActivityDefinitionCodeCoding(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="35335000",
-        display="Blood glucose measurement",
-        created_by="u-test",
-    )
-
-    subj_coding = ActivityDefinitionSubjectCoding(
-        id=1,
-        activity_definition_pk=1,
-        tenant_id="org-test",
-        system="http://snomed.info/sct",
-        code="116154003",
-        display="Patient",
-        created_by="u-test",
-    )
-
-    ad = _activity_definition(
-        code_text="Blood glucose measurement",
-        code_codings=[code_coding],
-        subject_codeable_concept_text="Patient",
-        subject_codings=[subj_coding],
-        participants=[part],
-        dosages=[dosage],
-        body_sites=[bs],
-        related_artifacts=[ra],
-        dynamic_values=[dv],
-        timing_date_time=D,
-        extension=[{"url": "http://example.org/ext", "valueString": "custom"}],
-    )
-    out = to_fhir_activity_definition(ad)
-    assert out["code"]["coding"][0]["code"] == "35335000"
-    assert out["subjectCodeableConcept"]["coding"][0]["code"] == "116154003"
-    assert len(out["participant"]) == 1
-    assert out["participant"][0]["type"] == "practitioner"
-    assert len(out["dosage"]) == 1
-    assert out["dosage"][0]["sequence"] == 1
-    assert len(out["bodySite"]) == 1
-    assert len(out["relatedArtifact"]) == 1
-    assert len(out["dynamicValue"]) == 1
-    assert out["dynamicValue"][0]["expression"]["expression"] == "CalculatePriority()"
-    assert len(out["extension"]) == 1
-    assert_valid(activity_definition_pb2.ActivityDefinition, out)

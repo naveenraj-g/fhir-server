@@ -1,266 +1,160 @@
-import datetime as dt
-from typing import Literal
+from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
-from app.schemas.activity_definition.response.contact import (
-    FHIRActivityDefinitionContact,
-    PlainActivityDefinitionContact,
-)
-from app.schemas.activity_definition.response.dosage import (
-    FHIRActivityDefinitionDosage,
-    PlainActivityDefinitionDosage,
-)
-from app.schemas.activity_definition.response.dynamic_value import (
-    FHIRActivityDefinitionDynamicValue,
-    PlainActivityDefinitionDynamicValue,
-)
-from app.schemas.activity_definition.response.identifier import (
-    PlainActivityDefinitionIdentifier,
-)
-from app.schemas.activity_definition.response.participant import (
-    FHIRActivityDefinitionParticipant,
-    PlainActivityDefinitionParticipant,
-)
-from app.schemas.activity_definition.response.related_artifact import (
-    FHIRActivityDefinitionRelatedArtifact,
-    PlainActivityDefinitionRelatedArtifact,
-)
-from app.schemas.activity_definition.response.use_context import (
-    FHIRActivityDefinitionUseContext,
-    PlainActivityDefinitionUseContext,
-)
 from app.schemas.datatypes import (
+    FHIRBundle,
     FHIRCodeableConcept,
     FHIRIdentifier,
     FHIRMeta,
     FHIRPeriod,
-    FHIRQuantity,
-    FHIRRange,
     FHIRReference,
-    PlainCodingRow,
 )
-
-
-class PlainActivityDefinitionConcept(BaseModel):
-    """Plain representation of a 0..* CodeableConcept child entry."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Internal row ID.")
-    text: str | None = None
-    codings: list[PlainCodingRow] | None = None
-
-
-class PlainActivityDefinitionSingleConcept(BaseModel):
-    """Plain representation of a 0..1 CodeableConcept."""
-
-    model_config = ConfigDict(extra="allow")
-
-    text: str | None = None
-    codings: list[PlainCodingRow] | None = None
-
-
-class PlainActivityDefinitionRequirement(BaseModel):
-    """Plain representation of a Requirement Reference entry."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Internal row ID.")
-    reference: str | None = None
-    display: str | None = None
+from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 
 
 class FHIRActivityDefinitionSchema(BaseModel):
-    """FHIR R4 ActivityDefinition resource schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["ActivityDefinition"] = "ActivityDefinition"
-    id: str | None = None
-    meta: FHIRMeta | None = None
-    url: str | None = None
-    identifier: list[FHIRIdentifier] | None = None
-    version: str | None = None
-    name: str | None = None
-    title: str | None = None
-    subtitle: str | None = None
-    status: str = Field(..., description="draft | active | retired | unknown.")
-    experimental: bool | None = None
-    date: dt.datetime | None = None
-    publisher: str | None = None
-    contact: list[FHIRActivityDefinitionContact] | None = None
-    description: str | None = None
-    useContext: list[FHIRActivityDefinitionUseContext] | None = None
-    jurisdiction: list[FHIRCodeableConcept] | None = None
-    purpose: str | None = None
-    usage: str | None = None
-    copyright: str | None = None
-    approvalDate: dt.date | None = None
-    lastReviewDate: dt.date | None = None
-    effectivePeriod: FHIRPeriod | None = None
-    topic: list[FHIRCodeableConcept] | None = None
-    author: list[FHIRActivityDefinitionContact] | None = None
-    editor: list[FHIRActivityDefinitionContact] | None = None
-    reviewer: list[FHIRActivityDefinitionContact] | None = None
-    endorser: list[FHIRActivityDefinitionContact] | None = None
-    relatedArtifact: list[FHIRActivityDefinitionRelatedArtifact] | None = None
-    library: list[str] | None = None
-    kind: str | None = None
-    profile: str | None = None
-    code: FHIRCodeableConcept | None = None
-    intent: str | None = None
-    priority: str | None = None
-    doNotPerform: bool | None = None
-
-    timingTiming: dict | None = None
-    timingDateTime: dt.datetime | None = None
-    timingAge: FHIRQuantity | None = None
-    timingPeriod: FHIRPeriod | None = None
-    timingRange: FHIRRange | None = None
-    timingDuration: FHIRQuantity | None = None
-
-    location: FHIRReference | None = None
-    participant: list[FHIRActivityDefinitionParticipant] | None = None
-    productCodeableConcept: FHIRCodeableConcept | None = None
-    productReference: FHIRReference | None = None
-    quantity: FHIRQuantity | None = None
-    dosage: list[FHIRActivityDefinitionDosage] | None = None
-    bodySite: list[FHIRCodeableConcept] | None = None
-    specimenRequirement: list[FHIRReference] | None = None
-    observationRequirement: list[FHIRReference] | None = None
-    observationResultRequirement: list[FHIRReference] | None = None
-    transform: str | None = None
-    dynamicValue: list[FHIRActivityDefinitionDynamicValue] | None = None
-    subjectCodeableConcept: FHIRCodeableConcept | None = None
-    subjectReference: FHIRReference | None = None
-
-    extension: list[dict] | None = None
-
-
-class PlainActivityDefinitionResponse(BaseModel):
-    """Plain (snake_case) ActivityDefinition response schema."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: int = Field(..., description="Public sequence ID.")
-    tenant_id: str = Field(..., description="Owning tenant/organization ID.")
-    url: str | None = None
-    identifier: list[PlainActivityDefinitionIdentifier] | None = None
-    version: str | None = None
-    name: str | None = None
-    title: str | None = None
-    subtitle: str | None = None
-    status: str
-    experimental: bool | None = None
-    date: dt.datetime | None = None
-    publisher: str | None = None
-    contact: list[PlainActivityDefinitionContact] | None = None
-    description: str | None = None
-    use_context: list[PlainActivityDefinitionUseContext] | None = None
-    jurisdiction: list[PlainActivityDefinitionConcept] | None = None
-    purpose: str | None = None
-    usage: str | None = None
-    copyright: str | None = None
-    approval_date: dt.date | None = None
-    last_review_date: dt.date | None = None
-    effective_period_start: dt.datetime | None = None
-    effective_period_end: dt.datetime | None = None
-    topic: list[PlainActivityDefinitionConcept] | None = None
-    author: list[PlainActivityDefinitionContact] | None = None
-    editor: list[PlainActivityDefinitionContact] | None = None
-    reviewer: list[PlainActivityDefinitionContact] | None = None
-    endorser: list[PlainActivityDefinitionContact] | None = None
-    related_artifact: list[PlainActivityDefinitionRelatedArtifact] | None = None
-    library: list[str] | None = None
-    kind: str | None = None
-    profile: str | None = None
-    code: PlainActivityDefinitionSingleConcept | None = None
-    intent: str | None = None
-    priority: str | None = None
-    do_not_perform: bool | None = None
-
-    timing_timing: dict | None = None
-    timing_date_time: dt.datetime | None = None
-    timing_age_value: float | None = None
-    timing_age_unit: str | None = None
-    timing_age_system: str | None = None
-    timing_age_code: str | None = None
-    timing_period_start: dt.datetime | None = None
-    timing_period_end: dt.datetime | None = None
-    timing_range_low_value: float | None = None
-    timing_range_low_unit: str | None = None
-    timing_range_high_value: float | None = None
-    timing_range_high_unit: str | None = None
-    timing_duration_value: float | None = None
-    timing_duration_unit: str | None = None
-    timing_duration_system: str | None = None
-    timing_duration_code: str | None = None
-
-    location: str | None = None
-    location_display: str | None = None
-    participant: list[PlainActivityDefinitionParticipant] | None = None
-    product_codeable_concept: PlainActivityDefinitionSingleConcept | None = None
-    product_reference: str | None = None
-    product_display: str | None = None
-    quantity_value: float | None = None
-    quantity_comparator: str | None = None
-    quantity_unit: str | None = None
-    quantity_system: str | None = None
-    quantity_code: str | None = None
-    dosage: list[PlainActivityDefinitionDosage] | None = None
-    body_site: list[PlainActivityDefinitionConcept] | None = None
-    specimen_requirement: list[PlainActivityDefinitionRequirement] | None = None
-    observation_requirement: list[PlainActivityDefinitionRequirement] | None = None
-    observation_result_requirement: list[PlainActivityDefinitionRequirement] | None = (
-        None
+    resourceType: str = Field(
+        "ActivityDefinition", description="Always 'ActivityDefinition'."
     )
-    transform: str | None = None
-    dynamic_value: list[PlainActivityDefinitionDynamicValue] | None = None
-
-    subject_codeable_concept: PlainActivityDefinitionSingleConcept | None = None
-    subject_reference: str | None = None
-    subject_display: str | None = None
-
-    extension: list[dict] | None = None
-    created_by: str = Field(..., description="Creator user ID.")
-    updated_by: str | None = Field(None, description="Last updater user ID.")
-    created_at: dt.datetime = Field(..., description="Creation timestamp.")
-    updated_at: dt.datetime = Field(..., description="Last update timestamp.")
-
-
-class PaginatedActivityDefinitionResponse(BaseModel):
-    """Paginated plain ActivityDefinition list response."""
-
-    model_config = ConfigDict(extra="allow")
-
-    data: list[PlainActivityDefinitionResponse] = Field(
-        ..., description="List of activity definitions."
+    id: str = Field(..., description="Public activity_definition_id as a string.")
+    meta: FHIRMeta | None = Field(
+        None,
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
     )
-    total: int | None = Field(None, description="Total matching records.")
-    limit: int = Field(..., description="Page size.")
-    offset: int = Field(..., description="Page offset.")
+    extension: list[dict] | None = Field(
+        None,
+        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
+    )
+    url: str | None = Field(None, description="Canonical identifier (a URI).")
+    identifier: list[FHIRIdentifier] | None = Field(
+        None, description="Additional identifier."
+    )
+    version: str | None = Field(None, description="Business version.")
+    name: str | None = Field(None, description="Name (computer friendly).")
+    title: str | None = Field(None, description="Name (human friendly).")
+    subtitle: str | None = Field(None, description="Subordinate title.")
+    status: str | None = Field(None, description="draft | active | retired | unknown.")
+    experimental: bool | None = Field(
+        None, description="For testing purposes, not real usage."
+    )
+    subjectCodeableConcept: FHIRCodeableConcept | None = Field(
+        None,
+        description="subject[x]: type of individual the activity definition is intended for.",
+    )
+    subjectReference: FHIRReference | None = Field(
+        None, description="subject[x]: Reference(Group)."
+    )
+    date: str | None = Field(None, description="Date last changed.")
+    publisher: str | None = Field(None, description="Name of the publisher.")
+    contact: list[dict] | None = Field(
+        None, description="Contact details for the publisher."
+    )
+    description: str | None = Field(None, description="Natural language description.")
+    useContext: list[dict] | None = Field(
+        None, description="The context that the content is intended to support."
+    )
+    jurisdiction: list[FHIRCodeableConcept] | None = Field(
+        None, description="Intended jurisdiction."
+    )
+    purpose: str | None = Field(
+        None, description="Why this activity definition is defined."
+    )
+    usage: str | None = Field(
+        None, description="Describes the clinical usage of the activity definition."
+    )
+    copyright: str | None = Field(
+        None, description="Use and/or publishing restrictions."
+    )
+    approvalDate: str | None = Field(
+        None, description="When approved by the publisher."
+    )
+    lastReviewDate: str | None = Field(None, description="When last reviewed.")
+    effectivePeriod: FHIRPeriod | None = Field(
+        None, description="When expected to be used."
+    )
+    topic: list[FHIRCodeableConcept] | None = Field(
+        None, description="E.g. Education, Treatment, Assessment."
+    )
+    author: list[dict] | None = Field(None, description="Who authored the content.")
+    editor: list[dict] | None = Field(None, description="Who edited the content.")
+    reviewer: list[dict] | None = Field(None, description="Who reviewed the content.")
+    endorser: list[dict] | None = Field(None, description="Who endorsed the content.")
+    relatedArtifact: list[dict] | None = Field(
+        None, description="Additional documentation, citations, etc."
+    )
+    library: list[str] | None = Field(
+        None, description="Logic used by the activity definition."
+    )
+    kind: str | None = Field(None, description="Kind of resource.")
+    profile: str | None = Field(
+        None, description="What profile the resource needs to conform to."
+    )
+    code: FHIRCodeableConcept | None = Field(
+        None, description="Detail type of activity."
+    )
+    intent: str | None = Field(
+        None, description="proposal | plan | directive | order | ... | option."
+    )
+    priority: str | None = Field(None, description="routine | urgent | asap | stat.")
+    doNotPerform: bool | None = Field(
+        None, description="True if the activity should not be performed."
+    )
+    timingTiming: dict | None = Field(None, description="timing[x]: Timing.")
+    timingDateTime: str | None = Field(None, description="timing[x]: dateTime.")
+    timingAge: dict | None = Field(None, description="timing[x]: Age.")
+    timingPeriod: FHIRPeriod | None = Field(None, description="timing[x]: Period.")
+    timingRange: dict | None = Field(None, description="timing[x]: Range.")
+    timingDuration: dict | None = Field(None, description="timing[x]: Duration.")
+    location: FHIRReference | None = Field(None, description="Where it should happen.")
+    participant: list[dict] | None = Field(
+        None, description="Who should participate in the action."
+    )
+    productReference: FHIRReference | None = Field(
+        None, description="product[x]: Reference(Medication | Substance)."
+    )
+    productCodeableConcept: FHIRCodeableConcept | None = Field(
+        None, description="product[x]: CodeableConcept."
+    )
+    quantity: dict | None = Field(
+        None, description="How much is administered/consumed/supplied."
+    )
+    dosage: list[dict] | None = Field(None, description="Detailed dosage instructions.")
+    bodySite: list[FHIRCodeableConcept] | None = Field(
+        None, description="What part of body to perform on."
+    )
+    specimenRequirement: list[FHIRReference] | None = Field(
+        None, description="What specimens are required."
+    )
+    observationRequirement: list[FHIRReference] | None = Field(
+        None, description="What observations are required."
+    )
+    observationResultRequirement: list[FHIRReference] | None = Field(
+        None, description="What observations must be produced."
+    )
+    transform: str | None = Field(None, description="Transform to apply the template.")
+    dynamicValue: list[dict] | None = Field(
+        None, description="Dynamic aspects of the definition."
+    )
 
 
 class FHIRActivityDefinitionBundleEntry(BaseModel):
-    """Single entry in an ActivityDefinition FHIR Bundle."""
-
-    model_config = ConfigDict(extra="allow")
-
-    fullUrl: str | None = Field(None, description="Full URL for resource.")
-    resource: FHIRActivityDefinitionSchema = Field(
-        ..., description="ActivityDefinition resource."
+    fullUrl: str | None = Field(
+        None, description="Absolute URL of the resource (absent on an outcome entry)."
     )
-
-
-class FHIRActivityDefinitionBundle(BaseModel):
-    """FHIR R4 Bundle for ActivityDefinition resources."""
-
-    model_config = ConfigDict(extra="allow")
-
-    resourceType: Literal["Bundle"] = "Bundle"
-    type: str = Field("searchset", description="Bundle type.")
-    total: int | None = Field(None, description="Total matching records.")
-    entry: list[FHIRActivityDefinitionBundleEntry] = Field(
-        default_factory=list, description="Bundle entries."
+    resource: FHIRActivityDefinitionSchema | dict = Field(
+        ...,
+        description="An ActivityDefinition (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
+    search: FHIRBundleEntrySearch
+
+
+class FHIRActivityDefinitionBundle(FHIRBundle):
+    total: int | None = Field(
+        None,
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
+    )
+    link: list[FHIRBundleLink] = Field(
+        ..., description="Paging links: self, first, previous, next, last."
+    )
+    entry: list[FHIRActivityDefinitionBundleEntry] | None = None

@@ -45,6 +45,9 @@ from tests.integration.medication_dispense.support import (
 from tests.integration.medication_administration.support import (
     medication_administration_body,
 )
+from tests.integration.activity_definition.support import (
+    activity_definition_body,
+)
 from tests.integration.communication.support import communication_body
 from tests.integration.communication_request.support import (
     communication_request_body,
@@ -132,6 +135,10 @@ CASES = {
     "Goal": (f"{API}/goals", _fixed(goal_body)),
     "Flag": (f"{API}/flags", _fixed(flag_body)),
     "Consent": (f"{API}/consents", _fixed(consent_body)),
+    "ActivityDefinition": (
+        f"{API}/activity-definitions",
+        _fixed(activity_definition_body),
+    ),
     "Communication": (f"{API}/communications", _fixed(communication_body)),
     "CommunicationRequest": (
         f"{API}/communication-requests",

@@ -1,250 +1,133 @@
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    Date,
-    DateTime,
-    Enum,
-    Numeric,
-    Sequence,
-    String,
-    Text,
-)
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy import BigInteger, Column, DateTime, Enum, Index, Sequence, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import FHIRBase as Base
-from app.models.activity_definition.enums import (
-    ActivityDefinitionIntent,
-    ActivityDefinitionKind,
-    ActivityDefinitionLocationReferenceType,
-    ActivityDefinitionPriority,
-    ActivityDefinitionProductReferenceType,
-    ActivityDefinitionQuantityComparator,
-    ActivityDefinitionStatus,
-    ActivityDefinitionSubjectReferenceType,
-)
 from app.models.shared import TenantAuditMixin
 
-activity_definition_pub_seq = Sequence(
-    "activity_definition_pub_seq",
-    start=410000,
-    increment=1,
-    metadata=Base.metadata,
+from .enums import ActivityDefinitionStatus
+
+activity_definition_id_seq = Sequence(
+    "activity_definition_pub_seq", start=410000, increment=1, metadata=Base.metadata
 )
 
 
 class ActivityDefinitionModel(TenantAuditMixin, Base):
-    """FHIR R4 ActivityDefinition resource model."""
+    """FHIR R4 ActivityDefinition - stored whole in `content`, like Questionnaire, CarePlan and
+    the other content-based resources.
+
+    `content` (JSONB) holds the whole resource exactly as validated on write; it is the single
+    source of truth, and GET serves it back as-is (`id`/`meta` are stamped on at read time from
+    this row's own columns - see app.fhir.mappers.activity_definition). Nothing else in this
+    table or its child tables is a second copy of the resource: every other column exists only
+    because a FHIR R4 ActivityDefinition search parameter filters on it
+    (https://www.hl7.org/fhir/R4/activitydefinition.html#search), and is derived from `content`
+    on every write by app.repository.activity_definition._indexer.
+
+    Search parameter -> storage:
+      url                   -> url (0..1 uri, column; exact, `:below` / `:above`)
+      version               -> version (0..1 string read as a token: the code only, exact)
+      name, title,
+      description,
+      publisher             -> name/name_norm, title/title_norm, description/description_norm,
+                               publisher/publisher_norm (0..1 strings, columns; each stored as
+                               written and normalized)
+      status                -> status (Enum column, required binding)
+      date                  -> date_start/_end (0..1 dateTime, the half-open range it covers at
+                               its written precision)
+      effective             -> effective_start/_end (0..1 Period, half-open range; NULL = open)
+      identifier            -> ActivityDefinitionIdentifier (one row per identifier x type coding)
+      jurisdiction, topic,
+      context-type, context -> ActivityDefinitionToken (one row per coding, told apart by
+                               `param`; `context-type` / `context` carry the useContext's slot)
+      composed-of, depends-on,
+      derived-from,
+      predecessor,
+      successor             -> ActivityDefinitionReference (one row per relatedArtifact.resource
+                               of that type - a canonical URL - and, for `depends-on`, per
+                               `library`)
+      context-quantity      -> ActivityDefinitionContextQuantity (one row per useContext whose
+                               value is a Quantity or a Range)
+      context-type-value,
+      context-type-quantity -> composites over the useContext rows above (same slot)
+      _id                   -> activity_definition_id;  _lastUpdated -> updated_at/created_at
+
+    Everything else - `subtitle`, `experimental`, `contact`, `purpose`, `usage`, `copyright`,
+    `approvalDate`, `lastReviewDate`, `author` / `editor` / `reviewer` / `endorser`, the
+    `relatedArtifact` entries themselves, `kind`, `profile`, `code`, `intent`, `priority`,
+    `doNotPerform`, `timing[x]`, `location`, `participant`, `product[x]`, `quantity`, `dosage`,
+    `bodySite`, `specimenRequirement`, `observationRequirement`, `observationResultRequirement`,
+    `transform`, `dynamicValue`, `subject[x]` and `extension` - lives only in `content`.
+
+    All index columns are nullable. No `user_id`: an ActivityDefinition is a shared tenant-level
+    entity. No DB-level CHECK constraints (R4 rules - e.g. ad-1 - are the validator's)."""
 
     __tablename__ = "activity_definition"
+    __table_args__ = (
+        Index("ix_activity_definition_date", "date_start", "date_end"),
+        Index("ix_activity_definition_effective", "effective_start", "effective_end"),
+        Index("ix_activity_definition_name_norm", "name_norm"),
+        Index("ix_activity_definition_title_norm", "title_norm"),
+        Index("ix_activity_definition_url", "url"),
+    )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     activity_definition_id = Column(
         BigInteger,
-        activity_definition_pub_seq,
-        server_default=activity_definition_pub_seq.next_value(),
+        activity_definition_id_seq,
+        server_default=activity_definition_id_seq.next_value(),
         unique=True,
-        nullable=False,
         index=True,
+        nullable=False,
     )
-    extension = Column(JSONB, nullable=True)
 
-    # Definitional metadata
-    url = Column(String, nullable=True, index=True)
-    version = Column(String, nullable=True)
-    name = Column(String, nullable=True, index=True)
-    title = Column(String, nullable=True)
-    subtitle = Column(String, nullable=True)
+    # The whole FHIR resource minus resourceType/id/meta (server-stamped).
+    content = Column(JSONB, nullable=False)
+
+    # -- Search index (derived from `content`) --
     status = Column(
-        Enum(ActivityDefinitionStatus, name="activity_definition_status"),
-        nullable=False,
+        Enum(
+            ActivityDefinitionStatus,
+            name="activity_definition_status",
+            values_callable=lambda enum_cls: [m.value for m in enum_cls],
+        ),
+        nullable=True,
         index=True,
     )
-    experimental = Column(Boolean, nullable=True)
-    date = Column(DateTime(timezone=True), nullable=True)
-    publisher = Column(String, nullable=True)
+    url = Column(String, nullable=True)
+    version = Column(String, nullable=True)
+    name = Column(String, nullable=True)
+    name_norm = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+    title_norm = Column(String, nullable=True)
     description = Column(Text, nullable=True)
-    purpose = Column(Text, nullable=True)
-    usage = Column(Text, nullable=True)
-    copyright = Column(Text, nullable=True)
-    approval_date = Column(Date, nullable=True)
-    last_review_date = Column(Date, nullable=True)
+    description_norm = Column(Text, nullable=True)
+    publisher = Column(String, nullable=True)
+    publisher_norm = Column(String, nullable=True)
 
-    # effectivePeriod (Period)
-    effective_period_start = Column(DateTime(timezone=True), nullable=True)
-    effective_period_end = Column(DateTime(timezone=True), nullable=True)
+    # date (0..1 dateTime) and effectivePeriod: half-open [start, end) ranges.
+    date_start = Column(DateTime(timezone=True), nullable=True)
+    date_end = Column(DateTime(timezone=True), nullable=True)
+    effective_start = Column(DateTime(timezone=True), nullable=True)
+    effective_end = Column(DateTime(timezone=True), nullable=True)
 
-    # subject[x] (CodeableConcept | Reference(Group))
-    subject_codeable_concept_text = Column(String, nullable=True)
-    subject_reference = Column(String, nullable=True)
-    subject_type = Column(
-        Enum(
-            ActivityDefinitionSubjectReferenceType,
-            name="activity_definition_subject_reference_type",
-        ),
-        nullable=True,
-    )
-    subject_id = Column(BigInteger, nullable=True, index=True)
-    subject_display = Column(String, nullable=True)
-
-    # library (0..* canonical(Library))
-    library = Column(ARRAY(String), nullable=True)
-
-    # Action definition
-    kind = Column(
-        Enum(ActivityDefinitionKind, name="activity_definition_kind"),
-        nullable=True,
-    )
-    profile = Column(String, nullable=True)
-    code_text = Column(String, nullable=True)
-    intent = Column(
-        Enum(ActivityDefinitionIntent, name="activity_definition_intent"),
-        nullable=True,
-    )
-    priority = Column(
-        Enum(ActivityDefinitionPriority, name="activity_definition_priority"),
-        nullable=True,
-    )
-    do_not_perform = Column(Boolean, nullable=True)
-
-    # timing[x] (Timing | dateTime | Age | Period | Range | Duration)
-    timing_timing = Column(JSONB, nullable=True)
-    timing_date_time = Column(DateTime(timezone=True), nullable=True)
-    timing_age_value = Column(Numeric, nullable=True)
-    timing_age_unit = Column(String, nullable=True)
-    timing_age_system = Column(String, nullable=True)
-    timing_age_code = Column(String, nullable=True)
-    timing_period_start = Column(DateTime(timezone=True), nullable=True)
-    timing_period_end = Column(DateTime(timezone=True), nullable=True)
-    timing_range_low_value = Column(Numeric, nullable=True)
-    timing_range_low_unit = Column(String, nullable=True)
-    timing_range_high_value = Column(Numeric, nullable=True)
-    timing_range_high_unit = Column(String, nullable=True)
-    timing_duration_value = Column(Numeric, nullable=True)
-    timing_duration_unit = Column(String, nullable=True)
-    timing_duration_system = Column(String, nullable=True)
-    timing_duration_code = Column(String, nullable=True)
-
-    # location Reference(Location)
-    location_reference = Column(String, nullable=True)
-    location_type = Column(
-        Enum(
-            ActivityDefinitionLocationReferenceType,
-            name="activity_definition_location_reference_type",
-        ),
-        nullable=True,
-    )
-    location_id = Column(BigInteger, nullable=True, index=True)
-    location_display = Column(String, nullable=True)
-
-    # product[x] (CodeableConcept | Reference(Medication | Substance))
-    product_codeable_concept_text = Column(String, nullable=True)
-    product_reference = Column(String, nullable=True)
-    product_type = Column(
-        Enum(
-            ActivityDefinitionProductReferenceType,
-            name="activity_definition_product_reference_type",
-        ),
-        nullable=True,
-    )
-    product_id = Column(BigInteger, nullable=True, index=True)
-    product_display = Column(String, nullable=True)
-
-    # quantity (SimpleQuantity)
-    quantity_value = Column(Numeric, nullable=True)
-    quantity_comparator = Column(
-        Enum(
-            ActivityDefinitionQuantityComparator,
-            name="activity_definition_quantity_comparator",
-        ),
-        nullable=True,
-    )
-    quantity_unit = Column(String, nullable=True)
-    quantity_system = Column(String, nullable=True)
-    quantity_code = Column(String, nullable=True)
-
-    # transform (canonical(StructureMap))
-    transform = Column(String, nullable=True)
-
-    # Relationships
     identifiers = relationship(
         "ActivityDefinitionIdentifier",
         back_populates="activity_definition",
         cascade="all, delete-orphan",
     )
-    contacts = relationship(
-        "ActivityDefinitionContact",
+    tokens = relationship(
+        "ActivityDefinitionToken",
         back_populates="activity_definition",
         cascade="all, delete-orphan",
     )
-    use_contexts = relationship(
-        "ActivityDefinitionUseContext",
+    references = relationship(
+        "ActivityDefinitionReference",
         back_populates="activity_definition",
         cascade="all, delete-orphan",
     )
-    jurisdictions = relationship(
-        "ActivityDefinitionJurisdiction",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    topics = relationship(
-        "ActivityDefinitionTopic",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    body_sites = relationship(
-        "ActivityDefinitionBodySite",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    code_codings = relationship(
-        "ActivityDefinitionCodeCoding",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    subject_codings = relationship(
-        "ActivityDefinitionSubjectCoding",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    product_codings = relationship(
-        "ActivityDefinitionProductCoding",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    related_artifacts = relationship(
-        "ActivityDefinitionRelatedArtifact",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    participants = relationship(
-        "ActivityDefinitionParticipant",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    dosages = relationship(
-        "ActivityDefinitionDosage",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    dynamic_values = relationship(
-        "ActivityDefinitionDynamicValue",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    specimen_requirements = relationship(
-        "ActivityDefinitionSpecimenRequirement",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    observation_requirements = relationship(
-        "ActivityDefinitionObservationRequirement",
-        back_populates="activity_definition",
-        cascade="all, delete-orphan",
-    )
-    observation_result_requirements = relationship(
-        "ActivityDefinitionObservationResultRequirement",
+    context_quantities = relationship(
+        "ActivityDefinitionContextQuantity",
         back_populates="activity_definition",
         cascade="all, delete-orphan",
     )
