@@ -99,10 +99,15 @@ def _resolve_translate_code(
     tags=["Terminology"],
 )
 async def conceptmap_translate_get(
-    system: str | None = Query(None),
-    code: str | None = Query(None),
-    targetsystem: str | None = Query(None),
-    reverse: bool = Query(False),
+    system: str | None = Query(None, description="Canonical URL of the code system."),
+    code: str | None = Query(None, description="The code."),
+    targetsystem: str | None = Query(
+        None, description="Canonical URL of the code system to translate into."
+    ),
+    reverse: bool = Query(
+        False,
+        description="If true, translate from the target code system back to the source.",
+    ),
     source: str | None = Query(
         None, description="Accepted, ignored — ValueSet-scoped narrowing not supported"
     ),

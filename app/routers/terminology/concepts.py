@@ -28,8 +28,10 @@ async def search_concepts(
         None,
         description="Filter by code system canonical URL, e.g. 'http://snomed.info/sct'",
     ),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        20, ge=1, le=100, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.search_concepts(q, system, limit, offset)
@@ -86,8 +88,10 @@ async def get_concepts_for_field(
     q: str | None = Query(
         None, description="Optional full-text search within the value set"
     ),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        50, ge=1, le=200, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.get_concepts_for_field(resource, field, q, limit, offset)

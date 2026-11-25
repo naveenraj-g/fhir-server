@@ -301,6 +301,45 @@ if settings.app.docs_enabled:
 # FastAPI has no constructor param for top-level `security`/`securitySchemes` —
 # override app.openapi() to inject them so Swagger UI shows the Authorize
 # button. Cached on app.openapi_schema after the first call.
+def _document_fhir_request_media_types(schema: dict) -> None:
+    """A FHIR client sends `application/fhir+json` (and a merge-patch client
+    `application/merge-patch+json`); the server accepts all of them, but FastAPI documents only
+    `application/json` for a Pydantic body. List the real media types, FHIR's first."""
+    for path_item in schema.get("paths", {}).values():
+        for operation in path_item.values():
+            content = (operation.get("requestBody") or {}).get("content", {})
+            body = content.get("application/json")
+            ref = (body or {}).get("schema", {}).get("$ref", "")
+            if not ref.endswith(("CreateSchema", "PatchSchema")):
+                continue
+            media = {"application/fhir+json": body}
+            media["application/json"] = body
+            if ref.endswith("PatchSchema"):
+                media["application/merge-patch+json"] = body
+            operation["requestBody"]["content"] = media
+
+
+_AUTH_ERRORS = {
+    "401": "Unauthorized - the bearer token is missing, invalid or expired. Body is an OperationOutcome.",
+    "403": "Forbidden - the token lacks the permission this route needs, or carries no active organization. Body is an OperationOutcome.",
+}
+
+
+def _document_auth_errors(schema: dict) -> None:
+    """Every route except the probes needs a bearer token (see `mount_routers`), but FastAPI only
+    lists the errors a route declares itself. Document 401 and 403 once, for all of them."""
+    for path, path_item in schema.get("paths", {}).items():
+        if path.startswith("/health"):
+            continue
+        for method, operation in path_item.items():
+            if method not in {"get", "post", "put", "patch", "delete"}:
+                continue
+            for code, message in _AUTH_ERRORS.items():
+                operation.setdefault("responses", {}).setdefault(
+                    code, {"description": message}
+                )
+
+
 def _custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -316,6 +355,8 @@ def _custom_openapi():
     component_schemas = schema.setdefault("components", {}).setdefault("schemas", {})
     for name, definition in COMPONENT_SCHEMAS.items():
         component_schemas.setdefault(name, definition)
+    _document_fhir_request_media_types(schema)
+    _document_auth_errors(schema)
     schema.setdefault("components", {})["securitySchemes"] = {
         "BearerAuth": {
             "type": "http",

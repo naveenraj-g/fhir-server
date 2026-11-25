@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
@@ -33,8 +35,10 @@ async def list_org_concepts(
         None, description="Filter by code system canonical URL"
     ),
     q: str | None = Query(None, description="Full-text search"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        50, ge=1, le=200, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     org_id = _require_org_id(request)
@@ -97,7 +101,9 @@ async def create_org_concept(
     tags=["Terminology"],
 )
 async def get_org_concept(
-    concept_id: int,
+    concept_id: Annotated[
+        int, Path(description="Internal id of the organization concept.")
+    ],
     request: Request,
     service: TerminologyClient = Depends(get_terminology_client),
 ):
@@ -117,7 +123,9 @@ async def get_org_concept(
     tags=["Terminology"],
 )
 async def patch_org_concept(
-    concept_id: int,
+    concept_id: Annotated[
+        int, Path(description="Internal id of the organization concept.")
+    ],
     body: PatchConceptRequest,
     request: Request,
     service: TerminologyClient = Depends(get_terminology_client),
@@ -141,7 +149,9 @@ async def patch_org_concept(
     tags=["Terminology"],
 )
 async def delete_org_concept(
-    concept_id: int,
+    concept_id: Annotated[
+        int, Path(description="Internal id of the organization concept.")
+    ],
     request: Request,
     service: TerminologyClient = Depends(get_terminology_client),
 ):

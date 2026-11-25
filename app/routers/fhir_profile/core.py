@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Path, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
@@ -84,16 +86,23 @@ async def create_fhir_profile(
     responses=_LIST_200,
 )
 async def list_fhir_profiles(
-    resource_type: str | None = Query(None),
+    resource_type: str | None = Query(
+        None, description="Only profiles for this FHIR resource type."
+    ),
     scope_level: str | None = Query(
         None, description="'base', 'country', or 'organization'"
     ),
-    scope_id: str | None = Query(None),
+    scope_id: str | None = Query(
+        None,
+        description="Only profiles of this scope (the organization or country id).",
+    ),
     status: str | None = Query(
         None, description="'draft', 'active', 'retired', or 'unknown'"
     ),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        50, ge=1, le=200, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     actor: AuthUser = Depends(require_permission("fhir_profile", "read")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
@@ -113,10 +122,11 @@ async def list_fhir_profiles(
     "/{profile_id}",
     operation_id="get_fhir_profile",
     summary="Get a single FHIR profile by its database id",
+    description="Returns one stored FHIR profile (StructureDefinition) by its internal id; 404 if it does not exist.",
     responses={**_SINGLE_200, 404: {"description": "Profile not found"}},
 )
 async def get_fhir_profile(
-    profile_id: int,
+    profile_id: Annotated[int, Path(description="Internal id of the FHIR profile.")],
     actor: AuthUser = Depends(require_permission("fhir_profile", "read")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
@@ -141,7 +151,7 @@ async def get_fhir_profile(
     },
 )
 async def patch_fhir_profile(
-    profile_id: int,
+    profile_id: Annotated[int, Path(description="Internal id of the FHIR profile.")],
     body: FhirProfilePatchSchema,
     actor: AuthUser = Depends(require_permission("fhir_profile", "update")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
@@ -173,7 +183,7 @@ async def patch_fhir_profile(
     },
 )
 async def activate_fhir_profile(
-    profile_id: int,
+    profile_id: Annotated[int, Path(description="Internal id of the FHIR profile.")],
     actor: AuthUser = Depends(require_permission("fhir_profile", "update")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):
@@ -197,7 +207,7 @@ async def activate_fhir_profile(
     },
 )
 async def delete_fhir_profile(
-    profile_id: int,
+    profile_id: Annotated[int, Path(description="Internal id of the FHIR profile.")],
     actor: AuthUser = Depends(require_permission("fhir_profile", "delete")),
     service: FhirProfileService = Depends(get_fhir_profile_service),
 ):

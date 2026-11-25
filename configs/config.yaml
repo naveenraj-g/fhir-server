@@ -269,6 +269,6 @@ routes:
     - communication
     - communication_request
     - family_member_history
-    # - terminology
-    # - fhir_profile
-    # - fhir_validate
+    - terminology
+    - fhir_profile
+    - fhir_validate

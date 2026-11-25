@@ -25,8 +25,10 @@ async def list_concept_maps(
     target_system: str | None = Query(
         None, description="Filter by target code system canonical URL"
     ),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        50, ge=1, le=200, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.list_concept_maps(

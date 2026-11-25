@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
@@ -22,8 +24,10 @@ async def list_value_sets(
     q: str | None = Query(
         None, description="Keyword filter on name, title, or canonical URL"
     ),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        50, ge=1, le=200, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.list_value_sets(q, limit, offset)
@@ -39,10 +43,12 @@ async def list_value_sets(
     tags=["Terminology"],
 )
 async def expand_value_set(
-    value_set_id: int,
+    value_set_id: Annotated[int, Path(description="Internal id of the value set.")],
     q: str | None = Query(None, description="Full-text search within the value set"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    limit: int = Query(
+        50, ge=1, le=200, description="Maximum number of items to return."
+    ),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.expand_value_set(value_set_id, q, limit, offset)

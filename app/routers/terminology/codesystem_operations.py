@@ -24,9 +24,11 @@ _PARAMETERS_400 = {
     tags=["Terminology"],
 )
 async def codesystem_lookup_get(
-    system: str | None = Query(None),
-    code: str | None = Query(None),
-    property: list[str] | None = Query(None),
+    system: str | None = Query(None, description="Canonical URL of the code system."),
+    code: str | None = Query(None, description="The code."),
+    property: list[str] | None = Query(
+        None, description="A property to return; repeat for several (default: all)."
+    ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.lookup_operation(
@@ -67,10 +69,12 @@ async def codesystem_lookup_post(
     tags=["Terminology"],
 )
 async def codesystem_validate_code_get(
-    url: str | None = Query(None),
-    code: str | None = Query(None),
-    version: str | None = Query(None),
-    display: str | None = Query(None),
+    url: str | None = Query(None, description="Canonical URL."),
+    code: str | None = Query(None, description="The code."),
+    version: str | None = Query(None, description="Version of the code system."),
+    display: str | None = Query(
+        None, description="Display text to check against the code."
+    ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.validate_code_on_codesystem_operation(
@@ -116,9 +120,13 @@ async def codesystem_validate_code_post(
     tags=["Terminology"],
 )
 async def codesystem_subsumes_get(
-    codeA: str | None = Query(None),
-    codeB: str | None = Query(None),
-    system: str | None = Query(None),
+    codeA: str | None = Query(
+        None, description="The first code of the subsumption test."
+    ),
+    codeB: str | None = Query(
+        None, description="The second code of the subsumption test."
+    ),
+    system: str | None = Query(None, description="Canonical URL of the code system."),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.subsumes_operation(

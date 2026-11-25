@@ -8,9 +8,9 @@ non-standard endpoints) — both now coexist; the old ones keep their old
 bespoke shape, these return real FHIR-shaped output at the real `$`-named
 paths."""
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Path, Query
 from fastapi.responses import JSONResponse
 
 from app.di.dependencies.terminology import get_terminology_client
@@ -100,12 +100,18 @@ def _resolve_code_input(
 )
 async def expand_type_level(
     url: str | None = Query(None, description="Canonical ValueSet URL"),
-    valueSetVersion: str | None = Query(None),
+    valueSetVersion: str | None = Query(None, description="Version of the value set."),
     filter: str | None = Query(None, description="Free-text filter"),
-    offset: int = Query(0, ge=0),
-    count: int = Query(50, ge=0, le=200),
-    context: str | None = Query(None),
-    contextDirection: str | None = Query(None),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
+    count: int = Query(
+        50, ge=0, le=200, description="Maximum number of concepts to return."
+    ),
+    context: str | None = Query(
+        None, description="Context of use of the value set (R4 `context`)."
+    ),
+    contextDirection: str | None = Query(
+        None, description="Direction of the context: `incoming` or `outgoing`."
+    ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     _reject_unsupported_scoping(None, context, contextDirection)
@@ -162,10 +168,12 @@ async def expand_type_level_post(
     tags=["Terminology"],
 )
 async def expand_instance_level(
-    value_set_id: int,
+    value_set_id: Annotated[int, Path(description="Internal id of the value set.")],
     filter: str | None = Query(None, description="Free-text filter"),
-    offset: int = Query(0, ge=0),
-    count: int = Query(50, ge=0, le=200),
+    offset: int = Query(0, ge=0, description="Number of items to skip (paging)."),
+    count: int = Query(
+        50, ge=0, le=200, description="Maximum number of concepts to return."
+    ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     result = await service.expand_operation(
@@ -201,11 +209,15 @@ async def expand_instance_level(
 )
 async def validate_code_type_level(
     url: str | None = Query(None, description="Canonical ValueSet URL"),
-    valueSetVersion: str | None = Query(None),
-    code: str | None = Query(None),
-    system: str | None = Query(None),
-    display: str | None = Query(None),
-    context: str | None = Query(None),
+    valueSetVersion: str | None = Query(None, description="Version of the value set."),
+    code: str | None = Query(None, description="The code."),
+    system: str | None = Query(None, description="Canonical URL of the code system."),
+    display: str | None = Query(
+        None, description="Display text to check against the code."
+    ),
+    context: str | None = Query(
+        None, description="Context of use of the value set (R4 `context`)."
+    ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     _reject_unsupported_scoping(None, context, None)
@@ -265,10 +277,12 @@ async def validate_code_type_level_post(
     tags=["Terminology"],
 )
 async def validate_code_instance_level(
-    value_set_id: int,
-    code: str | None = Query(None),
-    system: str | None = Query(None),
-    display: str | None = Query(None),
+    value_set_id: Annotated[int, Path(description="Internal id of the value set.")],
+    code: str | None = Query(None, description="The code."),
+    system: str | None = Query(None, description="Canonical URL of the code system."),
+    display: str | None = Query(
+        None, description="Display text to check against the code."
+    ),
     service: TerminologyClient = Depends(get_terminology_client),
 ):
     resolved_system, resolved_code, _ = _resolve_code_input(code, system, None, None)

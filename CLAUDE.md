@@ -182,6 +182,7 @@ Rules:
 - Both `application/json` and `application/fhir+json` content types must be complete
 - `inline_schema()` constants auto-update on import — verify at `/openapi.json` after changes
 - Route/field summary strings matter — MCP uses them to explain tools to AI
+- `app.main`'s OpenAPI hook documents what FastAPI can't infer: request bodies list `application/fhir+json` (and `application/merge-patch+json` for PATCH) besides `application/json`, and every non-probe route lists 401 and 403. `tests/unit/test_openapi_spec.py` guards the rest: every resource schema equals HL7's element for element (presence, cardinality, descriptions, required), every operation has an id/summary/description/tag, every parameter a description, no dangling `$ref`.
 
 ---
 
