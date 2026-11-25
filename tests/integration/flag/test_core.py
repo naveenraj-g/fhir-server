@@ -244,15 +244,22 @@ async def test_create_identifier_assigner_must_exist(client):
 
 
 async def test_create_unmodeled_targets_are_not_checked(client):
-    """A PlanDefinition subject and a Device author are not resources here yet / at all: stored as
-    sent."""
-    body = flag_body(
-        {"reference": "PlanDefinition/999999"}, author={"reference": "Device/999999"}
+    """A Device author is not a resource here: stored as sent. A PlanDefinition subject is one now
+    (rebuilt), so a missing one is a 422."""
+    stored = await client.post(
+        BASE + "/",
+        json=flag_body(
+            {"reference": "https://other.example.org/fhir/Patient/7"},
+            author={"reference": "Device/999999"},
+        ),
     )
-    resp = await client.post(BASE + "/", json=body)
-    assert resp.status_code == 201, resp.text
-    assert resp.json()["subject"] == {"reference": "PlanDefinition/999999"}
-    assert resp.json()["author"] == {"reference": "Device/999999"}
+    assert stored.status_code == 201, stored.text
+    assert stored.json()["author"] == {"reference": "Device/999999"}
+    resp = await client.post(
+        BASE + "/",
+        json=flag_body({"reference": "PlanDefinition/999999"}),
+    )
+    assert resp.status_code == 422 and "PlanDefinition/999999" in resp.text
 
 
 async def test_create_absolute_and_logical_subjects_not_resolved(client):

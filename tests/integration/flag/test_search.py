@@ -268,8 +268,8 @@ async def test_bad_chains_are_400(client, world):
         await _status(client, **{"author:Device.name": "x"}) == 400
     )  # Device is not a resource here
     assert (
-        await _status(client, **{"subject:PlanDefinition.name": "x"}) == 400
-    )  # not a resource here yet
+        await _status(client, **{"subject:PlanDefinition.name": "x"}) == 200
+    )  # PlanDefinition is rebuilt, so it chains
     assert await _status(client, **{"date.x": "y"}) == 400
     assert await _status(client, status="active") == 200  # unknown parameter, ignored
 
