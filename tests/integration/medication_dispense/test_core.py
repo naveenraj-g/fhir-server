@@ -332,7 +332,10 @@ async def test_create_location_destination_prescription_receiver_must_exist(clie
         ("receiver", [{"reference": "Patient/999999"}], "receiver[0]"),
         (
             "substitution",
-            {"responsibleParty": [{"reference": "Practitioner/999999"}]},
+            {
+                "wasSubstituted": True,
+                "responsibleParty": [{"reference": "Practitioner/999999"}],
+            },
             "substitution.responsibleParty[0]",
         ),
     ):

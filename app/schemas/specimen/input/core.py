@@ -1,19 +1,14 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirPeriodInput,
-    FhirReferenceInput,
-)
+from pydantic import ConfigDict
 
-# SpecimenStatus (the required binding of Specimen.status).
-StatusCode = Literal["available", "unavailable", "unsatisfactory", "entered-in-error"]
+from app.schemas.fhir_resources.specimen import Specimen, SpecimenPatch
 
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "Specimen",
     "identifier": [
         {
@@ -79,207 +74,16 @@ _EXAMPLE = {
     "note": [{"text": "Fasting sample."}],
 }
 
-
-class SpecimenQuantityInput(FhirInputModel):
-    """Quantity (SimpleQuantity / Duration) — a measured amount."""
-
-    value: float | int | None = Field(
-        None, description="Numerical value (with implicit precision)."
-    )
-    unit: str | None = Field(None, description="Unit representation.")
-    system: str | None = Field(
-        None,
-        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
-    )
-    code: str | None = Field(None, description="Coded form of the unit.")
+_PATCH_EXAMPLE = {"status": "unsatisfactory", "condition": [{"text": "Hemolyzed"}]}
 
 
-class SpecimenAnnotationInput(FhirInputModel):
-    """Annotation — a note with an author (a Reference or plain text) and a time."""
+class SpecimenCreateSchema(Specimen):
+    "POST body - a FHIR R4 Specimen resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    authorReference: FhirReferenceInput | None = Field(
-        None,
-        description="Individual responsible for the annotation — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    authorString: str | None = Field(
-        None, description="Individual responsible for the annotation, as plain text."
-    )
-    time: str | None = Field(
-        None, description="When the annotation was made (a FHIR dateTime)."
-    )
-    text: str | None = Field(
-        None, description="The annotation text, as markdown (required by R4)."
-    )
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class SpecimenCollectionInput(FhirInputModel):
-    """Specimen.collection — collection details."""
+class SpecimenPatchSchema(SpecimenPatch):
+    "PATCH body - a partial FHIR R4 Specimen (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    collector: FhirReferenceInput | None = Field(
-        None,
-        description="Who collected the specimen — Reference(Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise). Searched by `collector`.",
-    )
-    collectedDateTime: str | None = Field(
-        None,
-        description="Collection time (a FHIR dateTime). One of the collected[x] choices; searched by `collected`.",
-    )
-    collectedPeriod: FhirPeriodInput | None = Field(
-        None,
-        description="Collection time (a Period). One of the collected[x] choices; searched by `collected`.",
-    )
-    duration: SpecimenQuantityInput | None = Field(
-        None, description="How long it took to collect specimen (a Duration)."
-    )
-    quantity: SpecimenQuantityInput | None = Field(
-        None, description="The quantity of specimen collected."
-    )
-    method: FhirCodeableConceptInput | None = Field(
-        None, description="Technique used to perform collection."
-    )
-    bodySite: FhirCodeableConceptInput | None = Field(
-        None, description="Anatomical collection site. Searched by `bodysite`."
-    )
-    fastingStatusCodeableConcept: FhirCodeableConceptInput | None = Field(
-        None,
-        description="Whether or how long patient abstained from food and/or drink (a CodeableConcept). One of the fastingStatus[x] choices.",
-    )
-    fastingStatusDuration: SpecimenQuantityInput | None = Field(
-        None,
-        description="Whether or how long patient abstained from food and/or drink (a Duration). One of the fastingStatus[x] choices.",
-    )
-
-
-class SpecimenProcessingInput(FhirInputModel):
-    """Specimen.processing — processing and processing step details."""
-
-    description: str | None = Field(
-        None, description="Textual description of procedure."
-    )
-    procedure: FhirCodeableConceptInput | None = Field(
-        None, description="Indicates the treatment step applied to the specimen."
-    )
-    additive: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Material used in the processing step — Reference(Substance). Stored as sent.",
-    )
-    timeDateTime: str | None = Field(
-        None,
-        description="Date and time of specimen processing (a dateTime). One of the time[x] choices.",
-    )
-    timePeriod: FhirPeriodInput | None = Field(
-        None,
-        description="Date and time of specimen processing (a Period). One of the time[x] choices.",
-    )
-
-
-class SpecimenContainerInput(FhirInputModel):
-    """Specimen.container — direct container of specimen (tube/slide, etc.)."""
-
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="Id for the container. Searched by `container-id`."
-    )
-    description: str | None = Field(
-        None, description="Textual description of the container."
-    )
-    type: FhirCodeableConceptInput | None = Field(
-        None,
-        description="Kind of container directly associated with specimen. Searched by `container`.",
-    )
-    capacity: SpecimenQuantityInput | None = Field(
-        None, description="Container volume or size."
-    )
-    specimenQuantity: SpecimenQuantityInput | None = Field(
-        None, description="Quantity of specimen within container."
-    )
-    additiveCodeableConcept: FhirCodeableConceptInput | None = Field(
-        None,
-        description="Additive associated with container (a CodeableConcept). One of the additive[x] choices.",
-    )
-    additiveReference: FhirReferenceInput | None = Field(
-        None,
-        description="Additive associated with container (Reference(Substance)). One of the additive[x] choices; stored as sent.",
-    )
-
-
-class _SpecimenFields(FhirInputModel):
-    """Every writable Specimen element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/specimen.html). Create and patch accept exactly the same
-    fields. R4 requires nothing beyond the types (every Specimen element is optional), so any
-    well-formed document is valid.
-
-    The validated body is stored whole (SpecimenModel.content), so any valid R4 element is kept —
-    including ones this model does not declare. Server-managed elements are ignored if sent:
-    `id` (assigned from the specimen_id sequence) and `meta` (audit/tenant data, stamped on at
-    read time). org_id and created_by/updated_by come from the verified JWT (actor.org_id /
-    actor.sub), never the body. There is no user_id."""
-
-    resourceType: Literal["Specimen"] | None = Field(
-        None, description="Optional; if supplied it must be 'Specimen'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="External Identifier."
-    )
-    accessionIdentifier: FhirIdentifierInput | None = Field(
-        None, description="Identifier assigned by the lab. Searched by `accession`."
-    )
-    status: StatusCode | None = Field(
-        None, description="available | unavailable | unsatisfactory | entered-in-error."
-    )
-    type: FhirCodeableConceptInput | None = Field(
-        None, description="Kind of material that forms the specimen."
-    )
-    subject: FhirReferenceInput | None = Field(
-        None,
-        description="Where the specimen came from — Reference(Patient | Group | Device | Substance | Location). A relative Patient or Location must exist in the caller's org (422 otherwise).",
-    )
-    receivedTime: str | None = Field(
-        None,
-        description="The time when specimen was received for processing (a FHIR dateTime).",
-    )
-    parent: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Specimen from which this specimen originated — Reference(Specimen). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    request: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Why the specimen was collected — Reference(ServiceRequest). Stored as sent.",
-    )
-    collection: SpecimenCollectionInput | None = Field(
-        None, description="Collection details."
-    )
-    processing: list[SpecimenProcessingInput] | None = Field(
-        None, description="Processing and processing step details."
-    )
-    container: list[SpecimenContainerInput] | None = Field(
-        None, description="Direct container of specimen (tube/slide, etc.)."
-    )
-    condition: list[FhirCodeableConceptInput] | None = Field(
-        None, description="State of the specimen."
-    )
-    note: list[SpecimenAnnotationInput] | None = Field(None, description="Comments.")
-
-
-class SpecimenCreateSchema(_SpecimenFields):
-    """POST body — a FHIR R4 Specimen resource."""
-
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
-
-
-class SpecimenPatchSchema(_SpecimenFields):
-    """PATCH body — a partial FHIR R4 Specimen (merge-patch semantics on top-level elements).
-    Only supplied elements are written; omitted ones are left untouched. A supplied element
-    replaces the stored value wholesale — a list (even `[]`) replaces every existing entry, an
-    object such as `collection` replaces the whole value, and `null` clears it."""
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "status": "unsatisfactory",
-                "condition": [{"text": "Hemolyzed"}],
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

@@ -26,26 +26,78 @@ def _properties(schema: dict) -> dict:
 def test_every_r4_datatype_is_present():
     expected = {
         # primitive
-        *(
-            "Base64Binary Boolean Canonical Code Date DateTime Decimal Id Instant Integer "
-            "Markdown Oid PositiveInt String Time UnsignedInt Uri Url Uuid Xhtml"
-        ).split(),
+        *[
+            "Base64Binary",
+            "Boolean",
+            "Canonical",
+            "Code",
+            "Date",
+            "DateTime",
+            "Decimal",
+            "Id",
+            "Instant",
+            "Integer",
+            "Markdown",
+            "Oid",
+            "PositiveInt",
+            "String",
+            "Time",
+            "UnsignedInt",
+            "Uri",
+            "Url",
+            "Uuid",
+            "Xhtml",
+        ],
         # general-purpose
-        *(
-            "Address Age Annotation Attachment CodeableConcept Coding ContactPoint Count Distance "
-            "Duration HumanName Identifier Money MoneyQuantity Period Quantity Range Ratio "
-            "Reference SampledData Signature SimpleQuantity Timing"
-        ).split(),
+        *[
+            "Address",
+            "Age",
+            "Annotation",
+            "Attachment",
+            "CodeableConcept",
+            "Coding",
+            "ContactPoint",
+            "Count",
+            "Distance",
+            "Duration",
+            "HumanName",
+            "Identifier",
+            "Money",
+            "MoneyQuantity",
+            "Period",
+            "Quantity",
+            "Range",
+            "Ratio",
+            "Reference",
+            "SampledData",
+            "Signature",
+            "SimpleQuantity",
+            "Timing",
+        ],
         # metadata
-        *(
-            "ContactDetail Contributor DataRequirement Expression ParameterDefinition "
-            "RelatedArtifact TriggerDefinition UsageContext"
-        ).split(),
+        *[
+            "ContactDetail",
+            "Contributor",
+            "DataRequirement",
+            "Expression",
+            "ParameterDefinition",
+            "RelatedArtifact",
+            "TriggerDefinition",
+            "UsageContext",
+        ],
         # special purpose
-        *(
-            "Dosage ElementDefinition Extension MarketingStatus Meta Narrative Population "
-            "ProdCharacteristic ProductShelfLife SubstanceAmount"
-        ).split(),
+        *[
+            "Dosage",
+            "ElementDefinition",
+            "Extension",
+            "MarketingStatus",
+            "Meta",
+            "Narrative",
+            "Population",
+            "ProdCharacteristic",
+            "ProductShelfLife",
+            "SubstanceAmount",
+        ],
         "Element",
         "BackboneElement",
     }

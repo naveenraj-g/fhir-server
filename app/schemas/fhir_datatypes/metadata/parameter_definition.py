@@ -19,8 +19,8 @@ class ParameterDefinition(Element):
         None,
         description="The name of the parameter used to allow access to the value of the parameter in evaluation contexts.",
     )
-    use: Code | None = Field(
-        None, description="Whether the parameter is input or output for the module."
+    use: Code = Field(
+        ..., description="Whether the parameter is input or output for the module."
     )
     min: Integer | None = Field(
         None,
@@ -34,7 +34,7 @@ class ParameterDefinition(Element):
         None,
         description="A brief discussion of what the parameter is for and how it is used by the module.",
     )
-    type: Code | None = Field(None, description="The type of the parameter.")
+    type: Code = Field(..., description="The type of the parameter.")
     profile: Canonical | None = Field(
         None,
         description="If specified, this indicates a profile that the input data must conform to, or that the output data will conform to.",

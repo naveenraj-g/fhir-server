@@ -1,28 +1,14 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirReferenceInput,
-)
+from pydantic import ConfigDict
 
-# GoalLifecycleStatus (the required binding of Goal.lifecycleStatus).
-LifecycleStatus = Literal[
-    "proposed",
-    "planned",
-    "accepted",
-    "active",
-    "on-hold",
-    "completed",
-    "cancelled",
-    "entered-in-error",
-    "rejected",
-]
+from app.schemas.fhir_resources.goal import Goal, GoalPatch
 
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "Goal",
     "identifier": [
         {
@@ -80,128 +66,19 @@ _EXAMPLE = {
     "note": [{"text": "Agreed with the patient."}],
 }
 
-
-class GoalTargetInput(FhirInputModel):
-    """Goal.target - the target outcome for the goal."""
-
-    measure: FhirCodeableConceptInput | None = Field(
-        None,
-        description="The parameter whose value is being tracked (required by R4 when `detail[x]` is present - rule gol-1, enforced by the `java_validator` backend).",
-    )
-    detailQuantity: dict | None = Field(None, description="detail[x]: a Quantity.")
-    detailRange: dict | None = Field(None, description="detail[x]: a Range.")
-    detailCodeableConcept: FhirCodeableConceptInput | None = Field(
-        None, description="detail[x]: a CodeableConcept."
-    )
-    detailString: str | None = Field(None, description="detail[x]: a string.")
-    detailBoolean: bool | None = Field(None, description="detail[x]: a boolean.")
-    detailInteger: int | None = Field(None, description="detail[x]: an integer.")
-    detailRatio: dict | None = Field(None, description="detail[x]: a Ratio.")
-    dueDate: str | None = Field(
-        None,
-        description="due[x]: reach goal on this date (a FHIR date). Searched by `target-date`.",
-    )
-    dueDuration: dict | None = Field(
-        None, description="due[x]: reach goal within this Duration (not searchable)."
-    )
+_PATCH_EXAMPLE = {
+    "lifecycleStatus": "completed",
+    "achievementStatus": {"text": "achieved"},
+}
 
 
-class _GoalFields(FhirInputModel):
-    """Every writable Goal element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/goal.html). Create and patch accept exactly the same fields.
-    R4 requires `lifecycleStatus`, `description` and `subject` (the native validator checks
-    `description` and `subject`; the rest of the minimums and rule gol-1 are only enforced by the `java_validator`
-    backend).
+class GoalCreateSchema(Goal):
+    "POST body - a FHIR R4 Goal resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    The validated body is stored whole (GoalModel.content), so any valid R4 element is kept -
-    including ones this model does not declare. Server-managed elements are ignored if sent:
-    `id` (assigned from the goal_id sequence) and `meta` (audit/tenant data, stamped on at read
-    time). org_id and created_by/updated_by come from the verified JWT (actor.org_id /
-    actor.sub), never the body. There is no user_id."""
-
-    resourceType: Literal["Goal"] | None = Field(
-        None, description="Optional; if supplied it must be 'Goal'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="External ids for this goal. Searched by `identifier`."
-    )
-    lifecycleStatus: LifecycleStatus | None = Field(
-        None,
-        description="proposed | planned | accepted | active | on-hold | completed | cancelled | entered-in-error | rejected (required by R4). Searched by `lifecycle-status`.",
-    )
-    achievementStatus: FhirCodeableConceptInput | None = Field(
-        None,
-        description="in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable. Searched by `achievement-status`.",
-    )
-    category: list[FhirCodeableConceptInput] | None = Field(
-        None,
-        description="E.g. Treatment, dietary, behavioral, etc. Searched by `category`.",
-    )
-    priority: FhirCodeableConceptInput | None = Field(
-        None, description="high-priority | medium-priority | low-priority."
-    )
-    description: FhirCodeableConceptInput | None = Field(
-        None, description="Code or text describing the goal (required by R4)."
-    )
-    subject: FhirReferenceInput | None = Field(
-        None,
-        description="Who this goal is intended for - Reference(Patient | Group | Organization) (required by R4). A relative reference to a rebuilt resource must exist in the caller's org (422 otherwise). Searched by `subject` / `patient`.",
-    )
-    startDate: str | None = Field(
-        None,
-        description="start[x]: when goal pursuit begins (a FHIR date). Searched by `start-date`.",
-    )
-    startCodeableConcept: FhirCodeableConceptInput | None = Field(
-        None, description="start[x]: reference point for the goal, as a concept."
-    )
-    target: list[GoalTargetInput] | None = Field(
-        None, description="Target outcome for the goal."
-    )
-    statusDate: str | None = Field(
-        None, description="When the goal status took effect (a FHIR date)."
-    )
-    statusReason: str | None = Field(None, description="Reason for the current status.")
-    expressedBy: FhirReferenceInput | None = Field(
-        None,
-        description="Who is responsible for creating the goal - Reference(Patient | Practitioner | PractitionerRole | RelatedPerson).",
-    )
-    addresses: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Issues addressed by this goal - Reference(Condition | Observation | MedicationStatement | NutritionOrder | ServiceRequest | RiskAssessment).",
-    )
-    note: list[dict] | None = Field(
-        None, description="Comments about the goal (Annotation)."
-    )
-    outcomeCode: list[FhirCodeableConceptInput] | None = Field(
-        None, description="What result was achieved regarding the goal."
-    )
-    outcomeReference: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Observation that resulted from goal - Reference(Observation).",
-    )
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class GoalCreateSchema(_GoalFields):
-    """POST body - a FHIR R4 Goal resource."""
+class GoalPatchSchema(GoalPatch):
+    "PATCH body - a partial FHIR R4 Goal (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
-
-
-class GoalPatchSchema(_GoalFields):
-    """PATCH body - a partial FHIR R4 Goal (merge-patch semantics on top-level elements). Only
-    supplied elements are written; omitted ones are left untouched. A supplied element replaces
-    the stored value wholesale - a list (even `[]`) replaces every existing entry, an object
-    replaces the whole value, and `null` clears it."""
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "lifecycleStatus": "completed",
-                "achievementStatus": {"text": "achieved"},
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

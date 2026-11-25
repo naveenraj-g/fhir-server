@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 class Contributor(Element):
     "A contributor to the content of a knowledge asset, including authors, editors, reviewers, and endorsers."
 
-    type: Literal["author", "editor", "reviewer", "endorser"] | None = Field(
-        None, description="The type of contributor."
+    type: Literal["author", "editor", "reviewer", "endorser"] = Field(
+        ..., description="The type of contributor."
     )
-    name: String | None = Field(
-        None,
+    name: String = Field(
+        ...,
         description="The name of the individual or organization responsible for the contribution.",
     )
     contact: list[ContactDetail] | None = Field(

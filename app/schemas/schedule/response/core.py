@@ -1,50 +1,23 @@
+"""Response schemas for Schedule (generated; see scripts/generate_fhir_resources.py)."""
+
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import (
-    FHIRBundle,
-    FHIRCodeableConcept,
-    FHIRIdentifier,
-    FHIRMeta,
-    FHIRPeriod,
-    FHIRReference,
-)
+from app.schemas.datatypes import FHIRBundle, FHIRMeta
 from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_resources.schedule import Schedule
 
 
-class FHIRScheduleSchema(BaseModel):
+class FHIRScheduleSchema(Schedule):
+    "A FHIR R4 Schedule as served: the stored document with `id` and `meta` stamped on."
+
     resourceType: str = Field("Schedule", description="Always 'Schedule'.")
     id: str = Field(..., description="Public schedule_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
-    )
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="External Ids for this item."
-    )
-    active: bool | None = Field(
-        None, description="Whether this schedule is in active use."
-    )
-    serviceCategory: list[FHIRCodeableConcept] | None = Field(
-        None, description="High-level category."
-    )
-    serviceType: list[FHIRCodeableConcept] | None = Field(
-        None, description="Specific service."
-    )
-    specialty: list[FHIRCodeableConcept] | None = Field(
-        None, description="Type of specialty needed."
-    )
-    actor: list[FHIRReference] | None = Field(
-        None,
-        description="Resource(s) that availability information is being provided for.",
-    )
-    planningHorizon: FHIRPeriod | None = Field(
-        None, description="Period of time covered by schedule."
-    )
-    comment: str | None = Field(None, description="Comments on availability.")
 
 
 class FHIRScheduleBundleEntry(BaseModel):
@@ -53,7 +26,7 @@ class FHIRScheduleBundleEntry(BaseModel):
     )
     resource: FHIRScheduleSchema | dict = Field(
         ...,
-        description="A Schedule (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource of another type (a Practitioner, PractitionerRole, HealthcareService or Location actor from _include), or an OperationOutcome (outcome).",
+        description="A Schedule (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
     search: FHIRBundleEntrySearch
 

@@ -31,7 +31,9 @@ from pathlib import Path
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 SCHEMA = ROOT / "app" / "fhir" / "spec" / "fhir.schema.json"
+PROFILES = ROOT / "app" / "fhir" / "spec" / "profiles-resources.json"
 OUT = ROOT / "app" / "schemas" / "fhir_datatypes"
 
 DEFS = json.loads(SCHEMA.read_text(encoding="utf-8"))["definitions"]
@@ -109,6 +111,10 @@ CATEGORIES = {
         "SubstanceAmount",
     ],
 }
+# Extra text appended to a field's description, keyed class name -> element name (set by the
+# resource generator to list the search parameters that read an element).
+HINTS: dict[str, dict[str, str]] = {}
+
 # Elements R4 makes 1..1 that HL7's JSON schema does not list as required.
 EXTRA_REQUIRED = {"Extension": {"url"}, "Annotation": {"text"}}
 
@@ -175,21 +181,28 @@ def annotation(prop: dict, used: set[str], flatten: bool = False) -> str:
     )
 
 
-def choice_groups(names: list[str]) -> dict[str, str]:
-    """Property name -> choice prefix, for `value[x]`-style properties (a prefix followed by a
-    type name, with at least two sharing the prefix)."""
+def choice_groups(props: dict[str, dict]) -> dict[str, str]:
+    """Property name -> choice prefix, for `value[x]`-style properties: a prefix followed by a type
+    name, shared by at least two properties that carry the identical HL7 description (every member
+    of a choice element has the one definition; `reasonCode` / `reasonReference` do not)."""
     type_names = {t[0].upper() + t[1:] for t in PRIMITIVES} | {
         class_name(k) for k in DEFS if k[0].isupper() and "_" not in k
     }
-    by_prefix: dict[str, list[str]] = {}
-    for name in names:
-        for t in type_names:
-            if name.endswith(t) and len(name) > len(t) and name[0].islower():
-                prefix = name[: -len(t)]
-                if prefix.isalpha():
-                    by_prefix.setdefault(prefix, []).append(name)
-                    break
-    return {n: p for p, ns in by_prefix.items() if len(ns) > 1 for n in ns}
+    by_key: dict[tuple[str, str], list[str]] = {}
+    for name, prop in props.items():
+        matches = [
+            t
+            for t in type_names
+            if name.endswith(t) and len(name) > len(t) and name[0].islower()
+        ]
+        if not matches:
+            continue
+        longest = max(matches, key=len)
+        prefix = name[: -len(longest)]
+        # A choice element is never repeating, which rules out reasonCode / reasonReference.
+        if prefix.isalpha() and prop.get("description") and "items" not in prop:
+            by_key.setdefault((prefix, prop["description"]), []).append(name)
+    return {n: prefix for (prefix, _d), ns in by_key.items() if len(ns) > 1 for n in ns}
 
 
 def inline_primitive(name: str, prop: dict) -> dict:
@@ -214,8 +227,176 @@ def inline_primitive(name: str, prop: dict) -> dict:
     return {"$ref": f"#/definitions/{best}", "description": prop.get("description", "")}
 
 
+def _load_min_one() -> dict[str, set[str]]:
+    """class name -> elements R4 makes 1..1 (min cardinality 1), primitives included.
+
+    HL7's JSON schema only lists non-primitive elements as `required` (a primitive may arrive as a
+    `_name` extension sibling), so the real minimums come from the resource profiles
+    (profiles-resources.json) and, for datatypes, google-fhir-r4's validation annotations. A choice
+    element (`value[x]`) cannot be a single required field and is skipped."""
+    out: dict[str, set[str]] = {}
+    profiles = json.loads(PROFILES.read_text(encoding="utf-8"))
+    for entry in profiles["entry"]:
+        sd = entry["resource"]
+        if sd.get("resourceType") != "StructureDefinition":
+            continue
+        for el in sd["snapshot"]["element"]:
+            parts = el["id"].split(".")
+            if len(parts) < 2 or el.get("min", 0) < 1 or parts[-1].endswith("[x]"):
+                continue
+            owner = parts[0]
+            if len(parts) > 2:
+                owner += "_" + parts[-2][0].upper() + parts[-2][1:]
+            if parts[-1] in DEFS.get(owner, {}).get("properties", {}):
+                out.setdefault(class_name(owner), set()).add(parts[-1])
+
+    from google.fhir.core.proto import annotations_pb2 as ann
+    from google.fhir.r4.proto.core import datatypes_pb2
+
+    def walk(desc, name):
+        for f in desc.fields:
+            options = f.GetOptions()
+            if not (
+                options.HasExtension(ann.validation_requirement)
+                and options.Extensions[ann.validation_requirement]
+                == ann.REQUIRED_BY_FHIR
+            ):
+                continue
+            if f.message_type is not None and "choice" in f.message_type.oneofs_by_name:
+                continue
+            out.setdefault(class_name(name), set()).add(f.json_name)
+        for nested in desc.nested_types:
+            walk(nested, f"{name}_{nested.name}")
+
+    for names in CATEGORIES.values():
+        for name in names:
+            message = getattr(datatypes_pb2, name, None)
+            if message is not None and hasattr(message, "DESCRIPTOR"):
+                walk(message.DESCRIPTOR, name)
+    return out
+
+
+MIN_ONE: dict[str, set[str]] = {}
+
+
+def _code_lists() -> dict[str, list[str]]:
+    """value-set name -> its codes, from google-fhir-r4's generated code enums (the codes HL7 defines
+    for a value set with a required binding)."""
+    from google.fhir.core.proto import annotations_pb2 as ann
+    from google.fhir.r4.proto.core import codes_pb2
+
+    out: dict[str, list[str]] = {}
+    for attr in dir(codes_pb2):
+        cls = getattr(codes_pb2, attr)
+        if not attr.endswith("Code") or not hasattr(cls, "Value"):
+            continue
+        values = []
+        for v in cls.Value.DESCRIPTOR.values:
+            if v.name == "INVALID_UNINITIALIZED":
+                continue
+            opts = v.GetOptions()
+            values.append(
+                opts.Extensions[ann.fhir_original_code]
+                if opts.HasExtension(ann.fhir_original_code)
+                else v.name.lower().replace("_", "-")
+            )
+        out[attr[: -len("Code")].lower()] = values
+    return out
+
+
+def _load_required_codes() -> dict[tuple[str, str], list[str]]:
+    """(class name, element) -> allowed codes, for `code` elements with a *required* binding that
+    HL7's JSON schema leaves as a plain string (a large value set, e.g. the request statuses)."""
+    profiles = json.loads(PROFILES.read_text(encoding="utf-8"))
+    code_lists = _code_lists()
+    # value sets google-fhir has no enum for, resolved from the project's own constants
+    from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+
+    code_lists["resourcetypes"] = list(ANY_RESOURCE_TYPES)
+    # ... and from the enums the project already holds for those value sets (audited against HL7
+    # when each resource was rebuilt: they store the true FHIR codes).
+    import importlib
+
+    code_lists.update(LISTED_VALUE_SETS)
+    for value_set, (module, cls) in MODEL_ENUM_VALUE_SETS.items():
+        enum = getattr(importlib.import_module(module), cls)
+        code_lists[value_set.replace("-", "").lower()] = [m.value for m in enum]
+    out: dict[tuple[str, str], list[str]] = {}
+    for entry in profiles["entry"]:
+        sd = entry["resource"]
+        if sd.get("resourceType") != "StructureDefinition":
+            continue
+        for el in sd["snapshot"]["element"]:
+            binding = el.get("binding") or {}
+            if binding.get("strength") != "required":
+                continue
+            if [t["code"] for t in el.get("type", [])] != ["code"]:
+                continue
+            parts = el["id"].split(".")
+            # HL7 names a backbone type after the root and its own last segment only:
+            # CarePlan.activity.detail -> CarePlan_Detail.
+            owner = parts[0]
+            if len(parts) > 2:
+                owner += "_" + parts[-2][0].upper() + parts[-2][1:]
+            prop = DEFS.get(owner, {}).get("properties", {}).get(parts[-1])
+            if prop is None or "enum" in (prop.get("items") or prop):
+                continue
+            vs = binding.get("valueSet", "").rsplit("/", 1)[-1].split("|")[0]
+            key = vs.replace("-", "").lower()
+            codes = code_lists.get(key) or code_lists.get(key.rstrip("s"))
+            if codes:
+                out[(class_name(owner), parts[-1])] = codes
+            else:
+                UNRESOLVED.append((class_name(owner), parts[-1], vs))
+    return out
+
+
+MODEL_ENUM_VALUE_SETS = {
+    "care-plan-intent": ("app.models.care_plan.enums", "CarePlanIntent"),
+    "clinicalimpression-status": (
+        "app.models.clinical_impression.enums",
+        "ClinicalImpressionStatus",
+    ),
+    "immunization-status": ("app.models.immunization.enums", "ImmunizationStatus"),
+    "immunization-evaluation-status": (
+        "app.models.immunization_evaluation.enums",
+        "ImmunizationEvaluationStatus",
+    ),
+    "medication-admin-status": (
+        "app.models.medication_administration.enums",
+        "MedicationAdministrationStatus",
+    ),
+    "medication-statement-status": (
+        "app.models.medication_statement.enums",
+        "MedicationStatementStatus",
+    ),
+}
+
+# Value sets neither google-fhir nor a model enum covers, listed from HL7 (as audited when CarePlan
+# was rebuilt): care-plan-activity-kind.
+LISTED_VALUE_SETS = {
+    "careplanactivitykind": [
+        "Appointment",
+        "CommunicationRequest",
+        "DeviceRequest",
+        "MedicationRequest",
+        "NutritionOrder",
+        "Task",
+        "ServiceRequest",
+        "VisionPrescription",
+    ],
+}
+
+UNRESOLVED: list[tuple[str, str, str]] = []
+REQUIRED_CODES: dict[tuple[str, str], list[str]] = {}
+
+
 def field_lines(
-    schema: dict, used: set[str], skip: set[str], owner: str = ""
+    schema: dict,
+    used: set[str],
+    skip: set[str],
+    owner: str = "",
+    force_optional: bool = False,
 ) -> list[str]:
     props = {
         name: prop
@@ -223,8 +404,10 @@ def field_lines(
         if not name.startswith("_") and name not in skip
     }
     required = set(schema.get("required", []))
-    required |= EXTRA_REQUIRED.get(owner, set())
-    choices = choice_groups(list(props))
+    required |= EXTRA_REQUIRED.get(owner, set()) | MIN_ONE.get(owner, set())
+    if force_optional:
+        required = set()
+    choices = choice_groups(props)
     lines = []
     for name, prop in props.items():
         py_name, extra = name, ""
@@ -235,9 +418,18 @@ def field_lines(
             description += (
                 f" Choice: at most one `{choices[name]}[x]` element may be present."
             )
+        hint_map = HINTS.get(owner, {})
+        hint_key = name if name in hint_map else choices.get(name)
+        if hint_key in hint_map:
+            description += " " + hint_map[hint_key]
         prop = inline_primitive(name, prop)
         flatten = owner == "Extension"
-        ann = annotation(prop, used, flatten)
+        codes = REQUIRED_CODES.get((owner, name))
+        if codes:
+            literal = "Literal[" + ", ".join(lit(c) for c in codes) + "]"
+            ann = f"list[{literal}]" if "items" in prop else literal
+        else:
+            ann = annotation(prop, used, flatten)
         if flatten and ann == "dict":
             ref = prop["$ref"].rsplit("/", 1)[-1]
             description += f" (A FHIR {ref} object.)"
@@ -259,7 +451,7 @@ def render_class(
     body = field_lines(schema, used, skip, name)
     doc = lit(description.strip())
     out = [f"class {name}({base}):", f"    {doc}", ""]
-    out += body or ["    pass"]
+    out += body
     return "\n".join(out)
 
 
@@ -438,6 +630,8 @@ def base_module() -> str:
 
 
 def main() -> None:
+    REQUIRED_CODES.update(_load_required_codes())
+    MIN_ONE.update(_load_min_one())
     if OUT.exists():
         shutil.rmtree(OUT)
     write(OUT / "base.py", base_module())

@@ -65,8 +65,8 @@ if TYPE_CHECKING:
 class ElementDefinition(BackboneElement):
     "Captures constraints on each element within the resource, profile, or extension."
 
-    path: String | None = Field(
-        None,
+    path: String = Field(
+        ...,
         description='The path identifies the element and is expressed as a "."-separated list of ancestor elements, beginning with the name of the resource or extension.',
     )
     representation: (
@@ -872,8 +872,8 @@ class ElementDefinitionSlicing(BackboneElement):
         None,
         description="If the matching elements have to occur in the same order as defined in the profile.",
     )
-    rules: Literal["closed", "open", "openAtEnd"] | None = Field(
-        None,
+    rules: Literal["closed", "open", "openAtEnd"] = Field(
+        ...,
         description="Whether additional slices are allowed or not. When the slices are ordered, profile authors can also say that additional slices are only allowed at the end.",
     )
 
@@ -894,16 +894,16 @@ class ElementDefinitionDiscriminator(BackboneElement):
 class ElementDefinitionBase(BackboneElement):
     "Captures constraints on each element within the resource, profile, or extension."
 
-    path: String | None = Field(
-        None,
+    path: String = Field(
+        ...,
         description="The Path that identifies the base element - this matches the ElementDefinition.path for that element. Across FHIR, there is only one base definition of any element - that is, an element definition on a [[[StructureDefinition]]] without a StructureDefinition.base.",
     )
-    min: UnsignedInt | None = Field(
-        None,
+    min: UnsignedInt = Field(
+        ...,
         description="Minimum cardinality of the base element identified by the path.",
     )
-    max: String | None = Field(
-        None,
+    max: String = Field(
+        ...,
         description="Maximum cardinality of the base element identified by the path.",
     )
 
@@ -936,8 +936,8 @@ class ElementDefinitionType(BackboneElement):
 class ElementDefinitionExample(BackboneElement):
     "Captures constraints on each element within the resource, profile, or extension."
 
-    label: String | None = Field(
-        None,
+    label: String = Field(
+        ...,
         description="Describes the purpose of this example amoung the set of examples.",
     )
     valueBase64Binary: str | None = Field(
@@ -1145,20 +1145,20 @@ class ElementDefinitionExample(BackboneElement):
 class ElementDefinitionConstraint(BackboneElement):
     "Captures constraints on each element within the resource, profile, or extension."
 
-    key: Id | None = Field(
-        None,
+    key: Id = Field(
+        ...,
         description="Allows identification of which elements have their cardinalities impacted by the constraint.  Will not be referenced for constraints that do not affect cardinality.",
     )
     requirements: String | None = Field(
         None,
         description="Description of why this constraint is necessary or appropriate.",
     )
-    severity: Literal["error", "warning"] | None = Field(
-        None,
+    severity: Literal["error", "warning"] = Field(
+        ...,
         description="Identifies the impact constraint violation has on the conformance of the instance.",
     )
-    human: String | None = Field(
-        None,
+    human: String = Field(
+        ...,
         description="Text that can be used to describe the constraint in messages identifying that the constraint has been violated.",
     )
     expression: String | None = Field(
@@ -1194,15 +1194,15 @@ class ElementDefinitionBinding(BackboneElement):
 class ElementDefinitionMapping(BackboneElement):
     "Captures constraints on each element within the resource, profile, or extension."
 
-    identity: Id | None = Field(
-        None, description="An internal reference to the definition of a mapping."
+    identity: Id = Field(
+        ..., description="An internal reference to the definition of a mapping."
     )
     language: Code | None = Field(
         None,
         description="Identifies the computable language in which mapping.map is expressed.",
     )
-    map: String | None = Field(
-        None,
+    map: String = Field(
+        ...,
         description="Expresses what part of the target specification corresponds to this element.",
     )
     comment: String | None = Field(

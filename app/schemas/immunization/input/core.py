@@ -1,17 +1,14 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirReferenceInput,
-)
+from pydantic import ConfigDict
 
-StatusCode = Literal["completed", "entered-in-error", "not-done"]
+from app.schemas.fhir_resources.immunization import Immunization, ImmunizationPatch
 
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "Immunization",
     "identifier": [
         {
@@ -86,251 +83,19 @@ _EXAMPLE = {
     ],
 }
 
-
-class ImmunizationAnnotationInput(FhirInputModel):
-    """Annotation — a note with an author (a Reference or plain text) and a time."""
-
-    authorReference: FhirReferenceInput | None = Field(
-        None,
-        description="Individual responsible for the annotation — Reference(Practitioner | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    authorString: str | None = Field(
-        None, description="Individual responsible for the annotation, as plain text."
-    )
-    time: str | None = Field(
-        None, description="When the annotation was made (a FHIR dateTime)."
-    )
-    text: str | None = Field(
-        None, description="The annotation text, as markdown (required by R4)."
-    )
+_PATCH_EXAMPLE = {
+    "status": "entered-in-error",
+    "note": [{"text": "Recorded against the wrong patient."}],
+}
 
 
-class ImmunizationQuantityInput(FhirInputModel):
-    """SimpleQuantity (doseQuantity) — a Quantity with no comparator."""
+class ImmunizationCreateSchema(Immunization):
+    "POST body - a FHIR R4 Immunization resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    value: float | int | None = Field(
-        None, description="Numerical value (with implicit precision)."
-    )
-    unit: str | None = Field(None, description="Unit representation.")
-    system: str | None = Field(
-        None,
-        description="System that defines coded unit form (usually http://unitsofmeasure.org).",
-    )
-    code: str | None = Field(None, description="Coded form of the unit.")
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class ImmunizationPerformerInput(FhirInputModel):
-    """Immunization.performer — who did what."""
+class ImmunizationPatchSchema(ImmunizationPatch):
+    "PATCH body - a partial FHIR R4 Immunization (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    function: FhirCodeableConceptInput | None = Field(
-        None,
-        description="What type of performance was done (Ordering Provider, Administering Provider...).",
-    )
-    actor: FhirReferenceInput | None = Field(
-        None,
-        description="Individual or organization who was performing — Reference(Practitioner | PractitionerRole | Organization) (required by R4). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-
-
-class ImmunizationEducationInput(FhirInputModel):
-    """Immunization.education — educational material presented to the patient."""
-
-    documentType: str | None = Field(
-        None,
-        description="Educational material document identifier (one of documentType or reference is required by R4).",
-    )
-    reference: str | None = Field(
-        None, description="Educational material reference pointer (a URI)."
-    )
-    publicationDate: str | None = Field(
-        None, description="Educational material publication date (a FHIR dateTime)."
-    )
-    presentationDate: str | None = Field(
-        None, description="Educational material presentation date (a FHIR dateTime)."
-    )
-
-
-class ImmunizationReactionInput(FhirInputModel):
-    """Immunization.reaction — details of a reaction that follows immunization."""
-
-    date: str | None = Field(
-        None, description="When the reaction started (a FHIR dateTime)."
-    )
-    detail: FhirReferenceInput | None = Field(
-        None,
-        description="Additional information on the reaction — Reference(Observation).",
-    )
-    reported: bool | None = Field(
-        None, description="Indicates a self-reported reaction."
-    )
-
-
-class ImmunizationProtocolAppliedInput(FhirInputModel):
-    """Immunization.protocolApplied — the protocol the provider followed."""
-
-    series: str | None = Field(None, description="Name of the vaccine series.")
-    authority: FhirReferenceInput | None = Field(
-        None,
-        description="Who is responsible for publishing the recommendations — Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    targetDisease: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Vaccine preventable disease being targeted."
-    )
-    doseNumberPositiveInt: int | None = Field(
-        None,
-        description="Dose number within the series (a positiveInt). One of the doseNumber[x] choices (required by R4).",
-    )
-    doseNumberString: str | None = Field(
-        None,
-        description="Dose number within the series (a string). One of the doseNumber[x] choices.",
-    )
-    seriesDosesPositiveInt: int | None = Field(
-        None,
-        description="Recommended number of doses for immunity (a positiveInt). One of the seriesDoses[x] choices.",
-    )
-    seriesDosesString: str | None = Field(
-        None,
-        description="Recommended number of doses for immunity (a string). One of the seriesDoses[x] choices.",
-    )
-
-
-class _ImmunizationFields(FhirInputModel):
-    """Every writable Immunization element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/immunization.html). Create and patch accept
-    exactly the same fields. R4 requires `status`, `vaccineCode`, `patient` and
-    one of `occurrenceDateTime`/`occurrenceString`; that is enforced by base R4
-    validation of the stored document (the `java_validator` backend — the native
-    structural check has no cardinality minimums), not by this model. A PATCH may
-    omit them: it is merged onto the current resource before validating.
-
-    The validated body is stored whole (ImmunizationModel.content), so any valid
-    R4 element is kept — including ones this model does not declare. Server-managed
-    elements are ignored if sent: `id` (assigned from the immunization_id
-    sequence) and `meta` (audit/tenant data, stamped on at read time). org_id and
-    created_by/updated_by come from the verified JWT (actor.org_id / actor.sub),
-    never the body. There is no user_id."""
-
-    resourceType: Literal["Immunization"] | None = Field(
-        None, description="Optional; if supplied it must be 'Immunization'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="Business identifier."
-    )
-    status: StatusCode | None = Field(
-        None, description="completed | entered-in-error | not-done (required by R4)."
-    )
-    statusReason: FhirCodeableConceptInput | None = Field(
-        None, description="Reason not done."
-    )
-    vaccineCode: FhirCodeableConceptInput | None = Field(
-        None, description="Vaccine product administered (required by R4)."
-    )
-    patient: FhirReferenceInput | None = Field(
-        None,
-        description="Who was immunized — Reference(Patient) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    encounter: FhirReferenceInput | None = Field(
-        None,
-        description="Encounter immunization was part of — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    occurrenceDateTime: str | None = Field(
-        None,
-        description="Vaccine administration date (a FHIR dateTime). One of the occurrence[x] choices (required by R4).",
-    )
-    occurrenceString: str | None = Field(
-        None,
-        description="Vaccine administration date (a string). One of the occurrence[x] choices.",
-    )
-    recorded: str | None = Field(
-        None,
-        description="When the immunization was first captured in the subject's record (a FHIR dateTime).",
-    )
-    primarySource: bool | None = Field(
-        None,
-        description="Indicates the context the data was recorded in (true = the immunization was reported by the provider who administered it).",
-    )
-    reportOrigin: FhirCodeableConceptInput | None = Field(
-        None, description="Indicates the source of a secondarily reported record."
-    )
-    location: FhirReferenceInput | None = Field(
-        None,
-        description="Where the immunization occurred — Reference(Location). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    manufacturer: FhirReferenceInput | None = Field(
-        None,
-        description="Vaccine manufacturer — Reference(Organization). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    lotNumber: str | None = Field(None, description="Vaccine lot number.")
-    expirationDate: str | None = Field(
-        None, description="Vaccine expiration date (a FHIR date)."
-    )
-    site: FhirCodeableConceptInput | None = Field(
-        None, description="Body site vaccine was administered."
-    )
-    route: FhirCodeableConceptInput | None = Field(
-        None, description="How the vaccine entered the body."
-    )
-    doseQuantity: ImmunizationQuantityInput | None = Field(
-        None, description="Amount of vaccine administered."
-    )
-    performer: list[ImmunizationPerformerInput] | None = Field(
-        None, description="Who performed the event."
-    )
-    note: list[ImmunizationAnnotationInput] | None = Field(
-        None, description="Additional immunization notes."
-    )
-    reasonCode: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Why the immunization occurred."
-    )
-    reasonReference: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Why the immunization occurred — Reference(Condition | Observation | DiagnosticReport). A relative Condition or DiagnosticReport must exist in the caller's org (422 otherwise).",
-    )
-    isSubpotent: bool | None = Field(
-        None, description="Dose potency (true = the dose was subpotent)."
-    )
-    subpotentReason: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Reason for being subpotent."
-    )
-    education: list[ImmunizationEducationInput] | None = Field(
-        None, description="Educational material presented to the patient."
-    )
-    programEligibility: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Patient eligibility for a vaccination program."
-    )
-    fundingSource: FhirCodeableConceptInput | None = Field(
-        None, description="Funding source for the vaccine."
-    )
-    reaction: list[ImmunizationReactionInput] | None = Field(
-        None, description="Details of a reaction that follows immunization."
-    )
-    protocolApplied: list[ImmunizationProtocolAppliedInput] | None = Field(
-        None, description="Protocol followed by the provider."
-    )
-
-
-class ImmunizationCreateSchema(_ImmunizationFields):
-    """POST body — a FHIR R4 Immunization resource."""
-
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
-
-
-class ImmunizationPatchSchema(_ImmunizationFields):
-    """PATCH body — a partial FHIR R4 Immunization (merge-patch semantics on
-    top-level elements). Only supplied elements are written; omitted ones are left
-    untouched. A supplied element replaces the stored value wholesale — a list
-    (even `[]`) replaces every existing entry, an object such as `vaccineCode`
-    replaces the whole value, and `null` clears it."""
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "status": "entered-in-error",
-                "note": [{"text": "Recorded against the wrong patient."}],
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

@@ -19,8 +19,8 @@ class SampledData(Element):
         ...,
         description="The base quantity that a measured value of zero represents. In addition, this provides the units of the entire measurement series.",
     )
-    period: Decimal | None = Field(
-        None,
+    period: Decimal = Field(
+        ...,
         description="The length of time between sampling times, measured in milliseconds.",
     )
     factor: Decimal | None = Field(
@@ -35,8 +35,8 @@ class SampledData(Element):
         None,
         description='The upper limit of detection of the measured points. This is needed if any of the data points have the value "U" (higher than detection limit).',
     )
-    dimensions: PositiveInt | None = Field(
-        None,
+    dimensions: PositiveInt = Field(
+        ...,
         description="The number of sample points at each time point. If this value is greater than one, then the dimensions will be interlaced - all the sample points for a point in time will be recorded at once.",
     )
     data: String | None = Field(

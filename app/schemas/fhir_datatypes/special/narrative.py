@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 class Narrative(Element):
     "A human-readable summary of the resource conveying the essential clinical and business information for the resource."
 
-    status: Literal["generated", "extensions", "additional", "empty"] | None = Field(
-        None,
+    status: Literal["generated", "extensions", "additional", "empty"] = Field(
+        ...,
         description="The status of the narrative - whether it's entirely generated (from just the defined data or the extensions too), or whether a human authored it and it may contain additional data.",
     )
     div: Xhtml = Field(

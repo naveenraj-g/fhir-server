@@ -1,7 +1,3 @@
-from .backbone import (
-    FHIRPractitionerRoleAvailableTime,
-    FHIRPractitionerRoleNotAvailable,
-)
 from .core import (
     FHIRPractitionerRoleBundle,
     FHIRPractitionerRoleBundleEntry,
@@ -9,9 +5,7 @@ from .core import (
 )
 
 __all__ = [
-    "FHIRPractitionerRoleAvailableTime",
     "FHIRPractitionerRoleBundle",
     "FHIRPractitionerRoleBundleEntry",
-    "FHIRPractitionerRoleNotAvailable",
     "FHIRPractitionerRoleSchema",
 ]

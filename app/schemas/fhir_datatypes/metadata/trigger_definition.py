@@ -23,19 +23,16 @@ if TYPE_CHECKING:
 class TriggerDefinition(Element):
     "A description of a triggering event. Triggering events can be named events, data events, or periodic, as determined by the type element."
 
-    type: (
-        Literal[
-            "named-event",
-            "periodic",
-            "data-changed",
-            "data-added",
-            "data-modified",
-            "data-removed",
-            "data-accessed",
-            "data-access-ended",
-        ]
-        | None
-    ) = Field(None, description="The type of triggering event.")
+    type: Literal[
+        "named-event",
+        "periodic",
+        "data-changed",
+        "data-added",
+        "data-modified",
+        "data-removed",
+        "data-accessed",
+        "data-access-ended",
+    ] = Field(..., description="The type of triggering event.")
     name: String | None = Field(
         None,
         description="A formal name for the event. This may be an absolute URI that identifies the event formally (e.g. from a trigger registry), or a simple relative URI that identifies the event in a local context.",

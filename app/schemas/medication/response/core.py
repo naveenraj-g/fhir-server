@@ -1,73 +1,22 @@
+"""Response schemas for Medication (generated; see scripts/generate_fhir_resources.py)."""
+
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import (
-    FHIRBundle,
-    FHIRCodeableConcept,
-    FHIRIdentifier,
-    FHIRMeta,
-    FHIRQuantity,
-    FHIRReference,
-)
+from app.schemas.datatypes import FHIRBundle, FHIRMeta
 from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_resources.medication import Medication
 
 
-class FHIRMedicationRatio(BaseModel):
-    numerator: FHIRQuantity | None = Field(None, description="Numerator value.")
-    denominator: FHIRQuantity | None = Field(None, description="Denominator value.")
+class FHIRMedicationSchema(Medication):
+    "A FHIR R4 Medication as served: the stored document with `id` and `meta` stamped on."
 
-
-class FHIRMedicationIngredient(BaseModel):
-    itemCodeableConcept: FHIRCodeableConcept | None = Field(
-        None, description="The actual ingredient (CodeableConcept)."
-    )
-    itemReference: FHIRReference | None = Field(
-        None, description="The actual ingredient (Substance or Medication)."
-    )
-    isActive: bool | None = Field(None, description="Active ingredient indicator.")
-    strength: FHIRMedicationRatio | None = Field(
-        None, description="Quantity of ingredient present."
-    )
-
-
-class FHIRMedicationBatch(BaseModel):
-    lotNumber: str | None = Field(None, description="Identifier assigned to batch.")
-    expirationDate: str | None = Field(None, description="When batch will expire.")
-
-
-class FHIRMedicationSchema(BaseModel):
     resourceType: str = Field("Medication", description="Always 'Medication'.")
     id: str = Field(..., description="Public medication_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
-    )
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="Business identifier for this medication."
-    )
-    code: FHIRCodeableConcept | None = Field(
-        None, description="Codes that identify this medication."
-    )
-    status: str | None = Field(
-        None, description="active | inactive | entered-in-error."
-    )
-    manufacturer: FHIRReference | None = Field(
-        None, description="Manufacturer of the item."
-    )
-    form: FHIRCodeableConcept | None = Field(
-        None, description="powder | tablets | capsule ..."
-    )
-    amount: FHIRMedicationRatio | None = Field(
-        None, description="Amount of drug in package."
-    )
-    ingredient: list[FHIRMedicationIngredient] | None = Field(
-        None, description="Active or inactive ingredient."
-    )
-    batch: FHIRMedicationBatch | None = Field(
-        None, description="Details about packaged medications."
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )
 
 
@@ -77,7 +26,7 @@ class FHIRMedicationBundleEntry(BaseModel):
     )
     resource: FHIRMedicationSchema | dict = Field(
         ...,
-        description="A Medication (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Organization / Medication (from _include or _revinclude), or an OperationOutcome (outcome).",
+        description="A Medication (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
     search: FHIRBundleEntrySearch
 

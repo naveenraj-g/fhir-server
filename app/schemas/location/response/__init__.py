@@ -1,15 +1,7 @@
-from .core import (
-    FHIRLocationBundle,
-    FHIRLocationBundleEntry,
-    FHIRLocationHoursOfOperation,
-    FHIRLocationPosition,
-    FHIRLocationSchema,
-)
+from .core import FHIRLocationBundle, FHIRLocationBundleEntry, FHIRLocationSchema
 
 __all__ = [
-    "FHIRLocationSchema",
-    "FHIRLocationBundleEntry",
     "FHIRLocationBundle",
-    "FHIRLocationPosition",
-    "FHIRLocationHoursOfOperation",
+    "FHIRLocationBundleEntry",
+    "FHIRLocationSchema",
 ]

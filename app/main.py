@@ -15,6 +15,7 @@ from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
 from app.core.openapi_tags import OPENAPI_TAGS
 from app.core.redis import redis_client
+from app.core.schema_utils import COMPONENT_SCHEMAS
 from app.di.container import container
 from app.errors.base import ApplicationError
 from app.errors.handlers import (
@@ -310,6 +311,11 @@ def _custom_openapi():
         routes=app.routes,
         tags=app.openapi_tags,
     )
+    # Shared sub-schemas of the response models (see app.core.schema_utils.inline_schema); a
+    # definition FastAPI already published for a request body keeps its own copy.
+    component_schemas = schema.setdefault("components", {}).setdefault("schemas", {})
+    for name, definition in COMPONENT_SCHEMAS.items():
+        component_schemas.setdefault(name, definition)
     schema.setdefault("components", {})["securitySchemes"] = {
         "BearerAuth": {
             "type": "http",

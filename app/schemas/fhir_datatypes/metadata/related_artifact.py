@@ -15,19 +15,16 @@ if TYPE_CHECKING:
 class RelatedArtifact(Element):
     "Related artifacts such as additional documentation, justification, or bibliographic references."
 
-    type: (
-        Literal[
-            "documentation",
-            "justification",
-            "citation",
-            "predecessor",
-            "successor",
-            "derived-from",
-            "depends-on",
-            "composed-of",
-        ]
-        | None
-    ) = Field(None, description="The type of relationship to the related artifact.")
+    type: Literal[
+        "documentation",
+        "justification",
+        "citation",
+        "predecessor",
+        "successor",
+        "derived-from",
+        "depends-on",
+        "composed-of",
+    ] = Field(..., description="The type of relationship to the related artifact.")
     label: String | None = Field(
         None,
         description="A short label that can be used to reference the citation from elsewhere in the containing artifact, such as a footnote index.",

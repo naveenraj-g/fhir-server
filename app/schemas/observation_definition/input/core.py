@@ -1,32 +1,17 @@
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
+
 from __future__ import annotations
 
-from typing import Literal
+from pydantic import ConfigDict
 
-from pydantic import Field
-
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirReferenceInput,
+from app.schemas.fhir_resources.observation_definition import (
+    ObservationDefinition,
+    ObservationDefinitionPatch,
 )
 
-# permittedDataType (the required binding of ObservationDefinition.permittedDataType).
-PermittedDataTypeCode = Literal[
-    "Quantity",
-    "CodeableConcept",
-    "string",
-    "boolean",
-    "integer",
-    "Range",
-    "Ratio",
-    "SampledData",
-    "time",
-    "dateTime",
-    "Period",
-]
-
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "ObservationDefinition",
     "identifier": [
         {
@@ -64,88 +49,16 @@ _EXAMPLE = {
     ],
 }
 
-
-class _ObservationDefinitionFields(FhirInputModel):
-    """Every writable ObservationDefinition element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/observationdefinition.html). Create and patch accept exactly
-    the same fields. R4 requires `code`; the native validator checks it, and the finer R4
-    rules are only enforced by the `java_validator` backend.
-
-    The validated body is stored whole (ObservationDefinitionModel.content), so any valid R4
-    element is kept - including ones this model does not declare. Server-managed elements are
-    ignored if sent: `id` (assigned from the observation_definition_id sequence) and `meta`
-    (audit/tenant data, stamped on at read time). org_id and created_by/updated_by come from
-    the verified JWT (actor.org_id / actor.sub), never the body. There is no user_id.
-
-    R4 defines no search parameter for this resource, so nothing here is indexed."""
-
-    resourceType: Literal["ObservationDefinition"] | None = Field(
-        None, description="Optional; if supplied it must be 'ObservationDefinition'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries - validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="Business identifier for this ObservationDefinition instance."
-    )
-    category: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Category of observation."
-    )
-    code: FhirCodeableConceptInput | None = Field(
-        None, description="Type of observation (code / type) - required by R4."
-    )
-    permittedDataType: list[PermittedDataTypeCode] | None = Field(
-        None,
-        description="Quantity | CodeableConcept | string | boolean | integer | Range | Ratio | SampledData | time | dateTime | Period.",
-    )
-    multipleResultsAllowed: bool | None = Field(
-        None, description="Multiple results allowed."
-    )
-    method: FhirCodeableConceptInput | None = Field(
-        None, description="Method used to produce the observation."
-    )
-    preferredReportName: str | None = Field(None, description="Preferred report name.")
-    quantitativeDetails: dict | None = Field(
-        None,
-        description="Characteristics of quantitative results: {customaryUnit, unit, conversionFactor, decimalPrecision}.",
-    )
-    qualifiedInterval: list[dict] | None = Field(
-        None,
-        description="Qualified range for continuous and ordinal observation results: [{category, range, context, appliesTo, gender, age, gestationalAge, condition}].",
-    )
-    validCodedValueSet: FhirReferenceInput | None = Field(
-        None,
-        description="Value set of valid coded values for the observations conforming to this ObservationDefinition - Reference(ValueSet).",
-    )
-    normalCodedValueSet: FhirReferenceInput | None = Field(
-        None, description="Value set of normal coded values - Reference(ValueSet)."
-    )
-    abnormalCodedValueSet: FhirReferenceInput | None = Field(
-        None, description="Value set of abnormal coded values - Reference(ValueSet)."
-    )
-    criticalCodedValueSet: FhirReferenceInput | None = Field(
-        None, description="Value set of critical coded values - Reference(ValueSet)."
-    )
+_PATCH_EXAMPLE = {"preferredReportName": "Haemoglobin", "multipleResultsAllowed": True}
 
 
-class ObservationDefinitionCreateSchema(_ObservationDefinitionFields):
-    """POST body - a FHIR R4 ObservationDefinition resource."""
+class ObservationDefinitionCreateSchema(ObservationDefinition):
+    "POST body - a FHIR R4 ObservationDefinition resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class ObservationDefinitionPatchSchema(_ObservationDefinitionFields):
-    """PATCH body - a partial FHIR R4 ObservationDefinition (merge-patch semantics on top-level
-    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
-    element replaces the stored value wholesale - a list (even `[]`) replaces every existing
-    entry, an object replaces the whole value, and `null` clears it."""
+class ObservationDefinitionPatchSchema(ObservationDefinitionPatch):
+    "PATCH body - a partial FHIR R4 ObservationDefinition (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "preferredReportName": "Haemoglobin",
-                "multipleResultsAllowed": True,
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

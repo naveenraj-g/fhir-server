@@ -1,58 +1,22 @@
+"""Response schemas for MeasureReport (generated; see scripts/generate_fhir_resources.py)."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import (
-    FHIRBundle,
-    FHIRCodeableConcept,
-    FHIRIdentifier,
-    FHIRMeta,
-    FHIRPeriod,
-    FHIRReference,
-)
+from app.schemas.datatypes import FHIRBundle, FHIRMeta
 from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_resources.measure_report import MeasureReport
 
 
-class FHIRMeasureReportSchema(BaseModel):
+class FHIRMeasureReportSchema(MeasureReport):
+    "A FHIR R4 MeasureReport as served: the stored document with `id` and `meta` stamped on."
+
     resourceType: str = Field("MeasureReport", description="Always 'MeasureReport'.")
     id: str = Field(..., description="Public measure_report_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
-    )
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="Additional identifier."
-    )
-    status: str | None = Field(None, description="complete | pending | error.")
-    type: str | None = Field(
-        None, description="individual | subject-list | summary | data-collection."
-    )
-    measure: str | None = Field(
-        None,
-        description="What measure was calculated (the canonical URL of a Measure).",
-    )
-    subject: FHIRReference | None = Field(
-        None, description="What individual(s) the report is for."
-    )
-    date: str | None = Field(None, description="When the report was generated.")
-    reporter: FHIRReference | None = Field(
-        None, description="Who is reporting the data."
-    )
-    period: FHIRPeriod | None = Field(
-        None, description="What period the report covers."
-    )
-    improvementNotation: FHIRCodeableConcept | None = Field(
-        None, description="increase | decrease."
-    )
-    group: list[dict] | None = Field(
-        None, description="Measure results for each group."
-    )
-    evaluatedResource: list[FHIRReference] | None = Field(
-        None, description="What data was used to calculate the measure score."
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )
 
 

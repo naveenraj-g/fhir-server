@@ -155,6 +155,7 @@ Every resource that was on the old fully-normalized model has been rebuilt. Bran
 | `number` search over a decimal or a Range (`number_range_match`) | RiskAssessment | `app/fhir/search/quantity.py` |
 | Derived chain / include targets and `Reference(Any)` = every R4 type (`MODELED`, `ANY_RESOURCE_TYPES`; guard `tests/unit/test_search_targets.py`) | cross-resource refactor | `app/repository/_search_targets.py`, `app/models/shared/resource_types.py` |
 | `composite` search (`split_composite`; a resource-side `$` builder pairing a code row and a value row of the same element, `slot`) and the `combo-*` union parameters | Observation | `app/fhir/search/composite.py` |
+| Fully-typed request/response schemas generated from HL7's R4 definitions: every datatype (`app/schemas/fhir_datatypes/`) and every resource with all nested elements, descriptions, required elements per R4 minimum cardinality, required-binding code enums and per-element search-parameter hints (`app/schemas/fhir_resources/`); shared OpenAPI components instead of inlined copies | all resources | `scripts/generate_fhir_datatypes.py`, `scripts/generate_fhir_resources.py`, `app/core/schema_utils.py` |
 
 ---
 

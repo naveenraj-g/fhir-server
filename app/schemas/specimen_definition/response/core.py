@@ -1,44 +1,24 @@
+"""Response schemas for SpecimenDefinition (generated; see scripts/generate_fhir_resources.py)."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import (
-    FHIRBundle,
-    FHIRCodeableConcept,
-    FHIRIdentifier,
-    FHIRMeta,
-)
+from app.schemas.datatypes import FHIRBundle, FHIRMeta
 from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_resources.specimen_definition import SpecimenDefinition
 
 
-class FHIRSpecimenDefinitionSchema(BaseModel):
+class FHIRSpecimenDefinitionSchema(SpecimenDefinition):
+    "A FHIR R4 SpecimenDefinition as served: the stored document with `id` and `meta` stamped on."
+
     resourceType: str = Field(
         "SpecimenDefinition", description="Always 'SpecimenDefinition'."
     )
     id: str = Field(..., description="Public specimen_definition_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
-    )
-    identifier: FHIRIdentifier | None = Field(
-        None, description="Business identifier of a kind of specimen."
-    )
-    typeCollected: FHIRCodeableConcept | None = Field(
-        None, description="Kind of material to collect."
-    )
-    patientPreparation: list[FHIRCodeableConcept] | None = Field(
-        None, description="Patient preparation for collection."
-    )
-    timeAspect: str | None = Field(None, description="Time aspect for collection.")
-    collection: list[FHIRCodeableConcept] | None = Field(
-        None, description="Specimen collection procedure."
-    )
-    typeTested: list[dict] | None = Field(
-        None, description="Specimen in container intended for testing by lab."
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )
 
 
@@ -48,7 +28,7 @@ class FHIRSpecimenDefinitionBundleEntry(BaseModel):
     )
     resource: FHIRSpecimenDefinitionSchema | dict = Field(
         ...,
-        description="A SpecimenDefinition (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED) or an OperationOutcome (outcome).",
+        description="A SpecimenDefinition (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
     search: FHIRBundleEntrySearch
 
@@ -56,7 +36,7 @@ class FHIRSpecimenDefinitionBundleEntry(BaseModel):
 class FHIRSpecimenDefinitionBundle(FHIRBundle):
     total: int | None = Field(
         None,
-        description="Number of matches across all pages. Omitted with _total=none.",
+        description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
     )
     link: list[FHIRBundleLink] = Field(
         ..., description="Paging links: self, first, previous, next, last."

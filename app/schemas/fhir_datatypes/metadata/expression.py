@@ -23,9 +23,9 @@ class Expression(Element):
         None,
         description="A short name assigned to the expression to allow for multiple reuse of the expression in the context where it is defined.",
     )
-    language: (
-        Literal["text/cql", "text/fhirpath", "application/x-fhir-query"] | None
-    ) = Field(None, description="The media type of the language for the expression.")
+    language: Literal["text/cql", "text/fhirpath", "application/x-fhir-query"] = Field(
+        ..., description="The media type of the language for the expression."
+    )
     expression: String | None = Field(
         None,
         description="An expression in the specified language that returns a value.",

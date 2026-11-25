@@ -1,50 +1,25 @@
+"""Response schemas for AppointmentResponse (generated; see scripts/generate_fhir_resources.py)."""
+
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import (
-    FHIRBundle,
-    FHIRCodeableConcept,
-    FHIRIdentifier,
-    FHIRMeta,
-    FHIRReference,
-)
+from app.schemas.datatypes import FHIRBundle, FHIRMeta
 from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_resources.appointment_response import AppointmentResponse
 
 
-class FHIRAppointmentResponseSchema(BaseModel):
+class FHIRAppointmentResponseSchema(AppointmentResponse):
+    "A FHIR R4 AppointmentResponse as served: the stored document with `id` and `meta` stamped on."
+
     resourceType: str = Field(
         "AppointmentResponse", description="Always 'AppointmentResponse'."
     )
     id: str = Field(..., description="Public appointment_response_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
-    )
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="External Ids for this item."
-    )
-    appointment: FHIRReference | None = Field(
-        None, description="Appointment this response is replying to."
-    )
-    start: str | None = Field(
-        None, description="Time from appointment, or requested new start time."
-    )
-    end: str | None = Field(
-        None, description="Time from appointment, or requested new end time."
-    )
-    participantType: list[FHIRCodeableConcept] | None = Field(
-        None, description="Role of participant in the appointment."
-    )
-    actor: FHIRReference | None = Field(
-        None, description="Person, Location, HealthcareService, or Device."
-    )
-    participantStatus: str | None = Field(
-        None, description="accepted | declined | tentative | needs-action."
-    )
-    comment: str | None = Field(None, description="Additional comments.")
 
 
 class FHIRAppointmentResponseBundleEntry(BaseModel):
@@ -53,7 +28,7 @@ class FHIRAppointmentResponseBundleEntry(BaseModel):
     )
     resource: FHIRAppointmentResponseSchema | dict = Field(
         ...,
-        description="An AppointmentResponse (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Appointment / Patient / Practitioner / PractitionerRole / HealthcareService / Location (from _include), or an OperationOutcome (outcome).",
+        description="A AppointmentResponse (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
     search: FHIRBundleEntrySearch
 

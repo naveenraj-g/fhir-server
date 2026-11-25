@@ -1,21 +1,14 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.enums import AdministrativeGender
-from app.schemas.fhir_input import (
-    FhirAddressInput,
-    FhirAttachmentInput,
-    FhirCodeableConceptInput,
-    FhirContactPointInput,
-    FhirHumanNameInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-)
+from pydantic import ConfigDict
 
-from .qualification import PractitionerQualificationInput
+from app.schemas.fhir_resources.practitioner import Practitioner, PractitionerPatch
 
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "Practitioner",
     "active": True,
     "gender": "female",
@@ -53,87 +46,19 @@ _EXAMPLE = {
     "communication": [{"coding": [{"code": "en", "display": "English"}]}],
 }
 
-
-class _PractitionerFields(FhirInputModel):
-    """Every writable Practitioner element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/practitioner.html). Create and patch accept
-    exactly the same fields — Practitioner has no element that is required
-    at this layer.
-
-    The validated body is stored whole (PractitionerModel.content), so any
-    valid R4 element is kept — including ones this model doesn't declare.
-    Server-managed elements are ignored if sent: `id` (assigned from the
-    practitioner_id sequence) and `meta` (audit/tenant data, stamped on at
-    read time). org_id and created_by/updated_by come from the verified JWT
-    (actor.org_id / actor.sub), never the body.
-
-    The end-user a record belongs to (`user_id`, which scopes `/me`) is not
-    a FHIR element and is not accepted here: it is set afterwards with
-    `PUT /practitioners/{id}/user`."""
-
-    resourceType: Literal["Practitioner"] | None = Field(
-        None, description="Optional; if supplied it must be 'Practitioner'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="An identifier for the person as this agent."
-    )
-    active: bool | None = Field(
-        None, description="Whether this practitioner's record is in active use."
-    )
-    name: list[FhirHumanNameInput] | None = Field(
-        None, description="The name(s) associated with the practitioner."
-    )
-    telecom: list[FhirContactPointInput] | None = Field(
-        None,
-        description="A contact detail for the practitioner (that apply to all roles).",
-    )
-    address: list[FhirAddressInput] | None = Field(
-        None, description="Address(es) of the practitioner that are not role specific."
-    )
-    gender: AdministrativeGender | None = Field(
-        None, description="male | female | other | unknown."
-    )
-    birthDate: str | None = Field(
-        None,
-        description="The date on which the practitioner was born (FHIR date: YYYY, YYYY-MM or YYYY-MM-DD).",
-    )
-    photo: list[FhirAttachmentInput] | None = Field(
-        None, description="Image of the person."
-    )
-    qualification: list[PractitionerQualificationInput] | None = Field(
-        None,
-        description="Certification, licenses, or training pertaining to the provision of care.",
-    )
-    communication: list[FhirCodeableConceptInput] | None = Field(
-        None,
-        description="A language the practitioner can use in patient communication.",
-    )
+_PATCH_EXAMPLE = {
+    "telecom": [{"system": "phone", "value": "555-0000", "use": "work"}],
+    "active": False,
+}
 
 
-class PractitionerCreateSchema(_PractitionerFields):
-    """POST body — a FHIR R4 Practitioner resource. Creates the
-    practitioner and every supplied nested element atomically in one
-    transaction."""
+class PractitionerCreateSchema(Practitioner):
+    "POST body - a FHIR R4 Practitioner resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class PractitionerPatchSchema(_PractitionerFields):
-    """PATCH body — a partial FHIR R4 Practitioner (merge-patch semantics on
-    top-level elements). Only supplied elements are written; omitted ones
-    are left untouched. A supplied element replaces the stored value
-    wholesale — a list (even `[]`) replaces every existing entry, and `null`
-    clears it."""
+class PractitionerPatchSchema(PractitionerPatch):
+    "PATCH body - a partial FHIR R4 Practitioner (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "telecom": [{"system": "phone", "value": "555-0000", "use": "work"}],
-                "active": False,
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

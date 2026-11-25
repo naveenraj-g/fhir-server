@@ -245,6 +245,18 @@ Three schema types per resource, all with `model_config = ConfigDict(extra="forb
 
 Recursive schemas (e.g. QuestionnaireResponse items) must call `model_rebuild()` after class definition.
 
+### Request/response schemas are generated from HL7's R4 definitions (fully typed)
+
+The OpenAPI spec is what MCP callers and API integrators read, so every resource's request and response schema describes the **whole R4 resource, down through every nested element**, with HL7's own element descriptions — never `dict` / `list[dict]` for a backbone element.
+
+- **`app/schemas/fhir_datatypes/`** — one Pydantic model per R4 datatype (20 primitives as constrained aliases in `primitive/`, then `general/`, `metadata/`, `special/` following https://hl7.org/fhir/R4/datatypes.html, plus `base.py` with `Element` / `BackboneElement`). Reused by every resource and by input and output alike. `Extension.value[x]` keeps its primitives typed but its complex values as objects (otherwise every schema would pull in the whole datatype graph).
+- **`app/schemas/fhir_resources/<resource>.py`** — the whole resource: every element, every nested backbone class (`ObservationComponent`, `MeasureReportGroup`, ...), `required` elements per HL7's JSON schema, `[x]` choice elements noted, and on each element the **search parameters that read it** (taken from the resource's `SearchRegistry`). `<Resource>Patch` makes every top-level element optional (merge-patch).
+- **`app/schemas/<resource>/input/core.py`** — thin: `<R>CreateSchema(<R>)` / `<R>PatchSchema(<R>Patch)`, keeping the request example. **`response/core.py`** — `FHIR<R>Schema` (adds the served `id` / `meta`), `FHIR<R>BundleEntry`, `FHIR<R>Bundle`.
+- **Generated, not hand-written**: `uv run python scripts/generate_fhir_datatypes.py` then `uv run python scripts/generate_fhir_resources.py` (source: `app/fhir/spec/fhir.schema.json`, the same file the native validator uses). To change a model, change the generator and regenerate — hand edits are overwritten. The generators keep each resource's existing request examples; a resource that gains a search parameter picks up its "Search parameters" hint on the next run.
+- Python modules are snake_case; the public field names (request, response, `content`) are FHIR camelCase. A FHIR name that is a Python keyword (`class`, `from`) gets a trailing underscore and an alias.
+- Models use `extra="ignore"` and primitive-extension siblings (`_status`) are not modelled: the validated **raw body** is what is stored, so an element a model does not declare is never lost or rejected. Pydantic's job is the typed contract and an early 422; the base R4 validator remains the authority.
+- **`inline_schema()` (`app/core/schema_utils.py`) no longer inlines**: it moves a model's `$defs` into `COMPONENT_SCHEMAS`, which `app.main`'s custom OpenAPI hook publishes once under `components.schemas`, and rewrites the references. Inlining a fully-typed resource copied it into every route (a Task became 11 MB) and could not describe a recursive element. Two different Pydantic classes must not share a name (it raises).
+
 Once `input.py`/`response.py` grow large (many sub-resources), split each into a same-named package (`input/core.py` + one file per sub-resource + `input/__init__.py` re-exporting everything) — see the `/split-resource-package` skill. Patient, Practitioner, Organization, Location, HealthcareService, PractitionerRole, Schedule, Slot, Appointment, AppointmentResponse, Encounter, and RelatedPerson all do this; the module→package conversion is transparent to every existing import.
 
 ---

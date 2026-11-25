@@ -66,7 +66,7 @@ async def world(client):
       b  completed plan, routine, of p2, based on and replacing a, requested by a role, over a period
       c  draft original-order of a location, a Timing, based on a CarePlan, with the other specimen
       d  entered-in-error proposal of a Group, requested by a Device
-      e  nothing coded, a logical subject, based on b
+      e  only the required elements (status unknown, intent directive), a logical subject, based on b
     """
     w = {}
     w["p1"] = await create_patient(
@@ -176,6 +176,8 @@ async def world(client):
     w["e"] = await create_service_request(
         client,
         {
+            "status": "unknown",
+            "intent": "directive",
             "subject": {
                 "identifier": {"system": "urn:pts", "value": "P-9"},
                 "display": "External",
@@ -244,9 +246,10 @@ async def test_status(client, world):
         "c",
         "d",
         "e",
-    }  # `:not` also finds a request with no status
-    assert await _keys(client, world, **{"status:missing": "true"}) == {"e"}
-    assert await _keys(client, world, **{"status:missing": "false"}) == ALL - {"e"}
+    }
+    # R4 requires a status, so no request can lack one
+    assert await _keys(client, world, **{"status:missing": "true"}) == set()
+    assert await _keys(client, world, **{"status:missing": "false"}) == ALL
 
 
 async def test_intent(client, world):
@@ -262,7 +265,9 @@ async def test_intent(client, world):
     ) == {"b"}
     assert await _keys(client, world, intent="http://wrong|plan") == set()
     assert await _keys(client, world, intent="reflex-order") == set()
-    assert await _keys(client, world, **{"intent:missing": "true"}) == {"e"}
+    assert await _keys(client, world, intent="directive") == {"e"}
+    # R4 requires an intent, so no request can lack one
+    assert await _keys(client, world, **{"intent:missing": "true"}) == set()
 
 
 async def test_priority(client, world):

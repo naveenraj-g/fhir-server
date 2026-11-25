@@ -1,22 +1,17 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirContactPointInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirPeriodInput,
-    FhirReferenceInput,
+from pydantic import ConfigDict
+
+from app.schemas.fhir_resources.practitioner_role import (
+    PractitionerRole,
+    PractitionerRolePatch,
 )
 
-from .backbone import (
-    PractitionerRoleAvailableTimeInput,
-    PractitionerRoleNotAvailableInput,
-)
-
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "PractitionerRole",
     "active": True,
     "period": {"start": "2026-01-01T00:00:00Z"},
@@ -47,101 +42,19 @@ _EXAMPLE = {
     "endpoint": [{"reference": "Endpoint/620001"}],
 }
 
-
-class _PractitionerRoleFields(FhirInputModel):
-    """Every writable PractitionerRole element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/practitionerrole.html). Create and patch
-    accept exactly the same fields — PractitionerRole has no element that is
-    required at this layer.
-
-    The validated body is stored whole (PractitionerRoleModel.content), so any
-    valid R4 element is kept — including ones this model doesn't declare.
-    Server-managed elements are ignored if sent: `id` (assigned from the
-    practitioner_role_id sequence) and `meta` (audit/tenant data, stamped on at
-    read time). org_id and created_by/updated_by come from the verified JWT
-    (actor.org_id / actor.sub), never the body. There is no user_id."""
-
-    resourceType: Literal["PractitionerRole"] | None = Field(
-        None, description="Optional; if supplied it must be 'PractitionerRole'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="Business Identifiers that are specific to a role/location."
-    )
-    active: bool | None = Field(
-        None, description="Whether this practitioner role record is in active use."
-    )
-    period: FhirPeriodInput | None = Field(
-        None,
-        description="The period during which the practitioner is authorized to perform in these role(s).",
-    )
-    practitioner: FhirReferenceInput | None = Field(
-        None,
-        description="Practitioner that is able to provide the defined services for the organization — Reference(Practitioner). A relative 'Practitioner/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    organization: FhirReferenceInput | None = Field(
-        None,
-        description="Organization where the roles are available — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    code: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Roles which this practitioner may perform."
-    )
-    specialty: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Specific specialty of the practitioner."
-    )
-    location: list[FhirReferenceInput] | None = Field(
-        None,
-        description="The location(s) at which this practitioner provides care — Reference(Location). A relative 'Location/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    healthcareService: list[FhirReferenceInput] | None = Field(
-        None,
-        description="The list of healthcare services that this worker provides for this role's Organization/Location(s) — Reference(HealthcareService). A relative 'HealthcareService/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    telecom: list[FhirContactPointInput] | None = Field(
-        None,
-        description="Contact details that are specific to the role/location/service.",
-    )
-    availableTime: list[PractitionerRoleAvailableTimeInput] | None = Field(
-        None, description="Times the Service Site is available."
-    )
-    notAvailable: list[PractitionerRoleNotAvailableInput] | None = Field(
-        None, description="Not available during this time due to provided reason."
-    )
-    availabilityExceptions: str | None = Field(
-        None, description="Description of availability exceptions."
-    )
-    endpoint: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Technical endpoints providing access to services operated for the practitioner with this role — Reference(Endpoint). A relative 'Endpoint/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
+_PATCH_EXAMPLE = {
+    "active": False,
+    "period": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"},
+}
 
 
-class PractitionerRoleCreateSchema(_PractitionerRoleFields):
-    """POST body — a FHIR R4 PractitionerRole resource. Creates the role and
-    every supplied nested element atomically in one transaction."""
+class PractitionerRoleCreateSchema(PractitionerRole):
+    "POST body - a FHIR R4 PractitionerRole resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class PractitionerRolePatchSchema(_PractitionerRoleFields):
-    """PATCH body — a partial FHIR R4 PractitionerRole (merge-patch semantics
-    on top-level elements). Only supplied elements are written; omitted ones
-    are left untouched. A supplied element replaces the stored value
-    wholesale — a list (even `[]`) replaces every existing entry, an object
-    such as `practitioner` or `period` replaces the whole value, and `null`
-    clears it."""
+class PractitionerRolePatchSchema(PractitionerRolePatch):
+    "PATCH body - a partial FHIR R4 PractitionerRole (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "active": False,
-                "period": {
-                    "start": "2026-01-01T00:00:00Z",
-                    "end": "2026-12-31T23:59:59Z",
-                },
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

@@ -1,19 +1,14 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirAddressInput,
-    FhirCodeableConceptInput,
-    FhirContactPointInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirReferenceInput,
-)
+from pydantic import ConfigDict
 
-from .contact import OrganizationContactInput
+from app.schemas.fhir_resources.organization import Organization, OrganizationPatch
 
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "Organization",
     "active": True,
     "name": "General Hospital",
@@ -84,85 +79,20 @@ _EXAMPLE = {
     ],
 }
 
-
-class _OrganizationFields(FhirInputModel):
-    """Every writable Organization element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/organization.html). Create and patch accept
-    exactly the same fields — Organization has no element that is required
-    at this layer (org-1, "SHALL at least have a name or an identifier", is
-    enforced by base R4 validation, not here).
-
-    The validated body is stored whole (OrganizationModel.content), so any
-    valid R4 element is kept — including ones this model doesn't declare.
-    Server-managed elements are ignored if sent: `id` (assigned from the
-    organization_id sequence) and `meta` (audit/tenant data, stamped on at
-    read time). org_id and created_by/updated_by come from the verified JWT
-    (actor.org_id / actor.sub), never the body. Like other tenant-level
-    resources (unlike Patient/Practitioner) there is no user_id."""
-
-    resourceType: Literal["Organization"] | None = Field(
-        None,
-        description="Optional; if supplied it must be 'Organization'.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None,
-        description="Identifies this organization across multiple systems.",
-    )
-    active: bool | None = Field(
-        None, description="Whether the organization's record is still in active use."
-    )
-    type: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Kind of organization (e.g. prov, dept, team, govt, ins)."
-    )
-    name: str | None = Field(None, description="Name used for the organization.")
-    alias: list[str] | None = Field(
-        None,
-        description="A list of alternate names that the organization is known as, or was known as in the past.",
-    )
-    telecom: list[FhirContactPointInput] | None = Field(
-        None, description="A contact detail for the organization."
-    )
-    address: list[FhirAddressInput] | None = Field(
-        None, description="An address for the organization."
-    )
-    partOf: FhirReferenceInput | None = Field(
-        None,
-        description="The organization of which this organization forms a part — Reference(Organization). A relative 'Organization/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    contact: list[OrganizationContactInput] | None = Field(
-        None, description="Contact for the organization for a certain purpose."
-    )
-    endpoint: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Technical endpoints providing access to services operated for the organization — Reference(Endpoint).",
-    )
+_PATCH_EXAMPLE = {
+    "name": "General Hospital Health System",
+    "alias": ["Gen Hosp", "GHHS"],
+    "telecom": [{"system": "phone", "value": "555-9999", "use": "work"}],
+}
 
 
-class OrganizationCreateSchema(_OrganizationFields):
-    """POST body — a FHIR R4 Organization resource. Creates the
-    organization and every supplied nested element atomically in one
-    transaction."""
+class OrganizationCreateSchema(Organization):
+    "POST body - a FHIR R4 Organization resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class OrganizationPatchSchema(_OrganizationFields):
-    """PATCH body — a partial FHIR R4 Organization (merge-patch semantics on
-    top-level elements). Only supplied elements are written; omitted ones
-    are left untouched. A supplied element replaces the stored value
-    wholesale — a list (even `[]`) replaces every existing entry, an object
-    such as `partOf` replaces the whole Reference, and `null` clears it."""
+class OrganizationPatchSchema(OrganizationPatch):
+    "PATCH body - a partial FHIR R4 Organization (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "name": "General Hospital Health System",
-                "alias": ["Gen Hosp", "GHHS"],
-                "telecom": [{"system": "phone", "value": "555-9999", "use": "work"}],
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

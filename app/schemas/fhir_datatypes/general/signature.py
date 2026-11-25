@@ -25,9 +25,7 @@ class Signature(Element):
         ...,
         description="An indication of the reason that the entity signed this document. This may be explicitly included as part of the signature information and can be used when determining accountability for various actions concerning the document.",
     )
-    when: Instant | None = Field(
-        None, description="When the digital signature was signed."
-    )
+    when: Instant = Field(..., description="When the digital signature was signed.")
     who: Reference = Field(
         ...,
         description="A reference to an application-usable description of the identity that signed  (e.g. the signature used their private key).",

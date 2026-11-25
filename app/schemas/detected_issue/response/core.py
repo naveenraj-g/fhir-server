@@ -1,71 +1,22 @@
+"""Response schemas for DetectedIssue (generated; see scripts/generate_fhir_resources.py)."""
+
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import (
-    FHIRBundle,
-    FHIRCodeableConcept,
-    FHIRIdentifier,
-    FHIRMeta,
-    FHIRPeriod,
-    FHIRReference,
-)
+from app.schemas.datatypes import FHIRBundle, FHIRMeta
 from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_resources.detected_issue import DetectedIssue
 
 
-class FHIRDetectedIssueEvidence(BaseModel):
-    code: list[FHIRCodeableConcept] | None = Field(None, description="Manifestation.")
-    detail: list[FHIRReference] | None = Field(
-        None, description="Supporting information."
-    )
+class FHIRDetectedIssueSchema(DetectedIssue):
+    "A FHIR R4 DetectedIssue as served: the stored document with `id` and `meta` stamped on."
 
-
-class FHIRDetectedIssueMitigation(BaseModel):
-    action: FHIRCodeableConcept | None = Field(None, description="What mitigation?")
-    date: str | None = Field(None, description="Date committed.")
-    author: FHIRReference | None = Field(None, description="Who is committing?")
-
-
-class FHIRDetectedIssueSchema(BaseModel):
     resourceType: str = Field("DetectedIssue", description="Always 'DetectedIssue'.")
     id: str = Field(..., description="Public detected_issue_id as a string.")
     meta: FHIRMeta | None = Field(
         None,
-        description="Infrastructure-maintained resource metadata — lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only: not accepted on create/patch, since this is server-derived audit/tenant data.",
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries.",
-    )
-    identifier: list[FHIRIdentifier] | None = Field(
-        None, description="Unique id for the detected issue."
-    )
-    status: str | None = Field(
-        None,
-        description="registered | preliminary | final | amended | corrected | cancelled | entered-in-error | unknown.",
-    )
-    code: FHIRCodeableConcept | None = Field(
-        None, description="Issue category, e.g. drug-drug, duplicate therapy."
-    )
-    severity: str | None = Field(None, description="high | moderate | low.")
-    patient: FHIRReference | None = Field(None, description="Associated patient.")
-    identifiedDateTime: str | None = Field(
-        None, description="When identified (dateTime)."
-    )
-    identifiedPeriod: FHIRPeriod | None = Field(
-        None, description="When identified (Period)."
-    )
-    author: FHIRReference | None = Field(
-        None, description="The provider or device that identified the issue."
-    )
-    implicated: list[FHIRReference] | None = Field(
-        None, description="Problem resource."
-    )
-    evidence: list[FHIRDetectedIssueEvidence] | None = Field(
-        None, description="Supporting evidence."
-    )
-    detail: str | None = Field(None, description="Description and context.")
-    reference: str | None = Field(None, description="Authority for the issue.")
-    mitigation: list[FHIRDetectedIssueMitigation] | None = Field(
-        None, description="Step taken to address."
+        description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )
 
 
@@ -75,7 +26,7 @@ class FHIRDetectedIssueBundleEntry(BaseModel):
     )
     resource: FHIRDetectedIssueSchema | dict = Field(
         ...,
-        description="A DetectedIssue (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included Patient / Practitioner / PractitionerRole / implicated resource (from _include or _revinclude), or an OperationOutcome (outcome).",
+        description="A DetectedIssue (match; possibly subsetted by _summary/_elements and then tagged SUBSETTED), an included resource (from _include or _revinclude), or an OperationOutcome (outcome).",
     )
     search: FHIRBundleEntrySearch
 

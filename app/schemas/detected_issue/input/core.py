@@ -1,30 +1,14 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirPeriodInput,
-    FhirReferenceInput,
-)
+from pydantic import ConfigDict
 
-# ObservationStatus (the required binding of DetectedIssue.status).
-StatusCode = Literal[
-    "registered",
-    "preliminary",
-    "final",
-    "amended",
-    "corrected",
-    "cancelled",
-    "entered-in-error",
-    "unknown",
-]
-# DetectedIssueSeverity (the required binding of DetectedIssue.severity).
-SeverityCode = Literal["high", "moderate", "low"]
+from app.schemas.fhir_resources.detected_issue import DetectedIssue, DetectedIssuePatch
 
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "DetectedIssue",
     "identifier": [
         {
@@ -64,112 +48,16 @@ _EXAMPLE = {
     ],
 }
 
-
-class DetectedIssueEvidenceInput(FhirInputModel):
-    """DetectedIssue.evidence — supporting evidence or manifestations."""
-
-    code: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Manifestation."
-    )
-    detail: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Supporting information — Reference(Any). A relative reference to a resource this server holds must exist in the caller's org (422 otherwise).",
-    )
+_PATCH_EXAMPLE = {"status": "amended", "severity": "moderate"}
 
 
-class DetectedIssueMitigationInput(FhirInputModel):
-    """DetectedIssue.mitigation — a step taken to address the issue."""
+class DetectedIssueCreateSchema(DetectedIssue):
+    "POST body - a FHIR R4 DetectedIssue resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    action: FhirCodeableConceptInput | None = Field(
-        None, description="What mitigation? (required by R4)."
-    )
-    date: str | None = Field(None, description="Date committed (a FHIR dateTime).")
-    author: FhirReferenceInput | None = Field(
-        None,
-        description="Who is committing? — Reference(Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).",
-    )
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class _DetectedIssueFields(FhirInputModel):
-    """Every writable DetectedIssue element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/detectedissue.html). Create and patch accept exactly the same
-    fields. R4 requires `status` (and `mitigation.action`); that is enforced by base R4
-    validation of the stored document (the `java_validator` backend — the native structural
-    check has no cardinality minimums or invariants), not by this model. A PATCH may omit it:
-    it is merged onto the current resource before validating.
+class DetectedIssuePatchSchema(DetectedIssuePatch):
+    "PATCH body - a partial FHIR R4 DetectedIssue (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    The validated body is stored whole (DetectedIssueModel.content), so any valid R4 element
-    is kept — including ones this model does not declare. Server-managed elements are ignored
-    if sent: `id` (assigned from the detected_issue_id sequence) and `meta` (audit/tenant data,
-    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
-    (actor.org_id / actor.sub), never the body. There is no user_id."""
-
-    resourceType: Literal["DetectedIssue"] | None = Field(
-        None, description="Optional; if supplied it must be 'DetectedIssue'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="Unique id for the detected issue."
-    )
-    status: StatusCode | None = Field(
-        None,
-        description="registered | preliminary | final | amended | corrected | cancelled | entered-in-error | unknown (required by R4).",
-    )
-    code: FhirCodeableConceptInput | None = Field(
-        None,
-        description="Issue category, e.g. drug-drug, duplicate therapy. Searched by `code`.",
-    )
-    severity: SeverityCode | None = Field(None, description="high | moderate | low.")
-    patient: FhirReferenceInput | None = Field(
-        None,
-        description="Associated patient — Reference(Patient). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    identifiedDateTime: str | None = Field(
-        None,
-        description="When identified (a FHIR dateTime). One of the identified[x] choices.",
-    )
-    identifiedPeriod: FhirPeriodInput | None = Field(
-        None,
-        description="When identified (a Period). One of the identified[x] choices.",
-    )
-    author: FhirReferenceInput | None = Field(
-        None,
-        description="The provider or device that identified the issue — Reference(Practitioner | PractitionerRole | Device). A relative Practitioner or PractitionerRole must exist in the caller's org (422 otherwise).",
-    )
-    implicated: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Problem resource — Reference(Any). A relative reference to a resource this server holds must exist in the caller's org (422 otherwise).",
-    )
-    evidence: list[DetectedIssueEvidenceInput] | None = Field(
-        None, description="Supporting evidence."
-    )
-    detail: str | None = Field(None, description="Description and context.")
-    reference: str | None = Field(None, description="Authority for the issue (a URI).")
-    mitigation: list[DetectedIssueMitigationInput] | None = Field(
-        None, description="Step taken to address."
-    )
-
-
-class DetectedIssueCreateSchema(_DetectedIssueFields):
-    """POST body — a FHIR R4 DetectedIssue resource."""
-
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
-
-
-class DetectedIssuePatchSchema(_DetectedIssueFields):
-    """PATCH body — a partial FHIR R4 DetectedIssue (merge-patch semantics on top-level
-    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
-    element replaces the stored value wholesale — a list (even `[]`) replaces every existing
-    entry, an object such as `patient` replaces the whole value, and `null` clears it."""
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "status": "amended",
-                "severity": "moderate",
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 class DataRequirement(Element):
     "Describes a required data item for evaluation in terms of the type of data, and optional code or date-based filters of the data."
 
-    type: Code | None = Field(
-        None,
+    type: Code = Field(
+        ...,
         description="The type of the required data, specified as the type name of a resource. For profiles, this value is set to the type of the base resource of the profile.",
     )
     profile: list[Canonical] | None = Field(
@@ -112,10 +112,10 @@ class DataRequirementDateFilter(BackboneElement):
 class DataRequirementSort(BackboneElement):
     "Describes a required data item for evaluation in terms of the type of data, and optional code or date-based filters of the data."
 
-    path: String | None = Field(
-        None,
+    path: String = Field(
+        ...,
         description="The attribute of the sort. The specified path must be resolvable from the type of the required data. The path is allowed to contain qualifiers (.) to traverse sub-elements, as well as indexers ([x]) to traverse multiple-cardinality sub-elements. Note that the index must be an integer constant.",
     )
-    direction: Literal["ascending", "descending"] | None = Field(
-        None, description="The direction of the sort, ascending or descending."
+    direction: Literal["ascending", "descending"] = Field(
+        ..., description="The direction of the sort, ascending or descending."
     )

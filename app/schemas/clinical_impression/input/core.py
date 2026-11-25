@@ -1,19 +1,17 @@
-from typing import Literal
+"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see
+scripts/generate_fhir_resources.py). The models are in app/schemas/fhir_resources/.
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from app.schemas.fhir_input import (
-    FhirCodeableConceptInput,
-    FhirIdentifierInput,
-    FhirInputModel,
-    FhirPeriodInput,
-    FhirReferenceInput,
+from pydantic import ConfigDict
+
+from app.schemas.fhir_resources.clinical_impression import (
+    ClinicalImpression,
+    ClinicalImpressionPatch,
 )
 
-# ClinicalImpressionStatus (the required binding of ClinicalImpression.status).
-StatusCode = Literal["in-progress", "completed", "entered-in-error"]
-
-_EXAMPLE = {
+_CREATE_EXAMPLE = {
     "resourceType": "ClinicalImpression",
     "identifier": [
         {
@@ -55,163 +53,19 @@ _EXAMPLE = {
     "note": [{"text": "Review in 2 weeks."}],
 }
 
-
-class ClinicalImpressionAnnotationInput(FhirInputModel):
-    """Annotation — a note with an author (a Reference or plain text) and a time."""
-
-    authorReference: FhirReferenceInput | None = Field(
-        None,
-        description="Individual responsible for the annotation — Reference(Practitioner | PractitionerRole | Patient | RelatedPerson | Organization). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    authorString: str | None = Field(
-        None, description="Individual responsible for the annotation, as plain text."
-    )
-    time: str | None = Field(
-        None, description="When the annotation was made (a FHIR dateTime)."
-    )
-    text: str | None = Field(
-        None, description="The annotation text, as markdown (required by R4)."
-    )
+_PATCH_EXAMPLE = {
+    "status": "completed",
+    "summary": "Stable angina confirmed after stress test.",
+}
 
 
-class ClinicalImpressionInvestigationInput(FhirInputModel):
-    """ClinicalImpression.investigation — one set of investigations that were part of the assessment."""
+class ClinicalImpressionCreateSchema(ClinicalImpression):
+    "POST body - a FHIR R4 ClinicalImpression resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    code: FhirCodeableConceptInput | None = Field(
-        None, description="A name/code for the set (required by R4)."
-    )
-    item: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Record of a specific investigation — Reference(Observation | QuestionnaireResponse | FamilyMemberHistory | DiagnosticReport | RiskAssessment | ImagingStudy | Media). A relative RiskAssessment, FamilyMemberHistory or DiagnosticReport must exist in the caller's org (422 otherwise). Searched by `investigation`.",
-    )
+    model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 
 
-class ClinicalImpressionFindingInput(FhirInputModel):
-    """ClinicalImpression.finding — a possible diagnosis or other finding."""
+class ClinicalImpressionPatchSchema(ClinicalImpressionPatch):
+    "PATCH body - a partial FHIR R4 ClinicalImpression (merge-patch on top-level elements). Only supplied elements are written; a supplied element replaces the stored value wholesale (a list, even [], replaces every entry; null clears it). The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
 
-    itemCodeableConcept: FhirCodeableConceptInput | None = Field(
-        None, description="What was found. Searched by `finding-code`."
-    )
-    itemReference: FhirReferenceInput | None = Field(
-        None,
-        description="What was found — Reference(Condition | Observation | Media). A relative Condition must exist in the caller's org (422 otherwise). Searched by `finding-ref`.",
-    )
-    basis: str | None = Field(
-        None, description="Which investigations support the finding."
-    )
-
-
-class _ClinicalImpressionFields(FhirInputModel):
-    """Every writable ClinicalImpression element, in genuine FHIR R4 shape
-    (https://www.hl7.org/fhir/R4/clinicalimpression.html). Create and patch accept exactly the
-    same fields. R4 requires `status` and `subject` (and `investigation.code`); that is enforced
-    by base R4 validation of the stored document (the `java_validator` backend — the native
-    structural check has no cardinality minimums or invariants), not by this model. A PATCH may
-    omit them: it is merged onto the current resource before validating.
-
-    The validated body is stored whole (ClinicalImpressionModel.content), so any valid R4 element
-    is kept — including ones this model does not declare. Server-managed elements are ignored
-    if sent: `id` (assigned from the clinical_impression_id sequence) and `meta` (audit/tenant data,
-    stamped on at read time). org_id and created_by/updated_by come from the verified JWT
-    (actor.org_id / actor.sub), never the body. There is no user_id."""
-
-    resourceType: Literal["ClinicalImpression"] | None = Field(
-        None, description="Optional; if supplied it must be 'ClinicalImpression'."
-    )
-    extension: list[dict] | None = Field(
-        None,
-        description="Resource-level FHIR extensions, as raw [{url, value[x]}, ...] entries — validated by the profile pipeline, not here.",
-    )
-    identifier: list[FhirIdentifierInput] | None = Field(
-        None, description="Business identifier."
-    )
-    status: StatusCode | None = Field(
-        None, description="in-progress | completed | entered-in-error (required by R4)."
-    )
-    statusReason: FhirCodeableConceptInput | None = Field(
-        None, description="Reason for current status."
-    )
-    code: FhirCodeableConceptInput | None = Field(
-        None, description="Kind of assessment performed."
-    )
-    description: str | None = Field(
-        None, description="Why/how the assessment was performed."
-    )
-    subject: FhirReferenceInput | None = Field(
-        None,
-        description="Patient or group assessed — Reference(Patient | Group) (required by R4). A relative 'Patient/<id>' reference must exist in the caller's org (422 otherwise).",
-    )
-    encounter: FhirReferenceInput | None = Field(
-        None,
-        description="Encounter created as part of — Reference(Encounter). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    effectiveDateTime: str | None = Field(
-        None,
-        description="Time of assessment (a FHIR dateTime). One of the effective[x] choices.",
-    )
-    effectivePeriod: FhirPeriodInput | None = Field(
-        None,
-        description="Time of assessment (a Period). One of the effective[x] choices.",
-    )
-    date: str | None = Field(
-        None,
-        description="When the assessment was documented (a FHIR dateTime). Searched by `date`.",
-    )
-    assessor: FhirReferenceInput | None = Field(
-        None,
-        description="The clinician performing the assessment — Reference(Practitioner | PractitionerRole). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    previous: FhirReferenceInput | None = Field(
-        None,
-        description="Reference to last assessment — Reference(ClinicalImpression). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    problem: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Relevant impressions of patient state — Reference(Condition | AllergyIntolerance). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    investigation: list[ClinicalImpressionInvestigationInput] | None = Field(
-        None, description="One or more sets of investigations (signs, symptoms, etc.)."
-    )
-    protocol: list[str] | None = Field(
-        None, description="Clinical Protocol followed (URIs)."
-    )
-    summary: str | None = Field(None, description="Summary of the assessment.")
-    finding: list[ClinicalImpressionFindingInput] | None = Field(
-        None, description="Possible or likely findings and diagnoses."
-    )
-    prognosisCodeableConcept: list[FhirCodeableConceptInput] | None = Field(
-        None, description="Estimate of likely outcome."
-    )
-    prognosisReference: list[FhirReferenceInput] | None = Field(
-        None,
-        description="RiskAssessment expressing likely outcome — Reference(RiskAssessment). A relative reference must exist in the caller's org (422 otherwise).",
-    )
-    supportingInfo: list[FhirReferenceInput] | None = Field(
-        None,
-        description="Information supporting the clinical impression — Reference(Any). A relative reference to a resource this server holds must exist in the caller's org (422 otherwise).",
-    )
-    note: list[ClinicalImpressionAnnotationInput] | None = Field(
-        None, description="Comments made about the ClinicalImpression."
-    )
-
-
-class ClinicalImpressionCreateSchema(_ClinicalImpressionFields):
-    """POST body — a FHIR R4 ClinicalImpression resource."""
-
-    model_config = {"json_schema_extra": {"example": _EXAMPLE}}
-
-
-class ClinicalImpressionPatchSchema(_ClinicalImpressionFields):
-    """PATCH body — a partial FHIR R4 ClinicalImpression (merge-patch semantics on top-level
-    elements). Only supplied elements are written; omitted ones are left untouched. A supplied
-    element replaces the stored value wholesale — a list (even `[]`) replaces every existing
-    entry, an object such as `subject` replaces the whole value, and `null` clears it."""
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "status": "completed",
-                "summary": "Stable angina confirmed after stress test.",
-            }
-        }
-    }
+    model_config = ConfigDict(json_schema_extra={"example": _PATCH_EXAMPLE})

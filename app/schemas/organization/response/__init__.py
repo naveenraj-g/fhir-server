@@ -1,4 +1,3 @@
-from .contact import FHIROrganizationContact
 from .core import (
     FHIROrganizationBundle,
     FHIROrganizationBundleEntry,
@@ -6,8 +5,7 @@ from .core import (
 )
 
 __all__ = [
-    "FHIROrganizationSchema",
-    "FHIROrganizationBundleEntry",
     "FHIROrganizationBundle",
-    "FHIROrganizationContact",
+    "FHIROrganizationBundleEntry",
+    "FHIROrganizationSchema",
 ]
