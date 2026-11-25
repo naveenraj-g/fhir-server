@@ -198,7 +198,7 @@ uv run pytest tests/integration/<resource> tests/conformance/test_<resource>_fhi
 ## Phase G — fhir-gql half (after the fhir-server resources, when asked)
 
 In `D:\code\work\projects\fhir-gql`, mirror an existing resource's package. fhir-server is FHIR-only now, so the `internal` connector's translators are thin.
-- `app/fhir/schemas/<resource>.py` — `Fhir<Resource>Response` / `Fhir<Resource>Input` Pydantic models.
+- No hand-written models: the generated `app/schemas/fhir_datatypes/` and `app/schemas/fhir_resources/` are copied over with `scripts/sync_schemas.py` (run it after regenerating here). The GraphQL types are `output_type(<Resource>)` / `input_type(<Resource>)` / `input_type(<Resource>Patch, name=...)` from `app/gql/fhir_types.py`; see `app/gql/organization/types/` for the two-line pattern.
 - Translators for **both** connectors, registered in `app/connectors/translator_registry.py`: `app/connectors/internal/translators/<resource>.py` and `app/connectors/medplum/translators/<resource>.py` (Medplum's PATCH needs an RFC 6902 array via `to_json_patch`).
 - `app/gql/<resource>/types/{response,input}.py` (any `dict` field needs an explicit `JSON` override), `queries.py`, `mutations.py`, wired into `app/gql/schema.py`.
 - Exercise create/get/search/update/delete on **both** connectors; an import that compiles is not a working connector.
