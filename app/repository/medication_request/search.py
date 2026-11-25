@@ -17,14 +17,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
-from app.repository._medication_dispense_revinclude import (
-    reference_medication_dispense_revincludes,
-)
-from app.repository._medication_administration_revinclude import (
-    column_medication_administration_revincludes,
-)
-from app.repository._care_plan_revinclude import activity_care_plan_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -50,6 +42,14 @@ from app.models.medication_request import (
     MedicationRequestTiming,
     MedicationRequestToken,
 )
+from app.repository._care_plan_revinclude import activity_care_plan_revincludes
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 P = MedicationRequestModel
 _I = MedicationRequestIdentifier

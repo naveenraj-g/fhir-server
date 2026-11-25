@@ -587,7 +587,7 @@ async def test_relationship_is_a_composite_with_no_modifiers_and_bad_values_are_
 ):
     assert await _status(client, relationship="nodollar") == 400
     assert await _status(client, relationship=f"{world['b']}$") == 400
-    assert await _status(client, relationship=f"a$b$c") == 400
+    assert await _status(client, relationship="a$b$c") == 400
     assert await _status(client, **{"relationship:missing": "true"}) == 400
     assert await _status(client, _sort="relationship") == 400
 

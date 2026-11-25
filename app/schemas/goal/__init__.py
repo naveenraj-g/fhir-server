@@ -9,9 +9,9 @@ from app.schemas.goal.response import (
 )
 
 __all__ = [
-    "GoalCreateSchema",
-    "GoalPatchSchema",
     "FHIRGoalBundle",
     "FHIRGoalBundleEntry",
     "FHIRGoalSchema",
+    "GoalCreateSchema",
+    "GoalPatchSchema",
 ]

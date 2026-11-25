@@ -27,7 +27,7 @@ async def seed_endpoint(
                 endpoint_id=endpoint_id,
                 tenant_id=org_id,
                 created_by="u-test",
-                created_at=dt.datetime.now(dt.timezone.utc),
+                created_at=dt.datetime.now(dt.UTC),
                 content={
                     "status": "active",
                     "connectionType": {"code": "hl7-fhir-rest"},

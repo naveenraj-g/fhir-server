@@ -21,8 +21,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -35,15 +33,6 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
-from app.repository._medication_statement_revinclude import (
-    reference_medication_statement_revincludes,
-)
-from app.repository._questionnaire_response_revinclude import (
-    reference_questionnaire_response_revincludes,
-)
-from app.repository._appointment_revinclude import reason_appointment_revincludes
-from app.repository._encounter_revinclude import reference_encounter_revincludes
-from app.repository._observation_revinclude import reference_observation_revincludes
 from app.models.procedure import (
     PERFORMER_TYPES,
     REFERENCE_TYPES,
@@ -56,6 +45,17 @@ from app.models.procedure import (
     ProcedureStatus,
     ProcedureToken,
 )
+from app.repository._appointment_revinclude import reason_appointment_revincludes
+from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._medication_statement_revinclude import (
+    reference_medication_statement_revincludes,
+)
+from app.repository._observation_revinclude import reference_observation_revincludes
+from app.repository._questionnaire_response_revinclude import (
+    reference_questionnaire_response_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 P = ProcedureModel
 _I = ProcedureIdentifier

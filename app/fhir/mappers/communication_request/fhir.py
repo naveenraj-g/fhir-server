@@ -16,5 +16,11 @@ if TYPE_CHECKING:
     from app.models.communication_request import CommunicationRequestModel
 
 
-def to_fhir_communication_request(communication_request: CommunicationRequestModel) -> dict:
-    return content_resource("CommunicationRequest", communication_request.communication_request_id, communication_request)
+def to_fhir_communication_request(
+    communication_request: CommunicationRequestModel,
+) -> dict:
+    return content_resource(
+        "CommunicationRequest",
+        communication_request.communication_request_id,
+        communication_request,
+    )

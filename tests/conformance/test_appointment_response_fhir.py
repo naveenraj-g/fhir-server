@@ -25,7 +25,7 @@ appointment_response_pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 APPOINTMENT = {"reference": "Appointment/40001"}
 ACTOR = {"reference": "Patient/10001"}
 

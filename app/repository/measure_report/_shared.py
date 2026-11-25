@@ -24,10 +24,7 @@ def _with_relationships(stmt):
     about to replace them (patch_full) — reads never touch them, since every
     response is served straight from MeasureReportModel.content."""
     return stmt.options(
-        *(
-            selectinload(getattr(MeasureReportModel, rel))
-            for rel in INDEX_RELATIONSHIPS
-        )
+        *(selectinload(getattr(MeasureReportModel, rel)) for rel in INDEX_RELATIONSHIPS)
     )
 
 

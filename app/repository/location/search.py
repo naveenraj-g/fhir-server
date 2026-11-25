@@ -19,23 +19,6 @@ from functools import cache
 from sqlalchemy import Float, cast, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._measure_report_revinclude import (
-    column_measure_report_revincludes,
-)
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._medication_dispense_revinclude import (
-    column_medication_dispense_revincludes,
-)
-from app.repository._service_request_revinclude import (
-    column_service_request_revincludes,
-)
-from app.repository._appointment_revinclude import participant_revincludes
-from app.repository._appointment_response_revinclude import actor_response_revincludes
-from app.repository._encounter_revinclude import location_encounter_revincludes
-from app.repository._procedure_revinclude import location_procedure_revincludes
-from app.repository._diagnostic_report_revinclude import subject_report_revincludes
-from app.repository._specimen_revinclude import column_specimen_revincludes
-from app.repository._immunization_revinclude import column_immunization_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -64,6 +47,23 @@ from app.models.location import (
     LocationStatus,
     LocationType,
 )
+from app.repository._appointment_response_revinclude import actor_response_revincludes
+from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._diagnostic_report_revinclude import subject_report_revincludes
+from app.repository._encounter_revinclude import location_encounter_revincludes
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._immunization_revinclude import column_immunization_revincludes
+from app.repository._measure_report_revinclude import (
+    column_measure_report_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._procedure_revinclude import location_procedure_revincludes
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+)
+from app.repository._specimen_revinclude import column_specimen_revincludes
 from app.schemas.enums import AddressUse
 
 Loc = LocationModel
@@ -875,10 +875,10 @@ def location_search() -> SearchRegistry:
         ),
         revincludes=(
             *column_measure_report_revincludes(
-                ('subject',), "subject", "Location", lambda x: x.location_id
+                ("subject",), "subject", "Location", lambda x: x.location_id
             ),
             *column_measure_report_revincludes(
-                ('reporter',), "reporter", "Location", lambda x: x.location_id
+                ("reporter",), "reporter", "Location", lambda x: x.location_id
             ),
             *column_flag_revincludes(
                 ("subject",), "subject", "Location", lambda x: x.location_id

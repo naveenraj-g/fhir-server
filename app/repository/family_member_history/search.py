@@ -18,7 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -31,9 +30,6 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
-from app.repository._clinical_impression_revinclude import (
-    reference_impression_revincludes,
-)
 from app.models.family_member_history import (
     REFERENCE_TYPES,
     FamilyMemberHistoryIdentifier,
@@ -43,6 +39,10 @@ from app.models.family_member_history import (
     FamilyMemberHistoryStatus,
     FamilyMemberHistoryToken,
 )
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 M = FamilyMemberHistoryModel
 _I = FamilyMemberHistoryIdentifier

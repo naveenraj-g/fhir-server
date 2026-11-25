@@ -8,8 +8,9 @@ Checklist for changing a resource that is **already rebuilt** per `/new-fhir-res
 
 | Change | What it takes |
 |---|---|
-| An element **no** search parameter reads (a new field in `content`) | **Nothing.** It is stored and returned already. Only the OpenAPI input/response models (`app/schemas/<resource>/`) may want it documented. |
+| An element **no** search parameter reads (a new field in `content`) | **Nothing.** It is stored and returned already. The request/response models are generated from HL7's definition and already include it - re-run `scripts/generate_fhir_resources.py` only if the generator itself changed. |
 | A new **searchable** element | Index column or child table in `app/models/<resource>/`, filled in `app/repository/<resource>/_indexer.py`, a `SearchParam` in `search.py`, a **migration that backfills it from `content`**, tests. Decide the storage with `/fhir-db-model` (token → shared token table with `param`; Period → half-open `*_start/_end`; reference → columns or the shared reference table; required-binding `code` → enum, audit it). |
+| A new `SearchParam` on an existing resource | Also re-run `uv run python scripts/generate_fhir_resources.py`: each element's "Search parameters" hint in `app/schemas/fhir_resources/<resource>.py` is read from the registry. |
 | A parameter's semantics change (matching, targets, a different element) | Edit the `SearchParam`; if the stored shape changes, a migration that re-derives it from `content`. |
 | The resource now **references another resource** (or a new type is allowed in an element) | See section 3: it is mostly automatic. |
 | **Another resource now references this one** | Declare the `_revinclude` on this resource's registry (shared helpers `app/repository/_<x>_revinclude.py`) and add its tests; existence checks, chaining and `_include` need nothing (section 3). |

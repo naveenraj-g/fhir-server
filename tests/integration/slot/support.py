@@ -3,7 +3,7 @@
 Request bodies are genuine FHIR R4 Slot JSON (camelCase, nested datatypes),
 and every response is FHIR R4 too."""
 
-from tests.integration.schedule.support import (  # noqa: F401
+from tests.integration.schedule.support import (
     create_organization,
     create_practitioner,
     create_schedule,

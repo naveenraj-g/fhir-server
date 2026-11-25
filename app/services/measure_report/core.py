@@ -47,10 +47,8 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "MeasureReport operation requires an org-scoped token"
             )
-        measure_report = (
-            await self.repository.get_by_measure_report_id_in_org(
-                measure_report_id, org_id
-            )
+        measure_report = await self.repository.get_by_measure_report_id_in_org(
+            measure_report_id, org_id
         )
         if not measure_report:
             raise NotFoundError("MeasureReport not found")
@@ -113,13 +111,9 @@ class _CoreMixin:
             )
         # The body is already a FHIR MeasureReport — validate it as sent,
         # then store exactly that document.
-        document = fhir_create_document(
-            self._raw(payload, body), "MeasureReport"
-        )
+        document = fhir_create_document(self._raw(payload, body), "MeasureReport")
         await self._validate_base_r4(document, org_id)
-        measure_report = await self.repository.create_full(
-            document, org_id, created_by
-        )
+        measure_report = await self.repository.create_full(document, org_id, created_by)
         logger.info(
             "MeasureReport created",
             extra={
@@ -183,11 +177,8 @@ class _CoreMixin:
         self, measure_report_id: int, org_id: str | None = None
     ) -> None:
         """Same org_id ownership gate as patch_measure_report."""
-        if (
-            not org_id
-            or not await self.repository.measure_report_belongs_to_org(
-                measure_report_id, org_id
-            )
+        if not org_id or not await self.repository.measure_report_belongs_to_org(
+            measure_report_id, org_id
         ):
             self._log_org_scope_miss("delete", measure_report_id, org_id)
             raise NotFoundError("MeasureReport not found")
@@ -222,9 +213,7 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource(
-            "MeasureReport", fhir_resource, org_id=org_id
-        )
+        errors = await validate_resource("MeasureReport", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "MeasureReport failed base R4 validation",

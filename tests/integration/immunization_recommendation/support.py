@@ -5,17 +5,17 @@ datatypes), and every response is FHIR R4 too."""
 
 # The resources an ImmunizationRecommendation points at (and that point back at it) are
 # created through their own routers.
-from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
+from tests.integration.condition.support import condition_body, create_condition
 from tests.integration.immunization.support import (
     create_immunization,
     immunization_body,
-)  # noqa: F401
+)
 from tests.integration.immunization_evaluation.support import (
     create_evaluation,
     evaluation_body,
-)  # noqa: F401
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import create_organization  # noqa: F401
+)
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import create_organization
 
 BASE = "/api/fhir/v1/immunization-recommendations"
 API = "/api/fhir/v1"

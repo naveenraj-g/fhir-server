@@ -27,7 +27,7 @@ pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 PATIENT = {"reference": "Patient/10001"}
 DATE = "2023-01-15T09:30:00Z"
 SCT = "http://snomed.info/sct"

@@ -1,7 +1,6 @@
-from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes.bundle_entry import FHIRBundleEntry
+from app.schemas.common.bundle_entry import FHIRBundleEntry
 
 
 class FHIRBundle(BaseModel):
@@ -16,7 +15,7 @@ class FHIRBundle(BaseModel):
         ...,
         description="Total number of resources matching the search, across all pages.",
     )
-    entry: Optional[List[FHIRBundleEntry]] = Field(
+    entry: list[FHIRBundleEntry] | None = Field(
         None,
         description="Resources matching the search, one per entry, for the current page.",
     )

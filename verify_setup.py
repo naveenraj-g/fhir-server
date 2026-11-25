@@ -1,4 +1,5 @@
 import asyncio
+
 import httpx
 from fhir.resources.patient import Patient
 
@@ -39,7 +40,7 @@ async def test_patient_flow():
             ],
         }
 
-        print(f"Creating Patient...")
+        print("Creating Patient...")
         try:
             resp = await client.post(f"{base_url}/Patient/", json=patient_data)
             print(f"Create Response: {resp.status_code}")
@@ -53,7 +54,7 @@ async def test_patient_flow():
                 print(f"Get Response: {resp.status_code}")
                 if resp.status_code == 200:
                     fetched_patient = Patient.parse_obj(resp.json())
-                    print(f"Fetched Patient:")
+                    print("Fetched Patient:")
                     print(
                         f" - Name: {fetched_patient.name[0].given[0]} {fetched_patient.name[0].family}"
                     )

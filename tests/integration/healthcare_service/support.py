@@ -122,7 +122,7 @@ async def seed_location(
                 address_city=city,
                 address_city_norm=city.casefold(),
                 created_by="u-test",
-                created_at=dt.datetime.now(dt.timezone.utc),
+                created_at=dt.datetime.now(dt.UTC),
             )
         )
         await session.commit()

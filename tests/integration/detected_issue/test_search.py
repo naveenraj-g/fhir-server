@@ -627,10 +627,8 @@ async def test_implicated_follows_every_rebuilt_resource(client, world):
     )
     included = await _search(
         client,
-        **{
-            "_id": str(issue),
-            "_include": "DetectedIssue:implicated:MedicationDispense",
-        },
+        _id=str(issue),
+        _include="DetectedIssue:implicated:MedicationDispense",
     )
     assert _of_type(included, "MedicationDispense", "include") == {str(dispense)}
     assert str(other) not in _of_type(included, "MedicationDispense", "include")

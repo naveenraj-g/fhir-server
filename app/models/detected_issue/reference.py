@@ -1,8 +1,8 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
-from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 
 # The reference parameter held in DetectedIssueReference, and the element it reads.
 REFERENCE_PARAMS = {

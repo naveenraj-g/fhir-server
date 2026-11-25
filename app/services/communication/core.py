@@ -61,7 +61,9 @@ class _CoreMixin:
         *,
         strict: bool = False,
         fhir_base: str | None = None,
-    ) -> tuple[SearchRequest, list[CommunicationModel], int | None, list[CommunicationModel]]:
+    ) -> tuple[
+        SearchRequest, list[CommunicationModel], int | None, list[CommunicationModel]
+    ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the Communication search
         registry (SearchError -> 400 OperationOutcome). `strict` is
@@ -146,7 +148,9 @@ class _CoreMixin:
             raise NotFoundError("Communication not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_communication(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_communication(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what

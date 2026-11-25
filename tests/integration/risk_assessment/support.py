@@ -5,13 +5,15 @@ every response is FHIR R4 too."""
 
 # The resources a RiskAssessment points at (and that point back at it) are created through
 # their own routers.
-from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
-from tests.integration.diagnostic_report.support import create_report, report_body  # noqa: F401
-from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.condition.support import condition_body, create_condition
+from tests.integration.diagnostic_report.support import create_report, report_body
+from tests.integration.encounter.support import create_encounter, encounter_body
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
 
@@ -33,7 +35,7 @@ def risk(code: str = "moderate", display: str | None = None) -> dict:
     }
 
 
-def percent(value: float | int) -> dict:
+def percent(value: float) -> dict:
     return {"value": value, "unit": "%", "system": UCUM, "code": "%"}
 
 

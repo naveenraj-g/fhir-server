@@ -9,9 +9,9 @@ from app.schemas.medication.response import (
 )
 
 __all__ = [
-    "MedicationCreateSchema",
-    "MedicationPatchSchema",
     "FHIRMedicationBundle",
     "FHIRMedicationBundleEntry",
     "FHIRMedicationSchema",
+    "MedicationCreateSchema",
+    "MedicationPatchSchema",
 ]

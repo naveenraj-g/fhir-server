@@ -1,5 +1,8 @@
 from app.core.schema_utils import inline_schema
-from app.schemas.document_reference import FHIRDocumentReferenceBundle, FHIRDocumentReferenceSchema
+from app.schemas.document_reference import (
+    FHIRDocumentReferenceBundle,
+    FHIRDocumentReferenceSchema,
+)
 
 # DocumentReference is stored Medplum-style (whole resource in `content`) and
 # always responds with FHIR R4 JSON — there is no plain representation.

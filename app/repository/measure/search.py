@@ -21,9 +21,6 @@ from functools import cache
 from sqlalchemy import exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._measure_report_revinclude import (
-    measure_measure_report_revincludes,
-)
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -54,6 +51,9 @@ from app.models.measure import (
     MeasureToken,
 )
 from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+from app.repository._measure_report_revinclude import (
+    measure_measure_report_revincludes,
+)
 from app.repository._search_targets import MODELED
 
 M = MeasureModel

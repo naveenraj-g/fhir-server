@@ -37,7 +37,7 @@ Autouse fixture overriding `get_current_user` with `make_test_user(permissions=[
 
 ### `support.py`
 - `BASE = "/api/fhir/v1/<resources>"`.
-- Payloads are **genuine FHIR R4 JSON** (camelCase, nested datatypes); responses are FHIR too. `MINIMAL`, and a `FULL` that exercises every element the registry indexes **plus** elements nothing searches on (they must round-trip).
+- Payloads are **genuine FHIR R4 JSON** (camelCase, nested datatypes) and must include every element R4 requires - the typed request schema returns 422 for a body missing one (a test that needs an invalid body for another reason must still be otherwise complete); responses are FHIR too. `MINIMAL`, and a `FULL` that exercises every element the registry indexes **plus** elements nothing searches on (they must round-trip).
 - `create_<resource>(client, payload=None) -> int` asserting 201 and returning `int(resp.json()["id"])`.
 - Avoid fixture values that make the Java validator sidecar do slow remote lookups: omit `system` on `urn:ietf:bcp:47` language codings and omit `Attachment.contentType`; use `https://fhir-server.dev/fhir/...` for identifier systems, never `http://example.org/...`.
 

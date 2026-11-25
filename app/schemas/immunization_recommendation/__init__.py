@@ -9,9 +9,9 @@ from app.schemas.immunization_recommendation.response import (
 )
 
 __all__ = [
-    "ImmunizationRecommendationCreateSchema",
-    "ImmunizationRecommendationPatchSchema",
     "FHIRImmunizationRecommendationBundle",
     "FHIRImmunizationRecommendationBundleEntry",
     "FHIRImmunizationRecommendationSchema",
+    "ImmunizationRecommendationCreateSchema",
+    "ImmunizationRecommendationPatchSchema",
 ]

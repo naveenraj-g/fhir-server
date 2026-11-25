@@ -4,7 +4,7 @@ Request bodies are genuine FHIR R4 RelatedPerson JSON (camelCase, nested
 datatypes), and every response is FHIR R4 too."""
 
 # The resources a RelatedPerson points at (and that point at it) are created through their own routers.
-from tests.integration.appointment.support import (  # noqa: F401
+from tests.integration.appointment.support import (
     appointment_body,
     create_appointment,
     create_organization,

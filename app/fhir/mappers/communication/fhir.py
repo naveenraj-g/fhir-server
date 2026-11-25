@@ -17,4 +17,6 @@ if TYPE_CHECKING:
 
 
 def to_fhir_communication(communication: CommunicationModel) -> dict:
-    return content_resource("Communication", communication.communication_id, communication)
+    return content_resource(
+        "Communication", communication.communication_id, communication
+    )

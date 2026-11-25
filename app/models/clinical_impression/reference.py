@@ -1,8 +1,8 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
-from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 
 # The reference parameters held in ClinicalImpressionReference, and the element each reads.
 REFERENCE_PARAMS = {

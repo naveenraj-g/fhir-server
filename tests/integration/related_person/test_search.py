@@ -14,8 +14,8 @@ import pytest
 from tests.integration.related_person.support import (
     API,
     BASE,
-    RP_IDS,
     ROLE,
+    RP_IDS,
     appointment_body,
     create_appointment,
     create_patient,

@@ -569,7 +569,7 @@ async def test_bad_value_is_400_operation_outcome(client, world):
     assert resp.status_code == 400 and resp.json()["resourceType"] == "OperationOutcome"
     assert await _status(client, **{"manufacturer:text": "x"}) == 400
     assert await _status(client, **{"source-cost:text": "x"}) == 400
-    assert await _status(client, **{"identifier": "x"}) == 200  # unknown, ignored
+    assert await _status(client, identifier="x") == 200  # unknown, ignored
     assert await _status(client, **{"status:text": "x"}) == 400
 
 

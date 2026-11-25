@@ -635,7 +635,7 @@ async def test_bad_value_is_400_operation_outcome(client, world):
     assert await _status(client, **{"identifier:below": "x"}) == 400
     assert await _status(client, **{"status:text": "x"}) == 400
     assert await _status(client, **{"authored-on": "banana"}) == 400
-    assert await _status(client, **{"period": "banana"}) == 400
+    assert await _status(client, period="banana") == 400
 
 
 async def test_unknown_param_lenient_vs_strict(client, world):

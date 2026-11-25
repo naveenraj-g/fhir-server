@@ -4,8 +4,8 @@
 import pytest
 
 from tests.helpers.care_teams import exercise_care_team_performer
-from tests.integration.service_request.support import API, service_request_body
 from tests.integration.patient.support import create_patient
+from tests.integration.service_request.support import API, service_request_body
 
 
 @pytest.fixture

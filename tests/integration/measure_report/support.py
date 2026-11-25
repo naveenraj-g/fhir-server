@@ -3,13 +3,13 @@
 Request bodies are genuine FHIR R4 MeasureReport JSON (camelCase, nested datatypes), and every
 response is FHIR R4 too."""
 
-from tests.integration.group.support import create_group, group_body  # noqa: F401
-from tests.integration.measure.support import (  # noqa: F401
+from tests.integration.group.support import create_group, group_body
+from tests.integration.measure.support import (
     create_measure,
     measure_body,
 )
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
 )

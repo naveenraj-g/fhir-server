@@ -34,7 +34,6 @@ from app.repository._content_index import (
 )
 from app.schemas.enums import AddressUse
 
-
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "types", "addresses", "endpoints")
 

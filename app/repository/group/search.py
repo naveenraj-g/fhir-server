@@ -18,35 +18,6 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._measure_report_revinclude import (
-    column_measure_report_revincludes,
-)
-from app.repository._communication_request_revinclude import (
-    column_communication_request_revincludes,
-    reference_communication_request_revincludes,
-)
-from app.repository._communication_revinclude import (
-    column_communication_revincludes,
-    reference_communication_revincludes,
-)
-from app.repository._consent_revinclude import reference_consent_revincludes
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._search_targets import MODELED
-from app.repository._medication_dispense_revinclude import (
-    column_medication_dispense_revincludes,
-)
-from app.repository._medication_administration_revinclude import (
-    column_medication_administration_revincludes,
-)
-from app.repository._medication_statement_revinclude import (
-    column_medication_statement_revincludes,
-)
-from app.repository._document_reference_revinclude import (
-    column_document_reference_revincludes,
-)
-from app.repository._care_plan_revinclude import column_care_plan_revincludes
-from app.repository._care_team_revinclude import column_care_team_revincludes
-from app.repository._goal_revinclude import column_goal_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.composite import split_composite
 from app.fhir.search.sql import (
@@ -67,6 +38,35 @@ from app.models.group import (
     GroupToken,
     GroupType,
 )
+from app.repository._care_plan_revinclude import column_care_plan_revincludes
+from app.repository._care_team_revinclude import column_care_team_revincludes
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+    reference_communication_request_revincludes,
+)
+from app.repository._communication_revinclude import (
+    column_communication_revincludes,
+    reference_communication_revincludes,
+)
+from app.repository._consent_revinclude import reference_consent_revincludes
+from app.repository._document_reference_revinclude import (
+    column_document_reference_revincludes,
+)
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._goal_revinclude import column_goal_revincludes
+from app.repository._measure_report_revinclude import (
+    column_measure_report_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 P = GroupModel
 _I = GroupIdentifier
@@ -582,7 +582,7 @@ def group_search() -> SearchRegistry:
         # A Group that has another one as a member points back at it.
         revincludes=(
             *column_measure_report_revincludes(
-                ('subject',), "subject", "Group", lambda x: x.group_id
+                ("subject",), "subject", "Group", lambda x: x.group_id
             ),
             *column_communication_request_revincludes(
                 ("subject",), "subject", "Group", lambda x: x.group_id

@@ -15,7 +15,6 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
-from app.repository._appointment_revinclude import slot_revincludes
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -27,6 +26,7 @@ from app.fhir.search.sql import (
 )
 from app.fhir.search.values import parse_of_type, parse_token
 from app.models.slot import SlotIdentifier, SlotModel, SlotStatus, SlotToken
+from app.repository._appointment_revinclude import slot_revincludes
 
 S = SlotModel
 _I = SlotIdentifier

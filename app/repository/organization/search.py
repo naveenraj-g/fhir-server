@@ -17,21 +17,6 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._measure_report_revinclude import (
-    column_measure_report_revincludes,
-)
-from app.repository._communication_request_revinclude import (
-    column_communication_request_revincludes,
-    reference_communication_request_revincludes,
-)
-from app.repository._communication_revinclude import (
-    column_communication_revincludes,
-    reference_communication_revincludes,
-)
-from app.repository._consent_revinclude import reference_consent_revincludes
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._task_revinclude import column_task_revincludes
-from app.repository._goal_revinclude import column_goal_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -53,38 +38,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_dispense_revinclude import (
-    reference_medication_dispense_revincludes,
-)
-from app.repository._medication_statement_revinclude import (
-    column_medication_statement_revincludes,
-)
-from app.repository._questionnaire_response_revinclude import (
-    column_questionnaire_response_revincludes,
-)
-from app.repository._document_reference_revinclude import (
-    column_document_reference_revincludes,
-    reference_document_reference_revincludes,
-)
-from app.repository._episode_of_care_revinclude import (
-    column_episode_of_care_revincludes,
-)
-from app.repository._care_plan_revinclude import performer_care_plan_revincludes
-from app.repository._care_team_revinclude import participant_care_team_revincludes
-from app.repository._group_revinclude import (
-    managing_entity_group_revincludes,
-)
-from app.repository._medication_request_revinclude import (
-    column_medication_request_revincludes,
-)
-from app.repository._medication_knowledge_revinclude import (
-    column_medication_knowledge_revincludes,
-)
-from app.repository._medication_revinclude import column_medication_revincludes
-from app.repository._service_request_revinclude import (
-    column_service_request_revincludes,
-    performer_service_request_revincludes,
-)
 from app.models.organization import (
     OrganizationAddress,
     OrganizationEndpoint,
@@ -92,7 +45,54 @@ from app.models.organization import (
     OrganizationModel,
     OrganizationType,
 )
+from app.repository._care_plan_revinclude import performer_care_plan_revincludes
+from app.repository._care_team_revinclude import participant_care_team_revincludes
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+    reference_communication_request_revincludes,
+)
+from app.repository._communication_revinclude import (
+    column_communication_revincludes,
+    reference_communication_revincludes,
+)
+from app.repository._consent_revinclude import reference_consent_revincludes
+from app.repository._document_reference_revinclude import (
+    column_document_reference_revincludes,
+    reference_document_reference_revincludes,
+)
 from app.repository._encounter_revinclude import service_provider_encounter_revincludes
+from app.repository._episode_of_care_revinclude import (
+    column_episode_of_care_revincludes,
+)
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._goal_revinclude import column_goal_revincludes
+from app.repository._group_revinclude import (
+    managing_entity_group_revincludes,
+)
+from app.repository._measure_report_revinclude import (
+    column_measure_report_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_knowledge_revinclude import (
+    column_medication_knowledge_revincludes,
+)
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
+from app.repository._medication_revinclude import column_medication_revincludes
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
+from app.repository._questionnaire_response_revinclude import (
+    column_questionnaire_response_revincludes,
+)
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+    performer_service_request_revincludes,
+)
+from app.repository._task_revinclude import column_task_revincludes
 from app.schemas.enums import AddressUse
 
 Org = OrganizationModel
@@ -705,7 +705,7 @@ def organization_search() -> SearchRegistry:
         ),
         revincludes=(
             *column_measure_report_revincludes(
-                ('reporter',), "reporter", "Organization", lambda x: x.organization_id
+                ("reporter",), "reporter", "Organization", lambda x: x.organization_id
             ),
             *column_communication_request_revincludes(
                 ("requester",), "requester", "Organization", lambda x: x.organization_id

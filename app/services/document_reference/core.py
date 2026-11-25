@@ -61,7 +61,12 @@ class _CoreMixin:
         *,
         strict: bool = False,
         fhir_base: str | None = None,
-    ) -> tuple[SearchRequest, list[DocumentReferenceModel], int | None, list[DocumentReferenceModel]]:
+    ) -> tuple[
+        SearchRequest,
+        list[DocumentReferenceModel],
+        int | None,
+        list[DocumentReferenceModel],
+    ]:
         """FHIR R4 search. `query` is the raw (key, value) parameter list
         — parsed and validated here against the DocumentReference search
         registry (SearchError -> 400 OperationOutcome). `strict` is
@@ -108,7 +113,9 @@ class _CoreMixin:
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "DocumentReference")
         await self._validate_base_r4(document, org_id)
-        document_reference = await self.repository.create_full(document, org_id, created_by)
+        document_reference = await self.repository.create_full(
+            document, org_id, created_by
+        )
         logger.info(
             "DocumentReference created",
             extra={
@@ -146,12 +153,16 @@ class _CoreMixin:
             raise NotFoundError("DocumentReference not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(to_fhir_document_reference(existing), fragment, touched)
+        merged = merge_patch_fragment(
+            to_fhir_document_reference(existing), fragment, touched
+        )
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(document_reference_id, merged, updated_by)
+        updated = await self.repository.patch_full(
+            document_reference_id, merged, updated_by
+        )
         if not updated:
             raise NotFoundError("DocumentReference not found")
         logger.info(
@@ -204,7 +215,9 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource("DocumentReference", fhir_resource, org_id=org_id)
+        errors = await validate_resource(
+            "DocumentReference", fhir_resource, org_id=org_id
+        )
         if errors:
             logger.warning(
                 "DocumentReference failed base R4 validation",

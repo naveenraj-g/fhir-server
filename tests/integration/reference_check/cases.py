@@ -11,66 +11,62 @@ at absolute URLs (not existence-checked); the few that need a real row (a Slot's
 
 import re
 
+from tests.integration.activity_definition.support import (
+    activity_definition_body,
+)
 from tests.integration.allergy_intolerance.support import allergy_body
 from tests.integration.appointment.support import appointment_body
 from tests.integration.appointment_response.support import response_body
 from tests.integration.care_plan.support import care_plan_body
 from tests.integration.care_team.support import care_team_body
 from tests.integration.clinical_impression.support import impression_body
+from tests.integration.communication.support import communication_body
+from tests.integration.communication_request.support import (
+    communication_request_body,
+)
 from tests.integration.condition.support import condition_body
+from tests.integration.consent.support import consent_body
 from tests.integration.detected_issue.support import issue_body
 from tests.integration.diagnostic_report.support import report_body
 from tests.integration.document_reference.support import document_body
 from tests.integration.encounter.support import encounter_body
-from tests.integration.episode_of_care.support import episode_body
 from tests.integration.endpoint.support import MINIMAL as ENDPOINT
+from tests.integration.episode_of_care.support import episode_body
 from tests.integration.family_member_history.support import history_body
+from tests.integration.flag.support import flag_body
+from tests.integration.goal.support import goal_body
 from tests.integration.group.support import group_body
 from tests.integration.healthcare_service.support import MINIMAL as HEALTHCARE_SERVICE
 from tests.integration.immunization.support import immunization_body
 from tests.integration.immunization_evaluation.support import evaluation_body
 from tests.integration.immunization_recommendation.support import recommendation_body
 from tests.integration.location.support import MINIMAL as LOCATION
+from tests.integration.measure.support import measure_body
+from tests.integration.measure_report.support import measure_report_body
 from tests.integration.medication.support import medication_body
-from tests.integration.medication_request.support import medication_request_body
-from tests.integration.observation.support import observation_body
-from tests.integration.organization.support import MINIMAL as ORGANIZATION
-from tests.integration.patient.support import MINIMAL as PATIENT
-from tests.integration.practitioner.support import MINIMAL as PRACTITIONER
-from tests.integration.practitioner_role.support import MINIMAL as PRACTITIONER_ROLE
-from tests.integration.procedure.support import procedure_body
-from tests.integration.medication_dispense.support import (
-    medication_dispense_body,
-)
 from tests.integration.medication_administration.support import (
     medication_administration_body,
 )
-from tests.integration.activity_definition.support import (
-    activity_definition_body,
+from tests.integration.medication_dispense.support import (
+    medication_dispense_body,
 )
-from tests.integration.communication.support import communication_body
-from tests.integration.observation_definition.support import (
-    observation_definition_body,
-)
-from tests.integration.plan_definition.support import plan_definition_body
-from tests.integration.measure.support import measure_body
-from tests.integration.measure_report.support import measure_report_body
-from tests.integration.specimen_definition.support import (
-    specimen_definition_body,
-)
-from tests.integration.communication_request.support import (
-    communication_request_body,
-)
-from tests.integration.consent.support import consent_body
-from tests.integration.flag.support import flag_body
-from tests.integration.goal.support import goal_body
-from tests.integration.task.support import task_body
 from tests.integration.medication_knowledge.support import (
     medication_knowledge_body,
 )
+from tests.integration.medication_request.support import medication_request_body
 from tests.integration.medication_statement.support import (
     medication_statement_body,
 )
+from tests.integration.observation.support import observation_body
+from tests.integration.observation_definition.support import (
+    observation_definition_body,
+)
+from tests.integration.organization.support import MINIMAL as ORGANIZATION
+from tests.integration.patient.support import MINIMAL as PATIENT
+from tests.integration.plan_definition.support import plan_definition_body
+from tests.integration.practitioner.support import MINIMAL as PRACTITIONER
+from tests.integration.practitioner_role.support import MINIMAL as PRACTITIONER_ROLE
+from tests.integration.procedure.support import procedure_body
 from tests.integration.questionnaire_response.support import questionnaire_response_body
 from tests.integration.related_person.support import related_person_body
 from tests.integration.risk_assessment.support import assessment_body
@@ -78,6 +74,10 @@ from tests.integration.schedule.support import create_schedule
 from tests.integration.service_request.support import service_request_body
 from tests.integration.slot.support import slot_body
 from tests.integration.specimen.support import specimen_body
+from tests.integration.specimen_definition.support import (
+    specimen_definition_body,
+)
+from tests.integration.task.support import task_body
 
 API = "/api/fhir/v1"
 EXTERNAL_ACTOR = {"reference": "https://other.example.org/fhir/Patient/1"}

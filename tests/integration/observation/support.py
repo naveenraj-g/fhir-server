@@ -5,23 +5,25 @@ response is FHIR R4 too."""
 
 # The resources an Observation points at (and that point back at it) are created through their
 # own routers.
-from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
+from tests.integration.encounter.support import create_encounter, encounter_body
 from tests.integration.immunization.support import (
     create_immunization,
     immunization_body,
-)  # noqa: F401
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+)
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_location,
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
-from tests.integration.procedure.support import create_procedure, procedure_body  # noqa: F401
+from tests.integration.procedure.support import create_procedure, procedure_body
 from tests.integration.related_person.support import (
     create_related_person,
     related_person_body,
-)  # noqa: F401
+)
 
 BASE = "/api/fhir/v1/observations"
 API = "/api/fhir/v1"
@@ -51,7 +53,7 @@ def loinc(code: str, display: str | None = None) -> dict:
     return concept(LOINC, code, display)
 
 
-def quantity(value: float | int, unit: str = "mmHg", code: str = "mm[Hg]") -> dict:
+def quantity(value: float, unit: str = "mmHg", code: str = "mm[Hg]") -> dict:
     return {"value": value, "unit": unit, "system": UCUM, "code": code}
 
 
@@ -67,7 +69,7 @@ def observation_body(
 
 
 def blood_pressure(
-    patient_id: int | None, systolic: float | int, diastolic: float | int, **extra
+    patient_id: int | None, systolic: float, diastolic: float, **extra
 ) -> dict:
     """A blood-pressure panel: the panel code with a systolic and a diastolic component."""
     return observation_body(

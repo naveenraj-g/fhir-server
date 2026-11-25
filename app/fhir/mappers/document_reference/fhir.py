@@ -17,4 +17,8 @@ if TYPE_CHECKING:
 
 
 def to_fhir_document_reference(document_reference: DocumentReferenceModel) -> dict:
-    return content_resource("DocumentReference", document_reference.document_reference_id, document_reference)
+    return content_resource(
+        "DocumentReference",
+        document_reference.document_reference_id,
+        document_reference,
+    )

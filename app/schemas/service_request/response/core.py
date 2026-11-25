@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import FHIRBundle, FHIRMeta
-from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.common import FHIRBundle
+from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.service_request import ServiceRequest
 
 
@@ -14,7 +15,7 @@ class FHIRServiceRequestSchema(ServiceRequest):
 
     resourceType: str = Field("ServiceRequest", description="Always 'ServiceRequest'.")
     id: str = Field(..., description="Public service_request_id as a string.")
-    meta: FHIRMeta | None = Field(
+    meta: Meta | None = Field(
         None,
         description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )

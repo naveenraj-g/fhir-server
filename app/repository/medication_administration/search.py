@@ -17,10 +17,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
-from app.repository._medication_statement_revinclude import (
-    reference_medication_statement_revincludes,
-)
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -44,6 +40,10 @@ from app.models.medication_administration import (
     MedicationAdministrationStatus,
     MedicationAdministrationToken,
 )
+from app.repository._medication_statement_revinclude import (
+    reference_medication_statement_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 M = MedicationAdministrationModel
 _I = MedicationAdministrationIdentifier

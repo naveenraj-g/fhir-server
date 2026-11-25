@@ -17,7 +17,6 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -41,6 +40,7 @@ from app.models.schedule import (
     ScheduleModel,
     ScheduleToken,
 )
+from app.repository._search_targets import MODELED
 
 from ._shared import ACTOR_TYPES
 

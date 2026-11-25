@@ -18,7 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.quantity import number_range_match
 from app.fhir.search.sql import (
@@ -31,9 +30,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._clinical_impression_revinclude import (
-    reference_impression_revincludes,
-)
 from app.models.risk_assessment import (
     PERFORMER_TYPES,
     SUBJECT_TYPES,
@@ -42,6 +38,10 @@ from app.models.risk_assessment import (
     RiskAssessmentPrediction,
     RiskAssessmentToken,
 )
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 M = RiskAssessmentModel
 _I = RiskAssessmentIdentifier

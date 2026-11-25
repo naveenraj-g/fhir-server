@@ -19,7 +19,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -32,19 +31,6 @@ from app.fhir.search.sql import (
     uri_match,
 )
 from app.fhir.search.values import like_escape, parse_of_type, parse_token
-from app.repository._questionnaire_response_revinclude import (
-    reference_questionnaire_response_revincludes,
-)
-from app.repository._episode_of_care_revinclude import (
-    reference_episode_of_care_revincludes,
-)
-from app.repository._care_plan_revinclude import activity_care_plan_revincludes
-from app.repository._diagnostic_report_revinclude import (
-    reference_report_revincludes,
-)
-from app.repository._encounter_revinclude import reference_encounter_revincludes
-from app.repository._observation_revinclude import reference_observation_revincludes
-from app.repository._procedure_revinclude import based_on_procedure_revincludes
 from app.models.service_request import (
     PERFORMER_TYPES,
     REFERENCE_TYPES,
@@ -60,6 +46,20 @@ from app.models.service_request import (
     ServiceRequestStatus,
     ServiceRequestToken,
 )
+from app.repository._care_plan_revinclude import activity_care_plan_revincludes
+from app.repository._diagnostic_report_revinclude import (
+    reference_report_revincludes,
+)
+from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._episode_of_care_revinclude import (
+    reference_episode_of_care_revincludes,
+)
+from app.repository._observation_revinclude import reference_observation_revincludes
+from app.repository._procedure_revinclude import based_on_procedure_revincludes
+from app.repository._questionnaire_response_revinclude import (
+    reference_questionnaire_response_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 P = ServiceRequestModel
 _I = ServiceRequestIdentifier

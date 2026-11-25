@@ -23,7 +23,7 @@ pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 SCT = "http://snomed.info/sct"
 UCUM = "http://unitsofmeasure.org"
 USAGE = "http://terminology.hl7.org/CodeSystem/usage-context-type"

@@ -25,15 +25,15 @@ from app.core.config import settings
 from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.assertions import assert_operation_outcome
-from tests.integration.schedule.conftest import SCHEDULE_PERMS
 from tests.integration.patient.support import create_patient
 from tests.integration.related_person.support import (
     create_related_person,
     related_person_body,
 )
+from tests.integration.schedule.conftest import SCHEDULE_PERMS
 from tests.integration.schedule.support import (
-    EXTERNAL_PATIENT,
     BASE,
+    EXTERNAL_PATIENT,
     FULL,
     MINIMAL,
     create_healthcare_service,

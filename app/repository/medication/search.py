@@ -18,8 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -31,22 +29,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_dispense_revinclude import (
-    column_medication_dispense_revincludes,
-)
-from app.repository._medication_administration_revinclude import (
-    column_medication_administration_revincludes,
-)
-from app.repository._medication_statement_revinclude import (
-    column_medication_statement_revincludes,
-)
-from app.repository._group_revinclude import (
-    managing_entity_group_revincludes,
-    member_group_revincludes,
-)
-from app.repository._medication_request_revinclude import (
-    column_medication_request_revincludes,
-)
 from app.models.medication import (
     MANUFACTURER_TYPES,
     REFERENCE_TYPES,
@@ -56,6 +38,23 @@ from app.models.medication import (
     MedicationStatus,
     MedicationToken,
 )
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._group_revinclude import (
+    member_group_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 P = MedicationModel
 _I = MedicationIdentifier

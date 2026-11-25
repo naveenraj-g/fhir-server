@@ -18,7 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -30,13 +29,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._service_request_revinclude import (
-    column_service_request_revincludes,
-    performer_service_request_revincludes,
-    specimen_service_request_revincludes,
-)
-from app.repository._diagnostic_report_revinclude import reference_report_revincludes
-from app.repository._observation_revinclude import column_observation_revincludes
 from app.models.specimen import (
     COLLECTOR_TYPES,
     REFERENCE_TYPES,
@@ -47,6 +39,12 @@ from app.models.specimen import (
     SpecimenReference,
     SpecimenStatus,
     SpecimenToken,
+)
+from app.repository._diagnostic_report_revinclude import reference_report_revincludes
+from app.repository._observation_revinclude import column_observation_revincludes
+from app.repository._search_targets import MODELED
+from app.repository._service_request_revinclude import (
+    specimen_service_request_revincludes,
 )
 
 M = SpecimenModel

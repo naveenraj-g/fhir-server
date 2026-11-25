@@ -113,7 +113,9 @@ class _CoreMixin:
             )
         # The body is already a FHIR ObservationDefinition — validate it as sent,
         # then store exactly that document.
-        document = fhir_create_document(self._raw(payload, body), "ObservationDefinition")
+        document = fhir_create_document(
+            self._raw(payload, body), "ObservationDefinition"
+        )
         await self._validate_base_r4(document, org_id)
         observation_definition = await self.repository.create_full(
             document, org_id, created_by
@@ -181,8 +183,11 @@ class _CoreMixin:
         self, observation_definition_id: int, org_id: str | None = None
     ) -> None:
         """Same org_id ownership gate as patch_observation_definition."""
-        if not org_id or not await self.repository.observation_definition_belongs_to_org(
-            observation_definition_id, org_id
+        if (
+            not org_id
+            or not await self.repository.observation_definition_belongs_to_org(
+                observation_definition_id, org_id
+            )
         ):
             self._log_org_scope_miss("delete", observation_definition_id, org_id)
             raise NotFoundError("ObservationDefinition not found")

@@ -1,10 +1,11 @@
 import pytest
+
 from app.auth.dependencies import get_current_user
 from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.encounters import seed_encounters
-from tests.helpers.service_requests import seed_service_requests
 from tests.helpers.observations import seed_observations
+from tests.helpers.service_requests import seed_service_requests
 
 # The appointment's own scopes, plus the scopes the tests need to create the
 # resources an Appointment points at (patient, practitioner, location, ...).

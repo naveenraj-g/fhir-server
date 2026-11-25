@@ -17,17 +17,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._communication_request_revinclude import (
-    reference_communication_request_revincludes,
-)
-from app.repository._communication_revinclude import reference_communication_revincludes
-from app.repository._consent_revinclude import reference_consent_revincludes
-from app.repository._task_revinclude import column_task_revincludes
-from app.repository._search_targets import MODELED
-from app.repository._care_plan_revinclude import (
-    performer_care_plan_revincludes,
-    reference_care_plan_revincludes,
-)
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -39,14 +28,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._diagnostic_report_revinclude import performer_report_revincludes
-from app.repository._medication_request_revinclude import (
-    column_medication_request_revincludes,
-)
-from app.repository._observation_revinclude import reference_observation_revincludes
-from app.repository._service_request_revinclude import (
-    performer_service_request_revincludes,
-)
 from app.models.care_team import (
     ENCOUNTER_TYPES,
     PARTICIPANT_TYPES,
@@ -57,6 +38,25 @@ from app.models.care_team import (
     CareTeamStatus,
     CareTeamToken,
 )
+from app.repository._care_plan_revinclude import (
+    performer_care_plan_revincludes,
+    reference_care_plan_revincludes,
+)
+from app.repository._communication_request_revinclude import (
+    reference_communication_request_revincludes,
+)
+from app.repository._communication_revinclude import reference_communication_revincludes
+from app.repository._consent_revinclude import reference_consent_revincludes
+from app.repository._diagnostic_report_revinclude import performer_report_revincludes
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
+from app.repository._observation_revinclude import reference_observation_revincludes
+from app.repository._search_targets import MODELED
+from app.repository._service_request_revinclude import (
+    performer_service_request_revincludes,
+)
+from app.repository._task_revinclude import column_task_revincludes
 
 M = CareTeamModel
 _I = CareTeamIdentifier

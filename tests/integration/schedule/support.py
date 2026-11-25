@@ -4,11 +4,13 @@ Request bodies are genuine FHIR R4 Schedule JSON (camelCase, nested
 datatypes), and every response is FHIR R4 too."""
 
 # The resources an actor can point at are created through their own routers.
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.practitioner_role.support import (
     create_healthcare_service,
     create_location,
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
 

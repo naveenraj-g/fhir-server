@@ -13,9 +13,9 @@ from app.repository._reference_shared import (
 )
 
 __all__ = [
-    "_IDENTIFIER_FALLBACK_SUFFIXES",
     "ACTOR_TYPES",
     "MODELED_ACTOR_TYPES",
+    "_IDENTIFIER_FALLBACK_SUFFIXES",
     "_org_ref_kwargs",
     "_parse_actor_ref",
     "_parse_org_ref",

@@ -33,7 +33,6 @@ from app.repository._content_index import (
     type_rows,
 )
 
-
 # Relationship attributes the index owns — every one is rebuilt on each write.
 INDEX_RELATIONSHIPS = ("identifiers", "tokens", "references")
 

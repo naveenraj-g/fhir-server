@@ -3,7 +3,7 @@
 Request bodies are genuine FHIR R4 MedicationKnowledge JSON (camelCase, nested datatypes), and
 every response is FHIR R4 too."""
 
-from tests.integration.practitioner_role.support import create_organization  # noqa: F401
+from tests.integration.practitioner_role.support import create_organization
 
 BASE = "/api/fhir/v1/medication-knowledge"
 API = "/api/fhir/v1"
@@ -144,15 +144,15 @@ async def create_medication_knowledge(client, body: dict) -> int:
 
 
 # Helpers for the resources a MedicationKnowledge can point at.
-from tests.integration.detected_issue.support import (  # noqa: E402,F401
+from tests.integration.detected_issue.support import (
     create_issue,
     issue_body,
 )
-from tests.integration.document_reference.support import (  # noqa: E402,F401
+from tests.integration.document_reference.support import (
     create_document,
     document_body,
 )
-from tests.integration.medication.support import (  # noqa: E402,F401
+from tests.integration.medication.support import (
     create_medication,
     medication_body,
 )

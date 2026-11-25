@@ -290,7 +290,7 @@ async def test_date(client, world):
         "e",
     }
     assert await _keys(
-        client, world, date="ge2022-01-01", **{"_id": f"{world['d']},{world['e']}"}
+        client, world, date="ge2022-01-01", _id=f"{world['d']},{world['e']}"
     ) == {"d"}
     assert await _keys(client, world, date="sa2023-02-01") == {"b"}
     assert await _keys(client, world, date="eb2020-01-01") == {"e"}

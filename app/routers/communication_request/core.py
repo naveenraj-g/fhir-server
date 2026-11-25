@@ -73,7 +73,9 @@ async def create_communication_request(
     payload: CommunicationRequestCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("communication_request", "create")),
-    communication_request_service: CommunicationRequestService = Depends(get_communication_request_service),
+    communication_request_service: CommunicationRequestService = Depends(
+        get_communication_request_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -83,8 +85,10 @@ async def create_communication_request(
         extra={"event": "route.create_communication_request"},
     )
     log_payload(logger, "communication_request.create.payload", payload)
-    communication_request = await communication_request_service.create_communication_request(
-        payload, actor.org_id, actor.sub, body=await request.json()
+    communication_request = (
+        await communication_request_service.create_communication_request(
+            payload, actor.org_id, actor.sub, body=await request.json()
+        )
     )
     return fhir_response(
         communication_request_service._to_fhir(communication_request),
@@ -166,7 +170,9 @@ async def _search(
 async def search_communication_requests(
     request: Request,
     actor: AuthUser = Depends(require_permission("communication_request", "read")),
-    communication_request_service: CommunicationRequestService = Depends(get_communication_request_service),
+    communication_request_service: CommunicationRequestService = Depends(
+        get_communication_request_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -174,7 +180,9 @@ async def search_communication_requests(
         "Search CommunicationRequest resources",
         extra={"event": "route.search_communication_requests"},
     )
-    return await _search(request, get_query(request), actor, communication_request_service)
+    return await _search(
+        request, get_query(request), actor, communication_request_service
+    )
 
 
 @router.post(
@@ -193,13 +201,17 @@ async def search_communication_requests(
 async def search_communication_requests_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("communication_request", "read")),
-    communication_request_service: CommunicationRequestService = Depends(get_communication_request_service),
+    communication_request_service: CommunicationRequestService = Depends(
+        get_communication_request_service
+    ),
 ):
     logger.info(
         "Search CommunicationRequest resources (POST _search)",
         extra={"event": "route.search_communication_requests_post"},
     )
-    return await _search(request, await post_query(request), actor, communication_request_service)
+    return await _search(
+        request, await post_query(request), actor, communication_request_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -218,9 +230,13 @@ async def search_communication_requests_post(
 )
 async def get_communication_request(
     request: Request,
-    communication_request_id: int = Path(..., ge=1, description="Public communication_request identifier."),
+    communication_request_id: int = Path(
+        ..., ge=1, description="Public communication_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("communication_request", "read")),
-    communication_request_service: CommunicationRequestService = Depends(get_communication_request_service),
+    communication_request_service: CommunicationRequestService = Depends(
+        get_communication_request_service
+    ),
 ):
     logger.info(
         "Retrieve a CommunicationRequest resource by public communication_request_id",
@@ -229,8 +245,10 @@ async def get_communication_request(
             "communication_request_id": communication_request_id,
         },
     )
-    communication_request = await communication_request_service.get_communication_request_scoped(
-        communication_request_id, actor.org_id
+    communication_request = (
+        await communication_request_service.get_communication_request_scoped(
+            communication_request_id, actor.org_id
+        )
     )
     return fhir_response(communication_request_service._to_fhir(communication_request))
 
@@ -256,9 +274,13 @@ async def get_communication_request(
 async def patch_communication_request(
     payload: CommunicationRequestPatchSchema,
     request: Request,
-    communication_request_id: int = Path(..., ge=1, description="Public communication_request identifier."),
+    communication_request_id: int = Path(
+        ..., ge=1, description="Public communication_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("communication_request", "update")),
-    communication_request_service: CommunicationRequestService = Depends(get_communication_request_service),
+    communication_request_service: CommunicationRequestService = Depends(
+        get_communication_request_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_communication_request()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
@@ -296,9 +318,13 @@ async def patch_communication_request(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_communication_request(
-    communication_request_id: int = Path(..., ge=1, description="Public communication_request identifier."),
+    communication_request_id: int = Path(
+        ..., ge=1, description="Public communication_request identifier."
+    ),
     actor: AuthUser = Depends(require_permission("communication_request", "delete")),
-    communication_request_service: CommunicationRequestService = Depends(get_communication_request_service),
+    communication_request_service: CommunicationRequestService = Depends(
+        get_communication_request_service
+    ),
 ):
     """delete_communication_request() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -309,4 +335,6 @@ async def delete_communication_request(
             "communication_request_id": communication_request_id,
         },
     )
-    await communication_request_service.delete_communication_request(communication_request_id, org_id=actor.org_id)
+    await communication_request_service.delete_communication_request(
+        communication_request_id, org_id=actor.org_id
+    )

@@ -17,7 +17,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -39,19 +38,20 @@ from app.models.episode_of_care import (
     EpisodeOfCareStatus,
     EpisodeOfCareToken,
 )
-from app.repository._medication_dispense_revinclude import (
-    column_medication_dispense_revincludes,
-)
-from app.repository._medication_administration_revinclude import (
-    column_medication_administration_revincludes,
-)
-from app.repository._medication_statement_revinclude import (
-    column_medication_statement_revincludes,
-)
 from app.repository._document_reference_revinclude import (
     reference_document_reference_revincludes,
 )
 from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 M = EpisodeOfCareModel
 _I = EpisodeOfCareIdentifier

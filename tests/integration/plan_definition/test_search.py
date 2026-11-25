@@ -12,15 +12,15 @@ five relatedArtifact reference parameters (`composed-of`, `depends-on`, `derived
 import pytest
 
 from tests.integration.plan_definition.support import (
-    PLAN_DEFINITION_IDS,
     BASE,
+    PLAN_DEFINITION_IDS,
     SCT,
     UCUM,
     URL,
     USAGE_CONTEXT_TYPE,
     V2_0203,
-    plan_definition_body,
     create_plan_definition,
+    plan_definition_body,
 )
 
 KEYS = ("a", "b", "c")

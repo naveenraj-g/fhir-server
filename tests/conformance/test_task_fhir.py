@@ -23,7 +23,7 @@ pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 SCT = "http://snomed.info/sct"
 BASE = {"status": "requested", "intent": "order"}
 
@@ -214,7 +214,7 @@ def test_mapper_serves_content_unchanged():
     content = {
         **BASE,
         "description": "Collect",
-        **{"for": {"reference": "Patient/10001"}},
+        "for": {"reference": "Patient/10001"},
     }
     out = to_fhir_task(_task(content))
     assert out["resourceType"] == "Task"

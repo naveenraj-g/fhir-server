@@ -3,17 +3,17 @@
 Request bodies are genuine FHIR R4 Goal JSON (camelCase, nested datatypes), and every response is
 FHIR R4 too."""
 
-from tests.integration.condition.support import (  # noqa: F401
+from tests.integration.condition.support import (
     condition_body,
     create_condition,
 )
-from tests.integration.group.support import create_group, group_body  # noqa: F401
-from tests.integration.observation.support import (  # noqa: F401
+from tests.integration.group.support import create_group, group_body
+from tests.integration.observation.support import (
     create_observation,
     observation_body,
 )
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
 )

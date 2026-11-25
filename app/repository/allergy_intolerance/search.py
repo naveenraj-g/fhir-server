@@ -19,7 +19,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.core.filters import array_contains
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
@@ -50,6 +49,7 @@ from app.models.allergy_intolerance import (
 from app.repository._clinical_impression_revinclude import (
     reference_impression_revincludes,
 )
+from app.repository._search_targets import MODELED
 
 A = AllergyIntoleranceModel
 _I = AllergyIntoleranceIdentifier

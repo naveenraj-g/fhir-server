@@ -5,36 +5,38 @@ response is FHIR R4 too."""
 
 # The resources a ServiceRequest points at (and that point back at it) are created through their
 # own routers.
-from tests.integration.appointment.support import (  # noqa: F401
+from tests.integration.appointment.support import (
     appointment_body,
     create_appointment,
     create_condition,
 )
-from tests.integration.diagnostic_report.support import (  # noqa: F401
+from tests.integration.diagnostic_report.support import (
     create_report,
     report_body,
 )
-from tests.integration.encounter.support import (  # noqa: F401
+from tests.integration.encounter.support import (
     create_encounter,
     encounter_body,
 )
-from tests.integration.observation.support import (  # noqa: F401
+from tests.integration.observation.support import (
     create_observation,
     observation_body,
 )
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_healthcare_service,
     create_location,
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
-from tests.integration.related_person.support import (  # noqa: F401
+from tests.integration.related_person.support import (
     create_related_person,
     related_person_body,
 )
-from tests.integration.specimen.support import create_specimen, specimen_body  # noqa: F401
+from tests.integration.specimen.support import create_specimen, specimen_body
 
 BASE = "/api/fhir/v1/service-requests"
 API = "/api/fhir/v1"

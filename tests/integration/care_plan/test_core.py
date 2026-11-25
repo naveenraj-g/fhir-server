@@ -22,7 +22,6 @@ from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.assertions import assert_operation_outcome
 from tests.integration.care_plan.conftest import CARE_PLAN_PERMS
-from tests.integration.goal.support import create_goal, goal_body
 from tests.integration.care_plan.support import (
     BASE,
     SCT,
@@ -55,6 +54,7 @@ from tests.integration.care_plan.support import (
     related_person_body,
     service_request_body,
 )
+from tests.integration.goal.support import create_goal, goal_body
 
 
 @pytest.fixture

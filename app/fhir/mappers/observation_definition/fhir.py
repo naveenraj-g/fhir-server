@@ -16,7 +16,9 @@ if TYPE_CHECKING:
     from app.models.observation_definition import ObservationDefinitionModel
 
 
-def to_fhir_observation_definition(observation_definition: ObservationDefinitionModel) -> dict:
+def to_fhir_observation_definition(
+    observation_definition: ObservationDefinitionModel,
+) -> dict:
     return content_resource(
         "ObservationDefinition",
         observation_definition.observation_definition_id,

@@ -26,7 +26,7 @@ Steps use `$RESOURCE` = the resource name and `$resource` = its snake_case form.
 
 ## Step 1 — Strip `org_id`/`created_by`/`updated_by` from schemas
 
-In `<Resource>CreateSchema`/`<Resource>PatchSchema` (and every one of its sub-resource Create/Patch schemas, if any accept these): remove the fields entirely. With `extra="forbid"` already in place, a caller who still sends them gets a clean 422 rather than the value being silently accepted and ignored.
+In `<Resource>CreateSchema`/`<Resource>PatchSchema` (and every one of its sub-resource Create/Patch schemas, if any accept these): remove the fields entirely. Today the request schemas are generated from HL7's definition (`app/schemas/fhir_resources/`, `extra="ignore"`), so they never contain tenant/audit fields: a caller who still sends `org_id` / `created_by` has the key ignored by Pydantic (and rejected as a non-FHIR element by the base R4 validator when it is on). The old `extra="forbid"` 422 no longer applies.
 
 `user_id` is **not** touched — it keeps behaving exactly as it does for every other resource that has one.
 

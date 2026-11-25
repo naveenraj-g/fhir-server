@@ -4,16 +4,18 @@ Request bodies are genuine FHIR R4 Appointment JSON (camelCase, nested
 datatypes), and every response is FHIR R4 too."""
 
 # The resources an Appointment points at are created through their own routers.
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_healthcare_service,
     create_location,
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
-from tests.integration.schedule.support import create_schedule  # noqa: F401
-from tests.integration.slot.support import create_slot, slot_body  # noqa: F401
+from tests.integration.schedule.support import create_schedule
+from tests.integration.slot.support import create_slot, slot_body
 
 BASE = "/api/fhir/v1/appointments"
 API = "/api/fhir/v1"

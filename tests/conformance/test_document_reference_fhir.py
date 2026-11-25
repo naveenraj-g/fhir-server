@@ -24,7 +24,7 @@ pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 LOINC = "http://loinc.org"
 TYPE = {"coding": [{"system": LOINC, "code": "34133-9", "display": "Episode note"}]}
 CONTENT = [

@@ -36,7 +36,9 @@ _SINGLE_200 = {
     200: {
         "content": {
             "application/fhir+json": {
-                "schema": inline_schema(FHIRCommunicationRequestSchema.model_json_schema())
+                "schema": inline_schema(
+                    FHIRCommunicationRequestSchema.model_json_schema()
+                )
             },
         }
     }
@@ -47,7 +49,9 @@ _LIST_200 = {
         "description": "FHIR searchset Bundle: matches (search.mode=match) and any ignored-parameter warning (outcome)",
         "content": {
             "application/fhir+json": {
-                "schema": inline_schema(FHIRCommunicationRequestBundle.model_json_schema())
+                "schema": inline_schema(
+                    FHIRCommunicationRequestBundle.model_json_schema()
+                )
             },
         },
     }

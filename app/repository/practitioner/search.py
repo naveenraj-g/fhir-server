@@ -16,66 +16,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._measure_report_revinclude import (
-    column_measure_report_revincludes,
-)
-from app.repository._communication_request_revinclude import (
-    column_communication_request_revincludes,
-    reference_communication_request_revincludes,
-)
-from app.repository._communication_revinclude import (
-    column_communication_revincludes,
-    reference_communication_revincludes,
-)
-from app.repository._consent_revinclude import reference_consent_revincludes
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._task_revinclude import column_task_revincludes
-from app.repository._medication_dispense_revinclude import (
-    reference_medication_dispense_revincludes,
-)
-from app.repository._medication_administration_revinclude import (
-    reference_medication_administration_revincludes,
-)
-from app.repository._medication_statement_revinclude import (
-    column_medication_statement_revincludes,
-)
-from app.repository._questionnaire_response_revinclude import (
-    column_questionnaire_response_revincludes,
-)
-from app.repository._document_reference_revinclude import (
-    column_document_reference_revincludes,
-    reference_document_reference_revincludes,
-)
-from app.repository._episode_of_care_revinclude import (
-    column_episode_of_care_revincludes,
-)
-from app.repository._care_plan_revinclude import performer_care_plan_revincludes
-from app.repository._care_team_revinclude import participant_care_team_revincludes
-from app.repository._group_revinclude import (
-    managing_entity_group_revincludes,
-    member_group_revincludes,
-)
-from app.repository._medication_request_revinclude import (
-    column_medication_request_revincludes,
-)
-from app.repository._service_request_revinclude import (
-    column_service_request_revincludes,
-    performer_service_request_revincludes,
-    specimen_service_request_revincludes,
-)
-from app.repository._clinical_impression_revinclude import column_impression_revincludes
-from app.repository._detected_issue_revinclude import column_issue_revincludes
-from app.repository._specimen_revinclude import column_specimen_revincludes
-from app.repository._observation_revinclude import reference_observation_revincludes
-from app.repository._risk_assessment_revinclude import column_risk_revincludes
-from app.repository._immunization_revinclude import performer_immunization_revincludes
-from app.repository._appointment_revinclude import participant_revincludes
-from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes
-from app.repository._condition_revinclude import asserter_condition_revincludes
-from app.repository._procedure_revinclude import performer_procedure_revincludes
-from app.repository._diagnostic_report_revinclude import performer_report_revincludes
-from app.repository._appointment_response_revinclude import actor_response_revincludes
-from app.repository._encounter_revinclude import participant_encounter_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -101,6 +41,65 @@ from app.models.practitioner import (
     PractitionerName,
     PractitionerTelecom,
 )
+from app.repository._allergy_intolerance_revinclude import actor_allergy_revincludes
+from app.repository._appointment_response_revinclude import actor_response_revincludes
+from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._care_plan_revinclude import performer_care_plan_revincludes
+from app.repository._care_team_revinclude import participant_care_team_revincludes
+from app.repository._clinical_impression_revinclude import column_impression_revincludes
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+    reference_communication_request_revincludes,
+)
+from app.repository._communication_revinclude import (
+    column_communication_revincludes,
+    reference_communication_revincludes,
+)
+from app.repository._condition_revinclude import asserter_condition_revincludes
+from app.repository._consent_revinclude import reference_consent_revincludes
+from app.repository._detected_issue_revinclude import column_issue_revincludes
+from app.repository._diagnostic_report_revinclude import performer_report_revincludes
+from app.repository._document_reference_revinclude import (
+    column_document_reference_revincludes,
+    reference_document_reference_revincludes,
+)
+from app.repository._encounter_revinclude import participant_encounter_revincludes
+from app.repository._episode_of_care_revinclude import (
+    column_episode_of_care_revincludes,
+)
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._group_revinclude import (
+    managing_entity_group_revincludes,
+    member_group_revincludes,
+)
+from app.repository._immunization_revinclude import performer_immunization_revincludes
+from app.repository._measure_report_revinclude import (
+    column_measure_report_revincludes,
+)
+from app.repository._medication_administration_revinclude import (
+    reference_medication_administration_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    reference_medication_dispense_revincludes,
+)
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
+from app.repository._observation_revinclude import reference_observation_revincludes
+from app.repository._procedure_revinclude import performer_procedure_revincludes
+from app.repository._questionnaire_response_revinclude import (
+    column_questionnaire_response_revincludes,
+)
+from app.repository._risk_assessment_revinclude import column_risk_revincludes
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+    performer_service_request_revincludes,
+)
+from app.repository._specimen_revinclude import column_specimen_revincludes
+from app.repository._task_revinclude import column_task_revincludes
 from app.schemas.enums import AddressUse, AdministrativeGender
 
 Prac = PractitionerModel
@@ -625,10 +624,10 @@ def practitioner_search() -> SearchRegistry:
         # PractitionerRole.practitioner points here.
         revincludes=(
             *column_measure_report_revincludes(
-                ('subject',), "subject", "Practitioner", lambda x: x.practitioner_id
+                ("subject",), "subject", "Practitioner", lambda x: x.practitioner_id
             ),
             *column_measure_report_revincludes(
-                ('reporter',), "reporter", "Practitioner", lambda x: x.practitioner_id
+                ("reporter",), "reporter", "Practitioner", lambda x: x.practitioner_id
             ),
             *column_communication_request_revincludes(
                 ("requester",), "requester", "Practitioner", lambda x: x.practitioner_id

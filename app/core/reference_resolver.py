@@ -30,14 +30,15 @@ from app.models.communication_request import CommunicationRequestModel
 from app.models.condition import ConditionModel
 from app.models.consent import ConsentModel
 from app.models.detected_issue import DetectedIssueModel
+from app.models.diagnostic_report import DiagnosticReportModel
 from app.models.document_reference import DocumentReferenceModel
 from app.models.encounter import EncounterModel
+from app.models.endpoint import EndpointModel
 from app.models.episode_of_care import EpisodeOfCareModel
 from app.models.family_member_history import FamilyMemberHistoryModel
 from app.models.flag import FlagModel
 from app.models.goal import GoalModel
 from app.models.group import GroupModel
-from app.models.endpoint import EndpointModel
 from app.models.healthcare_service import HealthcareServiceModel
 from app.models.immunization import ImmunizationModel
 from app.models.immunization_evaluation import ImmunizationEvaluationModel
@@ -60,7 +61,6 @@ from app.models.patient import PatientModel
 from app.models.plan_definition import PlanDefinitionModel
 from app.models.practitioner import PractitionerModel
 from app.models.practitioner_role import PractitionerRoleModel
-from app.models.diagnostic_report import DiagnosticReportModel
 from app.models.procedure import ProcedureModel
 from app.models.questionnaire import QuestionnaireModel
 from app.models.questionnaire_response import QuestionnaireResponseModel

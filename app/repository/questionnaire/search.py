@@ -18,9 +18,6 @@ from functools import cache
 from sqlalchemy import exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._plan_definition_revinclude import (
-    definition_plan_definition_revincludes,
-)
 from app.core.filters import array_contains
 from app.fhir.search import (
     IncludeTarget,
@@ -50,6 +47,9 @@ from app.models.questionnaire import (
     QuestionnaireStatus,
     QuestionnaireSubjectType,
     QuestionnaireToken,
+)
+from app.repository._plan_definition_revinclude import (
+    definition_plan_definition_revincludes,
 )
 
 M = QuestionnaireModel

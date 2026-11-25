@@ -26,7 +26,7 @@ slot_pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 REQUIRED = {
     "schedule": {"reference": "Schedule/200001"},
     "status": "free",

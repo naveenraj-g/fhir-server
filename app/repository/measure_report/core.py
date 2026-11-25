@@ -17,13 +17,9 @@ class _CoreMixin:
     row itself — the response is served from `content`, so the search-index
     child tables are never eager-loaded here."""
 
-    async def get_by_measure_report_id(
-        self, measure_report_id: int
-    ) -> _M | None:
+    async def get_by_measure_report_id(self, measure_report_id: int) -> _M | None:
         async with self.session_factory() as session:
-            stmt = select(_M).where(
-                _M.measure_report_id == measure_report_id
-            )
+            stmt = select(_M).where(_M.measure_report_id == measure_report_id)
             return (await session.execute(stmt)).scalars().first()
 
     async def get_by_measure_report_id_in_org(
@@ -86,9 +82,7 @@ class _CoreMixin:
 
     async def delete(self, measure_report_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(_M).where(
-                _M.measure_report_id == measure_report_id
-            )
+            stmt = select(_M).where(_M.measure_report_id == measure_report_id)
             measure_report = (await session.execute(stmt)).scalars().first()
             if not measure_report:
                 return False

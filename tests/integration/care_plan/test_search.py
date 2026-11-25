@@ -12,7 +12,6 @@ POST _search.
 
 import pytest
 
-from tests.integration.goal.support import create_goal, goal_body
 from tests.integration.care_plan.support import (
     API,
     BASE,
@@ -45,6 +44,7 @@ from tests.integration.care_plan.support import (
     related_person_body,
     service_request_body,
 )
+from tests.integration.goal.support import create_goal, goal_body
 
 KEYS = ("a", "b", "c", "d", "e")
 ALL = set(KEYS)

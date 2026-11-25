@@ -2,7 +2,7 @@
 
 You are designing the storage for a **FHIR R4** resource in this project. The approach is Medplum's: **the whole resource is stored as one JSON document (`content`, JSONB); only the values a FHIR search parameter filters on are normalized into columns and child tables** — a search index, derived from `content` on every write, never read to build a response. Every rebuilt resource is built this way (`app/models/<resource>/`); the newest and richest templates are Encounter, Appointment, AppointmentResponse, Patient and RelatedPerson, with Organization/Location/Practitioner as the simplest.
 
-The old approach — one column or table per element, flattened References with 15 columns, `Fhir*Mixin`s, a mapper per datatype — is **no longer used for new work**. Its full rules are preserved in `docs/legacy/fhir-db-model-normalized.md` (about 40 resources still use it until they are rebuilt).
+The old approach — one column or table per element, flattened References with 15 columns, `Fhir*Mixin`s, a mapper per datatype — is **no longer used for new work**. Its full rules are preserved in `docs/legacy/fhir-db-model-normalized.md` (no resource uses it any more: all 52 are rebuilt).
 
 Use `/new-fhir-resource` for the whole checklist; this skill is only the modelling decisions.
 
@@ -86,7 +86,7 @@ class <Resource>Model(TenantAuditMixin, Base):      # tenant_id, created_by (NOT
 ## Step 6 — Migration
 
 - New resource: `uv run alembic revision --autogenerate -m "add_<resource>_content_and_search_index"`, then hand-fix: reuse shared PG enums with `create_type=False`, create the `<resource>_pub_seq` sequence (`CREATE SEQUENCE IF NOT EXISTS ... START WITH <N>`; strip autogenerate's false-positive `CREATE/DROP SEQUENCE` noise), and leave `downgrade()` unimplemented (the repo's migrations are one-way; say so in the docstring).
-- **Converting a normalized resource:** model the migration on `a7d3f19c2b64` — add `content`, build it per row with a **frozen** copy of the old mapper (never import app code), drop the old child tables and columns, create the index tables, rebuild the index from `content`, set `content` `NOT NULL`. Keep any non-FHIR state (e.g. `user_id`) as a column — never in `content` — and carry it over unchanged.
+- **Converting an old-shape table (none are left; kept for reference):** model the migration on `a7d3f19c2b64` — add `content`, build it per row with a **frozen** copy of the old mapper (never import app code), drop the old child tables and columns, create the index tables, rebuild the index from `content`, set `content` `NOT NULL`. Keep any non-FHIR state (e.g. `user_id`) as a column — never in `content` — and carry it over unchanged.
 - If the old model's public id used a Python-side `Sequence` with no server default, the migration sets `DEFAULT nextval('<resource>_pub_seq')` (the new model uses `server_default`).
 - A per-field Postgres enum for a reference type is replaced by a plain string column; drop the enum in the migration (but never a shared one such as `organization_reference_type`).
 - Converting a column to an enum or backfilling one: use a safe cast (`CASE WHEN col IN (...) THEN col::enum END`) so a stray value becomes NULL instead of failing the migration; rebuild child index rows from `content` with a frozen copy of the indexer logic.

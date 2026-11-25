@@ -8,18 +8,20 @@ every response is FHIR R4 too."""
 from tests.integration.allergy_intolerance.support import (
     allergy_body,
     create_allergy_intolerance,
-)  # noqa: F401
+)
 from tests.integration.clinical_impression.support import (
     create_impression,
     impression_body,
-)  # noqa: F401
-from tests.integration.condition.support import condition_body, create_condition  # noqa: F401
-from tests.integration.diagnostic_report.support import create_report, report_body  # noqa: F401
-from tests.integration.encounter.support import create_encounter, encounter_body  # noqa: F401
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+)
+from tests.integration.condition.support import condition_body, create_condition
+from tests.integration.diagnostic_report.support import create_report, report_body
+from tests.integration.encounter.support import create_encounter, encounter_body
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
 

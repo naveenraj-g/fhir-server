@@ -2,8 +2,8 @@ from sqlalchemy import select
 
 from app.core.logging import get_logger
 from app.models.measure_report import MeasureReportModel
-
 from app.repository._reference_check import validate_local_references
+
 from ._indexer import index_columns, index_rows
 from ._shared import INDEX_RELATIONSHIPS, _with_relationships
 
@@ -59,17 +59,14 @@ class _FullMixin:
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(MeasureReportModel).where(
-                    MeasureReportModel.measure_report_id
-                    == measure_report_id
+                    MeasureReportModel.measure_report_id == measure_report_id
                 )
             )
             measure_report = (await session.execute(stmt)).scalars().first()
             if not measure_report:
                 return None
 
-            await validate_local_references(
-                session, measure_report.tenant_id, document
-            )
+            await validate_local_references(session, measure_report.tenant_id, document)
 
             measure_report.content = _storable(document)
             for column, value in index_columns(document).items():

@@ -8,9 +8,9 @@ datatypes), and every response is FHIR R4 too."""
 from tests.integration.immunization.support import (
     create_immunization,
     immunization_body,
-)  # noqa: F401
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import create_organization  # noqa: F401
+)
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import create_organization
 
 BASE = "/api/fhir/v1/immunization-evaluations"
 API = "/api/fhir/v1"

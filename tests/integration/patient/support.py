@@ -3,9 +3,11 @@
 Request bodies are genuine FHIR R4 Patient JSON (camelCase, nested datatypes),
 and every response is FHIR R4 too."""
 
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
 

@@ -45,6 +45,12 @@ target-version = "py312"
 # Historical migrations are frozen; scratch / mock data are not application code; Markdown is prose (ruff 0.17 would reformat the code blocks in it).
 extend-exclude = ["migrations/versions", "scratch", "mock-data", "**/*.md"]
 
+[tool.ruff.lint.per-file-ignores]
+# Test support modules and conftest re-export helpers on purpose (and import app.main for its side effects).
+"tests/**/support.py" = ["F401"]
+"tests/conftest.py" = ["F401", "E402"]
+"tests/conformance/support.py" = ["F401"]
+
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
     "fastapi.Depends",

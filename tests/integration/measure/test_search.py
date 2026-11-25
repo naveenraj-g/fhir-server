@@ -12,15 +12,15 @@ five relatedArtifact reference parameters (`composed-of`, `depends-on`, `derived
 import pytest
 
 from tests.integration.measure.support import (
-    MEASURE_IDS,
     BASE,
+    MEASURE_IDS,
     SCT,
     UCUM,
     URL,
     USAGE_CONTEXT_TYPE,
     V2_0203,
-    measure_body,
     create_measure,
+    measure_body,
 )
 
 KEYS = ("a", "b", "c")

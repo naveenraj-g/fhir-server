@@ -9,24 +9,25 @@ os.environ.setdefault("IAM_ISSUER", "https://test.example.com")
 os.environ.setdefault("IAM_JWKS_URL", "https://test.example.com/.well-known/jwks.json")
 os.environ.setdefault("FHIR_VALIDATION__BACKEND", "native")
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pytest
 from fastapi import Request
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy import BigInteger, Sequence as SASequence, bindparam, event
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import BigInteger, bindparam, event
+from sqlalchemy import Sequence as SASequence
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.auth.dependencies import get_current_user
 from app.core.database import FHIRBase
 from app.main import (
     app,
     container,
     mount_routers,
 )  # triggers all model & router imports
-from app.auth.dependencies import get_current_user
 from app.middleware.rate_limit import RateLimitMiddleware
 
 # Router mounting now happens inside app.main's lifespan (at real ASGI
@@ -114,7 +115,7 @@ def _jsonb_as_text(element, compiler, **kw):
 # ARRAY-as-TEXT shim already produces, and its own built-in `value` column
 # (unqualified — there's only one FROM source in this EXISTS subquery, so no
 # qualification is needed) holds each array element.
-from app.core.filters import ArrayContains, ArrayContainsILike  # noqa: E402
+from app.core.filters import ArrayContains, ArrayContainsILike
 
 
 @compiles(ArrayContainsILike, "sqlite")
@@ -134,7 +135,7 @@ def _array_contains_sqlite(element, compiler, **kw):
 # app.fhir.search.sql.ArrayAnyLike — FHIR string search (default starts-with /
 # :contains) over a normalized ARRAY(String) column (Organization alias,
 # address line). Same json_each() arrangement as the two shims above.
-from app.fhir.search.sql import ArrayAggregate, ArrayAnyLike  # noqa: E402
+from app.fhir.search.sql import ArrayAggregate, ArrayAnyLike
 
 
 @compiles(ArrayAnyLike, "sqlite")
@@ -170,7 +171,7 @@ RateLimitMiddleware.dispatch = _no_rate_limit
 # to minutes across a full run. Overriding the DI-provided cache_backend
 # once, for the whole test session, avoids any real network call entirely —
 # deterministic and fast, not just "fails open quickly."
-from app.core.cache.memory_backend import MemoryCacheBackend  # noqa: E402
+from app.core.cache.memory_backend import MemoryCacheBackend
 
 container.fhir_profile.cache_backend.override(MemoryCacheBackend())
 

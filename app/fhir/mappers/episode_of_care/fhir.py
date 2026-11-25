@@ -17,4 +17,6 @@ if TYPE_CHECKING:
 
 
 def to_fhir_episode_of_care(episode_of_care: EpisodeOfCareModel) -> dict:
-    return content_resource("EpisodeOfCare", episode_of_care.episode_of_care_id, episode_of_care)
+    return content_resource(
+        "EpisodeOfCare", episode_of_care.episode_of_care_id, episode_of_care
+    )

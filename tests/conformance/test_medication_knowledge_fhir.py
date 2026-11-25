@@ -24,7 +24,7 @@ pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 RXNORM = "http://www.nlm.nih.gov/research/umls/rxnorm"
 SCT = "http://snomed.info/sct"
 ATC = "http://www.whocc.no/atc"

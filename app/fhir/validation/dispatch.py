@@ -30,9 +30,9 @@ from fastapi.encoders import jsonable_encoder
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.errors.infrastructure import ValidatorUnavailableError
 from app.fhir.profile_urls import country_profile_url, organization_profile_url
 from app.fhir.validation.base_r4 import validate_base_r4
-from app.errors.infrastructure import ValidatorUnavailableError
 from app.fhir.validation.java_validator import (
     JavaValidatorUnavailable,
     ensure_profile_registered,

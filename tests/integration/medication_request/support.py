@@ -5,26 +5,28 @@ every response is FHIR R4 too."""
 
 # The resources a MedicationRequest points at (and that point back at it) are created through
 # their own routers.
-from tests.integration.appointment.support import create_condition  # noqa: F401
-from tests.integration.encounter.support import (  # noqa: F401
+from tests.integration.appointment.support import create_condition
+from tests.integration.encounter.support import (
     create_encounter,
     encounter_body,
 )
-from tests.integration.medication.support import (  # noqa: F401
+from tests.integration.medication.support import (
     create_medication,
     medication_body,
 )
-from tests.integration.observation.support import (  # noqa: F401
+from tests.integration.observation.support import (
     create_observation,
     observation_body,
 )
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
+)
+from tests.integration.practitioner_role.support import (
     create_role as create_practitioner_role,
 )
-from tests.integration.related_person.support import (  # noqa: F401
+from tests.integration.related_person.support import (
     create_related_person,
     related_person_body,
 )

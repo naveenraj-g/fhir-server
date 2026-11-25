@@ -3,25 +3,25 @@
 Request bodies are genuine FHIR R4 Consent JSON (camelCase, nested datatypes), and every response is
 FHIR R4 too."""
 
-from tests.integration.care_team.support import (  # noqa: F401
+from tests.integration.care_team.support import (
     care_team_body,
     create_care_team,
 )
-from tests.integration.document_reference.support import (  # noqa: F401
+from tests.integration.document_reference.support import (
     create_document,
     document_body,
 )
-from tests.integration.group.support import create_group, group_body  # noqa: F401
-from tests.integration.observation.support import (  # noqa: F401
+from tests.integration.group.support import create_group, group_body
+from tests.integration.observation.support import (
     create_observation,
     observation_body,
 )
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import (
     create_organization,
     create_practitioner,
 )
-from tests.integration.related_person.support import (  # noqa: F401
+from tests.integration.related_person.support import (
     create_related_person,
     related_person_body,
 )

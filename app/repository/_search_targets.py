@@ -37,8 +37,8 @@ def snake(resource_type: str) -> str:
 @lru_cache(maxsize=1)
 def _entries() -> dict[str, tuple[str, str, str, str, str]]:
     # Imported here: app.core.reference_resolver imports every model.
-    from app.repository._reference_check import checkable_types
     from app.core.reference_resolver import RESOURCE_REGISTRY
+    from app.repository._reference_check import checkable_types
 
     out: dict[str, tuple[str, str, str, str, str]] = {}
     for resource_type in sorted(checkable_types()):

@@ -1,8 +1,8 @@
 from sqlalchemy import BigInteger, Column, ForeignKey, Index, String
 from sqlalchemy.orm import relationship
 
-from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 from app.core.database import FHIRBase as Base
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
 
 # Which search parameter a DocumentReferenceReference row feeds, the DocumentReference element it
 # is read from, and the resource types that element can point at (R4: author -> Practitioner |

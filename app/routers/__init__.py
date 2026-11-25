@@ -30,13 +30,13 @@ from . import detected_issue as detected_issue
 from . import diagnostic_report as diagnostic_report
 from . import document_reference as document_reference
 from . import encounter as encounter
+from . import endpoint as endpoint
 from . import episode_of_care as episode_of_care
 from . import family_member_history as family_member_history
 from . import fhir_profile as fhir_profile
 from . import flag as flag
 from . import goal as goal
 from . import group as group
-from . import endpoint as endpoint
 from . import healthcare_service as healthcare_service
 from . import immunization as immunization
 from . import immunization_evaluation as immunization_evaluation
@@ -86,13 +86,13 @@ __all__ = [
     "discover_routers",
     "document_reference",
     "encounter",
+    "endpoint",
     "episode_of_care",
     "family_member_history",
     "fhir_profile",
     "flag",
     "goal",
     "group",
-    "endpoint",
     "healthcare_service",
     "immunization",
     "immunization_evaluation",

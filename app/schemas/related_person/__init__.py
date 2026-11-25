@@ -9,9 +9,9 @@ from app.schemas.related_person.response import (
 )
 
 __all__ = [
-    "RelatedPersonCreateSchema",
-    "RelatedPersonPatchSchema",
     "FHIRRelatedPersonBundle",
     "FHIRRelatedPersonBundleEntry",
     "FHIRRelatedPersonSchema",
+    "RelatedPersonCreateSchema",
+    "RelatedPersonPatchSchema",
 ]

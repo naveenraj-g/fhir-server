@@ -313,9 +313,7 @@ async def test_measure_include_and_revinclude(client):
     await create_measure_report(
         client, measure_report_body(measure="https://fhir-server.dev/fhir/Measure/none")
     )
-    bundle = await _search(
-        client, _include="MeasureReport:measure", **{"_id": str(report)}
-    )
+    bundle = await _search(client, _include="MeasureReport:measure", _id=str(report))
     included = {
         e["resource"]["id"] for e in bundle["entry"] if e["search"]["mode"] == "include"
     }

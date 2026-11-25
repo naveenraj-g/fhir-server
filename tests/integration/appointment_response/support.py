@@ -4,7 +4,7 @@ Request bodies are genuine FHIR R4 AppointmentResponse JSON (camelCase, nested
 datatypes), and every response is FHIR R4 too."""
 
 # The resources an AppointmentResponse points at are created through their own routers.
-from tests.integration.appointment.support import (  # noqa: F401
+from tests.integration.appointment.support import (
     appointment_body,
     create_appointment,
     create_healthcare_service,

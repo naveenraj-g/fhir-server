@@ -26,7 +26,6 @@ from tests.integration.questionnaire.support import (
     URL,
     create_organization,
     create_questionnaire,
-    create_questionnaire_response,
     full_body,
     questionnaire_body,
     questionnaire_response_body,

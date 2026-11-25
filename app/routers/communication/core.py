@@ -199,7 +199,9 @@ async def search_communications_post(
         "Search Communication resources (POST _search)",
         extra={"event": "route.search_communications_post"},
     )
-    return await _search(request, await post_query(request), actor, communication_service)
+    return await _search(
+        request, await post_query(request), actor, communication_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -218,7 +220,9 @@ async def search_communications_post(
 )
 async def get_communication(
     request: Request,
-    communication_id: int = Path(..., ge=1, description="Public communication identifier."),
+    communication_id: int = Path(
+        ..., ge=1, description="Public communication identifier."
+    ),
     actor: AuthUser = Depends(require_permission("communication", "read")),
     communication_service: CommunicationService = Depends(get_communication_service),
 ):
@@ -256,7 +260,9 @@ async def get_communication(
 async def patch_communication(
     payload: CommunicationPatchSchema,
     request: Request,
-    communication_id: int = Path(..., ge=1, description="Public communication identifier."),
+    communication_id: int = Path(
+        ..., ge=1, description="Public communication identifier."
+    ),
     actor: AuthUser = Depends(require_permission("communication", "update")),
     communication_service: CommunicationService = Depends(get_communication_service),
 ):
@@ -296,7 +302,9 @@ async def patch_communication(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_communication(
-    communication_id: int = Path(..., ge=1, description="Public communication identifier."),
+    communication_id: int = Path(
+        ..., ge=1, description="Public communication identifier."
+    ),
     actor: AuthUser = Depends(require_permission("communication", "delete")),
     communication_service: CommunicationService = Depends(get_communication_service),
 ):
@@ -309,4 +317,6 @@ async def delete_communication(
             "communication_id": communication_id,
         },
     )
-    await communication_service.delete_communication(communication_id, org_id=actor.org_id)
+    await communication_service.delete_communication(
+        communication_id, org_id=actor.org_id
+    )

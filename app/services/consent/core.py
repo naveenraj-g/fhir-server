@@ -47,9 +47,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Consent operation requires an org-scoped token"
             )
-        consent = await self.repository.get_by_consent_id_in_org(
-            consent_id, org_id
-        )
+        consent = await self.repository.get_by_consent_id_in_org(consent_id, org_id)
         if not consent:
             raise NotFoundError("Consent not found")
         return consent
@@ -101,9 +99,7 @@ class _CoreMixin:
         checks (see app.fhir.input_payload); falls back to the parsed
         payload for internal callers that have no raw body."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Consent creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Consent creation requires an org-scoped token")
         # The body is already a FHIR Consent — validate it as sent,
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "Consent")
@@ -138,9 +134,7 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", consent_id, org_id)
             raise NotFoundError("Consent not found")
-        existing = await self.repository.get_by_consent_id_in_org(
-            consent_id, org_id
-        )
+        existing = await self.repository.get_by_consent_id_in_org(consent_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", consent_id, org_id)
             raise NotFoundError("Consent not found")
@@ -164,9 +158,7 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_consent(
-        self, consent_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_consent(self, consent_id: int, org_id: str | None = None) -> None:
         """Same org_id ownership gate as patch_consent."""
         if not org_id or not await self.repository.consent_belongs_to_org(
             consent_id, org_id

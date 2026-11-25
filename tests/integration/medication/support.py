@@ -3,7 +3,7 @@
 Request bodies are genuine FHIR R4 Medication JSON (camelCase, nested datatypes), and every
 response is FHIR R4 too."""
 
-from tests.integration.practitioner_role.support import create_organization  # noqa: F401
+from tests.integration.practitioner_role.support import create_organization
 
 BASE = "/api/fhir/v1/medications"
 API = "/api/fhir/v1"

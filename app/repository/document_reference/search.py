@@ -19,11 +19,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._consent_revinclude import column_consent_revincludes
-from app.repository._medication_knowledge_revinclude import (
-    reference_medication_knowledge_revincludes,
-)
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.composite import split_composite
 from app.fhir.search.sql import (
@@ -54,6 +49,11 @@ from app.models.document_reference import (
     DocumentReferenceToken,
     DocumentRelationshipType,
 )
+from app.repository._consent_revinclude import column_consent_revincludes
+from app.repository._medication_knowledge_revinclude import (
+    reference_medication_knowledge_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 M = DocumentReferenceModel
 _I = DocumentReferenceIdentifier

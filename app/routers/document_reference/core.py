@@ -76,7 +76,9 @@ async def create_document_reference(
     payload: DocumentReferenceCreateSchema,
     request: Request,
     actor: AuthUser = Depends(require_permission("document_reference", "create")),
-    document_reference_service: DocumentReferenceService = Depends(get_document_reference_service),
+    document_reference_service: DocumentReferenceService = Depends(
+        get_document_reference_service
+    ),
 ):
     """org_id and created_by both come from the verified JWT (actor.org_id /
     actor.sub) — org_id is not a request body field at all, and an org-less
@@ -169,7 +171,9 @@ async def _search(
 async def search_document_references(
     request: Request,
     actor: AuthUser = Depends(require_permission("document_reference", "read")),
-    document_reference_service: DocumentReferenceService = Depends(get_document_reference_service),
+    document_reference_service: DocumentReferenceService = Depends(
+        get_document_reference_service
+    ),
 ):
     """org_id is always the caller's own (actor.org_id), never
     client-suppliable; an org-less token is rejected outright (403)."""
@@ -196,13 +200,17 @@ async def search_document_references(
 async def search_document_references_post(
     request: Request,
     actor: AuthUser = Depends(require_permission("document_reference", "read")),
-    document_reference_service: DocumentReferenceService = Depends(get_document_reference_service),
+    document_reference_service: DocumentReferenceService = Depends(
+        get_document_reference_service
+    ),
 ):
     logger.info(
         "Search DocumentReference resources (POST _search)",
         extra={"event": "route.search_document_references_post"},
     )
-    return await _search(request, await post_query(request), actor, document_reference_service)
+    return await _search(
+        request, await post_query(request), actor, document_reference_service
+    )
 
 
 # ── Get ──────────────────────────────────────────────────────────────────
@@ -221,9 +229,13 @@ async def search_document_references_post(
 )
 async def get_document_reference(
     request: Request,
-    document_reference_id: int = Path(..., ge=1, description="Public document_reference identifier."),
+    document_reference_id: int = Path(
+        ..., ge=1, description="Public document_reference identifier."
+    ),
     actor: AuthUser = Depends(require_permission("document_reference", "read")),
-    document_reference_service: DocumentReferenceService = Depends(get_document_reference_service),
+    document_reference_service: DocumentReferenceService = Depends(
+        get_document_reference_service
+    ),
 ):
     logger.info(
         "Retrieve a DocumentReference resource by public document_reference_id",
@@ -232,7 +244,9 @@ async def get_document_reference(
             "document_reference_id": document_reference_id,
         },
     )
-    document_reference = await document_reference_service.get_document_reference_scoped(document_reference_id, actor.org_id)
+    document_reference = await document_reference_service.get_document_reference_scoped(
+        document_reference_id, actor.org_id
+    )
     return fhir_response(document_reference_service._to_fhir(document_reference))
 
 
@@ -257,9 +271,13 @@ async def get_document_reference(
 async def patch_document_reference(
     payload: DocumentReferencePatchSchema,
     request: Request,
-    document_reference_id: int = Path(..., ge=1, description="Public document_reference identifier."),
+    document_reference_id: int = Path(
+        ..., ge=1, description="Public document_reference identifier."
+    ),
     actor: AuthUser = Depends(require_permission("document_reference", "update")),
-    document_reference_service: DocumentReferenceService = Depends(get_document_reference_service),
+    document_reference_service: DocumentReferenceService = Depends(
+        get_document_reference_service
+    ),
 ):
     """updated_by comes from the verified JWT (actor.sub); patch_document_reference()
     raises NotFoundError (404, not 403) if actor.org_id doesn't match."""
@@ -297,9 +315,13 @@ async def patch_document_reference(
     responses={**_ERR_NOT_FOUND},
 )
 async def delete_document_reference(
-    document_reference_id: int = Path(..., ge=1, description="Public document_reference identifier."),
+    document_reference_id: int = Path(
+        ..., ge=1, description="Public document_reference identifier."
+    ),
     actor: AuthUser = Depends(require_permission("document_reference", "delete")),
-    document_reference_service: DocumentReferenceService = Depends(get_document_reference_service),
+    document_reference_service: DocumentReferenceService = Depends(
+        get_document_reference_service
+    ),
 ):
     """delete_document_reference() raises NotFoundError (404) if the id doesn't
     exist at all, or if it exists but belongs to a different org."""
@@ -310,4 +332,6 @@ async def delete_document_reference(
             "document_reference_id": document_reference_id,
         },
     )
-    await document_reference_service.delete_document_reference(document_reference_id, org_id=actor.org_id)
+    await document_reference_service.delete_document_reference(
+        document_reference_id, org_id=actor.org_id
+    )

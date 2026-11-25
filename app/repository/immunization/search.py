@@ -18,13 +18,11 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
     SearchParam,
     SearchRegistry,
-    normalize,
 )
 from app.fhir.search.sql import (
     coded_token_match,
@@ -37,13 +35,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._immunization_evaluation_revinclude import (
-    column_evaluation_revincludes,
-)
-from app.repository._immunization_recommendation_revinclude import (
-    support_recommendation_revincludes,
-)
-from app.repository._observation_revinclude import reference_observation_revincludes
 from app.models.immunization import (
     PERFORMER_TYPES,
     REASON_TYPES,
@@ -56,6 +47,14 @@ from app.models.immunization import (
     ImmunizationStatus,
     ImmunizationToken,
 )
+from app.repository._immunization_evaluation_revinclude import (
+    column_evaluation_revincludes,
+)
+from app.repository._immunization_recommendation_revinclude import (
+    support_recommendation_revincludes,
+)
+from app.repository._observation_revinclude import reference_observation_revincludes
+from app.repository._search_targets import MODELED
 
 M = ImmunizationModel
 _I = ImmunizationIdentifier

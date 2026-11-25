@@ -10,10 +10,10 @@ from .enums import CommunicationRequestPriority, CommunicationRequestStatus
 from .identifier import CommunicationRequestIdentifier
 from .reference import (
     BASED_ON_TYPES,
-    REPLACES_TYPES,
     RECIPIENT_TYPES,
     REFERENCE_PARAMS,
     REFERENCE_TYPES,
+    REPLACES_TYPES,
     CommunicationRequestReference,
 )
 from .token import TOKEN_PARAMS, CommunicationRequestToken
@@ -21,11 +21,11 @@ from .token import TOKEN_PARAMS, CommunicationRequestToken
 __all__ = [
     "BASED_ON_TYPES",
     "ENCOUNTER_TYPES",
-    "REPLACES_TYPES",
-    "REQUESTER_TYPES",
     "RECIPIENT_TYPES",
     "REFERENCE_PARAMS",
     "REFERENCE_TYPES",
+    "REPLACES_TYPES",
+    "REQUESTER_TYPES",
     "SENDER_TYPES",
     "SUBJECT_TYPES",
     "TOKEN_PARAMS",

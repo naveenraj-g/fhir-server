@@ -3,9 +3,9 @@
 Request bodies are genuine FHIR R4 Questionnaire JSON (camelCase, nested datatypes), and every
 response is FHIR R4 too."""
 
-from tests.integration.patient.support import create_patient  # noqa: F401
-from tests.integration.practitioner_role.support import create_organization  # noqa: F401
-from tests.integration.questionnaire_response.support import (  # noqa: F401
+from tests.integration.patient.support import create_patient
+from tests.integration.practitioner_role.support import create_organization
+from tests.integration.questionnaire_response.support import (
     create_questionnaire_response,
     questionnaire_response_body,
 )

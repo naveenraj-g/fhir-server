@@ -12,8 +12,8 @@ from app.repository._reference_shared import (
 )
 
 __all__ = [
-    "_IDENTIFIER_FALLBACK_SUFFIXES",
     "MODELED_TYPES",
+    "_IDENTIFIER_FALLBACK_SUFFIXES",
     "_org_ref_kwargs",
     "_parse_org_ref",
     "_reference_kwargs",

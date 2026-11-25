@@ -36,20 +36,14 @@ class _CoreMixin:
 
     # ── Read ──────────────────────────────────────────────────────────────
 
-    async def get_task_scoped(
-        self, task_id: int, org_id: str | None
-    ) -> TaskModel:
+    async def get_task_scoped(self, task_id: int, org_id: str | None) -> TaskModel:
         """Requires an org-scoped actor — raises PermissionDeniedError (403)
         for an org-less token instead of silently falling back to an
         unscoped lookup, then NotFoundError (404, never 403) if it belongs
         to a different org, so existence isn't leaked."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Task operation requires an org-scoped token"
-            )
-        task = await self.repository.get_by_task_id_in_org(
-            task_id, org_id
-        )
+            raise PermissionDeniedError("Task operation requires an org-scoped token")
+        task = await self.repository.get_by_task_id_in_org(task_id, org_id)
         if not task:
             raise NotFoundError("Task not found")
         return task
@@ -70,9 +64,7 @@ class _CoreMixin:
 
         Returns (parsed request, matches, total, included (type, row))."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Task operation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Task operation requires an org-scoped token")
         request = parse_search(
             query,
             task_search(),
@@ -101,9 +93,7 @@ class _CoreMixin:
         checks (see app.fhir.input_payload); falls back to the parsed
         payload for internal callers that have no raw body."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Task creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Task creation requires an org-scoped token")
         # The body is already a FHIR Task — validate it as sent,
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "Task")
@@ -138,9 +128,7 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", task_id, org_id)
             raise NotFoundError("Task not found")
-        existing = await self.repository.get_by_task_id_in_org(
-            task_id, org_id
-        )
+        existing = await self.repository.get_by_task_id_in_org(task_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", task_id, org_id)
             raise NotFoundError("Task not found")
@@ -164,13 +152,9 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_task(
-        self, task_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_task(self, task_id: int, org_id: str | None = None) -> None:
         """Same org_id ownership gate as patch_task."""
-        if not org_id or not await self.repository.task_belongs_to_org(
-            task_id, org_id
-        ):
+        if not org_id or not await self.repository.task_belongs_to_org(task_id, org_id):
             self._log_org_scope_miss("delete", task_id, org_id)
             raise NotFoundError("Task not found")
         deleted = await self.repository.delete(task_id)
@@ -215,9 +199,7 @@ class _CoreMixin:
     # ── Logging helpers ───────────────────────────────────────────────────
 
     @staticmethod
-    def _log_org_scope_miss(
-        operation: str, task_id: int, org_id: str | None
-    ) -> None:
+    def _log_org_scope_miss(operation: str, task_id: int, org_id: str | None) -> None:
         """The tenant gate rejected a write. The caller gets a plain 404 —
         deliberately indistinguishable from "no such task" — so this
         log line is the only place the distinction is recorded. Worth WARNING

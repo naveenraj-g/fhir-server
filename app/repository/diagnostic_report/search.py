@@ -18,7 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -30,11 +29,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._clinical_impression_revinclude import (
-    reference_impression_revincludes,
-)
-from app.repository._immunization_revinclude import reason_immunization_revincludes
-from app.repository._procedure_revinclude import reason_procedure_revincludes
 from app.models.diagnostic_report import (
     PERFORMER_TYPES,
     REFERENCE_TYPES,
@@ -46,6 +40,12 @@ from app.models.diagnostic_report import (
     DiagnosticReportStatus,
     DiagnosticReportToken,
 )
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
+from app.repository._immunization_revinclude import reason_immunization_revincludes
+from app.repository._procedure_revinclude import reason_procedure_revincludes
+from app.repository._search_targets import MODELED
 
 D = DiagnosticReportModel
 _I = DiagnosticReportIdentifier

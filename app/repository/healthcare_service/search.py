@@ -16,21 +16,6 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
-from app.repository._communication_request_revinclude import (
-    column_communication_request_revincludes,
-    reference_communication_request_revincludes,
-)
-from app.repository._communication_revinclude import (
-    column_communication_revincludes,
-    reference_communication_revincludes,
-)
-from app.repository._task_revinclude import column_task_revincludes
-from app.repository._care_plan_revinclude import performer_care_plan_revincludes
-from app.repository._service_request_revinclude import (
-    performer_service_request_revincludes,
-)
-from app.repository._appointment_revinclude import participant_revincludes
-from app.repository._appointment_response_revinclude import actor_response_revincludes
 from app.fhir.search import (
     IncludeTarget,
     MultiValueSort,
@@ -54,6 +39,21 @@ from app.models.healthcare_service import (
     HealthcareServiceReference,
     HealthcareServiceToken,
 )
+from app.repository._appointment_response_revinclude import actor_response_revincludes
+from app.repository._appointment_revinclude import participant_revincludes
+from app.repository._care_plan_revinclude import performer_care_plan_revincludes
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+    reference_communication_request_revincludes,
+)
+from app.repository._communication_revinclude import (
+    column_communication_revincludes,
+    reference_communication_revincludes,
+)
+from app.repository._service_request_revinclude import (
+    performer_service_request_revincludes,
+)
+from app.repository._task_revinclude import column_task_revincludes
 
 HS = HealthcareServiceModel
 _I = HealthcareServiceIdentifier

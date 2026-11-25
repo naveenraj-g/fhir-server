@@ -229,9 +229,7 @@ async def get_consent(
             "consent_id": consent_id,
         },
     )
-    consent = await consent_service.get_consent_scoped(
-        consent_id, actor.org_id
-    )
+    consent = await consent_service.get_consent_scoped(consent_id, actor.org_id)
     return fhir_response(consent_service._to_fhir(consent))
 
 

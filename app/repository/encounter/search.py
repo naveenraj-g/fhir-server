@@ -19,45 +19,7 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._communication_request_revinclude import (
-    column_communication_request_revincludes,
-)
-from app.repository._communication_revinclude import column_communication_revincludes
-from app.repository._flag_revinclude import column_flag_revincludes
-from app.repository._task_revinclude import column_task_revincludes
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
-from app.repository._medication_dispense_revinclude import (
-    column_medication_dispense_revincludes,
-)
-from app.repository._medication_administration_revinclude import (
-    column_medication_administration_revincludes,
-)
-from app.repository._medication_statement_revinclude import (
-    column_medication_statement_revincludes,
-)
-from app.repository._questionnaire_response_revinclude import (
-    column_questionnaire_response_revincludes,
-)
-from app.repository._document_reference_revinclude import (
-    reference_document_reference_revincludes,
-)
-from app.repository._care_plan_revinclude import column_care_plan_revincludes
-from app.repository._care_team_revinclude import column_care_team_revincludes
-from app.repository._medication_request_revinclude import (
-    column_medication_request_revincludes,
-)
-from app.repository._service_request_revinclude import (
-    column_service_request_revincludes,
-    performer_service_request_revincludes,
-    specimen_service_request_revincludes,
-)
-from app.repository._clinical_impression_revinclude import column_impression_revincludes
-from app.repository._risk_assessment_revinclude import column_risk_revincludes
-from app.repository._observation_revinclude import column_observation_revincludes
-from app.repository._condition_revinclude import encounter_condition_revincludes
-from app.repository._procedure_revinclude import encounter_procedure_revincludes
-from app.repository._diagnostic_report_revinclude import encounter_report_revincludes
 from app.fhir.search.quantity import quantity_match
 from app.fhir.search.sql import (
     coded_token_match,
@@ -81,6 +43,42 @@ from app.models.encounter import (
     EncounterStatus,
     EncounterToken,
 )
+from app.repository._care_plan_revinclude import column_care_plan_revincludes
+from app.repository._care_team_revinclude import column_care_team_revincludes
+from app.repository._clinical_impression_revinclude import column_impression_revincludes
+from app.repository._communication_request_revinclude import (
+    column_communication_request_revincludes,
+)
+from app.repository._communication_revinclude import column_communication_revincludes
+from app.repository._condition_revinclude import encounter_condition_revincludes
+from app.repository._diagnostic_report_revinclude import encounter_report_revincludes
+from app.repository._document_reference_revinclude import (
+    reference_document_reference_revincludes,
+)
+from app.repository._flag_revinclude import column_flag_revincludes
+from app.repository._medication_administration_revinclude import (
+    column_medication_administration_revincludes,
+)
+from app.repository._medication_dispense_revinclude import (
+    column_medication_dispense_revincludes,
+)
+from app.repository._medication_request_revinclude import (
+    column_medication_request_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    column_medication_statement_revincludes,
+)
+from app.repository._observation_revinclude import column_observation_revincludes
+from app.repository._procedure_revinclude import encounter_procedure_revincludes
+from app.repository._questionnaire_response_revinclude import (
+    column_questionnaire_response_revincludes,
+)
+from app.repository._risk_assessment_revinclude import column_risk_revincludes
+from app.repository._search_targets import MODELED
+from app.repository._service_request_revinclude import (
+    column_service_request_revincludes,
+)
+from app.repository._task_revinclude import column_task_revincludes
 
 E = EncounterModel
 _I = EncounterIdentifier

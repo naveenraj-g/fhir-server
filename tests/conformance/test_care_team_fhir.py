@@ -24,7 +24,7 @@ pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 SCT = "http://snomed.info/sct"
 LOINC = "http://loinc.org"
 CODE = {"coding": [{"system": SCT, "code": "17561000", "display": "Cardiologist"}]}

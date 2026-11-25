@@ -27,7 +27,6 @@ from functools import cache
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 from sqlalchemy.orm import aliased
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.composite import split_composite
 from app.fhir.search.quantity import quantity_match
@@ -42,23 +41,6 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._medication_statement_revinclude import (
-    reference_medication_statement_revincludes,
-)
-from app.repository._questionnaire_response_revinclude import (
-    reference_questionnaire_response_revincludes,
-)
-from app.repository._diagnostic_report_revinclude import result_report_revincludes
-from app.repository._appointment_revinclude import reason_appointment_revincludes
-from app.repository._clinical_impression_revinclude import (
-    reference_impression_revincludes,
-)
-from app.repository._encounter_revinclude import reference_encounter_revincludes
-from app.repository._procedure_revinclude import reason_procedure_revincludes
-from app.repository._immunization_revinclude import (
-    reaction_immunization_revincludes,
-    reason_immunization_revincludes,
-)
 from app.models.observation import (
     DEVICE_TYPES,
     REFERENCE_TYPES,
@@ -70,6 +52,24 @@ from app.models.observation import (
     ObservationToken,
     ObservationValue,
 )
+from app.repository._appointment_revinclude import reason_appointment_revincludes
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
+from app.repository._diagnostic_report_revinclude import result_report_revincludes
+from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._immunization_revinclude import (
+    reaction_immunization_revincludes,
+    reason_immunization_revincludes,
+)
+from app.repository._medication_statement_revinclude import (
+    reference_medication_statement_revincludes,
+)
+from app.repository._procedure_revinclude import reason_procedure_revincludes
+from app.repository._questionnaire_response_revinclude import (
+    reference_questionnaire_response_revincludes,
+)
+from app.repository._search_targets import MODELED
 
 M = ObservationModel
 _I = ObservationIdentifier
@@ -957,7 +957,7 @@ def observation_search() -> SearchRegistry:
             if t in _MODELED
         )
 
-    key = lambda r: r.observation_id  # noqa: E731
+    key = lambda r: r.observation_id
     return SearchRegistry(
         resource_type="Observation",
         params={p.name: p for p in params},

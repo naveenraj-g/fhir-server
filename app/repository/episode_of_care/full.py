@@ -2,8 +2,8 @@ from sqlalchemy import select
 
 from app.core.logging import get_logger
 from app.models.episode_of_care import EpisodeOfCareModel
-
 from app.repository._reference_check import validate_local_references
+
 from ._indexer import index_columns, index_rows
 from ._shared import INDEX_RELATIONSHIPS, _with_relationships
 

@@ -19,8 +19,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._consent_revinclude import column_consent_revincludes
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     date_match,
@@ -42,6 +40,8 @@ from app.models.questionnaire_response import (
     QuestionnaireResponseReference,
     QuestionnaireResponseStatus,
 )
+from app.repository._consent_revinclude import column_consent_revincludes
+from app.repository._search_targets import MODELED
 
 M = QuestionnaireResponseModel
 _I = QuestionnaireResponseIdentifier

@@ -229,9 +229,7 @@ async def get_task(
             "task_id": task_id,
         },
     )
-    task = await task_service.get_task_scoped(
-        task_id, actor.org_id
-    )
+    task = await task_service.get_task_scoped(task_id, actor.org_id)
     return fhir_response(task_service._to_fhir(task))
 
 

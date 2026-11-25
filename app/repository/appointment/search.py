@@ -18,8 +18,6 @@ from functools import cache
 
 from sqlalchemy import exists, false, func, literal, or_, select, true
 
-from app.models.shared.resource_types import ANY_RESOURCE_TYPES
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -30,22 +28,24 @@ from app.fhir.search.sql import (
     token_text_match,
 )
 from app.fhir.search.values import parse_of_type, parse_token
-from app.repository._care_plan_revinclude import activity_care_plan_revincludes
-from app.repository._appointment_response_revinclude import (
-    appointment_response_revincludes,
-)
-from app.repository._encounter_revinclude import appointment_encounter_revincludes
 from app.models.appointment import (
-    AppointmentParticipantStatus,
     ACTOR_TYPES,
     REFERENCE_TYPES,
     AppointmentIdentifier,
     AppointmentModel,
     AppointmentParticipant,
+    AppointmentParticipantStatus,
     AppointmentReference,
     AppointmentStatus,
     AppointmentToken,
 )
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+from app.repository._appointment_response_revinclude import (
+    appointment_response_revincludes,
+)
+from app.repository._care_plan_revinclude import activity_care_plan_revincludes
+from app.repository._encounter_revinclude import appointment_encounter_revincludes
+from app.repository._search_targets import MODELED
 
 A = AppointmentModel
 _I = AppointmentIdentifier

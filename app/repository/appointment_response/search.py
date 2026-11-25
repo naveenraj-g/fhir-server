@@ -18,7 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     date_match,
@@ -34,6 +33,7 @@ from app.models.appointment_response import (
     AppointmentResponseModel,
     AppointmentResponseParticipantStatus,
 )
+from app.repository._search_targets import MODELED
 
 R = AppointmentResponseModel
 _I = AppointmentResponseIdentifier

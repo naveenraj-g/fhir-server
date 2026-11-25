@@ -1,6 +1,6 @@
 """
 Pre-write validation documents for resources whose create/patch body is
-already FHIR-shaped (built on app.schemas.fhir_input — Organization first).
+already FHIR-shaped (built on app.schemas.fhir_resources).
 
 For those resources there is nothing to *map*: the request body is already
 the FHIR resource, so the per-resource `payload.py` mapper that the

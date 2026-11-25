@@ -9,9 +9,9 @@ from app.schemas.immunization.response import (
 )
 
 __all__ = [
-    "ImmunizationCreateSchema",
-    "ImmunizationPatchSchema",
     "FHIRImmunizationBundle",
     "FHIRImmunizationBundleEntry",
     "FHIRImmunizationSchema",
+    "ImmunizationCreateSchema",
+    "ImmunizationPatchSchema",
 ]

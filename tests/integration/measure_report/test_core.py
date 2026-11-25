@@ -358,7 +358,7 @@ async def test_patch_reindexes_search(client):
         ("period", "le2026-02-01", "ge2027-01-10"),
         (
             "measure",
-            f"https://fhir-server.dev/fhir/Measure/readmission",
+            "https://fhir-server.dev/fhir/Measure/readmission",
             "https://fhir-server.dev/fhir/Measure/other",
         ),
         ("identifier", "MR-1001", "MR-2"),

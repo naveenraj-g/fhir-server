@@ -14,9 +14,9 @@ rules, lenient vs strict handling and POST _search.
 import pytest
 
 from tests.integration.allergy_intolerance.support import (
+    AI_IDS,
     API,
     BASE,
-    AI_IDS,
     CATEGORY,
     CLIN,
     CRITICALITY,

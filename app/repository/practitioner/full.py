@@ -2,8 +2,8 @@ from sqlalchemy import select
 
 from app.core.logging import get_logger
 from app.models.practitioner import PractitionerModel
-
 from app.repository._reference_check import validate_local_references
+
 from ._indexer import (
     INDEX_RELATIONSHIPS,
     index_columns,

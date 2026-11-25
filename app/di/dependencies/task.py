@@ -7,8 +7,6 @@ from app.services.task import TaskService
 
 @inject
 def get_task_service(
-    service: TaskService = Depends(
-        Provide[Container.task.task_service]
-    ),
+    service: TaskService = Depends(Provide[Container.task.task_service]),
 ) -> TaskService:
     return service

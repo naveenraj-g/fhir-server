@@ -127,9 +127,10 @@ async def _found(client, people, **params) -> set[str]:
 async def test_id(client, people):
     assert await _found(client, people, _id=str(people["beth"])) == {"beth"}
     assert await _found(client, people, _id="999999") == set()
-    assert await _found(
-        client, people, **{"_id": f"{people['beth']},{people['dan']}"}
-    ) == {"beth", "dan"}
+    assert await _found(client, people, _id=f"{people['beth']},{people['dan']}") == {
+        "beth",
+        "dan",
+    }
     assert await _found(client, people, **{"_id:not": str(people["beth"])}) == {
         "adam",
         "cara",
@@ -162,7 +163,7 @@ async def test_gender(client, people):
     assert await _found(
         client, people, gender="http://hl7.org/fhir/administrative-gender|female"
     ) == {"beth"}
-    assert await _found(client, people, **{"gender": "male,other"}) == {"adam", "cara"}
+    assert await _found(client, people, gender="male,other") == {"adam", "cara"}
     assert await _found(client, people, **{"gender:not": "male"}) == {
         "beth",
         "cara",

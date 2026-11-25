@@ -20,22 +20,8 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.models.shared.resource_types import ANY_RESOURCE_TYPES
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.quantity import quantity_range_match
-from app.repository._episode_of_care_revinclude import (
-    reference_episode_of_care_revincludes,
-)
-from app.repository._care_plan_revinclude import reference_care_plan_revincludes
-from app.repository._clinical_impression_revinclude import (
-    reference_impression_revincludes,
-)
-from app.repository._risk_assessment_revinclude import column_risk_revincludes
-from app.repository._immunization_revinclude import reason_immunization_revincludes
-from app.repository._appointment_revinclude import reason_appointment_revincludes
-from app.repository._encounter_revinclude import reference_encounter_revincludes
-from app.repository._procedure_revinclude import reason_procedure_revincludes
 from app.fhir.search.sql import (
     coded_token_match,
     date_match,
@@ -55,6 +41,20 @@ from app.models.condition import (
     ConditionModel,
     ConditionToken,
 )
+from app.models.shared.resource_types import ANY_RESOURCE_TYPES
+from app.repository._appointment_revinclude import reason_appointment_revincludes
+from app.repository._care_plan_revinclude import reference_care_plan_revincludes
+from app.repository._clinical_impression_revinclude import (
+    reference_impression_revincludes,
+)
+from app.repository._encounter_revinclude import reference_encounter_revincludes
+from app.repository._episode_of_care_revinclude import (
+    reference_episode_of_care_revincludes,
+)
+from app.repository._immunization_revinclude import reason_immunization_revincludes
+from app.repository._procedure_revinclude import reason_procedure_revincludes
+from app.repository._risk_assessment_revinclude import column_risk_revincludes
+from app.repository._search_targets import MODELED
 
 C = ConditionModel
 _I = ConditionIdentifier

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, BigInteger, Column, Enum, Sequence, String
+from sqlalchemy import BigInteger, Boolean, Column, Enum, Sequence, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 

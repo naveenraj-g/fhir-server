@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.schemas.datatypes import FHIRBundle, FHIRMeta
-from app.schemas.datatypes.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.common import FHIRBundle
+from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.activity_definition import ActivityDefinition
 
 
@@ -16,7 +17,7 @@ class FHIRActivityDefinitionSchema(ActivityDefinition):
         "ActivityDefinition", description="Always 'ActivityDefinition'."
     )
     id: str = Field(..., description="Public activity_definition_id as a string.")
-    meta: FHIRMeta | None = Field(
+    meta: Meta | None = Field(
         None,
         description="Infrastructure-maintained resource metadata - lastUpdated, plus this server's org_id/created_by/updated_by/created_at as extensions (FHIR R4's Meta has no native field for those). Response-only.",
     )

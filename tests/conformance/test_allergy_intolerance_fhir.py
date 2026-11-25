@@ -25,7 +25,7 @@ allergy_pb2 = pytest.importorskip(
     reason="google-fhir-r4 is a dev-only dependency",
 )
 
-D = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+D = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 PATIENT = {"reference": "Patient/10001"}
 SCT = "http://snomed.info/sct"
 CLIN = "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"

@@ -18,7 +18,6 @@ from functools import cache
 
 from sqlalchemy import and_, exists, false, func, literal, or_, select, true
 
-from app.repository._search_targets import MODELED
 from app.fhir.search import IncludeTarget, MultiValueSort, SearchParam, SearchRegistry
 from app.fhir.search.sql import (
     coded_token_match,
@@ -37,6 +36,7 @@ from app.models.immunization_recommendation import (
     ImmunizationRecommendationReference,
     ImmunizationRecommendationToken,
 )
+from app.repository._search_targets import MODELED
 
 M = ImmunizationRecommendationModel
 _I = ImmunizationRecommendationIdentifier

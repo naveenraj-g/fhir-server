@@ -30,9 +30,9 @@ r4_package = pytest.importorskip(
     "google.fhir.r4.r4_package", reason="google-fhir-r4 is a dev-only dependency"
 )
 
-import app.main  # noqa: E402,F401 - imports every model and registry
-from app.core.database import FHIRBase  # noqa: E402
-from app.fhir.capability import SEARCH_REGISTRIES  # noqa: E402
+import app.main  # noqa: F401 - imports every model and registry
+from app.core.database import FHIRBase
+from app.fhir.capability import SEARCH_REGISTRIES
 
 STRENGTH = {1: "required", 2: "extensible", 3: "preferred", 4: "example"}
 

@@ -20,11 +20,11 @@ from functools import partial
 
 from app.fhir.search.values import parse_date
 from app.models.appointment import (
-    AppointmentParticipantStatus,
     REFERENCE_PARAMS,
     TOKEN_PARAMS,
     AppointmentIdentifier,
     AppointmentParticipant,
+    AppointmentParticipantStatus,
     AppointmentReference,
     AppointmentStatus,
     AppointmentToken,

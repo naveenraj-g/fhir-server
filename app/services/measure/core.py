@@ -47,11 +47,7 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "Measure operation requires an org-scoped token"
             )
-        measure = (
-            await self.repository.get_by_measure_id_in_org(
-                measure_id, org_id
-            )
-        )
+        measure = await self.repository.get_by_measure_id_in_org(measure_id, org_id)
         if not measure:
             raise NotFoundError("Measure not found")
         return measure
@@ -108,16 +104,12 @@ class _CoreMixin:
         checks (see app.fhir.input_payload); falls back to the parsed
         payload for internal callers that have no raw body."""
         if not org_id:
-            raise PermissionDeniedError(
-                "Measure creation requires an org-scoped token"
-            )
+            raise PermissionDeniedError("Measure creation requires an org-scoped token")
         # The body is already a FHIR Measure — validate it as sent,
         # then store exactly that document.
         document = fhir_create_document(self._raw(payload, body), "Measure")
         await self._validate_base_r4(document, org_id)
-        measure = await self.repository.create_full(
-            document, org_id, created_by
-        )
+        measure = await self.repository.create_full(document, org_id, created_by)
         logger.info(
             "Measure created",
             extra={
@@ -147,24 +139,18 @@ class _CoreMixin:
         if not org_id:
             self._log_org_scope_miss("patch", measure_id, org_id)
             raise NotFoundError("Measure not found")
-        existing = await self.repository.get_by_measure_id_in_org(
-            measure_id, org_id
-        )
+        existing = await self.repository.get_by_measure_id_in_org(measure_id, org_id)
         if not existing:
             self._log_org_scope_miss("patch", measure_id, org_id)
             raise NotFoundError("Measure not found")
 
         fragment, touched = fhir_patch_fragment(self._raw(payload, body))
-        merged = merge_patch_fragment(
-            to_fhir_measure(existing), fragment, touched
-        )
+        merged = merge_patch_fragment(to_fhir_measure(existing), fragment, touched)
         await self._validate_base_r4(merged, org_id)
 
         # `merged` — the resource as it will look after this patch — is what
         # was just validated, and exactly what gets stored.
-        updated = await self.repository.patch_full(
-            measure_id, merged, updated_by
-        )
+        updated = await self.repository.patch_full(measure_id, merged, updated_by)
         if not updated:
             raise NotFoundError("Measure not found")
         logger.info(
@@ -177,9 +163,7 @@ class _CoreMixin:
         )
         return updated
 
-    async def delete_measure(
-        self, measure_id: int, org_id: str | None = None
-    ) -> None:
+    async def delete_measure(self, measure_id: int, org_id: str | None = None) -> None:
         """Same org_id ownership gate as patch_measure."""
         if not org_id or not await self.repository.measure_belongs_to_org(
             measure_id, org_id
@@ -217,9 +201,7 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource(
-            "Measure", fhir_resource, org_id=org_id
-        )
+        errors = await validate_resource("Measure", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "Measure failed base R4 validation",

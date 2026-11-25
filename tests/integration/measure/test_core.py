@@ -21,15 +21,15 @@ from app.core.config import settings
 from app.main import app
 from tests.conftest import make_test_user
 from tests.helpers.assertions import assert_operation_outcome
+from tests.integration.group.support import create_group, group_body
 from tests.integration.measure.conftest import MEASURE_PERMS
 from tests.integration.measure.support import (
     BASE,
-    measure_body,
     create_measure,
     create_organization,
     full_body,
+    measure_body,
 )
-from tests.integration.group.support import create_group, group_body
 
 ISSUES = "/api/fhir/v1/detected-issues/"
 

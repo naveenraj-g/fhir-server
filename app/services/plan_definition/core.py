@@ -47,10 +47,8 @@ class _CoreMixin:
             raise PermissionDeniedError(
                 "PlanDefinition operation requires an org-scoped token"
             )
-        plan_definition = (
-            await self.repository.get_by_plan_definition_id_in_org(
-                plan_definition_id, org_id
-            )
+        plan_definition = await self.repository.get_by_plan_definition_id_in_org(
+            plan_definition_id, org_id
         )
         if not plan_definition:
             raise NotFoundError("PlanDefinition not found")
@@ -217,9 +215,7 @@ class _CoreMixin:
         (this project's own structural-only check, or the HL7 Java validator
         sidecar) per settings.fhir_validation.backend — see
         OrganizationService._validate_base_r4 for the full note."""
-        errors = await validate_resource(
-            "PlanDefinition", fhir_resource, org_id=org_id
-        )
+        errors = await validate_resource("PlanDefinition", fhir_resource, org_id=org_id)
         if errors:
             logger.warning(
                 "PlanDefinition failed base R4 validation",
