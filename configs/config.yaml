@@ -217,58 +217,58 @@ routes:
   # (it manages real FHIR StructureDefinition documents), so it lives at
   # /api/fhir/v1/fhir-profiles, not its own prefix.
   enabled:
-    - activity_definition
-    - allergy_intolerance
-    - appointment
-    - appointment_response
-    - care_plan
-    - care_team
-    - clinical_impression
-    - condition
-    - consent
-    - detected_issue
-    - diagnostic_report
-    - document_reference
-    - encounter
-    - endpoint
-    - episode_of_care
-    - flag
-    - group
-    - immunization
-    - immunization_evaluation
-    - immunization_recommendation
+    # - activity_definition
+    # - allergy_intolerance
+    # - appointment
+    # - appointment_response
+    # - care_plan
+    # - care_team
+    # - clinical_impression
+    # - condition
+    # - consent
+    # - detected_issue
+    # - diagnostic_report
+    # - document_reference
+    # - encounter
+    # - endpoint
+    # - episode_of_care
+    # - flag
+    # - group
+    # - immunization
+    # - immunization_evaluation
+    # - immunization_recommendation
     - organization
-    - location
-    - measure
-    - measure_report
-    - medication
-    - medication_administration
-    - medication_dispense
-    - medication_knowledge
-    - medication_request
-    - medication_statement
-    - observation
-    - observation_definition
-    - healthcare_service
-    - patient
-    - plan_definition
-    - practitioner
-    - practitioner_role
-    - procedure
-    - questionnaire
-    - questionnaire_response
-    - related_person
-    - risk_assessment
-    - schedule
-    - service_request
-    - slot
-    - specimen
-    - specimen_definition
-    - task
-    - goal
-    - communication
-    - communication_request
-    - family_member_history
+    # - location
+    # - measure
+    # - measure_report
+    # - medication
+    # - medication_administration
+    # - medication_dispense
+    # - medication_knowledge
+    # - medication_request
+    # - medication_statement
+    # - observation
+    # - observation_definition
+    # - healthcare_service
+    # - patient
+    # - plan_definition
+    # - practitioner
+    # - practitioner_role
+    # - procedure
+    # - questionnaire
+    # - questionnaire_response
+    # - related_person
+    # - risk_assessment
+    # - schedule
+    # - service_request
+    # - slot
+    # - specimen
+    # - specimen_definition
+    # - task
+    # - goal
+    # - communication
+    # - communication_request
+    # - family_member_history
     - terminology
     - fhir_profile
     - fhir_validate

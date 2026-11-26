@@ -35,14 +35,7 @@ _CREATE_EXAMPLE = {
             "type": {"text": "Whole blood"},
             "preference": "preferred",
             "container": {
-                "type": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/v2-0487",
-                            "code": "SPECIMEN",
-                        }
-                    ]
-                },
+                "type": {"text": "Evacuated blood collection tube"},
                 "capacity": {"value": 5, "unit": "mL"},
             },
             "retentionTime": {"value": 7, "unit": "d"},
@@ -54,7 +47,7 @@ _PATCH_EXAMPLE = {"timeAspect": "Afternoon"}
 
 
 class SpecimenDefinitionCreateSchema(SpecimenDefinition):
-    "POST body - a FHIR R4 SpecimenDefinition resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 SpecimenDefinition resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

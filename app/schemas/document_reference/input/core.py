@@ -45,17 +45,16 @@ _CREATE_EXAMPLE = {
             ]
         }
     ],
-    "subject": {"reference": "Patient/10001"},
+    "subject": {"type": "Patient", "display": "Example patient"},
     "date": "2026-02-01T10:00:00Z",
-    "author": [{"reference": "Practitioner/30001"}],
-    "custodian": {"reference": "Organization/190001"},
+    "author": [{"type": "Practitioner", "display": "Example practitioner"}],
+    "custodian": {"type": "Organization", "display": "Example organization"},
     "description": "Discharge summary",
     "content": [
         {
             "attachment": {
-                "contentType": "application/pdf",
                 "language": "en",
-                "url": "https://documents.example.org/doc-1001.pdf",
+                "url": "https://fhir-server.dev/documents/doc-1001.pdf",
                 "title": "Discharge summary",
             },
             "format": {
@@ -65,7 +64,7 @@ _CREATE_EXAMPLE = {
         }
     ],
     "context": {
-        "encounter": [{"reference": "Encounter/20001"}],
+        "encounter": [{"type": "Encounter", "display": "Example encounter"}],
         "period": {"start": "2026-01-30", "end": "2026-02-01"},
     },
 }
@@ -74,7 +73,7 @@ _PATCH_EXAMPLE = {"status": "superseded", "description": "Superseded discharge s
 
 
 class DocumentReferenceCreateSchema(DocumentReference):
-    "POST body - a FHIR R4 DocumentReference resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 DocumentReference resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

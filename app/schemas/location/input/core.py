@@ -58,11 +58,8 @@ _CREATE_EXAMPLE = {
         ]
     },
     "position": {"longitude": -83.6945691, "latitude": 42.25475478, "altitude": 0},
-    "managingOrganization": {"reference": "Organization/190001"},
-    "partOf": {
-        "reference": "Location/230001",
-        "display": "Burgers University Medical Center",
-    },
+    "managingOrganization": {"type": "Organization", "display": "Example organization"},
+    "partOf": {"type": "Location", "display": "Burgers University Medical Center"},
     "hoursOfOperation": [
         {
             "daysOfWeek": ["mon", "tue", "wed", "thu", "fri"],
@@ -72,7 +69,7 @@ _CREATE_EXAMPLE = {
         }
     ],
     "availabilityExceptions": "Reduced services on public holidays",
-    "endpoint": [{"reference": "Endpoint/1"}],
+    "endpoint": [{"type": "Endpoint", "display": "Example endpoint"}],
 }
 
 _PATCH_EXAMPLE = {
@@ -86,7 +83,7 @@ _PATCH_EXAMPLE = {
 
 
 class LocationCreateSchema(Location):
-    "POST body - a FHIR R4 Location resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Location resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

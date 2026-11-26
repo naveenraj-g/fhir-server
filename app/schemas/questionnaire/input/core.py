@@ -47,7 +47,7 @@ _CREATE_EXAMPLE = {
             "item": [
                 {
                     "linkId": "1.1",
-                    "definition": "http://example.org/definitions/interest",
+                    "definition": "https://fhir-server.dev/fhir/definitions/interest",
                     "code": [{"system": "http://loinc.org", "code": "44250-9"}],
                     "text": "Little interest or pleasure in doing things",
                     "type": "choice",
@@ -73,7 +73,7 @@ _PATCH_EXAMPLE = {
 
 
 class QuestionnaireCreateSchema(Questionnaire):
-    "POST body - a FHIR R4 Questionnaire resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Questionnaire resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

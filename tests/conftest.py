@@ -1,8 +1,23 @@
 import functools
+import json
 import math
 import os
+from pathlib import Path
 
 # Must be set before any app module is imported so pydantic-settings reads them.
+# Tests cover every resource, so every router is mounted whatever a deployment's
+# configs/config.yaml enables.
+_ROUTERS = Path(__file__).resolve().parent.parent / "app" / "routers"
+os.environ.setdefault(
+    "ROUTES__ENABLED",
+    json.dumps(
+        sorted(
+            p.stem
+            for p in _ROUTERS.iterdir()
+            if not p.name.startswith("_") and p.stem != "capability"
+        )
+    ),
+)
 os.environ.setdefault("FHIR_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 os.environ.setdefault("IAM_ISSUER", "https://test.example.com")
@@ -11,7 +26,6 @@ os.environ.setdefault("FHIR_VALIDATION__BACKEND", "native")
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 import pytest
 from fastapi import Request
@@ -53,8 +67,6 @@ mount_routers(app)
 # Organization/Location alias + alias_norm, daysOfWeek enum arrays, ...).
 # JSON-encode/decode on SQLite only; Postgres keeps its native array
 # handling untouched.
-import json
-
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.ext.compiler import compiles
 

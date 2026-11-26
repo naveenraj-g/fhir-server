@@ -180,7 +180,7 @@ class CreateConceptRequest(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "code_system_url": "http://example.org/custom-codes",
+                "code_system_url": "https://fhir-server.dev/fhir/CodeSystem/local-findings",
                 "code": "CUSTOM-01",
                 "display": "Custom Finding",
                 "definition": "Custom clinical finding description",

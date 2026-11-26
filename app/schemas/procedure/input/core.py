@@ -35,11 +35,11 @@ _CREATE_EXAMPLE = {
             }
         ]
     },
-    "subject": {"reference": "Patient/10001"},
-    "encounter": {"reference": "Encounter/20001"},
+    "subject": {"type": "Patient", "display": "Example patient"},
+    "encounter": {"type": "Encounter", "display": "Example encounter"},
     "performedPeriod": {"start": "2023-01-15T09:30:00Z", "end": "2023-01-15T10:45:00Z"},
-    "recorder": {"reference": "Practitioner/30001"},
-    "asserter": {"reference": "Practitioner/30001"},
+    "recorder": {"type": "Practitioner", "display": "Example practitioner"},
+    "asserter": {"type": "Practitioner", "display": "Example practitioner"},
     "performer": [
         {
             "function": {
@@ -51,10 +51,10 @@ _CREATE_EXAMPLE = {
                     }
                 ]
             },
-            "actor": {"reference": "Practitioner/30001"},
+            "actor": {"type": "Practitioner", "display": "Example practitioner"},
         }
     ],
-    "location": {"reference": "Location/230001"},
+    "location": {"type": "Location", "display": "Example location"},
     "reasonCode": [
         {
             "coding": [
@@ -104,7 +104,7 @@ _PATCH_EXAMPLE = {
 
 
 class ProcedureCreateSchema(Procedure):
-    "POST body - a FHIR R4 Procedure resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Procedure resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

@@ -25,12 +25,12 @@ _CREATE_EXAMPLE = {
         ]
     },
     "description": "Collect a blood sample",
-    "focus": {"reference": "ServiceRequest/80001"},
-    "for": {"reference": "Patient/10001"},
-    "encounter": {"reference": "Encounter/20001"},
+    "focus": {"type": "ServiceRequest", "display": "Example service request"},
+    "for": {"type": "Patient", "display": "Example patient"},
+    "encounter": {"type": "Encounter", "display": "Example encounter"},
     "authoredOn": "2026-01-15T09:00:00Z",
-    "requester": {"reference": "Practitioner/30001"},
-    "owner": {"reference": "Practitioner/30001"},
+    "requester": {"type": "Practitioner", "display": "Example practitioner"},
+    "owner": {"type": "Practitioner", "display": "Example practitioner"},
     "restriction": {"repetitions": 1, "period": {"end": "2026-02-15T00:00:00Z"}},
     "input": [{"type": {"text": "sample type"}, "valueString": "venous blood"}],
 }
@@ -42,7 +42,7 @@ _PATCH_EXAMPLE = {
 
 
 class TaskCreateSchema(Task):
-    "POST body - a FHIR R4 Task resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Task resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

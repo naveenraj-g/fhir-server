@@ -16,7 +16,9 @@ _CREATE_EXAMPLE = {
             "value": "CM-1",
         }
     ],
-    "basedOn": [{"reference": "CommunicationRequest/470001"}],
+    "basedOn": [
+        {"type": "CommunicationRequest", "display": "Example communication request"}
+    ],
     "status": "completed",
     "category": [
         {
@@ -39,12 +41,12 @@ _CREATE_EXAMPLE = {
             ]
         }
     ],
-    "subject": {"reference": "Patient/10001"},
-    "encounter": {"reference": "Encounter/20001"},
+    "subject": {"type": "Patient", "display": "Example patient"},
+    "encounter": {"type": "Encounter", "display": "Example encounter"},
     "sent": "2026-01-15T09:00:00Z",
     "received": "2026-01-15T09:05:00Z",
-    "recipient": [{"reference": "Patient/10001"}],
-    "sender": {"reference": "Practitioner/30001"},
+    "recipient": [{"type": "Patient", "display": "Example patient"}],
+    "sender": {"type": "Practitioner", "display": "Example practitioner"},
     "payload": [{"contentString": "Your results are ready."}],
 }
 
@@ -52,7 +54,7 @@ _PATCH_EXAMPLE = {"status": "completed", "received": "2026-01-15T09:05:00Z"}
 
 
 class CommunicationCreateSchema(Communication):
-    "POST body - a FHIR R4 Communication resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Communication resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

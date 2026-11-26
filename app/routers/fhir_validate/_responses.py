@@ -4,7 +4,7 @@ from app.schemas.fhir_validate import OperationOutcomeSchema
 _VALIDATE_200 = {
     200: {
         "content": {
-            "application/fhir+json": {
+            "application/json": {
                 "schema": inline_schema(OperationOutcomeSchema.model_json_schema())
             }
         }

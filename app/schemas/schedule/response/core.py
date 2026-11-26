@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import FHIRBundle
+from app.schemas.common.examples import bundle_example, served_example
 from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.schedule import Schedule
+from app.schemas.schedule.input.core import _CREATE_EXAMPLE
+
+_EXAMPLE = served_example("Schedule", "200000", _CREATE_EXAMPLE)
 
 
 class FHIRScheduleSchema(Schedule):
     "A FHIR R4 Schedule as served: the stored document with `id` and `meta` stamped on."
+
+    model_config = ConfigDict(json_schema_extra={"example": _EXAMPLE})
 
     resourceType: str = Field("Schedule", description="Always 'Schedule'.")
     id: str = Field(..., description="Public schedule_id as a string.")
@@ -33,6 +39,10 @@ class FHIRScheduleBundleEntry(BaseModel):
 
 
 class FHIRScheduleBundle(FHIRBundle):
+    model_config = ConfigDict(
+        json_schema_extra={"example": bundle_example("/schedules", _EXAMPLE)}
+    )
+
     total: int | None = Field(
         None,
         description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",

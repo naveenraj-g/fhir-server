@@ -2,7 +2,7 @@
 
 The single record of which FHIR R4 resources are built on the current architecture, what each one serves, and what is still open. **Update it in the same commit as any change to a resource** (see [Keeping this file current](#keeping-this-file-current)).
 
-_Last updated: 2026-11-25, after rebuilding MeasureReport._
+_Last updated: 2026-11-26, after making every OpenAPI example complete and sendable._
 
 ## Architecture in one line
 
@@ -156,6 +156,7 @@ Every resource that was on the old fully-normalized model has been rebuilt. Bran
 | Derived chain / include targets and `Reference(Any)` = every R4 type (`MODELED`, `ANY_RESOURCE_TYPES`; guard `tests/unit/test_search_targets.py`) | cross-resource refactor | `app/repository/_search_targets.py`, `app/models/shared/resource_types.py` |
 | `composite` search (`split_composite`; a resource-side `$` builder pairing a code row and a value row of the same element, `slot`) and the `combo-*` union parameters | Observation | `app/fhir/search/composite.py` |
 | Fully-typed request/response schemas generated from HL7's R4 definitions: every datatype (`app/schemas/fhir_datatypes/`) and every resource with all nested elements, descriptions, required elements per R4 minimum cardinality, required-binding code enums and per-element search-parameter hints (`app/schemas/fhir_resources/`); shared OpenAPI components instead of inlined copies | all resources | `scripts/generate_fhir_datatypes.py`, `scripts/generate_fhir_resources.py`, `app/core/schema_utils.py` |
+| OpenAPI examples on every request body and success response: request examples that can be sent as they are on an empty server (related records named by `type` and `display`), response examples derived from them (`app/schemas/common/examples.py`), hand-written ones for terminology, FHIR profiles, `/validate`, `/metadata` and health (`app/core/openapi_examples.py`) | all routes | `scripts/generate_fhir_resources.py` |
 
 ---
 

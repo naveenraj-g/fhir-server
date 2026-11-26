@@ -195,13 +195,14 @@ uv run pytest tests/integration/<resource> tests/conformance/test_<resource>_fhi
 
 ---
 
-## Phase G — fhir-gql half (after the fhir-server resources, when asked)
+## Phase G — fhir-gql half
 
-In `D:\code\work\projects\fhir-gql`, mirror an existing resource's package. fhir-server is FHIR-only now, so the `internal` connector's translators are thin.
-- No hand-written models: the generated `app/schemas/fhir_datatypes/` and `app/schemas/fhir_resources/` are copied over with `scripts/sync_schemas.py` (run it after regenerating here). The GraphQL types are `output_type(<Resource>)` / `input_type(<Resource>)` / `input_type(<Resource>Patch, name=...)` from `app/gql/fhir_types.py`; see `app/gql/organization/types/` for the two-line pattern.
-- Translators for **both** connectors, registered in `app/connectors/translator_registry.py`: `app/connectors/internal/translators/<resource>.py` and `app/connectors/medplum/translators/<resource>.py` (Medplum's PATCH needs an RFC 6902 array via `to_json_patch`).
-- `app/gql/<resource>/types/{response,input}.py` (any `dict` field needs an explicit `JSON` override), `queries.py`, `mutations.py`, wired into `app/gql/schema.py`.
-- Exercise create/get/search/update/delete on **both** connectors; an import that compiles is not a working connector.
+The gateway has no per-resource code: `app/gql/resource/builder.py` builds the get / search / create / update / delete fields of every resource, and one translator class per connector serves them all. In `D:\code\work\projects\fhir-gql`:
+- `uv run python scripts/sync_schemas.py` — copies `app/schemas/fhir_datatypes/` and `fhir_resources/` and regenerates `app/schemas/resource_catalog.py` (permission key, resourceType, route prefix, search parameters, includes) from this repo's routers and search registries. Never edit those by hand.
+- Add the resource key to `routes.enabled` in its `configs/config.yaml`.
+- Add a valid payload to `PAYLOADS` in `scripts/live_check.py` (listed after anything it references).
+- Only if the resource needs something beyond the shared shape: `app/gql/resource/extras.py`.
+- `uv run --with pytest python -m pytest tests -q`, then `scripts/live_check.py` against **both** `internal` and `medplum`; an import that compiles is not a working connector.
 
 ---
 

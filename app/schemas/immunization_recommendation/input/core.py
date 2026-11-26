@@ -19,9 +19,9 @@ _CREATE_EXAMPLE = {
             "value": "IR-1001",
         }
     ],
-    "patient": {"reference": "Patient/10001"},
+    "patient": {"type": "Patient", "display": "Example patient"},
     "date": "2023-01-15T09:30:00Z",
-    "authority": {"reference": "Organization/190001"},
+    "authority": {"type": "Organization", "display": "Example organization"},
     "recommendation": [
         {
             "vaccineCode": [
@@ -72,19 +72,21 @@ _CREATE_EXAMPLE = {
             "series": "Seasonal",
             "doseNumberPositiveInt": 1,
             "seriesDosesPositiveInt": 1,
-            "supportingImmunization": [{"reference": "Immunization/330001"}],
+            "supportingImmunization": [
+                {"type": "Immunization", "display": "Example immunization"}
+            ],
         }
     ],
 }
 
 _PATCH_EXAMPLE = {
     "date": "2023-02-01T00:00:00Z",
-    "authority": {"reference": "Organization/190001"},
+    "authority": {"type": "Organization", "display": "Example organization"},
 }
 
 
 class ImmunizationRecommendationCreateSchema(ImmunizationRecommendation):
-    "POST body - a FHIR R4 ImmunizationRecommendation resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 ImmunizationRecommendation resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

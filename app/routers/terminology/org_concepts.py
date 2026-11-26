@@ -49,6 +49,7 @@ async def list_org_concepts(
 @router.post(
     "/org-concepts",
     operation_id="create_org_concept",
+    status_code=201,
     summary="Create an org-specific custom concept",
     description=(
         "Adds a custom terminology code scoped to the organization identified by the X-Org-ID header. "
@@ -140,6 +141,8 @@ async def patch_org_concept(
 @router.delete(
     "/org-concepts/{concept_id}",
     operation_id="delete_org_concept",
+    status_code=204,
+    response_class=Response,
     summary="Delete an org-specific concept",
     description="Permanently removes a custom concept. Only the creating organization can delete it.",
     responses={

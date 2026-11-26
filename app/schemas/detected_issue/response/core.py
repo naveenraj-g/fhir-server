@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import FHIRBundle
+from app.schemas.common.examples import bundle_example, served_example
 from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.detected_issue.input.core import _CREATE_EXAMPLE
 from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.detected_issue import DetectedIssue
+
+_EXAMPLE = served_example("DetectedIssue", "540000", _CREATE_EXAMPLE)
 
 
 class FHIRDetectedIssueSchema(DetectedIssue):
     "A FHIR R4 DetectedIssue as served: the stored document with `id` and `meta` stamped on."
+
+    model_config = ConfigDict(json_schema_extra={"example": _EXAMPLE})
 
     resourceType: str = Field("DetectedIssue", description="Always 'DetectedIssue'.")
     id: str = Field(..., description="Public detected_issue_id as a string.")
@@ -33,6 +39,10 @@ class FHIRDetectedIssueBundleEntry(BaseModel):
 
 
 class FHIRDetectedIssueBundle(FHIRBundle):
+    model_config = ConfigDict(
+        json_schema_extra={"example": bundle_example("/detected-issues", _EXAMPLE)}
+    )
+
     total: int | None = Field(
         None,
         description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",

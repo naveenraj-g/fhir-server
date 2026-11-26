@@ -37,11 +37,11 @@ _CREATE_EXAMPLE = {
             }
         ]
     },
-    "subject": {"reference": "Patient/10001"},
-    "context": {"reference": "Encounter/20001"},
+    "subject": {"type": "Patient", "display": "Example patient"},
+    "context": {"type": "Encounter", "display": "Example encounter"},
     "effectiveDateTime": "2026-01-15T10:00:00Z",
     "dateAsserted": "2026-01-15T10:05:00Z",
-    "informationSource": {"reference": "Practitioner/30001"},
+    "informationSource": {"type": "Practitioner", "display": "Example practitioner"},
     "reasonCode": [
         {"coding": [{"system": "http://snomed.info/sct", "code": "38341003"}]}
     ],
@@ -69,11 +69,12 @@ _CREATE_EXAMPLE = {
 _PATCH_EXAMPLE = {
     "status": "stopped",
     "effectivePeriod": {"start": "2026-01-15", "end": "2026-03-01"},
+    "effectiveDateTime": None,
 }
 
 
 class MedicationStatementCreateSchema(MedicationStatement):
-    "POST body - a FHIR R4 MedicationStatement resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 MedicationStatement resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

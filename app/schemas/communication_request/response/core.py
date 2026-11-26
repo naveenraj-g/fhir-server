@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import FHIRBundle
+from app.schemas.common.examples import bundle_example, served_example
 from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
+from app.schemas.communication_request.input.core import _CREATE_EXAMPLE
 from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.communication_request import CommunicationRequest
+
+_EXAMPLE = served_example("CommunicationRequest", "470000", _CREATE_EXAMPLE)
 
 
 class FHIRCommunicationRequestSchema(CommunicationRequest):
     "A FHIR R4 CommunicationRequest as served: the stored document with `id` and `meta` stamped on."
+
+    model_config = ConfigDict(json_schema_extra={"example": _EXAMPLE})
 
     resourceType: str = Field(
         "CommunicationRequest", description="Always 'CommunicationRequest'."
@@ -35,6 +41,12 @@ class FHIRCommunicationRequestBundleEntry(BaseModel):
 
 
 class FHIRCommunicationRequestBundle(FHIRBundle):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": bundle_example("/communication-requests", _EXAMPLE)
+        }
+    )
+
     total: int | None = Field(
         None,
         description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",

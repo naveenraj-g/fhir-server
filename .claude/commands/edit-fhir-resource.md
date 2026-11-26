@@ -63,4 +63,4 @@ A test that used a made-up id for a now-rebuilt type gets a 422: create or seed 
 
 ## 7. The GraphQL half
 
-fhir-gql (`/new-fhir-resource` Phase G) is deferred until every fhir-server resource is rebuilt. A change here that alters an input or response shape is noted in the tracker for that phase.
+A change that alters an input or response shape, a search parameter, an include or a route also needs fhir-gql's `uv run python scripts/sync_schemas.py` (`/new-fhir-resource` Phase G), its tests, and `scripts/live_check.py --only <resource>` on both connectors.

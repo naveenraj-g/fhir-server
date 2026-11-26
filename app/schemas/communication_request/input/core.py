@@ -19,7 +19,7 @@ _CREATE_EXAMPLE = {
             "value": "CR-1",
         }
     ],
-    "basedOn": [{"reference": "CarePlan/290001"}],
+    "basedOn": [{"type": "CarePlan", "display": "Example care plan"}],
     "groupIdentifier": {"system": "urn:groups", "value": "G-1"},
     "status": "active",
     "category": [
@@ -43,21 +43,21 @@ _CREATE_EXAMPLE = {
             ]
         }
     ],
-    "subject": {"reference": "Patient/10001"},
-    "encounter": {"reference": "Encounter/20001"},
+    "subject": {"type": "Patient", "display": "Example patient"},
+    "encounter": {"type": "Encounter", "display": "Example encounter"},
     "payload": [{"contentString": "Please book your follow-up visit."}],
     "occurrenceDateTime": "2026-02-01T09:00:00Z",
     "authoredOn": "2026-01-15T09:00:00Z",
-    "requester": {"reference": "Practitioner/30001"},
-    "recipient": [{"reference": "Patient/10001"}],
-    "sender": {"reference": "Practitioner/30001"},
+    "requester": {"type": "Practitioner", "display": "Example practitioner"},
+    "recipient": [{"type": "Patient", "display": "Example patient"}],
+    "sender": {"type": "Practitioner", "display": "Example practitioner"},
 }
 
 _PATCH_EXAMPLE = {"status": "completed", "occurrenceDateTime": "2026-02-02T09:00:00Z"}
 
 
 class CommunicationRequestCreateSchema(CommunicationRequest):
-    "POST body - a FHIR R4 CommunicationRequest resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 CommunicationRequest resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

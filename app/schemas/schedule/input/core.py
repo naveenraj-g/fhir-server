@@ -21,8 +21,8 @@ _CREATE_EXAMPLE = {
     "serviceType": [{"coding": [{"code": "124", "display": "General Practice"}]}],
     "specialty": [{"coding": [{"code": "394579002", "display": "Cardiology"}]}],
     "actor": [
-        {"reference": "Practitioner/30001", "display": "Dr Adam Careful"},
-        {"reference": "Location/230001", "display": "Consulting room 1"},
+        {"type": "Practitioner", "display": "Dr Adam Careful"},
+        {"type": "Location", "display": "Consulting room 1"},
     ],
     "planningHorizon": {"start": "2026-01-01T00:00:00Z", "end": "2026-12-31T23:59:59Z"},
     "comment": "Weekday clinic",
@@ -35,7 +35,7 @@ _PATCH_EXAMPLE = {
 
 
 class ScheduleCreateSchema(Schedule):
-    "POST body - a FHIR R4 Schedule resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Schedule resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

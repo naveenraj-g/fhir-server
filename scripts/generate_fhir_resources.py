@@ -11,7 +11,8 @@ Writes:
 
 Source of truth: app/fhir/spec/fhir.schema.json (see generate_fhir_datatypes.py for the datatype
 models these build on). Per-resource request examples are carried over from the existing schema
-classes, so regenerating never loses them.
+classes, so regenerating never loses them; every resource needs one, because the response examples
+are derived from it (app/schemas/common/examples.py).
 """
 
 from __future__ import annotations
@@ -226,6 +227,14 @@ def literal(value) -> str:
     return pprint.pformat(value, width=88, sort_dicts=False)
 
 
+# Appended to every create schema's description: why its example has no `reference` strings.
+_EXAMPLE_REFERENCES = (
+    " The example can be sent as it is: where it points at another record it gives only `type` "
+    "and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked "
+    "on write."
+)
+
+
 def input_module(folder: str, resource: str, create, patch) -> str:
     lines = [
         '"""Request schemas: the FHIR R4 resource as the caller sends it (generated; see',
@@ -252,7 +261,7 @@ def input_module(folder: str, resource: str, create, patch) -> str:
     lines += [
         "",
         f"class {resource}CreateSchema({resource}):",
-        f"    {g.lit('POST body - a FHIR R4 ' + resource + ' resource. ' + common)}",
+        f"    {g.lit('POST body - a FHIR R4 ' + resource + ' resource. ' + common + _EXAMPLE_REFERENCES)}",
         "",
     ]
     lines += (
@@ -277,21 +286,37 @@ def input_module(folder: str, resource: str, create, patch) -> str:
     return "\n".join(lines) + "\n"
 
 
-def response_module(folder: str, resource: str) -> str:
+def example_facts(folder: str) -> tuple[str, str]:
+    """(router prefix, first public id) - what a response example needs besides the body."""
+    # app.main must be imported before any router: it breaks the DI import cycle.
+    importlib.import_module("app.main")
+    router = importlib.import_module(f"app.routers.{folder}").router
+    models = importlib.import_module(f"app.models.{folder}.core")
+    sequence = getattr(models, f"{folder}_id_seq")
+    return router.prefix, str(sequence.start)
+
+
+def response_module(folder: str, resource: str, path: str, first_id: str) -> str:
     return f'''"""Response schemas for {resource} (generated; see scripts/generate_fhir_resources.py)."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.{folder}.input.core import _CREATE_EXAMPLE
 from app.schemas.common import FHIRBundle
+from app.schemas.common.examples import bundle_example, served_example
 from app.schemas.fhir_datatypes import Meta
 from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 from app.schemas.fhir_resources.{folder} import {resource}
 
+_EXAMPLE = served_example("{resource}", "{first_id}", _CREATE_EXAMPLE)
+
 
 class FHIR{resource}Schema({resource}):
     "A FHIR R4 {resource} as served: the stored document with `id` and `meta` stamped on."
+
+    model_config = ConfigDict(json_schema_extra={{"example": _EXAMPLE}})
 
     resourceType: str = Field("{resource}", description="Always '{resource}'.")
     id: str = Field(..., description="Public {folder}_id as a string.")
@@ -313,6 +338,10 @@ class FHIR{resource}BundleEntry(BaseModel):
 
 
 class FHIR{resource}Bundle(FHIRBundle):
+    model_config = ConfigDict(
+        json_schema_extra={{"example": bundle_example("{path}", _EXAMPLE)}}
+    )
+
     total: int | None = Field(
         None,
         description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
@@ -335,6 +364,7 @@ def main() -> None:
     targets = resources()
     # Read every example before anything is rewritten.
     examples = {f: existing_examples(f, r) for f, r in targets.items()}
+    facts = {f: example_facts(f) for f in targets}
     if OUT.exists():
         shutil.rmtree(OUT)
     write(OUT / "base.py", base_module())
@@ -349,7 +379,8 @@ def main() -> None:
             input_module(folder, resource, create, patch),
         )
         write(
-            SCHEMAS / folder / "response" / "core.py", response_module(folder, resource)
+            SCHEMAS / folder / "response" / "core.py",
+            response_module(folder, resource, *facts[folder]),
         )
     init = [
         '"""Fully-typed FHIR R4 resource models (generated; see scripts/generate_fhir_resources.py)."""',

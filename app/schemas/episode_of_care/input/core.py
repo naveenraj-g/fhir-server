@@ -32,11 +32,13 @@ _CREATE_EXAMPLE = {
             ]
         }
     ],
-    "diagnosis": [{"condition": {"reference": "Condition/120001"}, "rank": 1}],
-    "patient": {"reference": "Patient/10001"},
-    "managingOrganization": {"reference": "Organization/190001"},
+    "diagnosis": [
+        {"condition": {"type": "Condition", "display": "Example condition"}, "rank": 1}
+    ],
+    "patient": {"type": "Patient", "display": "Example patient"},
+    "managingOrganization": {"type": "Organization", "display": "Example organization"},
     "period": {"start": "2026-01-01"},
-    "careManager": {"reference": "Practitioner/30001"},
+    "careManager": {"type": "Practitioner", "display": "Example practitioner"},
 }
 
 _PATCH_EXAMPLE = {
@@ -46,7 +48,7 @@ _PATCH_EXAMPLE = {
 
 
 class EpisodeOfCareCreateSchema(EpisodeOfCare):
-    "POST body - a FHIR R4 EpisodeOfCare resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 EpisodeOfCare resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

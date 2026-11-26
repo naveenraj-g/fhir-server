@@ -24,6 +24,7 @@ router = APIRouter()
 @router.post(
     "/",
     operation_id="create_fhir_profile",
+    status_code=201,
     summary="Create an organization FHIR profile (as a draft)",
     description=(
         "Creates a scope_level='organization' profile row, always as "
@@ -198,6 +199,8 @@ async def activate_fhir_profile(
 @router.delete(
     "/{profile_id}",
     operation_id="delete_fhir_profile",
+    status_code=204,
+    response_class=Response,
     summary="Delete a draft or retired profile",
     description="Refuses to delete a status='active' profile — activate a replacement first.",
     responses={

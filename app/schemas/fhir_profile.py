@@ -127,6 +127,11 @@ class FhirProfilePatchSchema(BaseModel):
             "example": {
                 "structure_definition": {
                     "resourceType": "StructureDefinition",
+                    "name": "OrgAbc123Organization",
+                    "status": "draft",
+                    "kind": "resource",
+                    "abstract": False,
+                    "type": "Organization",
                     "differential": {"element": []},
                 },
             }

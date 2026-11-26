@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user
 from app.core.config import settings
 from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
+from app.core.openapi_examples import add_examples
 from app.core.openapi_tags import OPENAPI_TAGS
 from app.core.redis import redis_client
 from app.core.schema_utils import COMPONENT_SCHEMAS
@@ -357,6 +358,7 @@ def _custom_openapi():
         component_schemas.setdefault(name, definition)
     _document_fhir_request_media_types(schema)
     _document_auth_errors(schema)
+    add_examples(schema)
     schema.setdefault("components", {})["securitySchemes"] = {
         "BearerAuth": {
             "type": "http",

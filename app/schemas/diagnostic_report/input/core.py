@@ -19,7 +19,7 @@ _CREATE_EXAMPLE = {
             "value": "DR-1001",
         }
     ],
-    "basedOn": [{"reference": "ServiceRequest/80001"}],
+    "basedOn": [{"type": "ServiceRequest", "display": "Example service request"}],
     "status": "final",
     "category": [
         {
@@ -41,14 +41,14 @@ _CREATE_EXAMPLE = {
             }
         ]
     },
-    "subject": {"reference": "Patient/10001"},
-    "encounter": {"reference": "Encounter/20001"},
+    "subject": {"type": "Patient", "display": "Example patient"},
+    "encounter": {"type": "Encounter", "display": "Example encounter"},
     "effectiveDateTime": "2023-01-15T09:30:00Z",
     "issued": "2023-01-15T12:00:00Z",
-    "performer": [{"reference": "Practitioner/30001"}],
-    "resultsInterpreter": [{"reference": "Practitioner/30001"}],
-    "specimen": [{"reference": "Specimen/310001"}],
-    "result": [{"reference": "Observation/160001"}],
+    "performer": [{"type": "Practitioner", "display": "Example practitioner"}],
+    "resultsInterpreter": [{"type": "Practitioner", "display": "Example practitioner"}],
+    "specimen": [{"type": "Specimen", "display": "Example specimen"}],
+    "result": [{"type": "Observation", "display": "Example observation"}],
     "conclusion": "Normal blood count.",
     "conclusionCode": [
         {
@@ -67,7 +67,7 @@ _PATCH_EXAMPLE = {"status": "amended", "conclusion": "Corrected: borderline anae
 
 
 class DiagnosticReportCreateSchema(DiagnosticReport):
-    "POST body - a FHIR R4 DiagnosticReport resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 DiagnosticReport resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

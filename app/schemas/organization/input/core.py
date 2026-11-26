@@ -10,20 +10,24 @@ from app.schemas.fhir_resources.organization import Organization, OrganizationPa
 
 _CREATE_EXAMPLE = {
     "resourceType": "Organization",
-    "active": True,
-    "name": "General Hospital",
-    "partOf": {"reference": "Organization/190001", "display": "Parent Health System"},
     "identifier": [
         {
             "use": "official",
             "system": "https://fhir-server.dev/fhir/identifier-system/facility-id",
-            "value": "12345",
-            "assigner": {
-                "reference": "Organization/190001",
-                "display": "State Health Department",
-            },
-        }
+            "value": "RGH-001",
+        },
+        {
+            "use": "official",
+            "system": "https://fhir-server.dev/fhir/identifier-system/gstin",
+            "value": "29ABCDE1234F1Z5",
+        },
+        {
+            "use": "official",
+            "system": "https://fhir-server.dev/fhir/identifier-system/pan",
+            "value": "ABCDE1234F",
+        },
     ],
+    "active": True,
     "type": [
         {
             "coding": [
@@ -35,17 +39,21 @@ _CREATE_EXAMPLE = {
             ]
         }
     ],
-    "alias": ["Gen Hosp"],
-    "telecom": [{"system": "phone", "value": "555-1234", "use": "work"}],
+    "name": "Riverside General Hospital",
+    "alias": ["RGH"],
+    "telecom": [
+        {"system": "phone", "value": "+91-80-5550-0100", "use": "work"},
+        {"system": "email", "value": "info@riverside-general.org", "use": "work"},
+    ],
     "address": [
         {
             "use": "work",
             "type": "both",
-            "line": ["123 Main St"],
-            "city": "Anytown",
-            "state": "CA",
-            "postalCode": "12345",
-            "country": "US",
+            "line": ["12 Riverside Road", "Indiranagar"],
+            "city": "Bengaluru",
+            "state": "Karnataka",
+            "postalCode": "560038",
+            "country": "IN",
         }
     ],
     "contact": [
@@ -55,26 +63,14 @@ _CREATE_EXAMPLE = {
                     {
                         "system": "http://terminology.hl7.org/CodeSystem/contactentity-type",
                         "code": "ADMIN",
+                        "display": "Administrative",
                     }
                 ]
             },
-            "name": {"family": "Smith", "given": ["John"]},
-            "telecom": [{"system": "phone", "value": "555-0001"}],
-            "address": {
-                "type": "both",
-                "city": "Anytown",
-                "state": "CA",
-                "country": "US",
-            },
-        }
-    ],
-    "endpoint": [
-        {
-            "display": "EHR FHIR Gateway",
-            "identifier": {
-                "system": "https://fhir-server.dev/fhir/identifier-system/endpoint",
-                "value": "EP-1",
-            },
+            "name": {"use": "official", "family": "Carter", "given": ["Jordan"]},
+            "telecom": [
+                {"system": "phone", "value": "+91-80-5550-0110", "use": "work"}
+            ],
         }
     ],
 }
@@ -82,12 +78,12 @@ _CREATE_EXAMPLE = {
 _PATCH_EXAMPLE = {
     "name": "General Hospital Health System",
     "alias": ["Gen Hosp", "GHHS"],
-    "telecom": [{"system": "phone", "value": "555-9999", "use": "work"}],
+    "telecom": [{"system": "phone", "value": "+91-80-5550-9999", "use": "work"}],
 }
 
 
 class OrganizationCreateSchema(Organization):
-    "POST body - a FHIR R4 Organization resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body."
+    "POST body - a FHIR R4 Organization resource. The body is validated as sent against base FHIR R4 and stored whole, so any valid R4 element is kept, including ones nothing searches on. `id` and `meta` are server-managed and ignored if sent. The organization and the audit fields come from the verified token, never the body. The example can be sent as it is: where it points at another record it gives only `type` and `display`. Add `reference` (`Type/<id>`) to link a record that exists; it is checked on write."
 
     model_config = ConfigDict(json_schema_extra={"example": _CREATE_EXAMPLE})
 

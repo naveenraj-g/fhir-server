@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import FHIRBundle
+from app.schemas.common.examples import bundle_example, served_example
 from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.medication_request import MedicationRequest
+from app.schemas.medication_request.input.core import _CREATE_EXAMPLE
+
+_EXAMPLE = served_example("MedicationRequest", "90000", _CREATE_EXAMPLE)
 
 
 class FHIRMedicationRequestSchema(MedicationRequest):
     "A FHIR R4 MedicationRequest as served: the stored document with `id` and `meta` stamped on."
+
+    model_config = ConfigDict(json_schema_extra={"example": _EXAMPLE})
 
     resourceType: str = Field(
         "MedicationRequest", description="Always 'MedicationRequest'."
@@ -35,6 +41,10 @@ class FHIRMedicationRequestBundleEntry(BaseModel):
 
 
 class FHIRMedicationRequestBundle(FHIRBundle):
+    model_config = ConfigDict(
+        json_schema_extra={"example": bundle_example("/medication-requests", _EXAMPLE)}
+    )
+
     total: int | None = Field(
         None,
         description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",

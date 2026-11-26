@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.allergy_intolerance.input.core import _CREATE_EXAMPLE
 from app.schemas.common import FHIRBundle
+from app.schemas.common.examples import bundle_example, served_example
 from app.schemas.common.searchset import FHIRBundleEntrySearch, FHIRBundleLink
 from app.schemas.fhir_datatypes import Meta
 from app.schemas.fhir_resources.allergy_intolerance import AllergyIntolerance
 
+_EXAMPLE = served_example("AllergyIntolerance", "260000", _CREATE_EXAMPLE)
+
 
 class FHIRAllergyIntoleranceSchema(AllergyIntolerance):
     "A FHIR R4 AllergyIntolerance as served: the stored document with `id` and `meta` stamped on."
+
+    model_config = ConfigDict(json_schema_extra={"example": _EXAMPLE})
 
     resourceType: str = Field(
         "AllergyIntolerance", description="Always 'AllergyIntolerance'."
@@ -35,6 +41,10 @@ class FHIRAllergyIntoleranceBundleEntry(BaseModel):
 
 
 class FHIRAllergyIntoleranceBundle(FHIRBundle):
+    model_config = ConfigDict(
+        json_schema_extra={"example": bundle_example("/allergy-intolerances", _EXAMPLE)}
+    )
+
     total: int | None = Field(
         None,
         description="Number of matches across all pages (not counting included resources). Omitted with _total=none.",
